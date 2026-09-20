@@ -14,6 +14,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 	"github.com/rbee3u/plutus/internal/jobs"
 )
 
@@ -596,8 +597,8 @@ func (s *Service) Patch(ctx context.Context, portfolioID, observationID uuid.UUI
 		ResourceType: "observation",
 		ResourceID:   mustBin(observationID),
 		RequestID:    defaultString(in.RequestID, "unknown"),
-		BeforeJson:   before,
-		AfterJson:    after,
+		BeforeJson:   sqljson.Column(before),
+		AfterJson:    sqljson.Column(after),
 		OccurredAt:   now,
 	}); err != nil {
 		return Observation{}, err

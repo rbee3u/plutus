@@ -7,6 +7,7 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { IssueList } from "@/shared/ui/IssueList";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { useOverview } from "@/features/overview/useOverview";
 import styles from "@/features/pages.module.css";
 
@@ -100,7 +101,7 @@ export function OverviewPage() {
     };
   }, [overview]);
 
-  if (query.isPending) {
+  if (query.isPending && !overview) {
     return (
       <section className={styles.wide}>
         <h2>Overview</h2>
@@ -108,92 +109,99 @@ export function OverviewPage() {
       </section>
     );
   }
-  if (query.error || !overview) {
-    return (
-      <section className={styles.wide}>
-        <h2>Overview</h2>
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error ? query.error.message : "Overview could not be loaded."}
-        </p>
-      </section>
-    );
-  }
 
-  const completeValuationPoints = overview.valuationSeries.filter(
+  const completeValuationPoints = (overview?.valuationSeries ?? []).filter(
     (point) => point.completeness === "complete" && point.amount != null,
   ).length;
 
   return (
     <section className={styles.wide}>
       <h2>Overview</h2>
-      <ContextSummary context={overview.context} />
-      <div className={styles.cards}>
-        <MetricCard title="Valuation" status={overview.valuation} unit={unit} />
-        <MetricCard title="Contributed capital" status={overview.contributedCapital} unit={unit} />
-        <MetricCard title="Value change" status={overview.valueChange} unit={unit} />
-      </div>
-      <ChartBlock
-        title="Valuation"
-        summary={
-          completeValuationPoints < MIN_TREND_POINTS
-            ? `Fewer than ${String(MIN_TREND_POINTS)} complete points, so no trend line is drawn. Exact strings remain in the table.`
-            : `Line chart of ${String(completeValuationPoints)} complete valuation points in ${unit ?? "the display asset"}.`
-        }
-        option={valuationOption}
-        empty={`Fewer than ${String(MIN_TREND_POINTS)} complete valuation points.`}
-        columns={[
-          { key: "evaluatedAt", header: "Evaluated at" },
-          { key: "amount", header: "Amount", numeric: true },
-          { key: "completeness", header: "Completeness" },
-        ]}
-        rows={overview.valuationSeries.map((point) => ({
-          evaluatedAt: formatInstant(point.evaluatedAt, overview.context.timezone),
-          amount: formatDecimal(point.amount),
-          completeness: point.completeness,
-        }))}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(overview)}
+        busy={query.isFetching}
+        fallback="Overview could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
       />
-      <ChartBlock
-        title="Monthly value change"
-        summary="Bars use server-calculated Value Change. Incomplete months stay blank instead of zero."
-        option={valueChangeOption}
-        empty="No monthly Value Change rows are available yet."
-        columns={[
-          { key: "period", header: "Period" },
-          { key: "amount", header: "Amount", numeric: true },
-          { key: "state", header: "State" },
-        ]}
-        rows={overview.valueChanges
-          .filter((point) => point.periodKind === "month")
-          .map((point) => ({
-            period: `${point.periodStartDate} – ${point.periodEndDate}`,
-            amount: formatDecimal(point.amount),
-            state: point.state,
-          }))}
-      />
-      <ChartBlock
-        title="Exposure"
-        summary="Long and short quantities stay visible even when net exposure is zero. Values are server quantities, not recomputed totals."
-        option={exposureOption}
-        empty="No exposure rows are available yet."
-        columns={[
-          { key: "asset", header: "Asset" },
-          { key: "long", header: "Long", numeric: true },
-          { key: "short", header: "Short", numeric: true },
-          { key: "net", header: "Net", numeric: true },
-          { key: "completeness", header: "Completeness" },
-        ]}
-        rows={overview.exposures.map((item) => ({
-          asset: item.assetCode ?? item.assetId,
-          long: formatDecimal(item.longQuantity),
-          short: formatDecimal(item.shortQuantity),
-          net: formatDecimal(item.netQuantity),
-          completeness: item.completeness,
-        }))}
-      />
-      <section className={styles.panel}>
-        <h3>Issues</h3>
-        <IssueList issues={overview.issues} />
-      </section>
+      {overview ? (
+        <>
+          <ContextSummary context={overview.context} />
+          <div className={styles.cards}>
+            <MetricCard title="Valuation" status={overview.valuation} unit={unit} />
+            <MetricCard
+              title="Contributed capital"
+              status={overview.contributedCapital}
+              unit={unit}
+            />
+            <MetricCard title="Value change" status={overview.valueChange} unit={unit} />
+          </div>
+          <ChartBlock
+            title="Valuation"
+            summary={
+              completeValuationPoints < MIN_TREND_POINTS
+                ? `Fewer than ${String(MIN_TREND_POINTS)} complete points, so no trend line is drawn. Exact strings remain in the table.`
+                : `Line chart of ${String(completeValuationPoints)} complete valuation points in ${unit ?? "the display asset"}.`
+            }
+            option={valuationOption}
+            empty={`Fewer than ${String(MIN_TREND_POINTS)} complete valuation points.`}
+            columns={[
+              { key: "evaluatedAt", header: "Evaluated at" },
+              { key: "amount", header: "Amount", numeric: true },
+              { key: "completeness", header: "Completeness" },
+            ]}
+            rows={overview.valuationSeries.map((point) => ({
+              evaluatedAt: formatInstant(point.evaluatedAt, overview.context.timezone),
+              amount: formatDecimal(point.amount),
+              completeness: point.completeness,
+            }))}
+          />
+          <ChartBlock
+            title="Monthly value change"
+            summary="Bars use server-calculated Value Change. Incomplete months stay blank instead of zero."
+            option={valueChangeOption}
+            empty="No monthly Value Change rows are available yet."
+            columns={[
+              { key: "period", header: "Period" },
+              { key: "amount", header: "Amount", numeric: true },
+              { key: "state", header: "State" },
+            ]}
+            rows={overview.valueChanges
+              .filter((point) => point.periodKind === "month")
+              .map((point) => ({
+                period: `${point.periodStartDate} – ${point.periodEndDate}`,
+                amount: formatDecimal(point.amount),
+                state: point.state,
+              }))}
+          />
+          <ChartBlock
+            title="Exposure"
+            summary="Long and short quantities stay visible even when net exposure is zero. Values are server quantities, not recomputed totals."
+            option={exposureOption}
+            empty="No exposure rows are available yet."
+            columns={[
+              { key: "asset", header: "Asset" },
+              { key: "long", header: "Long", numeric: true },
+              { key: "short", header: "Short", numeric: true },
+              { key: "net", header: "Net", numeric: true },
+              { key: "completeness", header: "Completeness" },
+            ]}
+            rows={overview.exposures.map((item) => ({
+              asset: item.assetCode ?? item.assetId,
+              long: formatDecimal(item.longQuantity),
+              short: formatDecimal(item.shortQuantity),
+              net: formatDecimal(item.netQuantity),
+              completeness: item.completeness,
+            }))}
+          />
+          <section className={styles.panel}>
+            <h3>Issues</h3>
+            <IssueList issues={overview.issues} />
+          </section>
+        </>
+      ) : null}
     </section>
   );
 }

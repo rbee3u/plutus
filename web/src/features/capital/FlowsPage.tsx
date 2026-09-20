@@ -17,6 +17,7 @@ import { formatInstant, fromDatetimeLocalValue, toDatetimeLocalValue } from "@/s
 import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Pager } from "@/shared/ui/Pager";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
@@ -268,6 +269,15 @@ export function FlowsPage() {
         </p>
       ) : null}
       {notice ? <p className={styles.notice}>{notice}</p> : null}
+      <QueryRecovery
+        error={flows.error}
+        hasData={Boolean(flows.data)}
+        busy={flows.isFetching}
+        fallback="Capital flows could not be loaded."
+        onRetry={() => {
+          void flows.refetch();
+        }}
+      />
       <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
         <label className={styles.field}>
           <span>Direction</span>

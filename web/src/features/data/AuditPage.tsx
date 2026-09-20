@@ -8,6 +8,7 @@ import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CursorPager } from "@/shared/ui/Pager";
 import { TextInput } from "@/shared/ui/FormControls";
 import type { AuditEvent } from "@/api/generated/types.gen";
@@ -96,11 +97,15 @@ function AuditResults({
 
   return (
     <>
-      {query.error ? (
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error ? query.error.message : "Audit events could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Audit events could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
       <DataTable
         caption="Portfolio audit events"
         columns={[

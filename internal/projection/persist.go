@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 func (s *Service) persist(ctx context.Context, built *builtGeneration) error {
@@ -278,7 +279,7 @@ func (s *Service) insertIssues(ctx context.Context, q *sqlcgen.Queries, built *b
 		if err != nil {
 			return err
 		}
-		params.DetailsJson = raw
+		params.DetailsJson = sqljson.Column(raw)
 		if err := q.InsertProjectionIssue(ctx, params); err != nil {
 			return err
 		}

@@ -21,6 +21,7 @@ import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
@@ -274,6 +275,15 @@ export function IdentitiesPage() {
         </p>
       ) : null}
       {notice ? <p className={styles.notice}>{notice}</p> : null}
+      <QueryRecovery
+        error={identities.error}
+        hasData={Boolean(identities.data)}
+        busy={identities.isFetching}
+        fallback="Identities could not be loaded."
+        onRetry={() => {
+          void identities.refetch();
+        }}
+      />
       <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
         <label className={styles.field}>
           <span>Platform</span>

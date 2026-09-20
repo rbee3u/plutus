@@ -8,8 +8,9 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const countConnectionsWithCiphertext = `-- name: CountConnectionsWithCiphertext :one
@@ -65,7 +66,7 @@ type GetConnectionRow struct {
 	CredentialsCiphertext     []byte
 	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
-	ConfigJson                json.RawMessage
+	ConfigJson                sqljson.Column
 	CollectionIntervalSeconds uint32
 	FreshnessAfterSeconds     uint32
 	LastValidatedAt           sql.NullTime
@@ -119,7 +120,7 @@ type InsertConnectionParams struct {
 	CredentialsCiphertext     []byte
 	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
-	ConfigJson                json.RawMessage
+	ConfigJson                sqljson.Column
 	CollectionIntervalSeconds uint32
 	FreshnessAfterSeconds     uint32
 	LastValidatedAt           sql.NullTime
@@ -167,7 +168,7 @@ type ListConnectionsByPortfolioRow struct {
 	CredentialsCiphertext     []byte
 	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
-	ConfigJson                json.RawMessage
+	ConfigJson                sqljson.Column
 	CollectionIntervalSeconds uint32
 	FreshnessAfterSeconds     uint32
 	LastValidatedAt           sql.NullTime
@@ -238,7 +239,7 @@ type UpdateConnectionParams struct {
 	CredentialsCiphertext     []byte
 	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
-	ConfigJson                json.RawMessage
+	ConfigJson                sqljson.Column
 	UpdatedAt                 time.Time
 	PortfolioID               []byte
 	ID                        []byte

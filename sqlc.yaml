@@ -14,7 +14,14 @@ sql:
         emit_pointers_for_null_types: true
         overrides:
           - db_type: json
-            go_type: encoding/json.RawMessage
+            go_type:
+              import: "github.com/rbee3u/plutus/internal/infra/sqljson"
+              type: "Column"
+          - db_type: json
+            nullable: true
+            go_type:
+              import: "github.com/rbee3u/plutus/internal/infra/sqljson"
+              type: "Column"
           - column: "identities.parent_identity_id"
             go_type:
               type: "[]byte"

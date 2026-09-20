@@ -143,7 +143,7 @@ func eventFromRow(row *sqlcgen.AuditEvent) (Event, error) {
 	}, nil
 }
 
-func asObject(raw json.RawMessage) *map[string]any {
+func asObject(raw []byte) *map[string]any {
 	if len(raw) == 0 {
 		return nil
 	}

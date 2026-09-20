@@ -25,12 +25,40 @@ export async function refreshCsrf(): Promise<string> {
   return csrfToken;
 }
 
-export function problemMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "detail" in error && typeof error.detail === "string") {
-    return error.detail;
+export class ProblemError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+  readonly traceId?: string;
+
+  constructor(message: string, init?: { status?: number; code?: string; traceId?: string }) {
+    super(message);
+    this.name = "ProblemError";
+    this.status = init?.status;
+    this.code = init?.code;
+    this.traceId = init?.traceId;
+  }
+}
+
+export function problemError(error: unknown, fallback: string): ProblemError {
+  if (error instanceof ProblemError) {
+    return error;
+  }
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    if (typeof record.detail === "string") {
+      return new ProblemError(record.detail, {
+        status: typeof record.status === "number" ? record.status : undefined,
+        code: typeof record.code === "string" ? record.code : undefined,
+        traceId: typeof record.traceId === "string" ? record.traceId : undefined,
+      });
+    }
   }
   if (error instanceof Error && error.message) {
-    return error.message;
+    return new ProblemError(error.message);
   }
-  return fallback;
+  return new ProblemError(fallback);
+}
+
+export function problemMessage(error: unknown, fallback: string): string {
+  return problemError(error, fallback).message;
 }

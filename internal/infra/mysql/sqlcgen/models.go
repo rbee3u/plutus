@@ -6,8 +6,9 @@ package sqlcgen
 
 import (
 	"database/sql"
-	"encoding/json"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 type Account struct {
@@ -75,7 +76,7 @@ type AssetListingMappingRevision struct {
 	AssetID             []byte
 	State               string
 	DisplayNameOverride sql.NullString
-	ClassificationJson  json.RawMessage
+	ClassificationJson  sqljson.Column
 	Reason              sql.NullString
 	CreatedByUserID     []byte
 	CreatedAt           time.Time
@@ -89,9 +90,9 @@ type AuditEvent struct {
 	ResourceType string
 	ResourceID   []byte
 	RequestID    string
-	BeforeJson   json.RawMessage
-	AfterJson    json.RawMessage
-	MetadataJson json.RawMessage
+	BeforeJson   sqljson.Column
+	AfterJson    sqljson.Column
+	MetadataJson sqljson.Column
 	OccurredAt   time.Time
 }
 
@@ -222,7 +223,7 @@ type Connection struct {
 	CredentialsCiphertext     []byte
 	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
-	ConfigJson                json.RawMessage
+	ConfigJson                sqljson.Column
 	CollectionIntervalSeconds uint32
 	FreshnessAfterSeconds     uint32
 	LastValidatedAt           sql.NullTime
@@ -267,8 +268,8 @@ type IdempotencyRecord struct {
 	Path                string
 	RequestHash         []byte
 	ResponseStatus      uint16
-	ResponseHeadersJson json.RawMessage
-	ResponseBodyJson    json.RawMessage
+	ResponseHeadersJson sqljson.Column
+	ResponseBodyJson    sqljson.Column
 	CreatedAt           time.Time
 	ExpiresAt           time.Time
 }
@@ -513,7 +514,7 @@ type ProjectionIssue struct {
 	Severity         string
 	Code             string
 	Summary          string
-	DetailsJson      json.RawMessage
+	DetailsJson      sqljson.Column
 	IdentityID       []byte
 	AccountID        []byte
 	ObservationID    []byte

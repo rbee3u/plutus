@@ -14,6 +14,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const (
@@ -725,8 +726,8 @@ func insertAudit(ctx context.Context, q *sqlcgen.Queries, portfolioID, actor uui
 		ResourceType: resourceType,
 		ResourceID:   mustBin(resourceID),
 		RequestID:    defaultString(requestID, "unknown"),
-		BeforeJson:   beforeJSON,
-		AfterJson:    afterJSON,
+		BeforeJson:   sqljson.Column(beforeJSON),
+		AfterJson:    sqljson.Column(afterJSON),
 		OccurredAt:   now,
 	})
 }

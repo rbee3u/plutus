@@ -11,6 +11,7 @@ import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Pager } from "@/shared/ui/Pager";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { useOverview } from "@/features/overview/useOverview";
@@ -130,11 +131,15 @@ export function BalancesPage() {
   return (
     <section className={styles.wide}>
       <h2>Balances</h2>
-      {query.error ? (
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error ? query.error.message : "Balances could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Balances could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
       {query.data ? <ContextSummary context={query.data.context} /> : null}
       <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
         <label className={styles.field}>

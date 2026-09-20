@@ -6,17 +6,17 @@ The domain hierarchy is `Platform -> Identity -> Account`: each main or subordin
 
 ## Current status
 
-Phase 2 (end-to-end vertical slice) is implemented. The process is a Go CLI at `cmd/plutus` with an embedded React frontend:
+Phase 3 (complete MVP UI and management) is implemented and waiting for review. The process is a Go CLI at `cmd/plutus` with an embedded React frontend:
 
 - Configuration from `plutus.toml` and `PLUTUS_*`, including the HTTP / HTTPS / mTLS startup matrix.
 - Explicit Goose migrations and sqlc access. `serve` never migrates automatically.
-- Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and credential-less Connections.
-- Development `plutus db seed` and `plutus db reset` with deterministic `minimal` and `edge-cases` source-fact profiles. Reset requires `[database].allow_reset = true` in the gitignored `plutus.toml` and a database name matching `plutus` or `plutus_<suffix>`.
-- Normalized Observations, catalog mappings, Observation correction, and Capital Baseline / Flow revisions.
-- A durable Projection worker that rebuilds latest balances, positions, valuations, contributed capital, value changes, and exposure, then atomically activates a ready generation. A failed rebuild leaves the previous generation readable.
-- Working Overview, Balances, Positions, and Capital pages backed by the JSON API. Overview charts include a text summary and an accessible exact-value table.
+- Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and write-only Connection credentials encrypted with AES-256-GCM. `/health/ready` fails when ciphertext exists without a master key.
+- Development `plutus db seed` and `plutus db reset` with deterministic `minimal` and `edge-cases` source-fact profiles. Seeds stay secret-free. Reset requires `[database].allow_reset = true` in the gitignored `plutus.toml` and a database name matching `plutus` or `plutus_<suffix>`.
+- Normalized Observations, catalog mapping and pin revisions, Observation correction, Capital Baseline / Flow revisions, and portfolio audit events.
+- A durable Projection worker that rebuilds latest balances, positions, valuations, contributed capital, value changes, exposure, and period summaries, then atomically activates a ready generation. A failed rebuild leaves the previous generation readable. `POST /projection-rebuilds` enqueues a full rebuild.
+- Working Overview, Balances, Positions, Exposure, Valuations, Value Changes, Capital, Identity, Connection, Catalog, Observation, Jobs, and Audit pages. Overview charts include a text summary and an accessible exact-value table. Query failures keep last-good data and show Retry plus a trace ID.
 
-Not implemented yet: real Platform adapters, Connection credential encryption in the UI, collection scheduling, HTTP `POST /projection-rebuilds`, or Exposure / History / Data / Jobs / Catalog / Observation screens. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
+Not implemented yet: real Platform adapters, collection scheduling, Identity refresh, or Connection validate against a live Platform. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
 
 ## First-release scope
 
@@ -44,7 +44,7 @@ Value Changes are not investment returns. Percentage returns, return attribution
 
 1. Foundation (done): configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, an embedded React shell, and a persistent Projection worker.
 2. End-to-end vertical slice (done): deterministic source-fact seeds, normalized Observations, generation-based Projections, and working Overview, Balances, Positions, and Capital pages.
-3. Complete MVP UI and management: Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
+3. Complete MVP UI and management (done): Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
 4. Integrations: scheduling and real Binance, OKX, and Bybit adapters.
 
 The accepted design uses a contract-first modular Go monolith, a versioned JSON API, an embedded React frontend, and an externally managed MySQL database.
@@ -88,7 +88,7 @@ Scratch logins from both seed profiles:
 | `alice` | `Alice=123456` |
 | `bob` | `Bob=123456` |
 
-Alice owns Portfolios `Main` and `Trading`. Bob owns `Main`. After `serve` starts, the worker activates generations so Overview, Balances, Positions, and Capital read live JSON. Manual rebuilds remain available with `plutus projection rebuild --portfolio <uuid>`.
+Alice owns Portfolios `Main` and `Trading`. Bob owns `Main`. After `serve` starts, the worker activates generations so Overview, Balances, Positions, Exposure, Valuations, Value Changes, and Capital read live JSON. Full rebuilds are also available from the Jobs page or with `plutus projection rebuild --portfolio <uuid>`.
 
 `scripts/dev-wipe-and-serve.sh` runs `db reset --profile minimal` and then `serve`. It prints the seed logins above and does not create a separate `admin` user.
 

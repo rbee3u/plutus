@@ -1,6 +1,6 @@
 import { getAuthMe } from "@/api/generated/sdk.gen";
 import type { User } from "@/api/generated/types.gen";
-import { problemMessage } from "@/api/http";
+import { problemError } from "@/api/http";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
@@ -22,7 +22,7 @@ export function unwrapData<T>(result: ApiResult<T>): T {
     throw new SessionExpiredError();
   }
   if (result.data === undefined) {
-    throw new Error(problemMessage(result.error, "The request could not be completed."));
+    throw problemError(result.error, "The request could not be completed.");
   }
   return result.data;
 }

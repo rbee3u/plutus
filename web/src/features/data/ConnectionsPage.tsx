@@ -16,6 +16,7 @@ import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
@@ -290,6 +291,15 @@ export function ConnectionsPage() {
         </p>
       ) : null}
       {notice ? <p className={styles.notice}>{notice}</p> : null}
+      <QueryRecovery
+        error={connections.error}
+        hasData={Boolean(connections.data)}
+        busy={connections.isFetching}
+        fallback="Connections could not be loaded."
+        onRetry={() => {
+          void connections.refetch();
+        }}
+      />
       <form className={styles.form} onSubmit={(event) => void onSubmit(event)} autoComplete="off">
         <label className={styles.field}>
           <span>Identity</span>

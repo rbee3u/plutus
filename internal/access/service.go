@@ -14,6 +14,7 @@ import (
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 	"github.com/rbee3u/plutus/internal/secret"
 )
 
@@ -428,7 +429,7 @@ func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, i
 		CredentialsCiphertext:     ciphertext,
 		CredentialsNonce:          nonce,
 		CredentialKeyVersion:      keyVersion,
-		ConfigJson:                cfg,
+		ConfigJson:                sqljson.Column(cfg),
 		CollectionIntervalSeconds: interval,
 		FreshnessAfterSeconds:     fresh,
 		Version:                   1,
@@ -519,7 +520,7 @@ func (s *Service) PatchConnection(ctx context.Context, portfolioID, connectionID
 		CredentialsCiphertext:     ciphertext,
 		CredentialsNonce:          nonce,
 		CredentialKeyVersion:      keyVersion,
-		ConfigJson:                cfg,
+		ConfigJson:                sqljson.Column(cfg),
 		UpdatedAt:                 now,
 		PortfolioID:               mustBin(portfolioID),
 		ID:                        mustBin(connectionID),
@@ -669,7 +670,7 @@ func identityFromRow(row *sqlcgen.Identity) (Identity, error) {
 	return item, nil
 }
 
-func connectionFromSQL(id, portfolioID, identityID []byte, label, status string, ciphertext []byte, interval, fresh uint32, lastValidated sql.NullTime, version uint64, configJSON json.RawMessage) (Connection, error) {
+func connectionFromSQL(id, portfolioID, identityID []byte, label, status string, ciphertext []byte, interval, fresh uint32, lastValidated sql.NullTime, version uint64, configJSON []byte) (Connection, error) {
 	parsedID, err := uuid.FromBytes(id)
 	if err != nil {
 		return Connection{}, err
@@ -744,7 +745,7 @@ func (s *Service) sealCredentials(connectionID, portfolioID uuid.UUID, cred *sec
 	return ciphertext, nonce, keyVersion, raw, nil
 }
 
-func credentialsUpdatedAt(raw json.RawMessage) *time.Time {
+func credentialsUpdatedAt(raw []byte) *time.Time {
 	if len(raw) == 0 {
 		return nil
 	}
@@ -791,8 +792,8 @@ func insertConnectionAudit(ctx context.Context, q *sqlcgen.Queries, actor uuid.U
 		ResourceType: "connection",
 		ResourceID:   mustBin(item.ID),
 		RequestID:    defaultRequestID(requestID),
-		BeforeJson:   beforeJSON,
-		AfterJson:    afterJSON,
+		BeforeJson:   sqljson.Column(beforeJSON),
+		AfterJson:    sqljson.Column(afterJSON),
 		OccurredAt:   now,
 	})
 }

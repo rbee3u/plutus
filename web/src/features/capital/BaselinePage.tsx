@@ -16,6 +16,7 @@ import {
   useCurrentUser,
 } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
@@ -70,13 +71,15 @@ export function BaselinePage() {
         One logical baseline per Portfolio. Saving appends a revision and keeps the original Asset
         quantity.
       </p>
-      {baseline.error ? (
-        <p className={styles.alert} role="alert">
-          {baseline.error instanceof Error
-            ? baseline.error.message
-            : "The baseline could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={baseline.error}
+        hasData={Boolean(baseline.data)}
+        busy={baseline.isFetching}
+        fallback="The baseline could not be loaded."
+        onRetry={() => {
+          void baseline.refetch();
+        }}
+      />
       {baseline.data ? (
         <BaselineForm
           key={`${baseline.data.etag}-${baseline.data.item?.id ?? "new"}`}

@@ -12,6 +12,7 @@ import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CursorPager } from "@/shared/ui/Pager";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { useOverview } from "@/features/overview/useOverview";
@@ -210,13 +211,15 @@ function ValueChangeResults({
 
   return (
     <>
-      {query.error ? (
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error
-            ? query.error.message
-            : "Value changes could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Value changes could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
       {query.data ? <ContextSummary context={query.data.context} /> : null}
       {query.data?.granularity ? (
         <p className={styles.muted}>Sampled at {query.data.granularity} resolution.</p>
@@ -263,13 +266,15 @@ function ValueChangeResults({
       />
       <section className={styles.panel}>
         <h3>Period summaries</h3>
-        {summaries.error ? (
-          <p className={styles.alert} role="alert">
-            {summaries.error instanceof Error
-              ? summaries.error.message
-              : "Period summaries could not be loaded."}
-          </p>
-        ) : null}
+        <QueryRecovery
+          error={summaries.error}
+          hasData={Boolean(summaries.data)}
+          busy={summaries.isFetching}
+          fallback="Period summaries could not be loaded."
+          onRetry={() => {
+            void summaries.refetch();
+          }}
+        />
         <DataTable
           caption="Period open, close, and value-change summaries"
           columns={[

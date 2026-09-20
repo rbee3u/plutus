@@ -7,8 +7,9 @@ package sqlcgen
 
 import (
 	"context"
-	"encoding/json"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
@@ -30,9 +31,9 @@ type InsertAuditEventParams struct {
 	ResourceType string
 	ResourceID   []byte
 	RequestID    string
-	BeforeJson   json.RawMessage
-	AfterJson    json.RawMessage
-	MetadataJson json.RawMessage
+	BeforeJson   sqljson.Column
+	AfterJson    sqljson.Column
+	MetadataJson sqljson.Column
 	OccurredAt   time.Time
 }
 

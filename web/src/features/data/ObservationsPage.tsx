@@ -22,6 +22,7 @@ import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CursorPager } from "@/shared/ui/Pager";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
@@ -306,11 +307,15 @@ function ObservationResults({
 
   return (
     <>
-      {query.error ? (
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error ? query.error.message : "Observations could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Observations could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
       {follow.notice ? <p className={styles.notice}>{follow.notice}</p> : null}
       <DataTable
         caption="Normalized observations"

@@ -6,6 +6,7 @@ import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { IssueList } from "@/shared/ui/IssueList";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CursorPager } from "@/shared/ui/Pager";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { useOverview } from "@/features/overview/useOverview";
@@ -157,11 +158,15 @@ function ValuationResults({
 
   return (
     <>
-      {query.error ? (
-        <p className={styles.alert} role="alert">
-          {query.error instanceof Error ? query.error.message : "Valuations could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Valuations could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
       {query.data ? <ContextSummary context={query.data.context} /> : null}
       {query.data?.granularity ? (
         <p className={styles.muted}>Sampled at {query.data.granularity} resolution.</p>

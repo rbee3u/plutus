@@ -8,8 +8,9 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const getProjectionGeneration = `-- name: GetProjectionGeneration :one
@@ -377,7 +378,7 @@ type InsertProjectionIssueParams struct {
 	Severity         string
 	Code             string
 	Summary          string
-	DetailsJson      json.RawMessage
+	DetailsJson      sqljson.Column
 	IdentityID       []byte
 	AccountID        []byte
 	ObservationID    []byte

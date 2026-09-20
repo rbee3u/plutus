@@ -8,8 +8,9 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const countSearchAssetListings = `-- name: CountSearchAssetListings :one
@@ -384,7 +385,7 @@ type InsertAssetListingMappingRevisionParams struct {
 	AssetID             []byte
 	State               string
 	DisplayNameOverride sql.NullString
-	ClassificationJson  json.RawMessage
+	ClassificationJson  sqljson.Column
 	Reason              sql.NullString
 	CreatedByUserID     []byte
 	CreatedAt           time.Time

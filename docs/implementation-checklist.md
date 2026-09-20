@@ -1,6 +1,6 @@
 # Implementation checklist
 
-Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 3 is the current workstream; Phase 4 stays unchecked until it begins. Stop for review when every item in Phase 3 is checked.
+Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 3 is completed and waiting for review. Phase 4 stays unchecked until it begins.
 
 ## Phase 1: Foundation
 
@@ -149,7 +149,7 @@ Completed. Stopped for review after every item in this section was checked.
 
 ## Phase 3: Complete MVP UI and management
 
-Current workstream. Stop for review when every item in this section is checked.
+Completed. Stopped for review after every item in this section was checked.
 
 ### Milestone 1 — OpenAPI growth
 
@@ -193,10 +193,10 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 9 — Phase 3 close-out
 
-- [ ] Complete accessibility and error-recovery coverage
-- [ ] Deterministic testing of missing, stale, coverage, price, and timezone cases
-- [ ] README describes implemented Phase 3 capabilities
-- [ ] `make format && make build && make test && make lint` pass
+- [x] Complete accessibility and error-recovery coverage
+- [x] Deterministic testing of missing, stale, coverage, price, and timezone cases
+- [x] README describes implemented Phase 3 capabilities
+- [x] `make format && make build && make test && make lint` pass
 
 ## Phase 4: Integrations
 
@@ -264,6 +264,7 @@ Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **La
 - [x] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
 - [x] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
 - [x] **Phase 2** — `GET /overview`, `GET /balances`, `GET /positions`, and Capital endpoints return decimal strings or `null`, typed 2xx incompleteness, and 404 across Users
+- [x] **Phase 3** — Exposure, valuation, value-change, and period-summary reads keep incomplete amounts null, surface issues, and return Problem Details with `traceId`
 
 ### 13.7 Transport security
 
@@ -281,3 +282,4 @@ Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **La
 - [x] **Phase 2** — Overview charts provide a text summary and accessible exact-value table
 - [x] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens
 - [x] **Phase 2** — Capital 412 conflicts reload the latest server values
+- [x] **Phase 3** — Query failures keep last-good data, show a Retry action, and display `traceId` when present

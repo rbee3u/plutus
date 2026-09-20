@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 // ErrConflict is returned when the same key is reused with a different body.
@@ -49,7 +50,7 @@ func (s *Store) Get(ctx context.Context, userID uuid.UUID, method, path, key str
 	}
 	var hash []byte
 	var status uint16
-	var headers, body json.RawMessage
+	var headers, body sqljson.Column
 	var expires time.Time
 	err = s.db.QueryRowContext(ctx, `
 SELECT request_hash, response_status, response_headers_json, response_body_json, expires_at
@@ -72,7 +73,7 @@ WHERE user_id = ? AND method = ? AND path = ? AND `+"`key`"+` = ?`,
 			return nil, nil, err
 		}
 	}
-	return &Record{Status: int(status), Headers: headerMap, Body: body}, hash, nil
+	return &Record{Status: int(status), Headers: headerMap, Body: json.RawMessage(body)}, hash, nil
 }
 
 // Put stores a response. A duplicate key with the same hash is ignored.

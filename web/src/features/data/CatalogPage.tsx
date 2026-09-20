@@ -23,6 +23,7 @@ import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Pager } from "@/shared/ui/Pager";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
@@ -345,13 +346,15 @@ function ListingResults({
 
   return (
     <>
-      {listings.error ? (
-        <p className={styles.alert} role="alert">
-          {listings.error instanceof Error
-            ? listings.error.message
-            : "Listings could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={listings.error}
+        hasData={Boolean(listings.data)}
+        busy={listings.isFetching}
+        fallback="Listings could not be loaded."
+        onRetry={() => {
+          void listings.refetch();
+        }}
+      />
       {follow.notice ? <p className={styles.notice}>{follow.notice}</p> : null}
       {error ? (
         <p className={styles.alert} role="alert">
@@ -589,13 +592,15 @@ function InstrumentResults({
 
   return (
     <>
-      {instruments.error ? (
-        <p className={styles.alert} role="alert">
-          {instruments.error instanceof Error
-            ? instruments.error.message
-            : "Instruments could not be loaded."}
-        </p>
-      ) : null}
+      <QueryRecovery
+        error={instruments.error}
+        hasData={Boolean(instruments.data)}
+        busy={instruments.isFetching}
+        fallback="Instruments could not be loaded."
+        onRetry={() => {
+          void instruments.refetch();
+        }}
+      />
       {follow.notice ? <p className={styles.notice}>{follow.notice}</p> : null}
       {error ? (
         <p className={styles.alert} role="alert">
