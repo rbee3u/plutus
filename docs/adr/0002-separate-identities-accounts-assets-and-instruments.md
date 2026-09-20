@@ -4,7 +4,7 @@ status: accepted
 
 # Separate identities, accounts, assets, and instruments
 
-Platforms use account terminology for both user identities and financial subdivisions, while a future Plutus login system may have its own users. Use `Platform -> Identity -> Account`: each main or subordinate platform identity is an Identity, its actual funding or trading subdivisions are Accounts, and product categories remain separate from Accounts. This keeps Account close to platform financial terminology and reserves User for Plutus login users, while Asset identity is shared across Platforms and Instrument identity remains specific to a Platform and its market or contract characteristics.
+Platforms use account terminology for both user identities and financial subdivisions, while Plutus has its own Users. Use `Platform -> Identity -> Account`: each main or subordinate platform identity is an Identity, its actual funding or trading subdivisions are Accounts, and product categories remain separate from Accounts. This keeps Account close to platform financial terminology and reserves User for Plutus login identities, while Asset identity is shared across Platforms and Instrument identity remains specific to a Platform and its market or contract characteristics.
 
 ## Consequences
 
@@ -17,3 +17,4 @@ Platforms use account terminology for both user identities and financial subdivi
 - A unified trading Account can contain Balances and Positions without separate Accounts for each product category. A spot trade changes Balances without creating a Position, while a derivative contract can create a Position.
 - Basic Exposure distinguishes long, short, and net amounts in comparable underlying-asset units. A Balance of 1 BTC and a short Position equivalent to 1 BTC can produce zero net BTC Exposure while both remain visible and account equity remains nonzero.
 - Connection enablement and automatic catalog discovery follow [ADR 0006](./0006-configure-identity-access-and-discover-catalog-entries.md).
+- User ownership and the rule that each Identity belongs to one Portfolio follow [ADR 0008](./0008-support-user-owned-multiple-portfolios.md).

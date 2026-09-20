@@ -6,6 +6,10 @@ Plutus records normalized observations across configured financial identities an
 
 ### Identity and access
 
+**User**:
+A person authenticated by Plutus who owns and directly manages one or more Portfolios. A User is distinct from every Platform Identity.
+_Avoid_: Administrator, Identity, Account (as synonyms for a Plutus login)
+
 **Platform**:
 An exchange or other financial service that provides accounts and market information, such as Binance, OKX, or Bybit.
 
@@ -68,8 +72,8 @@ A Platform-defined measure reported for one Account, with its unit and observati
 ### Portfolio and capital
 
 **Portfolio**:
-The collection of enabled Identities included in personal asset observation and the boundary for Capital Flows. Filtering by Platform, Identity, Account, Asset, or Instrument does not create another Portfolio.
-_Avoid_: Identity, Account, filtered view (as synonyms for the portfolio boundary)
+The collection of enabled Identities selected by one User for asset observation and the boundary for Capital Flows. A User can own multiple Portfolios, but each Identity belongs to exactly one Portfolio.
+_Avoid_: User, Identity, Account, filtered view (as synonyms for the portfolio boundary)
 
 **Capital Baseline**:
 The known cumulative contributed capital for the Portfolio at an effective time, expressed in a specified denomination. A Portfolio has one logical Capital Baseline whose current value can be corrected.
