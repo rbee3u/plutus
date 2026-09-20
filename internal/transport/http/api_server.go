@@ -7,6 +7,7 @@ import (
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -23,6 +24,7 @@ type API struct {
 	Portfolios          *portfolio.Service
 	Access              *access.Service
 	Idempotency         *idempotency.Store
+	Jobs                *jobs.Service
 }
 
 func (a *API) GetHealthLive(context.Context, api.GetHealthLiveRequestObject) (api.GetHealthLiveResponseObject, error) {
@@ -41,12 +43,4 @@ func (a *API) GetHealthReady(ctx context.Context, _ api.GetHealthReadyRequestObj
 
 func (a *API) GetAuthRegistrationStatus(context.Context, api.GetAuthRegistrationStatusRequestObject) (api.GetAuthRegistrationStatusResponseObject, error) {
 	return api.GetAuthRegistrationStatus200JSONResponse{Enabled: a.RegistrationEnabled}, nil
-}
-
-func (a *API) ListJobs(context.Context, api.ListJobsRequestObject) (api.ListJobsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) GetJob(context.Context, api.GetJobRequestObject) (api.GetJobResponseObject, error) {
-	return nil, ErrNotImplemented
 }

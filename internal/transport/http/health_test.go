@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/worker"
 )
 
 func TestLiveAndReady(t *testing.T) {
@@ -60,6 +61,20 @@ func TestLiveAndReady(t *testing.T) {
 	}
 	if schemaBody["reason"] != "schema_mismatch" {
 		t.Fatalf("schema body %+v", schemaBody)
+	}
+
+	workerEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: worker.ErrUnavailable}, RegistrationEnabled: false})
+	workerReady := httptest.NewRecorder()
+	workerEngine.ServeHTTP(workerReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	if workerReady.Code != http.StatusServiceUnavailable {
+		t.Fatalf("worker ready status %d", workerReady.Code)
+	}
+	var workerBody map[string]string
+	if err := json.Unmarshal(workerReady.Body.Bytes(), &workerBody); err != nil {
+		t.Fatal(err)
+	}
+	if workerBody["reason"] != "worker_unavailable" {
+		t.Fatalf("worker body %+v", workerBody)
 	}
 
 	reg := httptest.NewRecorder()

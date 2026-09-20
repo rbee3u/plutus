@@ -105,6 +105,51 @@ func (q *Queries) DeletePortfolio(ctx context.Context, arg DeletePortfolioParams
 	return result.RowsAffected()
 }
 
+const getPortfolioByID = `-- name: GetPortfolioByID :one
+SELECT
+    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.version,
+    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code,
+    p.active_projection_generation_id
+FROM portfolios p
+JOIN assets a ON a.id = p.display_asset_id
+WHERE p.id = ?
+`
+
+type GetPortfolioByIDRow struct {
+	ID                           []byte
+	UserID                       []byte
+	Name                         string
+	Timezone                     string
+	DisplayAssetID               []byte
+	Status                       string
+	Version                      uint64
+	CreatedAt                    time.Time
+	UpdatedAt                    time.Time
+	ArchivedAt                   sql.NullTime
+	DisplayAssetCode             string
+	ActiveProjectionGenerationID []byte
+}
+
+func (q *Queries) GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPortfolioByID, id)
+	var i GetPortfolioByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Timezone,
+		&i.DisplayAssetID,
+		&i.Status,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DisplayAssetCode,
+		&i.ActiveProjectionGenerationID,
+	)
+	return i, err
+}
+
 const getPortfolioByUserAndID = `-- name: GetPortfolioByUserAndID :one
 SELECT
     p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.version,

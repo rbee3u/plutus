@@ -64,11 +64,11 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 7 — Jobs and projection worker
 
-- [ ] Durable jobs with leases, attempts, dedupe, and `SKIP LOCKED` claims
-- [ ] Empty Platform adapter registry
-- [ ] Projection handler succeeds with a diagnostic empty result and does not switch `active_projection_generation_id`
-- [ ] `GET` job list and job detail
-- [ ] `plutus projection rebuild --portfolio` enqueues work only
+- [x] Durable jobs with leases, attempts, dedupe, and `SKIP LOCKED` claims
+- [x] Empty Platform adapter registry
+- [x] Projection handler succeeds with a diagnostic empty result and does not switch `active_projection_generation_id`
+- [x] `GET` job list and job detail
+- [x] `plutus projection rebuild --portfolio` enqueues work only
 
 ### Milestone 8 — Embedded React shell
 
@@ -153,7 +153,7 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 - [ ] **Later** — A partial collection preserves successful Observations and records failed scopes without zero replacements
 - [ ] **Later** — Different source observation times within one Identity Snapshot are preserved
 - [ ] **Later** — Observation correction audits before/after, increments ETag version, and merges a Projection job
-- [ ] **Phase 1** — No database row, log, audit event, job failure, or API response contains a raw Platform payload
+- [x] **Phase 1** — No database row, log, audit event, job failure, or API response contains a raw Platform payload
 
 ### 13.4 Coverage, prices, and calculations
 
@@ -169,7 +169,7 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 ### 13.5 Capital, generations, and time
 
 - [ ] **Later** — Editing a Capital Flow appends a revision, audits, and creates a Projection job
-- [ ] **Phase 1** — A rebuild writes work without changing readers; Phase 1 must not switch the active generation
+- [x] **Phase 1** — A rebuild writes work without changing readers; Phase 1 must not switch the active generation
 - [ ] **Later** — A failed rebuild leaves the previous active generation fully readable
 - [ ] **Later** — Day, ISO-week, month, quarter, leap-date, and year boundaries convert correctly to UTC
 - [ ] **Later** — Changing Portfolio timezone triggers a full rebuild without mixing timezones
@@ -180,7 +180,7 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 - [x] **Phase 1** — Decimal strings round-trip without binary floating-point loss when present; unknown values round-trip as `null`
 - [x] **Phase 1** — ETag mismatch returns 412 and never overwrites the newer revision
 - [x] **Phase 1** — An exact Idempotency-Key retry returns the original response; a changed body returns 409
-- [ ] **Phase 1** — Offset pagination remains stable; cursor pagination neither duplicates nor skips under its contract (jobs/sessions as applicable)
+- [x] **Phase 1** — Offset pagination remains stable; cursor pagination neither duplicates nor skips under its contract (jobs/sessions as applicable)
 - [x] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
 - [x] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
 

@@ -13,12 +13,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/access"
+	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	httpserver "github.com/rbee3u/plutus/internal/transport/http"
+	"github.com/rbee3u/plutus/internal/worker"
 )
 
 func newServeCommand() *cobra.Command {
@@ -46,24 +49,41 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	defer stop()
 
 	var db *sql.DB
-	ready, cleanup := newReadyChecker(cfg.Database.DSN, &db)
-	defer cleanup()
+	var loop *worker.Worker
+	if cfg.Database.DSN != "" {
+		opened, err := mysql.Open(cfg.Database.DSN)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = opened.Close() }()
+		db = opened
+	}
 
 	var authSvc *auth.Service
 	var portfolios *portfolio.Service
 	var accessSvc *access.Service
 	var idem *idempotency.Store
+	var jobSvc *jobs.Service
 	if db != nil {
 		authSvc = auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
 		portfolios = portfolio.NewService(db)
 		fresh := cfg.Collection.DefaultInterval * time.Duration(cfg.Collection.DefaultFreshnessMultiplier)
 		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh)
 		idem = idempotency.NewStore(db)
+		jobSvc = jobs.NewService(db)
+		loop = worker.New(worker.Options{
+			Jobs:     jobSvc,
+			Adapters: adapters.NewRegistry(),
+			Poll:     cfg.Jobs.WorkerPollInterval,
+			Lease:    cfg.Jobs.LeaseDuration,
+			Logger:   logger,
+		})
+		go func() { _ = loop.Run(ctx) }()
 	}
 
 	engine := httpserver.Engine(&httpserver.EngineOptions{
 		Logger:              logger,
-		Ready:               ready,
+		Ready:               serveReady(db, loop),
 		Auth:                authSvc,
 		RegistrationEnabled: cfg.Auth.RegistrationEnabled,
 		SecureCookies:       cfg.Server.TLS.HTTPSEnabled,
@@ -71,21 +91,22 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		Portfolios:          portfolios,
 		Access:              accessSvc,
 		Idempotency:         idem,
+		Jobs:                jobSvc,
 	})
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }
 
-func newReadyChecker(dsn string, db **sql.DB) (httpserver.ReadyChecker, func()) {
-	noop := func() {}
-	if dsn == "" {
-		return httpserver.StaticReady{Err: errors.New("database DSN is not configured")}, noop
+func serveReady(db *sql.DB, loop *worker.Worker) httpserver.ReadyChecker {
+	if db == nil {
+		return httpserver.StaticReady{Err: errors.New("database DSN is not configured")}
 	}
-	opened, err := mysql.Open(dsn)
-	if err != nil {
-		return httpserver.StaticReady{Err: err}, noop
-	}
-	*db = opened
 	return httpserver.FuncReady(func(callCtx context.Context) error {
-		return mysql.CheckReady(callCtx, opened)
-	}), func() { _ = opened.Close() }
+		if err := mysql.CheckReady(callCtx, db); err != nil {
+			return err
+		}
+		if loop == nil || !loop.Healthy(time.Now()) {
+			return worker.ErrUnavailable
+		}
+		return nil
+	})
 }

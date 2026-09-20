@@ -35,4 +35,7 @@ func TestRootCommandHelp(t *testing.T) {
 	if !strings.Contains(out, "user") {
 		t.Fatalf("help output does not mention user: %q", out)
 	}
+	if !strings.Contains(out, "projection") {
+		t.Fatalf("help output does not mention projection: %q", out)
+	}
 }

@@ -24,6 +24,15 @@ FROM portfolios p
 JOIN assets a ON a.id = p.display_asset_id
 WHERE p.user_id = sqlc.arg(user_id) AND p.id = sqlc.arg(id);
 
+-- name: GetPortfolioByID :one
+SELECT
+    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.version,
+    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code,
+    p.active_projection_generation_id
+FROM portfolios p
+JOIN assets a ON a.id = p.display_asset_id
+WHERE p.id = sqlc.arg(id);
+
 -- name: UpdatePortfolio :execrows
 UPDATE portfolios
 SET name = sqlc.arg(name),

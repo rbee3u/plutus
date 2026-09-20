@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/worker"
 )
 
 func readyReason(err error) string {
@@ -12,6 +13,8 @@ func readyReason(err error) string {
 		return mysql.ErrSchemaMismatch.Error()
 	case errors.Is(err, mysql.ErrMySQLIncompatible):
 		return mysql.ErrMySQLIncompatible.Error()
+	case errors.Is(err, worker.ErrUnavailable):
+		return worker.ErrUnavailable.Error()
 	default:
 		return mysql.ErrDatabaseUnavailable.Error()
 	}

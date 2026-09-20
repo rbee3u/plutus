@@ -17,6 +17,7 @@ import (
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -59,6 +60,7 @@ type EngineOptions struct {
 	Portfolios          *portfolio.Service
 	Access              *access.Service
 	Idempotency         *idempotency.Store
+	Jobs                *jobs.Service
 }
 
 // Engine returns the HTTP handler for the process.
@@ -82,6 +84,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		Portfolios:          opts.Portfolios,
 		Access:              opts.Access,
 		Idempotency:         opts.Idempotency,
+		Jobs:                opts.Jobs,
 	}
 	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  requestError,

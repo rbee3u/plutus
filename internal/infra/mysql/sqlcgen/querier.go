@@ -17,13 +17,17 @@ type Querier interface {
 	CountPortfolioJobs(ctx context.Context, portfolioID []byte) (int64, error)
 	DeleteConnection(ctx context.Context, arg DeleteConnectionParams) (int64, error)
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
+	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
 	GetAssetByCode(ctx context.Context, code string) (Asset, error)
 	GetAssetByID(ctx context.Context, id []byte) (Asset, error)
 	GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error)
+	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
 	GetPlatformByCode(ctx context.Context, code string) (Platform, error)
 	GetPlatformByID(ctx context.Context, id []byte) (Platform, error)
+	GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error)
 	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error)
+	GetPortfolioGenerationPointer(ctx context.Context, id []byte) ([]byte, error)
 	GetSessionByID(ctx context.Context, id []byte) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
 	GetUserByID(ctx context.Context, id []byte) (User, error)
@@ -31,16 +35,28 @@ type Querier interface {
 	GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error)
 	InsertConnection(ctx context.Context, arg InsertConnectionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
+	InsertJob(ctx context.Context, arg InsertJobParams) error
+	InsertJobAttempt(ctx context.Context, arg InsertJobAttemptParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
+	InsertProjectionJobDetail(ctx context.Context, arg InsertProjectionJobDetailParams) error
+	InsertProjectionJobKind(ctx context.Context, arg InsertProjectionJobKindParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
 	ListActiveAssets(ctx context.Context) ([]Asset, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListConnectionsByPortfolioRow, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error)
+	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
+	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
 	ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error)
 	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
+	LockClaimableJob(ctx context.Context, arg LockClaimableJobParams) (LockClaimableJobRow, error)
+	MarkJobFailed(ctx context.Context, arg MarkJobFailedParams) (int64, error)
+	MarkJobRunning(ctx context.Context, arg MarkJobRunningParams) (int64, error)
+	MarkJobSucceeded(ctx context.Context, arg MarkJobSucceededParams) (int64, error)
+	RenewJobLease(ctx context.Context, arg RenewJobLeaseParams) (int64, error)
+	RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error)
 	RestorePortfolio(ctx context.Context, arg RestorePortfolioParams) (int64, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
