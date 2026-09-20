@@ -148,6 +148,7 @@ export type Connection = {
     collectionIntervalSeconds?: number;
     freshnessAfterSeconds?: number;
     lastValidatedAt?: string | null;
+    credentialsUpdatedAt?: string | null;
     version: number;
 };
 
@@ -160,7 +161,7 @@ export type CreateConnectionRequest = {
     label: string;
     collectionIntervalSeconds?: number;
     freshnessAfterSeconds?: number;
-    status?: 'disabled' | 'invalid';
+    status?: 'enabled' | 'disabled' | 'invalid';
 };
 
 export type PatchConnectionRequest = {
@@ -168,6 +169,12 @@ export type PatchConnectionRequest = {
     status?: 'enabled' | 'disabled' | 'invalid';
     collectionIntervalSeconds?: number;
     freshnessAfterSeconds?: number;
+};
+
+export type ConnectionCredentials = {
+    apiKey: string;
+    apiSecret: string;
+    passphrase?: string;
 };
 
 export type Job = {
@@ -352,6 +359,12 @@ export type GroupTotals = {
     quantity?: NullableDecimal;
     underlyingLongQuantity?: NullableDecimal;
     underlyingShortQuantity?: NullableDecimal;
+    longQuantity?: NullableDecimal;
+    shortQuantity?: NullableDecimal;
+    netQuantity?: NullableDecimal;
+    longValue?: NullableDecimal;
+    shortValue?: NullableDecimal;
+    netValue?: NullableDecimal;
 };
 
 export type ProjectionGroup = {
@@ -491,6 +504,223 @@ export type ObservationCorrection = {
     job: Job;
 };
 
+export type ObservationSummary = {
+    id: Uuid;
+    portfolioId: Uuid;
+    identitySnapshotId: Uuid;
+    identityId: Uuid;
+    accountId?: string | null;
+    kind: ObservationKind;
+    sourceObservedAt: string;
+    collectedAt: string;
+    completeness: 'complete' | 'partial';
+    version: number;
+    summary?: string;
+};
+
+export type ObservationList = {
+    items: Array<ObservationSummary>;
+    page: CursorPage;
+};
+
+export type CatalogPinSubjectKind = 'listing' | 'instrument';
+
+export type TimeGranularity = 'auto' | 'hour' | 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
+
+export type CalendarPeriodKind = 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
+
+export type MissingInterval = {
+    start: string;
+    end: string;
+};
+
+export type CatalogAssetListing = {
+    id: Uuid;
+    platformId: Uuid;
+    platformCode?: string;
+    externalRef: string;
+    symbol: string;
+    name?: string | null;
+    status: 'active' | 'inactive' | 'unknown';
+    mappedAssetId?: string | null;
+    mappedAssetCode?: string | null;
+    mappingState?: 'unmapped' | 'provisional' | 'confirmed';
+    mappingVersion?: number | null;
+    pinned?: boolean;
+};
+
+export type AssetListingList = {
+    items: Array<CatalogAssetListing>;
+    page: OffsetPage;
+};
+
+export type CatalogInstrument = {
+    id: Uuid;
+    platformId: Uuid;
+    platformCode?: string;
+    externalRef: string;
+    symbol: string;
+    kind: 'spot' | 'linear_perpetual' | 'inverse_perpetual' | 'linear_delivery' | 'inverse_delivery';
+    status: 'active' | 'expired' | 'unknown';
+    expiryAt?: string | null;
+    pinned?: boolean;
+};
+
+export type InstrumentList = {
+    items: Array<CatalogInstrument>;
+    page: OffsetPage;
+};
+
+export type CatalogMapping = {
+    id: Uuid;
+    portfolioId: Uuid;
+    listingId: Uuid;
+    assetId: Uuid;
+    state: 'provisional' | 'confirmed';
+    displayNameOverride?: string | null;
+    currentRevisionId?: Uuid;
+    version: number;
+};
+
+export type CatalogMappingMutation = {
+    mapping: CatalogMapping;
+    job: Job;
+};
+
+export type PutCatalogMappingRequest = {
+    assetId: Uuid;
+    state: 'provisional' | 'confirmed';
+    displayNameOverride?: string | null;
+    reason?: string | null;
+};
+
+export type CatalogPin = {
+    id: Uuid;
+    portfolioId: Uuid;
+    subjectKind: CatalogPinSubjectKind;
+    subjectId: Uuid;
+    enabled: boolean;
+    currentRevisionId?: Uuid;
+    version: number;
+};
+
+export type CatalogPinMutation = {
+    pin: CatalogPin;
+    job: Job;
+};
+
+export type PutCatalogPinRequest = {
+    reason?: string | null;
+};
+
+export type ExposureRow = {
+    assetId: Uuid;
+    assetCode?: string;
+    platformId?: string | null;
+    platformCode?: string | null;
+    identityId?: string | null;
+    identityName?: string | null;
+    accountId?: string | null;
+    accountName?: string | null;
+    longQuantity: Decimal;
+    shortQuantity: Decimal;
+    netQuantity: Decimal;
+    longValue?: NullableDecimal;
+    shortValue?: NullableDecimal;
+    netValue?: NullableDecimal;
+    completeness: Completeness;
+    freshness: Freshness;
+    evaluatedAt?: string | null;
+};
+
+export type ExposureList = {
+    items: Array<ExposureRow>;
+    groups: Array<ProjectionGroup>;
+    page: OffsetPage;
+    context: ProjectionContext;
+    issues: Array<ProjectionIssue>;
+};
+
+export type ValuationList = {
+    items: Array<ValuationPoint>;
+    page: CursorPage;
+    context: ProjectionContext;
+    granularity?: TimeGranularity;
+    missingIntervals?: Array<MissingInterval>;
+    issues: Array<ProjectionIssue>;
+};
+
+export type ValueChangeRow = {
+    periodKind: CalendarPeriodKind;
+    periodStartDate: string;
+    periodEndDate: string;
+    amount: NullableDecimal;
+    state: 'complete' | 'provisional' | 'incomplete' | 'incomparable';
+    contributionAmount?: NullableDecimal;
+    withdrawalAmount?: NullableDecimal;
+    coverageFingerprint?: string | null;
+};
+
+export type ValueChangeList = {
+    items: Array<ValueChangeRow>;
+    page: CursorPage;
+    context: ProjectionContext;
+    granularity?: TimeGranularity;
+    missingIntervals?: Array<MissingInterval>;
+    issues: Array<ProjectionIssue>;
+};
+
+export type PeriodSummary = {
+    periodKind: CalendarPeriodKind;
+    periodStartDate: string;
+    periodEndDate: string;
+    asOfAt?: string | null;
+    valuationOpen?: NullableDecimal;
+    valuationClose?: NullableDecimal;
+    valuationHigh?: NullableDecimal;
+    valuationLow?: NullableDecimal;
+    contributedCapitalClose?: NullableDecimal;
+    valueChange?: NullableDecimal;
+    completeness: Completeness;
+    freshness: Freshness;
+};
+
+export type PeriodSummaryList = {
+    items: Array<PeriodSummary>;
+    page: CursorPage;
+    context: ProjectionContext;
+    issues: Array<ProjectionIssue>;
+};
+
+export type CreateProjectionRebuildRequest = {
+    reason?: string;
+};
+
+export type AuditEvent = {
+    id: Uuid;
+    portfolioId?: string | null;
+    actorUserId?: string | null;
+    action: string;
+    resourceType: string;
+    resourceId?: string | null;
+    requestId?: string | null;
+    before?: {
+        [key: string]: unknown;
+    } | null;
+    after?: {
+        [key: string]: unknown;
+    } | null;
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+    occurredAt: string;
+};
+
+export type AuditEventList = {
+    items: Array<AuditEvent>;
+    page: CursorPage;
+};
+
 export type CapitalBaseline = {
     id: Uuid;
     portfolioId: Uuid;
@@ -606,6 +836,23 @@ export type FieldError = {
     message: string;
 };
 
+export type CreateConnectionRequestWritable = {
+    identityId: Uuid;
+    label: string;
+    collectionIntervalSeconds?: number;
+    freshnessAfterSeconds?: number;
+    status?: 'enabled' | 'disabled' | 'invalid';
+    credentials?: ConnectionCredentials;
+};
+
+export type PatchConnectionRequestWritable = {
+    label?: string;
+    status?: 'enabled' | 'disabled' | 'invalid';
+    collectionIntervalSeconds?: number;
+    freshnessAfterSeconds?: number;
+    credentials?: ConnectionCredentials;
+};
+
 export type CsrfToken = string;
 
 export type IdempotencyKey = string;
@@ -625,6 +872,22 @@ export type ObservationId = Uuid;
 export type FlowId = Uuid;
 
 export type SessionId = Uuid;
+
+export type ListingId = Uuid;
+
+export type SubjectKind = CatalogPinSubjectKind;
+
+export type SubjectId = Uuid;
+
+export type TimeFrom = string;
+
+export type TimeTo = string;
+
+export type Granularity = TimeGranularity;
+
+export type MaxPoints = number;
+
+export type PeriodKind = CalendarPeriodKind;
 
 export type GetHealthLiveData = {
     body?: never;
@@ -1433,7 +1696,7 @@ export type ListConnectionsResponses = {
 export type ListConnectionsResponse = ListConnectionsResponses[keyof ListConnectionsResponses];
 
 export type CreateConnectionData = {
-    body: CreateConnectionRequest;
+    body: CreateConnectionRequestWritable;
     headers?: {
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
@@ -1548,7 +1811,7 @@ export type GetConnectionResponses = {
 export type GetConnectionResponse = GetConnectionResponses[keyof GetConnectionResponses];
 
 export type PatchConnectionData = {
-    body: PatchConnectionRequest;
+    body: PatchConnectionRequestWritable;
     headers: {
         'If-Match': string;
         'X-CSRF-Token'?: string;
@@ -1725,6 +1988,311 @@ export type SearchCatalogAssetsResponses = {
 };
 
 export type SearchCatalogAssetsResponse = SearchCatalogAssetsResponses[keyof SearchCatalogAssetsResponses];
+
+export type SearchCatalogAssetListingsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        q?: string;
+        platformId?: Uuid;
+        mappingState?: 'unmapped' | 'provisional' | 'confirmed';
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings';
+};
+
+export type SearchCatalogAssetListingsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type SearchCatalogAssetListingsError = SearchCatalogAssetListingsErrors[keyof SearchCatalogAssetListingsErrors];
+
+export type SearchCatalogAssetListingsResponses = {
+    /**
+     * Asset listings.
+     */
+    200: AssetListingList;
+};
+
+export type SearchCatalogAssetListingsResponse = SearchCatalogAssetListingsResponses[keyof SearchCatalogAssetListingsResponses];
+
+export type SearchCatalogInstrumentsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        q?: string;
+        platformId?: Uuid;
+        pinned?: boolean;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments';
+};
+
+export type SearchCatalogInstrumentsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type SearchCatalogInstrumentsError = SearchCatalogInstrumentsErrors[keyof SearchCatalogInstrumentsErrors];
+
+export type SearchCatalogInstrumentsResponses = {
+    /**
+     * Instruments.
+     */
+    200: InstrumentList;
+};
+
+export type SearchCatalogInstrumentsResponse = SearchCatalogInstrumentsResponses[keyof SearchCatalogInstrumentsResponses];
+
+export type PutCatalogListingMappingData = {
+    body: PutCatalogMappingRequest;
+    headers: {
+        'If-Match': string;
+        'Idempotency-Key'?: string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        listingId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping';
+};
+
+export type PutCatalogListingMappingErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PutCatalogListingMappingError = PutCatalogListingMappingErrors[keyof PutCatalogListingMappingErrors];
+
+export type PutCatalogListingMappingResponses = {
+    /**
+     * Mapping revised.
+     */
+    200: CatalogMappingMutation;
+    /**
+     * Mapping created.
+     */
+    201: CatalogMappingMutation;
+};
+
+export type PutCatalogListingMappingResponse = PutCatalogListingMappingResponses[keyof PutCatalogListingMappingResponses];
+
+export type DeleteCatalogPinData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        subjectKind: CatalogPinSubjectKind;
+        subjectId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}';
+};
+
+export type DeleteCatalogPinErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type DeleteCatalogPinError = DeleteCatalogPinErrors[keyof DeleteCatalogPinErrors];
+
+export type DeleteCatalogPinResponses = {
+    /**
+     * Pin disabled.
+     */
+    200: CatalogPinMutation;
+};
+
+export type DeleteCatalogPinResponse = DeleteCatalogPinResponses[keyof DeleteCatalogPinResponses];
+
+export type PutCatalogPinData = {
+    body: PutCatalogPinRequest;
+    headers: {
+        'If-Match': string;
+        'Idempotency-Key'?: string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        subjectKind: CatalogPinSubjectKind;
+        subjectId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}';
+};
+
+export type PutCatalogPinErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PutCatalogPinError = PutCatalogPinErrors[keyof PutCatalogPinErrors];
+
+export type PutCatalogPinResponses = {
+    /**
+     * Pin revised.
+     */
+    200: CatalogPinMutation;
+    /**
+     * Pin created.
+     */
+    201: CatalogPinMutation;
+};
+
+export type PutCatalogPinResponse = PutCatalogPinResponses[keyof PutCatalogPinResponses];
+
+export type ListObservationsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        kind?: ObservationKind;
+        identityId?: Uuid;
+        accountId?: Uuid;
+        from?: string;
+        to?: string;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/observations';
+};
+
+export type ListObservationsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListObservationsError = ListObservationsErrors[keyof ListObservationsErrors];
+
+export type ListObservationsResponses = {
+    /**
+     * Observation headers.
+     */
+    200: ObservationList;
+};
+
+export type ListObservationsResponse = ListObservationsResponses[keyof ListObservationsResponses];
+
+export type GetObservationData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        observationId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}';
+};
+
+export type GetObservationErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetObservationError = GetObservationErrors[keyof GetObservationErrors];
+
+export type GetObservationResponses = {
+    /**
+     * Observation.
+     */
+    200: Observation;
+};
+
+export type GetObservationResponse = GetObservationResponses[keyof GetObservationResponses];
 
 export type PatchObservationData = {
     body: PatchObservationRequest;
@@ -2230,3 +2798,254 @@ export type ListPositionsResponses = {
 };
 
 export type ListPositionsResponse = ListPositionsResponses[keyof ListPositionsResponses];
+
+export type ListExposuresData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        groupBy?: 'asset' | 'platform' | 'identity' | 'account';
+        identityId?: Uuid;
+        accountId?: Uuid;
+        assetId?: Uuid;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/exposures';
+};
+
+export type ListExposuresErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListExposuresError = ListExposuresErrors[keyof ListExposuresErrors];
+
+export type ListExposuresResponses = {
+    /**
+     * Exposure rows.
+     */
+    200: ExposureList;
+};
+
+export type ListExposuresResponse = ListExposuresResponses[keyof ListExposuresResponses];
+
+export type ListValuationsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        from?: string;
+        to?: string;
+        granularity?: TimeGranularity;
+        maxPoints?: number;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/valuations';
+};
+
+export type ListValuationsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListValuationsError = ListValuationsErrors[keyof ListValuationsErrors];
+
+export type ListValuationsResponses = {
+    /**
+     * Valuation history.
+     */
+    200: ValuationList;
+};
+
+export type ListValuationsResponse = ListValuationsResponses[keyof ListValuationsResponses];
+
+export type ListValueChangesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        periodKind?: CalendarPeriodKind;
+        from?: string;
+        to?: string;
+        granularity?: TimeGranularity;
+        maxPoints?: number;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/value-changes';
+};
+
+export type ListValueChangesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListValueChangesError = ListValueChangesErrors[keyof ListValueChangesErrors];
+
+export type ListValueChangesResponses = {
+    /**
+     * Value changes.
+     */
+    200: ValueChangeList;
+};
+
+export type ListValueChangesResponse = ListValueChangesResponses[keyof ListValueChangesResponses];
+
+export type ListPeriodSummariesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        periodKind?: CalendarPeriodKind;
+        from?: string;
+        to?: string;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/period-summaries';
+};
+
+export type ListPeriodSummariesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListPeriodSummariesError = ListPeriodSummariesErrors[keyof ListPeriodSummariesErrors];
+
+export type ListPeriodSummariesResponses = {
+    /**
+     * Period summaries.
+     */
+    200: PeriodSummaryList;
+};
+
+export type ListPeriodSummariesResponse = ListPeriodSummariesResponses[keyof ListPeriodSummariesResponses];
+
+export type CreateProjectionRebuildData = {
+    body?: CreateProjectionRebuildRequest;
+    headers?: {
+        'Idempotency-Key'?: string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/projection-rebuilds';
+};
+
+export type CreateProjectionRebuildErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+};
+
+export type CreateProjectionRebuildError = CreateProjectionRebuildErrors[keyof CreateProjectionRebuildErrors];
+
+export type CreateProjectionRebuildResponses = {
+    /**
+     * Rebuild enqueued, or the active equivalent job returned.
+     */
+    202: Job;
+};
+
+export type CreateProjectionRebuildResponse = CreateProjectionRebuildResponses[keyof CreateProjectionRebuildResponses];
+
+export type ListAuditEventsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        action?: string;
+        resourceType?: string;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/audit-events';
+};
+
+export type ListAuditEventsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAuditEventsError = ListAuditEventsErrors[keyof ListAuditEventsErrors];
+
+export type ListAuditEventsResponses = {
+    /**
+     * Audit events.
+     */
+    200: AuditEventList;
+};
+
+export type ListAuditEventsResponse = ListAuditEventsResponses[keyof ListAuditEventsResponses];

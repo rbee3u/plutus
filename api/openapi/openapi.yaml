@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Plutus API
   version: 0.1.0
-  description: Phase 2 transport contract for authentication, portfolios, identities, connections, catalog, observations, capital, read models, and jobs.
+  description: Phase 3 transport contract for authentication, portfolios, identities, connections, catalog, observations, capital, read models, jobs, audit, and management.
 servers:
   - url: /
 paths:
@@ -714,7 +714,297 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/asset-listings:
+    get:
+      operationId: searchCatalogAssetListings
+      tags: [catalog]
+      summary: Search discovered asset listings and mapping status
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: platformId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: mappingState
+          in: query
+          schema:
+            type: string
+            enum: [unmapped, provisional, confirmed]
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Asset listings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetListingList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/instruments:
+    get:
+      operationId: searchCatalogInstruments
+      tags: [catalog]
+      summary: Search discovered instruments
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: platformId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: pinned
+          in: query
+          schema:
+            type: boolean
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Instruments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstrumentList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping:
+    put:
+      operationId: putCatalogListingMapping
+      tags: [catalog]
+      summary: Append an asset listing mapping revision
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ListingID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCatalogMappingRequest"
+      responses:
+        "200":
+          description: Mapping revised.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogMappingMutation"
+        "201":
+          description: Mapping created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogMappingMutation"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}:
+    put:
+      operationId: putCatalogPin
+      tags: [catalog]
+      summary: Append an enabled tracking revision
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/SubjectKind"
+        - $ref: "#/components/parameters/SubjectID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCatalogPinRequest"
+      responses:
+        "200":
+          description: Pin revised.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPinMutation"
+        "201":
+          description: Pin created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPinMutation"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteCatalogPin
+      tags: [catalog]
+      summary: Append a disabled tracking revision
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/SubjectKind"
+        - $ref: "#/components/parameters/SubjectID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Pin disabled.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPinMutation"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/observations:
+    get:
+      operationId: listObservations
+      tags: [observations]
+      summary: Search normalized observation headers
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/ObservationKind"
+        - name: identityId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: accountId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Observation headers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObservationList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/observations/{observationId}:
+    get:
+      operationId: getObservation
+      tags: [observations]
+      summary: Read one typed normalized observation
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ObservationID"
+      responses:
+        "200":
+          description: Observation.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Observation"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
     patch:
       operationId: patchObservation
       tags: [observations]
@@ -1135,6 +1425,234 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/exposures:
+    get:
+      operationId: listExposures
+      tags: [read-model]
+      summary: Long, short, and net exposure with grouping
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [asset, platform, identity, account]
+        - name: identityId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: accountId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: assetId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Exposure rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/valuations:
+    get:
+      operationId: listValuations
+      tags: [read-model]
+      summary: Portfolio valuation history
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/TimeFrom"
+        - $ref: "#/components/parameters/TimeTo"
+        - $ref: "#/components/parameters/Granularity"
+        - $ref: "#/components/parameters/MaxPoints"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Valuation history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValuationList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/value-changes:
+    get:
+      operationId: listValueChanges
+      tags: [read-model]
+      summary: Calendar value-change history
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/PeriodKind"
+        - $ref: "#/components/parameters/TimeFrom"
+        - $ref: "#/components/parameters/TimeTo"
+        - $ref: "#/components/parameters/Granularity"
+        - $ref: "#/components/parameters/MaxPoints"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Value changes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValueChangeList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/period-summaries:
+    get:
+      operationId: listPeriodSummaries
+      tags: [read-model]
+      summary: Period summary history
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/PeriodKind"
+        - $ref: "#/components/parameters/TimeFrom"
+        - $ref: "#/components/parameters/TimeTo"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Period summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeriodSummaryList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/projection-rebuilds:
+    post:
+      operationId: createProjectionRebuild
+      tags: [jobs]
+      summary: Enqueue a full projection rebuild
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectionRebuildRequest"
+      responses:
+        "202":
+          description: Rebuild enqueued, or the active equivalent job returned.
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: List portfolio audit events
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: resourceType
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -1203,6 +1721,54 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UUID"
+    ListingID:
+      name: listingId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    SubjectKind:
+      name: subjectKind
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/CatalogPinSubjectKind"
+    SubjectID:
+      name: subjectId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    TimeFrom:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    TimeTo:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+    Granularity:
+      name: granularity
+      in: query
+      schema:
+        $ref: "#/components/schemas/TimeGranularity"
+    MaxPoints:
+      name: maxPoints
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 200
+    PeriodKind:
+      name: periodKind
+      in: query
+      schema:
+        $ref: "#/components/schemas/CalendarPeriodKind"
   responses:
     Problem:
       description: Problem details.
@@ -1528,6 +2094,9 @@ components:
         lastValidatedAt:
           type: [string, "null"]
           format: date-time
+        credentialsUpdatedAt:
+          type: [string, "null"]
+          format: date-time
         version:
           type: integer
           minimum: 1
@@ -1559,7 +2128,9 @@ components:
           minimum: 1
         status:
           type: string
-          enum: [disabled, invalid]
+          enum: [enabled, disabled, invalid]
+        credentials:
+          $ref: "#/components/schemas/ConnectionCredentials"
     PatchConnectionRequest:
       type: object
       additionalProperties: false
@@ -1575,6 +2146,28 @@ components:
         freshnessAfterSeconds:
           type: integer
           minimum: 1
+        credentials:
+          $ref: "#/components/schemas/ConnectionCredentials"
+    ConnectionCredentials:
+      type: object
+      additionalProperties: false
+      required: [apiKey, apiSecret]
+      properties:
+        apiKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+        apiSecret:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+        passphrase:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
     Job:
       type: object
       additionalProperties: false
@@ -1970,6 +2563,18 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         underlyingShortQuantity:
           $ref: "#/components/schemas/NullableDecimal"
+        longQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        shortQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        netQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        longValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        shortValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        netValue:
+          $ref: "#/components/schemas/NullableDecimal"
     ProjectionGroup:
       type: object
       additionalProperties: false
@@ -2262,6 +2867,468 @@ components:
           $ref: "#/components/schemas/Observation"
         job:
           $ref: "#/components/schemas/Job"
+    ObservationSummary:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, identitySnapshotId, identityId, kind, sourceObservedAt, collectedAt, completeness, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        identitySnapshotId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/ObservationKind"
+        sourceObservedAt:
+          type: string
+          format: date-time
+        collectedAt:
+          type: string
+          format: date-time
+        completeness:
+          type: string
+          enum: [complete, partial]
+        version:
+          type: integer
+          minimum: 1
+        summary:
+          type: string
+    ObservationList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ObservationSummary"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+    CatalogPinSubjectKind:
+      type: string
+      enum: [listing, instrument]
+    TimeGranularity:
+      type: string
+      enum: [auto, hour, day, iso_week, month, quarter, year]
+    CalendarPeriodKind:
+      type: string
+      enum: [day, iso_week, month, quarter, year]
+    MissingInterval:
+      type: object
+      additionalProperties: false
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+    CatalogAssetListing:
+      type: object
+      additionalProperties: false
+      required: [id, platformId, externalRef, symbol, status]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        platformCode:
+          type: string
+        externalRef:
+          type: string
+        symbol:
+          type: string
+        name:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [active, inactive, unknown]
+        mappedAssetId:
+          type: [string, "null"]
+          format: uuid
+        mappedAssetCode:
+          type: [string, "null"]
+        mappingState:
+          type: [string, "null"]
+          enum: [unmapped, provisional, confirmed]
+        mappingVersion:
+          type: [integer, "null"]
+          minimum: 1
+        pinned:
+          type: boolean
+    AssetListingList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogAssetListing"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+    CatalogInstrument:
+      type: object
+      additionalProperties: false
+      required: [id, platformId, externalRef, symbol, kind, status]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        platformCode:
+          type: string
+        externalRef:
+          type: string
+        symbol:
+          type: string
+        kind:
+          type: string
+          enum: [spot, linear_perpetual, inverse_perpetual, linear_delivery, inverse_delivery]
+        status:
+          type: string
+          enum: [active, expired, unknown]
+        expiryAt:
+          type: [string, "null"]
+          format: date-time
+        pinned:
+          type: boolean
+    InstrumentList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogInstrument"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+    CatalogMapping:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, listingId, assetId, state, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        listingId:
+          $ref: "#/components/schemas/UUID"
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        state:
+          type: string
+          enum: [provisional, confirmed]
+        displayNameOverride:
+          type: [string, "null"]
+        currentRevisionId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          minimum: 1
+    CatalogMappingMutation:
+      type: object
+      additionalProperties: false
+      required: [mapping, job]
+      properties:
+        mapping:
+          $ref: "#/components/schemas/CatalogMapping"
+        job:
+          $ref: "#/components/schemas/Job"
+    PutCatalogMappingRequest:
+      type: object
+      additionalProperties: false
+      required: [assetId, state]
+      properties:
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        state:
+          type: string
+          enum: [provisional, confirmed]
+        displayNameOverride:
+          type: [string, "null"]
+        reason:
+          type: [string, "null"]
+          maxLength: 1024
+    CatalogPin:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, subjectKind, subjectId, enabled, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        subjectKind:
+          $ref: "#/components/schemas/CatalogPinSubjectKind"
+        subjectId:
+          $ref: "#/components/schemas/UUID"
+        enabled:
+          type: boolean
+        currentRevisionId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          minimum: 1
+    CatalogPinMutation:
+      type: object
+      additionalProperties: false
+      required: [pin, job]
+      properties:
+        pin:
+          $ref: "#/components/schemas/CatalogPin"
+        job:
+          $ref: "#/components/schemas/Job"
+    PutCatalogPinRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: [string, "null"]
+          maxLength: 1024
+    ExposureRow:
+      type: object
+      additionalProperties: false
+      required: [assetId, longQuantity, shortQuantity, netQuantity, completeness, freshness]
+      properties:
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        assetCode:
+          type: string
+        platformId:
+          type: [string, "null"]
+          format: uuid
+        platformCode:
+          type: [string, "null"]
+        identityId:
+          type: [string, "null"]
+          format: uuid
+        identityName:
+          type: [string, "null"]
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        accountName:
+          type: [string, "null"]
+        longQuantity:
+          $ref: "#/components/schemas/Decimal"
+        shortQuantity:
+          $ref: "#/components/schemas/Decimal"
+        netQuantity:
+          $ref: "#/components/schemas/Decimal"
+        longValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        shortValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        netValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        evaluatedAt:
+          type: [string, "null"]
+          format: date-time
+    ExposureList:
+      type: object
+      additionalProperties: false
+      required: [items, groups, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposureRow"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionGroup"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    ValuationList:
+      type: object
+      additionalProperties: false
+      required: [items, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValuationPoint"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        granularity:
+          $ref: "#/components/schemas/TimeGranularity"
+        missingIntervals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissingInterval"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    ValueChangeRow:
+      type: object
+      additionalProperties: false
+      required: [periodKind, periodStartDate, periodEndDate, amount, state]
+      properties:
+        periodKind:
+          $ref: "#/components/schemas/CalendarPeriodKind"
+        periodStartDate:
+          type: string
+          format: date
+        periodEndDate:
+          type: string
+          format: date
+        amount:
+          $ref: "#/components/schemas/NullableDecimal"
+        state:
+          type: string
+          enum: [complete, provisional, incomplete, incomparable]
+        contributionAmount:
+          $ref: "#/components/schemas/NullableDecimal"
+        withdrawalAmount:
+          $ref: "#/components/schemas/NullableDecimal"
+        coverageFingerprint:
+          type: [string, "null"]
+    ValueChangeList:
+      type: object
+      additionalProperties: false
+      required: [items, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValueChangeRow"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        granularity:
+          $ref: "#/components/schemas/TimeGranularity"
+        missingIntervals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissingInterval"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    PeriodSummary:
+      type: object
+      additionalProperties: false
+      required: [periodKind, periodStartDate, periodEndDate, completeness, freshness]
+      properties:
+        periodKind:
+          $ref: "#/components/schemas/CalendarPeriodKind"
+        periodStartDate:
+          type: string
+          format: date
+        periodEndDate:
+          type: string
+          format: date
+        asOfAt:
+          type: [string, "null"]
+          format: date-time
+        valuationOpen:
+          $ref: "#/components/schemas/NullableDecimal"
+        valuationClose:
+          $ref: "#/components/schemas/NullableDecimal"
+        valuationHigh:
+          $ref: "#/components/schemas/NullableDecimal"
+        valuationLow:
+          $ref: "#/components/schemas/NullableDecimal"
+        contributedCapitalClose:
+          $ref: "#/components/schemas/NullableDecimal"
+        valueChange:
+          $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+    PeriodSummaryList:
+      type: object
+      additionalProperties: false
+      required: [items, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PeriodSummary"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    CreateProjectionRebuildRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 1024
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, resourceType, occurredAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          type: [string, "null"]
+          format: uuid
+        actorUserId:
+          type: [string, "null"]
+          format: uuid
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: [string, "null"]
+          format: uuid
+        requestId:
+          type: [string, "null"]
+        before:
+          type: [object, "null"]
+          additionalProperties: true
+        after:
+          type: [object, "null"]
+          additionalProperties: true
+        metadata:
+          type: [object, "null"]
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+    AuditEventList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        page:
+          $ref: "#/components/schemas/CursorPage"
     CapitalBaseline:
       type: object
       additionalProperties: false

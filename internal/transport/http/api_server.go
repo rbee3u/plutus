@@ -16,7 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-// ErrNotImplemented marks Phase 1 endpoints that still need application services.
+// ErrNotImplemented marks contract operations that still need application services.
 var ErrNotImplemented = errors.New("not_implemented")
 
 // API implements the generated strict OpenAPI server.

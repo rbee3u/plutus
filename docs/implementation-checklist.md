@@ -1,6 +1,6 @@
 # Implementation checklist
 
-Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 2 is complete. Stop for review. Phases 3–4 stay unchecked until their workstreams begin.
+Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 3 is the current workstream; Phase 4 stays unchecked until it begins. Stop for review when every item in Phase 3 is checked.
 
 ## Phase 1: Foundation
 
@@ -149,13 +149,54 @@ Completed. Stopped for review after every item in this section was checked.
 
 ## Phase 3: Complete MVP UI and management
 
-- [ ] Exposure, valuation history, Value Change history, Data, Jobs, Connection, Catalog, Observation, and audit screens
+Current workstream. Stop for review when every item in this section is checked.
+
+### Milestone 1 — OpenAPI growth
+
+- [x] Mark Phase 3 as the current workstream
+- [x] Grow OpenAPI for remaining Phase 3 endpoints
+- [x] Generate Go and TypeScript artifacts
+- [x] Add compiling transport stubs for new operations
+
+### Milestone 2 — Connection credentials
+
 - [ ] Connection credential CRUD with AES-256-GCM and no real Platform call
-- [ ] Catalog mapping and tracking revision UI
-- [ ] Job and issue diagnostics, Observation correction, full Projection rebuild
+- [ ] Require the master key for readiness when ciphertext exists
+
+### Milestone 3 — Catalog mapping and pins
+
+- [ ] Catalog listing and instrument search with mapping and pin status
+- [ ] Mapping and tracking revision HTTP that enqueues a Projection rebuild
+
+### Milestone 4 — Observations and audit
+
+- [ ] Observation search and typed GET
+- [ ] Portfolio audit-event cursor listing
+
+### Milestone 5 — Remaining read-model HTTP
+
+- [ ] `GET /exposures`, `GET /valuations`, `GET /value-changes`, and `GET /period-summaries`
+
+### Milestone 6 — HTTP projection rebuilds
+
 - [ ] HTTP `POST` projection-rebuilds
+
+### Milestone 7 — Exposure and history pages
+
+- [ ] Working Exposure, valuation history, and Value Change history screens
+
+### Milestone 8 — Management pages
+
+- [ ] Data, Jobs, Connection, Catalog, Observation, and audit screens
+- [ ] Catalog mapping and tracking revision UI
+- [ ] Job diagnostics, Observation correction, and full Projection rebuild from the UI
+
+### Milestone 9 — Phase 3 close-out
+
 - [ ] Complete accessibility and error-recovery coverage
 - [ ] Deterministic testing of missing, stale, coverage, price, and timezone cases
+- [ ] README describes implemented Phase 3 capabilities
+- [ ] `make format && make build && make test && make lint` pass
 
 ## Phase 4: Integrations
 

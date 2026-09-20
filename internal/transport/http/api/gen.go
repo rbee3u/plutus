@@ -9,7 +9,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -37,6 +39,33 @@ func (e AccountStatus) Valid() bool {
 	case AccountStatusDisappeared:
 		return true
 	case AccountStatusInactive:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CalendarPeriodKind.
+const (
+	CalendarPeriodKindDay     CalendarPeriodKind = "day"
+	CalendarPeriodKindIsoWeek CalendarPeriodKind = "iso_week"
+	CalendarPeriodKindMonth   CalendarPeriodKind = "month"
+	CalendarPeriodKindQuarter CalendarPeriodKind = "quarter"
+	CalendarPeriodKindYear    CalendarPeriodKind = "year"
+)
+
+// Valid indicates whether the value is a known member of the CalendarPeriodKind enum.
+func (e CalendarPeriodKind) Valid() bool {
+	switch e {
+	case CalendarPeriodKindDay:
+		return true
+	case CalendarPeriodKindIsoWeek:
+		return true
+	case CalendarPeriodKindMonth:
+		return true
+	case CalendarPeriodKindQuarter:
+		return true
+	case CalendarPeriodKindYear:
 		return true
 	default:
 		return false
@@ -157,6 +186,132 @@ func (e CatalogAssetStatus) Valid() bool {
 	}
 }
 
+// Defines values for CatalogAssetListingMappingState.
+const (
+	CatalogAssetListingMappingStateConfirmed   CatalogAssetListingMappingState = "confirmed"
+	CatalogAssetListingMappingStateProvisional CatalogAssetListingMappingState = "provisional"
+	CatalogAssetListingMappingStateUnmapped    CatalogAssetListingMappingState = "unmapped"
+)
+
+// Valid indicates whether the value is a known member of the CatalogAssetListingMappingState enum.
+func (e CatalogAssetListingMappingState) Valid() bool {
+	switch e {
+	case CatalogAssetListingMappingStateConfirmed:
+		return true
+	case CatalogAssetListingMappingStateProvisional:
+		return true
+	case CatalogAssetListingMappingStateUnmapped:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogAssetListingStatus.
+const (
+	CatalogAssetListingStatusActive   CatalogAssetListingStatus = "active"
+	CatalogAssetListingStatusInactive CatalogAssetListingStatus = "inactive"
+	CatalogAssetListingStatusUnknown  CatalogAssetListingStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the CatalogAssetListingStatus enum.
+func (e CatalogAssetListingStatus) Valid() bool {
+	switch e {
+	case CatalogAssetListingStatusActive:
+		return true
+	case CatalogAssetListingStatusInactive:
+		return true
+	case CatalogAssetListingStatusUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogInstrumentKind.
+const (
+	InverseDelivery  CatalogInstrumentKind = "inverse_delivery"
+	InversePerpetual CatalogInstrumentKind = "inverse_perpetual"
+	LinearDelivery   CatalogInstrumentKind = "linear_delivery"
+	LinearPerpetual  CatalogInstrumentKind = "linear_perpetual"
+	Spot             CatalogInstrumentKind = "spot"
+)
+
+// Valid indicates whether the value is a known member of the CatalogInstrumentKind enum.
+func (e CatalogInstrumentKind) Valid() bool {
+	switch e {
+	case InverseDelivery:
+		return true
+	case InversePerpetual:
+		return true
+	case LinearDelivery:
+		return true
+	case LinearPerpetual:
+		return true
+	case Spot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogInstrumentStatus.
+const (
+	CatalogInstrumentStatusActive  CatalogInstrumentStatus = "active"
+	CatalogInstrumentStatusExpired CatalogInstrumentStatus = "expired"
+	CatalogInstrumentStatusUnknown CatalogInstrumentStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the CatalogInstrumentStatus enum.
+func (e CatalogInstrumentStatus) Valid() bool {
+	switch e {
+	case CatalogInstrumentStatusActive:
+		return true
+	case CatalogInstrumentStatusExpired:
+		return true
+	case CatalogInstrumentStatusUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogMappingState.
+const (
+	CatalogMappingStateConfirmed   CatalogMappingState = "confirmed"
+	CatalogMappingStateProvisional CatalogMappingState = "provisional"
+)
+
+// Valid indicates whether the value is a known member of the CatalogMappingState enum.
+func (e CatalogMappingState) Valid() bool {
+	switch e {
+	case CatalogMappingStateConfirmed:
+		return true
+	case CatalogMappingStateProvisional:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogPinSubjectKind.
+const (
+	CatalogPinSubjectKindInstrument CatalogPinSubjectKind = "instrument"
+	CatalogPinSubjectKindListing    CatalogPinSubjectKind = "listing"
+)
+
+// Valid indicates whether the value is a known member of the CatalogPinSubjectKind enum.
+func (e CatalogPinSubjectKind) Valid() bool {
+	switch e {
+	case CatalogPinSubjectKindInstrument:
+		return true
+	case CatalogPinSubjectKindListing:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Completeness.
 const (
 	CompletenessComplete Completeness = "complete"
@@ -247,6 +402,7 @@ func (e CreateCapitalFlowRequestDirection) Valid() bool {
 // Defines values for CreateConnectionRequestStatus.
 const (
 	CreateConnectionRequestStatusDisabled CreateConnectionRequestStatus = "disabled"
+	CreateConnectionRequestStatusEnabled  CreateConnectionRequestStatus = "enabled"
 	CreateConnectionRequestStatusInvalid  CreateConnectionRequestStatus = "invalid"
 )
 
@@ -254,6 +410,8 @@ const (
 func (e CreateConnectionRequestStatus) Valid() bool {
 	switch e {
 	case CreateConnectionRequestStatusDisabled:
+		return true
+	case CreateConnectionRequestStatusEnabled:
 		return true
 	case CreateConnectionRequestStatusInvalid:
 		return true
@@ -321,19 +479,19 @@ func (e CursorPageKind) Valid() bool {
 
 // Defines values for Freshness.
 const (
-	Fresh   Freshness = "fresh"
-	Stale   Freshness = "stale"
-	Unknown Freshness = "unknown"
+	FreshnessFresh   Freshness = "fresh"
+	FreshnessStale   Freshness = "stale"
+	FreshnessUnknown Freshness = "unknown"
 )
 
 // Valid indicates whether the value is a known member of the Freshness enum.
 func (e Freshness) Valid() bool {
 	switch e {
-	case Fresh:
+	case FreshnessFresh:
 		return true
-	case Stale:
+	case FreshnessStale:
 		return true
-	case Unknown:
+	case FreshnessUnknown:
 		return true
 	default:
 		return false
@@ -553,6 +711,24 @@ func (e ObservationKind) Valid() bool {
 	case Price:
 		return true
 	case ReportedEquity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ObservationSummaryCompleteness.
+const (
+	ObservationSummaryCompletenessComplete ObservationSummaryCompleteness = "complete"
+	ObservationSummaryCompletenessPartial  ObservationSummaryCompleteness = "partial"
+)
+
+// Valid indicates whether the value is a known member of the ObservationSummaryCompleteness enum.
+func (e ObservationSummaryCompleteness) Valid() bool {
+	switch e {
+	case ObservationSummaryCompletenessComplete:
+		return true
+	case ObservationSummaryCompletenessPartial:
 		return true
 	default:
 		return false
@@ -799,6 +975,57 @@ func (e ProjectionIssueSeverity) Valid() bool {
 	}
 }
 
+// Defines values for PutCatalogMappingRequestState.
+const (
+	PutCatalogMappingRequestStateConfirmed   PutCatalogMappingRequestState = "confirmed"
+	PutCatalogMappingRequestStateProvisional PutCatalogMappingRequestState = "provisional"
+)
+
+// Valid indicates whether the value is a known member of the PutCatalogMappingRequestState enum.
+func (e PutCatalogMappingRequestState) Valid() bool {
+	switch e {
+	case PutCatalogMappingRequestStateConfirmed:
+		return true
+	case PutCatalogMappingRequestStateProvisional:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TimeGranularity.
+const (
+	TimeGranularityAuto    TimeGranularity = "auto"
+	TimeGranularityDay     TimeGranularity = "day"
+	TimeGranularityHour    TimeGranularity = "hour"
+	TimeGranularityIsoWeek TimeGranularity = "iso_week"
+	TimeGranularityMonth   TimeGranularity = "month"
+	TimeGranularityQuarter TimeGranularity = "quarter"
+	TimeGranularityYear    TimeGranularity = "year"
+)
+
+// Valid indicates whether the value is a known member of the TimeGranularity enum.
+func (e TimeGranularity) Valid() bool {
+	switch e {
+	case TimeGranularityAuto:
+		return true
+	case TimeGranularityDay:
+		return true
+	case TimeGranularityHour:
+		return true
+	case TimeGranularityIsoWeek:
+		return true
+	case TimeGranularityMonth:
+		return true
+	case TimeGranularityQuarter:
+		return true
+	case TimeGranularityYear:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserStatus.
 const (
 	UserStatusActive   UserStatus = "active"
@@ -819,25 +1046,25 @@ func (e UserStatus) Valid() bool {
 
 // Defines values for ValueChangePointPeriodKind.
 const (
-	Day     ValueChangePointPeriodKind = "day"
-	IsoWeek ValueChangePointPeriodKind = "iso_week"
-	Month   ValueChangePointPeriodKind = "month"
-	Quarter ValueChangePointPeriodKind = "quarter"
-	Year    ValueChangePointPeriodKind = "year"
+	ValueChangePointPeriodKindDay     ValueChangePointPeriodKind = "day"
+	ValueChangePointPeriodKindIsoWeek ValueChangePointPeriodKind = "iso_week"
+	ValueChangePointPeriodKindMonth   ValueChangePointPeriodKind = "month"
+	ValueChangePointPeriodKindQuarter ValueChangePointPeriodKind = "quarter"
+	ValueChangePointPeriodKindYear    ValueChangePointPeriodKind = "year"
 )
 
 // Valid indicates whether the value is a known member of the ValueChangePointPeriodKind enum.
 func (e ValueChangePointPeriodKind) Valid() bool {
 	switch e {
-	case Day:
+	case ValueChangePointPeriodKindDay:
 		return true
-	case IsoWeek:
+	case ValueChangePointPeriodKindIsoWeek:
 		return true
-	case Month:
+	case ValueChangePointPeriodKindMonth:
 		return true
-	case Quarter:
+	case ValueChangePointPeriodKindQuarter:
 		return true
-	case Year:
+	case ValueChangePointPeriodKindYear:
 		return true
 	default:
 		return false
@@ -868,6 +1095,30 @@ func (e ValueChangePointState) Valid() bool {
 	}
 }
 
+// Defines values for ValueChangeRowState.
+const (
+	ValueChangeRowStateComplete     ValueChangeRowState = "complete"
+	ValueChangeRowStateIncomparable ValueChangeRowState = "incomparable"
+	ValueChangeRowStateIncomplete   ValueChangeRowState = "incomplete"
+	ValueChangeRowStateProvisional  ValueChangeRowState = "provisional"
+)
+
+// Valid indicates whether the value is a known member of the ValueChangeRowState enum.
+func (e ValueChangeRowState) Valid() bool {
+	switch e {
+	case ValueChangeRowStateComplete:
+		return true
+	case ValueChangeRowStateIncomparable:
+		return true
+	case ValueChangeRowStateIncomplete:
+		return true
+	case ValueChangeRowStateProvisional:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListBalancesParamsGroupBy.
 const (
 	ListBalancesParamsGroupByAccount  ListBalancesParamsGroupBy = "account"
@@ -889,6 +1140,51 @@ func (e ListBalancesParamsGroupBy) Valid() bool {
 	case ListBalancesParamsGroupByListing:
 		return true
 	case ListBalancesParamsGroupByPlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCatalogAssetListingsParamsMappingState.
+const (
+	SearchCatalogAssetListingsParamsMappingStateConfirmed   SearchCatalogAssetListingsParamsMappingState = "confirmed"
+	SearchCatalogAssetListingsParamsMappingStateProvisional SearchCatalogAssetListingsParamsMappingState = "provisional"
+	SearchCatalogAssetListingsParamsMappingStateUnmapped    SearchCatalogAssetListingsParamsMappingState = "unmapped"
+)
+
+// Valid indicates whether the value is a known member of the SearchCatalogAssetListingsParamsMappingState enum.
+func (e SearchCatalogAssetListingsParamsMappingState) Valid() bool {
+	switch e {
+	case SearchCatalogAssetListingsParamsMappingStateConfirmed:
+		return true
+	case SearchCatalogAssetListingsParamsMappingStateProvisional:
+		return true
+	case SearchCatalogAssetListingsParamsMappingStateUnmapped:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExposuresParamsGroupBy.
+const (
+	ListExposuresParamsGroupByAccount  ListExposuresParamsGroupBy = "account"
+	ListExposuresParamsGroupByAsset    ListExposuresParamsGroupBy = "asset"
+	ListExposuresParamsGroupByIdentity ListExposuresParamsGroupBy = "identity"
+	ListExposuresParamsGroupByPlatform ListExposuresParamsGroupBy = "platform"
+)
+
+// Valid indicates whether the value is a known member of the ListExposuresParamsGroupBy enum.
+func (e ListExposuresParamsGroupBy) Valid() bool {
+	switch e {
+	case ListExposuresParamsGroupByAccount:
+		return true
+	case ListExposuresParamsGroupByAsset:
+		return true
+	case ListExposuresParamsGroupByIdentity:
+		return true
+	case ListExposuresParamsGroupByPlatform:
 		return true
 	default:
 		return false
@@ -967,10 +1263,37 @@ type AssetList struct {
 	Page  OffsetPage     `json:"page"`
 }
 
+// AssetListingList defines model for AssetListingList.
+type AssetListingList struct {
+	Items []CatalogAssetListing `json:"items"`
+	Page  OffsetPage            `json:"page"`
+}
+
 // AssetRef defines model for AssetRef.
 type AssetRef struct {
 	Code string `json:"code"`
 	Id   UUID   `json:"id"`
+}
+
+// AuditEvent defines model for AuditEvent.
+type AuditEvent struct {
+	Action       string                  `json:"action"`
+	ActorUserId  *openapi_types.UUID     `json:"actorUserId,omitempty"`
+	After        *map[string]interface{} `json:"after,omitempty"`
+	Before       *map[string]interface{} `json:"before,omitempty"`
+	Id           UUID                    `json:"id"`
+	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
+	OccurredAt   time.Time               `json:"occurredAt"`
+	PortfolioId  *openapi_types.UUID     `json:"portfolioId,omitempty"`
+	RequestId    *string                 `json:"requestId,omitempty"`
+	ResourceId   *openapi_types.UUID     `json:"resourceId,omitempty"`
+	ResourceType string                  `json:"resourceType"`
+}
+
+// AuditEventList defines model for AuditEventList.
+type AuditEventList struct {
+	Items []AuditEvent `json:"items"`
+	Page  CursorPage   `json:"page"`
 }
 
 // AuthSession defines model for AuthSession.
@@ -1014,6 +1337,9 @@ type BalanceRow struct {
 	SourceObservedAt  time.Time           `json:"sourceObservedAt"`
 	TotalQuantity     *NullableDecimal    `json:"totalQuantity,omitempty"`
 }
+
+// CalendarPeriodKind defines model for CalendarPeriodKind.
+type CalendarPeriodKind string
 
 // CapitalBaseline defines model for CapitalBaseline.
 type CapitalBaseline struct {
@@ -1125,6 +1451,88 @@ type CatalogAssetKind string
 // CatalogAssetStatus defines model for CatalogAsset.Status.
 type CatalogAssetStatus string
 
+// CatalogAssetListing defines model for CatalogAssetListing.
+type CatalogAssetListing struct {
+	ExternalRef     string                           `json:"externalRef"`
+	Id              UUID                             `json:"id"`
+	MappedAssetCode *string                          `json:"mappedAssetCode,omitempty"`
+	MappedAssetId   *openapi_types.UUID              `json:"mappedAssetId,omitempty"`
+	MappingState    *CatalogAssetListingMappingState `json:"mappingState,omitempty"`
+	MappingVersion  *int                             `json:"mappingVersion,omitempty"`
+	Name            *string                          `json:"name,omitempty"`
+	Pinned          *bool                            `json:"pinned,omitempty"`
+	PlatformCode    *string                          `json:"platformCode,omitempty"`
+	PlatformId      UUID                             `json:"platformId"`
+	Status          CatalogAssetListingStatus        `json:"status"`
+	Symbol          string                           `json:"symbol"`
+}
+
+// CatalogAssetListingMappingState defines model for CatalogAssetListing.MappingState.
+type CatalogAssetListingMappingState string
+
+// CatalogAssetListingStatus defines model for CatalogAssetListing.Status.
+type CatalogAssetListingStatus string
+
+// CatalogInstrument defines model for CatalogInstrument.
+type CatalogInstrument struct {
+	ExpiryAt     *time.Time              `json:"expiryAt,omitempty"`
+	ExternalRef  string                  `json:"externalRef"`
+	Id           UUID                    `json:"id"`
+	Kind         CatalogInstrumentKind   `json:"kind"`
+	Pinned       *bool                   `json:"pinned,omitempty"`
+	PlatformCode *string                 `json:"platformCode,omitempty"`
+	PlatformId   UUID                    `json:"platformId"`
+	Status       CatalogInstrumentStatus `json:"status"`
+	Symbol       string                  `json:"symbol"`
+}
+
+// CatalogInstrumentKind defines model for CatalogInstrument.Kind.
+type CatalogInstrumentKind string
+
+// CatalogInstrumentStatus defines model for CatalogInstrument.Status.
+type CatalogInstrumentStatus string
+
+// CatalogMapping defines model for CatalogMapping.
+type CatalogMapping struct {
+	AssetId             UUID                `json:"assetId"`
+	CurrentRevisionId   *UUID               `json:"currentRevisionId,omitempty"`
+	DisplayNameOverride *string             `json:"displayNameOverride,omitempty"`
+	Id                  UUID                `json:"id"`
+	ListingId           UUID                `json:"listingId"`
+	PortfolioId         UUID                `json:"portfolioId"`
+	State               CatalogMappingState `json:"state"`
+	Version             int                 `json:"version"`
+}
+
+// CatalogMappingState defines model for CatalogMapping.State.
+type CatalogMappingState string
+
+// CatalogMappingMutation defines model for CatalogMappingMutation.
+type CatalogMappingMutation struct {
+	Job     Job            `json:"job"`
+	Mapping CatalogMapping `json:"mapping"`
+}
+
+// CatalogPin defines model for CatalogPin.
+type CatalogPin struct {
+	CurrentRevisionId *UUID                 `json:"currentRevisionId,omitempty"`
+	Enabled           bool                  `json:"enabled"`
+	Id                UUID                  `json:"id"`
+	PortfolioId       UUID                  `json:"portfolioId"`
+	SubjectId         UUID                  `json:"subjectId"`
+	SubjectKind       CatalogPinSubjectKind `json:"subjectKind"`
+	Version           int                   `json:"version"`
+}
+
+// CatalogPinMutation defines model for CatalogPinMutation.
+type CatalogPinMutation struct {
+	Job Job        `json:"job"`
+	Pin CatalogPin `json:"pin"`
+}
+
+// CatalogPinSubjectKind defines model for CatalogPinSubjectKind.
+type CatalogPinSubjectKind string
+
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword"`
@@ -1138,6 +1546,7 @@ type Completeness string
 type Connection struct {
 	CollectionIntervalSeconds *int             `json:"collectionIntervalSeconds,omitempty"`
 	CredentialsConfigured     bool             `json:"credentialsConfigured"`
+	CredentialsUpdatedAt      *time.Time       `json:"credentialsUpdatedAt,omitempty"`
 	FreshnessAfterSeconds     *int             `json:"freshnessAfterSeconds,omitempty"`
 	Id                        UUID             `json:"id"`
 	IdentityId                UUID             `json:"identityId"`
@@ -1150,6 +1559,13 @@ type Connection struct {
 
 // ConnectionStatus defines model for Connection.Status.
 type ConnectionStatus string
+
+// ConnectionCredentials defines model for ConnectionCredentials.
+type ConnectionCredentials struct {
+	ApiKey     *string `json:"apiKey,omitempty"`
+	ApiSecret  *string `json:"apiSecret,omitempty"`
+	Passphrase *string `json:"passphrase,omitempty"`
+}
 
 // ConnectionList defines model for ConnectionList.
 type ConnectionList struct {
@@ -1175,6 +1591,7 @@ type CreateCapitalFlowRequestDirection string
 // CreateConnectionRequest defines model for CreateConnectionRequest.
 type CreateConnectionRequest struct {
 	CollectionIntervalSeconds *int                           `json:"collectionIntervalSeconds,omitempty"`
+	Credentials               *ConnectionCredentials         `json:"credentials,omitempty"`
 	FreshnessAfterSeconds     *int                           `json:"freshnessAfterSeconds,omitempty"`
 	IdentityId                UUID                           `json:"identityId"`
 	Label                     string                         `json:"label"`
@@ -1205,6 +1622,11 @@ type CreatePortfolioRequest struct {
 	DisplayAssetId *UUID   `json:"displayAssetId,omitempty"`
 	Name           string  `json:"name"`
 	Timezone       *string `json:"timezone,omitempty"`
+}
+
+// CreateProjectionRebuildRequest defines model for CreateProjectionRebuildRequest.
+type CreateProjectionRebuildRequest struct {
+	Reason *string `json:"reason,omitempty"`
 }
 
 // CsrfResponse defines model for CsrfResponse.
@@ -1238,6 +1660,15 @@ type DisplayAsset struct {
 	Id   UUID   `json:"id"`
 }
 
+// ExposureList defines model for ExposureList.
+type ExposureList struct {
+	Context ProjectionContext `json:"context"`
+	Groups  []ProjectionGroup `json:"groups"`
+	Issues  []ProjectionIssue `json:"issues"`
+	Items   []ExposureRow     `json:"items"`
+	Page    OffsetPage        `json:"page"`
+}
+
 // ExposurePoint defines model for ExposurePoint.
 type ExposurePoint struct {
 	AssetCode     *string          `json:"assetCode,omitempty"`
@@ -1250,6 +1681,27 @@ type ExposurePoint struct {
 	NetValue      *NullableDecimal `json:"netValue,omitempty"`
 	ShortQuantity Decimal          `json:"shortQuantity"`
 	ShortValue    *NullableDecimal `json:"shortValue,omitempty"`
+}
+
+// ExposureRow defines model for ExposureRow.
+type ExposureRow struct {
+	AccountId     *openapi_types.UUID `json:"accountId,omitempty"`
+	AccountName   *string             `json:"accountName,omitempty"`
+	AssetCode     *string             `json:"assetCode,omitempty"`
+	AssetId       UUID                `json:"assetId"`
+	Completeness  Completeness        `json:"completeness"`
+	EvaluatedAt   *time.Time          `json:"evaluatedAt,omitempty"`
+	Freshness     Freshness           `json:"freshness"`
+	IdentityId    *openapi_types.UUID `json:"identityId,omitempty"`
+	IdentityName  *string             `json:"identityName,omitempty"`
+	LongQuantity  Decimal             `json:"longQuantity"`
+	LongValue     *NullableDecimal    `json:"longValue,omitempty"`
+	NetQuantity   Decimal             `json:"netQuantity"`
+	NetValue      *NullableDecimal    `json:"netValue,omitempty"`
+	PlatformCode  *string             `json:"platformCode,omitempty"`
+	PlatformId    *openapi_types.UUID `json:"platformId,omitempty"`
+	ShortQuantity Decimal             `json:"shortQuantity"`
+	ShortValue    *NullableDecimal    `json:"shortValue,omitempty"`
 }
 
 // FieldError defines model for FieldError.
@@ -1266,7 +1718,13 @@ type Freshness string
 type GroupTotals struct {
 	AvailableQuantity       *NullableDecimal `json:"availableQuantity,omitempty"`
 	LockedQuantity          *NullableDecimal `json:"lockedQuantity,omitempty"`
+	LongQuantity            *NullableDecimal `json:"longQuantity,omitempty"`
+	LongValue               *NullableDecimal `json:"longValue,omitempty"`
+	NetQuantity             *NullableDecimal `json:"netQuantity,omitempty"`
+	NetValue                *NullableDecimal `json:"netValue,omitempty"`
 	Quantity                *NullableDecimal `json:"quantity,omitempty"`
+	ShortQuantity           *NullableDecimal `json:"shortQuantity,omitempty"`
+	ShortValue              *NullableDecimal `json:"shortValue,omitempty"`
 	TotalQuantity           *NullableDecimal `json:"totalQuantity,omitempty"`
 	UnderlyingLongQuantity  *NullableDecimal `json:"underlyingLongQuantity,omitempty"`
 	UnderlyingShortQuantity *NullableDecimal `json:"underlyingShortQuantity,omitempty"`
@@ -1325,6 +1783,12 @@ type IdentityList struct {
 	Items []Identity `json:"items"`
 }
 
+// InstrumentList defines model for InstrumentList.
+type InstrumentList struct {
+	Items []CatalogInstrument `json:"items"`
+	Page  OffsetPage          `json:"page"`
+}
+
 // Job defines model for Job.
 type Job struct {
 	AttemptCount    int           `json:"attemptCount"`
@@ -1374,6 +1838,12 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// MissingInterval defines model for MissingInterval.
+type MissingInterval struct {
+	End   time.Time `json:"end"`
+	Start time.Time `json:"start"`
+}
+
 // NullableDecimal defines model for NullableDecimal.
 type NullableDecimal = string
 
@@ -1407,6 +1877,30 @@ type ObservationCorrection struct {
 
 // ObservationKind defines model for ObservationKind.
 type ObservationKind string
+
+// ObservationList defines model for ObservationList.
+type ObservationList struct {
+	Items []ObservationSummary `json:"items"`
+	Page  CursorPage           `json:"page"`
+}
+
+// ObservationSummary defines model for ObservationSummary.
+type ObservationSummary struct {
+	AccountId          *openapi_types.UUID            `json:"accountId,omitempty"`
+	CollectedAt        time.Time                      `json:"collectedAt"`
+	Completeness       ObservationSummaryCompleteness `json:"completeness"`
+	Id                 UUID                           `json:"id"`
+	IdentityId         UUID                           `json:"identityId"`
+	IdentitySnapshotId UUID                           `json:"identitySnapshotId"`
+	Kind               ObservationKind                `json:"kind"`
+	PortfolioId        UUID                           `json:"portfolioId"`
+	SourceObservedAt   time.Time                      `json:"sourceObservedAt"`
+	Summary            *string                        `json:"summary,omitempty"`
+	Version            int                            `json:"version"`
+}
+
+// ObservationSummaryCompleteness defines model for ObservationSummary.Completeness.
+type ObservationSummaryCompleteness string
 
 // OffsetPage defines model for OffsetPage.
 type OffsetPage struct {
@@ -1448,6 +1942,7 @@ type PatchCapitalFlowRequestDirection string
 // PatchConnectionRequest defines model for PatchConnectionRequest.
 type PatchConnectionRequest struct {
 	CollectionIntervalSeconds *int                          `json:"collectionIntervalSeconds,omitempty"`
+	Credentials               *ConnectionCredentials        `json:"credentials,omitempty"`
 	FreshnessAfterSeconds     *int                          `json:"freshnessAfterSeconds,omitempty"`
 	Label                     *string                       `json:"label,omitempty"`
 	Status                    *PatchConnectionRequestStatus `json:"status,omitempty"`
@@ -1500,6 +1995,30 @@ type PatchPortfolioRequest struct {
 	DisplayAssetId *UUID   `json:"displayAssetId,omitempty"`
 	Name           *string `json:"name,omitempty"`
 	Timezone       *string `json:"timezone,omitempty"`
+}
+
+// PeriodSummary defines model for PeriodSummary.
+type PeriodSummary struct {
+	AsOfAt                  *time.Time         `json:"asOfAt,omitempty"`
+	Completeness            Completeness       `json:"completeness"`
+	ContributedCapitalClose *NullableDecimal   `json:"contributedCapitalClose,omitempty"`
+	Freshness               Freshness          `json:"freshness"`
+	PeriodEndDate           openapi_types.Date `json:"periodEndDate"`
+	PeriodKind              CalendarPeriodKind `json:"periodKind"`
+	PeriodStartDate         openapi_types.Date `json:"periodStartDate"`
+	ValuationClose          *NullableDecimal   `json:"valuationClose,omitempty"`
+	ValuationHigh           *NullableDecimal   `json:"valuationHigh,omitempty"`
+	ValuationLow            *NullableDecimal   `json:"valuationLow,omitempty"`
+	ValuationOpen           *NullableDecimal   `json:"valuationOpen,omitempty"`
+	ValueChange             *NullableDecimal   `json:"valueChange,omitempty"`
+}
+
+// PeriodSummaryList defines model for PeriodSummaryList.
+type PeriodSummaryList struct {
+	Context ProjectionContext `json:"context"`
+	Issues  []ProjectionIssue `json:"issues"`
+	Items   []PeriodSummary   `json:"items"`
+	Page    CursorPage        `json:"page"`
 }
 
 // Portfolio defines model for Portfolio.
@@ -1643,6 +2162,22 @@ type PutCapitalBaselineRequest struct {
 	Quantity    Decimal   `json:"quantity"`
 }
 
+// PutCatalogMappingRequest defines model for PutCatalogMappingRequest.
+type PutCatalogMappingRequest struct {
+	AssetId             UUID                          `json:"assetId"`
+	DisplayNameOverride *string                       `json:"displayNameOverride,omitempty"`
+	Reason              *string                       `json:"reason,omitempty"`
+	State               PutCatalogMappingRequestState `json:"state"`
+}
+
+// PutCatalogMappingRequestState defines model for PutCatalogMappingRequest.State.
+type PutCatalogMappingRequestState string
+
+// PutCatalogPinRequest defines model for PutCatalogPinRequest.
+type PutCatalogPinRequest struct {
+	Reason *string `json:"reason,omitempty"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Password string `json:"password"`
@@ -1678,6 +2213,9 @@ type SessionList struct {
 	Items []Session `json:"items"`
 }
 
+// TimeGranularity defines model for TimeGranularity.
+type TimeGranularity string
+
 // UUID defines model for UUID.
 type UUID = openapi_types.UUID
 
@@ -1691,11 +2229,31 @@ type User struct {
 // UserStatus defines model for User.Status.
 type UserStatus string
 
+// ValuationList defines model for ValuationList.
+type ValuationList struct {
+	Context          ProjectionContext  `json:"context"`
+	Granularity      *TimeGranularity   `json:"granularity,omitempty"`
+	Issues           []ProjectionIssue  `json:"issues"`
+	Items            []ValuationPoint   `json:"items"`
+	MissingIntervals *[]MissingInterval `json:"missingIntervals,omitempty"`
+	Page             CursorPage         `json:"page"`
+}
+
 // ValuationPoint defines model for ValuationPoint.
 type ValuationPoint struct {
 	Amount       *NullableDecimal `json:"amount"`
 	Completeness Completeness     `json:"completeness"`
 	EvaluatedAt  time.Time        `json:"evaluatedAt"`
+}
+
+// ValueChangeList defines model for ValueChangeList.
+type ValueChangeList struct {
+	Context          ProjectionContext  `json:"context"`
+	Granularity      *TimeGranularity   `json:"granularity,omitempty"`
+	Issues           []ProjectionIssue  `json:"issues"`
+	Items            []ValueChangeRow   `json:"items"`
+	MissingIntervals *[]MissingInterval `json:"missingIntervals,omitempty"`
+	Page             CursorPage         `json:"page"`
 }
 
 // ValueChangePoint defines model for ValueChangePoint.
@@ -1713,6 +2271,21 @@ type ValueChangePointPeriodKind string
 // ValueChangePointState defines model for ValueChangePoint.State.
 type ValueChangePointState string
 
+// ValueChangeRow defines model for ValueChangeRow.
+type ValueChangeRow struct {
+	Amount              *NullableDecimal    `json:"amount"`
+	ContributionAmount  *NullableDecimal    `json:"contributionAmount,omitempty"`
+	CoverageFingerprint *string             `json:"coverageFingerprint,omitempty"`
+	PeriodEndDate       openapi_types.Date  `json:"periodEndDate"`
+	PeriodKind          CalendarPeriodKind  `json:"periodKind"`
+	PeriodStartDate     openapi_types.Date  `json:"periodStartDate"`
+	State               ValueChangeRowState `json:"state"`
+	WithdrawalAmount    *NullableDecimal    `json:"withdrawalAmount,omitempty"`
+}
+
+// ValueChangeRowState defines model for ValueChangeRow.State.
+type ValueChangeRowState string
+
 // CSRFToken defines model for CSRFToken.
 type CSRFToken = string
 
@@ -1721,6 +2294,9 @@ type ConnectionID = UUID
 
 // FlowID defines model for FlowID.
 type FlowID = UUID
+
+// Granularity defines model for Granularity.
+type Granularity = TimeGranularity
 
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
@@ -1734,14 +2310,35 @@ type IfMatch = string
 // JobID defines model for JobID.
 type JobID = UUID
 
+// ListingID defines model for ListingID.
+type ListingID = UUID
+
+// MaxPoints defines model for MaxPoints.
+type MaxPoints = int
+
 // ObservationID defines model for ObservationID.
 type ObservationID = UUID
+
+// PeriodKind defines model for PeriodKind.
+type PeriodKind = CalendarPeriodKind
 
 // PortfolioID defines model for PortfolioID.
 type PortfolioID = UUID
 
 // SessionID defines model for SessionID.
 type SessionID = UUID
+
+// SubjectID defines model for SubjectID.
+type SubjectID = UUID
+
+// SubjectKind defines model for SubjectKind.
+type SubjectKind = CatalogPinSubjectKind
+
+// TimeFrom defines model for TimeFrom.
+type TimeFrom = time.Time
+
+// TimeTo defines model for TimeTo.
+type TimeTo = time.Time
 
 // PostAuthLoginParams defines parameters for PostAuthLogin.
 type PostAuthLoginParams struct {
@@ -1809,6 +2406,14 @@ type ArchivePortfolioParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
+// ListAuditEventsParams defines parameters for ListAuditEvents.
+type ListAuditEventsParams struct {
+	Action       *string `form:"action,omitempty" json:"action,omitempty"`
+	ResourceType *string `form:"resourceType,omitempty" json:"resourceType,omitempty"`
+	Limit        *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor       *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // ListBalancesParams defines parameters for ListBalances.
 type ListBalancesParams struct {
 	GroupBy    *ListBalancesParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
@@ -1866,11 +2471,52 @@ type ListCapitalFlowRevisionsParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// SearchCatalogAssetListingsParams defines parameters for SearchCatalogAssetListings.
+type SearchCatalogAssetListingsParams struct {
+	Q            *string                                       `form:"q,omitempty" json:"q,omitempty"`
+	PlatformId   *UUID                                         `form:"platformId,omitempty" json:"platformId,omitempty"`
+	MappingState *SearchCatalogAssetListingsParamsMappingState `form:"mappingState,omitempty" json:"mappingState,omitempty"`
+	Offset       *int                                          `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit        *int                                          `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// SearchCatalogAssetListingsParamsMappingState defines parameters for SearchCatalogAssetListings.
+type SearchCatalogAssetListingsParamsMappingState string
+
+// PutCatalogListingMappingParams defines parameters for PutCatalogListingMapping.
+type PutCatalogListingMappingParams struct {
+	IfMatch        IfMatch         `json:"If-Match"`
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+}
+
 // SearchCatalogAssetsParams defines parameters for SearchCatalogAssets.
 type SearchCatalogAssetsParams struct {
 	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// SearchCatalogInstrumentsParams defines parameters for SearchCatalogInstruments.
+type SearchCatalogInstrumentsParams struct {
+	Q          *string `form:"q,omitempty" json:"q,omitempty"`
+	PlatformId *UUID   `form:"platformId,omitempty" json:"platformId,omitempty"`
+	Pinned     *bool   `form:"pinned,omitempty" json:"pinned,omitempty"`
+	Offset     *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit      *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// DeleteCatalogPinParams defines parameters for DeleteCatalogPin.
+type DeleteCatalogPinParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// PutCatalogPinParams defines parameters for PutCatalogPin.
+type PutCatalogPinParams struct {
+	IfMatch        IfMatch         `json:"If-Match"`
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
 
 // CreateConnectionParams defines parameters for CreateConnection.
@@ -1890,6 +2536,19 @@ type PatchConnectionParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
+
+// ListExposuresParams defines parameters for ListExposures.
+type ListExposuresParams struct {
+	GroupBy    *ListExposuresParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
+	IdentityId *UUID                       `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId  *UUID                       `form:"accountId,omitempty" json:"accountId,omitempty"`
+	AssetId    *UUID                       `form:"assetId,omitempty" json:"assetId,omitempty"`
+	Offset     *int                        `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit      *int                        `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListExposuresParamsGroupBy defines parameters for ListExposures.
+type ListExposuresParamsGroupBy string
 
 // CreateIdentityParams defines parameters for CreateIdentity.
 type CreateIdentityParams struct {
@@ -1915,10 +2574,30 @@ type ListJobsParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// ListObservationsParams defines parameters for ListObservations.
+type ListObservationsParams struct {
+	Kind       *ObservationKind `form:"kind,omitempty" json:"kind,omitempty"`
+	IdentityId *UUID            `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId  *UUID            `form:"accountId,omitempty" json:"accountId,omitempty"`
+	From       *time.Time       `form:"from,omitempty" json:"from,omitempty"`
+	To         *time.Time       `form:"to,omitempty" json:"to,omitempty"`
+	Limit      *int             `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor     *string          `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // PatchObservationParams defines parameters for PatchObservation.
 type PatchObservationParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListPeriodSummariesParams defines parameters for ListPeriodSummaries.
+type ListPeriodSummariesParams struct {
+	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
+	From       *TimeFrom   `form:"from,omitempty" json:"from,omitempty"`
+	To         *TimeTo     `form:"to,omitempty" json:"to,omitempty"`
+	Limit      *int        `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor     *string     `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
 // ListPositionsParams defines parameters for ListPositions.
@@ -1934,10 +2613,37 @@ type ListPositionsParams struct {
 // ListPositionsParamsGroupBy defines parameters for ListPositions.
 type ListPositionsParamsGroupBy string
 
+// CreateProjectionRebuildParams defines parameters for CreateProjectionRebuild.
+type CreateProjectionRebuildParams struct {
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+}
+
 // RestorePortfolioParams defines parameters for RestorePortfolio.
 type RestorePortfolioParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListValuationsParams defines parameters for ListValuations.
+type ListValuationsParams struct {
+	From        *TimeFrom    `form:"from,omitempty" json:"from,omitempty"`
+	To          *TimeTo      `form:"to,omitempty" json:"to,omitempty"`
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+	MaxPoints   *MaxPoints   `form:"maxPoints,omitempty" json:"maxPoints,omitempty"`
+	Limit       *int         `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor      *string      `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// ListValueChangesParams defines parameters for ListValueChanges.
+type ListValueChangesParams struct {
+	PeriodKind  *PeriodKind  `form:"periodKind,omitempty" json:"periodKind,omitempty"`
+	From        *TimeFrom    `form:"from,omitempty" json:"from,omitempty"`
+	To          *TimeTo      `form:"to,omitempty" json:"to,omitempty"`
+	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+	MaxPoints   *MaxPoints   `form:"maxPoints,omitempty" json:"maxPoints,omitempty"`
+	Limit       *int         `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor      *string      `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
 // PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
@@ -1964,6 +2670,12 @@ type CreateCapitalFlowJSONRequestBody = CreateCapitalFlowRequest
 // PatchCapitalFlowJSONRequestBody defines body for PatchCapitalFlow for application/json ContentType.
 type PatchCapitalFlowJSONRequestBody = PatchCapitalFlowRequest
 
+// PutCatalogListingMappingJSONRequestBody defines body for PutCatalogListingMapping for application/json ContentType.
+type PutCatalogListingMappingJSONRequestBody = PutCatalogMappingRequest
+
+// PutCatalogPinJSONRequestBody defines body for PutCatalogPin for application/json ContentType.
+type PutCatalogPinJSONRequestBody = PutCatalogPinRequest
+
 // CreateConnectionJSONRequestBody defines body for CreateConnection for application/json ContentType.
 type CreateConnectionJSONRequestBody = CreateConnectionRequest
 
@@ -1978,6 +2690,9 @@ type PatchIdentityJSONRequestBody = PatchIdentityRequest
 
 // PatchObservationJSONRequestBody defines body for PatchObservation for application/json ContentType.
 type PatchObservationJSONRequestBody = PatchObservationRequest
+
+// CreateProjectionRebuildJSONRequestBody defines body for CreateProjectionRebuild for application/json ContentType.
+type CreateProjectionRebuildJSONRequestBody = CreateProjectionRebuildRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -2032,6 +2747,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(c *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams)
+	// ListAuditEvents List portfolio audit events
+	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
+	ListAuditEvents(c *gin.Context, portfolioId PortfolioID, params ListAuditEventsParams)
 	// ListBalances Latest balances with grouping and offset pagination
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(c *gin.Context, portfolioId PortfolioID, params ListBalancesParams)
@@ -2062,9 +2780,24 @@ type ServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
 	ListCapitalFlowRevisions(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params ListCapitalFlowRevisionsParams)
+	// SearchCatalogAssetListings Search discovered asset listings and mapping status
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/asset-listings)
+	SearchCatalogAssetListings(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetListingsParams)
+	// PutCatalogListingMapping Append an asset listing mapping revision
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping)
+	PutCatalogListingMapping(c *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutCatalogListingMappingParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
 	SearchCatalogAssets(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams)
+	// SearchCatalogInstruments Search discovered instruments
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/instruments)
+	SearchCatalogInstruments(c *gin.Context, portfolioId PortfolioID, params SearchCatalogInstrumentsParams)
+	// DeleteCatalogPin Append a disabled tracking revision
+	// (DELETE /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
+	DeleteCatalogPin(c *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params DeleteCatalogPinParams)
+	// PutCatalogPin Append an enabled tracking revision
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
+	PutCatalogPin(c *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params PutCatalogPinParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/connections)
 	ListConnections(c *gin.Context, portfolioId PortfolioID)
@@ -2080,6 +2813,9 @@ type ServerInterface interface {
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/connections/{connectionId})
 	PatchConnection(c *gin.Context, portfolioId PortfolioID, connectionId ConnectionID, params PatchConnectionParams)
+	// ListExposures Long, short, and net exposure with grouping
+	// (GET /api/v1/portfolios/{portfolioId}/exposures)
+	ListExposures(c *gin.Context, portfolioId PortfolioID, params ListExposuresParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/identities)
 	ListIdentities(c *gin.Context, portfolioId PortfolioID)
@@ -2101,18 +2837,36 @@ type ServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(c *gin.Context, portfolioId PortfolioID, jobId JobID)
+	// ListObservations Search normalized observation headers
+	// (GET /api/v1/portfolios/{portfolioId}/observations)
+	ListObservations(c *gin.Context, portfolioId PortfolioID, params ListObservationsParams)
+	// GetObservation Read one typed normalized observation
+	// (GET /api/v1/portfolios/{portfolioId}/observations/{observationId})
+	GetObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID)
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
 	PatchObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams)
 	// GetOverview Portfolio overview cards, series, exposure, and issues
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(c *gin.Context, portfolioId PortfolioID)
+	// ListPeriodSummaries Period summary history
+	// (GET /api/v1/portfolios/{portfolioId}/period-summaries)
+	ListPeriodSummaries(c *gin.Context, portfolioId PortfolioID, params ListPeriodSummariesParams)
 	// ListPositions Latest positions with grouping and offset pagination
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(c *gin.Context, portfolioId PortfolioID, params ListPositionsParams)
+	// CreateProjectionRebuild Enqueue a full projection rebuild
+	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
+	CreateProjectionRebuild(c *gin.Context, portfolioId PortfolioID, params CreateProjectionRebuildParams)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(c *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams)
+	// ListValuations Portfolio valuation history
+	// (GET /api/v1/portfolios/{portfolioId}/valuations)
+	ListValuations(c *gin.Context, portfolioId PortfolioID, params ListValuationsParams)
+	// ListValueChanges Calendar value-change history
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
+	ListValueChanges(c *gin.Context, portfolioId PortfolioID, params ListValueChangesParams)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
 	GetHealthLive(c *gin.Context)
@@ -2818,6 +3572,66 @@ func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
 	siw.Handler.ArchivePortfolio(c, portfolioId, params)
 }
 
+// ListAuditEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListAuditEvents(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAuditEventsParams
+
+	// ------------- Optional query parameter "action" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "action", c.Request.URL.Query(), &params.Action, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter action: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "resourceType" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resourceType", c.Request.URL.Query(), &params.ResourceType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter resourceType: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAuditEvents(c, portfolioId, params)
+}
+
 // ListBalances operation middleware
 func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 
@@ -3420,6 +4234,173 @@ func (siw *ServerInterfaceWrapper) ListCapitalFlowRevisions(c *gin.Context) {
 	siw.Handler.ListCapitalFlowRevisions(c, portfolioId, flowId, params)
 }
 
+// SearchCatalogAssetListings operation middleware
+func (siw *ServerInterfaceWrapper) SearchCatalogAssetListings(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchCatalogAssetListingsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "platformId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platformId", c.Request.URL.Query(), &params.PlatformId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "mappingState" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "mappingState", c.Request.URL.Query(), &params.MappingState, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter mappingState: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SearchCatalogAssetListings(c, portfolioId, params)
+}
+
+// PutCatalogListingMapping operation middleware
+func (siw *ServerInterfaceWrapper) PutCatalogListingMapping(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "listingId" -------------
+	var listingId ListingID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "listingId", c.Param("listingId"), &listingId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter listingId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutCatalogListingMappingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutCatalogListingMapping(c, portfolioId, listingId, params)
+}
+
 // SearchCatalogAssets operation middleware
 func (siw *ServerInterfaceWrapper) SearchCatalogAssets(c *gin.Context) {
 
@@ -3470,6 +4451,271 @@ func (siw *ServerInterfaceWrapper) SearchCatalogAssets(c *gin.Context) {
 	}
 
 	siw.Handler.SearchCatalogAssets(c, portfolioId, params)
+}
+
+// SearchCatalogInstruments operation middleware
+func (siw *ServerInterfaceWrapper) SearchCatalogInstruments(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchCatalogInstrumentsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "platformId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platformId", c.Request.URL.Query(), &params.PlatformId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "pinned" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "pinned", c.Request.URL.Query(), &params.Pinned, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pinned: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SearchCatalogInstruments(c, portfolioId, params)
+}
+
+// DeleteCatalogPin operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCatalogPin(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "subjectKind" -------------
+	var subjectKind SubjectKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subjectKind", c.Param("subjectKind"), &subjectKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectKind: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "subjectId" -------------
+	var subjectId SubjectID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subjectId", c.Param("subjectId"), &subjectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteCatalogPinParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteCatalogPin(c, portfolioId, subjectKind, subjectId, params)
+}
+
+// PutCatalogPin operation middleware
+func (siw *ServerInterfaceWrapper) PutCatalogPin(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "subjectKind" -------------
+	var subjectKind SubjectKind
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subjectKind", c.Param("subjectKind"), &subjectKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectKind: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "subjectId" -------------
+	var subjectId SubjectID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "subjectId", c.Param("subjectId"), &subjectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutCatalogPinParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutCatalogPin(c, portfolioId, subjectKind, subjectId, params)
 }
 
 // ListConnections operation middleware
@@ -3757,6 +5003,82 @@ func (siw *ServerInterfaceWrapper) PatchConnection(c *gin.Context) {
 	}
 
 	siw.Handler.PatchConnection(c, portfolioId, connectionId, params)
+}
+
+// ListExposures operation middleware
+func (siw *ServerInterfaceWrapper) ListExposures(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListExposuresParams
+
+	// ------------- Optional query parameter "groupBy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "identityId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "accountId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "assetId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "assetId", c.Request.URL.Query(), &params.AssetId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListExposures(c, portfolioId, params)
 }
 
 // ListIdentities operation middleware
@@ -4124,6 +5446,124 @@ func (siw *ServerInterfaceWrapper) GetJob(c *gin.Context) {
 	siw.Handler.GetJob(c, portfolioId, jobId)
 }
 
+// ListObservations operation middleware
+func (siw *ServerInterfaceWrapper) ListObservations(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListObservationsParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", c.Request.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter kind: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "identityId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "accountId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListObservations(c, portfolioId, params)
+}
+
+// GetObservation operation middleware
+func (siw *ServerInterfaceWrapper) GetObservation(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "observationId" -------------
+	var observationId ObservationID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "observationId", c.Param("observationId"), &observationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter observationId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetObservation(c, portfolioId, observationId)
+}
+
 // PatchObservation operation middleware
 func (siw *ServerInterfaceWrapper) PatchObservation(c *gin.Context) {
 
@@ -4229,6 +5669,74 @@ func (siw *ServerInterfaceWrapper) GetOverview(c *gin.Context) {
 	siw.Handler.GetOverview(c, portfolioId)
 }
 
+// ListPeriodSummaries operation middleware
+func (siw *ServerInterfaceWrapper) ListPeriodSummaries(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPeriodSummariesParams
+
+	// ------------- Optional query parameter "periodKind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "periodKind", c.Request.URL.Query(), &params.PeriodKind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter periodKind: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPeriodSummaries(c, portfolioId, params)
+}
+
 // ListPositions operation middleware
 func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 
@@ -4305,6 +5813,74 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 	siw.Handler.ListPositions(c, portfolioId, params)
 }
 
+// CreateProjectionRebuild operation middleware
+func (siw *ServerInterfaceWrapper) CreateProjectionRebuild(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateProjectionRebuildParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateProjectionRebuild(c, portfolioId, params)
+}
+
 // RestorePortfolio operation middleware
 func (siw *ServerInterfaceWrapper) RestorePortfolio(c *gin.Context) {
 
@@ -4374,6 +5950,166 @@ func (siw *ServerInterfaceWrapper) RestorePortfolio(c *gin.Context) {
 	}
 
 	siw.Handler.RestorePortfolio(c, portfolioId, params)
+}
+
+// ListValuations operation middleware
+func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListValuationsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", c.Request.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter granularity: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "maxPoints" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPoints", c.Request.URL.Query(), &params.MaxPoints, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter maxPoints: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListValuations(c, portfolioId, params)
+}
+
+// ListValueChanges operation middleware
+func (siw *ServerInterfaceWrapper) ListValueChanges(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListValueChangesParams
+
+	// ------------- Optional query parameter "periodKind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "periodKind", c.Request.URL.Query(), &params.PeriodKind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter periodKind: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", c.Request.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter granularity: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "maxPoints" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPoints", c.Request.URL.Query(), &params.MaxPoints, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter maxPoints: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListValueChanges(c, portfolioId, params)
 }
 
 // GetHealthLive operation middleware
@@ -4462,6 +6198,13 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts", wrapper.ListAccounts)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets", wrapper.SearchCatalogAssets)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings", wrapper.SearchCatalogAssetListings)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/instruments", wrapper.SearchCatalogInstruments)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings/:listingId/mapping", wrapper.PutCatalogListingMapping)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/pins/:subjectKind/:subjectId", wrapper.DeleteCatalogPin)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/pins/:subjectKind/:subjectId", wrapper.PutCatalogPin)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations", wrapper.ListObservations)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.GetObservation)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.PatchObservation)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.GetCapitalBaseline)
 	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.PutCapitalBaseline)
@@ -4475,6 +6218,12 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/overview", wrapper.GetOverview)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/balances", wrapper.ListBalances)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/positions", wrapper.ListPositions)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/exposures", wrapper.ListExposures)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuations", wrapper.ListValuations)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes", wrapper.ListValueChanges)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/period-summaries", wrapper.ListPeriodSummaries)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/projection-rebuilds", wrapper.CreateProjectionRebuild)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/audit-events", wrapper.ListAuditEvents)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -5365,6 +7114,73 @@ func (response ArchivePortfolio412ApplicationProblemPlusJSONResponse) VisitArchi
 	return err
 }
 
+type ListAuditEventsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListAuditEventsParams
+}
+
+type ListAuditEventsResponseObject interface {
+	VisitListAuditEventsResponse(w http.ResponseWriter) error
+}
+
+type ListAuditEvents200JSONResponse AuditEventList
+
+func (response ListAuditEvents200JSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAuditEvents400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListAuditEvents400ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAuditEvents401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAuditEvents401ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAuditEvents404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAuditEvents404ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListBalancesRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ListBalancesParams
@@ -6110,6 +7926,204 @@ func (response ListCapitalFlowRevisions404ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
+type SearchCatalogAssetListingsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      SearchCatalogAssetListingsParams
+}
+
+type SearchCatalogAssetListingsResponseObject interface {
+	VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error
+}
+
+type SearchCatalogAssetListings200JSONResponse AssetListingList
+
+func (response SearchCatalogAssetListings200JSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssetListings400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SearchCatalogAssetListings400ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssetListings401ApplicationProblemPlusJSONResponse Problem
+
+func (response SearchCatalogAssetListings401ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssetListings404ApplicationProblemPlusJSONResponse Problem
+
+func (response SearchCatalogAssetListings404ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMappingRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	ListingId   ListingID   `json:"listingId"`
+	Params      PutCatalogListingMappingParams
+	Body        *PutCatalogListingMappingJSONRequestBody
+}
+
+type PutCatalogListingMappingResponseObject interface {
+	VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error
+}
+
+type PutCatalogListingMapping200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCatalogListingMapping200JSONResponse struct {
+	Body    CatalogMappingMutation
+	Headers PutCatalogListingMapping200ResponseHeaders
+}
+
+func (response PutCatalogListingMapping200JSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping201ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCatalogListingMapping201JSONResponse struct {
+	Body    CatalogMappingMutation
+	Headers PutCatalogListingMapping201ResponseHeaders
+}
+
+func (response PutCatalogListingMapping201JSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutCatalogListingMapping400ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogListingMapping401ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogListingMapping404ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping409ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogListingMapping409ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogListingMapping412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogListingMapping412ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SearchCatalogAssetsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      SearchCatalogAssetsParams
@@ -6159,6 +8173,284 @@ func (response SearchCatalogAssets404ApplicationProblemPlusJSONResponse) VisitSe
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogInstrumentsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      SearchCatalogInstrumentsParams
+}
+
+type SearchCatalogInstrumentsResponseObject interface {
+	VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error
+}
+
+type SearchCatalogInstruments200JSONResponse InstrumentList
+
+func (response SearchCatalogInstruments200JSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogInstruments400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SearchCatalogInstruments400ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogInstruments401ApplicationProblemPlusJSONResponse Problem
+
+func (response SearchCatalogInstruments401ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogInstruments404ApplicationProblemPlusJSONResponse Problem
+
+func (response SearchCatalogInstruments404ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCatalogPinRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	SubjectKind SubjectKind `json:"subjectKind"`
+	SubjectId   SubjectID   `json:"subjectId"`
+	Params      DeleteCatalogPinParams
+}
+
+type DeleteCatalogPinResponseObject interface {
+	VisitDeleteCatalogPinResponse(w http.ResponseWriter) error
+}
+
+type DeleteCatalogPin200ResponseHeaders struct {
+	ETag *string
+}
+
+type DeleteCatalogPin200JSONResponse struct {
+	Body    CatalogPinMutation
+	Headers DeleteCatalogPin200ResponseHeaders
+}
+
+func (response DeleteCatalogPin200JSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCatalogPin401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteCatalogPin401ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCatalogPin404ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCatalogPin404ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCatalogPin412ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCatalogPin412ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPinRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	SubjectKind SubjectKind `json:"subjectKind"`
+	SubjectId   SubjectID   `json:"subjectId"`
+	Params      PutCatalogPinParams
+	Body        *PutCatalogPinJSONRequestBody
+}
+
+type PutCatalogPinResponseObject interface {
+	VisitPutCatalogPinResponse(w http.ResponseWriter) error
+}
+
+type PutCatalogPin200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCatalogPin200JSONResponse struct {
+	Body    CatalogPinMutation
+	Headers PutCatalogPin200ResponseHeaders
+}
+
+func (response PutCatalogPin200JSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin201ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCatalogPin201JSONResponse struct {
+	Body    CatalogPinMutation
+	Headers PutCatalogPin201ResponseHeaders
+}
+
+func (response PutCatalogPin201JSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutCatalogPin400ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogPin401ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogPin404ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin409ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogPin409ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCatalogPin412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCatalogPin412ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6491,6 +8783,73 @@ func (response PatchConnection412ApplicationProblemPlusJSONResponse) VisitPatchC
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListExposuresRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListExposuresParams
+}
+
+type ListExposuresResponseObject interface {
+	VisitListExposuresResponse(w http.ResponseWriter) error
+}
+
+type ListExposures200JSONResponse ExposureList
+
+func (response ListExposures200JSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListExposures400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListExposures400ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListExposures401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListExposures401ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListExposures404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListExposures404ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6973,6 +9332,136 @@ func (response GetJob404ApplicationProblemPlusJSONResponse) VisitGetJobResponse(
 	return err
 }
 
+type ListObservationsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListObservationsParams
+}
+
+type ListObservationsResponseObject interface {
+	VisitListObservationsResponse(w http.ResponseWriter) error
+}
+
+type ListObservations200JSONResponse ObservationList
+
+func (response ListObservations200JSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListObservations400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListObservations400ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListObservations401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListObservations401ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListObservations404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListObservations404ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetObservationRequestObject struct {
+	PortfolioId   PortfolioID   `json:"portfolioId"`
+	ObservationId ObservationID `json:"observationId"`
+}
+
+type GetObservationResponseObject interface {
+	VisitGetObservationResponse(w http.ResponseWriter) error
+}
+
+type GetObservation200ResponseHeaders struct {
+	ETag *string
+}
+
+type GetObservation200JSONResponse struct {
+	Body    Observation
+	Headers GetObservation200ResponseHeaders
+}
+
+func (response GetObservation200JSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetObservation401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetObservation401ApplicationProblemPlusJSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetObservation404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetObservation404ApplicationProblemPlusJSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchObservationRequestObject struct {
 	PortfolioId   PortfolioID   `json:"portfolioId"`
 	ObservationId ObservationID `json:"observationId"`
@@ -7118,6 +9607,73 @@ func (response GetOverview404ApplicationProblemPlusJSONResponse) VisitGetOvervie
 	return err
 }
 
+type ListPeriodSummariesRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListPeriodSummariesParams
+}
+
+type ListPeriodSummariesResponseObject interface {
+	VisitListPeriodSummariesResponse(w http.ResponseWriter) error
+}
+
+type ListPeriodSummaries200JSONResponse PeriodSummaryList
+
+func (response ListPeriodSummaries200JSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeriodSummaries400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListPeriodSummaries400ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeriodSummaries401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPeriodSummaries401ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeriodSummaries404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPeriodSummaries404ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListPositionsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ListPositionsParams
@@ -7185,6 +9741,98 @@ func (response ListPositions404ApplicationProblemPlusJSONResponse) VisitListPosi
 	return err
 }
 
+type CreateProjectionRebuildRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      CreateProjectionRebuildParams
+	Body        *CreateProjectionRebuildJSONRequestBody
+}
+
+type CreateProjectionRebuildResponseObject interface {
+	VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error
+}
+
+type CreateProjectionRebuild202ResponseHeaders struct {
+	Location *string
+}
+
+type CreateProjectionRebuild202JSONResponse struct {
+	Body    Job
+	Headers CreateProjectionRebuild202ResponseHeaders
+}
+
+func (response CreateProjectionRebuild202JSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.Location != nil {
+		w.Header().Set("Location", fmt.Sprint(*response.Headers.Location))
+	}
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProjectionRebuild400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateProjectionRebuild400ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProjectionRebuild401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateProjectionRebuild401ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProjectionRebuild404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateProjectionRebuild404ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateProjectionRebuild409ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateProjectionRebuild409ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RestorePortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      RestorePortfolioParams
@@ -7248,6 +9896,140 @@ func (response RestorePortfolio412ApplicationProblemPlusJSONResponse) VisitResto
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListValuationsParams
+}
+
+type ListValuationsResponseObject interface {
+	VisitListValuationsResponse(w http.ResponseWriter) error
+}
+
+type ListValuations200JSONResponse ValuationList
+
+func (response ListValuations200JSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuations400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListValuations400ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuations401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuations401ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuations404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuations404ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChangesRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListValueChangesParams
+}
+
+type ListValueChangesResponseObject interface {
+	VisitListValueChangesResponse(w http.ResponseWriter) error
+}
+
+type ListValueChanges200JSONResponse ValueChangeList
+
+func (response ListValueChanges200JSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChanges400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListValueChanges400ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChanges401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValueChanges401ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChanges404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValueChanges404ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7361,6 +10143,9 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(ctx context.Context, request ArchivePortfolioRequestObject) (ArchivePortfolioResponseObject, error)
+	// ListAuditEvents List portfolio audit events
+	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
+	ListAuditEvents(ctx context.Context, request ListAuditEventsRequestObject) (ListAuditEventsResponseObject, error)
 	// ListBalances Latest balances with grouping and offset pagination
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(ctx context.Context, request ListBalancesRequestObject) (ListBalancesResponseObject, error)
@@ -7391,9 +10176,24 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
 	ListCapitalFlowRevisions(ctx context.Context, request ListCapitalFlowRevisionsRequestObject) (ListCapitalFlowRevisionsResponseObject, error)
+	// SearchCatalogAssetListings Search discovered asset listings and mapping status
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/asset-listings)
+	SearchCatalogAssetListings(ctx context.Context, request SearchCatalogAssetListingsRequestObject) (SearchCatalogAssetListingsResponseObject, error)
+	// PutCatalogListingMapping Append an asset listing mapping revision
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping)
+	PutCatalogListingMapping(ctx context.Context, request PutCatalogListingMappingRequestObject) (PutCatalogListingMappingResponseObject, error)
 
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
 	SearchCatalogAssets(ctx context.Context, request SearchCatalogAssetsRequestObject) (SearchCatalogAssetsResponseObject, error)
+	// SearchCatalogInstruments Search discovered instruments
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/instruments)
+	SearchCatalogInstruments(ctx context.Context, request SearchCatalogInstrumentsRequestObject) (SearchCatalogInstrumentsResponseObject, error)
+	// DeleteCatalogPin Append a disabled tracking revision
+	// (DELETE /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
+	DeleteCatalogPin(ctx context.Context, request DeleteCatalogPinRequestObject) (DeleteCatalogPinResponseObject, error)
+	// PutCatalogPin Append an enabled tracking revision
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
+	PutCatalogPin(ctx context.Context, request PutCatalogPinRequestObject) (PutCatalogPinResponseObject, error)
 
 	// (GET /api/v1/portfolios/{portfolioId}/connections)
 	ListConnections(ctx context.Context, request ListConnectionsRequestObject) (ListConnectionsResponseObject, error)
@@ -7409,6 +10209,9 @@ type StrictServerInterface interface {
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/connections/{connectionId})
 	PatchConnection(ctx context.Context, request PatchConnectionRequestObject) (PatchConnectionResponseObject, error)
+	// ListExposures Long, short, and net exposure with grouping
+	// (GET /api/v1/portfolios/{portfolioId}/exposures)
+	ListExposures(ctx context.Context, request ListExposuresRequestObject) (ListExposuresResponseObject, error)
 
 	// (GET /api/v1/portfolios/{portfolioId}/identities)
 	ListIdentities(ctx context.Context, request ListIdentitiesRequestObject) (ListIdentitiesResponseObject, error)
@@ -7430,18 +10233,36 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
+	// ListObservations Search normalized observation headers
+	// (GET /api/v1/portfolios/{portfolioId}/observations)
+	ListObservations(ctx context.Context, request ListObservationsRequestObject) (ListObservationsResponseObject, error)
+	// GetObservation Read one typed normalized observation
+	// (GET /api/v1/portfolios/{portfolioId}/observations/{observationId})
+	GetObservation(ctx context.Context, request GetObservationRequestObject) (GetObservationResponseObject, error)
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
 	PatchObservation(ctx context.Context, request PatchObservationRequestObject) (PatchObservationResponseObject, error)
 	// GetOverview Portfolio overview cards, series, exposure, and issues
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(ctx context.Context, request GetOverviewRequestObject) (GetOverviewResponseObject, error)
+	// ListPeriodSummaries Period summary history
+	// (GET /api/v1/portfolios/{portfolioId}/period-summaries)
+	ListPeriodSummaries(ctx context.Context, request ListPeriodSummariesRequestObject) (ListPeriodSummariesResponseObject, error)
 	// ListPositions Latest positions with grouping and offset pagination
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(ctx context.Context, request ListPositionsRequestObject) (ListPositionsResponseObject, error)
+	// CreateProjectionRebuild Enqueue a full projection rebuild
+	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
+	CreateProjectionRebuild(ctx context.Context, request CreateProjectionRebuildRequestObject) (CreateProjectionRebuildResponseObject, error)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(ctx context.Context, request RestorePortfolioRequestObject) (RestorePortfolioResponseObject, error)
+	// ListValuations Portfolio valuation history
+	// (GET /api/v1/portfolios/{portfolioId}/valuations)
+	ListValuations(ctx context.Context, request ListValuationsRequestObject) (ListValuationsResponseObject, error)
+	// ListValueChanges Calendar value-change history
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
+	ListValueChanges(ctx context.Context, request ListValueChangesRequestObject) (ListValueChangesResponseObject, error)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
 	GetHealthLive(ctx context.Context, request GetHealthLiveRequestObject) (GetHealthLiveResponseObject, error)
@@ -7981,6 +10802,33 @@ func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId Portfoli
 	}
 }
 
+// ListAuditEvents operation middleware
+func (sh *strictHandler) ListAuditEvents(ctx *gin.Context, portfolioId PortfolioID, params ListAuditEventsParams) {
+	var request ListAuditEventsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAuditEvents(ctx, request.(ListAuditEventsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAuditEvents")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListAuditEventsResponseObject); ok {
+		if err := validResponse.VisitListAuditEventsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListBalances operation middleware
 func (sh *strictHandler) ListBalances(ctx *gin.Context, portfolioId PortfolioID, params ListBalancesParams) {
 	var request ListBalancesRequestObject
@@ -8274,6 +11122,68 @@ func (sh *strictHandler) ListCapitalFlowRevisions(ctx *gin.Context, portfolioId 
 	}
 }
 
+// SearchCatalogAssetListings operation middleware
+func (sh *strictHandler) SearchCatalogAssetListings(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetListingsParams) {
+	var request SearchCatalogAssetListingsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchCatalogAssetListings(ctx, request.(SearchCatalogAssetListingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchCatalogAssetListings")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(SearchCatalogAssetListingsResponseObject); ok {
+		if err := validResponse.VisitSearchCatalogAssetListingsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutCatalogListingMapping operation middleware
+func (sh *strictHandler) PutCatalogListingMapping(ctx *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutCatalogListingMappingParams) {
+	var request PutCatalogListingMappingRequestObject
+
+	request.PortfolioId = portfolioId
+	request.ListingId = listingId
+	request.Params = params
+
+	var body PutCatalogListingMappingJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutCatalogListingMapping(ctx, request.(PutCatalogListingMappingRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutCatalogListingMapping")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutCatalogListingMappingResponseObject); ok {
+		if err := validResponse.VisitPutCatalogListingMappingResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SearchCatalogAssets operation middleware
 func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams) {
 	var request SearchCatalogAssetsRequestObject
@@ -8294,6 +11204,98 @@ func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId Portf
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(SearchCatalogAssetsResponseObject); ok {
 		if err := validResponse.VisitSearchCatalogAssetsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchCatalogInstruments operation middleware
+func (sh *strictHandler) SearchCatalogInstruments(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogInstrumentsParams) {
+	var request SearchCatalogInstrumentsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchCatalogInstruments(ctx, request.(SearchCatalogInstrumentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchCatalogInstruments")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(SearchCatalogInstrumentsResponseObject); ok {
+		if err := validResponse.VisitSearchCatalogInstrumentsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteCatalogPin operation middleware
+func (sh *strictHandler) DeleteCatalogPin(ctx *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params DeleteCatalogPinParams) {
+	var request DeleteCatalogPinRequestObject
+
+	request.PortfolioId = portfolioId
+	request.SubjectKind = subjectKind
+	request.SubjectId = subjectId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCatalogPin(ctx, request.(DeleteCatalogPinRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCatalogPin")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(DeleteCatalogPinResponseObject); ok {
+		if err := validResponse.VisitDeleteCatalogPinResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutCatalogPin operation middleware
+func (sh *strictHandler) PutCatalogPin(ctx *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params PutCatalogPinParams) {
+	var request PutCatalogPinRequestObject
+
+	request.PortfolioId = portfolioId
+	request.SubjectKind = subjectKind
+	request.SubjectId = subjectId
+	request.Params = params
+
+	var body PutCatalogPinJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutCatalogPin(ctx, request.(PutCatalogPinRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutCatalogPin")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutCatalogPinResponseObject); ok {
+		if err := validResponse.VisitPutCatalogPinResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -8444,6 +11446,33 @@ func (sh *strictHandler) PatchConnection(ctx *gin.Context, portfolioId Portfolio
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(PatchConnectionResponseObject); ok {
 		if err := validResponse.VisitPatchConnectionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListExposures operation middleware
+func (sh *strictHandler) ListExposures(ctx *gin.Context, portfolioId PortfolioID, params ListExposuresParams) {
+	var request ListExposuresRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListExposures(ctx, request.(ListExposuresRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListExposures")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListExposuresResponseObject); ok {
+		if err := validResponse.VisitListExposuresResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -8655,6 +11684,60 @@ func (sh *strictHandler) GetJob(ctx *gin.Context, portfolioId PortfolioID, jobId
 	}
 }
 
+// ListObservations operation middleware
+func (sh *strictHandler) ListObservations(ctx *gin.Context, portfolioId PortfolioID, params ListObservationsParams) {
+	var request ListObservationsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListObservations(ctx, request.(ListObservationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListObservations")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListObservationsResponseObject); ok {
+		if err := validResponse.VisitListObservationsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetObservation operation middleware
+func (sh *strictHandler) GetObservation(ctx *gin.Context, portfolioId PortfolioID, observationId ObservationID) {
+	var request GetObservationRequestObject
+
+	request.PortfolioId = portfolioId
+	request.ObservationId = observationId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetObservation(ctx, request.(GetObservationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetObservation")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetObservationResponseObject); ok {
+		if err := validResponse.VisitGetObservationResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // PatchObservation operation middleware
 func (sh *strictHandler) PatchObservation(ctx *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams) {
 	var request PatchObservationRequestObject
@@ -8716,6 +11799,33 @@ func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) 
 	}
 }
 
+// ListPeriodSummaries operation middleware
+func (sh *strictHandler) ListPeriodSummaries(ctx *gin.Context, portfolioId PortfolioID, params ListPeriodSummariesParams) {
+	var request ListPeriodSummariesRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPeriodSummaries(ctx, request.(ListPeriodSummariesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPeriodSummaries")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListPeriodSummariesResponseObject); ok {
+		if err := validResponse.VisitListPeriodSummariesResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListPositions operation middleware
 func (sh *strictHandler) ListPositions(ctx *gin.Context, portfolioId PortfolioID, params ListPositionsParams) {
 	var request ListPositionsRequestObject
@@ -8743,6 +11853,43 @@ func (sh *strictHandler) ListPositions(ctx *gin.Context, portfolioId PortfolioID
 	}
 }
 
+// CreateProjectionRebuild operation middleware
+func (sh *strictHandler) CreateProjectionRebuild(ctx *gin.Context, portfolioId PortfolioID, params CreateProjectionRebuildParams) {
+	var request CreateProjectionRebuildRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	var body CreateProjectionRebuildJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(ctx, err)
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateProjectionRebuild(ctx, request.(CreateProjectionRebuildRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateProjectionRebuild")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(CreateProjectionRebuildResponseObject); ok {
+		if err := validResponse.VisitCreateProjectionRebuildResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // RestorePortfolio operation middleware
 func (sh *strictHandler) RestorePortfolio(ctx *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams) {
 	var request RestorePortfolioRequestObject
@@ -8763,6 +11910,60 @@ func (sh *strictHandler) RestorePortfolio(ctx *gin.Context, portfolioId Portfoli
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(RestorePortfolioResponseObject); ok {
 		if err := validResponse.VisitRestorePortfolioResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListValuations operation middleware
+func (sh *strictHandler) ListValuations(ctx *gin.Context, portfolioId PortfolioID, params ListValuationsParams) {
+	var request ListValuationsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListValuations(ctx, request.(ListValuationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListValuations")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListValuationsResponseObject); ok {
+		if err := validResponse.VisitListValuationsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListValueChanges operation middleware
+func (sh *strictHandler) ListValueChanges(ctx *gin.Context, portfolioId PortfolioID, params ListValueChangesParams) {
+	var request ListValueChangesRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListValueChanges(ctx, request.(ListValueChangesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListValueChanges")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListValueChangesResponseObject); ok {
+		if err := validResponse.VisitListValueChangesResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -8823,104 +12024,136 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"p7v/GQA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
