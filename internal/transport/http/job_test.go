@@ -182,6 +182,106 @@ func TestProjectionJobsAndCursorPagination(t *testing.T) {
 	}
 }
 
+func TestHTTPProjectionRebuildEnqueue(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	portfolios := portfolio.NewService(db)
+	jobSvc := jobs.NewService(db)
+	engine := Engine(&EngineOptions{
+		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:       StaticReady{},
+		Auth:        authSvc,
+		Portfolios:  portfolios,
+		Idempotency: idempotency.NewStore(db),
+		Jobs:        jobSvc,
+	})
+
+	password := "correct horse battery staple"
+	userA := "jr-" + uuid.NewString()[:8]
+	userB := "jrb-" + uuid.NewString()[:8]
+	if _, err := authSvc.CreateUser(context.Background(), userA, password); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := authSvc.CreateUser(context.Background(), userB, password); err != nil {
+		t.Fatal(err)
+	}
+	sessionA := loginSession(t, engine, userA, password)
+	sessionB := loginSession(t, engine, userB, password)
+
+	list := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios", nil, sessionA, "")
+	if list.Code != http.StatusOK {
+		t.Fatalf("list %d %s", list.Code, list.Body.String())
+	}
+	var listed struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &listed); err != nil {
+		t.Fatal(err)
+	}
+	portfolioID := listed.Items[0].ID
+	path := "/api/v1/portfolios/" + portfolioID + "/projection-rebuilds"
+
+	first := doJSON(t, engine, http.MethodPost, path, map[string]any{"reason": "manual rebuild"}, sessionA, "rebuild-1")
+	if first.Code != http.StatusAccepted {
+		t.Fatalf("first %d %s", first.Code, first.Body.String())
+	}
+	var jobBody struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+		Kind   string `json:"kind"`
+	}
+	if err := json.Unmarshal(first.Body.Bytes(), &jobBody); err != nil {
+		t.Fatal(err)
+	}
+	if jobBody.Status != "queued" || jobBody.Kind != "projection" {
+		t.Fatalf("job %+v", jobBody)
+	}
+	wantLoc := "/api/v1/portfolios/" + portfolioID + "/jobs/" + jobBody.ID
+	if first.Header().Get("Location") != wantLoc {
+		t.Fatalf("location %s want %s", first.Header().Get("Location"), wantLoc)
+	}
+
+	replay := doJSON(t, engine, http.MethodPost, path, map[string]any{"reason": "manual rebuild"}, sessionA, "rebuild-1")
+	if replay.Code != http.StatusAccepted {
+		t.Fatalf("replay %d %s", replay.Code, replay.Body.String())
+	}
+	var replayBody struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(replay.Body.Bytes(), &replayBody); err != nil {
+		t.Fatal(err)
+	}
+	if replayBody.ID != jobBody.ID {
+		t.Fatalf("idempotent replay %s vs %s", replayBody.ID, jobBody.ID)
+	}
+
+	conflict := doJSON(t, engine, http.MethodPost, path, map[string]any{"reason": "other"}, sessionA, "rebuild-1")
+	if conflict.Code != http.StatusConflict {
+		t.Fatalf("conflict %d %s", conflict.Code, conflict.Body.String())
+	}
+
+	merged := doJSON(t, engine, http.MethodPost, path, nil, sessionA, "")
+	if merged.Code != http.StatusAccepted {
+		t.Fatalf("merge %d %s", merged.Code, merged.Body.String())
+	}
+	var mergedBody struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(merged.Body.Bytes(), &mergedBody); err != nil {
+		t.Fatal(err)
+	}
+	if mergedBody.ID != jobBody.ID {
+		t.Fatalf("active merge %s vs %s", mergedBody.ID, jobBody.ID)
+	}
+
+	foreign := doJSON(t, engine, http.MethodPost, path, nil, sessionB, "")
+	if foreign.Code != http.StatusNotFound {
+		t.Fatalf("cross-user rebuild %d %s", foreign.Code, foreign.Body.String())
+	}
+}
+
 func runUntilStatus(t *testing.T, loop *worker.Worker, svc *jobs.Service, portfolioID, jobID uuid.UUID, status string) error {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)

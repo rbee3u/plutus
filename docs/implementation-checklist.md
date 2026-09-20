@@ -179,7 +179,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 6 — HTTP projection rebuilds
 
-- [ ] HTTP `POST` projection-rebuilds
+- [x] HTTP `POST` projection-rebuilds
 
 ### Milestone 7 — Exposure and history pages
 
