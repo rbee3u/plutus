@@ -208,6 +208,127 @@ export type CursorPage = {
     hasMore: boolean;
 };
 
+export type OffsetPage = {
+    kind: 'offset';
+    offset: number;
+    limit: number;
+    total: number;
+};
+
+export type Decimal = string;
+
+export type Account = {
+    id: Uuid;
+    portfolioId: Uuid;
+    identityId: Uuid;
+    externalRef: string;
+    displayName: string;
+    accountType: string;
+    status: 'active' | 'inactive' | 'disappeared';
+};
+
+export type AccountList = {
+    items: Array<Account>;
+    page: OffsetPage;
+};
+
+export type CatalogAsset = {
+    id: Uuid;
+    code: string;
+    name: string;
+    kind: 'fiat' | 'crypto' | 'other';
+    status: 'active' | 'provisional' | 'retired';
+    decimals?: number | null;
+};
+
+export type AssetList = {
+    items: Array<CatalogAsset>;
+    page: OffsetPage;
+};
+
+export type Observation = {
+    id: Uuid;
+    portfolioId: Uuid;
+    identitySnapshotId: Uuid;
+    identityId: Uuid;
+    accountId?: string | null;
+    kind: ObservationKind;
+    sourceObservedAt: string;
+    collectedAt: string;
+    completeness: 'complete' | 'partial';
+    version: number;
+    balance?: BalanceObservation;
+    position?: PositionObservation;
+    reportedEquity?: ReportedEquityObservation;
+    price?: PriceObservation;
+    accountMetric?: AccountMetricObservation;
+};
+
+export type ObservationKind = 'balance' | 'position' | 'reported_equity' | 'account_metric' | 'price';
+
+export type BalanceObservation = {
+    assetListingId: Uuid;
+    totalQuantity?: string | null;
+    availableQuantity?: string | null;
+    lockedQuantity?: string | null;
+};
+
+export type PositionObservation = {
+    instrumentId: Uuid;
+    platformPositionRef: string;
+    side: 'long' | 'short' | 'net';
+    quantity: Decimal;
+    entryPrice?: string | null;
+    markPrice?: string | null;
+    unrealizedValue?: string | null;
+    leverage?: string | null;
+};
+
+export type ReportedEquityObservation = {
+    denominationListingId: Uuid;
+    amount: Decimal;
+    coveredIdentityIds: Array<Uuid>;
+    coveredAccountIds: Array<Uuid>;
+};
+
+export type PriceObservation = {
+    instrumentId?: string | null;
+    baseListingId?: string | null;
+    quoteListingId: Uuid;
+    priceType: 'market' | 'mark' | 'index' | 'exchange_rate';
+    price: Decimal;
+};
+
+export type AccountMetricObservation = {
+    metricCode: string;
+    unit: string;
+    decimalValue?: string | null;
+    textValue?: string | null;
+    semanticsVersion: string;
+};
+
+export type PatchObservationRequest = {
+    completeness?: 'complete' | 'partial';
+    totalQuantity?: string | null;
+    availableQuantity?: string | null;
+    lockedQuantity?: string | null;
+    side?: 'long' | 'short' | 'net';
+    quantity?: Decimal;
+    entryPrice?: string | null;
+    markPrice?: string | null;
+    unrealizedValue?: string | null;
+    leverage?: string | null;
+    amount?: Decimal;
+    price?: Decimal;
+    decimalValue?: string | null;
+    textValue?: string | null;
+};
+
+export type ObservationCorrection = {
+    observation: Observation;
+    job: Job;
+};
+
 export type Problem = {
     type: string;
     title: string;
@@ -238,6 +359,8 @@ export type IdentityId = Uuid;
 export type ConnectionId = Uuid;
 
 export type JobId = Uuid;
+
+export type ObservationId = Uuid;
 
 export type SessionId = Uuid;
 
@@ -958,6 +1081,10 @@ export type PatchIdentityErrors = {
     /**
      * Problem details.
      */
+    409: Problem;
+    /**
+     * Problem details.
+     */
     412: Problem;
 };
 
@@ -1267,3 +1394,116 @@ export type GetJobResponses = {
 };
 
 export type GetJobResponse = GetJobResponses[keyof GetJobResponses];
+
+export type ListAccountsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/accounts';
+};
+
+export type ListAccountsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAccountsError = ListAccountsErrors[keyof ListAccountsErrors];
+
+export type ListAccountsResponses = {
+    /**
+     * Discovered accounts.
+     */
+    200: AccountList;
+};
+
+export type ListAccountsResponse = ListAccountsResponses[keyof ListAccountsResponses];
+
+export type SearchCatalogAssetsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        q?: string;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/catalog/assets';
+};
+
+export type SearchCatalogAssetsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type SearchCatalogAssetsError = SearchCatalogAssetsErrors[keyof SearchCatalogAssetsErrors];
+
+export type SearchCatalogAssetsResponses = {
+    /**
+     * Canonical assets.
+     */
+    200: AssetList;
+};
+
+export type SearchCatalogAssetsResponse = SearchCatalogAssetsResponses[keyof SearchCatalogAssetsResponses];
+
+export type PatchObservationData = {
+    body: PatchObservationRequest;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        observationId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}';
+};
+
+export type PatchObservationErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PatchObservationError = PatchObservationErrors[keyof PatchObservationErrors];
+
+export type PatchObservationResponses = {
+    /**
+     * Corrected observation and the enqueued projection job.
+     */
+    200: ObservationCorrection;
+};
+
+export type PatchObservationResponse = PatchObservationResponses[keyof PatchObservationResponses];

@@ -116,9 +116,9 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 3 — Facts and correction primitives
 
-- [ ] Shared catalog, mappings, normalized Observations, failures, and correction primitives
-- [ ] Freeze Identity identity fields after the first Observation exists
-- [ ] `GET /accounts`, `GET /catalog/assets`, and `PATCH /observations/{observationId}`
+- [x] Shared catalog, mappings, normalized Observations, failures, and correction primitives
+- [x] Freeze Identity identity fields after the first Observation exists
+- [x] `GET /accounts`, `GET /catalog/assets`, and `PATCH /observations/{observationId}`
 
 ### Milestone 4 — Capital API
 

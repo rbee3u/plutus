@@ -246,6 +246,18 @@ func (s *Service) PatchIdentity(ctx context.Context, portfolioID, identityID uui
 	if in.ParentIdentityID != nil {
 		parent = in.ParentIdentityID
 	}
+	if identityFieldsChanged(&current, ref, mode, parent) {
+		count, err := s.q.CountIdentityObservations(ctx, sqlcgen.CountIdentityObservationsParams{
+			PortfolioID: mustBin(portfolioID),
+			IdentityID:  mustBin(identityID),
+		})
+		if err != nil {
+			return Identity{}, err
+		}
+		if count > 0 {
+			return Identity{}, ErrIdentityFrozen
+		}
+	}
 	if current.Kind == "main" && parent != nil {
 		return Identity{}, ErrInvalidKind
 	}
@@ -524,6 +536,20 @@ func (s *Service) staleConnection(ctx context.Context, portfolioID, connectionID
 		return Connection{}, err
 	}
 	return current, ErrPrecondition
+}
+
+func identityFieldsChanged(current *Identity, ref, mode string, parent *uuid.UUID) bool {
+	if ref != current.ExternalRef || mode != current.AccountMode {
+		return true
+	}
+	switch {
+	case current.ParentIdentityID == nil && parent == nil:
+		return false
+	case current.ParentIdentityID == nil || parent == nil:
+		return true
+	default:
+		return *current.ParentIdentityID != *parent
+	}
 }
 
 func identityFromRow(row *sqlcgen.Identity) (Identity, error) {

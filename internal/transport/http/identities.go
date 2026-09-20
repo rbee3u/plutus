@@ -150,6 +150,8 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 		return api.PatchIdentity404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
 	case errors.Is(err, access.ErrPrecondition):
 		return api.PatchIdentity412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
+	case errors.Is(err, access.ErrIdentityFrozen):
+		return api.PatchIdentity409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "identity_frozen", "Identity is frozen", err.Error())), nil
 	case err != nil:
 		return api.PatchIdentity400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 	default:

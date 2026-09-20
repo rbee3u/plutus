@@ -22,6 +22,69 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AccountStatus.
+const (
+	AccountStatusActive      AccountStatus = "active"
+	AccountStatusDisappeared AccountStatus = "disappeared"
+	AccountStatusInactive    AccountStatus = "inactive"
+)
+
+// Valid indicates whether the value is a known member of the AccountStatus enum.
+func (e AccountStatus) Valid() bool {
+	switch e {
+	case AccountStatusActive:
+		return true
+	case AccountStatusDisappeared:
+		return true
+	case AccountStatusInactive:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogAssetKind.
+const (
+	Crypto CatalogAssetKind = "crypto"
+	Fiat   CatalogAssetKind = "fiat"
+	Other  CatalogAssetKind = "other"
+)
+
+// Valid indicates whether the value is a known member of the CatalogAssetKind enum.
+func (e CatalogAssetKind) Valid() bool {
+	switch e {
+	case Crypto:
+		return true
+	case Fiat:
+		return true
+	case Other:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CatalogAssetStatus.
+const (
+	CatalogAssetStatusActive      CatalogAssetStatus = "active"
+	CatalogAssetStatusProvisional CatalogAssetStatus = "provisional"
+	CatalogAssetStatusRetired     CatalogAssetStatus = "retired"
+)
+
+// Valid indicates whether the value is a known member of the CatalogAssetStatus enum.
+func (e CatalogAssetStatus) Valid() bool {
+	switch e {
+	case CatalogAssetStatusActive:
+		return true
+	case CatalogAssetStatusProvisional:
+		return true
+	case CatalogAssetStatusRetired:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ConnectionStatus.
 const (
 	ConnectionStatusDisabled ConnectionStatus = "disabled"
@@ -292,6 +355,66 @@ func (e JobAttemptOutcome) Valid() bool {
 	}
 }
 
+// Defines values for ObservationCompleteness.
+const (
+	ObservationCompletenessComplete ObservationCompleteness = "complete"
+	ObservationCompletenessPartial  ObservationCompleteness = "partial"
+)
+
+// Valid indicates whether the value is a known member of the ObservationCompleteness enum.
+func (e ObservationCompleteness) Valid() bool {
+	switch e {
+	case ObservationCompletenessComplete:
+		return true
+	case ObservationCompletenessPartial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ObservationKind.
+const (
+	AccountMetric  ObservationKind = "account_metric"
+	Balance        ObservationKind = "balance"
+	Position       ObservationKind = "position"
+	Price          ObservationKind = "price"
+	ReportedEquity ObservationKind = "reported_equity"
+)
+
+// Valid indicates whether the value is a known member of the ObservationKind enum.
+func (e ObservationKind) Valid() bool {
+	switch e {
+	case AccountMetric:
+		return true
+	case Balance:
+		return true
+	case Position:
+		return true
+	case Price:
+		return true
+	case ReportedEquity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OffsetPageKind.
+const (
+	Offset OffsetPageKind = "offset"
+)
+
+// Valid indicates whether the value is a known member of the OffsetPageKind enum.
+func (e OffsetPageKind) Valid() bool {
+	switch e {
+	case Offset:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PatchConnectionRequestStatus.
 const (
 	PatchConnectionRequestStatusDisabled PatchConnectionRequestStatus = "disabled"
@@ -355,6 +478,45 @@ func (e PatchIdentityRequestStatus) Valid() bool {
 	}
 }
 
+// Defines values for PatchObservationRequestCompleteness.
+const (
+	PatchObservationRequestCompletenessComplete PatchObservationRequestCompleteness = "complete"
+	PatchObservationRequestCompletenessPartial  PatchObservationRequestCompleteness = "partial"
+)
+
+// Valid indicates whether the value is a known member of the PatchObservationRequestCompleteness enum.
+func (e PatchObservationRequestCompleteness) Valid() bool {
+	switch e {
+	case PatchObservationRequestCompletenessComplete:
+		return true
+	case PatchObservationRequestCompletenessPartial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PatchObservationRequestSide.
+const (
+	PatchObservationRequestSideLong  PatchObservationRequestSide = "long"
+	PatchObservationRequestSideNet   PatchObservationRequestSide = "net"
+	PatchObservationRequestSideShort PatchObservationRequestSide = "short"
+)
+
+// Valid indicates whether the value is a known member of the PatchObservationRequestSide enum.
+func (e PatchObservationRequestSide) Valid() bool {
+	switch e {
+	case PatchObservationRequestSideLong:
+		return true
+	case PatchObservationRequestSideNet:
+		return true
+	case PatchObservationRequestSideShort:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PortfolioStatus.
 const (
 	PortfolioStatusActive   PortfolioStatus = "active"
@@ -367,6 +529,51 @@ func (e PortfolioStatus) Valid() bool {
 	case PortfolioStatusActive:
 		return true
 	case PortfolioStatusArchived:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PositionObservationSide.
+const (
+	PositionObservationSideLong  PositionObservationSide = "long"
+	PositionObservationSideNet   PositionObservationSide = "net"
+	PositionObservationSideShort PositionObservationSide = "short"
+)
+
+// Valid indicates whether the value is a known member of the PositionObservationSide enum.
+func (e PositionObservationSide) Valid() bool {
+	switch e {
+	case PositionObservationSideLong:
+		return true
+	case PositionObservationSideNet:
+		return true
+	case PositionObservationSideShort:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PriceObservationPriceType.
+const (
+	ExchangeRate PriceObservationPriceType = "exchange_rate"
+	Index        PriceObservationPriceType = "index"
+	Mark         PriceObservationPriceType = "mark"
+	Market       PriceObservationPriceType = "market"
+)
+
+// Valid indicates whether the value is a known member of the PriceObservationPriceType enum.
+func (e PriceObservationPriceType) Valid() bool {
+	switch e {
+	case ExchangeRate:
+		return true
+	case Index:
+		return true
+	case Mark:
+		return true
+	case Market:
 		return true
 	default:
 		return false
@@ -391,6 +598,41 @@ func (e UserStatus) Valid() bool {
 	}
 }
 
+// Account defines model for Account.
+type Account struct {
+	AccountType string        `json:"accountType"`
+	DisplayName string        `json:"displayName"`
+	ExternalRef string        `json:"externalRef"`
+	Id          UUID          `json:"id"`
+	IdentityId  UUID          `json:"identityId"`
+	PortfolioId UUID          `json:"portfolioId"`
+	Status      AccountStatus `json:"status"`
+}
+
+// AccountStatus defines model for Account.Status.
+type AccountStatus string
+
+// AccountList defines model for AccountList.
+type AccountList struct {
+	Items []Account  `json:"items"`
+	Page  OffsetPage `json:"page"`
+}
+
+// AccountMetricObservation defines model for AccountMetricObservation.
+type AccountMetricObservation struct {
+	DecimalValue     *string `json:"decimalValue,omitempty"`
+	MetricCode       string  `json:"metricCode"`
+	SemanticsVersion string  `json:"semanticsVersion"`
+	TextValue        *string `json:"textValue,omitempty"`
+	Unit             string  `json:"unit"`
+}
+
+// AssetList defines model for AssetList.
+type AssetList struct {
+	Items []CatalogAsset `json:"items"`
+	Page  OffsetPage     `json:"page"`
+}
+
 // AssetRef defines model for AssetRef.
 type AssetRef struct {
 	Code string `json:"code"`
@@ -401,6 +643,30 @@ type AssetRef struct {
 type AuthSession struct {
 	User User `json:"user"`
 }
+
+// BalanceObservation defines model for BalanceObservation.
+type BalanceObservation struct {
+	AssetListingId    UUID    `json:"assetListingId"`
+	AvailableQuantity *string `json:"availableQuantity,omitempty"`
+	LockedQuantity    *string `json:"lockedQuantity,omitempty"`
+	TotalQuantity     *string `json:"totalQuantity,omitempty"`
+}
+
+// CatalogAsset defines model for CatalogAsset.
+type CatalogAsset struct {
+	Code     string             `json:"code"`
+	Decimals *int               `json:"decimals,omitempty"`
+	Id       UUID               `json:"id"`
+	Kind     CatalogAssetKind   `json:"kind"`
+	Name     string             `json:"name"`
+	Status   CatalogAssetStatus `json:"status"`
+}
+
+// CatalogAssetKind defines model for CatalogAsset.Kind.
+type CatalogAssetKind string
+
+// CatalogAssetStatus defines model for CatalogAsset.Status.
+type CatalogAssetStatus string
 
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
@@ -486,6 +752,9 @@ type CursorPage struct {
 
 // CursorPageKind defines model for CursorPage.Kind.
 type CursorPageKind string
+
+// Decimal defines model for Decimal.
+type Decimal = string
 
 // FieldError defines model for FieldError.
 type FieldError struct {
@@ -596,6 +865,48 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// Observation defines model for Observation.
+type Observation struct {
+	AccountId          *openapi_types.UUID        `json:"accountId,omitempty"`
+	AccountMetric      *AccountMetricObservation  `json:"accountMetric,omitempty"`
+	Balance            *BalanceObservation        `json:"balance,omitempty"`
+	CollectedAt        time.Time                  `json:"collectedAt"`
+	Completeness       ObservationCompleteness    `json:"completeness"`
+	Id                 UUID                       `json:"id"`
+	IdentityId         UUID                       `json:"identityId"`
+	IdentitySnapshotId UUID                       `json:"identitySnapshotId"`
+	Kind               ObservationKind            `json:"kind"`
+	PortfolioId        UUID                       `json:"portfolioId"`
+	Position           *PositionObservation       `json:"position,omitempty"`
+	Price              *PriceObservation          `json:"price,omitempty"`
+	ReportedEquity     *ReportedEquityObservation `json:"reportedEquity,omitempty"`
+	SourceObservedAt   time.Time                  `json:"sourceObservedAt"`
+	Version            int                        `json:"version"`
+}
+
+// ObservationCompleteness defines model for Observation.Completeness.
+type ObservationCompleteness string
+
+// ObservationCorrection defines model for ObservationCorrection.
+type ObservationCorrection struct {
+	Job         Job         `json:"job"`
+	Observation Observation `json:"observation"`
+}
+
+// ObservationKind defines model for ObservationKind.
+type ObservationKind string
+
+// OffsetPage defines model for OffsetPage.
+type OffsetPage struct {
+	Kind   OffsetPageKind `json:"kind"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
+	Total  int            `json:"total"`
+}
+
+// OffsetPageKind defines model for OffsetPage.Kind.
+type OffsetPageKind string
+
 // PatchConnectionRequest defines model for PatchConnectionRequest.
 type PatchConnectionRequest struct {
 	CollectionIntervalSeconds *int                          `json:"collectionIntervalSeconds,omitempty"`
@@ -621,6 +932,30 @@ type PatchIdentityRequestAccountMode string
 
 // PatchIdentityRequestStatus defines model for PatchIdentityRequest.Status.
 type PatchIdentityRequestStatus string
+
+// PatchObservationRequest defines model for PatchObservationRequest.
+type PatchObservationRequest struct {
+	Amount            *Decimal                             `json:"amount,omitempty"`
+	AvailableQuantity *string                              `json:"availableQuantity,omitempty"`
+	Completeness      *PatchObservationRequestCompleteness `json:"completeness,omitempty"`
+	DecimalValue      *string                              `json:"decimalValue,omitempty"`
+	EntryPrice        *string                              `json:"entryPrice,omitempty"`
+	Leverage          *string                              `json:"leverage,omitempty"`
+	LockedQuantity    *string                              `json:"lockedQuantity,omitempty"`
+	MarkPrice         *string                              `json:"markPrice,omitempty"`
+	Price             *Decimal                             `json:"price,omitempty"`
+	Quantity          *Decimal                             `json:"quantity,omitempty"`
+	Side              *PatchObservationRequestSide         `json:"side,omitempty"`
+	TextValue         *string                              `json:"textValue,omitempty"`
+	TotalQuantity     *string                              `json:"totalQuantity,omitempty"`
+	UnrealizedValue   *string                              `json:"unrealizedValue,omitempty"`
+}
+
+// PatchObservationRequestCompleteness defines model for PatchObservationRequest.Completeness.
+type PatchObservationRequestCompleteness string
+
+// PatchObservationRequestSide defines model for PatchObservationRequest.Side.
+type PatchObservationRequestSide string
 
 // PatchPortfolioRequest defines model for PatchPortfolioRequest.
 type PatchPortfolioRequest struct {
@@ -650,6 +985,33 @@ type PortfolioList struct {
 	Items []Portfolio `json:"items"`
 }
 
+// PositionObservation defines model for PositionObservation.
+type PositionObservation struct {
+	EntryPrice          *string                 `json:"entryPrice,omitempty"`
+	InstrumentId        UUID                    `json:"instrumentId"`
+	Leverage            *string                 `json:"leverage,omitempty"`
+	MarkPrice           *string                 `json:"markPrice,omitempty"`
+	PlatformPositionRef string                  `json:"platformPositionRef"`
+	Quantity            Decimal                 `json:"quantity"`
+	Side                PositionObservationSide `json:"side"`
+	UnrealizedValue     *string                 `json:"unrealizedValue,omitempty"`
+}
+
+// PositionObservationSide defines model for PositionObservation.Side.
+type PositionObservationSide string
+
+// PriceObservation defines model for PriceObservation.
+type PriceObservation struct {
+	BaseListingId  *openapi_types.UUID       `json:"baseListingId,omitempty"`
+	InstrumentId   *openapi_types.UUID       `json:"instrumentId,omitempty"`
+	Price          Decimal                   `json:"price"`
+	PriceType      PriceObservationPriceType `json:"priceType"`
+	QuoteListingId UUID                      `json:"quoteListingId"`
+}
+
+// PriceObservationPriceType defines model for PriceObservation.PriceType.
+type PriceObservationPriceType string
+
 // Problem defines model for Problem.
 type Problem struct {
 	Code        string        `json:"code"`
@@ -671,6 +1033,14 @@ type RegisterRequest struct {
 // RegistrationStatus defines model for RegistrationStatus.
 type RegistrationStatus struct {
 	Enabled bool `json:"enabled"`
+}
+
+// ReportedEquityObservation defines model for ReportedEquityObservation.
+type ReportedEquityObservation struct {
+	Amount                Decimal `json:"amount"`
+	CoveredAccountIds     []UUID  `json:"coveredAccountIds"`
+	CoveredIdentityIds    []UUID  `json:"coveredIdentityIds"`
+	DenominationListingId UUID    `json:"denominationListingId"`
 }
 
 // Session defines model for Session.
@@ -719,6 +1089,9 @@ type IfMatch = string
 
 // JobID defines model for JobID.
 type JobID = UUID
+
+// ObservationID defines model for ObservationID.
+type ObservationID = UUID
 
 // PortfolioID defines model for PortfolioID.
 type PortfolioID = UUID
@@ -780,10 +1153,23 @@ type PatchPortfolioParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
+// ListAccountsParams defines parameters for ListAccounts.
+type ListAccountsParams struct {
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // ArchivePortfolioParams defines parameters for ArchivePortfolio.
 type ArchivePortfolioParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// SearchCatalogAssetsParams defines parameters for SearchCatalogAssets.
+type SearchCatalogAssetsParams struct {
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
+	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // CreateConnectionParams defines parameters for CreateConnection.
@@ -828,6 +1214,12 @@ type ListJobsParams struct {
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
+// PatchObservationParams defines parameters for PatchObservation.
+type PatchObservationParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
 // RestorePortfolioParams defines parameters for RestorePortfolio.
 type RestorePortfolioParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
@@ -860,6 +1252,9 @@ type CreateIdentityJSONRequestBody = CreateIdentityRequest
 
 // PatchIdentityJSONRequestBody defines body for PatchIdentity for application/json ContentType.
 type PatchIdentityJSONRequestBody = PatchIdentityRequest
+
+// PatchObservationJSONRequestBody defines body for PatchObservation for application/json ContentType.
+type PatchObservationJSONRequestBody = PatchObservationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -909,8 +1304,14 @@ type ServerInterface interface {
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(c *gin.Context, portfolioId PortfolioID, params PatchPortfolioParams)
 
+	// (GET /api/v1/portfolios/{portfolioId}/accounts)
+	ListAccounts(c *gin.Context, portfolioId PortfolioID, params ListAccountsParams)
+
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(c *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
+	SearchCatalogAssets(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/connections)
 	ListConnections(c *gin.Context, portfolioId PortfolioID)
@@ -947,6 +1348,9 @@ type ServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(c *gin.Context, portfolioId PortfolioID, jobId JobID)
+
+	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
+	PatchObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(c *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams)
@@ -1540,6 +1944,50 @@ func (siw *ServerInterfaceWrapper) PatchPortfolio(c *gin.Context) {
 	siw.Handler.PatchPortfolio(c, portfolioId, params)
 }
 
+// ListAccounts operation middleware
+func (siw *ServerInterfaceWrapper) ListAccounts(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAccountsParams
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAccounts(c, portfolioId, params)
+}
+
 // ArchivePortfolio operation middleware
 func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
 
@@ -1609,6 +2057,58 @@ func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
 	}
 
 	siw.Handler.ArchivePortfolio(c, portfolioId, params)
+}
+
+// SearchCatalogAssets operation middleware
+func (siw *ServerInterfaceWrapper) SearchCatalogAssets(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchCatalogAssetsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SearchCatalogAssets(c, portfolioId, params)
 }
 
 // ListConnections operation middleware
@@ -2263,6 +2763,86 @@ func (siw *ServerInterfaceWrapper) GetJob(c *gin.Context) {
 	siw.Handler.GetJob(c, portfolioId, jobId)
 }
 
+// PatchObservation operation middleware
+func (siw *ServerInterfaceWrapper) PatchObservation(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "observationId" -------------
+	var observationId ObservationID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "observationId", c.Param("observationId"), &observationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter observationId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PatchObservationParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchObservation(c, portfolioId, observationId, params)
+}
+
 // RestorePortfolio operation middleware
 func (siw *ServerInterfaceWrapper) RestorePortfolio(c *gin.Context) {
 
@@ -2418,6 +2998,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections/:connectionId", wrapper.PatchConnection)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts", wrapper.ListAccounts)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets", wrapper.SearchCatalogAssets)
+	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.PatchObservation)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -3188,6 +3771,59 @@ func (response PatchPortfolio412ApplicationProblemPlusJSONResponse) VisitPatchPo
 	return err
 }
 
+type ListAccountsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListAccountsParams
+}
+
+type ListAccountsResponseObject interface {
+	VisitListAccountsResponse(w http.ResponseWriter) error
+}
+
+type ListAccounts200JSONResponse AccountList
+
+func (response ListAccounts200JSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAccounts401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListAccounts401ApplicationProblemPlusJSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAccounts404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAccounts404ApplicationProblemPlusJSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ArchivePortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ArchivePortfolioParams
@@ -3251,6 +3887,59 @@ func (response ArchivePortfolio412ApplicationProblemPlusJSONResponse) VisitArchi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssetsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      SearchCatalogAssetsParams
+}
+
+type SearchCatalogAssetsResponseObject interface {
+	VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error
+}
+
+type SearchCatalogAssets200JSONResponse AssetList
+
+func (response SearchCatalogAssets200JSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssets401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SearchCatalogAssets401ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchCatalogAssets404ApplicationProblemPlusJSONResponse Problem
+
+func (response SearchCatalogAssets404ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3863,6 +4552,20 @@ func (response PatchIdentity404ApplicationProblemPlusJSONResponse) VisitPatchIde
 	return err
 }
 
+type PatchIdentity409ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchIdentity409ApplicationProblemPlusJSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchIdentity412ApplicationProblemPlusJSONResponse Problem
 
 func (response PatchIdentity412ApplicationProblemPlusJSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
@@ -4051,6 +4754,99 @@ func (response GetJob404ApplicationProblemPlusJSONResponse) VisitGetJobResponse(
 	return err
 }
 
+type PatchObservationRequestObject struct {
+	PortfolioId   PortfolioID   `json:"portfolioId"`
+	ObservationId ObservationID `json:"observationId"`
+	Params        PatchObservationParams
+	Body          *PatchObservationJSONRequestBody
+}
+
+type PatchObservationResponseObject interface {
+	VisitPatchObservationResponse(w http.ResponseWriter) error
+}
+
+type PatchObservation200ResponseHeaders struct {
+	ETag *string
+}
+
+type PatchObservation200JSONResponse struct {
+	Body    ObservationCorrection
+	Headers PatchObservation200ResponseHeaders
+}
+
+func (response PatchObservation200JSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchObservation400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PatchObservation400ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchObservation401ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchObservation401ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchObservation404ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchObservation404ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchObservation412ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchObservation412ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RestorePortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      RestorePortfolioParams
@@ -4222,8 +5018,14 @@ type StrictServerInterface interface {
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(ctx context.Context, request PatchPortfolioRequestObject) (PatchPortfolioResponseObject, error)
 
+	// (GET /api/v1/portfolios/{portfolioId}/accounts)
+	ListAccounts(ctx context.Context, request ListAccountsRequestObject) (ListAccountsResponseObject, error)
+
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(ctx context.Context, request ArchivePortfolioRequestObject) (ArchivePortfolioResponseObject, error)
+
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
+	SearchCatalogAssets(ctx context.Context, request SearchCatalogAssetsRequestObject) (SearchCatalogAssetsResponseObject, error)
 
 	// (GET /api/v1/portfolios/{portfolioId}/connections)
 	ListConnections(ctx context.Context, request ListConnectionsRequestObject) (ListConnectionsResponseObject, error)
@@ -4260,6 +5062,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
+
+	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
+	PatchObservation(ctx context.Context, request PatchObservationRequestObject) (PatchObservationResponseObject, error)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(ctx context.Context, request RestorePortfolioRequestObject) (RestorePortfolioResponseObject, error)
@@ -4748,6 +5553,33 @@ func (sh *strictHandler) PatchPortfolio(ctx *gin.Context, portfolioId PortfolioI
 	}
 }
 
+// ListAccounts operation middleware
+func (sh *strictHandler) ListAccounts(ctx *gin.Context, portfolioId PortfolioID, params ListAccountsParams) {
+	var request ListAccountsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAccounts(ctx, request.(ListAccountsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAccounts")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListAccountsResponseObject); ok {
+		if err := validResponse.VisitListAccountsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ArchivePortfolio operation middleware
 func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams) {
 	var request ArchivePortfolioRequestObject
@@ -4768,6 +5600,33 @@ func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId Portfoli
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ArchivePortfolioResponseObject); ok {
 		if err := validResponse.VisitArchivePortfolioResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchCatalogAssets operation middleware
+func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams) {
+	var request SearchCatalogAssetsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchCatalogAssets(ctx, request.(SearchCatalogAssetsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchCatalogAssets")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(SearchCatalogAssetsResponseObject); ok {
+		if err := validResponse.VisitSearchCatalogAssetsResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -5129,6 +5988,41 @@ func (sh *strictHandler) GetJob(ctx *gin.Context, portfolioId PortfolioID, jobId
 	}
 }
 
+// PatchObservation operation middleware
+func (sh *strictHandler) PatchObservation(ctx *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams) {
+	var request PatchObservationRequestObject
+
+	request.PortfolioId = portfolioId
+	request.ObservationId = observationId
+	request.Params = params
+
+	var body PatchObservationJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PatchObservation(ctx, request.(PatchObservationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PatchObservation")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PatchObservationResponseObject); ok {
+		if err := validResponse.VisitPatchObservationResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // RestorePortfolio operation middleware
 func (sh *strictHandler) RestorePortfolio(ctx *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams) {
 	var request RestorePortfolioRequestObject
@@ -5209,58 +6103,75 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"sdif+hN/db361wA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

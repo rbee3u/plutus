@@ -15,9 +15,11 @@ import (
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -59,6 +61,8 @@ type EngineOptions struct {
 	AllowedOrigins      []string
 	Portfolios          *portfolio.Service
 	Access              *access.Service
+	Catalog             *catalog.Service
+	Observations        *observation.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 }
@@ -83,6 +87,8 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		SecureCookies:       opts.SecureCookies,
 		Portfolios:          opts.Portfolios,
 		Access:              opts.Access,
+		Catalog:             opts.Catalog,
+		Observations:        opts.Observations,
 		Idempotency:         opts.Idempotency,
 		Jobs:                opts.Jobs,
 	}

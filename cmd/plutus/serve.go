@@ -15,10 +15,12 @@ import (
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	httpserver "github.com/rbee3u/plutus/internal/transport/http"
 	"github.com/rbee3u/plutus/internal/worker"
@@ -62,6 +64,8 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	var authSvc *auth.Service
 	var portfolios *portfolio.Service
 	var accessSvc *access.Service
+	var catalogSvc *catalog.Service
+	var observationSvc *observation.Service
 	var idem *idempotency.Store
 	var jobSvc *jobs.Service
 	if db != nil {
@@ -69,6 +73,8 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		portfolios = portfolio.NewService(db)
 		fresh := cfg.Collection.DefaultInterval * time.Duration(cfg.Collection.DefaultFreshnessMultiplier)
 		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh)
+		catalogSvc = catalog.NewService(db)
+		observationSvc = observation.NewService(db)
 		idem = idempotency.NewStore(db)
 		jobSvc = jobs.NewService(db)
 		loop = worker.New(worker.Options{
@@ -90,6 +96,8 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		AllowedOrigins:      []string{"http://127.0.0.1:5173", "http://localhost:5173"},
 		Portfolios:          portfolios,
 		Access:              accessSvc,
+		Catalog:             catalogSvc,
+		Observations:        observationSvc,
 		Idempotency:         idem,
 		Jobs:                jobSvc,
 	})

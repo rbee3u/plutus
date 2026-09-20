@@ -6,8 +6,10 @@ import (
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -23,6 +25,8 @@ type API struct {
 	SecureCookies       bool
 	Portfolios          *portfolio.Service
 	Access              *access.Service
+	Catalog             *catalog.Service
+	Observations        *observation.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 }

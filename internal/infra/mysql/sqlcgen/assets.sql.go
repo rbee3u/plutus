@@ -9,6 +9,24 @@ import (
 	"context"
 )
 
+const countSearchAssets = `-- name: CountSearchAssets :one
+SELECT COUNT(*)
+FROM assets
+WHERE status IN ('active', 'provisional')
+  AND (? = '' OR INSTR(LOWER(code), LOWER(?)) > 0 OR INSTR(LOWER(name), LOWER(?)) > 0)
+`
+
+type CountSearchAssetsParams struct {
+	Query string
+}
+
+func (q *Queries) CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSearchAssets, arg.Query, arg.Query, arg.Query)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getAssetByCode = `-- name: GetAssetByCode :one
 SELECT id, code, name, kind, decimals, status, created_at, updated_at
 FROM assets
@@ -62,6 +80,59 @@ ORDER BY code
 
 func (q *Queries) ListActiveAssets(ctx context.Context) ([]Asset, error) {
 	rows, err := q.db.QueryContext(ctx, listActiveAssets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Asset{}
+	for rows.Next() {
+		var i Asset
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.Kind,
+			&i.Decimals,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchAssets = `-- name: SearchAssets :many
+SELECT id, code, name, kind, decimals, status, created_at, updated_at
+FROM assets
+WHERE status IN ('active', 'provisional')
+  AND (? = '' OR INSTR(LOWER(code), LOWER(?)) > 0 OR INSTR(LOWER(name), LOWER(?)) > 0)
+ORDER BY code ASC, id ASC
+LIMIT ? OFFSET ?
+`
+
+type SearchAssetsParams struct {
+	Query  string
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) SearchAssets(ctx context.Context, arg SearchAssetsParams) ([]Asset, error) {
+	rows, err := q.db.QueryContext(ctx, searchAssets,
+		arg.Query,
+		arg.Query,
+		arg.Query,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}

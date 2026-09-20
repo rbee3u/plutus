@@ -11,35 +11,63 @@ import (
 type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
+	CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error)
+	CountIdentityObservations(ctx context.Context, arg CountIdentityObservationsParams) (int64, error)
 	CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error)
+	CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error)
 	DeleteConnection(ctx context.Context, arg DeleteConnectionParams) (int64, error)
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
+	GetAccount(ctx context.Context, arg GetAccountParams) (Account, error)
+	GetAccountMetricObservation(ctx context.Context, arg GetAccountMetricObservationParams) (AccountMetricObservation, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
 	GetAssetByCode(ctx context.Context, code string) (Asset, error)
 	GetAssetByID(ctx context.Context, id []byte) (Asset, error)
+	GetAssetListing(ctx context.Context, id []byte) (AssetListing, error)
+	GetBalanceObservation(ctx context.Context, arg GetBalanceObservationParams) (BalanceObservation, error)
+	GetConfirmedMappingAsset(ctx context.Context, arg GetConfirmedMappingAssetParams) ([]byte, error)
 	GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error)
+	GetIdentitySnapshot(ctx context.Context, arg GetIdentitySnapshotParams) (IdentitySnapshot, error)
 	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
+	GetObservation(ctx context.Context, arg GetObservationParams) (Observation, error)
 	GetPlatformByCode(ctx context.Context, code string) (Platform, error)
 	GetPlatformByID(ctx context.Context, id []byte) (Platform, error)
 	GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error)
 	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error)
 	GetPortfolioGenerationPointer(ctx context.Context, id []byte) ([]byte, error)
+	GetPositionObservation(ctx context.Context, arg GetPositionObservationParams) (PositionObservation, error)
+	GetPriceObservation(ctx context.Context, arg GetPriceObservationParams) (PriceObservation, error)
+	GetReportedEquityObservation(ctx context.Context, arg GetReportedEquityObservationParams) (ReportedEquityObservation, error)
 	GetSessionByID(ctx context.Context, id []byte) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
 	GetUserByID(ctx context.Context, id []byte) (User, error)
 	GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error)
 	GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error)
+	InsertAccount(ctx context.Context, arg InsertAccountParams) error
+	InsertAccountMetricObservation(ctx context.Context, arg InsertAccountMetricObservationParams) error
+	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertBalanceObservation(ctx context.Context, arg InsertBalanceObservationParams) error
+	InsertCollectionFailure(ctx context.Context, arg InsertCollectionFailureParams) error
+	InsertCollectionJobDetail(ctx context.Context, arg InsertCollectionJobDetailParams) error
+	InsertCollectionRun(ctx context.Context, arg InsertCollectionRunParams) error
 	InsertConnection(ctx context.Context, arg InsertConnectionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
+	InsertIdentitySnapshot(ctx context.Context, arg InsertIdentitySnapshotParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
 	InsertJobAttempt(ctx context.Context, arg InsertJobAttemptParams) error
+	InsertObservation(ctx context.Context, arg InsertObservationParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
+	InsertPositionObservation(ctx context.Context, arg InsertPositionObservationParams) error
+	InsertPriceObservation(ctx context.Context, arg InsertPriceObservationParams) error
 	InsertProjectionJobDetail(ctx context.Context, arg InsertProjectionJobDetailParams) error
 	InsertProjectionJobKind(ctx context.Context, arg InsertProjectionJobKindParams) error
+	InsertReportedEquityCoveredAccount(ctx context.Context, arg InsertReportedEquityCoveredAccountParams) error
+	InsertReportedEquityCoveredIdentity(ctx context.Context, arg InsertReportedEquityCoveredIdentityParams) error
+	InsertReportedEquityObservation(ctx context.Context, arg InsertReportedEquityObservationParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
+	ListAccountsByPortfolio(ctx context.Context, arg ListAccountsByPortfolioParams) ([]Account, error)
 	ListActiveAssets(ctx context.Context) ([]Asset, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListConnectionsByPortfolioRow, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error)
@@ -47,6 +75,8 @@ type Querier interface {
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
 	ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error)
+	ListReportedEquityCoveredAccounts(ctx context.Context, arg ListReportedEquityCoveredAccountsParams) ([][]byte, error)
+	ListReportedEquityCoveredIdentities(ctx context.Context, arg ListReportedEquityCoveredIdentitiesParams) ([][]byte, error)
 	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
 	LockClaimableJob(ctx context.Context, arg LockClaimableJobParams) (LockClaimableJobRow, error)
 	MarkJobFailed(ctx context.Context, arg MarkJobFailedParams) (int64, error)
@@ -58,11 +88,18 @@ type Querier interface {
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
+	SearchAssets(ctx context.Context, arg SearchAssetsParams) ([]Asset, error)
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	UpdateAccountMetricObservation(ctx context.Context, arg UpdateAccountMetricObservationParams) error
+	UpdateBalanceObservation(ctx context.Context, arg UpdateBalanceObservationParams) error
 	UpdateConnection(ctx context.Context, arg UpdateConnectionParams) (int64, error)
 	UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error)
+	UpdateObservationHeader(ctx context.Context, arg UpdateObservationHeaderParams) (int64, error)
 	UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error)
+	UpdatePositionObservation(ctx context.Context, arg UpdatePositionObservationParams) error
+	UpdatePriceObservation(ctx context.Context, arg UpdatePriceObservationParams) error
+	UpdateReportedEquityObservation(ctx context.Context, arg UpdateReportedEquityObservationParams) error
 	UpdateUserCredential(ctx context.Context, arg UpdateUserCredentialParams) error
 }
 

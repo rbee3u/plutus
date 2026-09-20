@@ -23,4 +23,6 @@ var (
 	ErrInvalidStatus = errors.New("status is invalid")
 	// ErrInvalidParent is returned when the parent identity is missing or archived.
 	ErrInvalidParent = errors.New("parent identity is invalid")
+	// ErrIdentityFrozen is returned when identity fields cannot change after Observations exist.
+	ErrIdentityFrozen = errors.New("identity fields are immutable after observations exist")
 )

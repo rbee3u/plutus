@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Plutus API
   version: 0.1.0
-  description: Phase 1 transport contract for authentication, portfolios, identities, connections, and jobs.
+  description: Phase 2 transport contract for authentication, portfolios, identities, connections, catalog, observations, and jobs.
 servers:
   - url: /
 paths:
@@ -469,6 +469,8 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive:
@@ -648,6 +650,104 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Discovered accounts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/assets:
+    get:
+      operationId: searchCatalogAssets
+      tags: [catalog]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Canonical assets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/observations/{observationId}:
+    patch:
+      operationId: patchObservation
+      tags: [observations]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ObservationID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchObservationRequest"
+      responses:
+        "200":
+          description: Corrected observation and the enqueued projection job.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObservationCorrection"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -694,6 +794,12 @@ components:
         $ref: "#/components/schemas/UUID"
     JobID:
       name: jobId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    ObservationID:
+      name: observationId
       in: path
       required: true
       schema:
@@ -1164,6 +1270,259 @@ components:
           type: [string, "null"]
         hasMore:
           type: boolean
+    OffsetPage:
+      type: object
+      additionalProperties: false
+      required: [kind, offset, limit, total]
+      properties:
+        kind:
+          type: string
+          enum: [offset]
+        offset:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        total:
+          type: integer
+          minimum: 0
+    Decimal:
+      type: string
+      pattern: '^-?[0-9]+(\.[0-9]+)?$'
+    Account:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, identityId, externalRef, displayName, accountType, status]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        externalRef:
+          type: string
+        displayName:
+          type: string
+        accountType:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, disappeared]
+    AccountList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+    CatalogAsset:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, kind, status]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        code:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [fiat, crypto, other]
+        status:
+          type: string
+          enum: [active, provisional, retired]
+        decimals:
+          type: [integer, "null"]
+          minimum: 0
+    AssetList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogAsset"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+    Observation:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, identitySnapshotId, identityId, kind, sourceObservedAt, collectedAt, completeness, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        identitySnapshotId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/ObservationKind"
+        sourceObservedAt:
+          type: string
+          format: date-time
+        collectedAt:
+          type: string
+          format: date-time
+        completeness:
+          type: string
+          enum: [complete, partial]
+        version:
+          type: integer
+          minimum: 1
+        balance:
+          $ref: "#/components/schemas/BalanceObservation"
+        position:
+          $ref: "#/components/schemas/PositionObservation"
+        reportedEquity:
+          $ref: "#/components/schemas/ReportedEquityObservation"
+        price:
+          $ref: "#/components/schemas/PriceObservation"
+        accountMetric:
+          $ref: "#/components/schemas/AccountMetricObservation"
+    ObservationKind:
+      type: string
+      enum: [balance, position, reported_equity, account_metric, price]
+    BalanceObservation:
+      type: object
+      additionalProperties: false
+      required: [assetListingId]
+      properties:
+        assetListingId:
+          $ref: "#/components/schemas/UUID"
+        totalQuantity:
+          type: [string, "null"]
+        availableQuantity:
+          type: [string, "null"]
+        lockedQuantity:
+          type: [string, "null"]
+    PositionObservation:
+      type: object
+      additionalProperties: false
+      required: [instrumentId, platformPositionRef, side, quantity]
+      properties:
+        instrumentId:
+          $ref: "#/components/schemas/UUID"
+        platformPositionRef:
+          type: string
+        side:
+          type: string
+          enum: [long, short, net]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        entryPrice:
+          type: [string, "null"]
+        markPrice:
+          type: [string, "null"]
+        unrealizedValue:
+          type: [string, "null"]
+        leverage:
+          type: [string, "null"]
+    ReportedEquityObservation:
+      type: object
+      additionalProperties: false
+      required: [denominationListingId, amount, coveredIdentityIds, coveredAccountIds]
+      properties:
+        denominationListingId:
+          $ref: "#/components/schemas/UUID"
+        amount:
+          $ref: "#/components/schemas/Decimal"
+        coveredIdentityIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/UUID"
+        coveredAccountIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/UUID"
+    PriceObservation:
+      type: object
+      additionalProperties: false
+      required: [quoteListingId, priceType, price]
+      properties:
+        instrumentId:
+          type: [string, "null"]
+          format: uuid
+        baseListingId:
+          type: [string, "null"]
+          format: uuid
+        quoteListingId:
+          $ref: "#/components/schemas/UUID"
+        priceType:
+          type: string
+          enum: [market, mark, index, exchange_rate]
+        price:
+          $ref: "#/components/schemas/Decimal"
+    AccountMetricObservation:
+      type: object
+      additionalProperties: false
+      required: [metricCode, unit, semanticsVersion]
+      properties:
+        metricCode:
+          type: string
+        unit:
+          type: string
+        decimalValue:
+          type: [string, "null"]
+        textValue:
+          type: [string, "null"]
+        semanticsVersion:
+          type: string
+    PatchObservationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        completeness:
+          type: string
+          enum: [complete, partial]
+        totalQuantity:
+          type: [string, "null"]
+        availableQuantity:
+          type: [string, "null"]
+        lockedQuantity:
+          type: [string, "null"]
+        side:
+          type: string
+          enum: [long, short, net]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        entryPrice:
+          type: [string, "null"]
+        markPrice:
+          type: [string, "null"]
+        unrealizedValue:
+          type: [string, "null"]
+        leverage:
+          type: [string, "null"]
+        amount:
+          $ref: "#/components/schemas/Decimal"
+        price:
+          $ref: "#/components/schemas/Decimal"
+        decimalValue:
+          type: [string, "null"]
+        textValue:
+          type: [string, "null"]
+    ObservationCorrection:
+      type: object
+      additionalProperties: false
+      required: [observation, job]
+      properties:
+        observation:
+          $ref: "#/components/schemas/Observation"
+        job:
+          $ref: "#/components/schemas/Job"
     Problem:
       type: object
       additionalProperties: false
