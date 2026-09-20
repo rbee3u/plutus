@@ -28,7 +28,7 @@ format: ## Format Go code and imports for local development.
 	goimports -local $(MODULE) -l -w . && gofumpt -l -w .
 
 build: ## Build the CLI as bin/plutus.
-	mkdir -p ./bin && go build -o ./bin/plutus $(MODULE)
+	mkdir -p ./bin && go build -o ./bin/plutus ./cmd/plutus
 
 test: ## Run unit tests without cached results.
 	go test -count 1 ./...
@@ -37,4 +37,4 @@ lint: ## Run the configured Go linters.
 	golangci-lint run
 
 run: ## Run the CLI locally with go run; pass arguments with ARGS="...".
-	go run . $(ARGS)
+	go run ./cmd/plutus $(ARGS)

@@ -6,7 +6,7 @@ The domain hierarchy is `Platform -> Identity -> Account`: each main or subordin
 
 ## Current status
 
-The repository contains a minimal Go/Cobra CLI with a placeholder `demo` command. Collection of Identity Snapshots, persistence, authentication, the JSON API, and the web frontend have not been implemented. The domain model, product boundaries, and MVP technical architecture are documented for implementation.
+The repository contains a Go/Cobra CLI composition root at `cmd/plutus`. Collection of Identity Snapshots, persistence, authentication, the JSON API, and the web frontend have not been implemented. The domain model, product boundaries, and MVP technical architecture are documented for implementation. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
 
 ## First-release scope
 
@@ -44,6 +44,7 @@ The accepted design uses a contract-first modular Go monolith, a versioned JSON 
 - [Domain glossary](./CONTEXT.md)
 - [MVP technical design](./docs/technical-design.md)
 - [Architecture decision records](./docs/adr/)
+- [Implementation checklist](./docs/implementation-checklist.md)
 - [Contributor and agent guidance](./AGENTS.md)
 
 ## Development
@@ -69,4 +70,4 @@ make format && make build && make test && make lint
 make style && make build && make test && make lint
 ```
 
-Use `make help` to list commands in their Makefile order. Run `make run` for local execution through `go run .`, without a separate build step; it currently displays CLI help. Pass CLI arguments with `ARGS`, for example `make run ARGS=demo` to execute the existing placeholder command; this is not the planned frontend demo.
+Use `make help` to list commands in their Makefile order. Run `make run` for local execution through `go run ./cmd/plutus`, without a separate build step; it currently displays CLI help. Pass CLI arguments with `ARGS`.
