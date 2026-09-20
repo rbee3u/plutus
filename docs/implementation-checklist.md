@@ -187,9 +187,9 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 8 — Management pages
 
-- [ ] Data, Jobs, Connection, Catalog, Observation, and audit screens
-- [ ] Catalog mapping and tracking revision UI
-- [ ] Job diagnostics, Observation correction, and full Projection rebuild from the UI
+- [x] Data, Jobs, Connection, Catalog, Observation, and audit screens
+- [x] Catalog mapping and tracking revision UI
+- [x] Job diagnostics, Observation correction, and full Projection rebuild from the UI
 
 ### Milestone 9 — Phase 3 close-out
 

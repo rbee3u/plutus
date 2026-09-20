@@ -10,7 +10,12 @@ import { RegisterPage } from "@/features/auth/RegisterPage";
 import { BaselinePage } from "@/features/capital/BaselinePage";
 import { FlowsPage } from "@/features/capital/FlowsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
-import { PlaceholderPage } from "@/features/placeholder/PlaceholderPage";
+import { AuditPage } from "@/features/data/AuditPage";
+import { CatalogPage } from "@/features/data/CatalogPage";
+import { ConnectionsPage } from "@/features/data/ConnectionsPage";
+import { IdentitiesPage } from "@/features/data/IdentitiesPage";
+import { JobsPage } from "@/features/data/JobsPage";
+import { ObservationsPage } from "@/features/data/ObservationsPage";
 import { ExposurePage } from "@/features/portfolio/ExposurePage";
 import { BalancesPage } from "@/features/portfolio/BalancesPage";
 import { PositionsPage } from "@/features/portfolio/PositionsPage";
@@ -48,11 +53,12 @@ export function App() {
             <Route path="history/value-changes" element={<ValueChangesPage />} />
             <Route path="capital/baseline" element={<BaselinePage />} />
             <Route path="capital/flows" element={<FlowsPage />} />
-            <Route path="data/identities" element={<PlaceholderPage />} />
-            <Route path="data/connections" element={<PlaceholderPage />} />
-            <Route path="data/catalog" element={<PlaceholderPage />} />
-            <Route path="data/observations" element={<PlaceholderPage />} />
-            <Route path="data/jobs" element={<PlaceholderPage />} />
+            <Route path="data/identities" element={<IdentitiesPage />} />
+            <Route path="data/connections" element={<ConnectionsPage />} />
+            <Route path="data/catalog" element={<CatalogPage />} />
+            <Route path="data/observations" element={<ObservationsPage />} />
+            <Route path="data/jobs" element={<JobsPage />} />
+            <Route path="data/audit" element={<AuditPage />} />
             <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
             <Route path="settings/security" element={<SecuritySettingsPage />} />
             <Route index element={<Navigate to="overview" replace />} />

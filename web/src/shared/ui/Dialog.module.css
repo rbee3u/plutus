@@ -1,0 +1,60 @@
+.dialog {
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-structural);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--line-content);
+  background: var(--surface-inset);
+}
+
+.header h3 {
+  margin: 0;
+  font-size: var(--text-panel-title);
+  font-weight: var(--weight-panel-title);
+  line-height: var(--line-height-panel-title);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-lg);
+  max-height: min(70vh, 640px);
+  padding: var(--space-lg);
+  overflow: auto;
+}
+
+@media (pointer: coarse) {
+  .dialog button,
+  .dialog input,
+  .dialog select,
+  .dialog textarea {
+    min-height: 44px;
+  }
+
+  .dialog button {
+    min-width: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    transition: none;
+  }
+}

@@ -259,3 +259,18 @@
 .issueInfo {
   color: var(--muted);
 }
+
+.jsonBlock {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: var(--space-md);
+  border: 1px solid var(--line-content);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
