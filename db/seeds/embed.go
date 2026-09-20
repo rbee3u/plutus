@@ -7,6 +7,8 @@ const (
 	ProfileMinimal = "minimal"
 	// ProfileEdgeCases is the incomplete and overlapping-coverage profile.
 	ProfileEdgeCases = "edge-cases"
+	// ProfileWalkthrough is the rich local UI walkthrough profile.
+	ProfileWalkthrough = "walkthrough"
 )
 
 //go:embed minimal.sql edge-cases.sql

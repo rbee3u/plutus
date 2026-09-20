@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -10,10 +9,7 @@ import (
 )
 
 func TestMigrateUpAndSeeds(t *testing.T) {
-	dsn := os.Getenv("PLUTUS_TEST_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("PLUTUS_TEST_DATABASE_DSN is not set")
-	}
+	dsn := TestDSN(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()

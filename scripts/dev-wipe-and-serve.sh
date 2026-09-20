@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Development helper: reset the allowed local database with the minimal
+# Development helper: reset the allowed local database with the walkthrough
 # source-fact seed, then start serve. Requires [database].allow_reset = true.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-echo "Resetting the configured development database with the minimal seed."
+echo "Resetting the configured development database with the walkthrough seed."
 echo "Requires [database].allow_reset = true in plutus.toml and a database name matching plutus or plutus_<suffix>."
 echo
 
-go run ./cmd/plutus db reset --profile minimal
+go run ./cmd/plutus db reset --profile walkthrough
 
 echo
 echo "Seed logins:"

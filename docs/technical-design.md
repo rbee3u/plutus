@@ -781,7 +781,7 @@ Route-level errors preserve the shell and provide retry, navigation, trace ID, a
 
 ### 8.1 Configuration sources
 
-Non-secret process settings and the local MySQL DSN are read from `plutus.toml`; `PLUTUS_*` environment variables override file values. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. The DSN may live in a gitignored working-directory `plutus.toml` for local convenience; it still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
+Non-secret process settings and the local MySQL DSN are read from `plutus.toml`; `PLUTUS_*` environment variables override file values. A gitignored `.env` in the working directory or Go module root may set those same `PLUTUS_*` values at process start and does not override already-set environment variables. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. The DSN may live in a gitignored working-directory `plutus.toml` for local convenience; it still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
 
 The initial configuration surface is:
 
@@ -867,18 +867,18 @@ plutus migrate up
 plutus user create
 plutus user disable
 plutus user reset-password
-plutus db seed --profile minimal|edge-cases
-plutus db reset --profile minimal|edge-cases
+plutus db seed --profile minimal|edge-cases|walkthrough
+plutus db reset --profile minimal|edge-cases|walkthrough
 plutus projection rebuild --portfolio <uuid>
 ```
 
-Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set and must not target the operator's development database as a sacrificial instance.
+Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set in the process environment or a `.env` in the working directory or Go module root (process environment wins) and must not target the operator's development database as a sacrificial instance.
 
 Migrations are forward-only in shared environments and run in their own deployment step. The server never migrates automatically. `db reset` is development-only: it must require an explicit development environment marker, verify that the database name matches an allowed development pattern, print the exact target, and reject production-like or unrecognized targets.
 
-Both seed profiles are deterministic: fixed UUIDs, fixed UTC timestamps, fixed values, and stable credentials suitable only for local development. Seed SQL inserts configuration and source facts but never derived Projection rows. The real Projection application logic builds every read model after seeding.
+All seed profiles are deterministic: fixed UUIDs, fixed UTC timestamps, fixed values, and stable credentials suitable only for local development. Seed SQL inserts configuration and source facts but never derived Projection rows. The real Projection application logic builds every read model after seeding.
 
-The `minimal` profile contains two Users, at least one User with two Portfolios, mapped catalog entries, a Capital Baseline, Capital Flows, complete Observations, and enough history to render the principal pages. The `edge-cases` profile additionally contains partial success, stale and failed scopes, an Asset Listing mapped only to its provisional Asset, missing Price and FX inputs, Reported Equity containment and partial overlap, opposing Positions with net-zero Exposure, a coverage change, timezone-boundary observations, and an edited Capital Flow.
+The `minimal` profile contains two Users, at least one User with two Portfolios, mapped catalog entries, a Capital Baseline, Capital Flows, complete Observations, and enough history to render the principal pages. The `edge-cases` profile additionally contains partial success, stale and failed scopes, an Asset Listing mapped only to its provisional Asset, missing Price and FX inputs, Reported Equity containment and partial overlap, opposing Positions with net-zero Exposure, a coverage change, timezone-boundary observations, and an edited Capital Flow. The `walkthrough` profile is the local UI dataset: multiple Platforms and Identities (including a subordinate Identity), Catalog pins, Account Metrics, richer history, Capital revisions, audit rows, and the same incomplete-coverage cases. `scripts/dev-wipe-and-serve.sh` uses `walkthrough`.
 
 Expected repository layout:
 
@@ -921,7 +921,7 @@ Database backup, restore, TLS certificate issuance, MySQL process management, an
 
 ### Phase 2: End-to-end vertical slice
 
-- deterministic `minimal` and `edge-cases` source-fact seeds;
+- deterministic `minimal`, `edge-cases`, and `walkthrough` source-fact seeds;
 - shared catalog, mappings, normalized Observations, failures, and correction primitives;
 - Capital Baseline and Capital Flow revisions;
 - generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, and Value Change;

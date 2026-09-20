@@ -1,7 +1,7 @@
 # Example configuration. Copy to plutus.toml in the working directory
 # (gitignored) or pass --config. Put the local MySQL DSN in [database].
 # The Connection encryption master key must not appear here; use
-# PLUTUS_MASTER_KEY or PLUTUS_MASTER_KEY_FILE.
+# PLUTUS_MASTER_KEY or PLUTUS_MASTER_KEY_FILE, including via a gitignored `.env`.
 
 [server]
 listen_address = "127.0.0.1"

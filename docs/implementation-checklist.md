@@ -112,6 +112,7 @@ Completed. Stopped for review after every item in this section was checked.
 ### Milestone 2 — Seed and reset CLI
 
 - [x] Deterministic `minimal` source-fact seed
+- [x] Deterministic `walkthrough` source-fact seed for local UI review
 - [x] `plutus db seed` and development-only `db reset`
 
 ### Milestone 3 — Facts and correction primitives

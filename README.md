@@ -11,7 +11,7 @@ Phase 3 (complete MVP UI and management) is implemented and waiting for review. 
 - Configuration from `plutus.toml` and `PLUTUS_*`, including the HTTP / HTTPS / mTLS startup matrix.
 - Explicit Goose migrations and sqlc access. `serve` never migrates automatically.
 - Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and write-only Connection credentials encrypted with AES-256-GCM. `/health/ready` fails when ciphertext exists without a master key.
-- Development `plutus db seed` and `plutus db reset` with deterministic `minimal` and `edge-cases` source-fact profiles. Seeds stay secret-free. Reset requires `[database].allow_reset = true` in the gitignored `plutus.toml` and a database name matching `plutus` or `plutus_<suffix>`.
+- Development `plutus db seed` and `plutus db reset` with deterministic `minimal`, `edge-cases`, and `walkthrough` source-fact profiles. Seeds stay secret-free. Reset requires `[database].allow_reset = true` in the gitignored `plutus.toml` and a database name matching `plutus` or `plutus_<suffix>`.
 - Normalized Observations, catalog mapping and pin revisions, Observation correction, Capital Baseline / Flow revisions, and portfolio audit events.
 - A durable Projection worker that rebuilds latest balances, positions, valuations, contributed capital, value changes, exposure, and period summaries, then atomically activates a ready generation. A failed rebuild leaves the previous generation readable. `POST /projection-rebuilds` enqueues a full rebuild.
 - Working Overview, Balances, Positions, Exposure, Valuations, Value Changes, Capital, Identity, Connection, Catalog, Observation, Jobs, and Audit pages. Overview charts include a text summary and an accessible exact-value table. Query failures keep last-good data and show Retry plus a trace ID.
@@ -61,36 +61,36 @@ The accepted design uses a contract-first modular Go monolith, a versioned JSON 
 
 Use the Go toolchain required by `go.mod`, Node.js as required by `web/package.json`, and Make. Install the pinned formatting, lint, sqlc, Goose, and frontend tools with `make deps`, and ensure the Go tool installation directory is on `PATH`.
 
-Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a gitignored `plutus.toml` in the working directory and set `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` can still override that value. The Connection encryption master key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and is not required until an encrypted Connection exists.
+Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a gitignored `plutus.toml` in the working directory and set `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` can still override that value. The Connection encryption master key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` (a gitignored `.env` in the working directory or Go module root is loaded at startup and does not override already-set environment variables). The key is not required until an encrypted Connection exists. Integration tests also read `PLUTUS_TEST_DATABASE_DSN` from that `.env` when it is not already in the process environment.
 
 For a full local wipe of an allowed development database, also set `[database].allow_reset = true` (the example file defaults to `false`). Then reset, seed, and serve:
 
 ```sh
 cp configs/plutus.example.toml plutus.toml   # then edit [database].dsn and allow_reset
-go run ./cmd/plutus db reset --profile minimal
+go run ./cmd/plutus db reset --profile walkthrough
 go run ./cmd/plutus serve
 ```
 
-`db reset` drops every table in the connected database, reapplies migrations, inserts the chosen source-fact profile, and enqueues a projection rebuild for each Portfolio. `serve` never migrates or seeds automatically. Use `--profile edge-cases` for the incomplete-coverage dataset.
+`db reset` drops every table in the connected database, reapplies migrations, inserts the chosen source-fact profile, and enqueues a projection rebuild for each Portfolio. `serve` never migrates or seeds automatically. Use `--profile walkthrough` for the rich local UI dataset (multiple platforms, history, incomplete coverage, and catalog/audit rows), `--profile minimal` for the small happy path, and `--profile edge-cases` for the focused incomplete-coverage dataset.
 
 Equivalent commands without dropping the database:
 
 ```sh
 go run ./cmd/plutus migrate up
-go run ./cmd/plutus db seed --profile minimal
+go run ./cmd/plutus db seed --profile walkthrough
 go run ./cmd/plutus serve
 ```
 
-Scratch logins from both seed profiles:
+Scratch logins from every seed profile:
 
 | Username | Password |
 | --- | --- |
 | `alice` | `Alice=123456` |
 | `bob` | `Bob=123456` |
 
-Alice owns Portfolios `Main` and `Trading`. Bob owns `Main`. After `serve` starts, the worker activates generations so Overview, Balances, Positions, Exposure, Valuations, Value Changes, and Capital read live JSON. Full rebuilds are also available from the Jobs page or with `plutus projection rebuild --portfolio <uuid>`.
+Alice owns Portfolios `Main` (USD) and `Trading` (CNY). Bob owns `Main` in UTC. After `serve` starts, the worker activates generations so Overview, Balances, Positions, Exposure, Valuations, Value Changes, and Capital read live JSON. Full rebuilds are also available from the Jobs page or with `plutus projection rebuild --portfolio <uuid>`.
 
-`scripts/dev-wipe-and-serve.sh` runs `db reset --profile minimal` and then `serve`. It prints the seed logins above and does not create a separate `admin` user.
+`scripts/dev-wipe-and-serve.sh` runs `db reset --profile walkthrough` and then `serve`. It prints the seed logins above and does not create a separate `admin` user.
 
 Public registration defaults to off. The Register page explains that additional Users can be created with `plutus user create`. Passwords must be 8 to 128 characters.
 
@@ -115,6 +115,6 @@ make format && make build && make test && make lint
 make style && make build && make test && make lint
 ```
 
-Integration tests that need MySQL skip unless `PLUTUS_TEST_DATABASE_DSN` is set. Do not point that variable at a development database you care about.
+Integration tests that need MySQL skip unless `PLUTUS_TEST_DATABASE_DSN` is set in the process environment or a `.env` in the working directory or Go module root (process environment wins). `go test` runs with the package directory as the working directory, so a repository-root `.env` is still found. Do not point that variable at a development database you care about.
 
 Use `make help` to list commands in their Makefile order. Run `make run` for local execution through `go run ./cmd/plutus`, without a separate build step. Pass CLI arguments with `ARGS`.

@@ -16,6 +16,8 @@ type Options struct {
 	LookupEnv func(string) (string, bool)
 	ReadFile  func(string) ([]byte, error)
 	Now       time.Time
+
+	getwd func() (string, error)
 }
 
 type fileConfig struct {
@@ -50,7 +52,8 @@ type fileConfig struct {
 	} `toml:"database"`
 }
 
-// Load reads defaults, an optional TOML file, environment overrides, and secrets.
+// Load reads defaults, an optional `.env` in the working directory or Go module root, an optional TOML file, environment overrides, and secrets.
+// Existing process environment values win over `.env`. A missing `.env` is ignored. The nearest `.env` wins.
 func Load(opts Options) (Config, error) {
 	if opts.LookupEnv == nil {
 		opts.LookupEnv = os.LookupEnv
@@ -60,6 +63,9 @@ func Load(opts Options) (Config, error) {
 	}
 	if opts.Now.IsZero() {
 		opts.Now = time.Now()
+	}
+	if err := applyDotEnv(&opts); err != nil {
+		return Config{}, err
 	}
 
 	cfg := defaults()

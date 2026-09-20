@@ -51,7 +51,7 @@ func newDBSeedCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal or edge-cases")
+	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
 	return cmd
 }
 
@@ -97,7 +97,7 @@ func newDBResetCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal or edge-cases")
+	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
 	return cmd
 }
 
@@ -107,6 +107,8 @@ func seedSQL(profile string) (string, error) {
 		return seeds.MinimalSQL()
 	case seeds.ProfileEdgeCases:
 		return seeds.EdgeCasesSQL()
+	case seeds.ProfileWalkthrough:
+		return seeds.WalkthroughSQL()
 	default:
 		return "", fmt.Errorf("unknown seed profile %q", profile)
 	}

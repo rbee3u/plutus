@@ -3,18 +3,32 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/config"
 )
+
+const testDatabaseDSNEnv = "PLUTUS_TEST_DATABASE_DSN"
+
+// TestDSN returns the MySQL DSN for integration tests.
+// It reads PLUTUS_TEST_DATABASE_DSN from the process environment, then `.env` in the working directory or Go module root.
+func TestDSN(tb testing.TB) string {
+	tb.Helper()
+	dsn, err := config.Lookup(testDatabaseDSNEnv)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	if dsn == "" {
+		tb.Skip("PLUTUS_TEST_DATABASE_DSN is not set in the environment, working-directory .env, or module-root .env")
+	}
+	return dsn
+}
 
 // OpenTestDB opens a migrated MySQL database for integration tests.
 func OpenTestDB(tb testing.TB) *sql.DB {
 	tb.Helper()
-	dsn := os.Getenv("PLUTUS_TEST_DATABASE_DSN")
-	if dsn == "" {
-		tb.Skip("PLUTUS_TEST_DATABASE_DSN is not set")
-	}
+	dsn := TestDSN(tb)
 	db, err := Open(dsn)
 	if err != nil {
 		tb.Fatal(err)

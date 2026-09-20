@@ -56,6 +56,57 @@ func TestEdgeCasesSQLHasExpectedFacts(t *testing.T) {
 	assertBalancedParentheses(t, sql)
 }
 
+func TestWalkthroughSQLHasExpectedFacts(t *testing.T) {
+	t.Parallel()
+
+	sql, err := WalkthroughSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, needle := range []string{
+		"alice",
+		"'bob'",
+		"'Trading'",
+		"TOKENX",
+		"provisional",
+		"collection_failures",
+		"'partial'",
+		"pos-alice-btc-short",
+		"'short'",
+		"edited contribution",
+		"2026-08-31 16:00:00.000000",
+		"UniMMR",
+		"Alice Binance Sub",
+		"Alice Bybit",
+		"WBTC",
+		"catalog_pins",
+		"account_metric_observations",
+		"observation.correct",
+		"'invalid'",
+		"'disappeared'",
+		"pos-alice-okx-btc",
+	} {
+		if !strings.Contains(sql, needle) {
+			t.Fatalf("walkthrough seed must contain %q", needle)
+		}
+	}
+	if strings.Count(sql, "INSERT INTO observations") != 1 {
+		t.Fatal("walkthrough should insert observations in one statement")
+	}
+	assertNoProjectionRows(t, sql)
+	assertBalancedParentheses(t, sql)
+}
+
+func TestSeedIDMatchesCanonical(t *testing.T) {
+	t.Parallel()
+	if UserAlice.String() != "01a0bdfc-2b00-7001-8000-000000000001" {
+		t.Fatalf("alice id %s", UserAlice)
+	}
+	if ListingBinanceUSDT.String() != "01a0bdfc-2b00-7007-8000-000000000001" {
+		t.Fatalf("listing id %s", ListingBinanceUSDT)
+	}
+}
+
 func TestSeedPasswordHashes(t *testing.T) {
 	t.Parallel()
 
@@ -64,6 +115,10 @@ func TestSeedPasswordHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 	edge, err := EdgeCasesSQL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	walkthrough, err := WalkthroughSQL()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,8 +133,8 @@ func TestSeedPasswordHashes(t *testing.T) {
 			if err != nil || !ok {
 				t.Fatalf("verify: ok=%v err=%v", ok, err)
 			}
-			if !strings.Contains(minimal, tc.hash) || !strings.Contains(edge, tc.hash) {
-				t.Fatal("both seed profiles must contain the hash")
+			if !strings.Contains(minimal, tc.hash) || !strings.Contains(edge, tc.hash) || !strings.Contains(walkthrough, tc.hash) {
+				t.Fatal("every seed profile must contain the hash")
 			}
 		})
 	}
