@@ -36,9 +36,10 @@ func limitBody(maxBytes int64) gin.HandlerFunc {
 	}
 }
 
-func noStoreAuth() gin.HandlerFunc {
+func noStoreSensitive() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/api/v1/auth/") {
+		path := c.Request.URL.Path
+		if strings.HasPrefix(path, "/api/v1/auth/") || strings.Contains(path, "/connections") || strings.Contains(path, "/audit-events") {
 			c.Header("Cache-Control", "no-store")
 		}
 		c.Next()

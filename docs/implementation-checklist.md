@@ -160,8 +160,8 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 2 — Connection credentials
 
-- [ ] Connection credential CRUD with AES-256-GCM and no real Platform call
-- [ ] Require the master key for readiness when ciphertext exists
+- [x] Connection credential CRUD with AES-256-GCM and no real Platform call
+- [x] Require the master key for readiness when ciphertext exists
 
 ### Milestone 3 — Catalog mapping and pins
 

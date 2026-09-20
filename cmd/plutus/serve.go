@@ -76,7 +76,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		authSvc = auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
 		portfolios = portfolio.NewService(db)
 		fresh := cfg.Collection.DefaultInterval * time.Duration(cfg.Collection.DefaultFreshnessMultiplier)
-		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh)
+		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh, cfg.Crypto.MasterKey)
 		catalogSvc = catalog.NewService(db)
 		observationSvc = observation.NewService(db)
 		capitalSvc = capital.NewService(db)
@@ -96,7 +96,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 
 	engine := httpserver.Engine(&httpserver.EngineOptions{
 		Logger:              logger,
-		Ready:               serveReady(db, loop),
+		Ready:               serveReady(db, loop, cfg.Crypto.HasMasterKey()),
 		Auth:                authSvc,
 		RegistrationEnabled: cfg.Auth.RegistrationEnabled,
 		SecureCookies:       cfg.Server.TLS.HTTPSEnabled,
@@ -113,12 +113,15 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }
 
-func serveReady(db *sql.DB, loop *worker.Worker) httpserver.ReadyChecker {
+func serveReady(db *sql.DB, loop *worker.Worker, hasMasterKey bool) httpserver.ReadyChecker {
 	if db == nil {
 		return httpserver.StaticReady{Err: errors.New("database DSN is not configured")}
 	}
 	return httpserver.FuncReady(func(callCtx context.Context) error {
 		if err := mysql.CheckReady(callCtx, db); err != nil {
+			return err
+		}
+		if err := mysql.CheckEncryptedConnections(callCtx, db, hasMasterKey); err != nil {
 			return err
 		}
 		if loop == nil || !loop.Healthy(time.Now()) {

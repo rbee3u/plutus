@@ -13,6 +13,7 @@ type Querier interface {
 	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
 	CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error)
 	CountActiveCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error)
+	CountConnectionsWithCiphertext(ctx context.Context) (int64, error)
 	CountIdentityObservations(ctx context.Context, arg CountIdentityObservationsParams) (int64, error)
 	CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error)
 	CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error)

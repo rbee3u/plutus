@@ -25,4 +25,6 @@ var (
 	ErrInvalidParent = errors.New("parent identity is invalid")
 	// ErrIdentityFrozen is returned when identity fields cannot change after Observations exist.
 	ErrIdentityFrozen = errors.New("identity fields are immutable after observations exist")
+	// ErrMasterKeyRequired is returned when credentials cannot be stored without a master key.
+	ErrMasterKeyRequired = errors.New("master key is required")
 )

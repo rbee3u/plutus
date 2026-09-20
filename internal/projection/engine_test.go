@@ -113,7 +113,7 @@ func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 		t.Fatal(err)
 	}
 	portfolioID := items[0].ID
-	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute)
+	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
 	ident, err := accessSvc.CreateIdentity(ctx, portfolioID, &access.CreateIdentityInput{
 		PlatformID:  catalog.PlatformBinance,
 		ExternalRef: "uid-" + uuid.NewString()[:8],
@@ -124,7 +124,7 @@ func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	conn, err := accessSvc.CreateConnection(ctx, portfolioID, access.CreateConnectionInput{
+	conn, err := accessSvc.CreateConnection(ctx, portfolioID, &access.CreateConnectionInput{
 		IdentityID: ident.ID,
 		Label:      "primary",
 	})

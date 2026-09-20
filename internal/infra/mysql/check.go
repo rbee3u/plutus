@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
 var (
@@ -15,6 +17,8 @@ var (
 	ErrSchemaMismatch = errors.New("schema_mismatch")
 	// ErrMySQLIncompatible means version, sql_mode, charset, or timezone is wrong.
 	ErrMySQLIncompatible = errors.New("mysql_incompatible")
+	// ErrMasterKeyRequired means encrypted Connections exist without a configured master key.
+	ErrMasterKeyRequired = errors.New("master_key_required")
 )
 
 // CheckReady pings MySQL, validates session settings, and checks the schema version.
@@ -74,6 +78,24 @@ func CheckEnvironment(ctx context.Context, db *sql.DB) error {
 	}
 	if tz != "+00:00" && !strings.EqualFold(tz, "UTC") {
 		return fmt.Errorf("%w: session time_zone must be UTC, got %s", ErrMySQLIncompatible, tz)
+	}
+	return nil
+}
+
+// CheckEncryptedConnections requires a master key when any Connection ciphertext exists.
+func CheckEncryptedConnections(ctx context.Context, db *sql.DB, hasMasterKey bool) error {
+	if hasMasterKey {
+		return nil
+	}
+	if db == nil {
+		return ErrDatabaseUnavailable
+	}
+	n, err := sqlcgen.New(db).CountConnectionsWithCiphertext(ctx)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrMasterKeyRequired
 	}
 	return nil
 }

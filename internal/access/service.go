@@ -14,20 +14,23 @@ import (
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/secret"
 )
 
 const maxLabelLength = 120
 
 // Service owns identity and connection configuration.
 type Service struct {
+	db              *sql.DB
 	q               *sqlcgen.Queries
+	box             *secret.Box
 	now             func() time.Time
 	defaultInterval uint32
 	defaultFresh    uint32
 }
 
 // NewService constructs an access configuration service.
-func NewService(db *sql.DB, defaultInterval, defaultFreshness time.Duration) *Service {
+func NewService(db *sql.DB, defaultInterval, defaultFreshness time.Duration, masterKey []byte) *Service {
 	interval := uint32(defaultInterval.Seconds())
 	if interval == 0 {
 		interval = 900
@@ -36,7 +39,14 @@ func NewService(db *sql.DB, defaultInterval, defaultFreshness time.Duration) *Se
 	if fresh == 0 {
 		fresh = interval * 2
 	}
-	return &Service{q: sqlcgen.New(db), now: time.Now, defaultInterval: interval, defaultFresh: fresh}
+	svc := &Service{db: db, q: sqlcgen.New(db), now: time.Now, defaultInterval: interval, defaultFresh: fresh}
+	if len(masterKey) > 0 {
+		box, err := secret.NewBox(masterKey)
+		if err == nil {
+			svc.box = box
+		}
+	}
+	return svc
 }
 
 // Identity is a configured platform identity.
@@ -53,7 +63,7 @@ type Identity struct {
 	Version          uint64
 }
 
-// Connection is a credential-less access configuration.
+// Connection is an access configuration without credential plaintext.
 type Connection struct {
 	ID                        uuid.UUID
 	PortfolioID               uuid.UUID
@@ -61,6 +71,7 @@ type Connection struct {
 	Label                     string
 	Status                    string
 	CredentialsConfigured     bool
+	CredentialsUpdatedAt      *time.Time
 	CollectionIntervalSeconds int
 	FreshnessAfterSeconds     int
 	LastValidatedAt           *time.Time
@@ -104,6 +115,9 @@ type CreateConnectionInput struct {
 	Status                    string
 	CollectionIntervalSeconds *int
 	FreshnessAfterSeconds     *int
+	Credentials               *secret.Credentials
+	ActorUserID               uuid.UUID
+	RequestID                 string
 }
 
 // PatchConnectionInput is the accepted patch payload.
@@ -112,6 +126,9 @@ type PatchConnectionInput struct {
 	Status                    *string
 	CollectionIntervalSeconds *int
 	FreshnessAfterSeconds     *int
+	Credentials               *secret.Credentials
+	ActorUserID               uuid.UUID
+	RequestID                 string
 }
 
 // ListIdentities returns identities in a portfolio.
@@ -330,7 +347,7 @@ func (s *Service) ListConnections(ctx context.Context, portfolioID uuid.UUID) ([
 	}
 	out := make([]Connection, 0, len(rows))
 	for i := range rows {
-		item, err := connectionFromRow(rows[i].ID, rows[i].PortfolioID, rows[i].IdentityID, rows[i].Label, rows[i].Status, rows[i].CredentialsCiphertext, rows[i].CollectionIntervalSeconds, rows[i].FreshnessAfterSeconds, rows[i].LastValidatedAt, rows[i].Version)
+		item, err := connectionFromSQL(rows[i].ID, rows[i].PortfolioID, rows[i].IdentityID, rows[i].Label, rows[i].Status, rows[i].CredentialsCiphertext, rows[i].CollectionIntervalSeconds, rows[i].FreshnessAfterSeconds, rows[i].LastValidatedAt, rows[i].Version, rows[i].ConfigJson)
 		if err != nil {
 			return nil, err
 		}
@@ -348,11 +365,14 @@ func (s *Service) GetConnection(ctx context.Context, portfolioID, connectionID u
 	if err != nil {
 		return Connection{}, err
 	}
-	return connectionFromRow(row.ID, row.PortfolioID, row.IdentityID, row.Label, row.Status, row.CredentialsCiphertext, row.CollectionIntervalSeconds, row.FreshnessAfterSeconds, row.LastValidatedAt, row.Version)
+	return connectionFromSQL(row.ID, row.PortfolioID, row.IdentityID, row.Label, row.Status, row.CredentialsCiphertext, row.CollectionIntervalSeconds, row.FreshnessAfterSeconds, row.LastValidatedAt, row.Version, row.ConfigJson)
 }
 
-// CreateConnection inserts a credential-less connection.
-func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, in CreateConnectionInput) (Connection, error) {
+// CreateConnection inserts a connection, optionally encrypting credentials.
+func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, in *CreateConnectionInput) (Connection, error) {
+	if in == nil {
+		return Connection{}, ErrInvalidStatus
+	}
 	if _, err := s.GetIdentity(ctx, portfolioID, in.IdentityID); err != nil {
 		return Connection{}, err
 	}
@@ -364,10 +384,7 @@ func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, i
 	if status == "" {
 		status = "disabled"
 	}
-	if status == "enabled" {
-		return Connection{}, ErrCredentialsRequired
-	}
-	if status != "disabled" && status != "invalid" {
+	if status != "enabled" && status != "disabled" && status != "invalid" {
 		return Connection{}, ErrInvalidStatus
 	}
 	interval := s.defaultInterval
@@ -389,14 +406,29 @@ func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, i
 		return Connection{}, err
 	}
 	now := s.now().UTC()
-	if err := s.q.InsertConnection(ctx, sqlcgen.InsertConnectionParams{
+	ciphertext, nonce, keyVersion, cfg, err := s.sealCredentials(id, portfolioID, in.Credentials, now, nil)
+	if err != nil {
+		return Connection{}, err
+	}
+	if status == "enabled" && len(ciphertext) == 0 {
+		return Connection{}, ErrCredentialsRequired
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Connection{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	if err := q.InsertConnection(ctx, sqlcgen.InsertConnectionParams{
 		ID:                        mustBin(id),
 		PortfolioID:               mustBin(portfolioID),
 		IdentityID:                mustBin(in.IdentityID),
 		Label:                     label,
 		Status:                    status,
-		CredentialKeyVersion:      0,
-		ConfigJson:                json.RawMessage(`{}`),
+		CredentialsCiphertext:     ciphertext,
+		CredentialsNonce:          nonce,
+		CredentialKeyVersion:      keyVersion,
+		ConfigJson:                cfg,
 		CollectionIntervalSeconds: interval,
 		FreshnessAfterSeconds:     fresh,
 		Version:                   1,
@@ -408,12 +440,29 @@ func (s *Service) CreateConnection(ctx context.Context, portfolioID uuid.UUID, i
 		}
 		return Connection{}, err
 	}
+	created, err := connectionFromSQL(mustBin(id), mustBin(portfolioID), mustBin(in.IdentityID), label, status, ciphertext, interval, fresh, sql.NullTime{}, 1, cfg)
+	if err != nil {
+		return Connection{}, err
+	}
+	if err := insertConnectionAudit(ctx, q, in.ActorUserID, in.RequestID, "connection.create", nil, &created, now); err != nil {
+		return Connection{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Connection{}, err
+	}
 	return s.GetConnection(ctx, portfolioID, id)
 }
 
 // PatchConnection updates a connection when the version matches.
 func (s *Service) PatchConnection(ctx context.Context, portfolioID, connectionID uuid.UUID, version uint64, in PatchConnectionInput) (Connection, error) {
-	current, err := s.GetConnection(ctx, portfolioID, connectionID)
+	row, err := s.q.GetConnection(ctx, sqlcgen.GetConnectionParams{PortfolioID: mustBin(portfolioID), ID: mustBin(connectionID)})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Connection{}, ErrNotFound
+	}
+	if err != nil {
+		return Connection{}, err
+	}
+	current, err := connectionFromSQL(row.ID, row.PortfolioID, row.IdentityID, row.Label, row.Status, row.CredentialsCiphertext, row.CollectionIntervalSeconds, row.FreshnessAfterSeconds, row.LastValidatedAt, row.Version, row.ConfigJson)
 	if err != nil {
 		return Connection{}, err
 	}
@@ -433,9 +482,6 @@ func (s *Service) PatchConnection(ctx context.Context, portfolioID, connectionID
 		if status != "enabled" && status != "disabled" && status != "invalid" {
 			return Connection{}, ErrInvalidStatus
 		}
-		if status == "enabled" && !current.CredentialsConfigured {
-			return Connection{}, ErrCredentialsRequired
-		}
 	}
 	interval := uint32(current.CollectionIntervalSeconds)
 	if in.CollectionIntervalSeconds != nil {
@@ -451,12 +497,30 @@ func (s *Service) PatchConnection(ctx context.Context, portfolioID, connectionID
 		}
 		fresh = uint32(*in.FreshnessAfterSeconds)
 	}
-	n, err := s.q.UpdateConnection(ctx, sqlcgen.UpdateConnectionParams{
+	now := s.now().UTC()
+	ciphertext, nonce, keyVersion, cfg, err := s.sealCredentials(connectionID, portfolioID, in.Credentials, now, &row)
+	if err != nil {
+		return Connection{}, err
+	}
+	if status == "enabled" && len(ciphertext) == 0 {
+		return Connection{}, ErrCredentialsRequired
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Connection{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	n, err := q.UpdateConnection(ctx, sqlcgen.UpdateConnectionParams{
 		Label:                     label,
 		Status:                    status,
 		CollectionIntervalSeconds: interval,
 		FreshnessAfterSeconds:     fresh,
-		UpdatedAt:                 s.now().UTC(),
+		CredentialsCiphertext:     ciphertext,
+		CredentialsNonce:          nonce,
+		CredentialKeyVersion:      keyVersion,
+		ConfigJson:                cfg,
+		UpdatedAt:                 now,
 		PortfolioID:               mustBin(portfolioID),
 		ID:                        mustBin(connectionID),
 		Version:                   version,
@@ -470,11 +534,21 @@ func (s *Service) PatchConnection(ctx context.Context, portfolioID, connectionID
 	if n == 0 {
 		return s.staleConnection(ctx, portfolioID, connectionID)
 	}
+	updated, err := connectionFromSQL(mustBin(connectionID), mustBin(portfolioID), mustBin(current.IdentityID), label, status, ciphertext, interval, fresh, row.LastValidatedAt, version+1, cfg)
+	if err != nil {
+		return Connection{}, err
+	}
+	if err := insertConnectionAudit(ctx, q, in.ActorUserID, in.RequestID, "connection.update", &current, &updated, now); err != nil {
+		return Connection{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Connection{}, err
+	}
 	return s.GetConnection(ctx, portfolioID, connectionID)
 }
 
 // DeleteConnection removes a connection when the version matches.
-func (s *Service) DeleteConnection(ctx context.Context, portfolioID, connectionID uuid.UUID, version uint64) error {
+func (s *Service) DeleteConnection(ctx context.Context, portfolioID, connectionID uuid.UUID, version uint64, actor uuid.UUID, requestID string) error {
 	current, err := s.GetConnection(ctx, portfolioID, connectionID)
 	if err != nil {
 		return err
@@ -482,7 +556,13 @@ func (s *Service) DeleteConnection(ctx context.Context, portfolioID, connectionI
 	if current.Version != version {
 		return ErrPrecondition
 	}
-	n, err := s.q.DeleteConnection(ctx, sqlcgen.DeleteConnectionParams{
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	n, err := q.DeleteConnection(ctx, sqlcgen.DeleteConnectionParams{
 		PortfolioID: mustBin(portfolioID),
 		ID:          mustBin(connectionID),
 		Version:     version,
@@ -494,7 +574,10 @@ func (s *Service) DeleteConnection(ctx context.Context, portfolioID, connectionI
 		_, err := s.staleConnection(ctx, portfolioID, connectionID)
 		return err
 	}
-	return nil
+	if err := insertConnectionAudit(ctx, q, actor, requestID, "connection.delete", &current, nil, s.now().UTC()); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Service) validatePlatform(ctx context.Context, platformID uuid.UUID) error {
@@ -586,7 +669,7 @@ func identityFromRow(row *sqlcgen.Identity) (Identity, error) {
 	return item, nil
 }
 
-func connectionFromRow(id, portfolioID, identityID []byte, label, status string, ciphertext []byte, interval, fresh uint32, lastValidated sql.NullTime, version uint64) (Connection, error) {
+func connectionFromSQL(id, portfolioID, identityID []byte, label, status string, ciphertext []byte, interval, fresh uint32, lastValidated sql.NullTime, version uint64, configJSON json.RawMessage) (Connection, error) {
 	parsedID, err := uuid.FromBytes(id)
 	if err != nil {
 		return Connection{}, err
@@ -609,12 +692,127 @@ func connectionFromRow(id, portfolioID, identityID []byte, label, status string,
 		CollectionIntervalSeconds: int(interval),
 		FreshnessAfterSeconds:     int(fresh),
 		Version:                   version,
+		CredentialsUpdatedAt:      credentialsUpdatedAt(configJSON),
 	}
 	if lastValidated.Valid {
 		t := lastValidated.Time
 		item.LastValidatedAt = &t
 	}
 	return item, nil
+}
+
+type connectionConfig struct {
+	CredentialsUpdatedAt *time.Time `json:"credentialsUpdatedAt,omitempty"`
+}
+
+type connectionAudit struct {
+	Label                     string     `json:"label"`
+	Status                    string     `json:"status"`
+	CredentialsConfigured     bool       `json:"credentialsConfigured"`
+	CredentialsUpdatedAt      *time.Time `json:"credentialsUpdatedAt,omitempty"`
+	CollectionIntervalSeconds int        `json:"collectionIntervalSeconds"`
+	FreshnessAfterSeconds     int        `json:"freshnessAfterSeconds"`
+}
+
+func (s *Service) sealCredentials(connectionID, portfolioID uuid.UUID, cred *secret.Credentials, now time.Time, current *sqlcgen.GetConnectionRow) ([]byte, []byte, uint16, json.RawMessage, error) {
+	cfg := connectionConfig{}
+	if current != nil {
+		cfg.CredentialsUpdatedAt = credentialsUpdatedAt(current.ConfigJson)
+	}
+	if cred == nil {
+		if current == nil {
+			raw, err := json.Marshal(cfg)
+			return nil, nil, 0, raw, err
+		}
+		raw, err := json.Marshal(cfg)
+		return current.CredentialsCiphertext, current.CredentialsNonce, current.CredentialKeyVersion, raw, err
+	}
+	if s.box == nil {
+		return nil, nil, 0, nil, ErrMasterKeyRequired
+	}
+	keyVersion := secret.CurrentKeyVersion()
+	ciphertext, nonce, err := s.box.Seal(connectionID, portfolioID, keyVersion, *cred)
+	if err != nil {
+		return nil, nil, 0, nil, err
+	}
+	updated := now.UTC()
+	cfg.CredentialsUpdatedAt = &updated
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, nil, 0, nil, err
+	}
+	return ciphertext, nonce, keyVersion, raw, nil
+}
+
+func credentialsUpdatedAt(raw json.RawMessage) *time.Time {
+	if len(raw) == 0 {
+		return nil
+	}
+	var cfg connectionConfig
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil
+	}
+	return cfg.CredentialsUpdatedAt
+}
+
+func insertConnectionAudit(ctx context.Context, q *sqlcgen.Queries, actor uuid.UUID, requestID, action string, before, after *Connection, now time.Time) error {
+	if actor == uuid.Nil {
+		return nil
+	}
+	item := after
+	if item == nil {
+		item = before
+	}
+	if item == nil {
+		return nil
+	}
+	auditID, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
+	var beforeJSON, afterJSON json.RawMessage
+	if before != nil {
+		beforeJSON, err = json.Marshal(connectionAuditFrom(before))
+		if err != nil {
+			return err
+		}
+	}
+	if after != nil {
+		afterJSON, err = json.Marshal(connectionAuditFrom(after))
+		if err != nil {
+			return err
+		}
+	}
+	return q.InsertAuditEvent(ctx, sqlcgen.InsertAuditEventParams{
+		ID:           mustBin(auditID),
+		PortfolioID:  mustBin(item.PortfolioID),
+		ActorUserID:  mustBin(actor),
+		Action:       action,
+		ResourceType: "connection",
+		ResourceID:   mustBin(item.ID),
+		RequestID:    defaultRequestID(requestID),
+		BeforeJson:   beforeJSON,
+		AfterJson:    afterJSON,
+		OccurredAt:   now,
+	})
+}
+
+func connectionAuditFrom(item *Connection) connectionAudit {
+	return connectionAudit{
+		Label:                     item.Label,
+		Status:                    item.Status,
+		CredentialsConfigured:     item.CredentialsConfigured,
+		CredentialsUpdatedAt:      item.CredentialsUpdatedAt,
+		CollectionIntervalSeconds: item.CollectionIntervalSeconds,
+		FreshnessAfterSeconds:     item.FreshnessAfterSeconds,
+	}
+}
+
+func defaultRequestID(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "unknown"
+	}
+	return value
 }
 
 func mustBin(id uuid.UUID) []byte {

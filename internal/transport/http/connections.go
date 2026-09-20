@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/secret"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -70,11 +72,18 @@ func (a *API) CreateConnection(ctx context.Context, request api.CreateConnection
 		Label:                     request.Body.Label,
 		CollectionIntervalSeconds: request.Body.CollectionIntervalSeconds,
 		FreshnessAfterSeconds:     request.Body.FreshnessAfterSeconds,
+		ActorUserID:               user.ID,
+		RequestID:                 requestTraceID(ctx),
 	}
 	if request.Body.Status != nil {
 		in.Status = string(*request.Body.Status)
 	}
-	item, err := a.Access.CreateConnection(ctx, request.PortfolioId, in)
+	creds, err := credentialsFromAPI(request.Body.Credentials)
+	if err != nil {
+		return api.CreateConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
+	}
+	in.Credentials = creds
+	item, err := a.Access.CreateConnection(ctx, request.PortfolioId, &in)
 	if err != nil {
 		return a.createConnectionError(ctx, err), nil
 	}
@@ -90,6 +99,8 @@ func (a *API) createConnectionError(ctx context.Context, err error) api.CreateCo
 		return api.CreateConnection409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "conflict", "Conflict", err.Error()))
 	case errors.Is(err, access.ErrNotFound):
 		return api.CreateConnection404ApplicationProblemPlusJSONResponse(a.notFound(ctx))
+	case errors.Is(err, access.ErrMasterKeyRequired):
+		return api.CreateConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "master_key_required", "Master key required", "Connection credentials cannot be stored without a configured master key."))}
 	default:
 		return api.CreateConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}
 	}
@@ -132,17 +143,26 @@ func (a *API) PatchConnection(ctx context.Context, request api.PatchConnectionRe
 		Label:                     request.Body.Label,
 		CollectionIntervalSeconds: request.Body.CollectionIntervalSeconds,
 		FreshnessAfterSeconds:     request.Body.FreshnessAfterSeconds,
+		ActorUserID:               user.ID,
+		RequestID:                 requestTraceID(ctx),
 	}
 	if request.Body.Status != nil {
 		status := string(*request.Body.Status)
 		in.Status = &status
 	}
+	creds, err := credentialsFromAPI(request.Body.Credentials)
+	if err != nil {
+		return api.PatchConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
+	}
+	in.Credentials = creds
 	item, err := a.Access.PatchConnection(ctx, request.PortfolioId, request.ConnectionId, version, in)
 	switch {
 	case errors.Is(err, access.ErrNotFound):
 		return api.PatchConnection404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
 	case errors.Is(err, access.ErrPrecondition):
 		return api.PatchConnection412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
+	case errors.Is(err, access.ErrMasterKeyRequired):
+		return api.PatchConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "master_key_required", "Master key required", "Connection credentials cannot be stored without a configured master key."))}, nil
 	case err != nil:
 		return api.PatchConnection400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 	default:
@@ -165,7 +185,7 @@ func (a *API) DeleteConnection(ctx context.Context, request api.DeleteConnection
 	if !ok {
 		return api.DeleteConnection412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
 	}
-	err := a.Access.DeleteConnection(ctx, request.PortfolioId, request.ConnectionId, version)
+	err := a.Access.DeleteConnection(ctx, request.PortfolioId, request.ConnectionId, version, user.ID, requestTraceID(ctx))
 	switch {
 	case errors.Is(err, access.ErrNotFound):
 		return api.DeleteConnection404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
@@ -184,6 +204,7 @@ func toAPIConnection(item *access.Connection) api.Connection {
 	return api.Connection{
 		CollectionIntervalSeconds: &interval,
 		CredentialsConfigured:     item.CredentialsConfigured,
+		CredentialsUpdatedAt:      item.CredentialsUpdatedAt,
 		FreshnessAfterSeconds:     &fresh,
 		Id:                        item.ID,
 		IdentityId:                item.IdentityID,
@@ -204,4 +225,26 @@ func (a *API) ownedConnection(ctx context.Context, portfolioID, connectionID uui
 		return access.Connection{}, false
 	}
 	return item, true
+}
+
+func credentialsFromAPI(in *api.ConnectionCredentials) (*secret.Credentials, error) {
+	if in == nil {
+		return nil, nil //nolint:nilnil // omitting credentials is valid
+	}
+	key := ""
+	secretValue := ""
+	passphrase := ""
+	if in.ApiKey != nil {
+		key = strings.TrimSpace(*in.ApiKey)
+	}
+	if in.ApiSecret != nil {
+		secretValue = strings.TrimSpace(*in.ApiSecret)
+	}
+	if in.Passphrase != nil {
+		passphrase = strings.TrimSpace(*in.Passphrase)
+	}
+	if key == "" || secretValue == "" {
+		return nil, secret.ErrInvalidCredentials
+	}
+	return &secret.Credentials{APIKey: key, APISecret: secretValue, Passphrase: passphrase}, nil
 }

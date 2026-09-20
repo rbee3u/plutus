@@ -15,6 +15,8 @@ func readyReason(err error) string {
 		return mysql.ErrMySQLIncompatible.Error()
 	case errors.Is(err, worker.ErrUnavailable):
 		return worker.ErrUnavailable.Error()
+	case errors.Is(err, mysql.ErrMasterKeyRequired):
+		return mysql.ErrMasterKeyRequired.Error()
 	default:
 		return mysql.ErrDatabaseUnavailable.Error()
 	}

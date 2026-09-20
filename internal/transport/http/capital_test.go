@@ -26,7 +26,7 @@ func TestCapitalBaselineAndFlowRevisions(t *testing.T) {
 	db := mysql.OpenTestDB(t)
 	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
-	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute)
+	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
 	engine := Engine(&EngineOptions{
 		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Ready:        StaticReady{},

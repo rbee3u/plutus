@@ -78,6 +78,20 @@ func TestLiveAndReady(t *testing.T) {
 		t.Fatalf("worker body %+v", workerBody)
 	}
 
+	keyEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: mysql.ErrMasterKeyRequired}, RegistrationEnabled: false})
+	keyReady := httptest.NewRecorder()
+	keyEngine.ServeHTTP(keyReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	if keyReady.Code != http.StatusServiceUnavailable {
+		t.Fatalf("master key ready status %d", keyReady.Code)
+	}
+	var keyBody map[string]string
+	if err := json.Unmarshal(keyReady.Body.Bytes(), &keyBody); err != nil {
+		t.Fatal(err)
+	}
+	if keyBody["reason"] != "master_key_required" {
+		t.Fatalf("master key body %+v", keyBody)
+	}
+
 	reg := httptest.NewRecorder()
 	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}, RegistrationEnabled: true}).ServeHTTP(reg, httptest.NewRequest(http.MethodGet, "/api/v1/auth/registration-status", nil))
 	if reg.Code != http.StatusOK {

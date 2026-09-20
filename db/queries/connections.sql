@@ -31,6 +31,10 @@ SET label = sqlc.arg(label),
     status = sqlc.arg(status),
     collection_interval_seconds = sqlc.arg(collection_interval_seconds),
     freshness_after_seconds = sqlc.arg(freshness_after_seconds),
+    credentials_ciphertext = sqlc.narg(credentials_ciphertext),
+    credentials_nonce = sqlc.narg(credentials_nonce),
+    credential_key_version = sqlc.arg(credential_key_version),
+    config_json = sqlc.arg(config_json),
     version = version + 1,
     updated_at = sqlc.arg(updated_at)
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
@@ -38,3 +42,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = 
 -- name: DeleteConnection :execrows
 DELETE FROM connections
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
+
+-- name: CountConnectionsWithCiphertext :one
+SELECT COUNT(*) FROM connections
+WHERE credentials_ciphertext IS NOT NULL;

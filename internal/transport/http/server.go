@@ -80,7 +80,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	engine.Use(gin.Recovery())
 	engine.Use(bindGinContext())
 	engine.Use(securityHeaders())
-	engine.Use(noStoreAuth())
+	engine.Use(noStoreSensitive())
 	engine.Use(limitBody(1 << 20))
 	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
 	engine.Use(requestLog(opts.Logger))

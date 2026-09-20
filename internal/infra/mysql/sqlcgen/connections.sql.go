@@ -12,6 +12,18 @@ import (
 	"time"
 )
 
+const countConnectionsWithCiphertext = `-- name: CountConnectionsWithCiphertext :one
+SELECT COUNT(*) FROM connections
+WHERE credentials_ciphertext IS NOT NULL
+`
+
+func (q *Queries) CountConnectionsWithCiphertext(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countConnectionsWithCiphertext)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteConnection = `-- name: DeleteConnection :execrows
 DELETE FROM connections
 WHERE portfolio_id = ? AND id = ? AND version = ?
@@ -209,6 +221,10 @@ SET label = ?,
     status = ?,
     collection_interval_seconds = ?,
     freshness_after_seconds = ?,
+    credentials_ciphertext = ?,
+    credentials_nonce = ?,
+    credential_key_version = ?,
+    config_json = ?,
     version = version + 1,
     updated_at = ?
 WHERE portfolio_id = ? AND id = ? AND version = ?
@@ -219,6 +235,10 @@ type UpdateConnectionParams struct {
 	Status                    string
 	CollectionIntervalSeconds uint32
 	FreshnessAfterSeconds     uint32
+	CredentialsCiphertext     []byte
+	CredentialsNonce          []byte
+	CredentialKeyVersion      uint16
+	ConfigJson                json.RawMessage
 	UpdatedAt                 time.Time
 	PortfolioID               []byte
 	ID                        []byte
@@ -231,6 +251,10 @@ func (q *Queries) UpdateConnection(ctx context.Context, arg UpdateConnectionPara
 		arg.Status,
 		arg.CollectionIntervalSeconds,
 		arg.FreshnessAfterSeconds,
+		arg.CredentialsCiphertext,
+		arg.CredentialsNonce,
+		arg.CredentialKeyVersion,
+		arg.ConfigJson,
 		arg.UpdatedAt,
 		arg.PortfolioID,
 		arg.ID,
