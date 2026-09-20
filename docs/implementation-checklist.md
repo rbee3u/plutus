@@ -126,8 +126,8 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 5 — Projection engine
 
-- [ ] Generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, Value Change, and Exposure rows
-- [ ] Activate a ready generation atomically; leave the previous generation readable on failure
+- [x] Generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, Value Change, and Exposure rows
+- [x] Activate a ready generation atomically; leave the previous generation readable on failure
 
 ### Milestone 6 — Read-model HTTP
 

@@ -131,7 +131,15 @@ func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequ
 		in.DisplayAssetID = request.Body.DisplayAssetId
 	}
 	item, err := a.Portfolios.Patch(ctx, user.ID, request.PortfolioId, version, in)
-	return a.mutatePortfolio(ctx, &item, err)
+	if err != nil {
+		return a.mutatePortfolio(ctx, &item, err)
+	}
+	if a.Jobs != nil && (request.Body.Timezone != nil || request.Body.DisplayAssetId != nil) {
+		if _, err := a.Jobs.EnqueueRebuild(ctx, item.ID, &user.ID, "portfolio settings change"); err != nil {
+			return nil, err
+		}
+	}
+	return a.mutatePortfolio(ctx, &item, nil)
 }
 
 func (a *API) mutatePortfolio(ctx context.Context, item *portfolio.Portfolio, err error) (api.PatchPortfolioResponseObject, error) {

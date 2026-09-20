@@ -23,6 +23,7 @@ import (
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/projection"
 	httpserver "github.com/rbee3u/plutus/internal/transport/http"
 	"github.com/rbee3u/plutus/internal/worker"
 )
@@ -81,11 +82,12 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		idem = idempotency.NewStore(db)
 		jobSvc = jobs.NewService(db)
 		loop = worker.New(worker.Options{
-			Jobs:     jobSvc,
-			Adapters: adapters.NewRegistry(),
-			Poll:     cfg.Jobs.WorkerPollInterval,
-			Lease:    cfg.Jobs.LeaseDuration,
-			Logger:   logger,
+			Jobs:       jobSvc,
+			Projection: projection.NewService(db),
+			Adapters:   adapters.NewRegistry(),
+			Poll:       cfg.Jobs.WorkerPollInterval,
+			Lease:      cfg.Jobs.LeaseDuration,
+			Logger:     logger,
 		})
 		go func() { _ = loop.Run(ctx) }()
 	}

@@ -15,35 +15,38 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/projection"
 )
 
 const (
-	emptyProjectionDetail = "empty projection: no source facts; active generation unchanged"
-	maxBackoff            = time.Minute
+	activatedProjectionDetail = "projection generation activated"
+	maxBackoff                = time.Minute
 )
 
 // ErrUnavailable means the worker loop is not heartbeating.
 var ErrUnavailable = errors.New("worker_unavailable")
 
-// Worker claims durable jobs and runs Phase 1 handlers.
+// Worker claims durable jobs and runs collection and projection handlers.
 type Worker struct {
-	jobs     *jobs.Service
-	adapters *adapters.Registry
-	poll     time.Duration
-	lease    time.Duration
-	id       string
-	logger   *slog.Logger
-	lastBeat atomic.Int64
+	jobs       *jobs.Service
+	projection *projection.Service
+	adapters   *adapters.Registry
+	poll       time.Duration
+	lease      time.Duration
+	id         string
+	logger     *slog.Logger
+	lastBeat   atomic.Int64
 }
 
 // Options configures a worker.
 type Options struct {
-	Jobs     *jobs.Service
-	Adapters *adapters.Registry
-	Poll     time.Duration
-	Lease    time.Duration
-	Logger   *slog.Logger
-	ID       string
+	Jobs       *jobs.Service
+	Projection *projection.Service
+	Adapters   *adapters.Registry
+	Poll       time.Duration
+	Lease      time.Duration
+	Logger     *slog.Logger
+	ID         string
 }
 
 // New constructs a worker. The adapter registry may be empty.
@@ -65,12 +68,13 @@ func New(opts Options) *Worker {
 		id = defaultWorkerID()
 	}
 	return &Worker{
-		jobs:     opts.Jobs,
-		adapters: opts.Adapters,
-		poll:     opts.Poll,
-		lease:    opts.Lease,
-		id:       id,
-		logger:   opts.Logger,
+		jobs:       opts.Jobs,
+		projection: opts.Projection,
+		adapters:   opts.Adapters,
+		poll:       opts.Poll,
+		lease:      opts.Lease,
+		id:         id,
+		logger:     opts.Logger,
 	}
 }
 
@@ -167,18 +171,32 @@ func (w *Worker) handleCollection() jobs.Result {
 }
 
 func (w *Worker) handleProjection(ctx context.Context, claimed *jobs.ClaimedJob) jobs.Result {
-	if _, err := w.jobs.ActiveGenerationID(ctx, claimed.PortfolioID); err != nil {
+	if w.projection == nil {
+		return jobs.Result{
+			ErrorClass: "unsupported",
+			ErrorCode:  "projection_unavailable",
+			SafeDetail: "The projection engine is not configured.",
+		}
+	}
+	err := w.projection.Rebuild(ctx, projection.Request{PortfolioID: claimed.PortfolioID, JobID: claimed.ID, Kinds: jobs.FullProjectionKinds})
+	if err == nil {
+		return jobs.Result{OK: true, SafeDetail: activatedProjectionDetail}
+	}
+	if errors.Is(err, projection.ErrTemporary) {
 		retryAt := retryTime(claimed.AttemptNumber, time.Now().UTC())
 		return jobs.Result{
 			Retry:      true,
 			RetryAt:    &retryAt,
 			ErrorClass: "temporary",
-			ErrorCode:  "generation_pointer_read",
-			SafeDetail: "The portfolio generation pointer could not be read.",
+			ErrorCode:  "projection_temporary",
+			SafeDetail: err.Error(),
 		}
 	}
-	// Phase 1 leaves a diagnostic empty result and never switches the active generation.
-	return jobs.Result{OK: true, SafeDetail: emptyProjectionDetail}
+	return jobs.Result{
+		ErrorClass: "failed",
+		ErrorCode:  "projection_failed",
+		SafeDetail: err.Error(),
+	}
 }
 
 func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob) {

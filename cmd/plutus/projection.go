@@ -23,7 +23,7 @@ func newProjectionRebuildCommand() *cobra.Command {
 	var portfolioID string
 	cmd := &cobra.Command{
 		Use:   "rebuild",
-		Short: "Enqueue a full projection rebuild without switching the active generation",
+		Short: "Enqueue a full projection rebuild",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			id, err := uuid.Parse(portfolioID)

@@ -18,6 +18,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/projection"
 	"github.com/rbee3u/plutus/internal/worker"
 )
 
@@ -35,12 +36,13 @@ func TestProjectionJobsAndCursorPagination(t *testing.T) {
 		Jobs:        jobSvc,
 	})
 	loop := worker.New(worker.Options{
-		Jobs:     jobSvc,
-		Adapters: adapters.NewRegistry(),
-		Poll:     10 * time.Millisecond,
-		Lease:    time.Minute,
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
-		ID:       "test-worker",
+		Jobs:       jobSvc,
+		Projection: projection.NewService(db),
+		Adapters:   adapters.NewRegistry(),
+		Poll:       10 * time.Millisecond,
+		Lease:      time.Minute,
+		Logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		ID:         "test-worker",
 	})
 
 	password := "correct horse battery staple"
@@ -91,8 +93,8 @@ func TestProjectionJobsAndCursorPagination(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if active != uuid.Nil {
-		t.Fatalf("active generation switched to %s", active)
+	if active == uuid.Nil {
+		t.Fatal("active generation was not switched")
 	}
 	got := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID.String()+"/jobs/"+first.ID.String(), nil, sessionA, "")
 	if got.Code != http.StatusOK {
@@ -112,7 +114,7 @@ func TestProjectionJobsAndCursorPagination(t *testing.T) {
 		t.Fatalf("job body %+v", jobBody)
 	}
 	if jobBody.Attempts[0].SafeDetail == nil || *jobBody.Attempts[0].SafeDetail == "" {
-		t.Fatal("missing diagnostic empty result")
+		t.Fatal("missing projection diagnostic")
 	}
 
 	foreign := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID.String()+"/jobs/"+first.ID.String(), nil, sessionB, "")
