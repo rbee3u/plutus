@@ -1,5 +1,7 @@
-# Example non-secret configuration. Copy to plutus.toml in the working
-# directory or pass --config. Secrets must come from the environment.
+# Example configuration. Copy to plutus.toml in the working directory
+# (gitignored) or pass --config. Put the local MySQL DSN in [database].
+# The Connection encryption master key must not appear here; use
+# PLUTUS_MASTER_KEY or PLUTUS_MASTER_KEY_FILE.
 
 [server]
 listen_address = "127.0.0.1"
@@ -25,3 +27,6 @@ completed_retention = "2160h"
 [collection]
 default_interval = "15m"
 default_freshness_multiplier = 2
+
+[database]
+dsn = "user:password@tcp(127.0.0.1:3306)/plutus"

@@ -315,6 +315,53 @@ func TestExampleTOMLLoads(t *testing.T) {
 	if cfg.Server.Port != 8080 || cfg.Auth.RegistrationEnabled {
 		t.Fatalf("unexpected example config: %+v", cfg.Server)
 	}
+	if cfg.Database.DSN == "" {
+		t.Fatal("example DSN placeholder should load")
+	}
+}
+
+func TestDSNFromTOML(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[database]
+dsn = "user:pass@tcp(127.0.0.1:3306)/plutus"
+`,
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.DSN != "user:pass@tcp(127.0.0.1:3306)/plutus" {
+		t.Fatalf("dsn: %s", cfg.Database.DSN)
+	}
+}
+
+func TestDSNEnvOverridesTOML(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		Path: "plutus.toml",
+		LookupEnv: envMap(map[string]string{
+			envDatabaseDSN: "env-dsn@tcp(127.0.0.1:3306)/plutus",
+		}),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[database]
+dsn = "file-dsn@tcp(127.0.0.1:3306)/plutus"
+`,
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.DSN != "env-dsn@tcp(127.0.0.1:3306)/plutus" {
+		t.Fatalf("dsn: %s", cfg.Database.DSN)
+	}
 }
 
 func TestNonPositiveDurationRejected(t *testing.T) {

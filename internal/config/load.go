@@ -44,6 +44,9 @@ type fileConfig struct {
 		DefaultInterval            string `toml:"default_interval"`
 		DefaultFreshnessMultiplier int    `toml:"default_freshness_multiplier"`
 	} `toml:"collection"`
+	Database struct {
+		DSN string `toml:"dsn"`
+	} `toml:"database"`
 }
 
 // Load reads defaults, an optional TOML file, environment overrides, and secrets.
@@ -151,6 +154,9 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	}
 	if parsed.Collection.DefaultFreshnessMultiplier != 0 {
 		cfg.Collection.DefaultFreshnessMultiplier = parsed.Collection.DefaultFreshnessMultiplier
+	}
+	if strings.TrimSpace(parsed.Database.DSN) != "" {
+		cfg.Database.DSN = strings.TrimSpace(parsed.Database.DSN)
 	}
 	return nil
 }

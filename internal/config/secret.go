@@ -11,7 +11,9 @@ func applySecrets(cfg *Config, opts Options) error {
 	if err != nil {
 		return err
 	}
-	cfg.Database.DSN = dsn
+	if dsn != "" {
+		cfg.Database.DSN = dsn
+	}
 
 	keyRaw, err := exclusiveSecret(opts, envMasterKey, envMasterKeyFile, "master key")
 	if err != nil {

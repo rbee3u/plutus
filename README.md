@@ -59,14 +59,16 @@ The accepted design uses a contract-first modular Go monolith, a versioned JSON 
 
 Use the Go toolchain required by `go.mod`, Node.js as required by `web/package.json`, and Make. Install the pinned formatting, lint, sqlc, Goose, and frontend tools with `make deps`, and ensure the Go tool installation directory is on `PATH`.
 
-Secrets stay out of git. Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a local `plutus.toml` if needed, and inject the MySQL DSN through exactly one of `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE`. A master key is not required until an encrypted Connection exists.
+Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a gitignored `plutus.toml` in the working directory and set `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` can still override that value. The Connection encryption master key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and is not required until an encrypted Connection exists.
 
 ```sh
-export PLUTUS_DATABASE_DSN_FILE=...   # or PLUTUS_DATABASE_DSN
+cp configs/plutus.example.toml plutus.toml   # then edit [database].dsn
 go run ./cmd/plutus migrate up
 go run ./cmd/plutus user create --username ... --password ...
 go run ./cmd/plutus serve
 ```
+
+For early local UI work that needs a frequent full wipe, `scripts/dev-wipe-and-serve.sh` drops every table in the configured database named `plutus`, reapplies migrations, creates scratch user `admin` / `Admin=123456`, and runs `serve`. Delete that helper when the workflow is no longer useful. Passwords must be 12 to 128 characters.
 
 Production `serve` hosts the hashed SPA from `web/dist` via `go:embed`. Refresh that build with `make web-build` after frontend changes. For Vite development, run `npm run dev` in `web/`; it proxies `/api` and `/health` to `127.0.0.1:8080` and sends cookies to that origin.
 

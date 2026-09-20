@@ -781,9 +781,9 @@ Route-level errors preserve the shell and provide retry, navigation, trace ID, a
 
 ### 8.1 Configuration sources
 
-Non-secret configuration is read from `plutus.toml`; `PLUTUS_*` environment variables override file values. Secrets are accepted only through dedicated environment variables or files containing the secret. They must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
+Non-secret process settings and the local MySQL DSN are read from `plutus.toml`; `PLUTUS_*` environment variables override file values. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. The DSN may live in a gitignored working-directory `plutus.toml` for local convenience; it still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
 
-The initial non-secret configuration surface is:
+The initial configuration surface is:
 
 ```toml
 [server]
@@ -810,9 +810,12 @@ completed_retention = "2160h"
 [collection]
 default_interval = "15m"
 default_freshness_multiplier = 2
+
+[database]
+dsn = "user:password@tcp(127.0.0.1:3306)/plutus"
 ```
 
-The MySQL DSN is supplied through `PLUTUS_DATABASE_DSN` or the file named by `PLUTUS_DATABASE_DSN_FILE`; exactly one source is allowed. The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
+The MySQL DSN is read from `plutus.toml` `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` overrides the file; exactly one of those two environment sources is allowed. See [ADR 0010](./adr/0010-keep-local-mysql-dsn-in-gitignored-plutus-toml.md). The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
 
 The server defaults to `127.0.0.1` and plain HTTP. Public registration defaults to disabled. If registration is enabled while the listen address is not loopback and HTTPS is disabled, startup fails rather than exposing password registration over cleartext transport.
 
