@@ -16,7 +16,7 @@ func TestLiveAndReady(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	engine := Engine(logger, StaticReady{Err: errors.New("down")})
+	engine := Engine(logger, StaticReady{Err: errors.New("down")}, false)
 
 	live := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
@@ -41,14 +41,14 @@ func TestLiveAndReady(t *testing.T) {
 		t.Fatalf("body %+v", body)
 	}
 
-	okEngine := Engine(logger, StaticReady{})
+	okEngine := Engine(logger, StaticReady{}, false)
 	okReady := httptest.NewRecorder()
 	okEngine.ServeHTTP(okReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if okReady.Code != http.StatusOK {
 		t.Fatalf("ready ok status %d", okReady.Code)
 	}
 
-	schemaEngine := Engine(logger, StaticReady{Err: mysql.ErrSchemaMismatch})
+	schemaEngine := Engine(logger, StaticReady{Err: mysql.ErrSchemaMismatch}, false)
 	schemaReady := httptest.NewRecorder()
 	schemaEngine.ServeHTTP(schemaReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if schemaReady.Code != http.StatusServiceUnavailable {
@@ -60,5 +60,17 @@ func TestLiveAndReady(t *testing.T) {
 	}
 	if schemaBody["reason"] != "schema_mismatch" {
 		t.Fatalf("schema body %+v", schemaBody)
+	}
+
+	reg := httptest.NewRecorder()
+	Engine(logger, StaticReady{}, true).ServeHTTP(reg, httptest.NewRequest(http.MethodGet, "/api/v1/auth/registration-status", nil))
+	if reg.Code != http.StatusOK {
+		t.Fatalf("registration status %d %s", reg.Code, reg.Body.String())
+	}
+
+	me := httptest.NewRecorder()
+	Engine(logger, StaticReady{}, false).ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
+	if me.Code != http.StatusNotImplemented {
+		t.Fatalf("unimplemented me %d %s", me.Code, me.Body.String())
 	}
 }

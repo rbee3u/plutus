@@ -1,6 +1,12 @@
 .DS_Store
 /.idea/
 /bin/
+/web/node_modules/
+
+# Local non-secret config copied from configs/plutus.example.toml
+/plutus.toml
+.env
+
 
 # Local non-secret config copied from configs/plutus.example.toml
 /plutus.toml

@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rbee3u/plutus/internal/config"
+	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
 func init() {
@@ -44,12 +45,18 @@ func (f FuncReady) Ready(ctx context.Context) error {
 }
 
 // Engine returns the HTTP handler for the process.
-func Engine(logger *slog.Logger, ready ReadyChecker) *gin.Engine {
+func Engine(logger *slog.Logger, ready ReadyChecker, registrationEnabled bool) *gin.Engine {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	engine.Use(securityHeaders())
 	engine.Use(requestLog(logger))
-	registerHealth(engine, ready)
+	impl := &API{Ready: ready, RegistrationEnabled: registrationEnabled}
+	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
+		RequestErrorHandlerFunc:  requestError,
+		HandlerErrorFunc:         handlerError,
+		ResponseErrorHandlerFunc: handlerError,
+	})
+	api.RegisterHandlers(engine, strict)
 	return engine
 }
 

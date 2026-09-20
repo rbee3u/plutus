@@ -15,6 +15,7 @@ deps: ## Install pinned formatting, lint, sqlc, and Goose tools.
 	go install mvdan.cc/gofumpt@v0.12.0
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
 	go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
 	@os="$$(uname -s | tr '[:upper:]' '[:lower:]')"; \
 	arch="$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"; \
 	tmp="$$(mktemp -d)"; \
@@ -34,8 +35,10 @@ style: ## Check formatting without rewriting files for CI.
 format: ## Format Go code and imports for local development.
 	goimports -local $(MODULE) -l -w . && gofumpt -l -w .
 
-generate: ## Generate sqlc code from queries and schema.
+generate: ## Generate sqlc and OpenAPI artifacts.
 	sqlc generate
+	oapi-codegen -config api/oapi-codegen.yaml api/openapi/openapi.yaml
+	cd web && npm run generate
 
 build: ## Build the CLI as bin/plutus.
 	mkdir -p ./bin && go build -o ./bin/plutus ./cmd/plutus

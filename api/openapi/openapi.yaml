@@ -1,0 +1,1203 @@
+openapi: 3.1.0
+info:
+  title: Plutus API
+  version: 0.1.0
+  description: Phase 1 transport contract for authentication, portfolios, identities, connections, and jobs.
+servers:
+  - url: /
+paths:
+  /health/live:
+    get:
+      operationId: getHealthLive
+      tags: [health]
+      summary: Process liveness
+      security: []
+      responses:
+        "200":
+          description: The process can serve requests.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLive"
+  /health/ready:
+    get:
+      operationId: getHealthReady
+      tags: [health]
+      summary: Process readiness
+      security: []
+      responses:
+        "200":
+          description: Ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReady"
+        "503":
+          description: Not ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthNotReady"
+  /api/v1/auth/csrf:
+    get:
+      operationId: getAuthCsrf
+      tags: [auth]
+      summary: Issue or rotate a CSRF token
+      security: []
+      responses:
+        "200":
+          description: CSRF token for the current pre-auth or session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfResponse"
+  /api/v1/auth/registration-status:
+    get:
+      operationId: getAuthRegistrationStatus
+      tags: [auth]
+      summary: Report whether public registration is enabled
+      security: []
+      responses:
+        "200":
+          description: Registration flag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationStatus"
+  /api/v1/auth/register:
+    post:
+      operationId: postAuthRegister
+      tags: [auth]
+      summary: Register a user when public registration is enabled
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User and default Main portfolio created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/login:
+    post:
+      operationId: postAuthLogin
+      tags: [auth]
+      summary: Authenticate with username and password
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/logout:
+    post:
+      operationId: postAuthLogout
+      tags: [auth]
+      summary: Revoke the current session
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "204":
+          description: Logged out.
+        "401":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/logout-all:
+    post:
+      operationId: postAuthLogoutAll
+      tags: [auth]
+      summary: Revoke all sessions for the current user
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "204":
+          description: All sessions revoked.
+        "401":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Current user and session summary
+      responses:
+        "200":
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/password:
+    put:
+      operationId: putAuthPassword
+      tags: [auth]
+      summary: Replace the current password
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password replaced.
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/sessions:
+    get:
+      operationId: getAuthSessions
+      tags: [auth]
+      summary: List the current user's sessions
+      responses:
+        "200":
+          description: Sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /api/v1/auth/sessions/{sessionId}:
+    delete:
+      operationId: deleteAuthSession
+      tags: [auth]
+      summary: Revoke one owned session
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "204":
+          description: Session revoked.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios:
+    get:
+      operationId: listPortfolios
+      tags: [portfolios]
+      summary: List owned portfolios
+      parameters:
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Portfolios.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioList"
+        "401":
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createPortfolio
+      tags: [portfolios]
+      summary: Create a portfolio
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePortfolioRequest"
+      responses:
+        "201":
+          description: Created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}:
+    get:
+      operationId: getPortfolio
+      tags: [portfolios]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+      responses:
+        "200":
+          description: Portfolio.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: patchPortfolio
+      tags: [portfolios]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchPortfolioRequest"
+      responses:
+        "200":
+          description: Updated.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deletePortfolio
+      tags: [portfolios]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "204":
+          description: Deleted an empty portfolio.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/archive:
+    post:
+      operationId: archivePortfolio
+      tags: [portfolios]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Archived.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/restore:
+    post:
+      operationId: restorePortfolio
+      tags: [portfolios]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities:
+    get:
+      operationId: listIdentities
+      tags: [identities]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+      responses:
+        "200":
+          description: Identities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createIdentity
+      tags: [identities]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIdentityRequest"
+      responses:
+        "201":
+          description: Created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}:
+    get:
+      operationId: getIdentity
+      tags: [identities]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+      responses:
+        "200":
+          description: Identity.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: patchIdentity
+      tags: [identities]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchIdentityRequest"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive:
+    post:
+      operationId: archiveIdentity
+      tags: [identities]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Archived.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Identity"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/connections:
+    get:
+      operationId: listConnections
+      tags: [connections]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+      responses:
+        "200":
+          description: Connections without credential material.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createConnection
+      tags: [connections]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConnectionRequest"
+      responses:
+        "201":
+          description: Created without credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/connections/{connectionId}:
+    get:
+      operationId: getConnection
+      tags: [connections]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ConnectionID"
+      responses:
+        "200":
+          description: Connection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: patchConnection
+      tags: [connections]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ConnectionID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchConnectionRequest"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteConnection
+      tags: [connections]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ConnectionID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Jobs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/jobs/{jobId}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: plutus_session
+  parameters:
+    CSRFToken:
+      name: X-CSRF-Token
+      in: header
+      required: false
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 255
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+    PortfolioID:
+      name: portfolioId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    IdentityID:
+      name: identityId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    ConnectionID:
+      name: connectionId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    JobID:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    SessionID:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+  responses:
+    Problem:
+      description: Problem details.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+    HealthLive:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [live]
+    HealthReady:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+    HealthNotReady:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status:
+          type: string
+          enum: [not_ready]
+        reason:
+          type: string
+    CsrfResponse:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+    RegistrationStatus:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 191
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+    AuthSession:
+      type: object
+      additionalProperties: false
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username, status]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        username:
+          type: string
+        status:
+          type: string
+          enum: [active, disabled]
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [user, sessionCount]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        sessionCount:
+          type: integer
+          minimum: 0
+    Session:
+      type: object
+      additionalProperties: false
+      required: [id, createdAt, lastSeenAt, idleExpiresAt, absoluteExpiresAt, current]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        idleExpiresAt:
+          type: string
+          format: date-time
+        absoluteExpiresAt:
+          type: string
+          format: date-time
+        clientLabel:
+          type: [string, "null"]
+        current:
+          type: boolean
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+    AssetRef:
+      type: object
+      additionalProperties: false
+      required: [id, code]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        code:
+          type: string
+    Portfolio:
+      type: object
+      additionalProperties: false
+      required: [id, name, timezone, displayAsset, status, version, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        timezone:
+          type: string
+        displayAsset:
+          $ref: "#/components/schemas/AssetRef"
+        status:
+          type: string
+          enum: [active, archived]
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: [string, "null"]
+          format: date-time
+    PortfolioList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Portfolio"
+    CreatePortfolioRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        timezone:
+          type: string
+        displayAssetId:
+          $ref: "#/components/schemas/UUID"
+    PatchPortfolioRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        timezone:
+          type: string
+        displayAssetId:
+          $ref: "#/components/schemas/UUID"
+    Identity:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, platformId, externalRef, displayName, accountMode, kind, status, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        parentIdentityId:
+          type: [string, "null"]
+          format: uuid
+        externalRef:
+          type: string
+        displayName:
+          type: string
+        accountMode:
+          type: string
+          enum: [binance_pm, okx_mcm, okx_pm, bybit_uta_2_0]
+        kind:
+          type: string
+          enum: [main, subordinate]
+        status:
+          type: string
+          enum: [enabled, disabled, archived]
+        version:
+          type: integer
+          minimum: 1
+    IdentityList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Identity"
+    CreateIdentityRequest:
+      type: object
+      additionalProperties: false
+      required: [platformId, externalRef, displayName, accountMode, kind]
+      properties:
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        parentIdentityId:
+          type: [string, "null"]
+          format: uuid
+        externalRef:
+          type: string
+          minLength: 1
+          maxLength: 191
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        accountMode:
+          type: string
+          enum: [binance_pm, okx_mcm, okx_pm, bybit_uta_2_0]
+        kind:
+          type: string
+          enum: [main, subordinate]
+    PatchIdentityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        status:
+          type: string
+          enum: [enabled, disabled]
+        parentIdentityId:
+          type: [string, "null"]
+          format: uuid
+        externalRef:
+          type: string
+        accountMode:
+          type: string
+          enum: [binance_pm, okx_mcm, okx_pm, bybit_uta_2_0]
+    Connection:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, identityId, label, status, credentialsConfigured, version]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        label:
+          type: string
+        status:
+          type: string
+          enum: [enabled, disabled, invalid]
+        credentialsConfigured:
+          type: boolean
+        collectionIntervalSeconds:
+          type: integer
+          minimum: 1
+        freshnessAfterSeconds:
+          type: integer
+          minimum: 1
+        lastValidatedAt:
+          type: [string, "null"]
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+    ConnectionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Connection"
+    CreateConnectionRequest:
+      type: object
+      additionalProperties: false
+      required: [identityId, label]
+      properties:
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        collectionIntervalSeconds:
+          type: integer
+          minimum: 1
+        freshnessAfterSeconds:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [disabled, invalid]
+    PatchConnectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+        status:
+          type: string
+          enum: [enabled, disabled, invalid]
+        collectionIntervalSeconds:
+          type: integer
+          minimum: 1
+        freshnessAfterSeconds:
+          type: integer
+          minimum: 1
+    Job:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, kind, status, attemptCount, maxAttempts, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        kind:
+          type: string
+          enum: [collection, projection]
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, cancelled]
+        attemptCount:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+        lastErrorCode:
+          type: [string, "null"]
+        lastErrorDetail:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobAttempt"
+    JobAttempt:
+      type: object
+      additionalProperties: false
+      required: [attemptNumber, workerId, startedAt, outcome]
+      properties:
+        attemptNumber:
+          type: integer
+          minimum: 1
+        workerId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        outcome:
+          type: string
+          enum: [succeeded, failed, cancelled]
+        errorClass:
+          type: [string, "null"]
+        errorCode:
+          type: [string, "null"]
+        safeDetail:
+          type: [string, "null"]
+    JobList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+    CursorPage:
+      type: object
+      additionalProperties: false
+      required: [kind, limit, hasMore]
+      properties:
+        kind:
+          type: string
+          enum: [cursor]
+        limit:
+          type: integer
+        nextCursor:
+          type: [string, "null"]
+        hasMore:
+          type: boolean
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, detail, code]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+        traceId:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+security:
+  - sessionCookie: []

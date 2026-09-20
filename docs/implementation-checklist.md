@@ -39,11 +39,11 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 4 — OpenAPI and code generation
 
-- [ ] Author Phase 1 OpenAPI 3.1 under `api/openapi/`
-- [ ] Generate and commit the strict Gin server interface and Go wire models
-- [ ] Generate and commit the TypeScript client and wire models
-- [ ] Make regeneration reproducible with pinned commands
-- [ ] Wire HTTP transport to the generated contract (handlers may still be incomplete)
+- [x] Author Phase 1 OpenAPI 3.1 under `api/openapi/`
+- [x] Generate and commit the strict Gin server interface and Go wire models
+- [x] Generate and commit the TypeScript client and wire models
+- [x] Make regeneration reproducible with pinned commands
+- [x] Wire HTTP transport to the generated contract (handlers may still be incomplete)
 
 ### Milestone 5 — Authentication
 

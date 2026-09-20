@@ -42,7 +42,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	ready, cleanup := newReadyChecker(cfg.Database.DSN)
 	defer cleanup()
 
-	engine := httpserver.Engine(logger, ready)
+	engine := httpserver.Engine(logger, ready, cfg.Auth.RegistrationEnabled)
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }
 
