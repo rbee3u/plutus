@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
@@ -87,5 +88,33 @@ func TestLiveAndReady(t *testing.T) {
 	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}, RegistrationEnabled: false}).ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
 	if me.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated me %d %s", me.Code, me.Body.String())
+	}
+}
+
+func TestEmbeddedShellServesIndex(t *testing.T) {
+	t.Parallel()
+
+	engine := Engine(&EngineOptions{
+		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:               StaticReady{},
+		RegistrationEnabled: false,
+	})
+
+	login := httptest.NewRecorder()
+	engine.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/login", nil))
+	if login.Code != http.StatusOK {
+		t.Fatalf("login spa status %d", login.Code)
+	}
+	if !strings.Contains(strings.ToLower(login.Body.String()), "<!doctype html>") {
+		t.Fatalf("login spa body %s", login.Body.String())
+	}
+
+	unknownAPI := httptest.NewRecorder()
+	engine.ServeHTTP(unknownAPI, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
+	if unknownAPI.Code != http.StatusNotFound {
+		t.Fatalf("unknown api status %d", unknownAPI.Code)
+	}
+	if strings.Contains(strings.ToLower(unknownAPI.Body.String()), "<!doctype html>") {
+		t.Fatal("unknown API path should not serve the SPA")
 	}
 }

@@ -92,6 +92,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		ResponseErrorHandlerFunc: handlerError,
 	})
 	api.RegisterHandlers(engine, strict)
+	mountWeb(engine)
 	return engine
 }
 

@@ -1,0 +1,97 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router";
+import { getAuthMe, listPortfolios } from "@/api/generated/sdk.gen";
+import { configureApiClient, refreshCsrf } from "@/api/http";
+import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
+import { RootRedirect, Shell } from "@/app/shell/Shell";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { RegisterPage } from "@/features/auth/RegisterPage";
+import { PlaceholderPage } from "@/features/placeholder/PlaceholderPage";
+import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
+import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
+import { readPreference, storePreference } from "@/shared/lib/preferences";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+configureApiClient();
+
+export function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Bootstrap />} />
+          <Route path="/p/:portfolioId" element={<Shell />}>
+            <Route path="overview" element={<PlaceholderPage />} />
+            <Route path="portfolio/balances" element={<PlaceholderPage />} />
+            <Route path="portfolio/positions" element={<PlaceholderPage />} />
+            <Route path="portfolio/exposure" element={<PlaceholderPage />} />
+            <Route path="history/valuations" element={<PlaceholderPage />} />
+            <Route path="history/value-changes" element={<PlaceholderPage />} />
+            <Route path="capital/baseline" element={<PlaceholderPage />} />
+            <Route path="capital/flows" element={<PlaceholderPage />} />
+            <Route path="data/identities" element={<PlaceholderPage />} />
+            <Route path="data/connections" element={<PlaceholderPage />} />
+            <Route path="data/catalog" element={<PlaceholderPage />} />
+            <Route path="data/observations" element={<PlaceholderPage />} />
+            <Route path="data/jobs" element={<PlaceholderPage />} />
+            <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
+            <Route path="settings/security" element={<SecuritySettingsPage />} />
+            <Route index element={<Navigate to="overview" replace />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+function Bootstrap() {
+  const navigate = useNavigate();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        await refreshCsrf();
+        const me = await getAuthMe();
+        if (me.response?.status === 401 || me.error || !me.data) {
+          void navigate("/login", { replace: true });
+          return;
+        }
+        const listed = await listPortfolios();
+        const items = listed.data?.items.filter((item) => item.status === "active") ?? [];
+        const remembered = readPreference(LAST_PORTFOLIO_KEY);
+        const next = items.find((item) => item.id === remembered) ?? items[0];
+        if (!next) {
+          setFailed(true);
+          return;
+        }
+        storePreference(LAST_PORTFOLIO_KEY, next.id);
+        void navigate(`/p/${next.id}/overview`, { replace: true });
+      } catch {
+        setFailed(true);
+      }
+    })();
+  }, [navigate]);
+
+  if (failed) {
+    return (
+      <p>
+        Plutus could not restore the session. <a href="/login">Sign in</a>
+      </p>
+    );
+  }
+
+  return <RootRedirect />;
+}

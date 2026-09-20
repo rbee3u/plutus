@@ -1,0 +1,180 @@
+.button {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  min-height: var(--control-md);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--control-gap);
+  border-radius: var(--radius-md);
+  padding: 0 var(--control-padding-x);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  box-shadow: none;
+  white-space: nowrap;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.dangerPrimary {
+  border-color: var(--danger-line);
+  color: var(--action-danger);
+  background: transparent;
+  font-weight: var(--weight-medium);
+}
+
+.dangerPrimary:hover:not(:disabled) {
+  border-color: var(--action-danger-strong);
+  color: var(--action-danger-strong);
+  background: var(--danger-soft);
+}
+
+.primary {
+  border-color: transparent;
+  color: var(--action-primary-ink);
+  background: var(--action-primary-surface);
+  font-weight: var(--weight-medium);
+}
+
+.primary:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--action-primary-ink);
+  background: var(--action-primary-hover-surface);
+}
+
+.primarySoft {
+  border-color: var(--action-primary-soft-line);
+  color: var(--action-primary-soft-ink);
+  background: var(--action-primary-soft-surface);
+  font-weight: var(--weight-medium);
+}
+
+.primarySoft:hover:not(:disabled) {
+  border-color: var(--action-primary-soft-hover-line);
+  color: var(--action-primary-soft-hover-ink);
+  background: var(--action-primary-soft-hover-surface);
+}
+
+.secondary {
+  border-color: var(--line-control);
+  color: var(--ink-secondary);
+  background: var(--surface);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--line-control-strong);
+  color: var(--ink-secondary);
+  background: var(--surface-hover);
+}
+
+.ghost {
+  border-color: transparent;
+  color: var(--ink-secondary);
+  background: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--ink-secondary);
+  background: var(--surface-hover);
+}
+
+.dangerQuiet {
+  border-color: transparent;
+  color: var(--ink-secondary);
+  background: transparent;
+}
+
+.dangerQuiet:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--danger-strong);
+  background: var(--danger-soft);
+}
+
+.danger {
+  border-color: transparent;
+  color: var(--danger);
+  background: transparent;
+}
+
+.danger:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--danger-strong);
+  background: var(--danger-soft);
+}
+
+/*
+ * Every variant answers a press the same way. The pressed ink goes on as a
+ * layer rather than a fill because a Primary and a Danger button already own
+ * their background, and a single flat token cannot darken all seven of them.
+ */
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+  background-image: linear-gradient(var(--surface-pressed), var(--surface-pressed));
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.button:disabled {
+  opacity: 1;
+}
+
+/*
+ * `aria-disabled` is the disabled look without the focus loss: a control that
+ * is busy with the press it just took keeps focus, but answers nothing else.
+ * Pointer events are off so hover and press never reach it; the keyboard
+ * still can, and the component ignores the click.
+ */
+.button[aria-disabled="true"] {
+  pointer-events: none;
+  cursor: default;
+}
+
+.primary:disabled,
+.primary[aria-disabled="true"],
+.primarySoft:disabled,
+.primarySoft[aria-disabled="true"] {
+  border-color: var(--control-disabled-line);
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-surface);
+}
+
+.dangerPrimary:disabled,
+.dangerPrimary[aria-disabled="true"] {
+  border-color: var(--control-disabled-line);
+  color: var(--control-disabled-danger-ink);
+  background: var(--control-disabled-danger-surface);
+}
+
+.secondary:disabled,
+.secondary[aria-disabled="true"] {
+  border-color: var(--control-disabled-line);
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-surface);
+}
+
+.ghost:disabled,
+.ghost[aria-disabled="true"],
+.dangerQuiet:disabled,
+.dangerQuiet[aria-disabled="true"],
+.danger:disabled,
+.danger[aria-disabled="true"] {
+  border-color: transparent;
+  color: var(--control-disabled-ink);
+  background: transparent;
+}
+
+@media (pointer: coarse) {
+  .button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

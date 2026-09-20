@@ -72,11 +72,11 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 8 — Embedded React shell
 
-- [ ] Copy AIBox tokens, shell, themes, and navigation density with no runtime dependency
-- [ ] Working `/login`, `/register` (explains disabled registration), Portfolio switcher
-- [ ] Working `/p/:portfolioId/settings/portfolio` and `/settings/security`
-- [ ] Full information-architecture navigation with Phase placeholders for unimplemented routes
-- [ ] Vite dev proxy for `/api`, `/health`, and cookies; production `go:embed` of the hashed build
+- [x] Copy AIBox tokens, shell, themes, and navigation density with no runtime dependency
+- [x] Working `/login`, `/register` (explains disabled registration), Portfolio switcher
+- [x] Working `/p/:portfolioId/settings/portfolio` and `/settings/security`
+- [x] Full information-architecture navigation with Phase placeholders for unimplemented routes
+- [x] Vite dev proxy for `/api`, `/health`, and cookies; production `go:embed` of the hashed build
 
 ### Milestone 9 — Phase 1 close-out
 
@@ -194,8 +194,8 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.8 Frontend
 
-- [ ] **Phase 1** — System, light, and dark themes render implemented routes with semantic colors
-- [ ] **Phase 1** — Desktop, tablet, and narrow mobile layouts preserve usable navigation
-- [ ] **Phase 1** — Implemented interactive flows work by keyboard with visible focus
+- [x] **Phase 1** — System, light, and dark themes render implemented routes with semantic colors
+- [x] **Phase 1** — Desktop, tablet, and narrow mobile layouts preserve usable navigation
+- [x] **Phase 1** — Implemented interactive flows work by keyboard with visible focus
 - [ ] **Later** — Charts provide text summaries and accessible exact-value tables
-- [ ] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens
+- [x] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens

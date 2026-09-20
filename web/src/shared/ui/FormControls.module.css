@@ -1,0 +1,121 @@
+.control[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--line-control-strong);
+}
+
+/*
+ * A field has no press of its own: the pointer going down is what focuses it,
+ * and the ring says so a moment later. A second accent flash here would be the
+ * same event announced twice, in a colour reserved for lasting states.
+ */
+.control:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.control:disabled {
+  cursor: default;
+  border-color: var(--control-disabled-line);
+  color: var(--control-disabled-ink);
+  background: var(--control-disabled-surface);
+  opacity: 1;
+}
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.toggleMark {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid var(--line-control-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.toggle:hover input:not(:disabled) + .toggleMark {
+  border-color: var(--line-control-strong);
+}
+
+.toggle input[aria-invalid="true"] + .toggleMark {
+  border-color: var(--danger);
+}
+
+.toggle input:checked + .toggleMark {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.toggle input:checked + .toggleMark::after {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  width: 6px;
+  height: 12px;
+  border: solid var(--accent-contrast);
+  border-width: 0 2px 2px 0;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.toggle input:focus-visible + .toggleMark {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.toggle:has(input:disabled) {
+  cursor: default;
+  color: var(--control-disabled-ink);
+  opacity: 1;
+}
+
+.toggle input:disabled + .toggleMark {
+  border-color: var(--control-disabled-line);
+  background: var(--control-disabled-surface);
+}
+
+.toggle input:checked:disabled + .toggleMark {
+  border-color: transparent;
+  background: var(--control-disabled-primary-surface);
+}
+
+.toggle input:checked:disabled + .toggleMark::after {
+  border-color: var(--control-disabled-primary-ink);
+}
+
+@media (pointer: coarse) {
+  .control {
+    min-height: 44px;
+  }
+
+  .toggle {
+    min-height: 44px;
+  }
+}
