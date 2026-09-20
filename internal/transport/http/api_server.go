@@ -6,6 +6,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/jobs"
@@ -27,6 +28,7 @@ type API struct {
 	Access              *access.Service
 	Catalog             *catalog.Service
 	Observations        *observation.Service
+	Capital             *capital.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 }

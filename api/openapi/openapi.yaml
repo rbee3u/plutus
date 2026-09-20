@@ -748,6 +748,271 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/capital-baseline:
+    get:
+      operationId: getCapitalBaseline
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+      responses:
+        "200":
+          description: Current capital baseline.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalBaseline"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: putCapitalBaseline
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCapitalBaselineRequest"
+      responses:
+        "200":
+          description: Baseline revised.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalBaselineMutation"
+        "201":
+          description: Baseline created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalBaselineMutation"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/capital-baseline/revisions:
+    get:
+      operationId: listCapitalBaselineRevisions
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Baseline revisions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalBaselineRevisionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/capital-flows:
+    get:
+      operationId: listCapitalFlows
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Current capital flows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlowList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createCapitalFlow
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCapitalFlowRequest"
+      responses:
+        "201":
+          description: Flow created.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlowMutation"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}:
+    get:
+      operationId: getCapitalFlow
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/FlowID"
+      responses:
+        "200":
+          description: Current capital flow.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlow"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: patchCapitalFlow
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/FlowID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCapitalFlowRequest"
+      responses:
+        "200":
+          description: Flow revised.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlowMutation"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteCapitalFlow
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/FlowID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Flow marked deleted by a new revision.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlowMutation"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions:
+    get:
+      operationId: listCapitalFlowRevisions
+      tags: [capital]
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/FlowID"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Flow revisions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalFlowRevisionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -800,6 +1065,12 @@ components:
         $ref: "#/components/schemas/UUID"
     ObservationID:
       name: observationId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUID"
+    FlowID:
+      name: flowId
       in: path
       required: true
       schema:
@@ -1523,6 +1794,216 @@ components:
           $ref: "#/components/schemas/Observation"
         job:
           $ref: "#/components/schemas/Job"
+    CapitalBaseline:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, currentRevisionId, version, effectiveAt, assetId, quantity]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        currentRevisionId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          minimum: 1
+        effectiveAt:
+          type: string
+          format: date-time
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        note:
+          type: [string, "null"]
+    CapitalBaselineMutation:
+      type: object
+      additionalProperties: false
+      required: [baseline, job]
+      properties:
+        baseline:
+          $ref: "#/components/schemas/CapitalBaseline"
+        job:
+          $ref: "#/components/schemas/Job"
+    PutCapitalBaselineRequest:
+      type: object
+      additionalProperties: false
+      required: [effectiveAt, assetId, quantity]
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        note:
+          type: [string, "null"]
+    CapitalBaselineRevision:
+      type: object
+      additionalProperties: false
+      required: [id, effectiveAt, assetId, quantity, createdByUserId, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        effectiveAt:
+          type: string
+          format: date-time
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        note:
+          type: [string, "null"]
+        createdByUserId:
+          $ref: "#/components/schemas/UUID"
+        createdAt:
+          type: string
+          format: date-time
+    CapitalBaselineRevisionList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitalBaselineRevision"
+        page:
+          $ref: "#/components/schemas/CursorPage"
+    CapitalFlow:
+      type: object
+      additionalProperties: false
+      required: [id, portfolioId, currentRevisionId, version, direction, quantity, assetId, effectiveAt, state]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        currentRevisionId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          minimum: 1
+        direction:
+          type: string
+          enum: [contribution, withdrawal]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        effectiveAt:
+          type: string
+          format: date-time
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        note:
+          type: [string, "null"]
+        state:
+          type: string
+          enum: [active, deleted]
+    CapitalFlowMutation:
+      type: object
+      additionalProperties: false
+      required: [flow, job]
+      properties:
+        flow:
+          $ref: "#/components/schemas/CapitalFlow"
+        job:
+          $ref: "#/components/schemas/Job"
+    CapitalFlowList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitalFlow"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+    CreateCapitalFlowRequest:
+      type: object
+      additionalProperties: false
+      required: [direction, quantity, assetId, effectiveAt]
+      properties:
+        direction:
+          type: string
+          enum: [contribution, withdrawal]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        effectiveAt:
+          type: string
+          format: date-time
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        note:
+          type: [string, "null"]
+    PatchCapitalFlowRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        direction:
+          type: string
+          enum: [contribution, withdrawal]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        effectiveAt:
+          type: string
+          format: date-time
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        note:
+          type: [string, "null"]
+    CapitalFlowRevision:
+      type: object
+      additionalProperties: false
+      required: [id, direction, quantity, assetId, effectiveAt, state, createdByUserId, createdAt]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        direction:
+          type: string
+          enum: [contribution, withdrawal]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        effectiveAt:
+          type: string
+          format: date-time
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        note:
+          type: [string, "null"]
+        state:
+          type: string
+          enum: [active, deleted]
+        createdByUserId:
+          $ref: "#/components/schemas/UUID"
+        createdAt:
+          type: string
+          format: date-time
+    CapitalFlowRevisionList:
+      type: object
+      additionalProperties: false
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitalFlowRevision"
+        page:
+          $ref: "#/components/schemas/CursorPage"
     Problem:
       type: object
       additionalProperties: false

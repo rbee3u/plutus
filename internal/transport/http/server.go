@@ -15,6 +15,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
@@ -63,6 +64,7 @@ type EngineOptions struct {
 	Access              *access.Service
 	Catalog             *catalog.Service
 	Observations        *observation.Service
+	Capital             *capital.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 }
@@ -89,6 +91,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		Access:              opts.Access,
 		Catalog:             opts.Catalog,
 		Observations:        opts.Observations,
+		Capital:             opts.Capital,
 		Idempotency:         opts.Idempotency,
 		Jobs:                opts.Jobs,
 	}

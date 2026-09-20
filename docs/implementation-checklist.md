@@ -122,7 +122,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 4 — Capital API
 
-- [ ] Capital Baseline and Capital Flow revisions over HTTP
+- [x] Capital Baseline and Capital Flow revisions over HTTP
 
 ### Milestone 5 — Projection engine
 

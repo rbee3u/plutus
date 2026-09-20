@@ -12,6 +12,7 @@ type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
 	CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error)
+	CountActiveCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error)
 	CountIdentityObservations(ctx context.Context, arg CountIdentityObservationsParams) (int64, error)
 	CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error)
 	CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error)
@@ -24,6 +25,10 @@ type Querier interface {
 	GetAssetByID(ctx context.Context, id []byte) (Asset, error)
 	GetAssetListing(ctx context.Context, id []byte) (AssetListing, error)
 	GetBalanceObservation(ctx context.Context, arg GetBalanceObservationParams) (BalanceObservation, error)
+	GetCapitalBaselineByPortfolio(ctx context.Context, portfolioID []byte) (CapitalBaseline, error)
+	GetCapitalBaselineRevision(ctx context.Context, arg GetCapitalBaselineRevisionParams) (CapitalBaselineRevision, error)
+	GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error)
+	GetCapitalFlowRevision(ctx context.Context, arg GetCapitalFlowRevisionParams) (CapitalFlowRevision, error)
 	GetConfirmedMappingAsset(ctx context.Context, arg GetConfirmedMappingAssetParams) ([]byte, error)
 	GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error)
@@ -47,6 +52,10 @@ type Querier interface {
 	InsertAccountMetricObservation(ctx context.Context, arg InsertAccountMetricObservationParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertBalanceObservation(ctx context.Context, arg InsertBalanceObservationParams) error
+	InsertCapitalBaseline(ctx context.Context, arg InsertCapitalBaselineParams) error
+	InsertCapitalBaselineRevision(ctx context.Context, arg InsertCapitalBaselineRevisionParams) error
+	InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error
+	InsertCapitalFlowRevision(ctx context.Context, arg InsertCapitalFlowRevisionParams) error
 	InsertCollectionFailure(ctx context.Context, arg InsertCollectionFailureParams) error
 	InsertCollectionJobDetail(ctx context.Context, arg InsertCollectionJobDetailParams) error
 	InsertCollectionRun(ctx context.Context, arg InsertCollectionRunParams) error
@@ -69,6 +78,9 @@ type Querier interface {
 	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
 	ListAccountsByPortfolio(ctx context.Context, arg ListAccountsByPortfolioParams) ([]Account, error)
 	ListActiveAssets(ctx context.Context) ([]Asset, error)
+	ListActiveCapitalFlows(ctx context.Context, arg ListActiveCapitalFlowsParams) ([]ListActiveCapitalFlowsRow, error)
+	ListCapitalBaselineRevisions(ctx context.Context, arg ListCapitalBaselineRevisionsParams) ([]CapitalBaselineRevision, error)
+	ListCapitalFlowRevisions(ctx context.Context, arg ListCapitalFlowRevisionsParams) ([]CapitalFlowRevision, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListConnectionsByPortfolioRow, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error)
 	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
@@ -89,10 +101,14 @@ type Querier interface {
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	SearchAssets(ctx context.Context, arg SearchAssetsParams) ([]Asset, error)
+	SetCapitalBaselineRevision(ctx context.Context, arg SetCapitalBaselineRevisionParams) error
+	SetCapitalFlowRevision(ctx context.Context, arg SetCapitalFlowRevisionParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateAccountMetricObservation(ctx context.Context, arg UpdateAccountMetricObservationParams) error
 	UpdateBalanceObservation(ctx context.Context, arg UpdateBalanceObservationParams) error
+	UpdateCapitalBaselinePointer(ctx context.Context, arg UpdateCapitalBaselinePointerParams) (int64, error)
+	UpdateCapitalFlowPointer(ctx context.Context, arg UpdateCapitalFlowPointerParams) (int64, error)
 	UpdateConnection(ctx context.Context, arg UpdateConnectionParams) (int64, error)
 	UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error)
 	UpdateObservationHeader(ctx context.Context, arg UpdateObservationHeaderParams) (int64, error)

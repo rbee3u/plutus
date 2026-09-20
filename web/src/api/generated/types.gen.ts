@@ -329,6 +329,104 @@ export type ObservationCorrection = {
     job: Job;
 };
 
+export type CapitalBaseline = {
+    id: Uuid;
+    portfolioId: Uuid;
+    currentRevisionId: Uuid;
+    version: number;
+    effectiveAt: string;
+    assetId: Uuid;
+    quantity: Decimal;
+    note?: string | null;
+};
+
+export type CapitalBaselineMutation = {
+    baseline: CapitalBaseline;
+    job: Job;
+};
+
+export type PutCapitalBaselineRequest = {
+    effectiveAt: string;
+    assetId: Uuid;
+    quantity: Decimal;
+    note?: string | null;
+};
+
+export type CapitalBaselineRevision = {
+    id: Uuid;
+    effectiveAt: string;
+    assetId: Uuid;
+    quantity: Decimal;
+    note?: string | null;
+    createdByUserId: Uuid;
+    createdAt: string;
+};
+
+export type CapitalBaselineRevisionList = {
+    items: Array<CapitalBaselineRevision>;
+    page: CursorPage;
+};
+
+export type CapitalFlow = {
+    id: Uuid;
+    portfolioId: Uuid;
+    currentRevisionId: Uuid;
+    version: number;
+    direction: 'contribution' | 'withdrawal';
+    quantity: Decimal;
+    assetId: Uuid;
+    effectiveAt: string;
+    accountId?: string | null;
+    note?: string | null;
+    state: 'active' | 'deleted';
+};
+
+export type CapitalFlowMutation = {
+    flow: CapitalFlow;
+    job: Job;
+};
+
+export type CapitalFlowList = {
+    items: Array<CapitalFlow>;
+    page: OffsetPage;
+};
+
+export type CreateCapitalFlowRequest = {
+    direction: 'contribution' | 'withdrawal';
+    quantity: Decimal;
+    assetId: Uuid;
+    effectiveAt: string;
+    accountId?: string | null;
+    note?: string | null;
+};
+
+export type PatchCapitalFlowRequest = {
+    direction?: 'contribution' | 'withdrawal';
+    quantity?: Decimal;
+    assetId?: Uuid;
+    effectiveAt?: string;
+    accountId?: string | null;
+    note?: string | null;
+};
+
+export type CapitalFlowRevision = {
+    id: Uuid;
+    direction: 'contribution' | 'withdrawal';
+    quantity: Decimal;
+    assetId: Uuid;
+    effectiveAt: string;
+    accountId?: string | null;
+    note?: string | null;
+    state: 'active' | 'deleted';
+    createdByUserId: Uuid;
+    createdAt: string;
+};
+
+export type CapitalFlowRevisionList = {
+    items: Array<CapitalFlowRevision>;
+    page: CursorPage;
+};
+
 export type Problem = {
     type: string;
     title: string;
@@ -361,6 +459,8 @@ export type ConnectionId = Uuid;
 export type JobId = Uuid;
 
 export type ObservationId = Uuid;
+
+export type FlowId = Uuid;
 
 export type SessionId = Uuid;
 
@@ -1507,3 +1607,348 @@ export type PatchObservationResponses = {
 };
 
 export type PatchObservationResponse = PatchObservationResponses[keyof PatchObservationResponses];
+
+export type GetCapitalBaselineData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-baseline';
+};
+
+export type GetCapitalBaselineErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetCapitalBaselineError = GetCapitalBaselineErrors[keyof GetCapitalBaselineErrors];
+
+export type GetCapitalBaselineResponses = {
+    /**
+     * Current capital baseline.
+     */
+    200: CapitalBaseline;
+};
+
+export type GetCapitalBaselineResponse = GetCapitalBaselineResponses[keyof GetCapitalBaselineResponses];
+
+export type PutCapitalBaselineData = {
+    body: PutCapitalBaselineRequest;
+    headers: {
+        'If-Match': string;
+        'Idempotency-Key'?: string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-baseline';
+};
+
+export type PutCapitalBaselineErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PutCapitalBaselineError = PutCapitalBaselineErrors[keyof PutCapitalBaselineErrors];
+
+export type PutCapitalBaselineResponses = {
+    /**
+     * Baseline revised.
+     */
+    200: CapitalBaselineMutation;
+    /**
+     * Baseline created.
+     */
+    201: CapitalBaselineMutation;
+};
+
+export type PutCapitalBaselineResponse = PutCapitalBaselineResponses[keyof PutCapitalBaselineResponses];
+
+export type ListCapitalBaselineRevisionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/capital-baseline/revisions';
+};
+
+export type ListCapitalBaselineRevisionsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListCapitalBaselineRevisionsError = ListCapitalBaselineRevisionsErrors[keyof ListCapitalBaselineRevisionsErrors];
+
+export type ListCapitalBaselineRevisionsResponses = {
+    /**
+     * Baseline revisions.
+     */
+    200: CapitalBaselineRevisionList;
+};
+
+export type ListCapitalBaselineRevisionsResponse = ListCapitalBaselineRevisionsResponses[keyof ListCapitalBaselineRevisionsResponses];
+
+export type ListCapitalFlowsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows';
+};
+
+export type ListCapitalFlowsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListCapitalFlowsError = ListCapitalFlowsErrors[keyof ListCapitalFlowsErrors];
+
+export type ListCapitalFlowsResponses = {
+    /**
+     * Current capital flows.
+     */
+    200: CapitalFlowList;
+};
+
+export type ListCapitalFlowsResponse = ListCapitalFlowsResponses[keyof ListCapitalFlowsResponses];
+
+export type CreateCapitalFlowData = {
+    body: CreateCapitalFlowRequest;
+    headers?: {
+        'Idempotency-Key'?: string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows';
+};
+
+export type CreateCapitalFlowErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+};
+
+export type CreateCapitalFlowError = CreateCapitalFlowErrors[keyof CreateCapitalFlowErrors];
+
+export type CreateCapitalFlowResponses = {
+    /**
+     * Flow created.
+     */
+    201: CapitalFlowMutation;
+};
+
+export type CreateCapitalFlowResponse = CreateCapitalFlowResponses[keyof CreateCapitalFlowResponses];
+
+export type DeleteCapitalFlowData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        flowId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}';
+};
+
+export type DeleteCapitalFlowErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type DeleteCapitalFlowError = DeleteCapitalFlowErrors[keyof DeleteCapitalFlowErrors];
+
+export type DeleteCapitalFlowResponses = {
+    /**
+     * Flow marked deleted by a new revision.
+     */
+    200: CapitalFlowMutation;
+};
+
+export type DeleteCapitalFlowResponse = DeleteCapitalFlowResponses[keyof DeleteCapitalFlowResponses];
+
+export type GetCapitalFlowData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        flowId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}';
+};
+
+export type GetCapitalFlowErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetCapitalFlowError = GetCapitalFlowErrors[keyof GetCapitalFlowErrors];
+
+export type GetCapitalFlowResponses = {
+    /**
+     * Current capital flow.
+     */
+    200: CapitalFlow;
+};
+
+export type GetCapitalFlowResponse = GetCapitalFlowResponses[keyof GetCapitalFlowResponses];
+
+export type PatchCapitalFlowData = {
+    body: PatchCapitalFlowRequest;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        flowId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}';
+};
+
+export type PatchCapitalFlowErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PatchCapitalFlowError = PatchCapitalFlowErrors[keyof PatchCapitalFlowErrors];
+
+export type PatchCapitalFlowResponses = {
+    /**
+     * Flow revised.
+     */
+    200: CapitalFlowMutation;
+};
+
+export type PatchCapitalFlowResponse = PatchCapitalFlowResponses[keyof PatchCapitalFlowResponses];
+
+export type ListCapitalFlowRevisionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        flowId: Uuid;
+    };
+    query?: {
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions';
+};
+
+export type ListCapitalFlowRevisionsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListCapitalFlowRevisionsError = ListCapitalFlowRevisionsErrors[keyof ListCapitalFlowRevisionsErrors];
+
+export type ListCapitalFlowRevisionsResponses = {
+    /**
+     * Flow revisions.
+     */
+    200: CapitalFlowRevisionList;
+};
+
+export type ListCapitalFlowRevisionsResponse = ListCapitalFlowRevisionsResponses[keyof ListCapitalFlowRevisionsResponses];

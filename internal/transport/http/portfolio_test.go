@@ -214,14 +214,30 @@ func doJSON(t *testing.T, engine http.Handler, method, path string, body any, se
 
 func patchWithMatch(t *testing.T, engine http.Handler, path string, body any, sess sessionCookies, match string) *httptest.ResponseRecorder {
 	t.Helper()
-	raw, err := json.Marshal(body)
-	if err != nil {
-		t.Fatal(err)
+	return jsonWithMatch(t, engine, http.MethodPatch, path, body, sess, match, "")
+}
+
+func jsonWithMatch(t *testing.T, engine http.Handler, method, path string, body any, sess sessionCookies, match, idem string) *httptest.ResponseRecorder {
+	t.Helper()
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reader = bytes.NewReader(raw)
 	}
-	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewReader(raw))
-	req.Header.Set("Content-Type", "application/json")
+	req := httptest.NewRequest(method, path, reader)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("X-CSRF-Token", sess.csrf)
-	req.Header.Set("If-Match", match)
+	if match != "" {
+		req.Header.Set("If-Match", match)
+	}
+	if idem != "" {
+		req.Header.Set("Idempotency-Key", idem)
+	}
 	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sess.session})
 	req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sess.csrf})
 	rec := httptest.NewRecorder()

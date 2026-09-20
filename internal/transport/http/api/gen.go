@@ -43,6 +43,78 @@ func (e AccountStatus) Valid() bool {
 	}
 }
 
+// Defines values for CapitalFlowDirection.
+const (
+	CapitalFlowDirectionContribution CapitalFlowDirection = "contribution"
+	CapitalFlowDirectionWithdrawal   CapitalFlowDirection = "withdrawal"
+)
+
+// Valid indicates whether the value is a known member of the CapitalFlowDirection enum.
+func (e CapitalFlowDirection) Valid() bool {
+	switch e {
+	case CapitalFlowDirectionContribution:
+		return true
+	case CapitalFlowDirectionWithdrawal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CapitalFlowState.
+const (
+	CapitalFlowStateActive  CapitalFlowState = "active"
+	CapitalFlowStateDeleted CapitalFlowState = "deleted"
+)
+
+// Valid indicates whether the value is a known member of the CapitalFlowState enum.
+func (e CapitalFlowState) Valid() bool {
+	switch e {
+	case CapitalFlowStateActive:
+		return true
+	case CapitalFlowStateDeleted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CapitalFlowRevisionDirection.
+const (
+	CapitalFlowRevisionDirectionContribution CapitalFlowRevisionDirection = "contribution"
+	CapitalFlowRevisionDirectionWithdrawal   CapitalFlowRevisionDirection = "withdrawal"
+)
+
+// Valid indicates whether the value is a known member of the CapitalFlowRevisionDirection enum.
+func (e CapitalFlowRevisionDirection) Valid() bool {
+	switch e {
+	case CapitalFlowRevisionDirectionContribution:
+		return true
+	case CapitalFlowRevisionDirectionWithdrawal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CapitalFlowRevisionState.
+const (
+	CapitalFlowRevisionStateActive  CapitalFlowRevisionState = "active"
+	CapitalFlowRevisionStateDeleted CapitalFlowRevisionState = "deleted"
+)
+
+// Valid indicates whether the value is a known member of the CapitalFlowRevisionState enum.
+func (e CapitalFlowRevisionState) Valid() bool {
+	switch e {
+	case CapitalFlowRevisionStateActive:
+		return true
+	case CapitalFlowRevisionStateDeleted:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CatalogAssetKind.
 const (
 	Crypto CatalogAssetKind = "crypto"
@@ -100,6 +172,24 @@ func (e ConnectionStatus) Valid() bool {
 	case ConnectionStatusEnabled:
 		return true
 	case ConnectionStatusInvalid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCapitalFlowRequestDirection.
+const (
+	CreateCapitalFlowRequestDirectionContribution CreateCapitalFlowRequestDirection = "contribution"
+	CreateCapitalFlowRequestDirectionWithdrawal   CreateCapitalFlowRequestDirection = "withdrawal"
+)
+
+// Valid indicates whether the value is a known member of the CreateCapitalFlowRequestDirection enum.
+func (e CreateCapitalFlowRequestDirection) Valid() bool {
+	switch e {
+	case CreateCapitalFlowRequestDirectionContribution:
+		return true
+	case CreateCapitalFlowRequestDirectionWithdrawal:
 		return true
 	default:
 		return false
@@ -415,6 +505,24 @@ func (e OffsetPageKind) Valid() bool {
 	}
 }
 
+// Defines values for PatchCapitalFlowRequestDirection.
+const (
+	PatchCapitalFlowRequestDirectionContribution PatchCapitalFlowRequestDirection = "contribution"
+	PatchCapitalFlowRequestDirectionWithdrawal   PatchCapitalFlowRequestDirection = "withdrawal"
+)
+
+// Valid indicates whether the value is a known member of the PatchCapitalFlowRequestDirection enum.
+func (e PatchCapitalFlowRequestDirection) Valid() bool {
+	switch e {
+	case PatchCapitalFlowRequestDirectionContribution:
+		return true
+	case PatchCapitalFlowRequestDirectionWithdrawal:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PatchConnectionRequestStatus.
 const (
 	PatchConnectionRequestStatusDisabled PatchConnectionRequestStatus = "disabled"
@@ -652,6 +760,100 @@ type BalanceObservation struct {
 	TotalQuantity     *string `json:"totalQuantity,omitempty"`
 }
 
+// CapitalBaseline defines model for CapitalBaseline.
+type CapitalBaseline struct {
+	AssetId           UUID      `json:"assetId"`
+	CurrentRevisionId UUID      `json:"currentRevisionId"`
+	EffectiveAt       time.Time `json:"effectiveAt"`
+	Id                UUID      `json:"id"`
+	Note              *string   `json:"note,omitempty"`
+	PortfolioId       UUID      `json:"portfolioId"`
+	Quantity          Decimal   `json:"quantity"`
+	Version           int       `json:"version"`
+}
+
+// CapitalBaselineMutation defines model for CapitalBaselineMutation.
+type CapitalBaselineMutation struct {
+	Baseline CapitalBaseline `json:"baseline"`
+	Job      Job             `json:"job"`
+}
+
+// CapitalBaselineRevision defines model for CapitalBaselineRevision.
+type CapitalBaselineRevision struct {
+	AssetId         UUID      `json:"assetId"`
+	CreatedAt       time.Time `json:"createdAt"`
+	CreatedByUserId UUID      `json:"createdByUserId"`
+	EffectiveAt     time.Time `json:"effectiveAt"`
+	Id              UUID      `json:"id"`
+	Note            *string   `json:"note,omitempty"`
+	Quantity        Decimal   `json:"quantity"`
+}
+
+// CapitalBaselineRevisionList defines model for CapitalBaselineRevisionList.
+type CapitalBaselineRevisionList struct {
+	Items []CapitalBaselineRevision `json:"items"`
+	Page  CursorPage                `json:"page"`
+}
+
+// CapitalFlow defines model for CapitalFlow.
+type CapitalFlow struct {
+	AccountId         *openapi_types.UUID  `json:"accountId,omitempty"`
+	AssetId           UUID                 `json:"assetId"`
+	CurrentRevisionId UUID                 `json:"currentRevisionId"`
+	Direction         CapitalFlowDirection `json:"direction"`
+	EffectiveAt       time.Time            `json:"effectiveAt"`
+	Id                UUID                 `json:"id"`
+	Note              *string              `json:"note,omitempty"`
+	PortfolioId       UUID                 `json:"portfolioId"`
+	Quantity          Decimal              `json:"quantity"`
+	State             CapitalFlowState     `json:"state"`
+	Version           int                  `json:"version"`
+}
+
+// CapitalFlowDirection defines model for CapitalFlow.Direction.
+type CapitalFlowDirection string
+
+// CapitalFlowState defines model for CapitalFlow.State.
+type CapitalFlowState string
+
+// CapitalFlowList defines model for CapitalFlowList.
+type CapitalFlowList struct {
+	Items []CapitalFlow `json:"items"`
+	Page  OffsetPage    `json:"page"`
+}
+
+// CapitalFlowMutation defines model for CapitalFlowMutation.
+type CapitalFlowMutation struct {
+	Flow CapitalFlow `json:"flow"`
+	Job  Job         `json:"job"`
+}
+
+// CapitalFlowRevision defines model for CapitalFlowRevision.
+type CapitalFlowRevision struct {
+	AccountId       *openapi_types.UUID          `json:"accountId,omitempty"`
+	AssetId         UUID                         `json:"assetId"`
+	CreatedAt       time.Time                    `json:"createdAt"`
+	CreatedByUserId UUID                         `json:"createdByUserId"`
+	Direction       CapitalFlowRevisionDirection `json:"direction"`
+	EffectiveAt     time.Time                    `json:"effectiveAt"`
+	Id              UUID                         `json:"id"`
+	Note            *string                      `json:"note,omitempty"`
+	Quantity        Decimal                      `json:"quantity"`
+	State           CapitalFlowRevisionState     `json:"state"`
+}
+
+// CapitalFlowRevisionDirection defines model for CapitalFlowRevision.Direction.
+type CapitalFlowRevisionDirection string
+
+// CapitalFlowRevisionState defines model for CapitalFlowRevision.State.
+type CapitalFlowRevisionState string
+
+// CapitalFlowRevisionList defines model for CapitalFlowRevisionList.
+type CapitalFlowRevisionList struct {
+	Items []CapitalFlowRevision `json:"items"`
+	Page  CursorPage            `json:"page"`
+}
+
 // CatalogAsset defines model for CatalogAsset.
 type CatalogAsset struct {
 	Code     string             `json:"code"`
@@ -695,6 +897,19 @@ type ConnectionStatus string
 type ConnectionList struct {
 	Items []Connection `json:"items"`
 }
+
+// CreateCapitalFlowRequest defines model for CreateCapitalFlowRequest.
+type CreateCapitalFlowRequest struct {
+	AccountId   *openapi_types.UUID               `json:"accountId,omitempty"`
+	AssetId     UUID                              `json:"assetId"`
+	Direction   CreateCapitalFlowRequestDirection `json:"direction"`
+	EffectiveAt time.Time                         `json:"effectiveAt"`
+	Note        *string                           `json:"note,omitempty"`
+	Quantity    Decimal                           `json:"quantity"`
+}
+
+// CreateCapitalFlowRequestDirection defines model for CreateCapitalFlowRequest.Direction.
+type CreateCapitalFlowRequestDirection string
 
 // CreateConnectionRequest defines model for CreateConnectionRequest.
 type CreateConnectionRequest struct {
@@ -907,6 +1122,19 @@ type OffsetPage struct {
 // OffsetPageKind defines model for OffsetPage.Kind.
 type OffsetPageKind string
 
+// PatchCapitalFlowRequest defines model for PatchCapitalFlowRequest.
+type PatchCapitalFlowRequest struct {
+	AccountId   *openapi_types.UUID               `json:"accountId,omitempty"`
+	AssetId     *UUID                             `json:"assetId,omitempty"`
+	Direction   *PatchCapitalFlowRequestDirection `json:"direction,omitempty"`
+	EffectiveAt *time.Time                        `json:"effectiveAt,omitempty"`
+	Note        *string                           `json:"note,omitempty"`
+	Quantity    *Decimal                          `json:"quantity,omitempty"`
+}
+
+// PatchCapitalFlowRequestDirection defines model for PatchCapitalFlowRequest.Direction.
+type PatchCapitalFlowRequestDirection string
+
 // PatchConnectionRequest defines model for PatchConnectionRequest.
 type PatchConnectionRequest struct {
 	CollectionIntervalSeconds *int                          `json:"collectionIntervalSeconds,omitempty"`
@@ -1024,6 +1252,14 @@ type Problem struct {
 	Type        string        `json:"type"`
 }
 
+// PutCapitalBaselineRequest defines model for PutCapitalBaselineRequest.
+type PutCapitalBaselineRequest struct {
+	AssetId     UUID      `json:"assetId"`
+	EffectiveAt time.Time `json:"effectiveAt"`
+	Note        *string   `json:"note,omitempty"`
+	Quantity    Decimal   `json:"quantity"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Password string `json:"password"`
@@ -1077,6 +1313,9 @@ type CSRFToken = string
 
 // ConnectionID defines model for ConnectionID.
 type ConnectionID = UUID
+
+// FlowID defines model for FlowID.
+type FlowID = UUID
 
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
@@ -1165,6 +1404,49 @@ type ArchivePortfolioParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
+// PutCapitalBaselineParams defines parameters for PutCapitalBaseline.
+type PutCapitalBaselineParams struct {
+	IfMatch        IfMatch         `json:"If-Match"`
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListCapitalBaselineRevisionsParams defines parameters for ListCapitalBaselineRevisions.
+type ListCapitalBaselineRevisionsParams struct {
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// ListCapitalFlowsParams defines parameters for ListCapitalFlows.
+type ListCapitalFlowsParams struct {
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateCapitalFlowParams defines parameters for CreateCapitalFlow.
+type CreateCapitalFlowParams struct {
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+}
+
+// DeleteCapitalFlowParams defines parameters for DeleteCapitalFlow.
+type DeleteCapitalFlowParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// PatchCapitalFlowParams defines parameters for PatchCapitalFlow.
+type PatchCapitalFlowParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListCapitalFlowRevisionsParams defines parameters for ListCapitalFlowRevisions.
+type ListCapitalFlowRevisionsParams struct {
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
 // SearchCatalogAssetsParams defines parameters for SearchCatalogAssets.
 type SearchCatalogAssetsParams struct {
 	Q      *string `form:"q,omitempty" json:"q,omitempty"`
@@ -1241,6 +1523,15 @@ type CreatePortfolioJSONRequestBody = CreatePortfolioRequest
 // PatchPortfolioJSONRequestBody defines body for PatchPortfolio for application/json ContentType.
 type PatchPortfolioJSONRequestBody = PatchPortfolioRequest
 
+// PutCapitalBaselineJSONRequestBody defines body for PutCapitalBaseline for application/json ContentType.
+type PutCapitalBaselineJSONRequestBody = PutCapitalBaselineRequest
+
+// CreateCapitalFlowJSONRequestBody defines body for CreateCapitalFlow for application/json ContentType.
+type CreateCapitalFlowJSONRequestBody = CreateCapitalFlowRequest
+
+// PatchCapitalFlowJSONRequestBody defines body for PatchCapitalFlow for application/json ContentType.
+type PatchCapitalFlowJSONRequestBody = PatchCapitalFlowRequest
+
 // CreateConnectionJSONRequestBody defines body for CreateConnection for application/json ContentType.
 type CreateConnectionJSONRequestBody = CreateConnectionRequest
 
@@ -1309,6 +1600,33 @@ type ServerInterface interface {
 
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(c *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
+	GetCapitalBaseline(c *gin.Context, portfolioId PortfolioID)
+
+	// (PUT /api/v1/portfolios/{portfolioId}/capital-baseline)
+	PutCapitalBaseline(c *gin.Context, portfolioId PortfolioID, params PutCapitalBaselineParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline/revisions)
+	ListCapitalBaselineRevisions(c *gin.Context, portfolioId PortfolioID, params ListCapitalBaselineRevisionsParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows)
+	ListCapitalFlows(c *gin.Context, portfolioId PortfolioID, params ListCapitalFlowsParams)
+
+	// (POST /api/v1/portfolios/{portfolioId}/capital-flows)
+	CreateCapitalFlow(c *gin.Context, portfolioId PortfolioID, params CreateCapitalFlowParams)
+
+	// (DELETE /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	DeleteCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params DeleteCapitalFlowParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	GetCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID)
+
+	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	PatchCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params PatchCapitalFlowParams)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
+	ListCapitalFlowRevisions(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params ListCapitalFlowRevisionsParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
 	SearchCatalogAssets(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams)
@@ -2057,6 +2375,524 @@ func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
 	}
 
 	siw.Handler.ArchivePortfolio(c, portfolioId, params)
+}
+
+// GetCapitalBaseline operation middleware
+func (siw *ServerInterfaceWrapper) GetCapitalBaseline(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCapitalBaseline(c, portfolioId)
+}
+
+// PutCapitalBaseline operation middleware
+func (siw *ServerInterfaceWrapper) PutCapitalBaseline(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutCapitalBaselineParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutCapitalBaseline(c, portfolioId, params)
+}
+
+// ListCapitalBaselineRevisions operation middleware
+func (siw *ServerInterfaceWrapper) ListCapitalBaselineRevisions(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCapitalBaselineRevisionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCapitalBaselineRevisions(c, portfolioId, params)
+}
+
+// ListCapitalFlows operation middleware
+func (siw *ServerInterfaceWrapper) ListCapitalFlows(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCapitalFlowsParams
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCapitalFlows(c, portfolioId, params)
+}
+
+// CreateCapitalFlow operation middleware
+func (siw *ServerInterfaceWrapper) CreateCapitalFlow(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCapitalFlowParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateCapitalFlow(c, portfolioId, params)
+}
+
+// DeleteCapitalFlow operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCapitalFlow(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "flowId" -------------
+	var flowId FlowID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "flowId", c.Param("flowId"), &flowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter flowId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteCapitalFlowParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteCapitalFlow(c, portfolioId, flowId, params)
+}
+
+// GetCapitalFlow operation middleware
+func (siw *ServerInterfaceWrapper) GetCapitalFlow(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "flowId" -------------
+	var flowId FlowID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "flowId", c.Param("flowId"), &flowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter flowId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCapitalFlow(c, portfolioId, flowId)
+}
+
+// PatchCapitalFlow operation middleware
+func (siw *ServerInterfaceWrapper) PatchCapitalFlow(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "flowId" -------------
+	var flowId FlowID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "flowId", c.Param("flowId"), &flowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter flowId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PatchCapitalFlowParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PatchCapitalFlow(c, portfolioId, flowId, params)
+}
+
+// ListCapitalFlowRevisions operation middleware
+func (siw *ServerInterfaceWrapper) ListCapitalFlowRevisions(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "flowId" -------------
+	var flowId FlowID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "flowId", c.Param("flowId"), &flowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter flowId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCapitalFlowRevisionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCapitalFlowRevisions(c, portfolioId, flowId, params)
 }
 
 // SearchCatalogAssets operation middleware
@@ -3001,6 +3837,15 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts", wrapper.ListAccounts)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets", wrapper.SearchCatalogAssets)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.PatchObservation)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.GetCapitalBaseline)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.PutCapitalBaseline)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline/revisions", wrapper.ListCapitalBaselineRevisions)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.ListCapitalFlows)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.CreateCapitalFlow)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.DeleteCapitalFlow)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.GetCapitalFlow)
+	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.PatchCapitalFlow)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId/revisions", wrapper.ListCapitalFlowRevisions)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -3887,6 +4732,684 @@ func (response ArchivePortfolio412ApplicationProblemPlusJSONResponse) VisitArchi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalBaselineRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+}
+
+type GetCapitalBaselineResponseObject interface {
+	VisitGetCapitalBaselineResponse(w http.ResponseWriter) error
+}
+
+type GetCapitalBaseline200ResponseHeaders struct {
+	ETag *string
+}
+
+type GetCapitalBaseline200JSONResponse struct {
+	Body    CapitalBaseline
+	Headers GetCapitalBaseline200ResponseHeaders
+}
+
+func (response GetCapitalBaseline200JSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalBaseline401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapitalBaseline401ApplicationProblemPlusJSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalBaseline404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCapitalBaseline404ApplicationProblemPlusJSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaselineRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      PutCapitalBaselineParams
+	Body        *PutCapitalBaselineJSONRequestBody
+}
+
+type PutCapitalBaselineResponseObject interface {
+	VisitPutCapitalBaselineResponse(w http.ResponseWriter) error
+}
+
+type PutCapitalBaseline200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCapitalBaseline200JSONResponse struct {
+	Body    CapitalBaselineMutation
+	Headers PutCapitalBaseline200ResponseHeaders
+}
+
+func (response PutCapitalBaseline200JSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline201ResponseHeaders struct {
+	ETag *string
+}
+
+type PutCapitalBaseline201JSONResponse struct {
+	Body    CapitalBaselineMutation
+	Headers PutCapitalBaseline201ResponseHeaders
+}
+
+func (response PutCapitalBaseline201JSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutCapitalBaseline400ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCapitalBaseline401ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCapitalBaseline404ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline409ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCapitalBaseline409ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutCapitalBaseline412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutCapitalBaseline412ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalBaselineRevisionsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListCapitalBaselineRevisionsParams
+}
+
+type ListCapitalBaselineRevisionsResponseObject interface {
+	VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error
+}
+
+type ListCapitalBaselineRevisions200JSONResponse CapitalBaselineRevisionList
+
+func (response ListCapitalBaselineRevisions200JSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalBaselineRevisions401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListCapitalBaselineRevisions401ApplicationProblemPlusJSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalBaselineRevisions404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCapitalBaselineRevisions404ApplicationProblemPlusJSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlowsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListCapitalFlowsParams
+}
+
+type ListCapitalFlowsResponseObject interface {
+	VisitListCapitalFlowsResponse(w http.ResponseWriter) error
+}
+
+type ListCapitalFlows200JSONResponse CapitalFlowList
+
+func (response ListCapitalFlows200JSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlows401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListCapitalFlows401ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlows404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCapitalFlows404ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlowRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      CreateCapitalFlowParams
+	Body        *CreateCapitalFlowJSONRequestBody
+}
+
+type CreateCapitalFlowResponseObject interface {
+	VisitCreateCapitalFlowResponse(w http.ResponseWriter) error
+}
+
+type CreateCapitalFlow201ResponseHeaders struct {
+	ETag *string
+}
+
+type CreateCapitalFlow201JSONResponse struct {
+	Body    CapitalFlowMutation
+	Headers CreateCapitalFlow201ResponseHeaders
+}
+
+func (response CreateCapitalFlow201JSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlow400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateCapitalFlow400ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlow401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCapitalFlow401ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlow404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCapitalFlow404ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlow409ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCapitalFlow409ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlowRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	FlowId      FlowID      `json:"flowId"`
+	Params      DeleteCapitalFlowParams
+}
+
+type DeleteCapitalFlowResponseObject interface {
+	VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error
+}
+
+type DeleteCapitalFlow200ResponseHeaders struct {
+	ETag *string
+}
+
+type DeleteCapitalFlow200JSONResponse struct {
+	Body    CapitalFlowMutation
+	Headers DeleteCapitalFlow200ResponseHeaders
+}
+
+func (response DeleteCapitalFlow200JSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlow401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteCapitalFlow401ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlow404ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCapitalFlow404ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlow412ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCapitalFlow412ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlowRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	FlowId      FlowID      `json:"flowId"`
+}
+
+type GetCapitalFlowResponseObject interface {
+	VisitGetCapitalFlowResponse(w http.ResponseWriter) error
+}
+
+type GetCapitalFlow200ResponseHeaders struct {
+	ETag *string
+}
+
+type GetCapitalFlow200JSONResponse struct {
+	Body    CapitalFlow
+	Headers GetCapitalFlow200ResponseHeaders
+}
+
+func (response GetCapitalFlow200JSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlow401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapitalFlow401ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlow404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCapitalFlow404ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlowRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	FlowId      FlowID      `json:"flowId"`
+	Params      PatchCapitalFlowParams
+	Body        *PatchCapitalFlowJSONRequestBody
+}
+
+type PatchCapitalFlowResponseObject interface {
+	VisitPatchCapitalFlowResponse(w http.ResponseWriter) error
+}
+
+type PatchCapitalFlow200ResponseHeaders struct {
+	ETag *string
+}
+
+type PatchCapitalFlow200JSONResponse struct {
+	Body    CapitalFlowMutation
+	Headers PatchCapitalFlow200ResponseHeaders
+}
+
+func (response PatchCapitalFlow200JSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlow400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PatchCapitalFlow400ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlow401ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchCapitalFlow401ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlow404ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchCapitalFlow404ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlow412ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchCapitalFlow412ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlowRevisionsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	FlowId      FlowID      `json:"flowId"`
+	Params      ListCapitalFlowRevisionsParams
+}
+
+type ListCapitalFlowRevisionsResponseObject interface {
+	VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error
+}
+
+type ListCapitalFlowRevisions200JSONResponse CapitalFlowRevisionList
+
+func (response ListCapitalFlowRevisions200JSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlowRevisions401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListCapitalFlowRevisions401ApplicationProblemPlusJSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlowRevisions404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCapitalFlowRevisions404ApplicationProblemPlusJSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5024,6 +6547,33 @@ type StrictServerInterface interface {
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(ctx context.Context, request ArchivePortfolioRequestObject) (ArchivePortfolioResponseObject, error)
 
+	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
+	GetCapitalBaseline(ctx context.Context, request GetCapitalBaselineRequestObject) (GetCapitalBaselineResponseObject, error)
+
+	// (PUT /api/v1/portfolios/{portfolioId}/capital-baseline)
+	PutCapitalBaseline(ctx context.Context, request PutCapitalBaselineRequestObject) (PutCapitalBaselineResponseObject, error)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline/revisions)
+	ListCapitalBaselineRevisions(ctx context.Context, request ListCapitalBaselineRevisionsRequestObject) (ListCapitalBaselineRevisionsResponseObject, error)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows)
+	ListCapitalFlows(ctx context.Context, request ListCapitalFlowsRequestObject) (ListCapitalFlowsResponseObject, error)
+
+	// (POST /api/v1/portfolios/{portfolioId}/capital-flows)
+	CreateCapitalFlow(ctx context.Context, request CreateCapitalFlowRequestObject) (CreateCapitalFlowResponseObject, error)
+
+	// (DELETE /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	DeleteCapitalFlow(ctx context.Context, request DeleteCapitalFlowRequestObject) (DeleteCapitalFlowResponseObject, error)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	GetCapitalFlow(ctx context.Context, request GetCapitalFlowRequestObject) (GetCapitalFlowResponseObject, error)
+
+	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
+	PatchCapitalFlow(ctx context.Context, request PatchCapitalFlowRequestObject) (PatchCapitalFlowResponseObject, error)
+
+	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
+	ListCapitalFlowRevisions(ctx context.Context, request ListCapitalFlowRevisionsRequestObject) (ListCapitalFlowRevisionsResponseObject, error)
+
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
 	SearchCatalogAssets(ctx context.Context, request SearchCatalogAssetsRequestObject) (SearchCatalogAssetsResponseObject, error)
 
@@ -5607,6 +7157,272 @@ func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId Portfoli
 	}
 }
 
+// GetCapitalBaseline operation middleware
+func (sh *strictHandler) GetCapitalBaseline(ctx *gin.Context, portfolioId PortfolioID) {
+	var request GetCapitalBaselineRequestObject
+
+	request.PortfolioId = portfolioId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCapitalBaseline(ctx, request.(GetCapitalBaselineRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCapitalBaseline")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetCapitalBaselineResponseObject); ok {
+		if err := validResponse.VisitGetCapitalBaselineResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutCapitalBaseline operation middleware
+func (sh *strictHandler) PutCapitalBaseline(ctx *gin.Context, portfolioId PortfolioID, params PutCapitalBaselineParams) {
+	var request PutCapitalBaselineRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	var body PutCapitalBaselineJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutCapitalBaseline(ctx, request.(PutCapitalBaselineRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutCapitalBaseline")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutCapitalBaselineResponseObject); ok {
+		if err := validResponse.VisitPutCapitalBaselineResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCapitalBaselineRevisions operation middleware
+func (sh *strictHandler) ListCapitalBaselineRevisions(ctx *gin.Context, portfolioId PortfolioID, params ListCapitalBaselineRevisionsParams) {
+	var request ListCapitalBaselineRevisionsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCapitalBaselineRevisions(ctx, request.(ListCapitalBaselineRevisionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCapitalBaselineRevisions")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListCapitalBaselineRevisionsResponseObject); ok {
+		if err := validResponse.VisitListCapitalBaselineRevisionsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCapitalFlows operation middleware
+func (sh *strictHandler) ListCapitalFlows(ctx *gin.Context, portfolioId PortfolioID, params ListCapitalFlowsParams) {
+	var request ListCapitalFlowsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCapitalFlows(ctx, request.(ListCapitalFlowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCapitalFlows")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListCapitalFlowsResponseObject); ok {
+		if err := validResponse.VisitListCapitalFlowsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCapitalFlow operation middleware
+func (sh *strictHandler) CreateCapitalFlow(ctx *gin.Context, portfolioId PortfolioID, params CreateCapitalFlowParams) {
+	var request CreateCapitalFlowRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	var body CreateCapitalFlowJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCapitalFlow(ctx, request.(CreateCapitalFlowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCapitalFlow")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(CreateCapitalFlowResponseObject); ok {
+		if err := validResponse.VisitCreateCapitalFlowResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteCapitalFlow operation middleware
+func (sh *strictHandler) DeleteCapitalFlow(ctx *gin.Context, portfolioId PortfolioID, flowId FlowID, params DeleteCapitalFlowParams) {
+	var request DeleteCapitalFlowRequestObject
+
+	request.PortfolioId = portfolioId
+	request.FlowId = flowId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCapitalFlow(ctx, request.(DeleteCapitalFlowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCapitalFlow")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(DeleteCapitalFlowResponseObject); ok {
+		if err := validResponse.VisitDeleteCapitalFlowResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCapitalFlow operation middleware
+func (sh *strictHandler) GetCapitalFlow(ctx *gin.Context, portfolioId PortfolioID, flowId FlowID) {
+	var request GetCapitalFlowRequestObject
+
+	request.PortfolioId = portfolioId
+	request.FlowId = flowId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCapitalFlow(ctx, request.(GetCapitalFlowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCapitalFlow")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetCapitalFlowResponseObject); ok {
+		if err := validResponse.VisitGetCapitalFlowResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PatchCapitalFlow operation middleware
+func (sh *strictHandler) PatchCapitalFlow(ctx *gin.Context, portfolioId PortfolioID, flowId FlowID, params PatchCapitalFlowParams) {
+	var request PatchCapitalFlowRequestObject
+
+	request.PortfolioId = portfolioId
+	request.FlowId = flowId
+	request.Params = params
+
+	var body PatchCapitalFlowJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PatchCapitalFlow(ctx, request.(PatchCapitalFlowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PatchCapitalFlow")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PatchCapitalFlowResponseObject); ok {
+		if err := validResponse.VisitPatchCapitalFlowResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCapitalFlowRevisions operation middleware
+func (sh *strictHandler) ListCapitalFlowRevisions(ctx *gin.Context, portfolioId PortfolioID, flowId FlowID, params ListCapitalFlowRevisionsParams) {
+	var request ListCapitalFlowRevisionsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.FlowId = flowId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCapitalFlowRevisions(ctx, request.(ListCapitalFlowRevisionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCapitalFlowRevisions")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListCapitalFlowRevisionsResponseObject); ok {
+		if err := validResponse.VisitListCapitalFlowRevisionsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // SearchCatalogAssets operation middleware
 func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams) {
 	var request SearchCatalogAssetsRequestObject
@@ -6103,75 +7919,85 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"sdif+hN/db361wA=",
+	"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",
+	"O3M3N5v/HwA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
