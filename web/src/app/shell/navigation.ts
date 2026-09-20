@@ -50,19 +50,24 @@ export function navigationFor(portfolioId: string): NavGroup[] {
           icon: Briefcase,
           phase: "working",
         },
-        { to: `${base}/portfolio/exposure`, label: "Exposure", icon: Scale, phase: "3" },
+        { to: `${base}/portfolio/exposure`, label: "Exposure", icon: Scale, phase: "working" },
       ],
     },
     {
       id: "history",
       label: "History",
       items: [
-        { to: `${base}/history/valuations`, label: "Valuations", icon: BarChart3, phase: "3" },
+        {
+          to: `${base}/history/valuations`,
+          label: "Valuations",
+          icon: BarChart3,
+          phase: "working",
+        },
         {
           to: `${base}/history/value-changes`,
           label: "Value Changes",
           icon: GitCompare,
-          phase: "3",
+          phase: "working",
         },
       ],
     },

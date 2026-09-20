@@ -183,7 +183,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 7 — Exposure and history pages
 
-- [ ] Working Exposure, valuation history, and Value Change history screens
+- [x] Working Exposure, valuation history, and Value Change history screens
 
 ### Milestone 8 — Management pages
 

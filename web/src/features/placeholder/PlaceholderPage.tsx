@@ -3,9 +3,6 @@ import { pageTitle } from "@/app/shell/navigation";
 import styles from "@/features/pages.module.css";
 
 const phaseCopy: Record<string, string> = {
-  exposure: "Phase 3 adds long, short, and net Exposure views.",
-  valuations: "Phase 3 adds valuation history charts and accessible tables.",
-  "value-changes": "Phase 3 adds Value Change history for calendar periods.",
   identities: "Phase 3 adds Identity management UI. The JSON API already exists.",
   connections: "Phase 3 adds Connection credential management. The JSON API already exists.",
   catalog: "Phase 3 adds catalog mapping and tracking screens.",

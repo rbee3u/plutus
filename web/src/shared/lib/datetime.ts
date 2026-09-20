@@ -36,3 +36,18 @@ export function fromDatetimeLocalValue(value: string): string {
   }
   return date.toISOString();
 }
+
+export function isoFromLocalInput(value: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    return fromDatetimeLocalValue(value);
+  } catch {
+    return undefined;
+  }
+}
+
+export function formatDate(value: string | undefined): string {
+  return value ? value : "—";
+}

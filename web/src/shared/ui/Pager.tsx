@@ -33,3 +33,26 @@ export function Pager({
     </div>
   );
 }
+
+export function CursorPager({
+  hasMore,
+  canPrev,
+  onPrev,
+  onNext,
+}: {
+  hasMore: boolean;
+  canPrev: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className={styles.actions}>
+      <ActionButton type="button" disabled={!canPrev} onClick={onPrev}>
+        Previous
+      </ActionButton>
+      <ActionButton type="button" disabled={!hasMore} onClick={onNext}>
+        Next
+      </ActionButton>
+    </div>
+  );
+}

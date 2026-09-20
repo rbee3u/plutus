@@ -11,8 +11,11 @@ import { BaselinePage } from "@/features/capital/BaselinePage";
 import { FlowsPage } from "@/features/capital/FlowsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PlaceholderPage } from "@/features/placeholder/PlaceholderPage";
+import { ExposurePage } from "@/features/portfolio/ExposurePage";
 import { BalancesPage } from "@/features/portfolio/BalancesPage";
 import { PositionsPage } from "@/features/portfolio/PositionsPage";
+import { ValuationsPage } from "@/features/history/ValuationsPage";
+import { ValueChangesPage } from "@/features/history/ValueChangesPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
 import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
@@ -40,9 +43,9 @@ export function App() {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="portfolio/balances" element={<BalancesPage />} />
             <Route path="portfolio/positions" element={<PositionsPage />} />
-            <Route path="portfolio/exposure" element={<PlaceholderPage />} />
-            <Route path="history/valuations" element={<PlaceholderPage />} />
-            <Route path="history/value-changes" element={<PlaceholderPage />} />
+            <Route path="portfolio/exposure" element={<ExposurePage />} />
+            <Route path="history/valuations" element={<ValuationsPage />} />
+            <Route path="history/value-changes" element={<ValueChangesPage />} />
             <Route path="capital/baseline" element={<BaselinePage />} />
             <Route path="capital/flows" element={<FlowsPage />} />
             <Route path="data/identities" element={<PlaceholderPage />} />
