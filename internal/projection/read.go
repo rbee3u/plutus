@@ -122,6 +122,8 @@ type Group struct {
 // GroupTotals holds nullable summed quantities.
 type GroupTotals struct {
 	Total, Available, Locked, Quantity, Long, Short *string
+	LongQuantity, ShortQuantity, NetQuantity        *string
+	LongValue, ShortValue, NetValue                 *string
 }
 
 // BalancePage is a filtered, grouped latest-balance response.
@@ -160,6 +162,7 @@ type readMeta struct {
 	instruments map[uuid.UUID]sqlcgen.Instrument
 	platforms   map[uuid.UUID]sqlcgen.Platform
 	assets      map[uuid.UUID]sqlcgen.Asset
+	mappings    map[uuid.UUID]uuid.UUID
 }
 
 // Overview returns cards, series, exposure, and issues for the active generation.
@@ -420,6 +423,7 @@ func (s *Service) loadReadMeta(ctx context.Context, portfolioID uuid.UUID) (read
 		identities: map[uuid.UUID]sqlcgen.Identity{}, accounts: map[uuid.UUID]sqlcgen.Account{},
 		listings: map[uuid.UUID]sqlcgen.AssetListing{}, instruments: map[uuid.UUID]sqlcgen.Instrument{},
 		platforms: map[uuid.UUID]sqlcgen.Platform{}, assets: map[uuid.UUID]sqlcgen.Asset{},
+		mappings: map[uuid.UUID]uuid.UUID{},
 	}
 	identities, err := s.q.ListIdentitiesByPortfolio(ctx, mustBin(portfolioID))
 	if err != nil {
@@ -486,6 +490,21 @@ func (s *Service) loadReadMeta(ctx context.Context, portfolioID uuid.UUID) (read
 			return readMeta{}, err
 		}
 		out.assets[id] = assets[i]
+	}
+	mappings, err := s.q.ListCurrentAssetMappings(ctx, mustBin(portfolioID))
+	if err != nil {
+		return readMeta{}, err
+	}
+	for i := range mappings {
+		listingID, err := uuid.FromBytes(mappings[i].AssetListingID)
+		if err != nil {
+			return readMeta{}, err
+		}
+		assetID, err := uuid.FromBytes(mappings[i].AssetID)
+		if err != nil {
+			return readMeta{}, err
+		}
+		out.mappings[listingID] = assetID
 	}
 	return out, nil
 }
@@ -697,6 +716,8 @@ func positionGroupKey(item *PositionRow, grouping string) (string, string) {
 
 type groupSums struct {
 	totalSum, availableSum, lockedSum, quantitySum, longSum, shortSum *sumSlot
+	longQtySum, shortQtySum, netQtySum                                *sumSlot
+	longValSum, shortValSum, netValSum                                *sumSlot
 }
 
 type sumSlot struct {
@@ -746,12 +767,60 @@ func (g *groupSums) short() *sumSlot {
 	return g.shortSum
 }
 
+func (g *groupSums) longQty() *sumSlot {
+	if g.longQtySum == nil {
+		g.longQtySum = &sumSlot{ok: true}
+	}
+	return g.longQtySum
+}
+
+func (g *groupSums) shortQty() *sumSlot {
+	if g.shortQtySum == nil {
+		g.shortQtySum = &sumSlot{ok: true}
+	}
+	return g.shortQtySum
+}
+
+func (g *groupSums) netQty() *sumSlot {
+	if g.netQtySum == nil {
+		g.netQtySum = &sumSlot{ok: true}
+	}
+	return g.netQtySum
+}
+
+func (g *groupSums) longVal() *sumSlot {
+	if g.longValSum == nil {
+		g.longValSum = &sumSlot{ok: true}
+	}
+	return g.longValSum
+}
+
+func (g *groupSums) shortVal() *sumSlot {
+	if g.shortValSum == nil {
+		g.shortValSum = &sumSlot{ok: true}
+	}
+	return g.shortValSum
+}
+
+func (g *groupSums) netVal() *sumSlot {
+	if g.netValSum == nil {
+		g.netValSum = &sumSlot{ok: true}
+	}
+	return g.netValSum
+}
+
 func (g *groupSums) totalOut() *string     { return slotOut(g.totalSum) }
 func (g *groupSums) availableOut() *string { return slotOut(g.availableSum) }
 func (g *groupSums) lockedOut() *string    { return slotOut(g.lockedSum) }
 func (g *groupSums) quantityOut() *string  { return slotOut(g.quantitySum) }
 func (g *groupSums) longOut() *string      { return slotOut(g.longSum) }
 func (g *groupSums) shortOut() *string     { return slotOut(g.shortSum) }
+func (g *groupSums) longQtyOut() *string   { return slotOut(g.longQtySum) }
+func (g *groupSums) shortQtyOut() *string  { return slotOut(g.shortQtySum) }
+func (g *groupSums) netQtyOut() *string    { return slotOut(g.netQtySum) }
+func (g *groupSums) longValOut() *string   { return slotOut(g.longValSum) }
+func (g *groupSums) shortValOut() *string  { return slotOut(g.shortValSum) }
+func (g *groupSums) netValOut() *string    { return slotOut(g.netValSum) }
 
 func slotOut(slot *sumSlot) *string {
 	if slot == nil || !slot.ok {

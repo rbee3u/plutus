@@ -94,6 +94,118 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 	}, nil
 }
 
+func (a *API) ListExposures(ctx context.Context, request api.ListExposuresRequestObject) (api.ListExposuresResponseObject, error) {
+	user, _, ok := a.currentSession(ctx)
+	if !ok {
+		return api.ListExposures401ApplicationProblemPlusJSONResponse(a.unauthenticated(ctx)), nil
+	}
+	if _, ok := a.ownedPortfolio(ctx, user.ID, request.PortfolioId); !ok {
+		return api.ListExposures404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
+	}
+	if a.Projection == nil {
+		return nil, ErrNotImplemented
+	}
+	if request.Params.GroupBy != nil && !request.Params.GroupBy.Valid() {
+		return nil, projection.ErrInvalidGroup
+	}
+	filter := projection.ExposureFilter{Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)}
+	if request.Params.GroupBy != nil {
+		filter.GroupBy = string(*request.Params.GroupBy)
+	}
+	filter.IdentityID = uuidPtr(request.Params.IdentityId)
+	filter.AccountID = uuidPtr(request.Params.AccountId)
+	filter.AssetID = uuidPtr(request.Params.AssetId)
+	page, err := a.Projection.ListExposures(ctx, request.PortfolioId, &filter)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]api.ExposureRow, 0, len(page.Items))
+	for i := range page.Items {
+		items = append(items, toAPIExposureRow(&page.Items[i]))
+	}
+	return api.ListExposures200JSONResponse{
+		Items: items, Groups: toAPIGroups(page.Groups), Page: toOffsetPage(page.Offset, page.Limit, page.Total),
+		Context: toAPIContext(&page.Context), Issues: toAPIIssues(page.Issues),
+	}, nil
+}
+
+func (a *API) ListValuations(ctx context.Context, request api.ListValuationsRequestObject) (api.ListValuationsResponseObject, error) {
+	user, _, ok := a.currentSession(ctx)
+	if !ok {
+		return api.ListValuations401ApplicationProblemPlusJSONResponse(a.unauthenticated(ctx)), nil
+	}
+	if _, ok := a.ownedPortfolio(ctx, user.ID, request.PortfolioId); !ok {
+		return api.ListValuations404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
+	}
+	if a.Projection == nil {
+		return nil, ErrNotImplemented
+	}
+	if request.Params.Granularity != nil && !request.Params.Granularity.Valid() {
+		return nil, projection.ErrInvalidQuery
+	}
+	page, err := a.Projection.ListValuations(ctx, request.PortfolioId, seriesFilter(request.Params.From, request.Params.To, request.Params.Granularity, request.Params.MaxPoints, nil, request.Params.Limit, request.Params.Cursor))
+	if err != nil {
+		return nil, err
+	}
+	return api.ListValuations200JSONResponse(toAPIValuationList(&page)), nil
+}
+
+func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChangesRequestObject) (api.ListValueChangesResponseObject, error) {
+	user, _, ok := a.currentSession(ctx)
+	if !ok {
+		return api.ListValueChanges401ApplicationProblemPlusJSONResponse(a.unauthenticated(ctx)), nil
+	}
+	if _, ok := a.ownedPortfolio(ctx, user.ID, request.PortfolioId); !ok {
+		return api.ListValueChanges404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
+	}
+	if a.Projection == nil {
+		return nil, ErrNotImplemented
+	}
+	if request.Params.Granularity != nil && !request.Params.Granularity.Valid() {
+		return nil, projection.ErrInvalidQuery
+	}
+	if request.Params.PeriodKind != nil && !request.Params.PeriodKind.Valid() {
+		return nil, projection.ErrInvalidQuery
+	}
+	page, err := a.Projection.ListValueChanges(ctx, request.PortfolioId, seriesFilter(request.Params.From, request.Params.To, request.Params.Granularity, request.Params.MaxPoints, request.Params.PeriodKind, request.Params.Limit, request.Params.Cursor))
+	if err != nil {
+		return nil, err
+	}
+	return api.ListValueChanges200JSONResponse(toAPIValueChangeList(&page)), nil
+}
+
+func (a *API) ListPeriodSummaries(ctx context.Context, request api.ListPeriodSummariesRequestObject) (api.ListPeriodSummariesResponseObject, error) {
+	user, _, ok := a.currentSession(ctx)
+	if !ok {
+		return api.ListPeriodSummaries401ApplicationProblemPlusJSONResponse(a.unauthenticated(ctx)), nil
+	}
+	if _, ok := a.ownedPortfolio(ctx, user.ID, request.PortfolioId); !ok {
+		return api.ListPeriodSummaries404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
+	}
+	if a.Projection == nil {
+		return nil, ErrNotImplemented
+	}
+	if request.Params.PeriodKind != nil && !request.Params.PeriodKind.Valid() {
+		return nil, projection.ErrInvalidQuery
+	}
+	in := projection.SeriesFilter{From: request.Params.From, To: request.Params.To, Limit: intValue(request.Params.Limit), Cursor: stringValue(request.Params.Cursor)}
+	if request.Params.PeriodKind != nil {
+		in.PeriodKind = string(*request.Params.PeriodKind)
+	}
+	page, err := a.Projection.ListPeriodSummaries(ctx, request.PortfolioId, &in)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]api.PeriodSummary, 0, len(page.Items))
+	for i := range page.Items {
+		items = append(items, toAPIPeriodSummary(&page.Items[i]))
+	}
+	return api.ListPeriodSummaries200JSONResponse{
+		Items: items, Page: toCursorPage(page.Limit, page.NextCursor, page.HasMore),
+		Context: toAPIContext(&page.Context), Issues: toAPIIssues(page.Issues),
+	}, nil
+}
+
 func toAPIOverview(item *projection.Overview) api.Overview {
 	return api.Overview{
 		PortfolioId:        item.PortfolioID,
@@ -261,6 +373,8 @@ func toAPIGroups(items []projection.Group) []api.ProjectionGroup {
 			Totals: api.GroupTotals{
 				TotalQuantity: items[i].Totals.Total, AvailableQuantity: items[i].Totals.Available, LockedQuantity: items[i].Totals.Locked,
 				Quantity: items[i].Totals.Quantity, UnderlyingLongQuantity: items[i].Totals.Long, UnderlyingShortQuantity: items[i].Totals.Short,
+				LongQuantity: items[i].Totals.LongQuantity, ShortQuantity: items[i].Totals.ShortQuantity, NetQuantity: items[i].Totals.NetQuantity,
+				LongValue: items[i].Totals.LongValue, ShortValue: items[i].Totals.ShortValue, NetValue: items[i].Totals.NetValue,
 			},
 		})
 	}
@@ -280,4 +394,97 @@ func strPtr(value string) *string {
 
 func uuidPtr(value *api.UUID) *uuid.UUID {
 	return value
+}
+
+func seriesFilter(from, to *time.Time, grain *api.Granularity, maxPoints *int, period *api.PeriodKind, limit *int, cursor *string) *projection.SeriesFilter {
+	in := &projection.SeriesFilter{From: from, To: to, Limit: intValue(limit), Cursor: stringValue(cursor), MaxPoints: intValue(maxPoints)}
+	if grain != nil {
+		in.Granularity = string(*grain)
+	}
+	if period != nil {
+		in.PeriodKind = string(*period)
+	}
+	return in
+}
+
+func toAPIExposureRow(item *projection.ExposureRow) api.ExposureRow {
+	out := api.ExposureRow{
+		AssetId: item.AssetID, AssetCode: strPtr(item.AssetCode),
+		LongQuantity: item.Long, ShortQuantity: item.Short, NetQuantity: item.Net,
+		LongValue: item.LongValue, ShortValue: item.ShortValue, NetValue: item.NetValue,
+		Completeness: api.Completeness(item.Completeness), Freshness: api.Freshness(item.Freshness),
+		EvaluatedAt: item.EvaluatedAt, IdentityName: strPtr(item.IdentityName), AccountName: strPtr(item.AccountName),
+		PlatformCode: strPtr(item.PlatformCode),
+	}
+	out.IdentityId = item.IdentityID
+	out.AccountId = item.AccountID
+	out.PlatformId = item.PlatformID
+	return out
+}
+
+func toAPIValuationList(page *projection.ValuationPage) api.ValuationList {
+	out := api.ValuationList{
+		Items: toAPIValuationSeries(page.Items), Page: toCursorPage(page.Limit, page.NextCursor, page.HasMore),
+		Context: toAPIContext(&page.Context), Issues: toAPIIssues(page.Issues),
+	}
+	if page.Granularity != "" {
+		grain := api.TimeGranularity(page.Granularity)
+		out.Granularity = &grain
+	}
+	if intervals := toAPIMissing(page.MissingIntervals); intervals != nil {
+		out.MissingIntervals = &intervals
+	}
+	return out
+}
+
+func toAPIValueChangeList(page *projection.ValueChangePage) api.ValueChangeList {
+	items := make([]api.ValueChangeRow, 0, len(page.Items))
+	for i := range page.Items {
+		item := api.ValueChangeRow{
+			PeriodKind:      api.CalendarPeriodKind(page.Items[i].PeriodKind),
+			PeriodStartDate: toAPIDate(page.Items[i].PeriodStart), PeriodEndDate: toAPIDate(page.Items[i].PeriodEnd),
+			Amount: page.Items[i].Amount, State: api.ValueChangeRowState(page.Items[i].State),
+			ContributionAmount: page.Items[i].ContributionAmount, WithdrawalAmount: page.Items[i].WithdrawalAmount,
+		}
+		if page.Items[i].CoverageFingerprint != "" {
+			fp := page.Items[i].CoverageFingerprint
+			item.CoverageFingerprint = &fp
+		}
+		items = append(items, item)
+	}
+	out := api.ValueChangeList{
+		Items: items, Page: toCursorPage(page.Limit, page.NextCursor, page.HasMore),
+		Context: toAPIContext(&page.Context), Issues: toAPIIssues(page.Issues),
+	}
+	if page.Granularity != "" {
+		grain := api.TimeGranularity(page.Granularity)
+		out.Granularity = &grain
+	}
+	if intervals := toAPIMissing(page.MissingIntervals); intervals != nil {
+		out.MissingIntervals = &intervals
+	}
+	return out
+}
+
+func toAPIPeriodSummary(item *projection.PeriodSummaryRow) api.PeriodSummary {
+	asOf := item.AsOfAt
+	return api.PeriodSummary{
+		PeriodKind:      api.CalendarPeriodKind(item.PeriodKind),
+		PeriodStartDate: toAPIDate(item.PeriodStart), PeriodEndDate: toAPIDate(item.PeriodEnd),
+		AsOfAt: &asOf, ValuationOpen: item.ValuationOpen, ValuationClose: item.ValuationClose,
+		ValuationHigh: item.ValuationHigh, ValuationLow: item.ValuationLow,
+		ContributedCapitalClose: item.ContributedCapitalClose, ValueChange: item.ValueChange,
+		Completeness: api.Completeness(item.Completeness), Freshness: api.Freshness(item.Freshness),
+	}
+}
+
+func toAPIMissing(items []projection.MissingInterval) []api.MissingInterval {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]api.MissingInterval, 0, len(items))
+	for i := range items {
+		out = append(out, api.MissingInterval{Start: items[i].Start, End: items[i].End})
+	}
+	return out
 }

@@ -175,7 +175,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 5 — Remaining read-model HTTP
 
-- [ ] `GET /exposures`, `GET /valuations`, `GET /value-changes`, and `GET /period-summaries`
+- [x] `GET /exposures`, `GET /valuations`, `GET /value-changes`, and `GET /period-summaries`
 
 ### Milestone 6 — HTTP projection rebuilds
 

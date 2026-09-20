@@ -153,4 +153,78 @@ func TestOverviewBalancesPositionsReadModel(t *testing.T) {
 	if foreignBal.Code != http.StatusNotFound {
 		t.Fatalf("cross-user balances %d %s", foreignBal.Code, foreignBal.Body.String())
 	}
+
+	exposures := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/exposures?groupBy=asset&limit=10", nil, sessionA, "")
+	if exposures.Code != http.StatusOK {
+		t.Fatalf("exposures %d %s", exposures.Code, exposures.Body.String())
+	}
+	var exposurePage struct {
+		Items []struct {
+			AssetId string `json:"assetId"`
+		} `json:"items"`
+		Groups []struct {
+			Grouping string `json:"grouping"`
+		} `json:"groups"`
+		Page struct {
+			Kind string `json:"kind"`
+		} `json:"page"`
+		Context struct {
+			Completeness string `json:"completeness"`
+		} `json:"context"`
+	}
+	if err := json.Unmarshal(exposures.Body.Bytes(), &exposurePage); err != nil {
+		t.Fatal(err)
+	}
+	if exposurePage.Page.Kind != "offset" || exposurePage.Context.Completeness == "" {
+		t.Fatalf("exposure page %+v", exposurePage)
+	}
+
+	badExposure := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/exposures?groupBy=listing", nil, sessionA, "")
+	if badExposure.Code != http.StatusBadRequest {
+		t.Fatalf("bad exposure group %d %s", badExposure.Code, badExposure.Body.String())
+	}
+
+	valuations := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/valuations?limit=10", nil, sessionA, "")
+	if valuations.Code != http.StatusOK {
+		t.Fatalf("valuations %d %s", valuations.Code, valuations.Body.String())
+	}
+	var valuationPage struct {
+		Items []struct {
+			Completeness string `json:"completeness"`
+		} `json:"items"`
+		Page struct {
+			Kind  string `json:"kind"`
+			Limit int    `json:"limit"`
+		} `json:"page"`
+		Granularity string `json:"granularity"`
+	}
+	if err := json.Unmarshal(valuations.Body.Bytes(), &valuationPage); err != nil {
+		t.Fatal(err)
+	}
+	if valuationPage.Page.Kind != "cursor" || valuationPage.Page.Limit != 10 || len(valuationPage.Items) == 0 {
+		t.Fatalf("valuation page %+v", valuationPage)
+	}
+
+	badWindow := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/valuations?from=2026-02-01T00:00:00Z&to=2026-01-01T00:00:00Z", nil, sessionA, "")
+	if badWindow.Code != http.StatusBadRequest {
+		t.Fatalf("bad window %d %s", badWindow.Code, badWindow.Body.String())
+	}
+	badCursor := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/valuations?cursor=not-a-cursor", nil, sessionA, "")
+	if badCursor.Code != http.StatusBadRequest {
+		t.Fatalf("bad cursor %d %s", badCursor.Code, badCursor.Body.String())
+	}
+
+	changes := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/value-changes?periodKind=month", nil, sessionA, "")
+	if changes.Code != http.StatusOK {
+		t.Fatalf("value changes %d %s", changes.Code, changes.Body.String())
+	}
+	summaries := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/period-summaries?periodKind=month", nil, sessionA, "")
+	if summaries.Code != http.StatusOK {
+		t.Fatalf("period summaries %d %s", summaries.Code, summaries.Body.String())
+	}
+
+	foreignVal := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/valuations", nil, sessionB, "")
+	if foreignVal.Code != http.StatusNotFound {
+		t.Fatalf("cross-user valuations %d %s", foreignVal.Code, foreignVal.Body.String())
+	}
 }
