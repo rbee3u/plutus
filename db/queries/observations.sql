@@ -50,6 +50,25 @@ INSERT INTO collection_failures (
     sqlc.arg(occurred_at)
 );
 
+-- name: ListObservations :many
+SELECT id, portfolio_id, identity_snapshot_id, identity_id, account_id, kind,
+       source_observed_at, collected_at, completeness, adapter_name, adapter_version,
+       schema_version, version, created_at, updated_at
+FROM observations
+WHERE portfolio_id = sqlc.arg(portfolio_id)
+  AND (sqlc.arg(filter_kind) = 0 OR kind = sqlc.arg(kind))
+  AND (sqlc.arg(filter_identity) = 0 OR identity_id = sqlc.arg(identity_id))
+  AND (sqlc.arg(filter_account) = 0 OR account_id = sqlc.arg(account_id))
+  AND (sqlc.arg(filter_from) = 0 OR source_observed_at >= sqlc.arg(from_at))
+  AND (sqlc.arg(filter_to) = 0 OR source_observed_at <= sqlc.arg(to_at))
+  AND (
+      sqlc.arg(has_cursor) = 0
+      OR source_observed_at < sqlc.arg(cursor_observed_at)
+      OR (source_observed_at = sqlc.arg(cursor_observed_at) AND id < sqlc.arg(cursor_id))
+  )
+ORDER BY source_observed_at DESC, id DESC
+LIMIT ?;
+
 -- name: GetObservation :one
 SELECT id, portfolio_id, identity_snapshot_id, identity_id, account_id, kind,
        source_observed_at, collected_at, completeness, adapter_name, adapter_version,

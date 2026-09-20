@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rbee3u/plutus/internal/access"
+	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
@@ -66,6 +67,7 @@ type EngineOptions struct {
 	Catalog             *catalog.Service
 	Observations        *observation.Service
 	Capital             *capital.Service
+	Audit               *audit.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 	Projection          *projection.Service
@@ -94,6 +96,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		Catalog:             opts.Catalog,
 		Observations:        opts.Observations,
 		Capital:             opts.Capital,
+		Audit:               opts.Audit,
 		Idempotency:         opts.Idempotency,
 		Jobs:                opts.Jobs,
 		Projection:          opts.Projection,

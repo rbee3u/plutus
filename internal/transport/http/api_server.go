@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/rbee3u/plutus/internal/access"
+	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
@@ -30,6 +31,7 @@ type API struct {
 	Catalog             *catalog.Service
 	Observations        *observation.Service
 	Capital             *capital.Service
+	Audit               *audit.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
 	Projection          *projection.Service

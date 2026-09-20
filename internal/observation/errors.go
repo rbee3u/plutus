@@ -11,6 +11,8 @@ var (
 	ErrInvalid = errors.New("observation is invalid")
 	// ErrInvalidPage is returned when offset pagination is out of range.
 	ErrInvalidPage = errors.New("page is invalid")
+	// ErrInvalidCursor is returned when a list cursor is malformed.
+	ErrInvalidCursor = errors.New("observation cursor is invalid")
 	// ErrCoverageRequired is returned when Reported Equity has no covered Identity or Account.
 	ErrCoverageRequired = errors.New("reported equity coverage is required")
 )

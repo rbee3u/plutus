@@ -14,6 +14,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/adapters"
+	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
@@ -69,6 +70,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	var catalogSvc *catalog.Service
 	var observationSvc *observation.Service
 	var capitalSvc *capital.Service
+	var auditSvc *audit.Service
 	var idem *idempotency.Store
 	var jobSvc *jobs.Service
 	var projSvc *projection.Service
@@ -80,6 +82,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		catalogSvc = catalog.NewService(db)
 		observationSvc = observation.NewService(db)
 		capitalSvc = capital.NewService(db)
+		auditSvc = audit.NewService(db)
 		idem = idempotency.NewStore(db)
 		jobSvc = jobs.NewService(db)
 		projSvc = projection.NewService(db)
@@ -106,6 +109,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		Catalog:             catalogSvc,
 		Observations:        observationSvc,
 		Capital:             capitalSvc,
+		Audit:               auditSvc,
 		Idempotency:         idem,
 		Jobs:                jobSvc,
 		Projection:          projSvc,

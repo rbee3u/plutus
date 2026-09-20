@@ -642,6 +642,100 @@ func (q *Queries) InsertReportedEquityObservation(ctx context.Context, arg Inser
 	return err
 }
 
+const listObservations = `-- name: ListObservations :many
+SELECT id, portfolio_id, identity_snapshot_id, identity_id, account_id, kind,
+       source_observed_at, collected_at, completeness, adapter_name, adapter_version,
+       schema_version, version, created_at, updated_at
+FROM observations
+WHERE portfolio_id = ?
+  AND (? = 0 OR kind = ?)
+  AND (? = 0 OR identity_id = ?)
+  AND (? = 0 OR account_id = ?)
+  AND (? = 0 OR source_observed_at >= ?)
+  AND (? = 0 OR source_observed_at <= ?)
+  AND (
+      ? = 0
+      OR source_observed_at < ?
+      OR (source_observed_at = ? AND id < ?)
+  )
+ORDER BY source_observed_at DESC, id DESC
+LIMIT ?
+`
+
+type ListObservationsParams struct {
+	PortfolioID      []byte
+	FilterKind       interface{}
+	Kind             string
+	FilterIdentity   interface{}
+	IdentityID       []byte
+	FilterAccount    interface{}
+	AccountID        []byte
+	FilterFrom       interface{}
+	FromAt           time.Time
+	FilterTo         interface{}
+	ToAt             time.Time
+	HasCursor        interface{}
+	CursorObservedAt time.Time
+	CursorID         []byte
+	Limit            int32
+}
+
+func (q *Queries) ListObservations(ctx context.Context, arg ListObservationsParams) ([]Observation, error) {
+	rows, err := q.db.QueryContext(ctx, listObservations,
+		arg.PortfolioID,
+		arg.FilterKind,
+		arg.Kind,
+		arg.FilterIdentity,
+		arg.IdentityID,
+		arg.FilterAccount,
+		arg.AccountID,
+		arg.FilterFrom,
+		arg.FromAt,
+		arg.FilterTo,
+		arg.ToAt,
+		arg.HasCursor,
+		arg.CursorObservedAt,
+		arg.CursorObservedAt,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Observation{}
+	for rows.Next() {
+		var i Observation
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.IdentitySnapshotID,
+			&i.IdentityID,
+			&i.AccountID,
+			&i.Kind,
+			&i.SourceObservedAt,
+			&i.CollectedAt,
+			&i.Completeness,
+			&i.AdapterName,
+			&i.AdapterVersion,
+			&i.SchemaVersion,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReportedEquityCoveredAccounts = `-- name: ListReportedEquityCoveredAccounts :many
 SELECT account_id
 FROM reported_equity_covered_accounts

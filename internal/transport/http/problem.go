@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
@@ -68,7 +69,7 @@ func handlerError(c *gin.Context, err error) {
 		writeProblem(c, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
 	case errors.Is(err, jobs.ErrInvalidCursor), errors.Is(err, jobs.ErrInvalidLimit):
 		writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
-	case errors.Is(err, catalog.ErrInvalidPage), errors.Is(err, catalog.ErrInvalid), errors.Is(err, catalog.ErrInvalidSubject), errors.Is(err, observation.ErrInvalidPage), errors.Is(err, capital.ErrInvalidPage), errors.Is(err, capital.ErrInvalidCursor), errors.Is(err, projection.ErrInvalidPage), errors.Is(err, projection.ErrInvalidGroup):
+	case errors.Is(err, catalog.ErrInvalidPage), errors.Is(err, catalog.ErrInvalid), errors.Is(err, catalog.ErrInvalidSubject), errors.Is(err, observation.ErrInvalidPage), errors.Is(err, observation.ErrInvalid), errors.Is(err, observation.ErrInvalidCursor), errors.Is(err, audit.ErrInvalidPage), errors.Is(err, audit.ErrInvalidCursor), errors.Is(err, capital.ErrInvalidPage), errors.Is(err, capital.ErrInvalidCursor), errors.Is(err, projection.ErrInvalidPage), errors.Is(err, projection.ErrInvalidGroup):
 		writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
 	default:
 		writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error", "The request failed due to an internal error.")

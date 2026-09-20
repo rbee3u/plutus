@@ -52,3 +52,77 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 	)
 	return err
 }
+
+const listAuditEventsByPortfolio = `-- name: ListAuditEventsByPortfolio :many
+SELECT id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id,
+       before_json, after_json, metadata_json, occurred_at
+FROM audit_events
+WHERE portfolio_id = ?
+  AND (? = 0 OR action = ?)
+  AND (? = 0 OR resource_type = ?)
+  AND (
+      ? = 0
+      OR occurred_at < ?
+      OR (occurred_at = ? AND id < ?)
+  )
+ORDER BY occurred_at DESC, id DESC
+LIMIT ?
+`
+
+type ListAuditEventsByPortfolioParams struct {
+	PortfolioID        []byte
+	FilterAction       interface{}
+	Action             string
+	FilterResourceType interface{}
+	ResourceType       string
+	HasCursor          interface{}
+	CursorOccurredAt   time.Time
+	CursorID           []byte
+	Limit              int32
+}
+
+func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditEventsByPortfolioParams) ([]AuditEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listAuditEventsByPortfolio,
+		arg.PortfolioID,
+		arg.FilterAction,
+		arg.Action,
+		arg.FilterResourceType,
+		arg.ResourceType,
+		arg.HasCursor,
+		arg.CursorOccurredAt,
+		arg.CursorOccurredAt,
+		arg.CursorID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEvent{}
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.ActorUserID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.RequestID,
+			&i.BeforeJson,
+			&i.AfterJson,
+			&i.MetadataJson,
+			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

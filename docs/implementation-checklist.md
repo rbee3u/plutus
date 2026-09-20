@@ -170,8 +170,8 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 4 — Observations and audit
 
-- [ ] Observation search and typed GET
-- [ ] Portfolio audit-event cursor listing
+- [x] Observation search and typed GET
+- [x] Portfolio audit-event cursor listing
 
 ### Milestone 5 — Remaining read-model HTTP
 

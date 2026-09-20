@@ -7,12 +7,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/access"
+	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/idempotency"
@@ -40,6 +42,7 @@ func TestAccountsCatalogAndObservationCorrection(t *testing.T) {
 		Observations: obsSvc,
 		Idempotency:  idempotency.NewStore(db),
 		Jobs:         jobSvc,
+		Audit:        audit.NewService(db),
 	})
 
 	password := "correct horse battery staple"
@@ -243,6 +246,70 @@ func TestAccountsCatalogAndObservationCorrection(t *testing.T) {
 	foreign := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/accounts", nil, sessionB, "")
 	if foreign.Code != http.StatusNotFound {
 		t.Fatalf("cross-user %d %s", foreign.Code, foreign.Body.String())
+	}
+
+	listedObs := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/observations?kind=balance", nil, sessionA, "")
+	if listedObs.Code != http.StatusOK {
+		t.Fatalf("list observations %d %s", listedObs.Code, listedObs.Body.String())
+	}
+	var obsList struct {
+		Items []struct {
+			ID      string `json:"id"`
+			Kind    string `json:"kind"`
+			Summary string `json:"summary"`
+			Version int    `json:"version"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(listedObs.Body.Bytes(), &obsList); err != nil {
+		t.Fatal(err)
+	}
+	if len(obsList.Items) != 1 || obsList.Items[0].ID != obs.ID.String() || obsList.Items[0].Kind != "balance" || obsList.Items[0].Summary != "Balance" || obsList.Items[0].Version != 2 {
+		t.Fatalf("list observations %+v", obsList)
+	}
+
+	got := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/observations/"+obs.ID.String(), nil, sessionA, "")
+	if got.Code != http.StatusOK {
+		t.Fatalf("get observation %d %s", got.Code, got.Body.String())
+	}
+	if got.Header().Get("ETag") != `"observation:2"` {
+		t.Fatalf("get etag %s", got.Header().Get("ETag"))
+	}
+	missingObs := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/observations/"+uuid.NewString(), nil, sessionA, "")
+	if missingObs.Code != http.StatusNotFound {
+		t.Fatalf("missing observation %d %s", missingObs.Code, missingObs.Body.String())
+	}
+	foreignObs := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/observations/"+obs.ID.String(), nil, sessionB, "")
+	if foreignObs.Code != http.StatusNotFound {
+		t.Fatalf("cross-user observation %d %s", foreignObs.Code, foreignObs.Body.String())
+	}
+
+	audits := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/audit-events?action=observation.correct", nil, sessionA, "")
+	if audits.Code != http.StatusOK {
+		t.Fatalf("audit %d %s", audits.Code, audits.Body.String())
+	}
+	if !strings.Contains(audits.Header().Get("Cache-Control"), "no-store") {
+		t.Fatal("audit missing no-store")
+	}
+	var auditList struct {
+		Items []struct {
+			Action       string         `json:"action"`
+			ResourceType string         `json:"resourceType"`
+			After        map[string]any `json:"after"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(audits.Body.Bytes(), &auditList); err != nil {
+		t.Fatal(err)
+	}
+	if len(auditList.Items) != 1 || auditList.Items[0].Action != "observation.correct" || auditList.Items[0].ResourceType != "observation" || auditList.Items[0].After == nil {
+		t.Fatalf("audit %+v", auditList)
+	}
+	badCursor := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/audit-events?cursor=nope", nil, sessionA, "")
+	if badCursor.Code != http.StatusBadRequest {
+		t.Fatalf("bad audit cursor %d %s", badCursor.Code, badCursor.Body.String())
+	}
+	foreignAudit := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+portfolioID+"/audit-events", nil, sessionB, "")
+	if foreignAudit.Code != http.StatusNotFound {
+		t.Fatalf("cross-user audit %d %s", foreignAudit.Code, foreignAudit.Body.String())
 	}
 }
 

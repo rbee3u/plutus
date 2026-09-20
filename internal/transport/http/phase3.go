@@ -6,19 +6,7 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func (a *API) ListAuditEvents(context.Context, api.ListAuditEventsRequestObject) (api.ListAuditEventsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
 func (a *API) ListExposures(context.Context, api.ListExposuresRequestObject) (api.ListExposuresResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) ListObservations(context.Context, api.ListObservationsRequestObject) (api.ListObservationsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) GetObservation(context.Context, api.GetObservationRequestObject) (api.GetObservationResponseObject, error) {
 	return nil, ErrNotImplemented
 }
 
