@@ -36,3 +36,7 @@ sql:
           - column: "jobs.requested_by_user_id"
             go_type:
               type: "[]byte"
+          - db_type: binary
+            nullable: true
+            go_type:
+              type: "[]byte"

@@ -11,10 +11,7 @@ import (
 type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
-	CountPortfolioAccounts(ctx context.Context, portfolioID []byte) (int64, error)
-	CountPortfolioConnections(ctx context.Context, portfolioID []byte) (int64, error)
-	CountPortfolioIdentities(ctx context.Context, portfolioID []byte) (int64, error)
-	CountPortfolioJobs(ctx context.Context, portfolioID []byte) (int64, error)
+	CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error)
 	DeleteConnection(ctx context.Context, arg DeleteConnectionParams) (int64, error)
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)

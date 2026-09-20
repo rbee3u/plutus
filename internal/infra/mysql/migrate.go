@@ -11,7 +11,7 @@ import (
 )
 
 // ExpectedSchemaVersion is the latest Goose migration this build requires.
-const ExpectedSchemaVersion int64 = 20260920120007
+const ExpectedSchemaVersion int64 = 20260920120013
 
 func prepareGoose() error {
 	if err := goose.SetDialect("mysql"); err != nil {

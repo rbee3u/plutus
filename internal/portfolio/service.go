@@ -319,23 +319,11 @@ func (s *Service) Delete(ctx context.Context, userID, portfolioID uuid.UUID, ver
 }
 
 func (s *Service) empty(ctx context.Context, portfolioID []byte) (bool, error) {
-	identities, err := s.q.CountPortfolioIdentities(ctx, portfolioID)
+	n, err := s.q.CountPortfolioDependencies(ctx, sqlcgen.CountPortfolioDependenciesParams{PortfolioID: portfolioID})
 	if err != nil {
 		return false, err
 	}
-	connections, err := s.q.CountPortfolioConnections(ctx, portfolioID)
-	if err != nil {
-		return false, err
-	}
-	accounts, err := s.q.CountPortfolioAccounts(ctx, portfolioID)
-	if err != nil {
-		return false, err
-	}
-	jobs, err := s.q.CountPortfolioJobs(ctx, portfolioID)
-	if err != nil {
-		return false, err
-	}
-	return identities+connections+accounts+jobs == 0, nil
+	return n == 0, nil
 }
 
 func (s *Service) getRow(ctx context.Context, userID, portfolioID uuid.UUID) (sqlcgen.GetPortfolioByUserAndIDRow, error) {

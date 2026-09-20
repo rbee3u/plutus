@@ -62,14 +62,15 @@ WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND version = sqlc.arg(v
 DELETE FROM portfolios
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND version = sqlc.arg(version);
 
--- name: CountPortfolioIdentities :one
-SELECT COUNT(*) FROM identities WHERE portfolio_id = sqlc.arg(portfolio_id);
-
--- name: CountPortfolioConnections :one
-SELECT COUNT(*) FROM connections WHERE portfolio_id = sqlc.arg(portfolio_id);
-
--- name: CountPortfolioAccounts :one
-SELECT COUNT(*) FROM accounts WHERE portfolio_id = sqlc.arg(portfolio_id);
-
--- name: CountPortfolioJobs :one
-SELECT COUNT(*) FROM jobs WHERE portfolio_id = sqlc.arg(portfolio_id);
+-- name: CountPortfolioDependencies :one
+SELECT
+    (SELECT COUNT(*) FROM identities i WHERE i.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM connections c WHERE c.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM accounts a WHERE a.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM jobs j WHERE j.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM observations o WHERE o.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM capital_baselines cb WHERE cb.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM capital_flows cf WHERE cf.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM asset_listing_mappings alm WHERE alm.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM catalog_pins cp WHERE cp.portfolio_id = sqlc.arg(portfolio_id))
+    + (SELECT COUNT(*) FROM collection_runs cr WHERE cr.portfolio_id = sqlc.arg(portfolio_id));

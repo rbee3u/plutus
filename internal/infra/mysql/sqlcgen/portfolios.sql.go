@@ -42,48 +42,40 @@ func (q *Queries) ArchivePortfolio(ctx context.Context, arg ArchivePortfolioPara
 	return result.RowsAffected()
 }
 
-const countPortfolioAccounts = `-- name: CountPortfolioAccounts :one
-SELECT COUNT(*) FROM accounts WHERE portfolio_id = ?
+const countPortfolioDependencies = `-- name: CountPortfolioDependencies :one
+SELECT
+    (SELECT COUNT(*) FROM identities i WHERE i.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM connections c WHERE c.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM accounts a WHERE a.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM jobs j WHERE j.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM observations o WHERE o.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM capital_baselines cb WHERE cb.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM capital_flows cf WHERE cf.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM asset_listing_mappings alm WHERE alm.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM catalog_pins cp WHERE cp.portfolio_id = ?)
+    + (SELECT COUNT(*) FROM collection_runs cr WHERE cr.portfolio_id = ?)
 `
 
-func (q *Queries) CountPortfolioAccounts(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPortfolioAccounts, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+type CountPortfolioDependenciesParams struct {
+	PortfolioID []byte
 }
 
-const countPortfolioConnections = `-- name: CountPortfolioConnections :one
-SELECT COUNT(*) FROM connections WHERE portfolio_id = ?
-`
-
-func (q *Queries) CountPortfolioConnections(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPortfolioConnections, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countPortfolioIdentities = `-- name: CountPortfolioIdentities :one
-SELECT COUNT(*) FROM identities WHERE portfolio_id = ?
-`
-
-func (q *Queries) CountPortfolioIdentities(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPortfolioIdentities, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countPortfolioJobs = `-- name: CountPortfolioJobs :one
-SELECT COUNT(*) FROM jobs WHERE portfolio_id = ?
-`
-
-func (q *Queries) CountPortfolioJobs(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPortfolioJobs, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+func (q *Queries) CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countPortfolioDependencies,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.PortfolioID,
+	)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const deletePortfolio = `-- name: DeletePortfolio :execrows

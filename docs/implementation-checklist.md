@@ -1,10 +1,10 @@
 # Implementation checklist
 
-Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 1 is the current workstream; phases 2–4 stay unchecked until their workstreams begin.
+Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 2 is the current workstream; phases 3–4 stay unchecked until their workstreams begin.
 
 ## Phase 1: Foundation
 
-Current workstream. Stop for review when every item in this section is checked.
+Completed. Stopped for review after every item in this section was checked.
 
 ### Milestone 1 — Checklist and repository skeleton
 
@@ -97,16 +97,55 @@ Create these tables and no others:
 - `projection_generations`
 - `audit_events`, `idempotency_records`
 
-Deferred schema: asset listings, instruments, mappings, pins, observations and subtypes, collection runs/failures, `collection_job_details`, capital tables, and projection row tables.
+Phase 1 deferred these tables; Phase 2 creates them.
 
 ## Phase 2: End-to-end vertical slice
 
-- [ ] Deterministic `minimal` and `edge-cases` source-fact seeds
+Current workstream. Stop for review when every item in this section is checked.
+
+### Milestone 1 — Schema
+
+- [x] Add Phase 2 catalog, collection, observation, capital, and projection-row tables
+- [x] Update sqlc models and the expected Goose schema version
+- [x] Treat Observation, Capital, mapping, pin, and collection-run rows as Portfolio delete blockers
+
+### Milestone 2 — Seed and reset CLI
+
+- [ ] Deterministic `minimal` source-fact seed
 - [ ] `plutus db seed` and development-only `db reset`
+
+### Milestone 3 — Facts and correction primitives
+
 - [ ] Shared catalog, mappings, normalized Observations, failures, and correction primitives
-- [ ] Capital Baseline and Capital Flow revisions
-- [ ] Generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, and Value Change
+- [ ] Freeze Identity identity fields after the first Observation exists
+- [ ] `GET /accounts`, `GET /catalog/assets`, and `PATCH /observations/{observationId}`
+
+### Milestone 4 — Capital API
+
+- [ ] Capital Baseline and Capital Flow revisions over HTTP
+
+### Milestone 5 — Projection engine
+
+- [ ] Generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, Value Change, and Exposure rows
+- [ ] Activate a ready generation atomically; leave the previous generation readable on failure
+
+### Milestone 6 — Read-model HTTP
+
+- [ ] `GET /overview`, `GET /balances`, and `GET /positions` with context, issues, and grouping
+
+### Milestone 7 — Frontend pages
+
 - [ ] Working Overview, Balances, Positions, and Capital pages backed by MySQL and the JSON API
+
+### Milestone 8 — Edge-case seed
+
+- [ ] Deterministic `edge-cases` source-fact seed
+
+### Milestone 9 — Phase 2 close-out
+
+- [ ] README describes implemented Phase 2 capabilities
+- [ ] Check Phase 2 acceptance-matrix items that this workstream covers
+- [ ] `make format && make build && make test && make lint` pass
 
 ## Phase 3: Complete MVP UI and management
 
