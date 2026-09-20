@@ -135,7 +135,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 7 — Frontend pages
 
-- [ ] Working Overview, Balances, Positions, and Capital pages backed by MySQL and the JSON API
+- [x] Working Overview, Balances, Positions, and Capital pages backed by MySQL and the JSON API
 
 ### Milestone 8 — Edge-case seed
 

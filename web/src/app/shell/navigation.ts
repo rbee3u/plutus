@@ -35,14 +35,21 @@ export function navigationFor(portfolioId: string): NavGroup[] {
     {
       id: "overview",
       label: null,
-      items: [{ to: `${base}/overview`, label: "Overview", icon: LayoutDashboard, phase: "2" }],
+      items: [
+        { to: `${base}/overview`, label: "Overview", icon: LayoutDashboard, phase: "working" },
+      ],
     },
     {
       id: "portfolio",
       label: "Portfolio",
       items: [
-        { to: `${base}/portfolio/balances`, label: "Balances", icon: Wallet, phase: "2" },
-        { to: `${base}/portfolio/positions`, label: "Positions", icon: Briefcase, phase: "2" },
+        { to: `${base}/portfolio/balances`, label: "Balances", icon: Wallet, phase: "working" },
+        {
+          to: `${base}/portfolio/positions`,
+          label: "Positions",
+          icon: Briefcase,
+          phase: "working",
+        },
         { to: `${base}/portfolio/exposure`, label: "Exposure", icon: Scale, phase: "3" },
       ],
     },
@@ -63,8 +70,8 @@ export function navigationFor(portfolioId: string): NavGroup[] {
       id: "capital",
       label: "Capital",
       items: [
-        { to: `${base}/capital/baseline`, label: "Baseline", icon: Landmark, phase: "2" },
-        { to: `${base}/capital/flows`, label: "Flows", icon: History, phase: "2" },
+        { to: `${base}/capital/baseline`, label: "Baseline", icon: Landmark, phase: "working" },
+        { to: `${base}/capital/flows`, label: "Flows", icon: History, phase: "working" },
       ],
     },
     {

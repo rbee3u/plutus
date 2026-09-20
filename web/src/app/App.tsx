@@ -7,7 +7,12 @@ import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { RootRedirect, Shell } from "@/app/shell/Shell";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
+import { BaselinePage } from "@/features/capital/BaselinePage";
+import { FlowsPage } from "@/features/capital/FlowsPage";
+import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PlaceholderPage } from "@/features/placeholder/PlaceholderPage";
+import { BalancesPage } from "@/features/portfolio/BalancesPage";
+import { PositionsPage } from "@/features/portfolio/PositionsPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
 import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
@@ -32,14 +37,14 @@ export function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<Bootstrap />} />
           <Route path="/p/:portfolioId" element={<Shell />}>
-            <Route path="overview" element={<PlaceholderPage />} />
-            <Route path="portfolio/balances" element={<PlaceholderPage />} />
-            <Route path="portfolio/positions" element={<PlaceholderPage />} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="portfolio/balances" element={<BalancesPage />} />
+            <Route path="portfolio/positions" element={<PositionsPage />} />
             <Route path="portfolio/exposure" element={<PlaceholderPage />} />
             <Route path="history/valuations" element={<PlaceholderPage />} />
             <Route path="history/value-changes" element={<PlaceholderPage />} />
-            <Route path="capital/baseline" element={<PlaceholderPage />} />
-            <Route path="capital/flows" element={<PlaceholderPage />} />
+            <Route path="capital/baseline" element={<BaselinePage />} />
+            <Route path="capital/flows" element={<FlowsPage />} />
             <Route path="data/identities" element={<PlaceholderPage />} />
             <Route path="data/connections" element={<PlaceholderPage />} />
             <Route path="data/catalog" element={<PlaceholderPage />} />
