@@ -108,6 +108,7 @@ type Querier interface {
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
 	ListLatestBalanceProjections(ctx context.Context, generationID []byte) ([]LatestBalanceProjection, error)
 	ListLatestPositionProjections(ctx context.Context, generationID []byte) ([]LatestPositionProjection, error)
+	ListPeriodSummaryProjections(ctx context.Context, generationID []byte) ([]PeriodSummaryProjection, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
 	ListPortfolioValuationProjections(ctx context.Context, generationID []byte) ([]PortfolioValuationProjection, error)
 	ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error)

@@ -295,6 +295,14 @@ FROM value_change_projections
 WHERE generation_id = sqlc.arg(generation_id)
 ORDER BY period_kind ASC, period_start_date ASC, period_end_date ASC;
 
+-- name: ListPeriodSummaryProjections :many
+SELECT generation_id, portfolio_id, period_kind, period_start_date, period_end_date, as_of_at,
+       valuation_open, valuation_close, valuation_high, valuation_low, contributed_capital_close,
+       value_change, freshness_state, completeness
+FROM period_summary_projections
+WHERE generation_id = sqlc.arg(generation_id)
+ORDER BY period_kind ASC, period_start_date ASC, period_end_date ASC;
+
 -- name: ListProjectionIssues :many
 SELECT id, generation_id, portfolio_id, projection_kind, projection_key, severity, code, summary,
        details_json, identity_id, account_id, observation_id, first_effective_at, last_effective_at

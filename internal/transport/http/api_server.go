@@ -12,6 +12,7 @@ import (
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/projection"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -31,6 +32,7 @@ type API struct {
 	Capital             *capital.Service
 	Idempotency         *idempotency.Store
 	Jobs                *jobs.Service
+	Projection          *projection.Service
 }
 
 func (a *API) GetHealthLive(context.Context, api.GetHealthLiveRequestObject) (api.GetHealthLiveResponseObject, error) {

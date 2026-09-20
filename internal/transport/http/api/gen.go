@@ -157,6 +157,27 @@ func (e CatalogAssetStatus) Valid() bool {
 	}
 }
 
+// Defines values for Completeness.
+const (
+	CompletenessComplete Completeness = "complete"
+	CompletenessMissing  Completeness = "missing"
+	CompletenessPartial  Completeness = "partial"
+)
+
+// Valid indicates whether the value is a known member of the Completeness enum.
+func (e Completeness) Valid() bool {
+	switch e {
+	case CompletenessComplete:
+		return true
+	case CompletenessMissing:
+		return true
+	case CompletenessPartial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ConnectionStatus.
 const (
 	ConnectionStatusDisabled ConnectionStatus = "disabled"
@@ -172,6 +193,33 @@ func (e ConnectionStatus) Valid() bool {
 	case ConnectionStatusEnabled:
 		return true
 	case ConnectionStatusInvalid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Coverage.
+const (
+	CoverageAmbiguous Coverage = "ambiguous"
+	CoverageChanged   Coverage = "changed"
+	CoverageComplete  Coverage = "complete"
+	CoverageMissing   Coverage = "missing"
+	CoveragePartial   Coverage = "partial"
+)
+
+// Valid indicates whether the value is a known member of the Coverage enum.
+func (e Coverage) Valid() bool {
+	switch e {
+	case CoverageAmbiguous:
+		return true
+	case CoverageChanged:
+		return true
+	case CoverageComplete:
+		return true
+	case CoverageMissing:
+		return true
+	case CoveragePartial:
 		return true
 	default:
 		return false
@@ -265,6 +313,27 @@ const (
 func (e CursorPageKind) Valid() bool {
 	switch e {
 	case Cursor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Freshness.
+const (
+	Fresh   Freshness = "fresh"
+	Stale   Freshness = "stale"
+	Unknown Freshness = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the Freshness enum.
+func (e Freshness) Valid() bool {
+	switch e {
+	case Fresh:
+		return true
+	case Stale:
+		return true
+	case Unknown:
 		return true
 	default:
 		return false
@@ -664,6 +733,27 @@ func (e PositionObservationSide) Valid() bool {
 	}
 }
 
+// Defines values for PositionRowSide.
+const (
+	PositionRowSideLong  PositionRowSide = "long"
+	PositionRowSideNet   PositionRowSide = "net"
+	PositionRowSideShort PositionRowSide = "short"
+)
+
+// Valid indicates whether the value is a known member of the PositionRowSide enum.
+func (e PositionRowSide) Valid() bool {
+	switch e {
+	case PositionRowSideLong:
+		return true
+	case PositionRowSideNet:
+		return true
+	case PositionRowSideShort:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PriceObservationPriceType.
 const (
 	ExchangeRate PriceObservationPriceType = "exchange_rate"
@@ -688,6 +778,27 @@ func (e PriceObservationPriceType) Valid() bool {
 	}
 }
 
+// Defines values for ProjectionIssueSeverity.
+const (
+	Error   ProjectionIssueSeverity = "error"
+	Info    ProjectionIssueSeverity = "info"
+	Warning ProjectionIssueSeverity = "warning"
+)
+
+// Valid indicates whether the value is a known member of the ProjectionIssueSeverity enum.
+func (e ProjectionIssueSeverity) Valid() bool {
+	switch e {
+	case Error:
+		return true
+	case Info:
+		return true
+	case Warning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UserStatus.
 const (
 	UserStatusActive   UserStatus = "active"
@@ -700,6 +811,108 @@ func (e UserStatus) Valid() bool {
 	case UserStatusActive:
 		return true
 	case UserStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ValueChangePointPeriodKind.
+const (
+	Day     ValueChangePointPeriodKind = "day"
+	IsoWeek ValueChangePointPeriodKind = "iso_week"
+	Month   ValueChangePointPeriodKind = "month"
+	Quarter ValueChangePointPeriodKind = "quarter"
+	Year    ValueChangePointPeriodKind = "year"
+)
+
+// Valid indicates whether the value is a known member of the ValueChangePointPeriodKind enum.
+func (e ValueChangePointPeriodKind) Valid() bool {
+	switch e {
+	case Day:
+		return true
+	case IsoWeek:
+		return true
+	case Month:
+		return true
+	case Quarter:
+		return true
+	case Year:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ValueChangePointState.
+const (
+	ValueChangePointStateComplete     ValueChangePointState = "complete"
+	ValueChangePointStateIncomparable ValueChangePointState = "incomparable"
+	ValueChangePointStateIncomplete   ValueChangePointState = "incomplete"
+	ValueChangePointStateProvisional  ValueChangePointState = "provisional"
+)
+
+// Valid indicates whether the value is a known member of the ValueChangePointState enum.
+func (e ValueChangePointState) Valid() bool {
+	switch e {
+	case ValueChangePointStateComplete:
+		return true
+	case ValueChangePointStateIncomparable:
+		return true
+	case ValueChangePointStateIncomplete:
+		return true
+	case ValueChangePointStateProvisional:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListBalancesParamsGroupBy.
+const (
+	ListBalancesParamsGroupByAccount  ListBalancesParamsGroupBy = "account"
+	ListBalancesParamsGroupByAsset    ListBalancesParamsGroupBy = "asset"
+	ListBalancesParamsGroupByIdentity ListBalancesParamsGroupBy = "identity"
+	ListBalancesParamsGroupByListing  ListBalancesParamsGroupBy = "listing"
+	ListBalancesParamsGroupByPlatform ListBalancesParamsGroupBy = "platform"
+)
+
+// Valid indicates whether the value is a known member of the ListBalancesParamsGroupBy enum.
+func (e ListBalancesParamsGroupBy) Valid() bool {
+	switch e {
+	case ListBalancesParamsGroupByAccount:
+		return true
+	case ListBalancesParamsGroupByAsset:
+		return true
+	case ListBalancesParamsGroupByIdentity:
+		return true
+	case ListBalancesParamsGroupByListing:
+		return true
+	case ListBalancesParamsGroupByPlatform:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListPositionsParamsGroupBy.
+const (
+	ListPositionsParamsGroupByAccount    ListPositionsParamsGroupBy = "account"
+	ListPositionsParamsGroupByIdentity   ListPositionsParamsGroupBy = "identity"
+	ListPositionsParamsGroupByInstrument ListPositionsParamsGroupBy = "instrument"
+	ListPositionsParamsGroupByPlatform   ListPositionsParamsGroupBy = "platform"
+)
+
+// Valid indicates whether the value is a known member of the ListPositionsParamsGroupBy enum.
+func (e ListPositionsParamsGroupBy) Valid() bool {
+	switch e {
+	case ListPositionsParamsGroupByAccount:
+		return true
+	case ListPositionsParamsGroupByIdentity:
+		return true
+	case ListPositionsParamsGroupByInstrument:
+		return true
+	case ListPositionsParamsGroupByPlatform:
 		return true
 	default:
 		return false
@@ -735,6 +948,19 @@ type AccountMetricObservation struct {
 	Unit             string  `json:"unit"`
 }
 
+// AmountStatus defines model for AmountStatus.
+type AmountStatus struct {
+	Amount          *NullableDecimal    `json:"amount"`
+	Completeness    Completeness        `json:"completeness"`
+	Coverage        Coverage            `json:"coverage"`
+	EvaluatedAt     *time.Time          `json:"evaluatedAt,omitempty"`
+	Freshness       Freshness           `json:"freshness"`
+	PeriodEndDate   *openapi_types.Date `json:"periodEndDate,omitempty"`
+	PeriodKind      *string             `json:"periodKind,omitempty"`
+	PeriodStartDate *openapi_types.Date `json:"periodStartDate,omitempty"`
+	State           *string             `json:"state,omitempty"`
+}
+
 // AssetList defines model for AssetList.
 type AssetList struct {
 	Items []CatalogAsset `json:"items"`
@@ -752,12 +978,41 @@ type AuthSession struct {
 	User User `json:"user"`
 }
 
+// BalanceList defines model for BalanceList.
+type BalanceList struct {
+	Context ProjectionContext `json:"context"`
+	Groups  []ProjectionGroup `json:"groups"`
+	Issues  []ProjectionIssue `json:"issues"`
+	Items   []BalanceRow      `json:"items"`
+	Page    OffsetPage        `json:"page"`
+}
+
 // BalanceObservation defines model for BalanceObservation.
 type BalanceObservation struct {
 	AssetListingId    UUID    `json:"assetListingId"`
 	AvailableQuantity *string `json:"availableQuantity,omitempty"`
 	LockedQuantity    *string `json:"lockedQuantity,omitempty"`
 	TotalQuantity     *string `json:"totalQuantity,omitempty"`
+}
+
+// BalanceRow defines model for BalanceRow.
+type BalanceRow struct {
+	AccountId         UUID                `json:"accountId"`
+	AccountName       *string             `json:"accountName,omitempty"`
+	AssetCode         *string             `json:"assetCode,omitempty"`
+	AssetId           *openapi_types.UUID `json:"assetId,omitempty"`
+	AssetListingId    UUID                `json:"assetListingId"`
+	AvailableQuantity *NullableDecimal    `json:"availableQuantity,omitempty"`
+	Completeness      Completeness        `json:"completeness"`
+	Freshness         Freshness           `json:"freshness"`
+	IdentityId        UUID                `json:"identityId"`
+	IdentityName      *string             `json:"identityName,omitempty"`
+	ListingSymbol     *string             `json:"listingSymbol,omitempty"`
+	LockedQuantity    *NullableDecimal    `json:"lockedQuantity,omitempty"`
+	PlatformCode      *string             `json:"platformCode,omitempty"`
+	PlatformId        *UUID               `json:"platformId,omitempty"`
+	SourceObservedAt  time.Time           `json:"sourceObservedAt"`
+	TotalQuantity     *NullableDecimal    `json:"totalQuantity,omitempty"`
 }
 
 // CapitalBaseline defines model for CapitalBaseline.
@@ -876,6 +1131,9 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"newPassword"`
 }
 
+// Completeness defines model for Completeness.
+type Completeness string
+
 // Connection defines model for Connection.
 type Connection struct {
 	CollectionIntervalSeconds *int             `json:"collectionIntervalSeconds,omitempty"`
@@ -897,6 +1155,9 @@ type ConnectionStatus string
 type ConnectionList struct {
 	Items []Connection `json:"items"`
 }
+
+// Coverage defines model for Coverage.
+type Coverage string
 
 // CreateCapitalFlowRequest defines model for CreateCapitalFlowRequest.
 type CreateCapitalFlowRequest struct {
@@ -971,11 +1232,44 @@ type CursorPageKind string
 // Decimal defines model for Decimal.
 type Decimal = string
 
+// DisplayAsset defines model for DisplayAsset.
+type DisplayAsset struct {
+	Code string `json:"code"`
+	Id   UUID   `json:"id"`
+}
+
+// ExposurePoint defines model for ExposurePoint.
+type ExposurePoint struct {
+	AssetCode     *string          `json:"assetCode,omitempty"`
+	AssetId       UUID             `json:"assetId"`
+	Completeness  Completeness     `json:"completeness"`
+	Freshness     Freshness        `json:"freshness"`
+	LongQuantity  Decimal          `json:"longQuantity"`
+	LongValue     *NullableDecimal `json:"longValue,omitempty"`
+	NetQuantity   Decimal          `json:"netQuantity"`
+	NetValue      *NullableDecimal `json:"netValue,omitempty"`
+	ShortQuantity Decimal          `json:"shortQuantity"`
+	ShortValue    *NullableDecimal `json:"shortValue,omitempty"`
+}
+
 // FieldError defines model for FieldError.
 type FieldError struct {
 	Code    string `json:"code"`
 	Field   string `json:"field"`
 	Message string `json:"message"`
+}
+
+// Freshness defines model for Freshness.
+type Freshness string
+
+// GroupTotals defines model for GroupTotals.
+type GroupTotals struct {
+	AvailableQuantity       *NullableDecimal `json:"availableQuantity,omitempty"`
+	LockedQuantity          *NullableDecimal `json:"lockedQuantity,omitempty"`
+	Quantity                *NullableDecimal `json:"quantity,omitempty"`
+	TotalQuantity           *NullableDecimal `json:"totalQuantity,omitempty"`
+	UnderlyingLongQuantity  *NullableDecimal `json:"underlyingLongQuantity,omitempty"`
+	UnderlyingShortQuantity *NullableDecimal `json:"underlyingShortQuantity,omitempty"`
 }
 
 // HealthLive defines model for HealthLive.
@@ -1080,6 +1374,9 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// NullableDecimal defines model for NullableDecimal.
+type NullableDecimal = string
+
 // Observation defines model for Observation.
 type Observation struct {
 	AccountId          *openapi_types.UUID        `json:"accountId,omitempty"`
@@ -1121,6 +1418,19 @@ type OffsetPage struct {
 
 // OffsetPageKind defines model for OffsetPage.Kind.
 type OffsetPageKind string
+
+// Overview defines model for Overview.
+type Overview struct {
+	Context            ProjectionContext  `json:"context"`
+	ContributedCapital AmountStatus       `json:"contributedCapital"`
+	Exposures          []ExposurePoint    `json:"exposures"`
+	Issues             []ProjectionIssue  `json:"issues"`
+	PortfolioId        UUID               `json:"portfolioId"`
+	Valuation          AmountStatus       `json:"valuation"`
+	ValuationSeries    []ValuationPoint   `json:"valuationSeries"`
+	ValueChange        AmountStatus       `json:"valueChange"`
+	ValueChanges       []ValueChangePoint `json:"valueChanges"`
+}
 
 // PatchCapitalFlowRequest defines model for PatchCapitalFlowRequest.
 type PatchCapitalFlowRequest struct {
@@ -1213,6 +1523,15 @@ type PortfolioList struct {
 	Items []Portfolio `json:"items"`
 }
 
+// PositionList defines model for PositionList.
+type PositionList struct {
+	Context ProjectionContext `json:"context"`
+	Groups  []ProjectionGroup `json:"groups"`
+	Issues  []ProjectionIssue `json:"issues"`
+	Items   []PositionRow     `json:"items"`
+	Page    OffsetPage        `json:"page"`
+}
+
 // PositionObservation defines model for PositionObservation.
 type PositionObservation struct {
 	EntryPrice          *string                 `json:"entryPrice,omitempty"`
@@ -1227,6 +1546,30 @@ type PositionObservation struct {
 
 // PositionObservationSide defines model for PositionObservation.Side.
 type PositionObservationSide string
+
+// PositionRow defines model for PositionRow.
+type PositionRow struct {
+	AccountId               UUID             `json:"accountId"`
+	AccountName             *string          `json:"accountName,omitempty"`
+	Completeness            Completeness     `json:"completeness"`
+	Freshness               Freshness        `json:"freshness"`
+	IdentityId              UUID             `json:"identityId"`
+	IdentityName            *string          `json:"identityName,omitempty"`
+	InstrumentId            UUID             `json:"instrumentId"`
+	InstrumentSymbol        *string          `json:"instrumentSymbol,omitempty"`
+	PlatformCode            *string          `json:"platformCode,omitempty"`
+	PlatformId              *UUID            `json:"platformId,omitempty"`
+	PlatformPositionRef     string           `json:"platformPositionRef"`
+	Quantity                Decimal          `json:"quantity"`
+	SelectedMarkPrice       *NullableDecimal `json:"selectedMarkPrice,omitempty"`
+	Side                    PositionRowSide  `json:"side"`
+	SourceObservedAt        time.Time        `json:"sourceObservedAt"`
+	UnderlyingLongQuantity  Decimal          `json:"underlyingLongQuantity"`
+	UnderlyingShortQuantity Decimal          `json:"underlyingShortQuantity"`
+}
+
+// PositionRowSide defines model for PositionRow.Side.
+type PositionRowSide string
 
 // PriceObservation defines model for PriceObservation.
 type PriceObservation struct {
@@ -1251,6 +1594,46 @@ type Problem struct {
 	TraceId     *string       `json:"traceId,omitempty"`
 	Type        string        `json:"type"`
 }
+
+// ProjectionContext defines model for ProjectionContext.
+type ProjectionContext struct {
+	Completeness   Completeness        `json:"completeness"`
+	Coverage       Coverage            `json:"coverage"`
+	CutoffAt       *time.Time          `json:"cutoffAt"`
+	DisplayAsset   DisplayAsset        `json:"displayAsset"`
+	Freshness      Freshness           `json:"freshness"`
+	GenerationId   *openapi_types.UUID `json:"generationId,omitempty"`
+	RebuildPending *bool               `json:"rebuildPending,omitempty"`
+	Timezone       string              `json:"timezone"`
+}
+
+// ProjectionGroup defines model for ProjectionGroup.
+type ProjectionGroup struct {
+	Completeness Completeness `json:"completeness"`
+	Freshness    Freshness    `json:"freshness"`
+	Grouping     string       `json:"grouping"`
+	Key          string       `json:"key"`
+	Label        string       `json:"label"`
+	Totals       GroupTotals  `json:"totals"`
+}
+
+// ProjectionIssue defines model for ProjectionIssue.
+type ProjectionIssue struct {
+	AccountId        *openapi_types.UUID     `json:"accountId,omitempty"`
+	Code             string                  `json:"code"`
+	FirstEffectiveAt *time.Time              `json:"firstEffectiveAt,omitempty"`
+	Id               *openapi_types.UUID     `json:"id,omitempty"`
+	IdentityId       *openapi_types.UUID     `json:"identityId,omitempty"`
+	LastEffectiveAt  *time.Time              `json:"lastEffectiveAt,omitempty"`
+	ObservationId    *openapi_types.UUID     `json:"observationId,omitempty"`
+	ProjectionKey    *string                 `json:"projectionKey,omitempty"`
+	ProjectionKind   string                  `json:"projectionKind"`
+	Severity         ProjectionIssueSeverity `json:"severity"`
+	Summary          string                  `json:"summary"`
+}
+
+// ProjectionIssueSeverity defines model for ProjectionIssue.Severity.
+type ProjectionIssueSeverity string
 
 // PutCapitalBaselineRequest defines model for PutCapitalBaselineRequest.
 type PutCapitalBaselineRequest struct {
@@ -1307,6 +1690,28 @@ type User struct {
 
 // UserStatus defines model for User.Status.
 type UserStatus string
+
+// ValuationPoint defines model for ValuationPoint.
+type ValuationPoint struct {
+	Amount       *NullableDecimal `json:"amount"`
+	Completeness Completeness     `json:"completeness"`
+	EvaluatedAt  time.Time        `json:"evaluatedAt"`
+}
+
+// ValueChangePoint defines model for ValueChangePoint.
+type ValueChangePoint struct {
+	Amount          *NullableDecimal           `json:"amount"`
+	PeriodEndDate   openapi_types.Date         `json:"periodEndDate"`
+	PeriodKind      ValueChangePointPeriodKind `json:"periodKind"`
+	PeriodStartDate openapi_types.Date         `json:"periodStartDate"`
+	State           ValueChangePointState      `json:"state"`
+}
+
+// ValueChangePointPeriodKind defines model for ValueChangePoint.PeriodKind.
+type ValueChangePointPeriodKind string
+
+// ValueChangePointState defines model for ValueChangePoint.State.
+type ValueChangePointState string
 
 // CSRFToken defines model for CSRFToken.
 type CSRFToken = string
@@ -1403,6 +1808,20 @@ type ArchivePortfolioParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
+
+// ListBalancesParams defines parameters for ListBalances.
+type ListBalancesParams struct {
+	GroupBy    *ListBalancesParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
+	IdentityId *UUID                      `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId  *UUID                      `form:"accountId,omitempty" json:"accountId,omitempty"`
+	AssetId    *UUID                      `form:"assetId,omitempty" json:"assetId,omitempty"`
+	ListingId  *UUID                      `form:"listingId,omitempty" json:"listingId,omitempty"`
+	Offset     *int                       `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit      *int                       `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListBalancesParamsGroupBy defines parameters for ListBalances.
+type ListBalancesParamsGroupBy string
 
 // PutCapitalBaselineParams defines parameters for PutCapitalBaseline.
 type PutCapitalBaselineParams struct {
@@ -1502,6 +1921,19 @@ type PatchObservationParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
+// ListPositionsParams defines parameters for ListPositions.
+type ListPositionsParams struct {
+	GroupBy      *ListPositionsParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
+	IdentityId   *UUID                       `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId    *UUID                       `form:"accountId,omitempty" json:"accountId,omitempty"`
+	InstrumentId *UUID                       `form:"instrumentId,omitempty" json:"instrumentId,omitempty"`
+	Offset       *int                        `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit        *int                        `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListPositionsParamsGroupBy defines parameters for ListPositions.
+type ListPositionsParamsGroupBy string
+
 // RestorePortfolioParams defines parameters for RestorePortfolio.
 type RestorePortfolioParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
@@ -1600,6 +2032,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(c *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams)
+	// ListBalances Latest balances with grouping and offset pagination
+	// (GET /api/v1/portfolios/{portfolioId}/balances)
+	ListBalances(c *gin.Context, portfolioId PortfolioID, params ListBalancesParams)
 
 	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
 	GetCapitalBaseline(c *gin.Context, portfolioId PortfolioID)
@@ -1669,6 +2104,12 @@ type ServerInterface interface {
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
 	PatchObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams)
+	// GetOverview Portfolio overview cards, series, exposure, and issues
+	// (GET /api/v1/portfolios/{portfolioId}/overview)
+	GetOverview(c *gin.Context, portfolioId PortfolioID)
+	// ListPositions Latest positions with grouping and offset pagination
+	// (GET /api/v1/portfolios/{portfolioId}/positions)
+	ListPositions(c *gin.Context, portfolioId PortfolioID, params ListPositionsParams)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(c *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams)
@@ -2375,6 +2816,90 @@ func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
 	}
 
 	siw.Handler.ArchivePortfolio(c, portfolioId, params)
+}
+
+// ListBalances operation middleware
+func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBalancesParams
+
+	// ------------- Optional query parameter "groupBy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "identityId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "accountId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "assetId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "assetId", c.Request.URL.Query(), &params.AssetId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "listingId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "listingId", c.Request.URL.Query(), &params.ListingId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter listingId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListBalances(c, portfolioId, params)
 }
 
 // GetCapitalBaseline operation middleware
@@ -3679,6 +4204,107 @@ func (siw *ServerInterfaceWrapper) PatchObservation(c *gin.Context) {
 	siw.Handler.PatchObservation(c, portfolioId, observationId, params)
 }
 
+// GetOverview operation middleware
+func (siw *ServerInterfaceWrapper) GetOverview(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetOverview(c, portfolioId)
+}
+
+// ListPositions operation middleware
+func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPositionsParams
+
+	// ------------- Optional query parameter "groupBy" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "identityId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "accountId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "instrumentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "instrumentId", c.Request.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter instrumentId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPositions(c, portfolioId, params)
+}
+
 // RestorePortfolio operation middleware
 func (siw *ServerInterfaceWrapper) RestorePortfolio(c *gin.Context) {
 
@@ -3846,6 +4472,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.GetCapitalFlow)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.PatchCapitalFlow)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId/revisions", wrapper.ListCapitalFlowRevisions)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/overview", wrapper.GetOverview)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/balances", wrapper.ListBalances)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/positions", wrapper.ListPositions)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -4732,6 +5361,73 @@ func (response ArchivePortfolio412ApplicationProblemPlusJSONResponse) VisitArchi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalancesRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListBalancesParams
+}
+
+type ListBalancesResponseObject interface {
+	VisitListBalancesResponse(w http.ResponseWriter) error
+}
+
+type ListBalances200JSONResponse BalanceList
+
+func (response ListBalances200JSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalances400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListBalances400ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalances401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBalances401ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalances404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBalances404ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6370,6 +7066,125 @@ func (response PatchObservation412ApplicationProblemPlusJSONResponse) VisitPatch
 	return err
 }
 
+type GetOverviewRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+}
+
+type GetOverviewResponseObject interface {
+	VisitGetOverviewResponse(w http.ResponseWriter) error
+}
+
+type GetOverview200JSONResponse Overview
+
+func (response GetOverview200JSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverview401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetOverview401ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverview404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetOverview404ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPositionsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListPositionsParams
+}
+
+type ListPositionsResponseObject interface {
+	VisitListPositionsResponse(w http.ResponseWriter) error
+}
+
+type ListPositions200JSONResponse PositionList
+
+func (response ListPositions200JSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPositions400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListPositions400ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPositions401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPositions401ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPositions404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPositions404ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RestorePortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      RestorePortfolioParams
@@ -6546,6 +7361,9 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/portfolios/{portfolioId}/archive)
 	ArchivePortfolio(ctx context.Context, request ArchivePortfolioRequestObject) (ArchivePortfolioResponseObject, error)
+	// ListBalances Latest balances with grouping and offset pagination
+	// (GET /api/v1/portfolios/{portfolioId}/balances)
+	ListBalances(ctx context.Context, request ListBalancesRequestObject) (ListBalancesResponseObject, error)
 
 	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
 	GetCapitalBaseline(ctx context.Context, request GetCapitalBaselineRequestObject) (GetCapitalBaselineResponseObject, error)
@@ -6615,6 +7433,12 @@ type StrictServerInterface interface {
 
 	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
 	PatchObservation(ctx context.Context, request PatchObservationRequestObject) (PatchObservationResponseObject, error)
+	// GetOverview Portfolio overview cards, series, exposure, and issues
+	// (GET /api/v1/portfolios/{portfolioId}/overview)
+	GetOverview(ctx context.Context, request GetOverviewRequestObject) (GetOverviewResponseObject, error)
+	// ListPositions Latest positions with grouping and offset pagination
+	// (GET /api/v1/portfolios/{portfolioId}/positions)
+	ListPositions(ctx context.Context, request ListPositionsRequestObject) (ListPositionsResponseObject, error)
 
 	// (POST /api/v1/portfolios/{portfolioId}/restore)
 	RestorePortfolio(ctx context.Context, request RestorePortfolioRequestObject) (RestorePortfolioResponseObject, error)
@@ -7150,6 +7974,33 @@ func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId Portfoli
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ArchivePortfolioResponseObject); ok {
 		if err := validResponse.VisitArchivePortfolioResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListBalances operation middleware
+func (sh *strictHandler) ListBalances(ctx *gin.Context, portfolioId PortfolioID, params ListBalancesParams) {
+	var request ListBalancesRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListBalances(ctx, request.(ListBalancesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListBalances")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListBalancesResponseObject); ok {
+		if err := validResponse.VisitListBalancesResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -7839,6 +8690,59 @@ func (sh *strictHandler) PatchObservation(ctx *gin.Context, portfolioId Portfoli
 	}
 }
 
+// GetOverview operation middleware
+func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) {
+	var request GetOverviewRequestObject
+
+	request.PortfolioId = portfolioId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOverview(ctx, request.(GetOverviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOverview")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetOverviewResponseObject); ok {
+		if err := validResponse.VisitGetOverviewResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPositions operation middleware
+func (sh *strictHandler) ListPositions(ctx *gin.Context, portfolioId PortfolioID, params ListPositionsParams) {
+	var request ListPositionsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPositions(ctx, request.(ListPositionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPositions")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListPositionsResponseObject); ok {
+		if err := validResponse.VisitListPositionsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // RestorePortfolio operation middleware
 func (sh *strictHandler) RestorePortfolio(ctx *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams) {
 	var request RestorePortfolioRequestObject
@@ -7919,85 +8823,104 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"O3M3N5v/HwA=",
+	"7D1/b9s4ll9F0C1wd1ilSTszwE3+WaRpZzedtpNNZgYHdHsFLT3bbGVSJamk3iLf/UBSlCiJkkXZVpy0",
+	"f8Wx+fO9x/ebj1/DmK4ySoAIHp5+DTPE0AoEMPXf+fXVL7/TT0DkP5iEp+ESUAIsjEKCVhCehv97JNsc",
+	"6UZRyOMlrJBsLdaZ/J0LhskivLuLwnNKCMQCU3LxohwvQ2JZjRZXTZIwChl8zjGDJDwVLAd79L8wmIen",
+	"4X8cV6s/1r/y4z/+uHihJvwlpbedU83ljzuY5CKBVUYFkHj9K6w74WQ1O5Lt7HlW6MtrIAuxDE+f/fRT",
+	"5ADdRQJEYLHu3A02DXaxo/kbJOJl91bmR7pB30ztPbyis87lf6SzXaz8txkHdoN6SYxabXYw5SVlYk5T",
+	"TDsnzMoWO5juGjjv2x0vft96qjvZn2eUcFCc4JLRWQor+TGmRAAR8iPKshTHCpjHmW7x14+cKnYxbDoz",
+	"rpoxAR4znMnhwlMzZZCAQDjlTxQAin5y2LM4pnmxjiTBshdKLxnNgAksVz1HKYcozKyvvoZI9/pd0WeL",
+	"TqMwwTxL0fotWrl/hy8CGEHpFcydv+NkGIQj+8wO7GGT0sAuXCCRq40DyVfh6bsQxQLfQBiFmJQfE8xR",
+	"lgGS1PLexYAqWnondxg1qLrGfmwI1eEZ1aBfLq6akc4+QizkugvkvsbcF8FYwKr+oQ9OxTzhXbkGxBha",
+	"K2ijBWzq/tt8zkFcypYtMKnpi2F6tvgGBMOxxbo895tAjFco/ROluUWx7wz2opDkaRq+v4vClZrpnCZu",
+	"yuawQkTgmP8JjBfraDUS8EUMmConWLjFgA0ia0FFF8cqnKBbSchdl7Ttc/5Xhmn04fVtnqZolsILDVw5",
+	"p2yVggACfCNVndttVd8bYAPI6dy0k4zmBqU5EpCcqdXOKVshEZ6GCRJwJLA6Tt0ImDPgyyFL/aVsKEke",
+	"GKbJS5K8QAJas/ZOqLv+iknSTxm63bVATPhPwkXRpatJg8AKZDeQZ+HDBpST0DiH/TOhcyRQShdqsnvh",
+	"RHLiQqB5bDLu4iRDZaBLsKhBnYvMxbJQfzzXmXNgGxck2zQXpDq61vIcpYjEMIIwlPL0RQxQiz5qQ+i8",
+	"6HAXhQtG82w4VVVj/F12dBEW5jyHMSNeyI7OEb0Iv4DjFb3dI9kXYCvGi0oUlNvvwfB4sYwM58BkMVxd",
+	"QzcIK8HzzxwpjaqfmaY0/gTJsLaCCpQOadrkofWN9ABLonGUMu4BH92hUztXi61rOC5YqGYXSU345Lni",
+	"Pxs67QajE6oe4xQBf9vE9OhETaohd71ezWjqbtGiZk84ZSkSEp+dKq5pMHxbnObMsIEBqpg1V+u8eW2m",
+	"JRotA6s6NS2idCzYJoEGKbnO8jnKsEDpc8QhxQTGcL3h0I1zxoCIK7jBhdtiYEeYz0EZrz4YGW6aEyo2",
+	"cJARpvjngbRgEfRNZYmtMMEracE/LXeGiYCFQ21xGOhtQFeD16FZMUdrxQMI5U0uxojJmUVn/SpybTa5",
+	"gI90tqnXKzprQaecUY8wYGsGans+CwwGWXsWQRddnq+l9vqADo/3SXAR+EaibcPHBrIH3iew/5zzjtWJ",
+	"z3PGKRtnChZLkaGTbXQ5T61qAomRYKZNF9sXKk0Bhme50HzwFotlwtAtSh1e0G9G6JROlpbHOIEUhNNF",
+	"PJmoqtBYO+nV8a+zBb2XDYQ+1fmWc92He8eafqSUnhfswGOTI6WzmmmjZJaTjJXK07CpyYT5Y+BrEzEp",
+	"F+8ZxU9GaxY23U7Jde5Xo7Cc2ztyMBcxL16TNifV+TXixqKx4fT6qYhhGMqaY6RCCGydCRpGIRXLmlu4",
+	"Whbp8n30RGEzRjVuUBpKyAo8PAgb68gZ0bFVte7eoOr5EpEFXCLObylLruBzDv4ObC2ezSDO7RK4tX+3",
+	"8luePvufSGKs+n/TRpvz1Ud37rLhLauYov5eESsTWAF8hTmX07rQWSUsedNtmuqOF0RI/3F6DTElCd+k",
+	"HSk2olw9KOXnlMzxImdgA3lGaQqI1Dx7Z3MBbPAM+0xQSNEMOnx7iMu4MU5GRzR3kvwARHrZkiLlofiI",
+	"yY1c2X7V2poHT8OpXGAX2qvp3XRuyHP/oqScqi1BnPLAvd4qCN57JtFqhhc51YBRLCvZdFKV8K0JvDG8",
+	"bRrd8L40tv37ZbyUKSeJaDyW1DZSRI1nv6N56mhOWROOJ3XhGA3RJAYxsr5wgl5KNzpM8ulWZ+pNocqZ",
+	"Vc8wQSSGD9kqjEL66cuHVWw+qa9m6xkWH3KBPjz7cOI8A41EPU84NtL47N4/P93Yu6kirhAmYRTyfEZZ",
+	"gknd51B1yxADIgw8fdmMb/CqgXOr+6AcvTdauVRb7SaOMv91HHUUM5/5cVAyDueSMf6bEticmKYmcG6a",
+	"s/lVkRfruVVh8uj7p9bNnHNrTfiPIpvFY+oiK/jcZL61TSabmW2XLhPVZ+vYiLEm/faxRPwNZeBWh5tn",
+	"MlazOM9hile19ERr8wS+CL0+jxSJwvLSw0blMl17N6JTXbUQAhgJT8P/O/rbu5Ojn9//9b/+9a8n+tN/",
+	"/+0vLhn+wjovB52t9fJLRnnO4JJi/xTtdhJHM8XDwxM3ee5ESsnin/4eLdmtzKz1THwgIEbMSECMnZAv",
+	"KRszpeo3blJXWpLWX2x4N5dWh00rEbQ/+/MXDGnykjHKdnXW5nJE5y8r4LzgiP0CQg9ROn9MP+f6bfot",
+	"3VnyS217pjrv+hOht8TJKFXi4O8ykcU7zXoHaU9b5wN9Ht91u+wdCdUEWLrGZPHagx30DnTtc+Zcx6dF",
+	"H/8AlIrla+mI9FQoWlZIKgfZaHf0+Cb1Wt5ScQUoWXuuhwHiHRcW2kslVHxgapKh643MBN0LH7Pq9tL8",
+	"luVajTEuDtRK2+N1qgdhk+3TjYlYvMQ3+w7Pb2NGWg7PPsemQcbe3Zpmoi2cmq/ozHOJSAhYZWKgMVa0",
+	"Hr6nV3R2pvu4gn0j4tJzTDBfjnTajz++lRNPB8mKiwduew5xodS0zZnfZdMX6lZpf+MV+nJmwb/fBzju",
+	"YLOx4ZA2U/icQ64YAcsJ0a15HscAifp2jrDmE7Fk6Wk68qpn8yDXyLkOsk1BcYtURx2ht/lqBmwzZkCR",
+	"Roq0HtwNUhhGQlsdCJqLmK5qQtYbSVHI0RyGEPBQArOGvqXsk8k/6SeOOhasnva81Y47KGDvTF5lGU2f",
+	"9vCaLvDI+EXWF1vPObCOPAOHO45oWZz1xcubpoKPa8pFdFvcmRoZf7MvUg+88N2+dX0XhTN9j2ngrbVG",
+	"50JgeSZ9Dc9VeB9NW2zA9LgmKONL6uFyM6K8N5+xAp66MzxOgGaUY0Nnfe0vi3YNlGUMb8b2pWzU6MhA",
+	"LhaSl5/zAbb4Va11Y6jxF4x2nppgYbqRr2CEfvtukU31Le9an5JvgeGcMjYqz2ZojmlkV33xoMwW8Oxh",
+	"upNUm7RtG9QFh7FIt6KmD6DJqeRoH3SBhNBQqosFWInBfsBrKtxUDdQfL+nXs4oRNto0yre2qZk7xFJM",
+	"UcVa9FhOLNwAu8FwO+EF7TKJA5IiF2WjNLILWSh3iA6bDFdv6oGWSe54j2DUupbFgNPXBEjZ8RoY9tjG",
+	"n6ZfJ1zkyKAzIscsqujqt6KiU8eamgH7+rWI8tZ6BUsnxdV31oZgY/k2zfXeiL+UNb++p1jdQ4pVByoe",
+	"XJZUd3bo1omanVD6FpKXduzTHoQMDxRY6tBILAwq2WTFzDyraGxphA0vwAVEsPWlMTq626VQZcrupvjH",
+	"CrFPAyYeZBCNCLBaXTiunyUZvTdRex2tdwJ5YN2xwUVOojAnDFCK/w3JxnE7SfvxZL+192e25ntYiyjU",
+	"KO/oiPBE0siI6tXjTJ0rv/trI2719MbiejARhXmW+IJgC0dA4R8sV9SApyNgZyPJXu37Phrau5O3nGmL",
+	"UJ5xEn2v6rVlVS8DyAMs6+VyBPqheqgMx4QLlq/Ap7rVMLk/VJYXgfoSGx3K4nQy3E/i1nBuA9O9tWJV",
+	"G4rW2KR5z6XKHkVRrzFUXvXpqQW2h1Je+zwQoJ3gb+yj6ZtSO+5QjY8fjEtR3D410bvG2ajT37m/7nVv",
+	"XzytFSvyL4ZVKzA43GhvHsThPX1tPtXelE+vku3YJ9D5H+yTQlkCX5RvUV/g/MC68u8+51SAZ1XFBuE0",
+	"hrCX2I6c2MgqS9rvpiZBPR+jmfWtso6GK1FW7rlLISNcmFB1j13iiL1gkbp7CYZiuHAnHYgC3RVVMRxu",
+	"Sh4SGgF6RsuSKADVc3mkrSf74mjaUt1xLuh8Psri9TFfa5d/RmsBCyDAzPsXXpyCwSzHaXIJJJG/OG9h",
+	"Db9j121zluAcX7e7aSVNRz8jkSJXWQeqddsU1h01Fbr86aK8stG3Avt2RxM75YL09Gayngs05az9+NA2",
+	"5iRBo55bOIyLl+OrHnmI5ZE++BSNXGD9eRtPRcDg6NcOgrNa1Or8W024NGELJdAoB5jMqQy4IVakpapE",
+	"S7c2m69WiK03c4/i9lM5XdW1tUwnPeaiVXRxVGjCz3V7oHUbRtV/vYIF5gLY9jmOfvWB6imQXhf3RyZI",
+	"6p1qmTnqzRETP3NIzCYmSDO8Zi+jK41sz+E0JXUhOTNceLgSa+i+dQ1Bj1hFKLcfMgFCV5gg48Edb064",
+	"R4rsx0Raq3cByYXDcQ9YoBmnaS7g5ZcMM+BeCaYpBiJe1zWFHYVeitJcbkXQJzU1HbMzKSKvAcjwPs4L",
+	"7FYwwxqxuarIgYMKAD2Y3nvko5hni7iHwkOnpmBBfETlCbyLh8p6kg588uHVpiye33OLspE99gBemBr+",
+	"WlQXeOwRoo6Xk7pgVctrmwhaA9+qstXX2hNVZf0ktFYxI/rhFkD6rlaUqCcVP+eICWBhFK4BudXVwY9Z",
+	"NbwznTXQasUgMbF+0v8gJqGw+eKWtdX2Kpuws7DdVS9ZrhviXKra1xIljboy9BOG8kXKWP9bPYCZ5iLn",
+	"H4rGFUhQhqWhoV5+VCbC6dfmC5BLxCF4FgiGCJfKT6By+FAsgjllAcrFEogoHqCMgjJhkkdBYXhh4FFQ",
+	"vSor/9HlSKPAspTU18oaiAIGKAlWNIGURwEiSfCRzviT0o91Gl6q7QRnlxdWVPw0PHny9MmJssAyICjD",
+	"4Wn4g/oqUk90Kngdowwf3zw9lgs/jjlT8YeFdvzIM1GabeHfQcj3rmS5obDxEuezk5OeVzj9Xt+slTNy",
+	"PMEp3/YNVEUiBXCxhKCQeUHG4EjuI6AsKFAbaMw/qZFLePruvWXXhcr+l50YlbQWoKCaREIZLbhi/rlY",
+	"6jhgDWipvFWl7AfKHWC7pFzBTV2+CqPaa8bv3KComhxXrx3fvdfHCbh4TpP1zuBduxR2d3fXfKT1bo+4",
+	"tt9Pc6D62uBQK0RPJCn/eHLSNWq5zOoFV9n+qV/7Zz97tO8hqrOKE0AgE3sDI+fVEc6q4rGb6YvmYhCB",
+	"yXbbUlgN1T+2GeBrulhAEtBcPPGHr+1OCa/ghn6C2gm2GPIQoByhNB0KmLM03TtsztLUbIEHTG0v2RGU",
+	"kD10k/EVVc42wGwFm3j7G9grZ7eKxbkYu7WZbYFmj6WOmxEHlUduA7BsZ1CWu6grVyCzikAfGmd3l9Ye",
+	"xOIdtG3GCRhkKYonYceNg6DmrUv8wVyUFa7BzezCOBG9Mdp4dv8uOgAaaHpEB2H/6VQC/g9zPBOYozwV",
+	"wRuESaUzbyn4f/Bs//P9KAoGRQHS7Op2CSTI8lmK44BZbt4A86C69TCI3HXHo8qP0cf8HS7lPQoDx2wO",
+	"ArFbBfMULZ5sAKWyyG6XIJbAtgaikbebIHdt2u0RXrbvrltV5tsKTjl+S7X4T16qHsOBdvy1+HSR3Glp",
+	"orwGLRi+UN/bjMKX7xb9lM9u5yqdsUHGa3Oy/Y9ban+UQEBvCSSDNOTK6dBJuRLPl1WzFsiV1+RzDkpV",
+	"KpwmmMRpnsCZuUcQWaRbMPDSodaKKb3f49mo5/Q7Tke1052cD42JzAafQYb1pX4gwqVpNMpUPwpFo6P0",
+	"9sT6RgVTl4FhtIkoXAJKQGe+vfwdLeoTNN2Yd1O4HU5+Hm3rqG0FqCLILnp0sojjr9al7gGcejzZlj2H",
+	"ceqL+Rt5n20fTF3vJAkQCWCViXUFugn4+whV8+kzP+Lo4EZdOsyOUDoJi+9l7yOP9p6leZdsUNTdNkNr",
+	"lzgP+JDtXoa4769O7JPupbQ/9N3CAxUhP94DVxkgU46LXMl+bfTMNNqW4l2qa1mjx6GxnkTVFVVn0R/3",
+	"kKbaj2PEn05U0Uk95LMTewLXHdh98s0Cql2K8QvMiyShwCBpGgunNF4M1gdSkrY9up14hXHy4JSUifiX",
+	"sd2ePC4GU5Qw62cwz02jfTAYlZv+fF3jByaZwlwOsyrYVbfJTHKrqh+mEvucmRTuWWvX04aRh0kvdA9o",
+	"X3HbyXhl3u4uRkutzMddjPfNSoXiKHRJhddIABeBOVXTxN3H+8gay9XBdnNZRIUXNKKDDC2KHFrLQmaA",
+	"kiOVXDOQ2RRpOUezIku/zzvcSOg/XPuqudCe+Gyx/8Ds/7CNrmK12uLqiOPuFEs71RkO0dPXfU9lYkut",
+	"sYo3uTAVUlu0a9pINz7mIw24XToqx6w9Pmj/5YG6wKrzP4a3H7Pilfp+1bJ1Hkynfaiau1MxOiYoXimM",
+	"ekhqQlFkgNmlrNSP9sgY6E4EjA+BzVN6O4imflENv/tEdk9gErJdRNXUdRS67ouu+sOI1m72rrgcbNzR",
+	"UQN44sijtYI+YS5//4YF+W745vFX+WdQtHLC0yHneKhOQx/qVXV1ZMqejqHO1gEKCNyW8vcA7cGd6I/R",
+	"Jit/SiKbiBiGysYH5APoibo+NmaxpwjtWGF7P+xqG4v/0YRsdyFs/WxhTR27soOHn6Zv2GK2Qd5l2FRH",
+	"4vAtZXUp9liFkLpJ7hpkTPhcNz7TbfdhLX/uxe53E9tR1bzTuEaEEhyjNNC4nZoKFakMpcLqnnY/17Pa",
+	"HW6Qp1xkJ2qqbagwGs2FtFZVmBmlwQoJYBilE2PMgu1Gb0jZ9ht2hrRe4ZnaF1IhoTsN20Ffhxhp3sbD",
+	"UaNbT25z/LX6Z5inYzLKr2Y6lETuw05navKvTjfCPWFwGpHTL27uWaL0OQUe47nal2dgnOSZitzK7O1H",
+	"Zdp7S5mqDlGvSntRNTtYjbZY47pLn632MC2DsUC8SWO9qFJCv1F9tfke4sTaaomAB3dlcCI9tkbMfgzm",
+	"+GuVonzXlyg54SnQy5mIMfUwpfVhB02aLKxHRboP5D1E9WgUo5uGJg9aNZoqV3BXjG7wNaVHd3DugXIf",
+	"xpUmb9KSJT571fNXssH3/FJ/YnpFZ13mwitVV3VKKavQPJwijr9+pLMNqtQrOts3P3lFZ/tWoOQu3Bg6",
+	"WATZ1XuPv9ZePbnT70t0q1D20wl7Rp411UNVpBzPt0+sS1krOKeM9bk41a+yYmrVRV1Kk1W2gHzOIZfF",
+	"hMr3YWRx5287WcU+R0OP3g2wGwy3fXzxN9PmYL1Z5QoddGR+K2u/6qcIbMKpXlGbukpZCaHAICKIEUt4",
+	"FHBgqt45fMkozxno+uXFa8hbXMLMioc2N1U4M60O7c539TbmY7ru3XgV9fsd7a3qOFhPv3df0i4PwgO5",
+	"pV2ud9/XtBlwQVmPDX6lG3wvFeIuFVKA56GVClkCSmV9+ML90qUM/EM1e41v9lrx3JrFAeHfl0p8x8B5",
+	"ECMiZeUNBIXSzPsr3V4W/eQ+zVOXBUg0BOrgkKdnvRkeV6rZ3gGip3HSHErWiuB+Ovlhx5O+paJz3rdU",
+	"BKyYewDQZVPcCfX6AK0Xad69l2da4bpgMzlLw9PwOLx7f/f/AwA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

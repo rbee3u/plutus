@@ -13,6 +13,7 @@ import (
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/observation"
+	"github.com/rbee3u/plutus/internal/projection"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -67,7 +68,7 @@ func handlerError(c *gin.Context, err error) {
 		writeProblem(c, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
 	case errors.Is(err, jobs.ErrInvalidCursor), errors.Is(err, jobs.ErrInvalidLimit):
 		writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
-	case errors.Is(err, catalog.ErrInvalidPage), errors.Is(err, observation.ErrInvalidPage), errors.Is(err, capital.ErrInvalidPage), errors.Is(err, capital.ErrInvalidCursor):
+	case errors.Is(err, catalog.ErrInvalidPage), errors.Is(err, observation.ErrInvalidPage), errors.Is(err, capital.ErrInvalidPage), errors.Is(err, capital.ErrInvalidCursor), errors.Is(err, projection.ErrInvalidPage), errors.Is(err, projection.ErrInvalidGroup):
 		writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
 	default:
 		writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error", "The request failed due to an internal error.")

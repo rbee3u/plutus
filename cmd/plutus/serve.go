@@ -71,6 +71,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	var capitalSvc *capital.Service
 	var idem *idempotency.Store
 	var jobSvc *jobs.Service
+	var projSvc *projection.Service
 	if db != nil {
 		authSvc = auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
 		portfolios = portfolio.NewService(db)
@@ -81,9 +82,10 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		capitalSvc = capital.NewService(db)
 		idem = idempotency.NewStore(db)
 		jobSvc = jobs.NewService(db)
+		projSvc = projection.NewService(db)
 		loop = worker.New(worker.Options{
 			Jobs:       jobSvc,
-			Projection: projection.NewService(db),
+			Projection: projSvc,
 			Adapters:   adapters.NewRegistry(),
 			Poll:       cfg.Jobs.WorkerPollInterval,
 			Lease:      cfg.Jobs.LeaseDuration,
@@ -106,6 +108,7 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		Capital:             capitalSvc,
 		Idempotency:         idem,
 		Jobs:                jobSvc,
+		Projection:          projSvc,
 	})
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }

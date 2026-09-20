@@ -131,7 +131,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 6 — Read-model HTTP
 
-- [ ] `GET /overview`, `GET /balances`, and `GET /positions` with context, issues, and grouping
+- [x] `GET /overview`, `GET /balances`, and `GET /positions` with context, issues, and grouping
 
 ### Milestone 7 — Frontend pages
 

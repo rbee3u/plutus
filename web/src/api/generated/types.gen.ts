@@ -217,6 +217,168 @@ export type OffsetPage = {
 
 export type Decimal = string;
 
+export type NullableDecimal = string | null;
+
+export type Completeness = 'complete' | 'partial' | 'missing';
+
+export type Freshness = 'fresh' | 'stale' | 'unknown';
+
+export type Coverage = 'complete' | 'partial' | 'ambiguous' | 'changed' | 'missing';
+
+export type DisplayAsset = {
+    id: Uuid;
+    code: string;
+};
+
+export type ProjectionContext = {
+    timezone: string;
+    displayAsset: DisplayAsset;
+    cutoffAt: string | null;
+    completeness: Completeness;
+    coverage: Coverage;
+    freshness: Freshness;
+    generationId?: string | null;
+    rebuildPending?: boolean;
+};
+
+export type ProjectionIssue = {
+    id?: string | null;
+    projectionKind: string;
+    projectionKey?: string;
+    code: string;
+    severity: 'info' | 'warning' | 'error';
+    summary: string;
+    identityId?: string | null;
+    accountId?: string | null;
+    observationId?: string | null;
+    firstEffectiveAt?: string;
+    lastEffectiveAt?: string;
+};
+
+export type AmountStatus = {
+    amount: NullableDecimal;
+    completeness: Completeness;
+    coverage: Coverage;
+    freshness: Freshness;
+    evaluatedAt?: string | null;
+    state?: string | null;
+    periodKind?: string | null;
+    periodStartDate?: string | null;
+    periodEndDate?: string | null;
+};
+
+export type ValuationPoint = {
+    evaluatedAt: string;
+    amount: NullableDecimal;
+    completeness: Completeness;
+};
+
+export type ValueChangePoint = {
+    periodKind: 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
+    periodStartDate: string;
+    periodEndDate: string;
+    amount: NullableDecimal;
+    state: 'complete' | 'provisional' | 'incomplete' | 'incomparable';
+};
+
+export type ExposurePoint = {
+    assetId: Uuid;
+    assetCode?: string;
+    longQuantity: Decimal;
+    shortQuantity: Decimal;
+    netQuantity: Decimal;
+    longValue?: NullableDecimal;
+    shortValue?: NullableDecimal;
+    netValue?: NullableDecimal;
+    completeness: Completeness;
+    freshness: Freshness;
+};
+
+export type Overview = {
+    portfolioId: Uuid;
+    context: ProjectionContext;
+    valuation: AmountStatus;
+    contributedCapital: AmountStatus;
+    valueChange: AmountStatus;
+    valuationSeries: Array<ValuationPoint>;
+    valueChanges: Array<ValueChangePoint>;
+    exposures: Array<ExposurePoint>;
+    issues: Array<ProjectionIssue>;
+};
+
+export type BalanceRow = {
+    identityId: Uuid;
+    identityName?: string;
+    accountId: Uuid;
+    accountName?: string;
+    platformId?: Uuid;
+    platformCode?: string;
+    assetListingId: Uuid;
+    listingSymbol?: string;
+    assetId?: string | null;
+    assetCode?: string | null;
+    totalQuantity?: NullableDecimal;
+    availableQuantity?: NullableDecimal;
+    lockedQuantity?: NullableDecimal;
+    sourceObservedAt: string;
+    freshness: Freshness;
+    completeness: Completeness;
+};
+
+export type PositionRow = {
+    identityId: Uuid;
+    identityName?: string;
+    accountId: Uuid;
+    accountName?: string;
+    platformId?: Uuid;
+    platformCode?: string;
+    instrumentId: Uuid;
+    instrumentSymbol?: string;
+    platformPositionRef: string;
+    side: 'long' | 'short' | 'net';
+    quantity: Decimal;
+    selectedMarkPrice?: NullableDecimal;
+    underlyingLongQuantity: Decimal;
+    underlyingShortQuantity: Decimal;
+    sourceObservedAt: string;
+    freshness: Freshness;
+    completeness: Completeness;
+};
+
+export type GroupTotals = {
+    totalQuantity?: NullableDecimal;
+    availableQuantity?: NullableDecimal;
+    lockedQuantity?: NullableDecimal;
+    quantity?: NullableDecimal;
+    underlyingLongQuantity?: NullableDecimal;
+    underlyingShortQuantity?: NullableDecimal;
+};
+
+export type ProjectionGroup = {
+    grouping: string;
+    key: string;
+    label: string;
+    completeness: Completeness;
+    freshness: Freshness;
+    totals: GroupTotals;
+};
+
+export type BalanceList = {
+    items: Array<BalanceRow>;
+    groups: Array<ProjectionGroup>;
+    page: OffsetPage;
+    context: ProjectionContext;
+    issues: Array<ProjectionIssue>;
+};
+
+export type PositionList = {
+    items: Array<PositionRow>;
+    groups: Array<ProjectionGroup>;
+    page: OffsetPage;
+    context: ProjectionContext;
+    issues: Array<ProjectionIssue>;
+};
+
 export type Account = {
     id: Uuid;
     portfolioId: Uuid;
@@ -1952,3 +2114,119 @@ export type ListCapitalFlowRevisionsResponses = {
 };
 
 export type ListCapitalFlowRevisionsResponse = ListCapitalFlowRevisionsResponses[keyof ListCapitalFlowRevisionsResponses];
+
+export type GetOverviewData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/overview';
+};
+
+export type GetOverviewErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetOverviewError = GetOverviewErrors[keyof GetOverviewErrors];
+
+export type GetOverviewResponses = {
+    /**
+     * Overview for the active projection generation.
+     */
+    200: Overview;
+};
+
+export type GetOverviewResponse = GetOverviewResponses[keyof GetOverviewResponses];
+
+export type ListBalancesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        groupBy?: 'platform' | 'identity' | 'account' | 'asset' | 'listing';
+        identityId?: Uuid;
+        accountId?: Uuid;
+        assetId?: Uuid;
+        listingId?: Uuid;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/balances';
+};
+
+export type ListBalancesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListBalancesError = ListBalancesErrors[keyof ListBalancesErrors];
+
+export type ListBalancesResponses = {
+    /**
+     * Latest balances.
+     */
+    200: BalanceList;
+};
+
+export type ListBalancesResponse = ListBalancesResponses[keyof ListBalancesResponses];
+
+export type ListPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        groupBy?: 'platform' | 'identity' | 'account' | 'instrument';
+        identityId?: Uuid;
+        accountId?: Uuid;
+        instrumentId?: Uuid;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/positions';
+};
+
+export type ListPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListPositionsError = ListPositionsErrors[keyof ListPositionsErrors];
+
+export type ListPositionsResponses = {
+    /**
+     * Latest positions.
+     */
+    200: PositionList;
+};
+
+export type ListPositionsResponse = ListPositionsResponses[keyof ListPositionsResponses];

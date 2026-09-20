@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Plutus API
   version: 0.1.0
-  description: Phase 2 transport contract for authentication, portfolios, identities, connections, catalog, observations, and jobs.
+  description: Phase 2 transport contract for authentication, portfolios, identities, connections, catalog, observations, capital, read models, and jobs.
 servers:
   - url: /
 paths:
@@ -1013,6 +1013,128 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/overview:
+    get:
+      operationId: getOverview
+      tags: [read-model]
+      summary: Portfolio overview cards, series, exposure, and issues
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+      responses:
+        "200":
+          description: Overview for the active projection generation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Overview"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/balances:
+    get:
+      operationId: listBalances
+      tags: [read-model]
+      summary: Latest balances with grouping and offset pagination
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [platform, identity, account, asset, listing]
+        - name: identityId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: accountId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: assetId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: listingId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Latest balances.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/positions:
+    get:
+      operationId: listPositions
+      tags: [read-model]
+      summary: Latest positions with grouping and offset pagination
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [platform, identity, account, instrument]
+        - name: identityId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: accountId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: instrumentId
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Latest positions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PositionList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -1561,6 +1683,352 @@ components:
     Decimal:
       type: string
       pattern: '^-?[0-9]+(\.[0-9]+)?$'
+    NullableDecimal:
+      type: [string, "null"]
+      pattern: '^-?[0-9]+(\.[0-9]+)?$'
+    Completeness:
+      type: string
+      enum: [complete, partial, missing]
+    Freshness:
+      type: string
+      enum: [fresh, stale, unknown]
+    Coverage:
+      type: string
+      enum: [complete, partial, ambiguous, changed, missing]
+    DisplayAsset:
+      type: object
+      additionalProperties: false
+      required: [id, code]
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        code:
+          type: string
+    ProjectionContext:
+      type: object
+      additionalProperties: false
+      required: [timezone, displayAsset, cutoffAt, completeness, coverage, freshness]
+      properties:
+        timezone:
+          type: string
+        displayAsset:
+          $ref: "#/components/schemas/DisplayAsset"
+        cutoffAt:
+          type: [string, "null"]
+          format: date-time
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        coverage:
+          $ref: "#/components/schemas/Coverage"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        generationId:
+          type: [string, "null"]
+          format: uuid
+        rebuildPending:
+          type: boolean
+    ProjectionIssue:
+      type: object
+      additionalProperties: false
+      required: [code, severity, summary, projectionKind]
+      properties:
+        id:
+          type: [string, "null"]
+          format: uuid
+        projectionKind:
+          type: string
+        projectionKey:
+          type: string
+        code:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error]
+        summary:
+          type: string
+        identityId:
+          type: [string, "null"]
+          format: uuid
+        accountId:
+          type: [string, "null"]
+          format: uuid
+        observationId:
+          type: [string, "null"]
+          format: uuid
+        firstEffectiveAt:
+          type: string
+          format: date-time
+        lastEffectiveAt:
+          type: string
+          format: date-time
+    AmountStatus:
+      type: object
+      additionalProperties: false
+      required: [amount, completeness, coverage, freshness]
+      properties:
+        amount:
+          $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        coverage:
+          $ref: "#/components/schemas/Coverage"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        evaluatedAt:
+          type: [string, "null"]
+          format: date-time
+        state:
+          type: [string, "null"]
+        periodKind:
+          type: [string, "null"]
+        periodStartDate:
+          type: [string, "null"]
+          format: date
+        periodEndDate:
+          type: [string, "null"]
+          format: date
+    ValuationPoint:
+      type: object
+      additionalProperties: false
+      required: [evaluatedAt, amount, completeness]
+      properties:
+        evaluatedAt:
+          type: string
+          format: date-time
+        amount:
+          $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+    ValueChangePoint:
+      type: object
+      additionalProperties: false
+      required: [periodKind, periodStartDate, periodEndDate, amount, state]
+      properties:
+        periodKind:
+          type: string
+          enum: [day, iso_week, month, quarter, year]
+        periodStartDate:
+          type: string
+          format: date
+        periodEndDate:
+          type: string
+          format: date
+        amount:
+          $ref: "#/components/schemas/NullableDecimal"
+        state:
+          type: string
+          enum: [complete, provisional, incomplete, incomparable]
+    ExposurePoint:
+      type: object
+      additionalProperties: false
+      required: [assetId, longQuantity, shortQuantity, netQuantity, completeness, freshness]
+      properties:
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        assetCode:
+          type: string
+        longQuantity:
+          $ref: "#/components/schemas/Decimal"
+        shortQuantity:
+          $ref: "#/components/schemas/Decimal"
+        netQuantity:
+          $ref: "#/components/schemas/Decimal"
+        longValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        shortValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        netValue:
+          $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+    Overview:
+      type: object
+      additionalProperties: false
+      required: [portfolioId, context, valuation, contributedCapital, valueChange, valuationSeries, valueChanges, exposures, issues]
+      properties:
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        valuation:
+          $ref: "#/components/schemas/AmountStatus"
+        contributedCapital:
+          $ref: "#/components/schemas/AmountStatus"
+        valueChange:
+          $ref: "#/components/schemas/AmountStatus"
+        valuationSeries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValuationPoint"
+        valueChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValueChangePoint"
+        exposures:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposurePoint"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    BalanceRow:
+      type: object
+      additionalProperties: false
+      required: [identityId, accountId, assetListingId, sourceObservedAt, freshness, completeness]
+      properties:
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        identityName:
+          type: string
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        platformCode:
+          type: string
+        assetListingId:
+          $ref: "#/components/schemas/UUID"
+        listingSymbol:
+          type: string
+        assetId:
+          type: [string, "null"]
+          format: uuid
+        assetCode:
+          type: [string, "null"]
+        totalQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        availableQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        lockedQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        sourceObservedAt:
+          type: string
+          format: date-time
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+    PositionRow:
+      type: object
+      additionalProperties: false
+      required: [identityId, accountId, instrumentId, platformPositionRef, side, quantity, underlyingLongQuantity, underlyingShortQuantity, sourceObservedAt, freshness, completeness]
+      properties:
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        identityName:
+          type: string
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        platformId:
+          $ref: "#/components/schemas/UUID"
+        platformCode:
+          type: string
+        instrumentId:
+          $ref: "#/components/schemas/UUID"
+        instrumentSymbol:
+          type: string
+        platformPositionRef:
+          type: string
+        side:
+          type: string
+          enum: [long, short, net]
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        selectedMarkPrice:
+          $ref: "#/components/schemas/NullableDecimal"
+        underlyingLongQuantity:
+          $ref: "#/components/schemas/Decimal"
+        underlyingShortQuantity:
+          $ref: "#/components/schemas/Decimal"
+        sourceObservedAt:
+          type: string
+          format: date-time
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+    GroupTotals:
+      type: object
+      additionalProperties: false
+      properties:
+        totalQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        availableQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        lockedQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        quantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        underlyingLongQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        underlyingShortQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+    ProjectionGroup:
+      type: object
+      additionalProperties: false
+      required: [grouping, key, label, completeness, freshness, totals]
+      properties:
+        grouping:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        totals:
+          $ref: "#/components/schemas/GroupTotals"
+    BalanceList:
+      type: object
+      additionalProperties: false
+      required: [items, groups, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceRow"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionGroup"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
+    PositionList:
+      type: object
+      additionalProperties: false
+      required: [items, groups, page, context, issues]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PositionRow"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionGroup"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        context:
+          $ref: "#/components/schemas/ProjectionContext"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectionIssue"
     Account:
       type: object
       additionalProperties: false

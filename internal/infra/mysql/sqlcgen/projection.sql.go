@@ -1025,6 +1025,53 @@ func (q *Queries) ListLatestPositionProjections(ctx context.Context, generationI
 	return items, nil
 }
 
+const listPeriodSummaryProjections = `-- name: ListPeriodSummaryProjections :many
+SELECT generation_id, portfolio_id, period_kind, period_start_date, period_end_date, as_of_at,
+       valuation_open, valuation_close, valuation_high, valuation_low, contributed_capital_close,
+       value_change, freshness_state, completeness
+FROM period_summary_projections
+WHERE generation_id = ?
+ORDER BY period_kind ASC, period_start_date ASC, period_end_date ASC
+`
+
+func (q *Queries) ListPeriodSummaryProjections(ctx context.Context, generationID []byte) ([]PeriodSummaryProjection, error) {
+	rows, err := q.db.QueryContext(ctx, listPeriodSummaryProjections, generationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PeriodSummaryProjection{}
+	for rows.Next() {
+		var i PeriodSummaryProjection
+		if err := rows.Scan(
+			&i.GenerationID,
+			&i.PortfolioID,
+			&i.PeriodKind,
+			&i.PeriodStartDate,
+			&i.PeriodEndDate,
+			&i.AsOfAt,
+			&i.ValuationOpen,
+			&i.ValuationClose,
+			&i.ValuationHigh,
+			&i.ValuationLow,
+			&i.ContributedCapitalClose,
+			&i.ValueChange,
+			&i.FreshnessState,
+			&i.Completeness,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPortfolioValuationProjections = `-- name: ListPortfolioValuationProjections :many
 SELECT id, generation_id, portfolio_id, evaluated_at, denomination_asset_id, amount, completeness,
        coverage_fingerprint, freshness_state, source_cutoff_at
