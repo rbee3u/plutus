@@ -165,8 +165,8 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 3 — Catalog mapping and pins
 
-- [ ] Catalog listing and instrument search with mapping and pin status
-- [ ] Mapping and tracking revision HTTP that enqueues a Projection rebuild
+- [x] Catalog listing and instrument search with mapping and pin status
+- [x] Mapping and tracking revision HTTP that enqueues a Projection rebuild
 
 ### Milestone 4 — Observations and audit
 

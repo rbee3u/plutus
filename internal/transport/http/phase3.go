@@ -10,26 +10,6 @@ func (a *API) ListAuditEvents(context.Context, api.ListAuditEventsRequestObject)
 	return nil, ErrNotImplemented
 }
 
-func (a *API) SearchCatalogAssetListings(context.Context, api.SearchCatalogAssetListingsRequestObject) (api.SearchCatalogAssetListingsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PutCatalogListingMapping(context.Context, api.PutCatalogListingMappingRequestObject) (api.PutCatalogListingMappingResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) SearchCatalogInstruments(context.Context, api.SearchCatalogInstrumentsRequestObject) (api.SearchCatalogInstrumentsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) DeleteCatalogPin(context.Context, api.DeleteCatalogPinRequestObject) (api.DeleteCatalogPinResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PutCatalogPin(context.Context, api.PutCatalogPinRequestObject) (api.PutCatalogPinResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
 func (a *API) ListExposures(context.Context, api.ListExposuresRequestObject) (api.ListExposuresResponseObject, error) {
 	return nil, ErrNotImplemented
 }
