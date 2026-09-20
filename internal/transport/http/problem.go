@@ -1,29 +1,19 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
 func writeProblem(c *gin.Context, status int, code, title, detail string) {
-	traceID, _ := c.Get("trace_id")
-	trace, _ := traceID.(string)
-	body := api.Problem{
-		Type:     "https://plutus.local/problems/" + code,
-		Title:    title,
-		Status:   status,
-		Detail:   detail,
-		Code:     code,
-		Instance: &c.Request.URL.Path,
-	}
-	if trace != "" {
-		body.TraceId = &trace
-	}
+	body := newProblem(c, status, code, title, detail)
 	c.Header("Content-Type", "application/problem+json")
 	c.Status(status)
 	if err := json.NewEncoder(c.Writer).Encode(body); err != nil {
@@ -31,14 +21,47 @@ func writeProblem(c *gin.Context, status int, code, title, detail string) {
 	}
 }
 
+func newProblem(c *gin.Context, status int, code, title, detail string) api.Problem {
+	body := api.Problem{
+		Type:   "https://plutus.local/problems/" + code,
+		Title:  title,
+		Status: status,
+		Detail: detail,
+		Code:   code,
+	}
+	if c != nil {
+		path := c.Request.URL.Path
+		body.Instance = &path
+		if traceID, ok := c.Get("trace_id"); ok {
+			if trace, ok := traceID.(string); ok && trace != "" {
+				body.TraceId = &trace
+			}
+		}
+	}
+	return body
+}
+
+func (a *API) problem(ctx context.Context, status int, code, title, detail string) api.Problem {
+	return newProblem(ginFrom(ctx), status, code, title, detail)
+}
+
+func (a *API) unauthenticated(ctx context.Context) api.Problem {
+	return a.problem(ctx, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
+}
+
 func requestError(c *gin.Context, err error) {
 	writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
 }
 
 func handlerError(c *gin.Context, err error) {
-	if errors.Is(err, ErrNotImplemented) {
+	switch {
+	case errors.Is(err, ErrNotImplemented):
 		writeProblem(c, http.StatusNotImplemented, "not_implemented", "Not implemented", "This endpoint is not implemented in the current phase.")
-		return
+	case errors.Is(err, auth.ErrCSRF):
+		writeProblem(c, http.StatusForbidden, "csrf_invalid", "CSRF token is invalid", "The request did not include a valid CSRF token.")
+	case errors.Is(err, auth.ErrUnauthenticated):
+		writeProblem(c, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
+	default:
+		writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error", "The request failed due to an internal error.")
 	}
-	writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error", "The request failed due to an internal error.")
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -14,6 +15,8 @@ var ErrNotImplemented = errors.New("not_implemented")
 type API struct {
 	Ready               ReadyChecker
 	RegistrationEnabled bool
+	Auth                *auth.Service
+	SecureCookies       bool
 }
 
 func (a *API) GetHealthLive(context.Context, api.GetHealthLiveRequestObject) (api.GetHealthLiveResponseObject, error) {
@@ -32,42 +35,6 @@ func (a *API) GetHealthReady(ctx context.Context, _ api.GetHealthReadyRequestObj
 
 func (a *API) GetAuthRegistrationStatus(context.Context, api.GetAuthRegistrationStatusRequestObject) (api.GetAuthRegistrationStatusResponseObject, error) {
 	return api.GetAuthRegistrationStatus200JSONResponse{Enabled: a.RegistrationEnabled}, nil
-}
-
-func (a *API) GetAuthCsrf(context.Context, api.GetAuthCsrfRequestObject) (api.GetAuthCsrfResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PostAuthLogin(context.Context, api.PostAuthLoginRequestObject) (api.PostAuthLoginResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PostAuthLogout(context.Context, api.PostAuthLogoutRequestObject) (api.PostAuthLogoutResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PostAuthLogoutAll(context.Context, api.PostAuthLogoutAllRequestObject) (api.PostAuthLogoutAllResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) GetAuthMe(context.Context, api.GetAuthMeRequestObject) (api.GetAuthMeResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PutAuthPassword(context.Context, api.PutAuthPasswordRequestObject) (api.PutAuthPasswordResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) PostAuthRegister(context.Context, api.PostAuthRegisterRequestObject) (api.PostAuthRegisterResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) GetAuthSessions(context.Context, api.GetAuthSessionsRequestObject) (api.GetAuthSessionsResponseObject, error) {
-	return nil, ErrNotImplemented
-}
-
-func (a *API) DeleteAuthSession(context.Context, api.DeleteAuthSessionRequestObject) (api.DeleteAuthSessionResponseObject, error) {
-	return nil, ErrNotImplemented
 }
 
 func (a *API) ListPortfolios(context.Context, api.ListPortfoliosRequestObject) (api.ListPortfoliosResponseObject, error) {

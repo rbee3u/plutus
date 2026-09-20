@@ -47,11 +47,11 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 5 — Authentication
 
-- [ ] Registration toggle, login, logout, logout-all, me, password change, session list and revocation
-- [ ] Session cookie, CSRF, and login/registration rate limiting
-- [ ] Argon2id PHC password hashing with rehash-on-login when parameters are obsolete
-- [ ] `plutus user create`, `user disable`, and `user reset-password`
-- [ ] Disabled registration rejects HTTP creation while CLI user creation remains usable
+- [x] Registration toggle, login, logout, logout-all, me, password change, session list and revocation
+- [x] Session cookie, CSRF, and login/registration rate limiting
+- [x] Argon2id PHC password hashing with rehash-on-login when parameters are obsolete
+- [x] `plutus user create`, `user disable`, and `user reset-password`
+- [x] Disabled registration rejects HTTP creation while CLI user creation remains usable
 
 ### Milestone 6 — Portfolios
 
@@ -141,11 +141,11 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.2 Authentication and browser security
 
-- [ ] **Phase 1** — Disabled registration rejects creation while login and CLI User creation remain usable
-- [ ] **Phase 1** — Login rate limiting works by username and client address without revealing existence
-- [ ] **Phase 1** — Correct and incorrect passwords exercise Argon2id; password change revokes other Sessions
-- [ ] **Phase 1** — Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset revoke access
-- [ ] **Phase 1** — Every state-changing browser request requires a valid CSRF token
+- [x] **Phase 1** — Disabled registration rejects creation while login and CLI User creation remain usable
+- [x] **Phase 1** — Login rate limiting works by username and client address without revealing existence
+- [x] **Phase 1** — Correct and incorrect passwords exercise Argon2id; password change revokes other Sessions
+- [x] **Phase 1** — Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset revoke access
+- [x] **Phase 1** — Every state-changing browser request requires a valid CSRF token
 
 ### 13.3 Collection and normalized facts
 

@@ -16,7 +16,7 @@ func TestLiveAndReady(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	engine := Engine(logger, StaticReady{Err: errors.New("down")}, false)
+	engine := Engine(EngineOptions{Logger: logger, Ready: StaticReady{Err: errors.New("down")}, RegistrationEnabled: false})
 
 	live := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
@@ -41,14 +41,14 @@ func TestLiveAndReady(t *testing.T) {
 		t.Fatalf("body %+v", body)
 	}
 
-	okEngine := Engine(logger, StaticReady{}, false)
+	okEngine := Engine(EngineOptions{Logger: logger, Ready: StaticReady{}, RegistrationEnabled: false})
 	okReady := httptest.NewRecorder()
 	okEngine.ServeHTTP(okReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if okReady.Code != http.StatusOK {
 		t.Fatalf("ready ok status %d", okReady.Code)
 	}
 
-	schemaEngine := Engine(logger, StaticReady{Err: mysql.ErrSchemaMismatch}, false)
+	schemaEngine := Engine(EngineOptions{Logger: logger, Ready: StaticReady{Err: mysql.ErrSchemaMismatch}, RegistrationEnabled: false})
 	schemaReady := httptest.NewRecorder()
 	schemaEngine.ServeHTTP(schemaReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if schemaReady.Code != http.StatusServiceUnavailable {
@@ -63,14 +63,14 @@ func TestLiveAndReady(t *testing.T) {
 	}
 
 	reg := httptest.NewRecorder()
-	Engine(logger, StaticReady{}, true).ServeHTTP(reg, httptest.NewRequest(http.MethodGet, "/api/v1/auth/registration-status", nil))
+	Engine(EngineOptions{Logger: logger, Ready: StaticReady{}, RegistrationEnabled: true}).ServeHTTP(reg, httptest.NewRequest(http.MethodGet, "/api/v1/auth/registration-status", nil))
 	if reg.Code != http.StatusOK {
 		t.Fatalf("registration status %d %s", reg.Code, reg.Body.String())
 	}
 
 	me := httptest.NewRecorder()
-	Engine(logger, StaticReady{}, false).ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
-	if me.Code != http.StatusNotImplemented {
-		t.Fatalf("unimplemented me %d %s", me.Code, me.Body.String())
+	Engine(EngineOptions{Logger: logger, Ready: StaticReady{}, RegistrationEnabled: false}).ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
+	if me.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated me %d %s", me.Code, me.Body.String())
 	}
 }

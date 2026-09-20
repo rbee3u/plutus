@@ -1,13 +1,10 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
@@ -27,7 +24,7 @@ func newMigrateStatusCommand() *cobra.Command {
 		Short: "Show applied and pending Goose migrations",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, err := openMigrateDB()
+			db, _, err := openConfiguredDB()
 			if err != nil {
 				return err
 			}
@@ -43,7 +40,7 @@ func newMigrateUpCommand() *cobra.Command {
 		Short: "Apply all pending Goose migrations",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, err := openMigrateDB()
+			db, _, err := openConfiguredDB()
 			if err != nil {
 				return err
 			}
@@ -55,15 +52,4 @@ func newMigrateUpCommand() *cobra.Command {
 			return nil
 		},
 	}
-}
-
-func openMigrateDB() (*sql.DB, error) {
-	cfg, err := config.Load(config.Options{})
-	if err != nil {
-		return nil, err
-	}
-	if cfg.Database.DSN == "" {
-		return nil, errors.New("PLUTUS_DATABASE_DSN or PLUTUS_DATABASE_DSN_FILE is required")
-	}
-	return mysql.Open(cfg.Database.DSN)
 }

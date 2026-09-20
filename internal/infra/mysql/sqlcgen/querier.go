@@ -11,8 +11,24 @@ import (
 type Querier interface {
 	GetAssetByCode(ctx context.Context, code string) (Asset, error)
 	GetPlatformByCode(ctx context.Context, code string) (Platform, error)
+	GetSessionByID(ctx context.Context, id []byte) (Session, error)
+	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
+	GetUserByID(ctx context.Context, id []byte) (User, error)
+	GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error)
+	GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error)
+	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
+	InsertSession(ctx context.Context, arg InsertSessionParams) error
+	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
 	ListActiveAssets(ctx context.Context) ([]Asset, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
+	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
+	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
+	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
+	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
+	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
+	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	UpdateUserCredential(ctx context.Context, arg UpdateUserCredentialParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -44,13 +45,32 @@ func (f FuncReady) Ready(ctx context.Context) error {
 	return f(ctx)
 }
 
+// EngineOptions configures the HTTP engine.
+type EngineOptions struct {
+	Logger              *slog.Logger
+	Ready               ReadyChecker
+	Auth                *auth.Service
+	RegistrationEnabled bool
+	SecureCookies       bool
+	AllowedOrigins      []string
+}
+
 // Engine returns the HTTP handler for the process.
-func Engine(logger *slog.Logger, ready ReadyChecker, registrationEnabled bool) *gin.Engine {
+func Engine(opts EngineOptions) *gin.Engine {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	engine.Use(bindGinContext())
 	engine.Use(securityHeaders())
-	engine.Use(requestLog(logger))
-	impl := &API{Ready: ready, RegistrationEnabled: registrationEnabled}
+	engine.Use(noStoreAuth())
+	engine.Use(limitBody(1 << 20))
+	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
+	engine.Use(requestLog(opts.Logger))
+	impl := &API{
+		Ready:               opts.Ready,
+		RegistrationEnabled: opts.RegistrationEnabled,
+		Auth:                opts.Auth,
+		SecureCookies:       opts.SecureCookies,
+	}
 	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  requestError,
 		HandlerErrorFunc:         handlerError,
