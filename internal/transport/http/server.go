@@ -106,17 +106,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 			return ctx
 		},
 	}
-	if cfg.Server.TLS.HTTPSEnabled {
-		tlsCfg := &tls.Config{
-			MinVersion:   tls.VersionTLS13,
-			Certificates: []tls.Certificate{*cfg.Server.TLS.Certificate},
-		}
-		if cfg.Server.TLS.MTLSEnabled {
-			tlsCfg.ClientCAs = cfg.Server.TLS.ClientCAs
-			tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
-		}
-		server.TLSConfig = tlsCfg
-	}
+	server.TLSConfig = tlsServerConfig(cfg)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -156,4 +146,19 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 		}
 		return err
 	}
+}
+
+func tlsServerConfig(cfg *config.Config) *tls.Config {
+	if cfg == nil || !cfg.Server.TLS.HTTPSEnabled {
+		return nil
+	}
+	tlsCfg := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{*cfg.Server.TLS.Certificate},
+	}
+	if cfg.Server.TLS.MTLSEnabled {
+		tlsCfg.ClientCAs = cfg.Server.TLS.ClientCAs
+		tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+	return tlsCfg
 }

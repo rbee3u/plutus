@@ -80,10 +80,10 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 9 — Phase 1 close-out
 
-- [ ] README describes only implemented Phase 1 capabilities
-- [ ] Mark credential ciphertext and nonce nullable in the technical design
-- [ ] All Phase 1 checklist items checked
-- [ ] `make format && make build && make test && make lint` pass, plus frontend typecheck/lint when `web/` exists
+- [x] README describes only implemented Phase 1 capabilities
+- [x] Mark credential ciphertext and nonce nullable in the technical design
+- [x] All Phase 1 checklist items checked
+- [x] `make format && make build && make test && make lint` pass, plus frontend typecheck/lint when `web/` exists
 
 ### Phase 1 schema (normative for this workstream)
 
@@ -186,11 +186,11 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.7 Transport security
 
-- [ ] **Phase 1** — Loopback HTTP starts with the default configuration
-- [ ] **Phase 1** — HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer
-- [ ] **Phase 1** — mTLS accepts a valid client certificate and rejects absent, expired, or untrusted certificates on UI, API, and health routes
-- [ ] **Phase 1** — Every invalid combination in the startup matrix refuses startup with a safe actionable error
-- [ ] **Phase 1** — Non-loopback cleartext startup with public registration enabled is rejected
+- [x] **Phase 1** — Loopback HTTP starts with the default configuration
+- [x] **Phase 1** — HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer
+- [x] **Phase 1** — mTLS accepts a valid client certificate and rejects absent, expired, or untrusted certificates on UI, API, and health routes
+- [x] **Phase 1** — Every invalid combination in the startup matrix refuses startup with a safe actionable error
+- [x] **Phase 1** — Non-loopback cleartext startup with public registration enabled is rejected
 
 ### 13.8 Frontend
 

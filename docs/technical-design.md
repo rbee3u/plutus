@@ -253,9 +253,9 @@ Use `UNIQUE (portfolio_id, platform_id, external_ref)`. After the first Observat
 | `identity_id` | `BINARY(16)` | composite FK to `identities` |
 | `label` | `VARCHAR(120)` | required |
 | `status` | `VARCHAR(32)` | `enabled`, `disabled`, or `invalid` |
-| `credentials_ciphertext` | `LONGBLOB` | AES-256-GCM ciphertext; never returned |
-| `credentials_nonce` | `BINARY(12)` | random unique nonce per encryption |
-| `credential_key_version` | `SMALLINT UNSIGNED` | required |
+| `credentials_ciphertext` | `LONGBLOB` | nullable AES-256-GCM ciphertext; never returned; NULL until credentials are configured |
+| `credentials_nonce` | `BINARY(12)` | nullable random unique nonce per encryption; NULL together with ciphertext |
+| `credential_key_version` | `SMALLINT UNSIGNED` | required; `0` while ciphertext is absent |
 | `config_json` | `JSON` | versioned normalized, non-secret adapter configuration |
 | `collection_interval_seconds` | `INT UNSIGNED` | default 900 |
 | `freshness_after_seconds` | `INT UNSIGNED` | default twice the collection interval |
@@ -264,7 +264,7 @@ Use `UNIQUE (portfolio_id, platform_id, external_ref)`. After the first Observat
 | `created_at`, `updated_at` | `DATETIME(6)` | required |
 | `enabled_identity_id` | `BINARY(16)` | stored generated value: `identity_id` only while enabled |
 
-Use `UNIQUE (portfolio_id, enabled_identity_id)`; MySQL permits multiple `NULL` values, enforcing at most one enabled Connection per Identity. Credential replacement increments `version`, audits metadata only, and never copies plaintext or ciphertext into the audit record.
+Use `UNIQUE (portfolio_id, enabled_identity_id)`; MySQL permits multiple `NULL` values, enforcing at most one enabled Connection per Identity. Ciphertext and nonce are both NULL or both present. A Connection without ciphertext cannot become `enabled`. Credential replacement increments `version`, audits metadata only, and never copies plaintext or ciphertext into the audit record.
 
 #### `accounts`
 
@@ -835,7 +835,7 @@ Static PEM files are loaded at startup. Certificate changes require restart. The
 
 Connection credentials are serialized to a versioned normalized secret document and encrypted with AES-256-GCM. Every encryption uses a cryptographically random 96-bit nonce and binds the Connection ID, Portfolio ID, schema version, and key version as additional authenticated data.
 
-The deployment-level 32-byte master key is injected as base64 through `PLUTUS_MASTER_KEY` or read from the file named by `PLUTUS_MASTER_KEY_FILE`; exactly one source is allowed. The key is never stored in MySQL. `credential_key_version` permits controlled future rotation, but an online rotation workflow is not required for the MVP. Missing or invalid key configuration fails startup when any credential operation or enabled Connection requires it.
+The deployment-level 32-byte master key is injected as base64 through `PLUTUS_MASTER_KEY` or read from the file named by `PLUTUS_MASTER_KEY_FILE`; exactly one source is allowed. The key is never stored in MySQL. `credential_key_version` permits controlled future rotation, but an online rotation workflow is not required for the MVP. The key is required when encrypting or decrypting Connection credentials. While ciphertext and nonce remain NULL, `serve` does not require a master key.
 
 API and UI surfaces reveal only whether credentials exist and when they were replaced or validated. Diagnostics may name a credential field category but never log its value. Deterministic seeds do not include valid exchange secrets.
 
@@ -869,7 +869,7 @@ plutus db reset --profile minimal|edge-cases
 plutus projection rebuild --portfolio <uuid>
 ```
 
-These commands do not exist until their implementation phase. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration command. Testcontainers is used by automated integration tests, not as the normal development database launcher.
+Phase 1 implements `serve`, `migrate status|up`, `user create|disable|reset-password`, and `projection rebuild`. `db seed` and `db reset` remain Phase 2. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set and must not target the operator's development database as a sacrificial instance.
 
 Migrations are forward-only in shared environments and run in their own deployment step. The server never migrates automatically. `db reset` is development-only: it must require an explicit development environment marker, verify that the database name matches an allowed development pattern, print the exact target, and reject production-like or unrecognized targets.
 

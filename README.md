@@ -6,7 +6,15 @@ The domain hierarchy is `Platform -> Identity -> Account`: each main or subordin
 
 ## Current status
 
-The repository contains a Go/Cobra CLI composition root at `cmd/plutus`. Collection of Identity Snapshots, persistence, authentication, the JSON API, and the web frontend have not been implemented. The domain model, product boundaries, and MVP technical architecture are documented for implementation. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
+Phase 1 (foundation) is implemented. The process is a Go CLI at `cmd/plutus` with an embedded React shell:
+
+- Configuration from `plutus.toml` and `PLUTUS_*`, including the HTTP / HTTPS / mTLS startup matrix.
+- Explicit Goose migrations and sqlc access to the Phase 1 schema. `serve` never migrates automatically.
+- Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and credential-less Connections.
+- A durable Projection worker that can claim jobs. Rebuilds succeed with an empty diagnostic result and do not switch `active_projection_generation_id`.
+- Login, registration-closed messaging, Portfolio switcher, Portfolio/security settings, and information-architecture placeholders for later pages.
+
+Not implemented yet: real Platform adapters, Connection credential encryption in the UI, collection, source-fact seeds, projection read models, or Overview / Balances / Positions backed by live data. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
 
 ## First-release scope
 
@@ -32,12 +40,12 @@ Value Changes are not investment returns. Percentage returns, return attribution
 
 ## Roadmap
 
-1. Foundation: configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, an embedded React shell, and a persistent Projection worker.
+1. Foundation (done): configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, an embedded React shell, and a persistent Projection worker.
 2. End-to-end vertical slice: deterministic source-fact seeds, normalized Observations, generation-based Projections, and working Overview, Balances, Positions, and Capital pages.
 3. Complete MVP UI and management: Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
 4. Integrations: scheduling and real Binance, OKX, and Bybit adapters.
 
-The accepted design uses a contract-first modular Go monolith, a versioned JSON API, an embedded React frontend, and an externally managed MySQL database. These are design decisions, not claims that the corresponding implementation already exists.
+The accepted design uses a contract-first modular Go monolith, a versioned JSON API, an embedded React frontend, and an externally managed MySQL database.
 
 ## Documentation
 
@@ -49,9 +57,22 @@ The accepted design uses a contract-first modular Go monolith, a versioned JSON 
 
 ## Development
 
-Use the Go toolchain required by `go.mod` and Make. Install the pinned formatting and lint tools with `make deps`, and ensure the Go tool installation directory is on `PATH`.
+Use the Go toolchain required by `go.mod`, Node.js as required by `web/package.json`, and Make. Install the pinned formatting, lint, sqlc, Goose, and frontend tools with `make deps`, and ensure the Go tool installation directory is on `PATH`.
 
-Local Go development follows four validation gates in order:
+Secrets stay out of git. Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a local `plutus.toml` if needed, and inject the MySQL DSN through exactly one of `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE`. A master key is not required until an encrypted Connection exists.
+
+```sh
+export PLUTUS_DATABASE_DSN_FILE=...   # or PLUTUS_DATABASE_DSN
+go run ./cmd/plutus migrate up
+go run ./cmd/plutus user create --username ... --password ...
+go run ./cmd/plutus serve
+```
+
+Production `serve` hosts the hashed SPA from `web/dist` via `go:embed`. Refresh that build with `make web-build` after frontend changes. For Vite development, run `npm run dev` in `web/`; it proxies `/api` and `/health` to `127.0.0.1:8080` and sends cookies to that origin.
+
+Public registration defaults to off. The Register page explains that the first User is created with `plutus user create`. Rebuilds are enqueued with `plutus projection rebuild --portfolio <uuid>`; they do not activate a new generation in Phase 1.
+
+Local Go development follows four validation gates in order. After `web/` exists, `make format` also runs Prettier and `make lint` also runs the frontend typecheck and ESLint:
 
 1. `make format`: rewrite imports and formatting before validating the code.
 2. `make build`: confirm the formatted code compiles and build `bin/plutus`.
@@ -70,4 +91,6 @@ make format && make build && make test && make lint
 make style && make build && make test && make lint
 ```
 
-Use `make help` to list commands in their Makefile order. Run `make run` for local execution through `go run ./cmd/plutus`, without a separate build step; it currently displays CLI help. Pass CLI arguments with `ARGS`.
+Integration tests that need MySQL skip unless `PLUTUS_TEST_DATABASE_DSN` is set. Do not point that variable at a development database you care about.
+
+Use `make help` to list commands in their Makefile order. Run `make run` for local execution through `go run ./cmd/plutus`, without a separate build step. Pass CLI arguments with `ARGS`.
