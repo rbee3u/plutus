@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
 func TestLiveAndReady(t *testing.T) {
@@ -44,5 +46,19 @@ func TestLiveAndReady(t *testing.T) {
 	okEngine.ServeHTTP(okReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
 	if okReady.Code != http.StatusOK {
 		t.Fatalf("ready ok status %d", okReady.Code)
+	}
+
+	schemaEngine := Engine(logger, StaticReady{Err: mysql.ErrSchemaMismatch})
+	schemaReady := httptest.NewRecorder()
+	schemaEngine.ServeHTTP(schemaReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	if schemaReady.Code != http.StatusServiceUnavailable {
+		t.Fatalf("schema ready status %d", schemaReady.Code)
+	}
+	var schemaBody map[string]string
+	if err := json.Unmarshal(schemaReady.Body.Bytes(), &schemaBody); err != nil {
+		t.Fatal(err)
+	}
+	if schemaBody["reason"] != "schema_mismatch" {
+		t.Fatalf("schema body %+v", schemaBody)
 	}
 }

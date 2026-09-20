@@ -29,4 +29,7 @@ func TestRootCommandHelp(t *testing.T) {
 	if !strings.Contains(out, "serve") {
 		t.Fatalf("help output does not mention serve: %q", out)
 	}
+	if !strings.Contains(out, "migrate") {
+		t.Fatalf("help output does not mention migrate: %q", out)
+	}
 }

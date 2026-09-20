@@ -30,12 +30,12 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 3 — Migrations and sqlc
 
-- [ ] Pin Goose and sqlc; add `make generate` for sqlc
-- [ ] Create Phase 1 tables only (see schema list below)
-- [ ] Seed USD, CNY, and enabled Binance / OKX / Bybit platform rows with stable UUIDs
-- [ ] Implement `plutus migrate status` and `plutus migrate up`
-- [ ] Never migrate automatically on `serve`
-- [ ] Include expected schema version in `/health/ready`
+- [x] Pin Goose and sqlc; add `make generate` for sqlc
+- [x] Create Phase 1 tables only (see schema list below)
+- [x] Seed USD, CNY, and enabled Binance / OKX / Bybit platform rows with stable UUIDs
+- [x] Implement `plutus migrate status` and `plutus migrate up`
+- [x] Never migrate automatically on `serve`
+- [x] Include expected schema version in `/health/ready`
 
 ### Milestone 4 — OpenAPI and code generation
 

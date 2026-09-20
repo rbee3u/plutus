@@ -56,6 +56,6 @@ func newReadyChecker(dsn string) (httpserver.ReadyChecker, func()) {
 		return httpserver.StaticReady{Err: err}, noop
 	}
 	return httpserver.FuncReady(func(callCtx context.Context) error {
-		return mysql.Ping(callCtx, db)
+		return mysql.CheckReady(callCtx, db)
 	}), func() { _ = db.Close() }
 }

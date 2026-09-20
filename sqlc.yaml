@@ -1,0 +1,17 @@
+version: "2"
+sql:
+  - engine: mysql
+    schema:
+      - db/migrations
+    queries:
+      - db/queries
+    gen:
+      go:
+        package: sqlcgen
+        out: internal/infra/mysql/sqlcgen
+        emit_interface: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: json
+            go_type: encoding/json.RawMessage
