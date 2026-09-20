@@ -8,12 +8,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/config"
+	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/portfolio"
 	httpserver "github.com/rbee3u/plutus/internal/transport/http"
 )
 
@@ -46,17 +50,27 @@ func runServe(cmd *cobra.Command, configPath string) error {
 	defer cleanup()
 
 	var authSvc *auth.Service
+	var portfolios *portfolio.Service
+	var accessSvc *access.Service
+	var idem *idempotency.Store
 	if db != nil {
 		authSvc = auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
+		portfolios = portfolio.NewService(db)
+		fresh := cfg.Collection.DefaultInterval * time.Duration(cfg.Collection.DefaultFreshnessMultiplier)
+		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh)
+		idem = idempotency.NewStore(db)
 	}
 
-	engine := httpserver.Engine(httpserver.EngineOptions{
+	engine := httpserver.Engine(&httpserver.EngineOptions{
 		Logger:              logger,
 		Ready:               ready,
 		Auth:                authSvc,
 		RegistrationEnabled: cfg.Auth.RegistrationEnabled,
 		SecureCookies:       cfg.Server.TLS.HTTPSEnabled,
 		AllowedOrigins:      []string{"http://127.0.0.1:5173", "http://localhost:5173"},
+		Portfolios:          portfolios,
+		Access:              accessSvc,
+		Idempotency:         idem,
 	})
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }

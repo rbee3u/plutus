@@ -55,8 +55,8 @@ type Connection struct {
 	IdentityID                []byte
 	Label                     string
 	Status                    string
-	CredentialsCiphertext     sql.NullString
-	CredentialsNonce          sql.NullString
+	CredentialsCiphertext     []byte
+	CredentialsNonce          []byte
 	CredentialKeyVersion      uint16
 	ConfigJson                json.RawMessage
 	CollectionIntervalSeconds uint32
@@ -65,13 +65,13 @@ type Connection struct {
 	Version                   uint64
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
-	EnabledIdentityID         sql.NullString
+	EnabledIdentityID         []byte
 }
 
 type IdempotencyRecord struct {
 	ID                  []byte
 	UserID              []byte
-	PortfolioID         sql.NullString
+	PortfolioID         []byte
 	Key                 string
 	Method              string
 	Path                string
@@ -87,7 +87,7 @@ type Identity struct {
 	ID               []byte
 	PortfolioID      []byte
 	PlatformID       []byte
-	ParentIdentityID sql.NullString
+	ParentIdentityID []byte
 	ExternalRef      string
 	DisplayName      string
 	AccountMode      string
@@ -107,7 +107,7 @@ type Job struct {
 	Priority          int16
 	DedupeKey         string
 	ActiveDedupeKey   sql.NullString
-	RequestedByUserID sql.NullString
+	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
@@ -152,7 +152,7 @@ type Portfolio struct {
 	Timezone                     string
 	DisplayAssetID               []byte
 	Status                       string
-	ActiveProjectionGenerationID sql.NullString
+	ActiveProjectionGenerationID []byte
 	Version                      uint64
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time

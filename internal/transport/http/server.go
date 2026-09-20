@@ -13,8 +13,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/rbee3u/plutus/internal/access"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/config"
+	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -53,10 +56,16 @@ type EngineOptions struct {
 	RegistrationEnabled bool
 	SecureCookies       bool
 	AllowedOrigins      []string
+	Portfolios          *portfolio.Service
+	Access              *access.Service
+	Idempotency         *idempotency.Store
 }
 
 // Engine returns the HTTP handler for the process.
-func Engine(opts EngineOptions) *gin.Engine {
+func Engine(opts *EngineOptions) *gin.Engine {
+	if opts == nil {
+		opts = &EngineOptions{}
+	}
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	engine.Use(bindGinContext())
@@ -70,6 +79,9 @@ func Engine(opts EngineOptions) *gin.Engine {
 		RegistrationEnabled: opts.RegistrationEnabled,
 		Auth:                opts.Auth,
 		SecureCookies:       opts.SecureCookies,
+		Portfolios:          opts.Portfolios,
+		Access:              opts.Access,
+		Idempotency:         opts.Idempotency,
 	}
 	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  requestError,

@@ -31,6 +31,28 @@ func (q *Queries) GetAssetByCode(ctx context.Context, code string) (Asset, error
 	return i, err
 }
 
+const getAssetByID = `-- name: GetAssetByID :one
+SELECT id, code, name, kind, decimals, status, created_at, updated_at
+FROM assets
+WHERE id = ?
+`
+
+func (q *Queries) GetAssetByID(ctx context.Context, id []byte) (Asset, error) {
+	row := q.db.QueryRowContext(ctx, getAssetByID, id)
+	var i Asset
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Name,
+		&i.Kind,
+		&i.Decimals,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listActiveAssets = `-- name: ListActiveAssets :many
 SELECT id, code, name, kind, decimals, status, created_at, updated_at
 FROM assets

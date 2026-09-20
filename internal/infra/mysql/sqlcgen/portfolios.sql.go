@@ -11,6 +11,147 @@ import (
 	"time"
 )
 
+const archivePortfolio = `-- name: ArchivePortfolio :execrows
+UPDATE portfolios
+SET status = 'archived',
+    archived_at = ?,
+    version = version + 1,
+    updated_at = ?
+WHERE id = ? AND user_id = ? AND version = ? AND status = 'active'
+`
+
+type ArchivePortfolioParams struct {
+	ArchivedAt sql.NullTime
+	UpdatedAt  time.Time
+	ID         []byte
+	UserID     []byte
+	Version    uint64
+}
+
+func (q *Queries) ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, archivePortfolio,
+		arg.ArchivedAt,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const countPortfolioAccounts = `-- name: CountPortfolioAccounts :one
+SELECT COUNT(*) FROM accounts WHERE portfolio_id = ?
+`
+
+func (q *Queries) CountPortfolioAccounts(ctx context.Context, portfolioID []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPortfolioAccounts, portfolioID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPortfolioConnections = `-- name: CountPortfolioConnections :one
+SELECT COUNT(*) FROM connections WHERE portfolio_id = ?
+`
+
+func (q *Queries) CountPortfolioConnections(ctx context.Context, portfolioID []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPortfolioConnections, portfolioID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPortfolioIdentities = `-- name: CountPortfolioIdentities :one
+SELECT COUNT(*) FROM identities WHERE portfolio_id = ?
+`
+
+func (q *Queries) CountPortfolioIdentities(ctx context.Context, portfolioID []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPortfolioIdentities, portfolioID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPortfolioJobs = `-- name: CountPortfolioJobs :one
+SELECT COUNT(*) FROM jobs WHERE portfolio_id = ?
+`
+
+func (q *Queries) CountPortfolioJobs(ctx context.Context, portfolioID []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPortfolioJobs, portfolioID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deletePortfolio = `-- name: DeletePortfolio :execrows
+DELETE FROM portfolios
+WHERE id = ? AND user_id = ? AND version = ?
+`
+
+type DeletePortfolioParams struct {
+	ID      []byte
+	UserID  []byte
+	Version uint64
+}
+
+func (q *Queries) DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolio, arg.ID, arg.UserID, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getPortfolioByUserAndID = `-- name: GetPortfolioByUserAndID :one
+SELECT
+    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.version,
+    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
+FROM portfolios p
+JOIN assets a ON a.id = p.display_asset_id
+WHERE p.user_id = ? AND p.id = ?
+`
+
+type GetPortfolioByUserAndIDParams struct {
+	UserID []byte
+	ID     []byte
+}
+
+type GetPortfolioByUserAndIDRow struct {
+	ID               []byte
+	UserID           []byte
+	Name             string
+	Timezone         string
+	DisplayAssetID   []byte
+	Status           string
+	Version          uint64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	ArchivedAt       sql.NullTime
+	DisplayAssetCode string
+}
+
+func (q *Queries) GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getPortfolioByUserAndID, arg.UserID, arg.ID)
+	var i GetPortfolioByUserAndIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Timezone,
+		&i.DisplayAssetID,
+		&i.Status,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DisplayAssetCode,
+	)
+	return i, err
+}
+
 const insertPortfolio = `-- name: InsertPortfolio :exec
 INSERT INTO portfolios (
     id, user_id, name, timezone, display_asset_id, status, version, created_at, updated_at, archived_at
@@ -47,4 +188,134 @@ func (q *Queries) InsertPortfolio(ctx context.Context, arg InsertPortfolioParams
 		arg.ArchivedAt,
 	)
 	return err
+}
+
+const listPortfoliosByUser = `-- name: ListPortfoliosByUser :many
+SELECT
+    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.version,
+    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
+FROM portfolios p
+JOIN assets a ON a.id = p.display_asset_id
+WHERE p.user_id = ?
+  AND (? OR p.status = 'active')
+ORDER BY p.created_at ASC, p.id ASC
+`
+
+type ListPortfoliosByUserParams struct {
+	UserID          []byte
+	IncludeArchived interface{}
+}
+
+type ListPortfoliosByUserRow struct {
+	ID               []byte
+	UserID           []byte
+	Name             string
+	Timezone         string
+	DisplayAssetID   []byte
+	Status           string
+	Version          uint64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	ArchivedAt       sql.NullTime
+	DisplayAssetCode string
+}
+
+func (q *Queries) ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfoliosByUser, arg.UserID, arg.IncludeArchived)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPortfoliosByUserRow{}
+	for rows.Next() {
+		var i ListPortfoliosByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Timezone,
+			&i.DisplayAssetID,
+			&i.Status,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ArchivedAt,
+			&i.DisplayAssetCode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const restorePortfolio = `-- name: RestorePortfolio :execrows
+UPDATE portfolios
+SET status = 'active',
+    archived_at = NULL,
+    version = version + 1,
+    updated_at = ?
+WHERE id = ? AND user_id = ? AND version = ? AND status = 'archived'
+`
+
+type RestorePortfolioParams struct {
+	UpdatedAt time.Time
+	ID        []byte
+	UserID    []byte
+	Version   uint64
+}
+
+func (q *Queries) RestorePortfolio(ctx context.Context, arg RestorePortfolioParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, restorePortfolio,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updatePortfolio = `-- name: UpdatePortfolio :execrows
+UPDATE portfolios
+SET name = ?,
+    timezone = ?,
+    display_asset_id = ?,
+    version = version + 1,
+    updated_at = ?
+WHERE id = ? AND user_id = ? AND version = ?
+`
+
+type UpdatePortfolioParams struct {
+	Name           string
+	Timezone       string
+	DisplayAssetID []byte
+	UpdatedAt      time.Time
+	ID             []byte
+	UserID         []byte
+	Version        uint64
+}
+
+func (q *Queries) UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updatePortfolio,
+		arg.Name,
+		arg.Timezone,
+		arg.DisplayAssetID,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.UserID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

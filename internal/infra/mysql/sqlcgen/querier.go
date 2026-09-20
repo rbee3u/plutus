@@ -9,25 +9,47 @@ import (
 )
 
 type Querier interface {
+	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
+	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
+	CountPortfolioAccounts(ctx context.Context, portfolioID []byte) (int64, error)
+	CountPortfolioConnections(ctx context.Context, portfolioID []byte) (int64, error)
+	CountPortfolioIdentities(ctx context.Context, portfolioID []byte) (int64, error)
+	CountPortfolioJobs(ctx context.Context, portfolioID []byte) (int64, error)
+	DeleteConnection(ctx context.Context, arg DeleteConnectionParams) (int64, error)
+	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
 	GetAssetByCode(ctx context.Context, code string) (Asset, error)
+	GetAssetByID(ctx context.Context, id []byte) (Asset, error)
+	GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error)
+	GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error)
 	GetPlatformByCode(ctx context.Context, code string) (Platform, error)
+	GetPlatformByID(ctx context.Context, id []byte) (Platform, error)
+	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error)
 	GetSessionByID(ctx context.Context, id []byte) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
 	GetUserByID(ctx context.Context, id []byte) (User, error)
 	GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error)
 	GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error)
+	InsertConnection(ctx context.Context, arg InsertConnectionParams) error
+	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
 	ListActiveAssets(ctx context.Context) ([]Asset, error)
+	ListConnectionsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListConnectionsByPortfolioRow, error)
+	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
+	ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error)
 	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
+	RestorePortfolio(ctx context.Context, arg RestorePortfolioParams) (int64, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	UpdateConnection(ctx context.Context, arg UpdateConnectionParams) (int64, error)
+	UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error)
+	UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error)
 	UpdateUserCredential(ctx context.Context, arg UpdateUserCredentialParams) error
 }
 

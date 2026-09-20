@@ -15,3 +15,24 @@ sql:
         overrides:
           - db_type: json
             go_type: encoding/json.RawMessage
+          - column: "identities.parent_identity_id"
+            go_type:
+              type: "[]byte"
+          - column: "portfolios.active_projection_generation_id"
+            go_type:
+              type: "[]byte"
+          - column: "connections.credentials_ciphertext"
+            go_type:
+              type: "[]byte"
+          - column: "connections.credentials_nonce"
+            go_type:
+              type: "[]byte"
+          - column: "connections.enabled_identity_id"
+            go_type:
+              type: "[]byte"
+          - column: "idempotency_records.portfolio_id"
+            go_type:
+              type: "[]byte"
+          - column: "jobs.requested_by_user_id"
+            go_type:
+              type: "[]byte"

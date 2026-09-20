@@ -29,6 +29,26 @@ func (q *Queries) GetPlatformByCode(ctx context.Context, code string) (Platform,
 	return i, err
 }
 
+const getPlatformByID = `-- name: GetPlatformByID :one
+SELECT id, code, name, status, created_at, updated_at
+FROM platforms
+WHERE id = ?
+`
+
+func (q *Queries) GetPlatformByID(ctx context.Context, id []byte) (Platform, error) {
+	row := q.db.QueryRowContext(ctx, getPlatformByID, id)
+	var i Platform
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listPlatforms = `-- name: ListPlatforms :many
 SELECT id, code, name, status, created_at, updated_at
 FROM platforms

@@ -55,12 +55,12 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 6 — Portfolios
 
-- [ ] List, create, get, patch, archive, restore, and empty-only delete
-- [ ] Registration and CLI user creation create an active Portfolio named `Main`
-- [ ] Timezone default `Asia/Shanghai`; display Asset USD by default, CNY supported
-- [ ] Cross-user Portfolio access returns HTTP 404
-- [ ] ETags / `If-Match` and `Idempotency-Key` on the relevant mutations
-- [ ] Identity CRUD and credential-less Connection API (no validate, no credential fields)
+- [x] List, create, get, patch, archive, restore, and empty-only delete
+- [x] Registration and CLI user creation create an active Portfolio named `Main`
+- [x] Timezone default `Asia/Shanghai`; display Asset USD by default, CNY supported
+- [x] Cross-user Portfolio access returns HTTP 404
+- [x] ETags / `If-Match` and `Idempotency-Key` on the relevant mutations
+- [x] Identity CRUD and credential-less Connection API (no validate, no credential fields)
 
 ### Milestone 7 — Jobs and projection worker
 
@@ -132,12 +132,12 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.1 Ownership and identity
 
-- [ ] **Phase 1** — User A receives 404 when addressing User B's Portfolio or nested resource by a known UUID
-- [ ] **Phase 1** — One User can create and switch between at least two Portfolios without query-cache or URL leakage
+- [x] **Phase 1** — User A receives 404 when addressing User B's Portfolio or nested resource by a known UUID
+- [x] **Phase 1** — One User can create and switch between at least two Portfolios without query-cache or URL leakage
 - [ ] **Later** — A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio (schema in Phase 1; Observation/Capital cases in Phase 2)
-- [ ] **Phase 1** — An Identity can be edited before facts exist
+- [x] **Phase 1** — An Identity can be edited before facts exist
 - [ ] **Later** — An Identity cannot move to another Portfolio after any Observation exists
-- [ ] **Phase 1** — An empty Portfolio can be deleted; a Portfolio with source facts can only be archived (Phase 1 has no source facts yet; enforce the empty-only delete rule)
+- [x] **Phase 1** — An empty Portfolio can be deleted; a Portfolio with source facts can only be archived (Phase 1 has no source facts yet; enforce the empty-only delete rule)
 
 ### 13.2 Authentication and browser security
 
@@ -177,12 +177,12 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.6 HTTP contracts
 
-- [ ] **Phase 1** — Decimal strings round-trip without binary floating-point loss when present; unknown values round-trip as `null`
-- [ ] **Phase 1** — ETag mismatch returns 412 and never overwrites the newer revision
-- [ ] **Phase 1** — An exact Idempotency-Key retry returns the original response; a changed body returns 409
+- [x] **Phase 1** — Decimal strings round-trip without binary floating-point loss when present; unknown values round-trip as `null`
+- [x] **Phase 1** — ETag mismatch returns 412 and never overwrites the newer revision
+- [x] **Phase 1** — An exact Idempotency-Key retry returns the original response; a changed body returns 409
 - [ ] **Phase 1** — Offset pagination remains stable; cursor pagination neither duplicates nor skips under its contract (jobs/sessions as applicable)
-- [ ] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
-- [ ] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
+- [x] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
+- [x] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
 
 ### 13.7 Transport security
 

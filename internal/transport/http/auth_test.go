@@ -27,7 +27,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	engine := Engine(EngineOptions{
+	engine := Engine(&EngineOptions{
 		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Ready:               StaticReady{},
 		Auth:                svc,
@@ -116,7 +116,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 func TestLoginRateLimit(t *testing.T) {
 	db := mysql.OpenTestDB(t)
 	svc := auth.NewService(db, false, time.Hour, 24*time.Hour)
-	engine := Engine(EngineOptions{
+	engine := Engine(&EngineOptions{
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Ready:  StaticReady{},
 		Auth:   svc,
