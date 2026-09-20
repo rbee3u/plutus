@@ -1,0 +1,27 @@
+# Example non-secret configuration. Copy to plutus.toml in the working
+# directory or pass --config. Secrets must come from the environment.
+
+[server]
+listen_address = "127.0.0.1"
+port = 8080
+
+[server.tls]
+https_enabled = false
+https_cert_path = ""
+https_key_path = ""
+mtls_enabled = false
+mtls_ca_path = ""
+
+[auth]
+registration_enabled = false
+session_idle_lifetime = "168h"
+session_absolute_lifetime = "720h"
+
+[jobs]
+worker_poll_interval = "1s"
+lease_duration = "2m"
+completed_retention = "2160h"
+
+[collection]
+default_interval = "15m"
+default_freshness_multiplier = 2

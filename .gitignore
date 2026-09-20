@@ -1,3 +1,7 @@
 .DS_Store
 /.idea/
 /bin/
+
+# Local non-secret config copied from configs/plutus.example.toml
+/plutus.toml
+.env

@@ -26,4 +26,7 @@ func TestRootCommandHelp(t *testing.T) {
 	if strings.Contains(out, "demo") {
 		t.Fatalf("help output still advertises demo: %q", out)
 	}
+	if !strings.Contains(out, "serve") {
+		t.Fatalf("help output does not mention serve: %q", out)
+	}
 }

@@ -17,16 +17,16 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 2 — Configuration and serve skeleton
 
-- [ ] Load non-secret config from `plutus.toml` with `PLUTUS_*` overrides
-- [ ] Accept the MySQL DSN from exactly one of `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE`
-- [ ] Accept the master key from exactly one of `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` when provided
-- [ ] Validate the HTTP / HTTPS / mTLS startup matrix and refuse invalid combinations
-- [ ] Reject non-loopback cleartext startup when public registration is enabled
-- [ ] Implement `plutus serve` with structured `log/slog` logging
-- [ ] Implement `GET /health/live`
-- [ ] Fail `GET /health/ready` when MySQL is unavailable (schema and worker checks come later)
-- [ ] Commit `configs/plutus.example.toml` with no secrets
-- [ ] Gitignore `.env` and a local `plutus.toml`
+- [x] Load non-secret config from `plutus.toml` with `PLUTUS_*` overrides
+- [x] Accept the MySQL DSN from exactly one of `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE`
+- [x] Accept the master key from exactly one of `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` when provided
+- [x] Validate the HTTP / HTTPS / mTLS startup matrix and refuse invalid combinations
+- [x] Reject non-loopback cleartext startup when public registration is enabled
+- [x] Implement `plutus serve` with structured `log/slog` logging
+- [x] Implement `GET /health/live`
+- [x] Fail `GET /health/ready` when MySQL is unavailable (schema and worker checks come later)
+- [x] Commit `configs/plutus.example.toml` with no secrets
+- [x] Gitignore `.env` and a local `plutus.toml`
 
 ### Milestone 3 — Migrations and sqlc
 

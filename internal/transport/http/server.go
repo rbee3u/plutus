@@ -1,0 +1,116 @@
+// Package httpserver hosts the Gin HTTP process.
+package httpserver
+
+import (
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/rbee3u/plutus/internal/config"
+)
+
+func init() {
+	gin.SetMode(gin.ReleaseMode)
+}
+
+// ReadyChecker reports process readiness.
+type ReadyChecker interface {
+	Ready(ctx context.Context) error
+}
+
+// StaticReady fails or succeeds with a fixed error.
+type StaticReady struct {
+	Err error
+}
+
+// Ready implements ReadyChecker.
+func (s StaticReady) Ready(context.Context) error {
+	return s.Err
+}
+
+// FuncReady adapts a function to ReadyChecker.
+type FuncReady func(context.Context) error
+
+// Ready implements ReadyChecker.
+func (f FuncReady) Ready(ctx context.Context) error {
+	return f(ctx)
+}
+
+// Engine returns the HTTP handler for the process.
+func Engine(logger *slog.Logger, ready ReadyChecker) *gin.Engine {
+	engine := gin.New()
+	engine.Use(gin.Recovery())
+	engine.Use(securityHeaders())
+	engine.Use(requestLog(logger))
+	registerHealth(engine, ready)
+	return engine
+}
+
+// Run serves HTTP or HTTPS until ctx is cancelled.
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler http.Handler) error {
+	server := &http.Server{
+		Addr:              cfg.Server.Addr(),
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
+	}
+	if cfg.Server.TLS.HTTPSEnabled {
+		tlsCfg := &tls.Config{
+			MinVersion:   tls.VersionTLS13,
+			Certificates: []tls.Certificate{*cfg.Server.TLS.Certificate},
+		}
+		if cfg.Server.TLS.MTLSEnabled {
+			tlsCfg.ClientCAs = cfg.Server.TLS.ClientCAs
+			tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+		server.TLSConfig = tlsCfg
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		var err error
+		if cfg.Server.TLS.HTTPSEnabled {
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			err = server.ListenAndServe()
+		}
+		errCh <- err
+	}()
+
+	logger.Info("http server started",
+		slog.String("addr", cfg.Server.Addr()),
+		slog.Bool("https", cfg.Server.TLS.HTTPSEnabled),
+		slog.Bool("mtls", cfg.Server.TLS.MTLSEnabled),
+		slog.Bool("registration_enabled", cfg.Auth.RegistrationEnabled),
+		slog.Bool("database_configured", cfg.Database.DSN != ""),
+		slog.Bool("master_key_configured", cfg.Crypto.HasMasterKey()),
+	)
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("http shutdown: %w", err)
+		}
+		err := <-errCh
+		if err == nil || errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case err := <-errCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	}
+}
