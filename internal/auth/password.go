@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	passwordMinRunes = 12
+	passwordMinRunes = 8
 	passwordMaxRunes = 128
 	argonTime        = 3
 	argonMemoryKiB   = 64 * 1024
@@ -24,7 +24,7 @@ const (
 )
 
 // ErrPasswordPolicy is returned when a password is outside the accepted length.
-var ErrPasswordPolicy = errors.New("password must be 12 to 128 characters")
+var ErrPasswordPolicy = errors.New("password must be 8 to 128 characters")
 
 // HashPassword returns a PHC-encoded Argon2id hash.
 func HashPassword(password string) (string, error) {

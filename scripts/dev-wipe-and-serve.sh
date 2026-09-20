@@ -15,7 +15,7 @@ go run ./cmd/plutus db reset --profile minimal
 echo
 echo "Seed logins:"
 echo "  alice / Alice=123456"
-echo "  bob / Bobby=123456"
+echo "  bob / Bob=123456"
 echo "Starting serve. The worker activates seeded Portfolio projections."
 echo "The next run of this script will reset the database again."
 echo

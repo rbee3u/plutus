@@ -86,13 +86,13 @@ Scratch logins from both seed profiles:
 | Username | Password |
 | --- | --- |
 | `alice` | `Alice=123456` |
-| `bob` | `Bobby=123456` |
+| `bob` | `Bob=123456` |
 
 Alice owns Portfolios `Main` and `Trading`. Bob owns `Main`. After `serve` starts, the worker activates generations so Overview, Balances, Positions, and Capital read live JSON. Manual rebuilds remain available with `plutus projection rebuild --portfolio <uuid>`.
 
 `scripts/dev-wipe-and-serve.sh` runs `db reset --profile minimal` and then `serve`. It prints the seed logins above and does not create a separate `admin` user.
 
-Public registration defaults to off. The Register page explains that additional Users can be created with `plutus user create`. Passwords must be 12 to 128 characters.
+Public registration defaults to off. The Register page explains that additional Users can be created with `plutus user create`. Passwords must be 8 to 128 characters.
 
 Production `serve` hosts the hashed SPA from `web/dist` via `go:embed`. Refresh that build with `make web-build` after frontend changes. For Vite development, run `npm run dev` in `web/`; it proxies `/api` and `/health` to `127.0.0.1:8080` and sends cookies to that origin.
 

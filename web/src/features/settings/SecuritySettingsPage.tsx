@@ -123,7 +123,7 @@ export function SecuritySettingsPage() {
             type="password"
             value={newPassword}
             autoComplete="new-password"
-            minLength={12}
+            minLength={8}
             onChange={(event) => setNewPassword(event.target.value)}
             required
           />

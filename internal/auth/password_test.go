@@ -22,8 +22,11 @@ func TestHashAndVerifyPassword(t *testing.T) {
 func TestPasswordPolicy(t *testing.T) {
 	t.Parallel()
 
-	if err := ValidatePassword("short"); err == nil {
-		t.Fatal("expected policy error")
+	if err := ValidatePassword("1234567"); err == nil {
+		t.Fatal("expected policy error for 7 characters")
+	}
+	if err := ValidatePassword("12345678"); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -18,12 +18,7 @@ deps: ## Install pinned formatting, lint, sqlc, Goose, and frontend tools.
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
 	go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
-	@os="$$(uname -s | tr '[:upper:]' '[:lower:]')"; \
-	arch="$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"; \
-	tmp="$$(mktemp -d)"; \
-	curl -fsSL "https://github.com/sqlc-dev/sqlc/releases/download/v1.31.0/sqlc_1.31.0_$${os}_$${arch}.tar.gz" | tar -xz -C "$$tmp" sqlc; \
-	install -m 0755 "$$tmp/sqlc" "$$(go env GOPATH)/bin/sqlc"; \
-	rm -rf "$$tmp"
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 	cd web && npm install
 
 style: ## Check formatting without rewriting files for CI.

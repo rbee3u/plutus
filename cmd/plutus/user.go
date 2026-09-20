@@ -39,7 +39,7 @@ func newUserCreateCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&username, "username", "", "login username")
-	cmd.Flags().StringVar(&password, "password", "", "password of 12 to 128 characters")
+	cmd.Flags().StringVar(&password, "password", "", "password of 8 to 128 characters")
 	_ = cmd.MarkFlagRequired("username")
 	_ = cmd.MarkFlagRequired("password")
 	return cmd
@@ -89,7 +89,7 @@ func newUserResetPasswordCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&username, "username", "", "login username")
-	cmd.Flags().StringVar(&password, "password", "", "password of 12 to 128 characters")
+	cmd.Flags().StringVar(&password, "password", "", "password of 8 to 128 characters")
 	_ = cmd.MarkFlagRequired("username")
 	_ = cmd.MarkFlagRequired("password")
 	return cmd

@@ -148,5 +148,5 @@ func enqueueSeedRebuilds(ctx context.Context, db *sql.DB, out io.Writer) error {
 
 func printSeedLogins(out io.Writer, profile string) {
 	_, _ = fmt.Fprintf(out, "seeded %s source facts\n", profile)
-	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bobby=123456")
+	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bob=123456")
 }

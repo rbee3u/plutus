@@ -64,7 +64,7 @@ export function RegisterPage() {
         ) : (
           <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
             <p className={styles.lead}>
-              Choose a username and a password of at least 12 characters.
+              Choose a username and a password of at least 8 characters.
             </p>
             {error ? (
               <p className={styles.alert} role="alert">
@@ -94,7 +94,7 @@ export function RegisterPage() {
                     autoComplete="new-password"
                     onChange={(event) => setPassword(event.target.value)}
                     required
-                    minLength={12}
+                    minLength={8}
                   />
                 </label>
                 <div className={styles.actions}>

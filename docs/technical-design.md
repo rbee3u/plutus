@@ -29,7 +29,7 @@ Versions below are implementation baselines. Patch releases may be updated witho
 | Backend language | Go 1.27.1 |
 | HTTP framework | Gin 1.12 |
 | Database | MySQL 8.4 LTS, InnoDB, `utf8mb4` |
-| Database access | `database/sql`, `go-sql-driver/mysql` 1.9, sqlc 1.31 |
+| Database access | `database/sql`, `go-sql-driver/mysql` 1.9, sqlc 1.31.1 |
 | Migrations | Goose 3.28, explicit CLI execution |
 | Transport contract | OpenAPI 3.1 |
 | Go contract generation | oapi-codegen 2.8 strict Gin server interface and wire models |
@@ -594,7 +594,7 @@ The Session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and `Secure` wh
 
 Login and registration are rate-limited by normalized username and client IP using bounded in-process token buckets. Defaults are five login attempts per minute per username, twenty per minute per IP, and three registration attempts per hour per IP; all return 429 plus `Retry-After` when exhausted. Since the MVP is single-instance, no distributed limiter is needed. Responses do not reveal whether a username exists. The default idle Session lifetime is 7 days and absolute lifetime is 30 days. Disabling a User or resetting a password through the CLI revokes every Session.
 
-Passwords are 12–128 Unicode characters, may be pasted or supplied by a password manager, and are hashed with Argon2id using a 16-byte random salt, a 32-byte output, 64 MiB memory, three iterations, and two lanes by default. The PHC string records every parameter. Configuration may raise these costs after deployment testing; a successful login rehashes a password when stored parameters are obsolete.
+Passwords are 8–128 Unicode characters, may be pasted or supplied by a password manager, and are hashed with Argon2id using a 16-byte random salt, a 32-byte output, 64 MiB memory, three iterations, and two lanes by default. The PHC string records every parameter. Configuration may raise these costs after deployment testing; a successful login rehashes a password when stored parameters are obsolete.
 
 ### 6.4 Portfolio endpoints
 
