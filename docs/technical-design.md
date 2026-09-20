@@ -872,7 +872,7 @@ plutus db reset --profile minimal|edge-cases
 plutus projection rebuild --portfolio <uuid>
 ```
 
-Phase 1 implements `serve`, `migrate status|up`, `user create|disable|reset-password`, and `projection rebuild`. `db seed` and `db reset` remain Phase 2. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set and must not target the operator's development database as a sacrificial instance.
+Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set and must not target the operator's development database as a sacrificial instance.
 
 Migrations are forward-only in shared environments and run in their own deployment step. The server never migrates automatically. `db reset` is development-only: it must require an explicit development environment marker, verify that the database name matches an allowed development pattern, print the exact target, and reject production-like or unrecognized targets.
 

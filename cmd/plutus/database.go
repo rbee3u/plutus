@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/db/seeds"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/jobs"
 )
 
 func newDatabaseCommand() *cobra.Command {
@@ -39,7 +44,10 @@ func newDBSeedCommand() *cobra.Command {
 			if err := mysql.ExecSQLStatements(cmd.Context(), db, sqlText); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "seeded %s source facts\n", profile)
+			if err := enqueueSeedRebuilds(cmd.Context(), db, cmd.OutOrStdout()); err != nil {
+				return err
+			}
+			printSeedLogins(cmd.OutOrStdout(), profile)
 			return nil
 		},
 	}
@@ -81,7 +89,11 @@ func newDBResetCommand() *cobra.Command {
 			if err := mysql.ExecSQLStatements(ctx, db, sqlText); err != nil {
 				return err
 			}
+			if err := enqueueSeedRebuilds(ctx, db, cmd.OutOrStdout()); err != nil {
+				return err
+			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "reset %q with %s source facts\n", name, profile)
+			printSeedLogins(cmd.OutOrStdout(), profile)
 			return nil
 		},
 	}
@@ -98,4 +110,43 @@ func seedSQL(profile string) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown seed profile %q", profile)
 	}
+}
+
+func enqueueSeedRebuilds(ctx context.Context, db *sql.DB, out io.Writer) error {
+	rows, err := db.QueryContext(ctx, `SELECT id FROM portfolios ORDER BY created_at, id`)
+	if err != nil {
+		return fmt.Errorf("list portfolios: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			return fmt.Errorf("scan portfolio id: %w", err)
+		}
+		id, err := uuid.FromBytes(raw)
+		if err != nil {
+			return fmt.Errorf("portfolio id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("list portfolios: %w", err)
+	}
+
+	svc := jobs.NewService(db)
+	for _, id := range ids {
+		job, err := svc.EnqueueRebuild(ctx, id, nil, "seed")
+		if err != nil {
+			return fmt.Errorf("enqueue rebuild for %s: %w", id, err)
+		}
+		_, _ = fmt.Fprintf(out, "enqueued %s job %s for portfolio %s\n", job.Kind, job.ID, job.PortfolioID)
+	}
+	return nil
+}
+
+func printSeedLogins(out io.Writer, profile string) {
+	_, _ = fmt.Fprintf(out, "seeded %s source facts\n", profile)
+	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bobby=123456")
 }

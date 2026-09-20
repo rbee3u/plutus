@@ -1,6 +1,6 @@
 # Implementation checklist
 
-Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 2 is the current workstream; phases 3–4 stay unchecked until their workstreams begin.
+Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 2 is complete. Stop for review. Phases 3–4 stay unchecked until their workstreams begin.
 
 ## Phase 1: Foundation
 
@@ -101,7 +101,7 @@ Phase 1 deferred these tables; Phase 2 creates them.
 
 ## Phase 2: End-to-end vertical slice
 
-Current workstream. Stop for review when every item in this section is checked.
+Completed. Stopped for review after every item in this section was checked.
 
 ### Milestone 1 — Schema
 
@@ -143,9 +143,9 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 9 — Phase 2 close-out
 
-- [ ] README describes implemented Phase 2 capabilities
-- [ ] Check Phase 2 acceptance-matrix items that this workstream covers
-- [ ] `make format && make build && make test && make lint` pass
+- [x] README describes implemented Phase 2 capabilities
+- [x] Check Phase 2 acceptance-matrix items that this workstream covers
+- [x] `make format && make build && make test && make lint` pass
 
 ## Phase 3: Complete MVP UI and management
 
@@ -167,16 +167,16 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ## Acceptance matrix
 
-Labels: **Phase 1** means this workstream must cover it; **Later** waits for a later phase.
+Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **Later** waits for a later phase.
 
 ### 13.1 Ownership and identity
 
 - [x] **Phase 1** — User A receives 404 when addressing User B's Portfolio or nested resource by a known UUID
 - [x] **Phase 1** — One User can create and switch between at least two Portfolios without query-cache or URL leakage
-- [ ] **Later** — A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio (schema in Phase 1; Observation/Capital cases in Phase 2)
+- [x] **Phase 2** — A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio
 - [x] **Phase 1** — An Identity can be edited before facts exist
-- [ ] **Later** — An Identity cannot move to another Portfolio after any Observation exists
-- [x] **Phase 1** — An empty Portfolio can be deleted; a Portfolio with source facts can only be archived (Phase 1 has no source facts yet; enforce the empty-only delete rule)
+- [x] **Phase 2** — An Identity cannot move to another Portfolio after any Observation exists
+- [x] **Phase 2** — An empty Portfolio can be deleted; a Portfolio with Observation, Capital, mapping, pin, or collection-run rows can only be archived
 
 ### 13.2 Authentication and browser security
 
@@ -188,31 +188,31 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 
 ### 13.3 Collection and normalized facts
 
-- [ ] **Later** — Complete, partial, stale, failed, and missing collections remain distinguishable
-- [ ] **Later** — A partial collection preserves successful Observations and records failed scopes without zero replacements
-- [ ] **Later** — Different source observation times within one Identity Snapshot are preserved
-- [ ] **Later** — Observation correction audits before/after, increments ETag version, and merges a Projection job
+- [x] **Phase 2** — Complete, partial, stale, failed, and missing collections remain distinguishable
+- [x] **Phase 2** — A partial collection preserves successful Observations and records failed scopes without zero replacements
+- [x] **Phase 2** — Different source observation times within one Identity Snapshot are preserved
+- [x] **Phase 2** — Observation correction audits before/after, increments ETag version, and merges a Projection job
 - [x] **Phase 1** — No database row, log, audit event, job failure, or API response contains a raw Platform payload
 
 ### 13.4 Coverage, prices, and calculations
 
-- [ ] **Later** — Disjoint Reported Equity scopes combine without double counting
-- [ ] **Later** — A broad complete Reported Equity scope supersedes strictly contained reported values
-- [ ] **Later** — Partially overlapping Reported Equity scopes yield ambiguity and incomplete valuation
-- [ ] **Later** — Calculated Valuation fills only uncovered scopes and is incomplete when mapping or Price is missing
-- [ ] **Later** — A stablecoin requires an observed exchange rate
-- [ ] **Later** — Price selection respects Platform, instrument or asset, price type, and cutoff; no cross-Platform fallback
-- [ ] **Later** — Opposing Positions preserve long and short Exposure while net Exposure is zero
-- [ ] **Later** — Missing, stale, and incomplete facts remain `null` or issue-bearing rather than zero
+- [x] **Phase 2** — Disjoint Reported Equity scopes combine without double counting
+- [x] **Phase 2** — A broad complete Reported Equity scope supersedes strictly contained reported values
+- [x] **Phase 2** — Partially overlapping Reported Equity scopes yield ambiguity and incomplete valuation
+- [x] **Phase 2** — Calculated Valuation fills only uncovered scopes and is incomplete when mapping or Price is missing
+- [x] **Phase 2** — A stablecoin requires an observed exchange rate
+- [x] **Phase 2** — Price selection respects Platform, instrument or asset, price type, and cutoff; no cross-Platform fallback
+- [x] **Phase 2** — Opposing Positions preserve long and short Exposure while net Exposure is zero
+- [x] **Phase 2** — Missing, stale, and incomplete facts remain `null` or issue-bearing rather than zero
 
 ### 13.5 Capital, generations, and time
 
-- [ ] **Later** — Editing a Capital Flow appends a revision, audits, and creates a Projection job
-- [x] **Phase 1** — A rebuild writes work without changing readers; Phase 1 must not switch the active generation
-- [ ] **Later** — A failed rebuild leaves the previous active generation fully readable
-- [ ] **Later** — Day, ISO-week, month, quarter, leap-date, and year boundaries convert correctly to UTC
-- [ ] **Later** — Changing Portfolio timezone triggers a full rebuild without mixing timezones
-- [ ] **Later** — A coverage change makes its spanning Value Change incomparable
+- [x] **Phase 2** — Editing a Capital Flow appends a revision, audits, and creates a Projection job
+- [x] **Phase 2** — A rebuild writes a new generation without changing readers, then atomically switches the Portfolio pointer only after validation
+- [x] **Phase 2** — A failed rebuild leaves the previous active generation fully readable
+- [x] **Phase 2** — Day, ISO-week, month, quarter, leap-date, and year boundaries convert correctly to UTC
+- [x] **Phase 2** — Changing Portfolio timezone triggers a full rebuild without mixing timezones
+- [x] **Phase 2** — A coverage change makes its spanning Value Change incomparable
 
 ### 13.6 HTTP contracts
 
@@ -222,6 +222,7 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 - [x] **Phase 1** — Offset pagination remains stable; cursor pagination neither duplicates nor skips under its contract (jobs/sessions as applicable)
 - [x] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
 - [x] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
+- [x] **Phase 2** — `GET /overview`, `GET /balances`, `GET /positions`, and Capital endpoints return decimal strings or `null`, typed 2xx incompleteness, and 404 across Users
 
 ### 13.7 Transport security
 
@@ -236,5 +237,6 @@ Labels: **Phase 1** means this workstream must cover it; **Later** waits for a l
 - [x] **Phase 1** — System, light, and dark themes render implemented routes with semantic colors
 - [x] **Phase 1** — Desktop, tablet, and narrow mobile layouts preserve usable navigation
 - [x] **Phase 1** — Implemented interactive flows work by keyboard with visible focus
-- [ ] **Later** — Charts provide text summaries and accessible exact-value tables
+- [x] **Phase 2** — Overview charts provide a text summary and accessible exact-value table
 - [x] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens
+- [x] **Phase 2** — Capital 412 conflicts reload the latest server values

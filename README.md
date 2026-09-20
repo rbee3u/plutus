@@ -6,15 +6,17 @@ The domain hierarchy is `Platform -> Identity -> Account`: each main or subordin
 
 ## Current status
 
-Phase 1 (foundation) is implemented. The process is a Go CLI at `cmd/plutus` with an embedded React shell:
+Phase 2 (end-to-end vertical slice) is implemented. The process is a Go CLI at `cmd/plutus` with an embedded React frontend:
 
 - Configuration from `plutus.toml` and `PLUTUS_*`, including the HTTP / HTTPS / mTLS startup matrix.
-- Explicit Goose migrations and sqlc access to the Phase 1 schema. `serve` never migrates automatically.
+- Explicit Goose migrations and sqlc access. `serve` never migrates automatically.
 - Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and credential-less Connections.
-- A durable Projection worker that can claim jobs. Rebuilds succeed with an empty diagnostic result and do not switch `active_projection_generation_id`.
-- Login, registration-closed messaging, Portfolio switcher, Portfolio/security settings, and information-architecture placeholders for later pages.
+- Development `plutus db seed` and `plutus db reset` with deterministic `minimal` and `edge-cases` source-fact profiles. Reset requires `[database].allow_reset = true` in the gitignored `plutus.toml` and a database name matching `plutus` or `plutus_<suffix>`.
+- Normalized Observations, catalog mappings, Observation correction, and Capital Baseline / Flow revisions.
+- A durable Projection worker that rebuilds latest balances, positions, valuations, contributed capital, value changes, and exposure, then atomically activates a ready generation. A failed rebuild leaves the previous generation readable.
+- Working Overview, Balances, Positions, and Capital pages backed by the JSON API. Overview charts include a text summary and an accessible exact-value table.
 
-Not implemented yet: real Platform adapters, Connection credential encryption in the UI, collection, source-fact seeds, projection read models, or Overview / Balances / Positions backed by live data. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
+Not implemented yet: real Platform adapters, Connection credential encryption in the UI, collection scheduling, HTTP `POST /projection-rebuilds`, or Exposure / History / Data / Jobs / Catalog / Observation screens. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
 
 ## First-release scope
 
@@ -41,7 +43,7 @@ Value Changes are not investment returns. Percentage returns, return attribution
 ## Roadmap
 
 1. Foundation (done): configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, an embedded React shell, and a persistent Projection worker.
-2. End-to-end vertical slice: deterministic source-fact seeds, normalized Observations, generation-based Projections, and working Overview, Balances, Positions, and Capital pages.
+2. End-to-end vertical slice (done): deterministic source-fact seeds, normalized Observations, generation-based Projections, and working Overview, Balances, Positions, and Capital pages.
 3. Complete MVP UI and management: Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
 4. Integrations: scheduling and real Binance, OKX, and Bybit adapters.
 
@@ -61,18 +63,38 @@ Use the Go toolchain required by `go.mod`, Node.js as required by `web/package.j
 
 Copy [configs/plutus.example.toml](./configs/plutus.example.toml) to a gitignored `plutus.toml` in the working directory and set `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` can still override that value. The Connection encryption master key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and is not required until an encrypted Connection exists.
 
+For a full local wipe of an allowed development database, also set `[database].allow_reset = true` (the example file defaults to `false`). Then reset, seed, and serve:
+
 ```sh
-cp configs/plutus.example.toml plutus.toml   # then edit [database].dsn
-go run ./cmd/plutus migrate up
-go run ./cmd/plutus user create --username ... --password ...
+cp configs/plutus.example.toml plutus.toml   # then edit [database].dsn and allow_reset
+go run ./cmd/plutus db reset --profile minimal
 go run ./cmd/plutus serve
 ```
 
-For early local UI work that needs a frequent full wipe, `scripts/dev-wipe-and-serve.sh` drops every table in the configured database named `plutus`, reapplies migrations, creates scratch user `admin` / `Admin=123456`, and runs `serve`. Delete that helper when the workflow is no longer useful. Passwords must be 12 to 128 characters.
+`db reset` drops every table in the connected database, reapplies migrations, inserts the chosen source-fact profile, and enqueues a projection rebuild for each Portfolio. `serve` never migrates or seeds automatically. Use `--profile edge-cases` for the incomplete-coverage dataset.
+
+Equivalent commands without dropping the database:
+
+```sh
+go run ./cmd/plutus migrate up
+go run ./cmd/plutus db seed --profile minimal
+go run ./cmd/plutus serve
+```
+
+Scratch logins from both seed profiles:
+
+| Username | Password |
+| --- | --- |
+| `alice` | `Alice=123456` |
+| `bob` | `Bobby=123456` |
+
+Alice owns Portfolios `Main` and `Trading`. Bob owns `Main`. After `serve` starts, the worker activates generations so Overview, Balances, Positions, and Capital read live JSON. Manual rebuilds remain available with `plutus projection rebuild --portfolio <uuid>`.
+
+`scripts/dev-wipe-and-serve.sh` runs `db reset --profile minimal` and then `serve`. It prints the seed logins above and does not create a separate `admin` user.
+
+Public registration defaults to off. The Register page explains that additional Users can be created with `plutus user create`. Passwords must be 12 to 128 characters.
 
 Production `serve` hosts the hashed SPA from `web/dist` via `go:embed`. Refresh that build with `make web-build` after frontend changes. For Vite development, run `npm run dev` in `web/`; it proxies `/api` and `/health` to `127.0.0.1:8080` and sends cookies to that origin.
-
-Public registration defaults to off. The Register page explains that the first User is created with `plutus user create`. Rebuilds are enqueued with `plutus projection rebuild --portfolio <uuid>`; they do not activate a new generation in Phase 1.
 
 Local Go development follows four validation gates in order. After `web/` exists, `make format` also runs Prettier and `make lint` also runs the frontend typecheck and ESLint:
 

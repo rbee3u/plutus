@@ -1,26 +1,23 @@
 #!/usr/bin/env bash
-# Temporary early-development helper: wipe the local plutus database, migrate,
-# create a scratch user, then start serve. Delete this when a wipe-on-start
-# workflow is no longer useful. It is not a substitute for Phase 2 db reset.
+# Development helper: reset the allowed local database with the minimal
+# source-fact seed, then start serve. Requires [database].allow_reset = true.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-username="admin"
-password="Admin=123456"
-
-echo "Temporary wipe-and-serve helper (safe to delete later)."
-echo "This drops every table in the configured database named plutus."
+echo "Resetting the configured development database with the minimal seed."
+echo "Requires [database].allow_reset = true in plutus.toml and a database name matching plutus or plutus_<suffix>."
 echo
 
-go run ./scripts/devwipe
-go run ./cmd/plutus migrate up
-go run ./cmd/plutus user create --username "$username" --password "$password"
+go run ./cmd/plutus db reset --profile minimal
 
 echo
-echo "Scratch login: ${username} / ${password}"
-echo "Starting serve. The next run of this script will wipe the database again."
+echo "Seed logins:"
+echo "  alice / Alice=123456"
+echo "  bob / Bobby=123456"
+echo "Starting serve. The worker activates seeded Portfolio projections."
+echo "The next run of this script will reset the database again."
 echo
 
 exec go run ./cmd/plutus serve
