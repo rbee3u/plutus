@@ -9,12 +9,21 @@ const (
 	ProfileEdgeCases = "edge-cases"
 )
 
-//go:embed minimal.sql
+//go:embed minimal.sql edge-cases.sql
 var files embed.FS
 
 // MinimalSQL returns the deterministic happy-path source-fact script.
 func MinimalSQL() (string, error) {
-	raw, err := files.ReadFile("minimal.sql")
+	return read("minimal.sql")
+}
+
+// EdgeCasesSQL returns the deterministic incomplete-coverage source-fact script.
+func EdgeCasesSQL() (string, error) {
+	return read("edge-cases.sql")
+}
+
+func read(name string) (string, error) {
+	raw, err := files.ReadFile(name)
 	if err != nil {
 		return "", err
 	}

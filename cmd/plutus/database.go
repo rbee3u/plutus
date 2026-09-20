@@ -94,7 +94,7 @@ func seedSQL(profile string) (string, error) {
 	case seeds.ProfileMinimal:
 		return seeds.MinimalSQL()
 	case seeds.ProfileEdgeCases:
-		return "", errors.New("edge-cases seed is not implemented yet")
+		return seeds.EdgeCasesSQL()
 	default:
 		return "", fmt.Errorf("unknown seed profile %q", profile)
 	}

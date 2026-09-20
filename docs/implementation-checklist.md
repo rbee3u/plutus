@@ -139,7 +139,7 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 8 — Edge-case seed
 
-- [ ] Deterministic `edge-cases` source-fact seed
+- [x] Deterministic `edge-cases` source-fact seed
 
 ### Milestone 9 — Phase 2 close-out
 
