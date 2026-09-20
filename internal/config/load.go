@@ -45,7 +45,8 @@ type fileConfig struct {
 		DefaultFreshnessMultiplier int    `toml:"default_freshness_multiplier"`
 	} `toml:"collection"`
 	Database struct {
-		DSN string `toml:"dsn"`
+		DSN        string `toml:"dsn"`
+		AllowReset bool   `toml:"allow_reset"`
 	} `toml:"database"`
 }
 
@@ -158,6 +159,7 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	if strings.TrimSpace(parsed.Database.DSN) != "" {
 		cfg.Database.DSN = strings.TrimSpace(parsed.Database.DSN)
 	}
+	cfg.Database.AllowReset = parsed.Database.AllowReset
 	return nil
 }
 
@@ -214,6 +216,9 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 			return fmt.Errorf("PLUTUS_COLLECTION_DEFAULT_FRESHNESS_MULTIPLIER: %w", err)
 		}
 		cfg.Collection.DefaultFreshnessMultiplier = n
+	}
+	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {
+		return err
 	}
 	return nil
 }

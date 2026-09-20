@@ -38,4 +38,7 @@ func TestRootCommandHelp(t *testing.T) {
 	if !strings.Contains(out, "projection") {
 		t.Fatalf("help output does not mention projection: %q", out)
 	}
+	if !strings.Contains(out, "db") {
+		t.Fatalf("help output does not mention db: %q", out)
+	}
 }

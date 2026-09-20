@@ -29,6 +29,6 @@ func newRootCommand() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newProjectionCommand())
+	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newProjectionCommand(), newDatabaseCommand())
 	return cmd
 }

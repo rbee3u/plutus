@@ -30,3 +30,5 @@ default_freshness_multiplier = 2
 
 [database]
 dsn = "user:password@tcp(127.0.0.1:3306)/plutus"
+# allow_reset enables the development-only `plutus db reset` command.
+allow_reset = false

@@ -89,9 +89,10 @@ type Collection struct {
 	DefaultFreshnessMultiplier int
 }
 
-// Database holds the MySQL DSN. The value must never be logged.
+// Database holds the MySQL DSN and development-reset permission. The DSN must never be logged.
 type Database struct {
-	DSN string
+	DSN        string
+	AllowReset bool
 }
 
 // Crypto holds the optional AES-256 master key. The value must never be logged.

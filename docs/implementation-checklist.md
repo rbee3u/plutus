@@ -111,8 +111,8 @@ Current workstream. Stop for review when every item in this section is checked.
 
 ### Milestone 2 — Seed and reset CLI
 
-- [ ] Deterministic `minimal` source-fact seed
-- [ ] `plutus db seed` and development-only `db reset`
+- [x] Deterministic `minimal` source-fact seed
+- [x] `plutus db seed` and development-only `db reset`
 
 ### Milestone 3 — Facts and correction primitives
 

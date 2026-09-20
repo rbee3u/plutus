@@ -318,6 +318,9 @@ func TestExampleTOMLLoads(t *testing.T) {
 	if cfg.Database.DSN == "" {
 		t.Fatal("example DSN placeholder should load")
 	}
+	if cfg.Database.AllowReset {
+		t.Fatal("example config must not enable db reset")
+	}
 }
 
 func TestDSNFromTOML(t *testing.T) {
@@ -338,6 +341,28 @@ dsn = "user:pass@tcp(127.0.0.1:3306)/plutus"
 	}
 	if cfg.Database.DSN != "user:pass@tcp(127.0.0.1:3306)/plutus" {
 		t.Fatalf("dsn: %s", cfg.Database.DSN)
+	}
+}
+
+func TestAllowResetFromTOML(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[database]
+dsn = "user:pass@tcp(127.0.0.1:3306)/plutus"
+allow_reset = true
+`,
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Database.AllowReset {
+		t.Fatal("allow_reset should load from TOML")
 	}
 }
 
