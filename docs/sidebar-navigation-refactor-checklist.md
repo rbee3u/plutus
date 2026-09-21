@@ -36,14 +36,14 @@ entries with the current titles.
 
 ## Stage 2 — Nine modules and secondary navigation
 
-- [ ] Render Overview plus `PORTFOLIO` and `MANAGE` with the nine module links
-- [ ] Add routed secondary navigation (local `<nav>` links, not a tablist) for
+- [x] Render Overview plus `PORTFOLIO` and `MANAGE` with the nine module links
+- [x] Add routed secondary navigation (local `<nav>` links, not a tablist) for
       History, Capital, Data Sources, and Data Activity
-- [ ] Reuse existing child routes and page components via layouts
-- [ ] Convert Catalog to `?tab=` links; preserve other query filters; heading
+- [x] Reuse existing child routes and page components via layouts
+- [x] Convert Catalog to `?tab=` links; preserve other query filters; heading
       follows Asset Listings / Instruments
-- [ ] Keep Portfolio Settings and Security in the sidebar until Stage 3
-- [ ] Verify each child route activates exactly one module entry
+- [x] Keep Portfolio Settings and Security in the sidebar until Stage 3
+- [x] Verify each child route activates exactly one module entry
 
 Exit: all current capabilities remain reachable; only nine module entries plus
 the temporary Settings group appear; child URLs still load directly.

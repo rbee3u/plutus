@@ -2,12 +2,8 @@ import {
   BarChart3,
   Briefcase,
   Database,
-  FileClock,
-  GitCompare,
-  History,
   Landmark,
   LayoutDashboard,
-  Link2,
   ListOrdered,
   Scale,
   Settings2,
@@ -176,20 +172,13 @@ const PAGE_TITLES: readonly {
   title: string;
   catalogTab?: "listings" | "instruments";
 }[] = [
-  { suffix: "/overview", title: "Overview" },
-  { suffix: "/portfolio/balances", title: "Balances" },
-  { suffix: "/portfolio/positions", title: "Positions" },
-  { suffix: "/portfolio/exposure", title: "Exposure" },
-  { suffix: "/history/valuations", title: "Valuations" },
-  { suffix: "/history/value-changes", title: "Value Changes" },
-  { suffix: "/capital/baseline", title: "Baseline" },
-  { suffix: "/capital/flows", title: "Flows" },
-  { suffix: "/data/identities", title: "Identities" },
-  { suffix: "/data/connections", title: "Connections" },
-  { suffix: "/data/catalog", title: "Catalog" },
-  { suffix: "/data/observations", title: "Observations" },
-  { suffix: "/data/jobs", title: "Jobs" },
-  { suffix: "/data/audit", title: "Audit" },
+  ...MODULE_DEFINITIONS.flatMap((module) =>
+    module.subviews.map((view) => ({
+      suffix: view.pathSuffix,
+      title: view.title,
+      catalogTab: view.catalogTab,
+    })),
+  ),
   { suffix: "/settings/portfolio", title: "Portfolio" },
   { suffix: "/settings/security", title: "Security" },
 ];
@@ -197,6 +186,14 @@ const PAGE_TITLES: readonly {
 export function catalogTabFromSearch(search: string): "listings" | "instruments" {
   const query = search.startsWith("?") ? search.slice(1) : search;
   return new URLSearchParams(query).get("tab") === "instruments" ? "instruments" : "listings";
+}
+
+export function catalogTabHref(search: string, tab: "listings" | "instruments"): string {
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  const next = new URLSearchParams(query);
+  next.set("tab", tab);
+  next.delete("offset");
+  return `?${next.toString()}`;
 }
 
 export function portfolioPathSuffix(pathname: string): string | null {
@@ -239,154 +236,40 @@ export function pageTitle(pathname: string, search = ""): string {
 
 export function navigationFor(portfolioId: string): NavGroup[] {
   const base = `/p/${portfolioId}`;
-  return [
-    {
-      id: "overview",
-      label: null,
-      items: [
-        {
-          to: `${base}/overview`,
-          label: "Overview",
-          icon: LayoutDashboard,
-          phase: "working",
-          activeSuffixes: ["/overview"],
-        },
-      ],
-    },
-    {
-      id: "portfolio",
-      label: "Portfolio",
-      items: [
-        {
-          to: `${base}/portfolio/balances`,
-          label: "Balances",
-          icon: Wallet,
-          phase: "working",
-          activeSuffixes: ["/portfolio/balances"],
-        },
-        {
-          to: `${base}/portfolio/positions`,
-          label: "Positions",
-          icon: Briefcase,
-          phase: "working",
-          activeSuffixes: ["/portfolio/positions"],
-        },
-        {
-          to: `${base}/portfolio/exposure`,
-          label: "Exposure",
-          icon: Scale,
-          phase: "working",
-          activeSuffixes: ["/portfolio/exposure"],
-        },
-      ],
-    },
-    {
-      id: "history",
-      label: "History",
-      items: [
-        {
-          to: `${base}/history/valuations`,
-          label: "Valuations",
-          icon: BarChart3,
-          phase: "working",
-          activeSuffixes: ["/history/valuations"],
-        },
-        {
-          to: `${base}/history/value-changes`,
-          label: "Value Changes",
-          icon: GitCompare,
-          phase: "working",
-          activeSuffixes: ["/history/value-changes"],
-        },
-      ],
-    },
-    {
-      id: "capital",
-      label: "Capital",
-      items: [
-        {
-          to: `${base}/capital/baseline`,
-          label: "Baseline",
-          icon: Landmark,
-          phase: "working",
-          activeSuffixes: ["/capital/baseline"],
-        },
-        {
-          to: `${base}/capital/flows`,
-          label: "Flows",
-          icon: History,
-          phase: "working",
-          activeSuffixes: ["/capital/flows"],
-        },
-      ],
-    },
-    {
-      id: "data",
-      label: "Data",
-      items: [
-        {
-          to: `${base}/data/identities`,
-          label: "Identities",
-          icon: Users,
-          phase: "working",
-          activeSuffixes: ["/data/identities"],
-        },
-        {
-          to: `${base}/data/connections`,
-          label: "Connections",
-          icon: Link2,
-          phase: "working",
-          activeSuffixes: ["/data/connections"],
-        },
-        {
-          to: `${base}/data/catalog`,
-          label: "Catalog",
-          icon: Database,
-          phase: "working",
-          activeSuffixes: ["/data/catalog"],
-        },
-        {
-          to: `${base}/data/observations`,
-          label: "Observations",
-          icon: ListOrdered,
-          phase: "working",
-          activeSuffixes: ["/data/observations"],
-        },
-        {
-          to: `${base}/data/jobs`,
-          label: "Jobs",
-          icon: ListOrdered,
-          phase: "working",
-          activeSuffixes: ["/data/jobs"],
-        },
-        {
-          to: `${base}/data/audit`,
-          label: "Audit",
-          icon: FileClock,
-          phase: "working",
-          activeSuffixes: ["/data/audit"],
-        },
-      ],
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      items: [
-        {
-          to: `${base}/settings/portfolio`,
-          label: "Portfolio",
-          icon: Settings2,
-          phase: "working",
-          activeSuffixes: ["/settings/portfolio"],
-        },
-        {
-          to: `${base}/settings/security`,
-          label: "Security",
-          icon: Shield,
-          phase: "working",
-          activeSuffixes: ["/settings/security"],
-        },
-      ],
-    },
-  ];
+  const groups: NavGroup[] = [];
+  for (const definition of MODULE_DEFINITIONS) {
+    let group = groups.find((item) => item.id === definition.groupId);
+    if (!group) {
+      group = { id: definition.groupId, label: definition.groupLabel, items: [] };
+      groups.push(group);
+    }
+    group.items.push({
+      to: `${base}${definition.defaultPathSuffix}`,
+      label: definition.label,
+      icon: definition.icon,
+      phase: "working",
+      activeSuffixes: definition.activePathSuffixes,
+    });
+  }
+  groups.push({
+    id: "settings",
+    label: "Settings",
+    items: [
+      {
+        to: `${base}/settings/portfolio`,
+        label: "Portfolio",
+        icon: Settings2,
+        phase: "working",
+        activeSuffixes: ["/settings/portfolio"],
+      },
+      {
+        to: `${base}/settings/security`,
+        label: "Security",
+        icon: Shield,
+        phase: "working",
+        activeSuffixes: ["/settings/security"],
+      },
+    ],
+  });
+  return groups;
 }

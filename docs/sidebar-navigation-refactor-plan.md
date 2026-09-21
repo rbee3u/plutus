@@ -267,13 +267,13 @@ duplicating sidebar items or deriving page titles from only the default link.
 
 ### Stage 2 — Consolidated Portfolio and management destinations
 
-- [ ] Render the exact nine-entry navigation from section 3.
-- [ ] Add routed secondary navigation for History, Capital, Data Sources, and
+- [x] Render the exact nine-entry navigation from section 3.
+- [x] Add routed secondary navigation for History, Capital, Data Sources, and
       Data Activity.
-- [ ] Reuse the existing child routes and page components.
-- [ ] Keep Asset Catalog's `Asset Listings` and `Instruments` views, with
+- [x] Reuse the existing child routes and page components.
+- [x] Keep Asset Catalog's `Asset Listings` and `Instruments` views, with
       `Asset Listings` as the default.
-- [ ] Verify that every child route activates exactly one sidebar entry.
+- [x] Verify that every child route activates exactly one sidebar entry.
 
 Exit condition: all current page capabilities remain reachable, every existing
 Portfolio child URL still loads directly, and only nine module entries appear

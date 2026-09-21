@@ -82,27 +82,11 @@ export function CatalogPage() {
 
   return (
     <section className={styles.wide}>
-      <h2>Catalog</h2>
+      <h2>{tab === "instruments" ? "Instruments" : "Asset Listings"}</h2>
       <p className={styles.lead}>
         Search discovered listings and instruments. Mapping and tracking revisions enqueue a full
         projection rebuild.
       </p>
-      <div className={styles.actions}>
-        <ActionButton
-          type="button"
-          tone={tab === "listings" ? "primary" : "secondary"}
-          onClick={() => update({ tab: "listings" })}
-        >
-          Listings
-        </ActionButton>
-        <ActionButton
-          type="button"
-          tone={tab === "instruments" ? "primary" : "secondary"}
-          onClick={() => update({ tab: "instruments" })}
-        >
-          Instruments
-        </ActionButton>
-      </div>
       <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
         <label className={styles.field}>
           <span>Search</span>

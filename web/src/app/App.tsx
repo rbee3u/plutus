@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-route
 import { getAuthMe, listPortfolios } from "@/api/generated/sdk.gen";
 import { configureApiClient, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
+import { ModuleSubnav } from "@/app/shell/RoutedSubnav";
 import { RootRedirect, Shell } from "@/app/shell/Shell";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { BaselinePage } from "@/features/capital/BaselinePage";
@@ -47,16 +48,26 @@ export function App() {
             <Route path="portfolio/balances" element={<BalancesPage />} />
             <Route path="portfolio/positions" element={<PositionsPage />} />
             <Route path="portfolio/exposure" element={<ExposurePage />} />
-            <Route path="history/valuations" element={<ValuationsPage />} />
-            <Route path="history/value-changes" element={<ValueChangesPage />} />
-            <Route path="capital/baseline" element={<BaselinePage />} />
-            <Route path="capital/flows" element={<FlowsPage />} />
-            <Route path="data/identities" element={<IdentitiesPage />} />
-            <Route path="data/connections" element={<ConnectionsPage />} />
-            <Route path="data/catalog" element={<CatalogPage />} />
-            <Route path="data/observations" element={<ObservationsPage />} />
-            <Route path="data/jobs" element={<JobsPage />} />
-            <Route path="data/audit" element={<AuditPage />} />
+            <Route element={<ModuleSubnav moduleId="history" />}>
+              <Route path="history/valuations" element={<ValuationsPage />} />
+              <Route path="history/value-changes" element={<ValueChangesPage />} />
+            </Route>
+            <Route element={<ModuleSubnav moduleId="capital" />}>
+              <Route path="capital/baseline" element={<BaselinePage />} />
+              <Route path="capital/flows" element={<FlowsPage />} />
+            </Route>
+            <Route element={<ModuleSubnav moduleId="data-sources" />}>
+              <Route path="data/identities" element={<IdentitiesPage />} />
+              <Route path="data/connections" element={<ConnectionsPage />} />
+            </Route>
+            <Route element={<ModuleSubnav moduleId="asset-catalog" />}>
+              <Route path="data/catalog" element={<CatalogPage />} />
+            </Route>
+            <Route element={<ModuleSubnav moduleId="data-activity" />}>
+              <Route path="data/observations" element={<ObservationsPage />} />
+              <Route path="data/jobs" element={<JobsPage />} />
+              <Route path="data/audit" element={<AuditPage />} />
+            </Route>
             <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
             <Route path="settings/security" element={<SecuritySettingsPage />} />
             <Route index element={<Navigate to="overview" replace />} />
