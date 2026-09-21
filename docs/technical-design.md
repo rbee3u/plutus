@@ -708,7 +708,9 @@ When mutual TLS is enabled, health endpoints require a valid client certificate 
 
 Authentication routes are `/login`. Users are created with `plutus user create`; there is no Register screen.
 
-Authenticated routes use the Portfolio ID in the URL:
+The sidebar has nine module entries: Overview (ungrouped), then `PORTFOLIO` (Balances, Positions, Exposure, History) and `MANAGE` (Capital, Data Sources, Asset Catalog, Data Activity). History, Capital, Data Sources, Asset Catalog, and Data Activity keep their existing child URLs behind local secondary links. Portfolio Settings and Account & Security live in the top bar, not the sidebar.
+
+Authenticated application routes:
 
 ```text
 /p/:portfolioId/overview
@@ -724,11 +726,12 @@ Authenticated routes use the Portfolio ID in the URL:
 /p/:portfolioId/data/catalog
 /p/:portfolioId/data/observations
 /p/:portfolioId/data/jobs
+/p/:portfolioId/data/audit
 /p/:portfolioId/settings/portfolio
-/p/:portfolioId/settings/security
+/account/security
 ```
 
-The Portfolio switcher navigates to the corresponding Portfolio URL and records only the last visited Portfolio ID in local storage. On login, a valid URL wins, then a valid remembered active Portfolio, then the earliest active Portfolio. Authorization always comes from the server; local storage is only a navigation preference.
+`/account/security` is User-owned and is not a Portfolio child route. `/p/:portfolioId/settings/security` redirects to it. The Portfolio switcher navigates to the corresponding Portfolio URL and records only the last visited Portfolio ID in local storage, except on `/account/security` where switching an existing Portfolio updates that preference without leaving the page. On login, a valid URL wins, then a valid remembered active Portfolio, then the earliest active Portfolio. Authorization always comes from the server; local storage is only a navigation preference.
 
 ### 7.2 Visual system and responsive shell
 

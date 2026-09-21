@@ -1,6 +1,6 @@
 # Sidebar navigation refactor plan
 
-Status: approved for staged implementation; not yet implemented
+Status: implemented
 
 Working commit sequence: [sidebar-navigation-refactor-checklist.md](./sidebar-navigation-refactor-checklist.md).
 
@@ -309,12 +309,12 @@ the refactored navigation works at every supported shell width.
 
 ### Stage 5 — Final verification and documentation sync
 
-- [ ] Review the final diff for accidental page, terminology, API, or route
+- [x] Review the final diff for accidental page, terminology, API, or route
       changes.
-- [ ] Update README statements only if the implemented navigation makes an
+- [x] Update README statements only if the implemented navigation makes an
       existing description inaccurate; do not describe this plan as complete
       before runtime verification passes.
-- [ ] Change this document's status to `implemented` only after all acceptance
+- [x] Change this document's status to `implemented` only after all acceptance
       criteria and repository validation requirements pass.
 
 Exit condition: implementation, tests, runtime behavior, and documentation all
@@ -324,42 +324,42 @@ describe the same navigation.
 
 ### Information architecture
 
-- [ ] The sidebar contains exactly 9 module links in the specified order.
-- [ ] The only labeled groups are `PORTFOLIO` and `MANAGE`; Overview remains
+- [x] The sidebar contains exactly 9 module links in the specified order.
+- [x] The only labeled groups are `PORTFOLIO` and `MANAGE`; Overview remains
       ungrouped above them.
-- [ ] There is no sidebar `SETTINGS` group.
-- [ ] Exact labels and capitalization match section 3.
-- [ ] No navigation item describes Value Change as performance, profit, P&L, or
+- [x] There is no sidebar `SETTINGS` group.
+- [x] Exact labels and capitalization match section 3.
+- [x] No navigation item describes Value Change as performance, profit, P&L, or
       return.
 
 ### Routes and active state
 
-- [ ] Every route in section 4 remains directly reachable.
-- [ ] History, Capital, Data Sources, and Data Activity remain active across all
+- [x] Every route in section 4 remains directly reachable.
+- [x] History, Capital, Data Sources, and Data Activity remain active across all
       of their child routes.
-- [ ] Direct navigation and browser refresh select the correct secondary view.
-- [ ] The legacy security route redirects to `/account/security`.
-- [ ] Portfolio Settings retains its Portfolio-scoped route.
-- [ ] Unknown application routes retain the existing safe fallback behavior.
+- [x] Direct navigation and browser refresh select the correct secondary view.
+- [x] The legacy security route redirects to `/account/security`.
+- [x] Portfolio Settings retains its Portfolio-scoped route.
+- [x] Unknown application routes retain the existing safe fallback behavior.
 
 ### Functional regression
 
-- [ ] Balances, Positions, Exposure, Valuations, Value Changes, Capital,
+- [x] Balances, Positions, Exposure, Valuations, Value Changes, Capital,
       Identities, Connections, Catalog, Observations, Jobs, Audit, Portfolio
       Settings, and Account & Security retain their existing behavior.
-- [ ] Portfolio switching does not leak route or query state between
+- [x] Portfolio switching does not leak route or query state between
       Portfolios.
-- [ ] Sign out, password change, and Session revocation still work.
-- [ ] No frontend change requires an API or database migration.
+- [x] Sign out, password change, and Session revocation still work.
+- [x] No frontend change requires an API or database migration.
 
 ### Responsive and accessible behavior
 
-- [ ] Expanded, collapsed, and mobile sidebars expose all nine destinations.
-- [ ] Active destinations and selected secondary views have accessible state.
-- [ ] Menus and secondary navigation work with keyboard-only input.
-- [ ] Focus indicators remain visible, and mobile navigation closes after a
+- [x] Expanded, collapsed, and mobile sidebars expose all nine destinations.
+- [x] Active destinations and selected secondary views have accessible state.
+- [x] Menus and secondary navigation work with keyboard-only input.
+- [x] Focus indicators remain visible, and mobile navigation closes after a
       destination is selected.
-- [ ] The sidebar no longer requires scrolling at the reference desktop layout
+- [x] The sidebar no longer requires scrolling at the reference desktop layout
       solely to reach a module entry.
 
 ## 9. Required validation

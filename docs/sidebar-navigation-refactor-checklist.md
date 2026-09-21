@@ -74,10 +74,10 @@ width.
 
 ## Stage 5 — Final verification and documentation
 
-- [ ] Complete the plan section 8 acceptance matrix on `:8081`
-- [ ] Update technical-design section 7.1 routes and shell chrome
-- [ ] Update README only if an existing sentence became inaccurate
-- [ ] Mark the plan implemented after verification passes
+- [x] Complete the plan section 8 acceptance matrix on `:8081`
+- [x] Update technical-design section 7.1 routes and shell chrome
+- [x] Update README only if an existing sentence became inaccurate
+- [x] Mark the plan implemented after verification passes
 
 Exit: implementation, runtime behavior, and documentation describe the same
 navigation.
