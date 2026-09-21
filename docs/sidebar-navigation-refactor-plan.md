@@ -251,15 +251,15 @@ after its dependency contract is merged or otherwise shared unchanged.
 
 ### Stage 1 — Navigation model and regression coverage
 
-- [ ] Refactor the navigation metadata so one sidebar entry can own multiple
+- [x] Refactor the navigation metadata so one sidebar entry can own multiple
       active child routes while retaining one default destination.
-- [ ] Separate sidebar labels from child page-title metadata.
-- [ ] Keep item order, default destinations, active-route matching, and child
+- [x] Separate sidebar labels from child page-title metadata.
+- [x] Keep item order, default destinations, active-route matching, and child
       page-title mappings in pure, directly reviewable helpers.
-- [ ] If a frontend test harness is introduced independently before this work,
+- [x] If a frontend test harness is introduced independently before this work,
       add focused coverage for those helpers. Do not add a new test framework
       solely for this navigation refactor.
-- [ ] Keep the rendered navigation behavior unchanged until the metadata and
+- [x] Keep the rendered navigation behavior unchanged until the metadata and
       route-validation matrix are ready for the consolidated structure.
 
 Exit condition: the navigation model can represent the target tree without

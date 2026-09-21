@@ -1,11 +1,16 @@
 import { Box, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router";
+import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
 import { BrandMark, SidebarUtilities } from "@/app/shell/SidebarUtilities";
-import { LAST_PORTFOLIO_KEY, navigationFor, pageTitle } from "@/app/shell/navigation";
+import {
+  LAST_PORTFOLIO_KEY,
+  isNavItemActive,
+  navigationFor,
+  pageTitle,
+} from "@/app/shell/navigation";
 import { useMobileNavigation } from "@/app/shell/useMobileNavigation";
 import { usePersistentTheme } from "@/app/theme/usePersistentTheme";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
@@ -26,7 +31,7 @@ export function Shell() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const { open, setOpen, close, mobileLayout, sidebarRef, menuButtonRef } = useMobileNavigation();
   const groups = navigationFor(portfolioId);
-  const title = pageTitle(location.pathname);
+  const title = pageTitle(location.pathname, location.search);
 
   useEffect(() => {
     document.title = `${title} - Plutus`;
@@ -114,17 +119,18 @@ export function Shell() {
               {group.items.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <NavLink
+                  <Link
                     key={item.to}
                     to={item.to}
                     title={collapsed ? item.label : undefined}
+                    aria-current={isNavItemActive(location.pathname, item) ? "page" : undefined}
                     onClick={() => {
                       if (mobileLayout) close(false);
                     }}
                   >
                     <Icon size={iconSize.md} />
                     <strong>{item.label}</strong>
-                  </NavLink>
+                  </Link>
                 );
               })}
             </div>

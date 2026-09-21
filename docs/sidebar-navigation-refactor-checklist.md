@@ -22,14 +22,14 @@ moving on.
 
 ## Stage 1 — Navigation model
 
-- [ ] Separate sidebar labels, default destinations, and active path suffixes
-- [ ] Map page titles independently of sidebar labels; keep current title
+- [x] Separate sidebar labels, default destinations, and active path suffixes
+- [x] Map page titles independently of sidebar labels; keep current title
       strings
-- [ ] Keep item order, default destinations, active-route matching, and titles
+- [x] Keep item order, default destinations, active-route matching, and titles
       in pure helpers
-- [ ] Encode the target nine-module tree in reviewable constants without
+- [x] Encode the target nine-module tree in reviewable constants without
       rendering it yet
-- [ ] Keep the rendered 16-entry navigation unchanged
+- [x] Keep the rendered 16-entry navigation unchanged
 
 Exit: the model can represent the target tree; `:8081` still shows 16 working
 entries with the current titles.
