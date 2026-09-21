@@ -56,23 +56,22 @@ func (f FuncReady) Ready(ctx context.Context) error {
 
 // EngineOptions configures the HTTP engine.
 type EngineOptions struct {
-	Logger              *slog.Logger
-	Ready               ReadyChecker
-	Auth                *auth.Service
-	RegistrationEnabled bool
-	SecureCookies       bool
-	SessionCookieName   string
-	CSRFCookieName      string
-	AllowedOrigins      []string
-	Portfolios          *portfolio.Service
-	Access              *access.Service
-	Catalog             *catalog.Service
-	Observations        *observation.Service
-	Capital             *capital.Service
-	Audit               *audit.Service
-	Idempotency         *idempotency.Store
-	Jobs                *jobs.Service
-	Projection          *projection.Service
+	Logger            *slog.Logger
+	Ready             ReadyChecker
+	Auth              *auth.Service
+	SecureCookies     bool
+	SessionCookieName string
+	CSRFCookieName    string
+	AllowedOrigins    []string
+	Portfolios        *portfolio.Service
+	Access            *access.Service
+	Catalog           *catalog.Service
+	Observations      *observation.Service
+	Capital           *capital.Service
+	Audit             *audit.Service
+	Idempotency       *idempotency.Store
+	Jobs              *jobs.Service
+	Projection        *projection.Service
 }
 
 // Engine returns the HTTP handler for the process.
@@ -89,21 +88,20 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
 	engine.Use(requestLog(opts.Logger))
 	impl := &API{
-		Ready:               opts.Ready,
-		RegistrationEnabled: opts.RegistrationEnabled,
-		Auth:                opts.Auth,
-		SecureCookies:       opts.SecureCookies,
-		SessionCookieName:   cookieName(opts.SessionCookieName, auth.SessionCookieName),
-		CSRFCookieName:      cookieName(opts.CSRFCookieName, auth.CSRFCookieName),
-		Portfolios:          opts.Portfolios,
-		Access:              opts.Access,
-		Catalog:             opts.Catalog,
-		Observations:        opts.Observations,
-		Capital:             opts.Capital,
-		Audit:               opts.Audit,
-		Idempotency:         opts.Idempotency,
-		Jobs:                opts.Jobs,
-		Projection:          opts.Projection,
+		Ready:             opts.Ready,
+		Auth:              opts.Auth,
+		SecureCookies:     opts.SecureCookies,
+		SessionCookieName: cookieName(opts.SessionCookieName, auth.SessionCookieName),
+		CSRFCookieName:    cookieName(opts.CSRFCookieName, auth.CSRFCookieName),
+		Portfolios:        opts.Portfolios,
+		Access:            opts.Access,
+		Catalog:           opts.Catalog,
+		Observations:      opts.Observations,
+		Capital:           opts.Capital,
+		Audit:             opts.Audit,
+		Idempotency:       opts.Idempotency,
+		Jobs:              opts.Jobs,
+		Projection:        opts.Projection,
 	}
 	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  requestError,
@@ -149,7 +147,6 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 		slog.String("addr", cfg.Server.Addr()),
 		slog.Bool("https", cfg.Server.TLS.HTTPSEnabled),
 		slog.Bool("mtls", cfg.Server.TLS.MTLSEnabled),
-		slog.Bool("registration_enabled", cfg.Auth.RegistrationEnabled),
 		slog.Bool("database_configured", cfg.Database.DSN != ""),
 		slog.Bool("master_key_configured", cfg.Crypto.HasMasterKey()),
 	)

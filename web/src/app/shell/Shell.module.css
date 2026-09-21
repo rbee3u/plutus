@@ -541,7 +541,7 @@
   gap: 14px;
   margin: 0;
   padding: 6px 14px;
-  overflow: hidden;
+  overflow: visible;
   border-bottom: 1px solid var(--line-structural);
   background: var(--bg-shell);
 }
@@ -581,8 +581,79 @@
   clip: rect(0, 0, 0, 0);
 }
 
-.switcherSelect {
+.switcherControls {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.switcherButton {
+  display: inline-flex;
   max-width: 240px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.switcherName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undeletableBadge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid var(--line-control);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+  background: var(--surface-inset);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-height-sm);
+}
+
+.switcherMenu {
+  position: fixed;
+  z-index: var(--layer-portal-menu);
+  min-width: 220px;
+  max-height: min(320px, calc(100vh - var(--toolbar-height) - 24px));
+  margin: 0;
+  padding: 6px;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--line-structural);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+.switcherOption {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+}
+
+.switcherOption:hover,
+.switcherOption[aria-selected="true"] {
+  background: var(--surface-selected);
 }
 .boot {
   display: grid;
@@ -764,7 +835,7 @@
     gap: 14px;
     margin: 0;
     padding: 6px 14px;
-    overflow: hidden;
+    overflow: visible;
     clip: auto;
     border-bottom: 1px solid var(--line-structural);
     background: var(--bg-shell);

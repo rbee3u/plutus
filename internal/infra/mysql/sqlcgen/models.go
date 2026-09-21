@@ -452,6 +452,7 @@ type Portfolio struct {
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time
 	ArchivedAt                   sql.NullTime
+	Undeletable                  bool
 }
 
 type PortfolioValuationProjection struct {
@@ -575,14 +576,7 @@ type User struct {
 	Status             string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-}
-
-type UserCredential struct {
-	UserID            []byte
-	PasswordHash      string
-	PasswordChangedAt time.Time
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	PasswordHash       string
 }
 
 type ValuationContributionProjection struct {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/portfolio"
 )
 
 const (
@@ -25,17 +26,16 @@ const (
 
 // Service owns authentication use cases.
 type Service struct {
-	q                   *sqlcgen.Queries
-	db                  *sql.DB
-	registrationEnabled bool
-	idle                time.Duration
-	absolute            time.Duration
-	now                 func() time.Time
-	limiter             *limiter
+	q        *sqlcgen.Queries
+	db       *sql.DB
+	idle     time.Duration
+	absolute time.Duration
+	now      func() time.Time
+	limiter  *limiter
 }
 
 // NewService constructs an authentication service.
-func NewService(db *sql.DB, registrationEnabled bool, idle, absolute time.Duration) *Service {
+func NewService(db *sql.DB, idle, absolute time.Duration) *Service {
 	if idle <= 0 {
 		idle = 7 * 24 * time.Hour
 	}
@@ -43,13 +43,12 @@ func NewService(db *sql.DB, registrationEnabled bool, idle, absolute time.Durati
 		absolute = 30 * 24 * time.Hour
 	}
 	return &Service{
-		q:                   sqlcgen.New(db),
-		db:                  db,
-		registrationEnabled: registrationEnabled,
-		idle:                idle,
-		absolute:            absolute,
-		now:                 time.Now,
-		limiter:             newLimiter(),
+		q:        sqlcgen.New(db),
+		db:       db,
+		idle:     idle,
+		absolute: absolute,
+		now:      time.Now,
+		limiter:  newLimiter(),
 	}
 }
 
@@ -74,7 +73,7 @@ type Session struct {
 	Current           bool
 }
 
-// CreateUser inserts a user, credential, and default Main portfolio.
+// CreateUser inserts a user and default undeletable portfolio.
 func (s *Service) CreateUser(ctx context.Context, username, password string) (User, error) {
 	display, normalized, err := NormalizeUsername(username)
 	if err != nil {
@@ -116,6 +115,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 		Username:           display,
 		UsernameNormalized: normalized,
 		Status:             "active",
+		PasswordHash:       hash,
 		CreatedAt:          now,
 		UpdatedAt:          now,
 	}); err != nil {
@@ -124,22 +124,14 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 		}
 		return User{}, err
 	}
-	if err := q.InsertUserCredential(ctx, sqlcgen.InsertUserCredentialParams{
-		UserID:            userBytes,
-		PasswordHash:      hash,
-		PasswordChangedAt: now,
-		CreatedAt:         now,
-		UpdatedAt:         now,
-	}); err != nil {
-		return User{}, err
-	}
 	if err := q.InsertPortfolio(ctx, sqlcgen.InsertPortfolioParams{
 		ID:             portfolioBytes,
 		UserID:         userBytes,
-		Name:           "Main",
+		Name:           portfolio.DefaultName,
 		Timezone:       "Asia/Shanghai",
 		DisplayAssetID: assetBytes,
 		Status:         "active",
+		Undeletable:    true,
 		Version:        1,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -150,25 +142,6 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 		return User{}, err
 	}
 	return User{ID: userID, Username: display, Status: "active"}, nil
-}
-
-// Register creates a user and session when public registration is enabled.
-func (s *Service) Register(ctx context.Context, username, password, ip string) (User, Session, error) {
-	if !s.registrationEnabled {
-		return User{}, Session{}, ErrRegistrationDisabled
-	}
-	if !s.limiter.allow("reg:ip:"+ip, s.now(), 3.0/3600.0, 3) {
-		return User{}, Session{}, ErrRateLimited
-	}
-	user, err := s.CreateUser(ctx, username, password)
-	if err != nil {
-		return User{}, Session{}, err
-	}
-	session, err := s.createSession(ctx, user.ID, "")
-	if err != nil {
-		return User{}, Session{}, err
-	}
-	return user, session, nil
 }
 
 // Login authenticates a username and password.
@@ -191,23 +164,17 @@ func (s *Service) Login(ctx context.Context, username, password, ip, clientLabel
 	if row.Status != "active" {
 		return User{}, Session{}, ErrUserDisabled
 	}
-	cred, err := s.q.GetUserCredential(ctx, row.ID)
-	if err != nil {
-		return User{}, Session{}, err
-	}
-	ok, rehash, err := VerifyPassword(password, cred.PasswordHash)
+	ok, rehash, err := VerifyPassword(password, row.PasswordHash)
 	if err != nil || !ok {
 		return User{}, Session{}, ErrInvalidCredentials
 	}
 	if rehash {
 		newHash, err := HashPassword(password)
 		if err == nil {
-			now := s.now().UTC()
-			_ = s.q.UpdateUserCredential(ctx, sqlcgen.UpdateUserCredentialParams{
-				PasswordHash:      newHash,
-				PasswordChangedAt: cred.PasswordChangedAt,
-				UpdatedAt:         now,
-				UserID:            row.ID,
+			_ = s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+				PasswordHash: newHash,
+				UpdatedAt:    s.now().UTC(),
+				ID:           row.ID,
 			})
 		}
 	}
@@ -351,11 +318,11 @@ func (s *Service) ChangePassword(ctx context.Context, userID, sessionID uuid.UUI
 	if err != nil {
 		return err
 	}
-	cred, err := s.q.GetUserCredential(ctx, userBytes)
+	row, err := s.q.GetUserByID(ctx, userBytes)
 	if err != nil {
 		return err
 	}
-	ok, _, err := VerifyPassword(current, cred.PasswordHash)
+	ok, _, err := VerifyPassword(current, row.PasswordHash)
 	if err != nil || !ok {
 		return ErrInvalidCredentials
 	}
@@ -364,11 +331,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID, sessionID uuid.UUI
 		return err
 	}
 	now := s.now().UTC()
-	if err := s.q.UpdateUserCredential(ctx, sqlcgen.UpdateUserCredentialParams{
-		PasswordHash:      hash,
-		PasswordChangedAt: now,
-		UpdatedAt:         now,
-		UserID:            userBytes,
+	if err := s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+		PasswordHash: hash,
+		UpdatedAt:    now,
+		ID:           userBytes,
 	}); err != nil {
 		return err
 	}
@@ -432,7 +398,7 @@ func (s *Service) DisableUser(ctx context.Context, username string) error {
 	})
 }
 
-// ResetPassword replaces the credential and revokes sessions.
+// ResetPassword replaces the password hash and revokes sessions.
 func (s *Service) ResetPassword(ctx context.Context, username, password string) error {
 	_, normalized, err := NormalizeUsername(username)
 	if err != nil {
@@ -450,11 +416,10 @@ func (s *Service) ResetPassword(ctx context.Context, username, password string) 
 		return err
 	}
 	now := s.now().UTC()
-	if err := s.q.UpdateUserCredential(ctx, sqlcgen.UpdateUserCredentialParams{
-		PasswordHash:      hash,
-		PasswordChangedAt: now,
-		UpdatedAt:         now,
-		UserID:            row.ID,
+	if err := s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+		PasswordHash: hash,
+		UpdatedAt:    now,
+		ID:           row.ID,
 	}); err != nil {
 		return err
 	}

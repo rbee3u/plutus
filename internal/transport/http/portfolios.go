@@ -13,7 +13,7 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func (a *API) ListPortfolios(ctx context.Context, request api.ListPortfoliosRequestObject) (api.ListPortfoliosResponseObject, error) {
+func (a *API) ListPortfolios(ctx context.Context, _ api.ListPortfoliosRequestObject) (api.ListPortfoliosResponseObject, error) {
 	user, _, ok := a.currentSession(ctx)
 	if !ok {
 		return api.ListPortfolios401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
@@ -21,11 +21,7 @@ func (a *API) ListPortfolios(ctx context.Context, request api.ListPortfoliosRequ
 	if a.Portfolios == nil {
 		return nil, ErrNotImplemented
 	}
-	include := false
-	if request.Params.IncludeArchived != nil {
-		include = *request.Params.IncludeArchived
-	}
-	items, err := a.Portfolios.List(ctx, user.ID, include)
+	items, err := a.Portfolios.List(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -178,62 +174,12 @@ func (a *API) DeletePortfolio(ctx context.Context, request api.DeletePortfolioRe
 		return api.DeletePortfolio404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
 	case errors.Is(err, portfolio.ErrPrecondition):
 		return api.DeletePortfolio412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
-	case errors.Is(err, portfolio.ErrNotEmpty):
-		return api.DeletePortfolio409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "not_empty", "Portfolio is not empty", "Only an empty portfolio can be deleted.")), nil
+	case errors.Is(err, portfolio.ErrUndeletable):
+		return api.DeletePortfolio409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "undeletable", "Portfolio is undeletable", "The portfolio created with the account cannot be deleted.")), nil
 	case err != nil:
 		return nil, err
 	default:
 		return api.DeletePortfolio204Response{}, nil
-	}
-}
-
-func (a *API) ArchivePortfolio(ctx context.Context, request api.ArchivePortfolioRequestObject) (api.ArchivePortfolioResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.ArchivePortfolio401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
-	}
-	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
-		return nil, err
-	}
-	version, ok := portfolio.ParseETag(request.Params.IfMatch)
-	if !ok {
-		return api.ArchivePortfolio412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
-	}
-	item, err := a.Portfolios.Archive(ctx, user.ID, request.PortfolioId, version)
-	switch {
-	case errors.Is(err, portfolio.ErrNotFound):
-		return api.ArchivePortfolio404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
-	case errors.Is(err, portfolio.ErrPrecondition):
-		return api.ArchivePortfolio412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
-	case err != nil:
-		return nil, err
-	default:
-		return api.ArchivePortfolio200JSONResponse(toAPIPortfolio(&item)), nil
-	}
-}
-
-func (a *API) RestorePortfolio(ctx context.Context, request api.RestorePortfolioRequestObject) (api.RestorePortfolioResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.RestorePortfolio401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
-	}
-	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
-		return nil, err
-	}
-	version, ok := portfolio.ParseETag(request.Params.IfMatch)
-	if !ok {
-		return api.RestorePortfolio412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
-	}
-	item, err := a.Portfolios.Restore(ctx, user.ID, request.PortfolioId, version)
-	switch {
-	case errors.Is(err, portfolio.ErrNotFound):
-		return api.RestorePortfolio404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
-	case errors.Is(err, portfolio.ErrPrecondition):
-		return api.RestorePortfolio412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
-	case err != nil:
-		return nil, err
-	default:
-		return api.RestorePortfolio200JSONResponse(toAPIPortfolio(&item)), nil
 	}
 }
 
@@ -263,6 +209,7 @@ func toAPIPortfolio(item *portfolio.Portfolio) api.Portfolio {
 		DisplayAsset: api.AssetRef{Id: item.DisplayAssetID, Code: item.DisplayAsset},
 		Id:           item.ID,
 		Name:         item.Name,
+		Undeletable:  item.Undeletable,
 		Status:       api.PortfolioStatus(item.Status),
 		Timezone:     item.Timezone,
 		UpdatedAt:    item.UpdatedAt,

@@ -6,12 +6,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 )
 
-// Validate checks durations, listen settings, the TLS matrix, and registration transport rules.
+// Validate checks durations, listen settings, and the TLS matrix.
 func Validate(cfg *Config, opts *Options) error {
 	if strings.TrimSpace(cfg.Server.ListenAddress) == "" {
 		return errors.New("server.listen_address is required")
@@ -52,9 +51,6 @@ func Validate(cfg *Config, opts *Options) error {
 	if cfg.Collection.DefaultFreshnessMultiplier < minFreshnessMultiplier || cfg.Collection.DefaultFreshnessMultiplier > maxFreshnessMultiplier {
 		return fmt.Errorf("collection.default_freshness_multiplier must be between %d and %d", minFreshnessMultiplier, maxFreshnessMultiplier)
 	}
-	if cfg.Auth.RegistrationEnabled && !cfg.Server.TLS.HTTPSEnabled && !isLoopback(cfg.Server.ListenAddress) {
-		return errors.New("auth.registration_enabled requires HTTPS or a loopback listen address")
-	}
 	return validateTLS(&cfg.Server.TLS, opts)
 }
 
@@ -81,15 +77,6 @@ func durationInRange(name string, d, lower, upper time.Duration) error {
 		return fmt.Errorf("%s must be between %s and %s", name, lower, upper)
 	}
 	return nil
-}
-
-func isLoopback(address string) bool {
-	host := strings.TrimSpace(address)
-	if host == "localhost" {
-		return true
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
 }
 
 func validateTLS(tlsCfg *TLS, opts *Options) error {

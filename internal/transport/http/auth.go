@@ -86,40 +86,6 @@ func (a *API) loginError(ctx context.Context, err error) api.PostAuthLoginRespon
 	}
 }
 
-func (a *API) PostAuthRegister(ctx context.Context, request api.PostAuthRegisterRequestObject) (api.PostAuthRegisterResponseObject, error) {
-	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, nil); err != nil {
-		return nil, err
-	}
-	if a.Auth == nil || request.Body == nil {
-		return api.PostAuthRegister403ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusForbidden, "registration_disabled", "Registration is disabled", "Public registration is disabled.")), nil
-	}
-	user, session, err := a.Auth.Register(ctx, request.Body.Username, request.Body.Password, clientIP(ctx))
-	if err != nil {
-		if resp := a.registerError(ctx, err); resp != nil {
-			return resp, nil
-		}
-		return nil, err
-	}
-	a.setSessionCookies(ctx, &session)
-	return api.PostAuthRegister201JSONResponse{User: toAPIUser(user)}, nil
-}
-
-func (a *API) registerError(ctx context.Context, err error) api.PostAuthRegisterResponseObject {
-	switch {
-	case errors.Is(err, auth.ErrRegistrationDisabled):
-		return api.PostAuthRegister403ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusForbidden, "registration_disabled", "Registration is disabled", "Public registration is disabled."))
-	case errors.Is(err, auth.ErrUserExists):
-		return api.PostAuthRegister409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "username_taken", "Username is taken", "That username is already in use."))
-	case errors.Is(err, auth.ErrRateLimited):
-		retryAfter(ctx, 3600)
-		return api.PostAuthRegister429ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusTooManyRequests, "rate_limited", "Too many requests", "Registration is temporarily rate limited."))
-	case errors.Is(err, auth.ErrPasswordPolicy), errors.Is(err, auth.ErrUsernameRequired), errors.Is(err, auth.ErrUsernameTooLong):
-		return api.PostAuthRegister400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}
-	default:
-		return nil
-	}
-}
-
 func (a *API) PostAuthLogout(ctx context.Context, request api.PostAuthLogoutRequestObject) (api.PostAuthLogoutResponseObject, error) {
 	_, session, ok := a.currentSession(ctx)
 	if !ok {

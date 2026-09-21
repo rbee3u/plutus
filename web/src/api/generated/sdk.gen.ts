@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, ArchivePortfolioData, ArchivePortfolioErrors, ArchivePortfolioResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateConnectionData, CreateConnectionErrors, CreateConnectionResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, CreateProjectionRebuildData, CreateProjectionRebuildErrors, CreateProjectionRebuildResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteCatalogPinData, DeleteCatalogPinErrors, DeleteCatalogPinResponses, DeleteConnectionData, DeleteConnectionErrors, DeleteConnectionResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthRegistrationStatusData, GetAuthRegistrationStatusResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalBaselineData, GetCapitalBaselineErrors, GetCapitalBaselineResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetConnectionData, GetConnectionErrors, GetConnectionResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetObservationData, GetObservationErrors, GetObservationResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, ListAccountsData, ListAccountsErrors, ListAccountsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListCapitalBaselineRevisionsData, ListCapitalBaselineRevisionsErrors, ListCapitalBaselineRevisionsResponses, ListCapitalFlowRevisionsData, ListCapitalFlowRevisionsErrors, ListCapitalFlowRevisionsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListExposuresData, ListExposuresErrors, ListExposuresResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListObservationsData, ListObservationsErrors, ListObservationsResponses, ListPeriodSummariesData, ListPeriodSummariesErrors, ListPeriodSummariesResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationsData, ListValuationsErrors, ListValuationsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchConnectionData, PatchConnectionErrors, PatchConnectionResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchObservationData, PatchObservationErrors, PatchObservationResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PostAuthRegisterData, PostAuthRegisterErrors, PostAuthRegisterResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutCapitalBaselineData, PutCapitalBaselineErrors, PutCapitalBaselineResponses, PutCatalogListingMappingData, PutCatalogListingMappingErrors, PutCatalogListingMappingResponses, PutCatalogPinData, PutCatalogPinErrors, PutCatalogPinResponses, RestorePortfolioData, RestorePortfolioErrors, RestorePortfolioResponses, SearchCatalogAssetListingsData, SearchCatalogAssetListingsErrors, SearchCatalogAssetListingsResponses, SearchCatalogAssetsData, SearchCatalogAssetsErrors, SearchCatalogAssetsResponses, SearchCatalogInstrumentsData, SearchCatalogInstrumentsErrors, SearchCatalogInstrumentsResponses } from './types.gen';
+import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateConnectionData, CreateConnectionErrors, CreateConnectionResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, CreateProjectionRebuildData, CreateProjectionRebuildErrors, CreateProjectionRebuildResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteCatalogPinData, DeleteCatalogPinErrors, DeleteCatalogPinResponses, DeleteConnectionData, DeleteConnectionErrors, DeleteConnectionResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalBaselineData, GetCapitalBaselineErrors, GetCapitalBaselineResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetConnectionData, GetConnectionErrors, GetConnectionResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetObservationData, GetObservationErrors, GetObservationResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, ListAccountsData, ListAccountsErrors, ListAccountsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListCapitalBaselineRevisionsData, ListCapitalBaselineRevisionsErrors, ListCapitalBaselineRevisionsResponses, ListCapitalFlowRevisionsData, ListCapitalFlowRevisionsErrors, ListCapitalFlowRevisionsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListExposuresData, ListExposuresErrors, ListExposuresResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListObservationsData, ListObservationsErrors, ListObservationsResponses, ListPeriodSummariesData, ListPeriodSummariesErrors, ListPeriodSummariesResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationsData, ListValuationsErrors, ListValuationsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchConnectionData, PatchConnectionErrors, PatchConnectionResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchObservationData, PatchObservationErrors, PatchObservationResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutCapitalBaselineData, PutCapitalBaselineErrors, PutCapitalBaselineResponses, PutCatalogListingMappingData, PutCatalogListingMappingErrors, PutCatalogListingMappingResponses, PutCatalogPinData, PutCatalogPinErrors, PutCatalogPinResponses, SearchCatalogAssetListingsData, SearchCatalogAssetListingsErrors, SearchCatalogAssetListingsResponses, SearchCatalogAssetsData, SearchCatalogAssetsErrors, SearchCatalogAssetsResponses, SearchCatalogInstrumentsData, SearchCatalogInstrumentsErrors, SearchCatalogInstrumentsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -32,23 +32,6 @@ export const getHealthReady = <ThrowOnError extends boolean = false>(options?: O
  * Issue or rotate a CSRF token
  */
 export const getAuthCsrf = <ThrowOnError extends boolean = false>(options?: Options<GetAuthCsrfData, ThrowOnError>): RequestResult<GetAuthCsrfResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetAuthCsrfResponses, unknown, ThrowOnError>({ url: '/api/v1/auth/csrf', ...options });
-
-/**
- * Report whether public registration is enabled
- */
-export const getAuthRegistrationStatus = <ThrowOnError extends boolean = false>(options?: Options<GetAuthRegistrationStatusData, ThrowOnError>): RequestResult<GetAuthRegistrationStatusResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetAuthRegistrationStatusResponses, unknown, ThrowOnError>({ url: '/api/v1/auth/registration-status', ...options });
-
-/**
- * Register a user when public registration is enabled
- */
-export const postAuthRegister = <ThrowOnError extends boolean = false>(options: Options<PostAuthRegisterData, ThrowOnError>): RequestResult<PostAuthRegisterResponses, PostAuthRegisterErrors, ThrowOnError> => (options.client ?? client).post<PostAuthRegisterResponses, PostAuthRegisterErrors, ThrowOnError>({
-    url: '/api/v1/auth/register',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
 
 /**
  * Authenticate with username and password
@@ -206,26 +189,6 @@ export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Op
         'Content-Type': 'application/json',
         ...options.headers
     }
-});
-
-export const archivePortfolio = <ThrowOnError extends boolean = false>(options: Options<ArchivePortfolioData, ThrowOnError>): RequestResult<ArchivePortfolioResponses, ArchivePortfolioErrors, ThrowOnError> => (options.client ?? client).post<ArchivePortfolioResponses, ArchivePortfolioErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/archive',
-    ...options
-});
-
-export const restorePortfolio = <ThrowOnError extends boolean = false>(options: Options<RestorePortfolioData, ThrowOnError>): RequestResult<RestorePortfolioResponses, RestorePortfolioErrors, ThrowOnError> => (options.client ?? client).post<RestorePortfolioResponses, RestorePortfolioErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/restore',
-    ...options
 });
 
 export const listIdentities = <ThrowOnError extends boolean = false>(options: Options<ListIdentitiesData, ThrowOnError>): RequestResult<ListIdentitiesResponses, ListIdentitiesErrors, ThrowOnError> => (options.client ?? client).get<ListIdentitiesResponses, ListIdentitiesErrors, ThrowOnError>({

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { getAuthMe, postAuthLogin } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
@@ -55,7 +55,7 @@ export function LoginPage() {
       <form className={styles.card} onSubmit={(event) => void onSubmit(event)}>
         <h1>Sign in to Plutus</h1>
         <p className={styles.lead}>
-          Use a local user created with the CLI when public registration is closed.
+          Create users with the CLI command <code>plutus user create</code>.
         </p>
         {error ? (
           <p className={styles.alert} role="alert">
@@ -85,7 +85,6 @@ export function LoginPage() {
           <ActionButton type="submit" tone="primary" disabled={busy}>
             Sign in
           </ActionButton>
-          <Link to="/register">Create an account</Link>
         </div>
       </form>
     </div>

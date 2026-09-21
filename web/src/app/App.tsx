@@ -6,7 +6,6 @@ import { configureApiClient, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { RootRedirect, Shell } from "@/app/shell/Shell";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { RegisterPage } from "@/features/auth/RegisterPage";
 import { BaselinePage } from "@/features/capital/BaselinePage";
 import { FlowsPage } from "@/features/capital/FlowsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
@@ -42,7 +41,6 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<Bootstrap />} />
           <Route path="/p/:portfolioId" element={<Shell />}>
             <Route path="overview" element={<OverviewPage />} />

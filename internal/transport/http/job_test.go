@@ -24,7 +24,7 @@ import (
 
 func TestProjectionJobsAndCursorPagination(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
 	jobSvc := jobs.NewService(db)
 	engine := Engine(&EngineOptions{
@@ -184,7 +184,7 @@ func TestProjectionJobsAndCursorPagination(t *testing.T) {
 
 func TestHTTPProjectionRebuildEnqueue(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
 	jobSvc := jobs.NewService(db)
 	engine := Engine(&EngineOptions{

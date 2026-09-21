@@ -71,7 +71,7 @@ func runServe(cmd *cobra.Command) error {
 	var jobSvc *jobs.Service
 	var projSvc *projection.Service
 	if db != nil {
-		authSvc = auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
+		authSvc = auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
 		portfolios = portfolio.NewService(db)
 		fresh := cfg.Collection.DefaultInterval * time.Duration(cfg.Collection.DefaultFreshnessMultiplier)
 		accessSvc = access.NewService(db, cfg.Collection.DefaultInterval, fresh, cfg.Crypto.MasterKey)
@@ -94,23 +94,22 @@ func runServe(cmd *cobra.Command) error {
 	}
 
 	engine := httpserver.Engine(&httpserver.EngineOptions{
-		Logger:              logger,
-		Ready:               serveReady(db, loop, cfg.Crypto.HasMasterKey()),
-		Auth:                authSvc,
-		RegistrationEnabled: cfg.Auth.RegistrationEnabled,
-		SecureCookies:       cfg.Server.TLS.HTTPSEnabled,
-		SessionCookieName:   cfg.Auth.SessionCookieName,
-		CSRFCookieName:      cfg.Auth.CSRFCookieName,
-		AllowedOrigins:      []string{"http://127.0.0.1:5173", "http://localhost:5173"},
-		Portfolios:          portfolios,
-		Access:              accessSvc,
-		Catalog:             catalogSvc,
-		Observations:        observationSvc,
-		Capital:             capitalSvc,
-		Audit:               auditSvc,
-		Idempotency:         idem,
-		Jobs:                jobSvc,
-		Projection:          projSvc,
+		Logger:            logger,
+		Ready:             serveReady(db, loop, cfg.Crypto.HasMasterKey()),
+		Auth:              authSvc,
+		SecureCookies:     cfg.Server.TLS.HTTPSEnabled,
+		SessionCookieName: cfg.Auth.SessionCookieName,
+		CSRFCookieName:    cfg.Auth.CSRFCookieName,
+		AllowedOrigins:    []string{"http://127.0.0.1:5173", "http://localhost:5173"},
+		Portfolios:        portfolios,
+		Access:            accessSvc,
+		Catalog:           catalogSvc,
+		Observations:      observationSvc,
+		Capital:           capitalSvc,
+		Audit:             auditSvc,
+		Idempotency:       idem,
+		Jobs:              jobSvc,
+		Projection:        projSvc,
 	})
 	return httpserver.Run(ctx, &cfg, logger, engine)
 }

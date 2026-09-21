@@ -6,18 +6,14 @@
 -- change, timezone-boundary observations, and an edited Capital Flow.
 -- Do not insert projection rows.
 
-INSERT INTO users (id, username, username_normalized, status, created_at, updated_at) VALUES
-    (UNHEX('01A0BDFC2B0070018000000000000001'), 'alice', 'alice', 'active', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000'),
-    (UNHEX('01A0BDFC2B0070018000000000000002'), 'bob', 'bob', 'active', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000');
+INSERT INTO users (id, username, username_normalized, status, password_hash, created_at, updated_at) VALUES
+    (UNHEX('01A0BDFC2B0070018000000000000001'), 'alice', 'alice', 'active', '$argon2id$v=19$m=65536,t=3,p=2$4ZKp/JFnZmxIWjXk18zPWA$3wK/YAxLVIGX9PZpBe9MxZGrZpC+pw3nVpWfK6q2s2I', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000'),
+    (UNHEX('01A0BDFC2B0070018000000000000002'), 'bob', 'bob', 'active', '$argon2id$v=19$m=65536,t=3,p=2$2Iobo6Ik3eLKnVXVTJvdKg$6yClSIX/cdFRxSZXqB1LUHEDpU0ah/bdDgC+pIu4EW8', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000');
 
-INSERT INTO user_credentials (user_id, password_hash, password_changed_at, created_at, updated_at) VALUES
-    (UNHEX('01A0BDFC2B0070018000000000000001'), '$argon2id$v=19$m=65536,t=3,p=2$4ZKp/JFnZmxIWjXk18zPWA$3wK/YAxLVIGX9PZpBe9MxZGrZpC+pw3nVpWfK6q2s2I', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000'),
-    (UNHEX('01A0BDFC2B0070018000000000000002'), '$argon2id$v=19$m=65536,t=3,p=2$2Iobo6Ik3eLKnVXVTJvdKg$6yClSIX/cdFRxSZXqB1LUHEDpU0ah/bdDgC+pIu4EW8', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000');
-
-INSERT INTO portfolios (id, user_id, name, timezone, display_asset_id, status, version, created_at, updated_at, archived_at) VALUES
-    (UNHEX('01A0BDFC2B0070028000000000000001'), UNHEX('01A0BDFC2B0070018000000000000001'), 'Main', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL),
-    (UNHEX('01A0BDFC2B0070028000000000000002'), UNHEX('01A0BDFC2B0070018000000000000001'), 'Trading', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL),
-    (UNHEX('01A0BDFC2B0070028000000000000003'), UNHEX('01A0BDFC2B0070018000000000000002'), 'Main', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL);
+INSERT INTO portfolios (id, user_id, name, timezone, display_asset_id, status, undeletable, version, created_at, updated_at, archived_at) VALUES
+    (UNHEX('01A0BDFC2B0070028000000000000001'), UNHEX('01A0BDFC2B0070018000000000000001'), 'default', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 1, 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL),
+    (UNHEX('01A0BDFC2B0070028000000000000002'), UNHEX('01A0BDFC2B0070018000000000000001'), 'trading', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 0, 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL),
+    (UNHEX('01A0BDFC2B0070028000000000000003'), UNHEX('01A0BDFC2B0070018000000000000002'), 'default', 'Asia/Shanghai', UNHEX('01A0BDFC1FA47A549FA124F4721A71AF'), 'active', 1, 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL);
 
 INSERT INTO identities (id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name, account_mode, kind, status, version, created_at, updated_at, archived_at) VALUES
     (UNHEX('01A0BDFC2B0070038000000000000001'), UNHEX('01A0BDFC2B0070028000000000000001'), UNHEX('01A0BDFC1FA47B00B990A610A553E10C'), NULL, 'uid-alice-binance', 'Alice Binance', 'binance_pm', 'main', 'enabled', 1, '2026-08-01 00:00:00.000000', '2026-08-01 00:00:00.000000', NULL),

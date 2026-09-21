@@ -24,14 +24,13 @@ func TestDefaultHTTPServesHealthAPIAndShell(t *testing.T) {
 	t.Parallel()
 
 	engine := Engine(&EngineOptions{
-		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Ready:               StaticReady{},
-		RegistrationEnabled: false,
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:  StaticReady{},
 	})
 	ts := httptest.NewServer(engine)
 	t.Cleanup(ts.Close)
 
-	for _, path := range []string{"/health/live", "/login", "/api/v1/auth/registration-status"} {
+	for _, path := range []string{"/health/live", "/login", "/api/v1/auth/csrf"} {
 		res, err := ts.Client().Get(ts.URL + path)
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
@@ -74,9 +73,8 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Ready:               StaticReady{},
-		RegistrationEnabled: false,
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:  StaticReady{},
 	})
 	ts := httptest.NewUnstartedServer(engine)
 	ts.TLS = tlsServerConfig(&cfg)
@@ -134,7 +132,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	paths := []string{"/health/live", "/login", "/api/v1/auth/registration-status"}
+	paths := []string{"/health/live", "/login", "/api/v1/auth/csrf"}
 	for _, path := range paths {
 		status, err := tlsRequest(ts.URL+path, &tls.Config{
 			RootCAs:    roots,

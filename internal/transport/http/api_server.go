@@ -22,21 +22,20 @@ var ErrNotImplemented = errors.New("not_implemented")
 
 // API implements the generated strict OpenAPI server.
 type API struct {
-	Ready               ReadyChecker
-	RegistrationEnabled bool
-	Auth                *auth.Service
-	SecureCookies       bool
-	SessionCookieName   string
-	CSRFCookieName      string
-	Portfolios          *portfolio.Service
-	Access              *access.Service
-	Catalog             *catalog.Service
-	Observations        *observation.Service
-	Capital             *capital.Service
-	Audit               *audit.Service
-	Idempotency         *idempotency.Store
-	Jobs                *jobs.Service
-	Projection          *projection.Service
+	Ready             ReadyChecker
+	Auth              *auth.Service
+	SecureCookies     bool
+	SessionCookieName string
+	CSRFCookieName    string
+	Portfolios        *portfolio.Service
+	Access            *access.Service
+	Catalog           *catalog.Service
+	Observations      *observation.Service
+	Capital           *capital.Service
+	Audit             *audit.Service
+	Idempotency       *idempotency.Store
+	Jobs              *jobs.Service
+	Projection        *projection.Service
 }
 
 func (a *API) GetHealthLive(context.Context, api.GetHealthLiveRequestObject) (api.GetHealthLiveResponseObject, error) {
@@ -51,8 +50,4 @@ func (a *API) GetHealthReady(ctx context.Context, _ api.GetHealthReadyRequestObj
 		return api.GetHealthReady503JSONResponse{Status: api.NotReady, Reason: readyReason(err)}, nil
 	}
 	return api.GetHealthReady200JSONResponse{Status: api.Ready}, nil
-}
-
-func (a *API) GetAuthRegistrationStatus(context.Context, api.GetAuthRegistrationStatusRequestObject) (api.GetAuthRegistrationStatusResponseObject, error) {
-	return api.GetAuthRegistrationStatus200JSONResponse{Enabled: a.RegistrationEnabled}, nil
 }

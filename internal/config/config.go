@@ -74,9 +74,8 @@ type TLS struct {
 	ClientCAs     *x509.CertPool
 }
 
-// Auth holds registration, session lifetime, and cookie name settings.
+// Auth holds session lifetime and cookie name settings.
 type Auth struct {
-	RegistrationEnabled     bool
 	SessionIdleLifetime     time.Duration
 	SessionAbsoluteLifetime time.Duration
 	SessionCookieName       string

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
+import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
 import { BrandMark, SidebarUtilities } from "@/app/shell/SidebarUtilities";
 import { LAST_PORTFOLIO_KEY, navigationFor, pageTitle } from "@/app/shell/navigation";
 import { useMobileNavigation } from "@/app/shell/useMobileNavigation";
@@ -11,11 +12,6 @@ import { readPreference, storePreference } from "@/shared/lib/preferences";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/app/shell/Shell.module.css";
-
-interface PortfolioOption {
-  id: string;
-  name: string;
-}
 
 export function Shell() {
   const params = useParams();
@@ -54,7 +50,7 @@ export function Shell() {
         }
         const items = result.data.items
           .filter((item) => item.status === "active")
-          .map((item) => ({ id: item.id, name: item.name }));
+          .map((item) => ({ id: item.id, name: item.name, undeletable: item.undeletable }));
         setPortfolios(items);
         if (!items.some((item) => item.id === portfolioId)) {
           const remembered = readPreference(LAST_PORTFOLIO_KEY);
@@ -157,28 +153,7 @@ export function Shell() {
           <h1 id="console-page-title" className={styles.pageTitle}>
             {title}
           </h1>
-          <div className={styles.switcher}>
-            <label className={styles.switcherLabel} htmlFor="portfolio-switcher">
-              Portfolio
-            </label>
-            <select
-              id="portfolio-switcher"
-              className={styles.switcherSelect}
-              value={portfolioId}
-              onChange={(event) => {
-                const next = event.target.value;
-                storePreference(LAST_PORTFOLIO_KEY, next);
-                const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
-                void navigate(`/p/${next}${suffix}`);
-              }}
-            >
-              {portfolios.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PortfolioSwitcher portfolioId={portfolioId} portfolios={portfolios} />
           <button type="button" onClick={() => void logout()}>
             Sign out
           </button>

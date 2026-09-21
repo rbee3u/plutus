@@ -13,7 +13,6 @@ mtls_enabled = false
 mtls_ca_path = ""
 
 [auth]
-registration_enabled = false
 session_idle_lifetime = "168h"
 session_absolute_lifetime = "720h"
 session_cookie_name = "plutus_session_local"

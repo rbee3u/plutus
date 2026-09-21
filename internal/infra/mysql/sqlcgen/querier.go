@@ -10,12 +10,10 @@ import (
 
 type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
-	ArchivePortfolio(ctx context.Context, arg ArchivePortfolioParams) (int64, error)
 	CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error)
 	CountActiveCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error)
 	CountConnectionsWithCiphertext(ctx context.Context) (int64, error)
 	CountIdentityObservations(ctx context.Context, arg CountIdentityObservationsParams) (int64, error)
-	CountPortfolioDependencies(ctx context.Context, arg CountPortfolioDependenciesParams) (int32, error)
 	CountSearchAssetListings(ctx context.Context, arg CountSearchAssetListingsParams) (int64, error)
 	CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error)
 	CountSearchInstruments(ctx context.Context, arg CountSearchInstrumentsParams) (int64, error)
@@ -57,7 +55,6 @@ type Querier interface {
 	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
 	GetUserByID(ctx context.Context, id []byte) (User, error)
 	GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error)
-	GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) error
 	InsertAccountMetricObservation(ctx context.Context, arg InsertAccountMetricObservationParams) error
 	InsertAssetListingMapping(ctx context.Context, arg InsertAssetListingMappingParams) error
@@ -97,7 +94,6 @@ type Querier interface {
 	InsertReportedEquityObservation(ctx context.Context, arg InsertReportedEquityObservationParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
-	InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error
 	InsertValuationContributionProjection(ctx context.Context, arg InsertValuationContributionProjectionParams) error
 	InsertValuationContributionSource(ctx context.Context, arg InsertValuationContributionSourceParams) error
 	InsertValueChangeProjection(ctx context.Context, arg InsertValueChangeProjectionParams) error
@@ -126,7 +122,7 @@ type Querier interface {
 	ListPeriodSummaryProjections(ctx context.Context, generationID []byte) ([]PeriodSummaryProjection, error)
 	ListPlatforms(ctx context.Context) ([]Platform, error)
 	ListPortfolioValuationProjections(ctx context.Context, generationID []byte) ([]PortfolioValuationProjection, error)
-	ListPortfoliosByUser(ctx context.Context, arg ListPortfoliosByUserParams) ([]ListPortfoliosByUserRow, error)
+	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]ListPortfoliosByUserRow, error)
 	ListPositionFacts(ctx context.Context, portfolioID []byte) ([]ListPositionFactsRow, error)
 	ListPriceFacts(ctx context.Context, portfolioID []byte) ([]ListPriceFactsRow, error)
 	ListProjectionIssues(ctx context.Context, generationID []byte) ([]ProjectionIssue, error)
@@ -148,7 +144,6 @@ type Querier interface {
 	MarkProjectionGenerationReady(ctx context.Context, arg MarkProjectionGenerationReadyParams) (int64, error)
 	RenewJobLease(ctx context.Context, arg RenewJobLeaseParams) (int64, error)
 	RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error)
-	RestorePortfolio(ctx context.Context, arg RestorePortfolioParams) (int64, error)
 	RetireActiveProjectionGeneration(ctx context.Context, arg RetireActiveProjectionGenerationParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
@@ -176,7 +171,7 @@ type Querier interface {
 	UpdatePositionObservation(ctx context.Context, arg UpdatePositionObservationParams) error
 	UpdatePriceObservation(ctx context.Context, arg UpdatePriceObservationParams) error
 	UpdateReportedEquityObservation(ctx context.Context, arg UpdateReportedEquityObservationParams) error
-	UpdateUserCredential(ctx context.Context, arg UpdateUserCredentialParams) error
+	UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error
 }
 
 var _ Querier = (*Queries)(nil)

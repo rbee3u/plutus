@@ -15,13 +15,11 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	// ErrUserDisabled is returned when the user cannot authenticate.
 	ErrUserDisabled = errors.New("user is disabled")
-	// ErrRegistrationDisabled is returned when public registration is off.
-	ErrRegistrationDisabled = errors.New("registration is disabled")
 	// ErrUnauthenticated is returned when no valid session is present.
 	ErrUnauthenticated = errors.New("unauthenticated")
 	// ErrCSRF is returned when the CSRF token is missing or mismatched.
 	ErrCSRF = errors.New("csrf token is invalid")
-	// ErrRateLimited is returned when login or registration is throttled.
+	// ErrRateLimited is returned when login is throttled.
 	ErrRateLimited = errors.New("rate limited")
 	// ErrSessionNotFound is returned when a session does not belong to the user.
 	ErrSessionNotFound = errors.New("session not found")

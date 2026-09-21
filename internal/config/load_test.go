@@ -45,9 +45,6 @@ func TestLoadDefaultsWithoutFile(t *testing.T) {
 	if cfg.Server.ListenAddress != "127.0.0.1" || cfg.Server.Port != 8080 {
 		t.Fatalf("unexpected listen %s:%d", cfg.Server.ListenAddress, cfg.Server.Port)
 	}
-	if cfg.Auth.RegistrationEnabled {
-		t.Fatal("registration should default to disabled")
-	}
 	if cfg.Auth.SessionCookieName != "plutus_session" || cfg.Auth.CSRFCookieName != "plutus_csrf" {
 		t.Fatalf("cookie defaults %s %s", cfg.Auth.SessionCookieName, cfg.Auth.CSRFCookieName)
 	}
@@ -62,9 +59,8 @@ func TestLoadTOMLAndEnvOverride(t *testing.T) {
 	cfg, err := Load(Options{
 		Path: "plutus.toml",
 		LookupEnv: envMap(map[string]string{
-			"PLUTUS_SERVER_PORT":               "9090",
-			"PLUTUS_AUTH_REGISTRATION_ENABLED": "true",
-			"PLUTUS_DATABASE_DSN":              "user:pass@tcp(127.0.0.1:3306)/plutus",
+			"PLUTUS_SERVER_PORT":  "9090",
+			"PLUTUS_DATABASE_DSN": "user:pass@tcp(127.0.0.1:3306)/plutus",
 		}),
 		ReadFile: filesMap(map[string]string{
 			"plutus.toml": `
@@ -72,7 +68,6 @@ func TestLoadTOMLAndEnvOverride(t *testing.T) {
 listen_address = "127.0.0.1"
 port = 8080
 [auth]
-registration_enabled = false
 session_idle_lifetime = "24h"
 session_absolute_lifetime = "48h"
 `,
@@ -83,9 +78,6 @@ session_absolute_lifetime = "48h"
 	}
 	if cfg.Server.Port != 9090 {
 		t.Fatalf("port override: got %d", cfg.Server.Port)
-	}
-	if !cfg.Auth.RegistrationEnabled {
-		t.Fatal("expected registration override")
 	}
 	if cfg.Auth.SessionIdleLifetime != 24*time.Hour {
 		t.Fatalf("idle lifetime: %s", cfg.Auth.SessionIdleLifetime)
@@ -139,21 +131,6 @@ func TestMasterKeyRejectsWrongLength(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected master key length error")
-	}
-}
-
-func TestRegistrationRequiresLoopbackOrHTTPS(t *testing.T) {
-	t.Parallel()
-
-	_, err := Load(Options{
-		LookupEnv: envMap(map[string]string{
-			"PLUTUS_SERVER_LISTEN_ADDRESS":     "0.0.0.0",
-			"PLUTUS_AUTH_REGISTRATION_ENABLED": "true",
-		}),
-		ReadFile: filesMap(nil),
-	})
-	if err == nil {
-		t.Fatal("expected registration transport error")
 	}
 }
 
@@ -328,7 +305,7 @@ func TestExampleTOMLLoads(t *testing.T) {
 	t.Parallel()
 
 	cfg := loadExampleTOML(t, "../../config/local-example.toml")
-	if cfg.Server.Port != 8080 || cfg.Auth.RegistrationEnabled {
+	if cfg.Server.Port != 8080 {
 		t.Fatalf("unexpected example config: %+v", cfg.Server)
 	}
 	if cfg.Database.DSN != "" {

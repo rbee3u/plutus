@@ -51,49 +51,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CsrfResponse"
-  /api/v1/auth/registration-status:
-    get:
-      operationId: getAuthRegistrationStatus
-      tags: [auth]
-      summary: Report whether public registration is enabled
-      security: []
-      responses:
-        "200":
-          description: Registration flag.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RegistrationStatus"
-  /api/v1/auth/register:
-    post:
-      operationId: postAuthRegister
-      tags: [auth]
-      summary: Register a user when public registration is enabled
-      security: []
-      parameters:
-        - $ref: "#/components/parameters/IdempotencyKey"
-        - $ref: "#/components/parameters/CSRFToken"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterRequest"
-      responses:
-        "201":
-          description: User and default Main portfolio created.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthSession"
-        "400":
-          $ref: "#/components/responses/Problem"
-        "403":
-          $ref: "#/components/responses/Problem"
-        "409":
-          $ref: "#/components/responses/Problem"
-        "429":
-          $ref: "#/components/responses/Problem"
   /api/v1/auth/login:
     post:
       operationId: postAuthLogin
@@ -213,12 +170,6 @@ paths:
       operationId: listPortfolios
       tags: [portfolios]
       summary: List owned portfolios
-      parameters:
-        - name: includeArchived
-          in: query
-          schema:
-            type: boolean
-            default: false
       responses:
         "200":
           description: Portfolios.
@@ -320,54 +271,12 @@ paths:
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "204":
-          description: Deleted an empty portfolio.
+          description: Deleted the portfolio and every row scoped to it.
         "401":
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
         "409":
-          $ref: "#/components/responses/Problem"
-        "412":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/archive:
-    post:
-      operationId: archivePortfolio
-      tags: [portfolios]
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/CSRFToken"
-      responses:
-        "200":
-          description: Archived.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Portfolio"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-        "412":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/restore:
-    post:
-      operationId: restorePortfolio
-      tags: [portfolios]
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/IfMatch"
-        - $ref: "#/components/parameters/CSRFToken"
-      responses:
-        "200":
-          description: Restored.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Portfolio"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
@@ -1813,26 +1722,6 @@ components:
       properties:
         token:
           type: string
-    RegistrationStatus:
-      type: object
-      additionalProperties: false
-      required: [enabled]
-      properties:
-        enabled:
-          type: boolean
-    RegisterRequest:
-      type: object
-      additionalProperties: false
-      required: [username, password]
-      properties:
-        username:
-          type: string
-          minLength: 1
-          maxLength: 191
-        password:
-          type: string
-          minLength: 8
-          maxLength: 128
     LoginRequest:
       type: object
       additionalProperties: false
@@ -1926,7 +1815,7 @@ components:
     Portfolio:
       type: object
       additionalProperties: false
-      required: [id, name, timezone, displayAsset, status, version, createdAt, updatedAt]
+      required: [id, name, timezone, displayAsset, status, undeletable, version, createdAt, updatedAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -1939,6 +1828,9 @@ components:
         status:
           type: string
           enum: [active, archived]
+        undeletable:
+          type: boolean
+          description: True for the portfolio created with the user. It cannot be deleted.
         version:
           type: integer
           minimum: 1

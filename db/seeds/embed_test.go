@@ -22,7 +22,7 @@ func TestMinimalSQLHasExpectedFacts(t *testing.T) {
 	if !strings.Contains(sql, "alice") || !strings.Contains(sql, "'bob'") {
 		t.Fatal("minimal seed must contain both users")
 	}
-	if !strings.Contains(sql, "'Main'") || !strings.Contains(sql, "'Trading'") {
+	if !strings.Contains(sql, "'default'") || !strings.Contains(sql, "'trading'") {
 		t.Fatal("minimal seed must contain two portfolios for alice")
 	}
 	assertNoProjectionRows(t, sql)
@@ -66,7 +66,7 @@ func TestWalkthroughSQLHasExpectedFacts(t *testing.T) {
 	for _, needle := range []string{
 		"alice",
 		"'bob'",
-		"'Trading'",
+		"'trading'",
 		"TOKENX",
 		"provisional",
 		"collection_failures",

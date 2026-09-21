@@ -23,7 +23,7 @@ import (
 
 func TestPortfolioOwnershipAndIdentity(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
 	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
 	engine := Engine(&EngineOptions{
@@ -53,19 +53,20 @@ func TestPortfolioOwnershipAndIdentity(t *testing.T) {
 	}
 	var listed struct {
 		Items []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Undeletable bool   `json:"undeletable"`
 		} `json:"items"`
 	}
 	if err := json.Unmarshal(list.Body.Bytes(), &listed); err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Items) != 1 || listed.Items[0].Name != "Main" {
+	if len(listed.Items) != 1 || listed.Items[0].Name != "default" || !listed.Items[0].Undeletable {
 		t.Fatalf("listed %+v", listed)
 	}
 	mainA := listed.Items[0].ID
 
-	created := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios", map[string]any{"name": "Trading"}, sessionA, "idem-1")
+	created := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios", map[string]any{"name": "trading"}, sessionA, "idem-1")
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create %d %s", created.Code, created.Body.String())
 	}
@@ -77,7 +78,7 @@ func TestPortfolioOwnershipAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replay := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios", map[string]any{"name": "Trading"}, sessionA, "idem-1")
+	replay := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios", map[string]any{"name": "trading"}, sessionA, "idem-1")
 	if replay.Code != http.StatusCreated {
 		t.Fatalf("replay %d %s", replay.Code, replay.Body.String())
 	}
@@ -130,7 +131,26 @@ func TestPortfolioOwnershipAndIdentity(t *testing.T) {
 
 	blocked := deleteWithMatch(t, engine, "/api/v1/portfolios/"+mainA, sessionA, listETag(t, engine, "/api/v1/portfolios/"+mainA, sessionA))
 	if blocked.Code != http.StatusConflict {
-		t.Fatalf("delete nonempty %d %s", blocked.Code, blocked.Body.String())
+		t.Fatalf("delete undeletable %d %s", blocked.Code, blocked.Body.String())
+	}
+
+	extraIdent := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios/"+createdBody.ID+"/identities", map[string]any{
+		"platformId":  catalog.PlatformBinance.String(),
+		"externalRef": "acct-extra",
+		"displayName": "Binance extra",
+		"accountMode": "binance_pm",
+		"kind":        "main",
+	}, sessionA, "")
+	if extraIdent.Code != http.StatusCreated {
+		t.Fatalf("extra identity %d %s", extraIdent.Code, extraIdent.Body.String())
+	}
+	removed := deleteWithMatch(t, engine, "/api/v1/portfolios/"+createdBody.ID, sessionA, listETag(t, engine, "/api/v1/portfolios/"+createdBody.ID, sessionA))
+	if removed.Code != http.StatusNoContent {
+		t.Fatalf("cascade delete %d %s", removed.Code, removed.Body.String())
+	}
+	gone := doJSON(t, engine, http.MethodGet, "/api/v1/portfolios/"+createdBody.ID, nil, sessionA, "")
+	if gone.Code != http.StatusNotFound {
+		t.Fatalf("deleted extra %d %s", gone.Code, gone.Body.String())
 	}
 
 	enabled := doJSON(t, engine, http.MethodPost, "/api/v1/portfolios/"+mainA+"/connections", map[string]any{

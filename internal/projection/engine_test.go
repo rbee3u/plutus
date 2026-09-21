@@ -102,13 +102,13 @@ func TestRebuildKeepsPreviousGenerationOnUnreadyActivate(t *testing.T) {
 func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 	db := mysql.OpenTestDB(t)
 	ctx := context.Background()
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	user, err := authSvc.CreateUser(ctx, "pj-"+uuid.NewString()[:8], "correct horse battery staple")
 	if err != nil {
 		t.Fatal(err)
 	}
 	ports := portfolio.NewService(db)
-	items, err := ports.List(ctx, user.ID, false)
+	items, err := ports.List(ctx, user.ID)
 	if err != nil || len(items) == 0 {
 		t.Fatal(err)
 	}
@@ -199,12 +199,12 @@ func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 
 func setupPortfolioJob(t *testing.T, db *sql.DB) (uuid.UUID, uuid.UUID) {
 	t.Helper()
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	user, err := authSvc.CreateUser(context.Background(), "pe-"+uuid.NewString()[:8], "correct horse battery staple")
 	if err != nil {
 		t.Fatal(err)
 	}
-	items, err := portfolio.NewService(db).List(context.Background(), user.ID, false)
+	items, err := portfolio.NewService(db).List(context.Background(), user.ID)
 	if err != nil || len(items) == 0 {
 		t.Fatal(err)
 	}

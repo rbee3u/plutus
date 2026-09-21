@@ -30,7 +30,7 @@ func TestConnectionCredentialsAreEncrypted(t *testing.T) {
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		t.Fatal(err)
 	}
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
 	bareAccess := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
 	bare := Engine(&EngineOptions{

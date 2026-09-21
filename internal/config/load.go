@@ -40,7 +40,6 @@ type fileConfig struct {
 		} `toml:"tls"`
 	} `toml:"server"`
 	Auth struct {
-		RegistrationEnabled     bool   `toml:"registration_enabled"`
 		SessionIdleLifetime     string `toml:"session_idle_lifetime"`
 		SessionAbsoluteLifetime string `toml:"session_absolute_lifetime"`
 		SessionCookieName       string `toml:"session_cookie_name"`
@@ -103,7 +102,6 @@ func defaults() Config {
 			Port:          defaultPort,
 		},
 		Auth: Auth{
-			RegistrationEnabled:     false,
 			SessionIdleLifetime:     7 * 24 * time.Hour,
 			SessionAbsoluteLifetime: 30 * 24 * time.Hour,
 			SessionCookieName:       defaultSessionCookieName,
@@ -154,7 +152,6 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	cfg.Server.TLS.MTLSEnabled = parsed.Server.TLS.MTLSEnabled
 	cfg.Server.TLS.MTLSCAPath = parsed.Server.TLS.MTLSCAPath
 
-	cfg.Auth.RegistrationEnabled = parsed.Auth.RegistrationEnabled
 	if strings.TrimSpace(parsed.Auth.SessionCookieName) != "" {
 		cfg.Auth.SessionCookieName = strings.TrimSpace(parsed.Auth.SessionCookieName)
 	}
@@ -213,9 +210,6 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 		return err
 	}
 	if err := optionalString(&cfg.Server.TLS.MTLSCAPath, lookup, "PLUTUS_SERVER_TLS_MTLS_CA_PATH"); err != nil {
-		return err
-	}
-	if err := optionalBool(&cfg.Auth.RegistrationEnabled, lookup, "PLUTUS_AUTH_REGISTRATION_ENABLED"); err != nil {
 		return err
 	}
 	if err := optionalDurationEnv(&cfg.Auth.SessionIdleLifetime, lookup, "PLUTUS_AUTH_SESSION_IDLE_LIFETIME"); err != nil {

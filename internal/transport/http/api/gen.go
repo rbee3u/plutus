@@ -2030,8 +2030,11 @@ type Portfolio struct {
 	Name         string          `json:"name"`
 	Status       PortfolioStatus `json:"status"`
 	Timezone     string          `json:"timezone"`
-	UpdatedAt    time.Time       `json:"updatedAt"`
-	Version      int             `json:"version"`
+
+	// Undeletable True for the portfolio created with the user. It cannot be deleted.
+	Undeletable bool      `json:"undeletable"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Version     int       `json:"version"`
 }
 
 // PortfolioStatus defines model for Portfolio.Status.
@@ -2176,17 +2179,6 @@ type PutCatalogMappingRequestState string
 // PutCatalogPinRequest defines model for PutCatalogPinRequest.
 type PutCatalogPinRequest struct {
 	Reason *string `json:"reason,omitempty"`
-}
-
-// RegisterRequest defines model for RegisterRequest.
-type RegisterRequest struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-
-// RegistrationStatus defines model for RegistrationStatus.
-type RegistrationStatus struct {
-	Enabled bool `json:"enabled"`
 }
 
 // ReportedEquityObservation defines model for ReportedEquityObservation.
@@ -2360,20 +2352,9 @@ type PutAuthPasswordParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// PostAuthRegisterParams defines parameters for PostAuthRegister.
-type PostAuthRegisterParams struct {
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
-}
-
 // DeleteAuthSessionParams defines parameters for DeleteAuthSession.
 type DeleteAuthSessionParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// ListPortfoliosParams defines parameters for ListPortfolios.
-type ListPortfoliosParams struct {
-	IncludeArchived *bool `form:"includeArchived,omitempty" json:"includeArchived,omitempty"`
 }
 
 // CreatePortfolioParams defines parameters for CreatePortfolio.
@@ -2398,12 +2379,6 @@ type PatchPortfolioParams struct {
 type ListAccountsParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// ArchivePortfolioParams defines parameters for ArchivePortfolio.
-type ArchivePortfolioParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // ListAuditEventsParams defines parameters for ListAuditEvents.
@@ -2619,12 +2594,6 @@ type CreateProjectionRebuildParams struct {
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
 
-// RestorePortfolioParams defines parameters for RestorePortfolio.
-type RestorePortfolioParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
 // ListValuationsParams defines parameters for ListValuations.
 type ListValuationsParams struct {
 	From        *TimeFrom    `form:"from,omitempty" json:"from,omitempty"`
@@ -2651,9 +2620,6 @@ type PostAuthLoginJSONRequestBody = LoginRequest
 
 // PutAuthPasswordJSONRequestBody defines body for PutAuthPassword for application/json ContentType.
 type PutAuthPasswordJSONRequestBody = ChangePasswordRequest
-
-// PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
-type PostAuthRegisterJSONRequestBody = RegisterRequest
 
 // CreatePortfolioJSONRequestBody defines body for CreatePortfolio for application/json ContentType.
 type CreatePortfolioJSONRequestBody = CreatePortfolioRequest
@@ -2714,12 +2680,6 @@ type ServerInterface interface {
 	// PutAuthPassword Replace the current password
 	// (PUT /api/v1/auth/password)
 	PutAuthPassword(c *gin.Context, params PutAuthPasswordParams)
-	// PostAuthRegister Register a user when public registration is enabled
-	// (POST /api/v1/auth/register)
-	PostAuthRegister(c *gin.Context, params PostAuthRegisterParams)
-	// GetAuthRegistrationStatus Report whether public registration is enabled
-	// (GET /api/v1/auth/registration-status)
-	GetAuthRegistrationStatus(c *gin.Context)
 	// GetAuthSessions List the current user's sessions
 	// (GET /api/v1/auth/sessions)
 	GetAuthSessions(c *gin.Context)
@@ -2728,7 +2688,7 @@ type ServerInterface interface {
 	DeleteAuthSession(c *gin.Context, sessionId SessionID, params DeleteAuthSessionParams)
 	// ListPortfolios List owned portfolios
 	// (GET /api/v1/portfolios)
-	ListPortfolios(c *gin.Context, params ListPortfoliosParams)
+	ListPortfolios(c *gin.Context)
 	// CreatePortfolio Create a portfolio
 	// (POST /api/v1/portfolios)
 	CreatePortfolio(c *gin.Context, params CreatePortfolioParams)
@@ -2744,9 +2704,6 @@ type ServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/accounts)
 	ListAccounts(c *gin.Context, portfolioId PortfolioID, params ListAccountsParams)
-
-	// (POST /api/v1/portfolios/{portfolioId}/archive)
-	ArchivePortfolio(c *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(c *gin.Context, portfolioId PortfolioID, params ListAuditEventsParams)
@@ -2858,9 +2815,6 @@ type ServerInterface interface {
 	// CreateProjectionRebuild Enqueue a full projection rebuild
 	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
 	CreateProjectionRebuild(c *gin.Context, portfolioId PortfolioID, params CreateProjectionRebuildParams)
-
-	// (POST /api/v1/portfolios/{portfolioId}/restore)
-	RestorePortfolio(c *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams)
 	// ListValuations Portfolio valuation history
 	// (GET /api/v1/portfolios/{portfolioId}/valuations)
 	ListValuations(c *gin.Context, portfolioId PortfolioID, params ListValuationsParams)
@@ -3070,78 +3024,6 @@ func (siw *ServerInterfaceWrapper) PutAuthPassword(c *gin.Context) {
 	siw.Handler.PutAuthPassword(c, params)
 }
 
-// PostAuthRegister operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthRegister(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostAuthRegisterParams
-
-	headers := c.Request.Header
-
-	// ------------- Optional header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = &IdempotencyKey
-
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PostAuthRegister(c, params)
-}
-
-// GetAuthRegistrationStatus operation middleware
-func (siw *ServerInterfaceWrapper) GetAuthRegistrationStatus(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetAuthRegistrationStatus(c)
-}
-
 // GetAuthSessions operation middleware
 func (siw *ServerInterfaceWrapper) GetAuthSessions(c *gin.Context) {
 
@@ -3207,20 +3089,6 @@ func (siw *ServerInterfaceWrapper) DeleteAuthSession(c *gin.Context) {
 // ListPortfolios operation middleware
 func (siw *ServerInterfaceWrapper) ListPortfolios(c *gin.Context) {
 
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListPortfoliosParams
-
-	// ------------- Optional query parameter "includeArchived" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeArchived", c.Request.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includeArchived: %w", err), http.StatusBadRequest)
-		return
-	}
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -3228,7 +3096,7 @@ func (siw *ServerInterfaceWrapper) ListPortfolios(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListPortfolios(c, params)
+	siw.Handler.ListPortfolios(c)
 }
 
 // CreatePortfolio operation middleware
@@ -3499,77 +3367,6 @@ func (siw *ServerInterfaceWrapper) ListAccounts(c *gin.Context) {
 	}
 
 	siw.Handler.ListAccounts(c, portfolioId, params)
-}
-
-// ArchivePortfolio operation middleware
-func (siw *ServerInterfaceWrapper) ArchivePortfolio(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ArchivePortfolioParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ArchivePortfolio(c, portfolioId, params)
 }
 
 // ListAuditEvents operation middleware
@@ -5881,77 +5678,6 @@ func (siw *ServerInterfaceWrapper) CreateProjectionRebuild(c *gin.Context) {
 	siw.Handler.CreateProjectionRebuild(c, portfolioId, params)
 }
 
-// RestorePortfolio operation middleware
-func (siw *ServerInterfaceWrapper) RestorePortfolio(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RestorePortfolioParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.RestorePortfolio(c, portfolioId, params)
-}
-
 // ListValuations operation middleware
 func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
 
@@ -6168,8 +5894,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/health/live", wrapper.GetHealthLive)
 	router.GET(options.BaseURL+"/health/ready", wrapper.GetHealthReady)
 	router.GET(options.BaseURL+"/api/v1/auth/csrf", wrapper.GetAuthCsrf)
-	router.GET(options.BaseURL+"/api/v1/auth/registration-status", wrapper.GetAuthRegistrationStatus)
-	router.POST(options.BaseURL+"/api/v1/auth/register", wrapper.PostAuthRegister)
 	router.POST(options.BaseURL+"/api/v1/auth/login", wrapper.PostAuthLogin)
 	router.POST(options.BaseURL+"/api/v1/auth/logout", wrapper.PostAuthLogout)
 	router.POST(options.BaseURL+"/api/v1/auth/logout-all", wrapper.PostAuthLogoutAll)
@@ -6182,8 +5906,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.DeletePortfolio)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.GetPortfolio)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.PatchPortfolio)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/archive", wrapper.ArchivePortfolio)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/restore", wrapper.RestorePortfolio)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities", wrapper.ListIdentities)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities", wrapper.CreateIdentity)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId", wrapper.GetIdentity)
@@ -6464,108 +6186,6 @@ func (response PutAuthPassword401ApplicationProblemPlusJSONResponse) VisitPutAut
 	return err
 }
 
-type PostAuthRegisterRequestObject struct {
-	Params PostAuthRegisterParams
-	Body   *PostAuthRegisterJSONRequestBody
-}
-
-type PostAuthRegisterResponseObject interface {
-	VisitPostAuthRegisterResponse(w http.ResponseWriter) error
-}
-
-type PostAuthRegister201JSONResponse AuthSession
-
-func (response PostAuthRegister201JSONResponse) VisitPostAuthRegisterResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostAuthRegister400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response PostAuthRegister400ApplicationProblemPlusJSONResponse) VisitPostAuthRegisterResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostAuthRegister403ApplicationProblemPlusJSONResponse Problem
-
-func (response PostAuthRegister403ApplicationProblemPlusJSONResponse) VisitPostAuthRegisterResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostAuthRegister409ApplicationProblemPlusJSONResponse Problem
-
-func (response PostAuthRegister409ApplicationProblemPlusJSONResponse) VisitPostAuthRegisterResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostAuthRegister429ApplicationProblemPlusJSONResponse Problem
-
-func (response PostAuthRegister429ApplicationProblemPlusJSONResponse) VisitPostAuthRegisterResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(429)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetAuthRegistrationStatusRequestObject struct {
-}
-
-type GetAuthRegistrationStatusResponseObject interface {
-	VisitGetAuthRegistrationStatusResponse(w http.ResponseWriter) error
-}
-
-type GetAuthRegistrationStatus200JSONResponse RegistrationStatus
-
-func (response GetAuthRegistrationStatus200JSONResponse) VisitGetAuthRegistrationStatusResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GetAuthSessionsRequestObject struct {
 }
 
@@ -6651,7 +6271,6 @@ func (response DeleteAuthSession404ApplicationProblemPlusJSONResponse) VisitDele
 }
 
 type ListPortfoliosRequestObject struct {
-	Params ListPortfoliosParams
 }
 
 type ListPortfoliosResponseObject interface {
@@ -7043,73 +6662,6 @@ func (response ListAccounts404ApplicationProblemPlusJSONResponse) VisitListAccou
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ArchivePortfolioRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ArchivePortfolioParams
-}
-
-type ArchivePortfolioResponseObject interface {
-	VisitArchivePortfolioResponse(w http.ResponseWriter) error
-}
-
-type ArchivePortfolio200JSONResponse Portfolio
-
-func (response ArchivePortfolio200JSONResponse) VisitArchivePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ArchivePortfolio401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ArchivePortfolio401ApplicationProblemPlusJSONResponse) VisitArchivePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ArchivePortfolio404ApplicationProblemPlusJSONResponse Problem
-
-func (response ArchivePortfolio404ApplicationProblemPlusJSONResponse) VisitArchivePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ArchivePortfolio412ApplicationProblemPlusJSONResponse Problem
-
-func (response ArchivePortfolio412ApplicationProblemPlusJSONResponse) VisitArchivePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9833,73 +9385,6 @@ func (response CreateProjectionRebuild409ApplicationProblemPlusJSONResponse) Vis
 	return err
 }
 
-type RestorePortfolioRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      RestorePortfolioParams
-}
-
-type RestorePortfolioResponseObject interface {
-	VisitRestorePortfolioResponse(w http.ResponseWriter) error
-}
-
-type RestorePortfolio200JSONResponse Portfolio
-
-func (response RestorePortfolio200JSONResponse) VisitRestorePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type RestorePortfolio401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response RestorePortfolio401ApplicationProblemPlusJSONResponse) VisitRestorePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type RestorePortfolio404ApplicationProblemPlusJSONResponse Problem
-
-func (response RestorePortfolio404ApplicationProblemPlusJSONResponse) VisitRestorePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type RestorePortfolio412ApplicationProblemPlusJSONResponse Problem
-
-func (response RestorePortfolio412ApplicationProblemPlusJSONResponse) VisitRestorePortfolioResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type ListValuationsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ListValuationsParams
@@ -10110,12 +9595,6 @@ type StrictServerInterface interface {
 	// PutAuthPassword Replace the current password
 	// (PUT /api/v1/auth/password)
 	PutAuthPassword(ctx context.Context, request PutAuthPasswordRequestObject) (PutAuthPasswordResponseObject, error)
-	// PostAuthRegister Register a user when public registration is enabled
-	// (POST /api/v1/auth/register)
-	PostAuthRegister(ctx context.Context, request PostAuthRegisterRequestObject) (PostAuthRegisterResponseObject, error)
-	// GetAuthRegistrationStatus Report whether public registration is enabled
-	// (GET /api/v1/auth/registration-status)
-	GetAuthRegistrationStatus(ctx context.Context, request GetAuthRegistrationStatusRequestObject) (GetAuthRegistrationStatusResponseObject, error)
 	// GetAuthSessions List the current user's sessions
 	// (GET /api/v1/auth/sessions)
 	GetAuthSessions(ctx context.Context, request GetAuthSessionsRequestObject) (GetAuthSessionsResponseObject, error)
@@ -10140,9 +9619,6 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/portfolios/{portfolioId}/accounts)
 	ListAccounts(ctx context.Context, request ListAccountsRequestObject) (ListAccountsResponseObject, error)
-
-	// (POST /api/v1/portfolios/{portfolioId}/archive)
-	ArchivePortfolio(ctx context.Context, request ArchivePortfolioRequestObject) (ArchivePortfolioResponseObject, error)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(ctx context.Context, request ListAuditEventsRequestObject) (ListAuditEventsResponseObject, error)
@@ -10254,9 +9730,6 @@ type StrictServerInterface interface {
 	// CreateProjectionRebuild Enqueue a full projection rebuild
 	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
 	CreateProjectionRebuild(ctx context.Context, request CreateProjectionRebuildRequestObject) (CreateProjectionRebuildResponseObject, error)
-
-	// (POST /api/v1/portfolios/{portfolioId}/restore)
-	RestorePortfolio(ctx context.Context, request RestorePortfolioRequestObject) (RestorePortfolioResponseObject, error)
 	// ListValuations Portfolio valuation history
 	// (GET /api/v1/portfolios/{portfolioId}/valuations)
 	ListValuations(ctx context.Context, request ListValuationsRequestObject) (ListValuationsResponseObject, error)
@@ -10494,63 +9967,6 @@ func (sh *strictHandler) PutAuthPassword(ctx *gin.Context, params PutAuthPasswor
 	}
 }
 
-// PostAuthRegister operation middleware
-func (sh *strictHandler) PostAuthRegister(ctx *gin.Context, params PostAuthRegisterParams) {
-	var request PostAuthRegisterRequestObject
-
-	request.Params = params
-
-	var body PostAuthRegisterJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PostAuthRegister(ctx, request.(PostAuthRegisterRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostAuthRegister")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PostAuthRegisterResponseObject); ok {
-		if err := validResponse.VisitPostAuthRegisterResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetAuthRegistrationStatus operation middleware
-func (sh *strictHandler) GetAuthRegistrationStatus(ctx *gin.Context) {
-	var request GetAuthRegistrationStatusRequestObject
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetAuthRegistrationStatus(ctx, request.(GetAuthRegistrationStatusRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetAuthRegistrationStatus")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetAuthRegistrationStatusResponseObject); ok {
-		if err := validResponse.VisitGetAuthRegistrationStatusResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetAuthSessions operation middleware
 func (sh *strictHandler) GetAuthSessions(ctx *gin.Context) {
 	var request GetAuthSessionsRequestObject
@@ -10603,10 +10019,8 @@ func (sh *strictHandler) DeleteAuthSession(ctx *gin.Context, sessionId SessionID
 }
 
 // ListPortfolios operation middleware
-func (sh *strictHandler) ListPortfolios(ctx *gin.Context, params ListPortfoliosParams) {
+func (sh *strictHandler) ListPortfolios(ctx *gin.Context) {
 	var request ListPortfoliosRequestObject
-
-	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.ListPortfolios(ctx, request.(ListPortfoliosRequestObject))
@@ -10768,33 +10182,6 @@ func (sh *strictHandler) ListAccounts(ctx *gin.Context, portfolioId PortfolioID,
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ListAccountsResponseObject); ok {
 		if err := validResponse.VisitListAccountsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ArchivePortfolio operation middleware
-func (sh *strictHandler) ArchivePortfolio(ctx *gin.Context, portfolioId PortfolioID, params ArchivePortfolioParams) {
-	var request ArchivePortfolioRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ArchivePortfolio(ctx, request.(ArchivePortfolioRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ArchivePortfolio")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ArchivePortfolioResponseObject); ok {
-		if err := validResponse.VisitArchivePortfolioResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11890,33 +11277,6 @@ func (sh *strictHandler) CreateProjectionRebuild(ctx *gin.Context, portfolioId P
 	}
 }
 
-// RestorePortfolio operation middleware
-func (sh *strictHandler) RestorePortfolio(ctx *gin.Context, portfolioId PortfolioID, params RestorePortfolioParams) {
-	var request RestorePortfolioRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.RestorePortfolio(ctx, request.(RestorePortfolioRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "RestorePortfolio")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(RestorePortfolioResponseObject); ok {
-		if err := validResponse.VisitRestorePortfolioResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // ListValuations operation middleware
 func (sh *strictHandler) ListValuations(ctx *gin.Context, portfolioId PortfolioID, params ListValuationsParams) {
 	var request ListValuationsRequestObject
@@ -12024,136 +11384,133 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"p7v/GQA=",
+	"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",
+	"AA==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -21,7 +21,7 @@ import (
 
 func TestOverviewBalancesPositionsReadModel(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	authSvc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
 	portfolios := portfolio.NewService(db)
 	proj := projection.NewService(db)
 	engine := Engine(&EngineOptions{

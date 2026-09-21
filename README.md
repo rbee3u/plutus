@@ -86,11 +86,11 @@ Scratch logins from every seed profile:
 | `alice` | `Alice=123456` |
 | `bob` | `Bob=123456` |
 
-Alice owns Portfolios `Main` (USD) and `Trading` (CNY). Bob owns `Main` in UTC. After `serve` starts, the worker activates generations so Overview, Balances, Positions, Exposure, Valuations, Value Changes, and Capital read live JSON. Full rebuilds are also available from the Jobs page or with `plutus projection rebuild --portfolio <uuid>`.
+Alice owns Portfolios `default` (USD) and `trading` (CNY). Bob owns `default` in UTC. After `serve` starts, the worker activates generations so Overview, Balances, Positions, Exposure, Valuations, Value Changes, and Capital read live JSON. Full rebuilds are also available from the Jobs page or with `plutus projection rebuild --portfolio <uuid>`.
 
 `scripts/walk-wipe-and-serve.sh` rebuilds `web/dist`, resets `plutus_walk`, and then `serve`s on `:8082`. It prints the seed logins above and does not create a separate `admin` user. Valuations and Value Changes open a 45-day From/To window so the first view is populated. Agent self-check uses `scripts/agent-wipe-and-serve.sh` on `:8081`. Local `scripts/local-serve.sh` does not wipe.
 
-Public registration defaults to off. The Register page explains that additional Users can be created with `plutus user create`. Passwords must be 8 to 128 characters.
+Public registration is not offered. Create Users with `plutus user create`. Passwords must be 8 to 128 characters.
 
 Production `serve` hosts the hashed SPA from `web/dist` via `go:embed`. Refresh that build with `make web-build` after frontend changes. For Vite development, run `npm run dev` in `web/`; it proxies `/api` and `/health` to `127.0.0.1:8080` and sends cookies to that origin.
 

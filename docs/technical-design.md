@@ -88,7 +88,7 @@ HTTP / worker / CLI transport
 
 The intended modules are:
 
-- `auth`: Users, credentials, Sessions, CSRF, and login throttling;
+- `auth`: Users, password hashes, Sessions, CSRF, and login throttling;
 - `portfolio`: Portfolio ownership, Identity, Connection, and Account configuration;
 - `catalog`: Assets, Asset Listings, Instruments, mappings, and tracking choices;
 - `observation`: collection runs, normalized Observations, completeness, coverage, and correction;
@@ -132,7 +132,7 @@ Raw payload bytes must not cross the adapter boundary or be logged, audited, or 
 - All tables use InnoDB and `utf8mb4`. MySQL strict mode is required.
 - Entity identifiers are application-generated UUIDv7 values stored as canonical big-endian `BINARY(16)`. The API uses lower-case canonical UUID strings.
 - Status and kind fields use `VARCHAR` plus `CHECK` constraints, not MySQL `ENUM`, so migrations can extend values deliberately.
-- Foreign keys use `RESTRICT` by default. Source facts are archived or tombstoned, not cascade-deleted.
+- Foreign keys use `RESTRICT` by default. Source facts are archived or tombstoned rather than cascade-deleted, except that deleting an additional Portfolio removes every row scoped to that Portfolio.
 - Every Portfolio-scoped table contains `portfolio_id`, has `UNIQUE (portfolio_id, id)` when `id` is its primary key, and uses composite foreign keys such as `(portfolio_id, identity_id) -> identities(portfolio_id, id)`. This prevents cross-Portfolio references in the database itself.
 - Repository entry points for scoped data require both `user_id` and `portfolio_id`. A missing Portfolio and another User's Portfolio both return HTTP 404.
 
@@ -172,18 +172,10 @@ For compact prose catalogs, every field ending in `_id` is `BINARY(16)`; an ID i
 | `username` | `VARCHAR(191)` | required display spelling |
 | `username_normalized` | `VARCHAR(191)` | required Unicode NFC plus case-folded value; unique |
 | `status` | `VARCHAR(32)` | `active` or `disabled`; indexed |
+| `password_hash` | `VARCHAR(255)` | required encoded Argon2id PHC string |
 | `created_at`, `updated_at` | `DATETIME(6)` | required |
 
-Usernames are trimmed and normalized before storage. Login and uniqueness use `username_normalized`; the display spelling is not an identity key.
-
-#### `user_credentials`
-
-| Field | Type | Rules |
-| --- | --- | --- |
-| `user_id` | `BINARY(16)` | PK, FK to `users.id` |
-| `password_hash` | `VARCHAR(255)` | encoded Argon2id PHC string |
-| `password_changed_at` | `DATETIME(6)` | required |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
+Usernames are trimmed and normalized before storage. Login and uniqueness use `username_normalized`; the display spelling is not an identity key. Create, password change, CLI reset, and login rehash write `password_hash` and bump `updated_at`. There is no separate credentials table or password-changed timestamp.
 
 #### `sessions`
 
@@ -211,12 +203,13 @@ The cookie contains only the random token, never the password hash or User data.
 | `name` | `VARCHAR(120)` | required; `UNIQUE (user_id, name)` |
 | `timezone` | `VARCHAR(64)` | required IANA name; default `Asia/Shanghai` |
 | `display_asset_id` | `BINARY(16)` | FK to `assets.id`; USD by default, CNY supported |
-| `status` | `VARCHAR(32)` | `active` or `archived` |
+| `status` | `VARCHAR(32)` | `active` or `archived`; the product no longer archives Portfolios |
+| `undeletable` | `BOOLEAN` | true for the Portfolio created with the User; that row cannot be deleted |
 | `active_projection_generation_id` | `BINARY(16)` | nullable composite FK added after generation table |
 | `version` | `BIGINT UNSIGNED` | required optimistic-lock version |
-| `created_at`, `updated_at`, `archived_at` | `DATETIME(6)` | `archived_at` nullable |
+| `created_at`, `updated_at`, `archived_at` | `DATETIME(6)` | `archived_at` nullable; unused by Portfolio HTTP |
 
-Registration creates an active Portfolio named `Main`. Deletion is allowed only when no Identity, Observation, Capital Baseline, Capital Flow, job, or audit dependency exists; otherwise the Portfolio can only be archived.
+CLI user creation creates an active Portfolio named `default` with `undeletable = true`. Additional Portfolios can be renamed and deleted. Deleting an additional Portfolio cascade-deletes every row scoped to it. The undeletable Portfolio cannot be deleted.
 
 #### `platforms`
 
@@ -580,8 +573,6 @@ Planned endpoints are:
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/v1/auth/csrf` | issue or rotate the appropriate pre-authentication or Session CSRF token |
-| `GET /api/v1/auth/registration-status` | report whether public registration is enabled |
-| `POST /api/v1/auth/register` | create User, credential, Session, and default `Main` Portfolio when enabled |
 | `POST /api/v1/auth/login` | authenticate username/password and create a Session |
 | `POST /api/v1/auth/logout` | revoke the current Session |
 | `POST /api/v1/auth/logout-all` | revoke all Sessions for the current User |
@@ -590,9 +581,9 @@ Planned endpoints are:
 | `GET /api/v1/auth/sessions` | list current User's Sessions |
 | `DELETE /api/v1/auth/sessions/{sessionId}` | revoke one owned Session |
 
-The Session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and `Secure` whenever HTTPS is active. Authenticated state-changing endpoints require the per-Session synchronizer token from `GET /auth/csrf` in `X-CSRF-Token`. Login and registration use a short-lived pre-authentication double-submit cookie and matching header issued by the same endpoint. CSRF tokens are returned only to an allowed same-origin client, rotate at authentication boundaries, and are not bearer authentication credentials.
+The Session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and `Secure` whenever HTTPS is active. Authenticated state-changing endpoints require the per-Session synchronizer token from `GET /auth/csrf` in `X-CSRF-Token`. Login uses a short-lived pre-authentication double-submit cookie and matching header issued by the same endpoint. CSRF tokens are returned only to an allowed same-origin client, rotate at authentication boundaries, and are not bearer authentication credentials.
 
-Login and registration are rate-limited by normalized username and client IP using bounded in-process token buckets. Defaults are five login attempts per minute per username, twenty per minute per IP, and three registration attempts per hour per IP; all return 429 plus `Retry-After` when exhausted. Since the MVP is single-instance, no distributed limiter is needed. Responses do not reveal whether a username exists. The default idle Session lifetime is 7 days and absolute lifetime is 30 days. Disabling a User or resetting a password through the CLI revokes every Session.
+Login is rate-limited by normalized username and client IP using bounded in-process token buckets. Defaults are five login attempts per minute per username and twenty per minute per IP; exhausted attempts return 429 plus `Retry-After`. Since the MVP is single-instance, no distributed limiter is needed. Responses do not reveal whether a username exists. The default idle Session lifetime is 7 days and absolute lifetime is 30 days. Disabling a User or resetting a password through the CLI revokes every Session. Users are created only through the CLI; see [ADR 0011](./adr/0011-create-users-through-the-cli-only.md). Password hashes live on `users`; see [ADR 0012](./adr/0012-store-password-hashes-on-users.md).
 
 Passwords are 8–128 Unicode characters, may be pasted or supplied by a password manager, and are hashed with Argon2id using a 16-byte random salt, a 32-byte output, 64 MiB memory, three iterations, and two lanes by default. The PHC string records every parameter. Configuration may raise these costs after deployment testing; a successful login rehashes a password when stored parameters are obsolete.
 
@@ -600,13 +591,11 @@ Passwords are 8–128 Unicode characters, may be pasted or supplied by a passwor
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/portfolios` | list owned active and optionally archived Portfolios |
+| `GET /api/v1/portfolios` | list owned active Portfolios, including the `undeletable` flag |
 | `POST /api/v1/portfolios` | create a Portfolio |
 | `GET /api/v1/portfolios/{portfolioId}` | read one owned Portfolio |
 | `PATCH /api/v1/portfolios/{portfolioId}` | rename or change timezone/display Asset |
-| `POST /api/v1/portfolios/{portfolioId}/archive` | archive a Portfolio |
-| `POST /api/v1/portfolios/{portfolioId}/restore` | restore an archived Portfolio |
-| `DELETE /api/v1/portfolios/{portfolioId}` | delete only an empty Portfolio |
+| `DELETE /api/v1/portfolios/{portfolioId}` | delete an additional Portfolio and every row scoped to it |
 
 A timezone change returns the accepted Portfolio representation and a Projection job reference. Until the new generation activates, projection responses continue serving the old generation and clearly report its timezone plus a rebuild-pending issue.
 
@@ -717,7 +706,7 @@ When mutual TLS is enabled, health endpoints require a valid client certificate 
 
 ### 7.1 Information architecture and routes
 
-Authentication routes are `/login` and `/register`. The register route explains when public registration is disabled instead of rendering a nonfunctional form.
+Authentication routes are `/login`. Users are created with `plutus user create`; there is no Register screen.
 
 Authenticated routes use the Portfolio ID in the URL:
 
@@ -800,7 +789,6 @@ mtls_enabled = false
 mtls_ca_path = ""
 
 [auth]
-registration_enabled = false
 session_idle_lifetime = "168h"
 session_absolute_lifetime = "720h"
 session_cookie_name = "plutus_session_local"
@@ -822,7 +810,7 @@ allow_reset = false
 
 The MySQL DSN is read from the selected env file or the selected TOML `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` overrides the file; exactly one of those two environment sources is allowed. See [ADR 0010](./adr/0010-keep-local-mysql-dsn-in-gitignored-plutus-toml.md). The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
 
-The server defaults to `127.0.0.1` and plain HTTP. Public registration defaults to disabled. If registration is enabled while the listen address is not loopback and HTTPS is disabled, startup fails rather than exposing password registration over cleartext transport.
+The server defaults to `127.0.0.1` and plain HTTP. Users are created only through the CLI.
 
 Startup validation follows this matrix:
 
@@ -851,7 +839,7 @@ API and UI surfaces reveal only whether credentials exist and when they were rep
 
 The server sets a restrictive Content Security Policy compatible with the embedded application, `X-Content-Type-Options: nosniff`, an appropriate referrer policy, and frame denial. CORS is disabled in production because the SPA and API are same-origin. The development server allows only its configured Vite origin and still uses credentials plus CSRF protection.
 
-State-changing endpoints accept JSON only, validate `Origin` where available, require the CSRF header, and enforce body-size limits. Login, registration, credential mutation, and audit responses receive `Cache-Control: no-store`. User-facing and log messages do not reveal database queries, stack traces, credential values, password hashes, or raw financial payloads.
+State-changing endpoints accept JSON only, validate `Origin` where available, require the CSRF header, and enforce body-size limits. Login, credential mutation, and audit responses receive `Cache-Control: no-store`. User-facing and log messages do not reveal database queries, stack traces, credential values, password hashes, or raw financial payloads.
 
 ## 9. Scheduling, jobs, and collection behavior
 
@@ -919,8 +907,8 @@ Database backup, restore, TLS certificate issuance, MySQL process management, an
 - configuration loading and validation, including HTTP, HTTPS, mTLS, and master-key sources;
 - explicit Goose migrations, sqlc setup, and schema-version readiness checks;
 - OpenAPI generation for the strict Gin interface and TypeScript client;
-- User registration toggle, login, Sessions, password change, revocation, CSRF, and rate limiting;
-- multiple Portfolio creation, selection, update, archive, restore, and empty-only deletion;
+- CLI user creation, login, Sessions, password change, revocation, CSRF, and login rate limiting;
+- multiple Portfolio creation, selection, update, and cascade deletion of additional Portfolios, with an undeletable `default` Portfolio created with the User;
 - embedded React shell, authentication screens, Portfolio switcher, themes, and responsive navigation;
 - durable Projection job worker and empty Platform adapter registry;
 - Connection schema and transport contracts, without operational credential CRUD or real collection.
@@ -959,11 +947,11 @@ An implementation phase is complete only when its UI and API use the same genera
 - One User can create and switch between at least two Portfolios without query-cache or URL leakage.
 - A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio.
 - An Identity can be edited before facts exist but cannot move to another Portfolio after any Observation exists.
-- An empty Portfolio can be deleted; a Portfolio with source facts can only be archived.
+- The Portfolio created with a User is undeletable. Additional Portfolios can be deleted, which cascade-deletes every row scoped to them.
 
 ### 13.2 Authentication and browser security
 
-- Disabled registration rejects creation while login and CLI User creation remain usable.
+- HTTP registration is absent; login and CLI User creation remain usable.
 - Login rate limiting works by username and client address without revealing existence.
 - Correct and incorrect passwords exercise Argon2id verification safely; password change revokes other Sessions.
 - Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset all revoke access as specified.
@@ -1012,7 +1000,6 @@ An implementation phase is complete only when its UI and API use the same genera
 - HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer.
 - mTLS accepts a valid client certificate from the configured CA and rejects absent, expired, or untrusted certificates on UI, API, and health routes.
 - Every invalid combination in the startup matrix refuses startup with a safe actionable error.
-- Non-loopback cleartext startup with public registration enabled is rejected.
 
 ### 13.8 Frontend
 

@@ -9,8 +9,8 @@ var (
 	ErrConflict = errors.New("portfolio name already exists")
 	// ErrPrecondition is returned when If-Match does not match the current version.
 	ErrPrecondition = errors.New("portfolio version mismatch")
-	// ErrNotEmpty is returned when deleting a portfolio that still has children.
-	ErrNotEmpty = errors.New("portfolio is not empty")
+	// ErrUndeletable is returned when deleting the portfolio created with the user.
+	ErrUndeletable = errors.New("portfolio is undeletable")
 	// ErrInvalidTimezone is returned when the timezone is not a valid IANA name.
 	ErrInvalidTimezone = errors.New("timezone is invalid")
 	// ErrInvalidDisplayAsset is returned when the display asset is not USD or CNY.

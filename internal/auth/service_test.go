@@ -12,7 +12,7 @@ import (
 
 func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	svc := NewService(db, false, time.Hour, 24*time.Hour)
+	svc := NewService(db, time.Hour, 24*time.Hour)
 	ctx := context.Background()
 	username := "auth-" + uuid.NewString()[:8]
 	password := "correct horse battery staple"
@@ -54,13 +54,5 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	}
 	if _, _, err := svc.Authenticate(ctx, session.Token); err != ErrUserDisabled && err != ErrUnauthenticated {
 		t.Fatalf("disabled session: %v", err)
-	}
-}
-
-func TestRegisterDisabled(t *testing.T) {
-	db := mysql.OpenTestDB(t)
-	svc := NewService(db, false, time.Hour, 24*time.Hour)
-	if _, _, err := svc.Register(context.Background(), "nobody", "correct horse battery staple", "127.0.0.1"); err != ErrRegistrationDisabled {
-		t.Fatalf("got %v", err)
 	}
 }

@@ -23,15 +23,6 @@ export type CsrfResponse = {
     token: string;
 };
 
-export type RegistrationStatus = {
-    enabled: boolean;
-};
-
-export type RegisterRequest = {
-    username: string;
-    password: string;
-};
-
 export type LoginRequest = {
     username: string;
     password: string;
@@ -82,6 +73,10 @@ export type Portfolio = {
     timezone: string;
     displayAsset: AssetRef;
     status: 'active' | 'archived';
+    /**
+     * True for the portfolio created with the user. It cannot be deleted.
+     */
+    undeletable: boolean;
     version: number;
     createdAt: string;
     updatedAt: string;
@@ -946,63 +941,6 @@ export type GetAuthCsrfResponses = {
 
 export type GetAuthCsrfResponse = GetAuthCsrfResponses[keyof GetAuthCsrfResponses];
 
-export type GetAuthRegistrationStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/auth/registration-status';
-};
-
-export type GetAuthRegistrationStatusResponses = {
-    /**
-     * Registration flag.
-     */
-    200: RegistrationStatus;
-};
-
-export type GetAuthRegistrationStatusResponse = GetAuthRegistrationStatusResponses[keyof GetAuthRegistrationStatusResponses];
-
-export type PostAuthRegisterData = {
-    body: RegisterRequest;
-    headers?: {
-        'Idempotency-Key'?: string;
-        'X-CSRF-Token'?: string;
-    };
-    path?: never;
-    query?: never;
-    url: '/api/v1/auth/register';
-};
-
-export type PostAuthRegisterErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    403: Problem;
-    /**
-     * Problem details.
-     */
-    409: Problem;
-    /**
-     * Problem details.
-     */
-    429: Problem;
-};
-
-export type PostAuthRegisterError = PostAuthRegisterErrors[keyof PostAuthRegisterErrors];
-
-export type PostAuthRegisterResponses = {
-    /**
-     * User and default Main portfolio created.
-     */
-    201: AuthSession;
-};
-
-export type PostAuthRegisterResponse = PostAuthRegisterResponses[keyof PostAuthRegisterResponses];
-
 export type PostAuthLoginData = {
     body: LoginRequest;
     headers?: {
@@ -1214,9 +1152,7 @@ export type DeleteAuthSessionResponse = DeleteAuthSessionResponses[keyof DeleteA
 export type ListPortfoliosData = {
     body?: never;
     path?: never;
-    query?: {
-        includeArchived?: boolean;
-    };
+    query?: never;
     url: '/api/v1/portfolios';
 };
 
@@ -1311,7 +1247,7 @@ export type DeletePortfolioError = DeletePortfolioErrors[keyof DeletePortfolioEr
 
 export type DeletePortfolioResponses = {
     /**
-     * Deleted an empty portfolio.
+     * Deleted the portfolio and every row scoped to it.
      */
     204: void;
 };
@@ -1391,84 +1327,6 @@ export type PatchPortfolioResponses = {
 };
 
 export type PatchPortfolioResponse = PatchPortfolioResponses[keyof PatchPortfolioResponses];
-
-export type ArchivePortfolioData = {
-    body?: never;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/archive';
-};
-
-export type ArchivePortfolioErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type ArchivePortfolioError = ArchivePortfolioErrors[keyof ArchivePortfolioErrors];
-
-export type ArchivePortfolioResponses = {
-    /**
-     * Archived.
-     */
-    200: Portfolio;
-};
-
-export type ArchivePortfolioResponse = ArchivePortfolioResponses[keyof ArchivePortfolioResponses];
-
-export type RestorePortfolioData = {
-    body?: never;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/restore';
-};
-
-export type RestorePortfolioErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type RestorePortfolioError = RestorePortfolioErrors[keyof RestorePortfolioErrors];
-
-export type RestorePortfolioResponses = {
-    /**
-     * Restored.
-     */
-    200: Portfolio;
-};
-
-export type RestorePortfolioResponse = RestorePortfolioResponses[keyof RestorePortfolioResponses];
 
 export type ListIdentitiesData = {
     body?: never;

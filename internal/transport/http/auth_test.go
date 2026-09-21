@@ -20,7 +20,7 @@ import (
 
 func TestAuthHTTPFlow(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	svc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "http-" + uuid.NewString()[:8]
 	password := "correct horse battery staple"
 	if _, err := svc.CreateUser(context.Background(), username, password); err != nil {
@@ -28,10 +28,9 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Ready:               StaticReady{},
-		Auth:                svc,
-		RegistrationEnabled: false,
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:  StaticReady{},
+		Auth:   svc,
 	})
 
 	csrf := httptest.NewRecorder()
@@ -50,14 +49,10 @@ func TestAuthHTTPFlow(t *testing.T) {
 		t.Fatal("missing csrf cookie or token")
 	}
 
-	disabled := httptest.NewRecorder()
-	regReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"username":"x","password":"correct horse battery staple"}`))
-	regReq.Header.Set("Content-Type", "application/json")
-	regReq.Header.Set("X-CSRF-Token", csrfBody.Token)
-	regReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
-	engine.ServeHTTP(disabled, regReq)
-	if disabled.Code != http.StatusForbidden {
-		t.Fatalf("register disabled %d %s", disabled.Code, disabled.Body.String())
+	missing := httptest.NewRecorder()
+	engine.ServeHTTP(missing, httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"username":"x","password":"correct horse battery staple"}`)))
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("register missing %d %s", missing.Code, missing.Body.String())
 	}
 
 	missingCSRF := httptest.NewRecorder()
@@ -115,7 +110,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 
 func TestLoginRateLimit(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	svc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	engine := Engine(&EngineOptions{
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Ready:  StaticReady{},
@@ -150,7 +145,7 @@ func TestLoginRateLimit(t *testing.T) {
 
 func TestConfiguredCookieNames(t *testing.T) {
 	db := mysql.OpenTestDB(t)
-	svc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "cookie-" + uuid.NewString()[:8]
 	password := "correct horse battery staple"
 	if _, err := svc.CreateUser(context.Background(), username, password); err != nil {

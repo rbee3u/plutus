@@ -11,7 +11,7 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, username_normalized, status, created_at, updated_at
+SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
 FROM users
 WHERE id = ?
 `
@@ -26,12 +26,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id []byte) (User, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByNormalizedUsername = `-- name: GetUserByNormalizedUsername :one
-SELECT id, username, username_normalized, status, created_at, updated_at
+SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
 FROM users
 WHERE username_normalized = ?
 `
@@ -46,32 +47,17 @@ func (q *Queries) GetUserByNormalizedUsername(ctx context.Context, usernameNorma
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUserCredential = `-- name: GetUserCredential :one
-SELECT user_id, password_hash, password_changed_at, created_at, updated_at
-FROM user_credentials
-WHERE user_id = ?
-`
-
-func (q *Queries) GetUserCredential(ctx context.Context, userID []byte) (UserCredential, error) {
-	row := q.db.QueryRowContext(ctx, getUserCredential, userID)
-	var i UserCredential
-	err := row.Scan(
-		&i.UserID,
 		&i.PasswordHash,
-		&i.PasswordChangedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, username, username_normalized, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO users (id, username, username_normalized, status, password_hash, created_at, updated_at)
+VALUES (
+    ?, ?, ?, ?,
+    ?, ?, ?
+)
 `
 
 type InsertUserParams struct {
@@ -79,6 +65,7 @@ type InsertUserParams struct {
 	Username           string
 	UsernameNormalized string
 	Status             string
+	PasswordHash       string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -89,30 +76,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 		arg.Username,
 		arg.UsernameNormalized,
 		arg.Status,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertUserCredential = `-- name: InsertUserCredential :exec
-INSERT INTO user_credentials (user_id, password_hash, password_changed_at, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
-`
-
-type InsertUserCredentialParams struct {
-	UserID            []byte
-	PasswordHash      string
-	PasswordChangedAt time.Time
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) InsertUserCredential(ctx context.Context, arg InsertUserCredentialParams) error {
-	_, err := q.db.ExecContext(ctx, insertUserCredential,
-		arg.UserID,
 		arg.PasswordHash,
-		arg.PasswordChangedAt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -136,25 +100,19 @@ func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) er
 	return err
 }
 
-const updateUserCredential = `-- name: UpdateUserCredential :exec
-UPDATE user_credentials
-SET password_hash = ?, password_changed_at = ?, updated_at = ?
-WHERE user_id = ?
+const updateUserPasswordHash = `-- name: UpdateUserPasswordHash :exec
+UPDATE users
+SET password_hash = ?, updated_at = ?
+WHERE id = ?
 `
 
-type UpdateUserCredentialParams struct {
-	PasswordHash      string
-	PasswordChangedAt time.Time
-	UpdatedAt         time.Time
-	UserID            []byte
+type UpdateUserPasswordHashParams struct {
+	PasswordHash string
+	UpdatedAt    time.Time
+	ID           []byte
 }
 
-func (q *Queries) UpdateUserCredential(ctx context.Context, arg UpdateUserCredentialParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserCredential,
-		arg.PasswordHash,
-		arg.PasswordChangedAt,
-		arg.UpdatedAt,
-		arg.UserID,
-	)
+func (q *Queries) UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserPasswordHash, arg.PasswordHash, arg.UpdatedAt, arg.ID)
 	return err
 }

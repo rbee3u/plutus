@@ -21,7 +21,6 @@ Completed. Stopped for review after every item in this section was checked.
 - [x] Accept the MySQL DSN from the selected gitignored env file, with an optional exclusive `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` override
 - [x] Accept the master key from exactly one of `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` when provided
 - [x] Validate the HTTP / HTTPS / mTLS startup matrix and refuse invalid combinations
-- [x] Reject non-loopback cleartext startup when public registration is enabled
 - [x] Implement `plutus serve` with structured `log/slog` logging
 - [x] Implement `GET /health/live`
 - [x] Fail `GET /health/ready` when MySQL is unavailable (schema and worker checks come later)
@@ -47,16 +46,16 @@ Completed. Stopped for review after every item in this section was checked.
 
 ### Milestone 5 — Authentication
 
-- [x] Registration toggle, login, logout, logout-all, me, password change, session list and revocation
-- [x] Session cookie, CSRF, and login/registration rate limiting
+- [x] Login, logout, logout-all, me, password change, session list and revocation
+- [x] Session cookie, CSRF, and login rate limiting
 - [x] Argon2id PHC password hashing with rehash-on-login when parameters are obsolete
 - [x] `plutus user create`, `user disable`, and `user reset-password`
-- [x] Disabled registration rejects HTTP creation while CLI user creation remains usable
+- [x] HTTP registration is absent; CLI user creation remains the only way to add Users
 
 ### Milestone 6 — Portfolios
 
-- [x] List, create, get, patch, archive, restore, and empty-only delete
-- [x] Registration and CLI user creation create an active Portfolio named `Main`
+- [x] List, create, get, patch, and cascade delete of additional Portfolios; the birth Portfolio cannot be deleted
+- [x] CLI user creation creates an active undeletable Portfolio named `default`
 - [x] Timezone default `Asia/Shanghai`; display Asset USD by default, CNY supported
 - [x] Cross-user Portfolio access returns HTTP 404
 - [x] ETags / `If-Match` and `Idempotency-Key` on the relevant mutations
@@ -73,7 +72,7 @@ Completed. Stopped for review after every item in this section was checked.
 ### Milestone 8 — Embedded React shell
 
 - [x] Copy AIBox tokens, shell, themes, and navigation density with no runtime dependency
-- [x] Working `/login`, `/register` (explains disabled registration), Portfolio switcher
+- [x] Working `/login`, Portfolio switcher
 - [x] Working `/p/:portfolioId/settings/portfolio` and `/settings/security`
 - [x] Full information-architecture navigation with Phase placeholders for unimplemented routes
 - [x] Vite dev proxy for `/api`, `/health`, and cookies; production `go:embed` of the hashed build
@@ -89,7 +88,7 @@ Completed. Stopped for review after every item in this section was checked.
 
 Create these tables and no others:
 
-- `users`, `user_credentials`, `sessions`
+- `users`, `sessions`
 - `assets`, `platforms`
 - `portfolios`
 - `identities`, `connections` (nullable ciphertext and nonce), `accounts`
@@ -218,11 +217,11 @@ Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **La
 - [x] **Phase 2** — A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio
 - [x] **Phase 1** — An Identity can be edited before facts exist
 - [x] **Phase 2** — An Identity cannot move to another Portfolio after any Observation exists
-- [x] **Phase 2** — An empty Portfolio can be deleted; a Portfolio with Observation, Capital, mapping, pin, or collection-run rows can only be archived
+- [x] **Phase 2** — The Portfolio created with a User cannot be deleted; additional Portfolios can be cascade-deleted even when they have source facts
 
 ### 13.2 Authentication and browser security
 
-- [x] **Phase 1** — Disabled registration rejects creation while login and CLI User creation remain usable
+- [x] **Phase 1** — HTTP registration is absent; login and CLI User creation remain usable
 - [x] **Phase 1** — Login rate limiting works by username and client address without revealing existence
 - [x] **Phase 1** — Correct and incorrect passwords exercise Argon2id; password change revokes other Sessions
 - [x] **Phase 1** — Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset revoke access
@@ -273,7 +272,6 @@ Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **La
 - [x] **Phase 1** — HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer
 - [x] **Phase 1** — mTLS accepts a valid client certificate and rejects absent, expired, or untrusted certificates on UI, API, and health routes
 - [x] **Phase 1** — Every invalid combination in the startup matrix refuses startup with a safe actionable error
-- [x] **Phase 1** — Non-loopback cleartext startup with public registration enabled is rejected
 
 ### 13.8 Frontend
 

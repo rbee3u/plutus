@@ -111,22 +111,18 @@ func (w *writer) i(n int) string { return strconv.Itoa(n) }
 
 func (w *writer) users() {
 	created := ts(8, 1, 0)
-	w.insert("users", "id, username, username_normalized, status, created_at, updated_at", [][]string{
-		{w.u(UserAlice), w.s("alice"), w.s("alice"), w.s("active"), w.t(created), w.t(created)},
-		{w.u(UserBob), w.s("bob"), w.s("bob"), w.s("active"), w.t(created), w.t(created)},
-	})
-	w.insert("user_credentials", "user_id, password_hash, password_changed_at, created_at, updated_at", [][]string{
-		{w.u(UserAlice), w.s(walkthroughAliceHash), w.t(created), w.t(created), w.t(created)},
-		{w.u(UserBob), w.s(walkthroughBobHash), w.t(created), w.t(created), w.t(created)},
+	w.insert("users", "id, username, username_normalized, status, password_hash, created_at, updated_at", [][]string{
+		{w.u(UserAlice), w.s("alice"), w.s("alice"), w.s("active"), w.s(walkthroughAliceHash), w.t(created), w.t(created)},
+		{w.u(UserBob), w.s("bob"), w.s("bob"), w.s("active"), w.s(walkthroughBobHash), w.t(created), w.t(created)},
 	})
 }
 
 func (w *writer) portfolios() {
 	created := ts(8, 1, 0)
-	w.insert("portfolios", "id, user_id, name, timezone, display_asset_id, status, version, created_at, updated_at, archived_at", [][]string{
-		{w.u(PortfolioAliceMain), w.u(UserAlice), w.s("Main"), w.s("Asia/Shanghai"), w.u(catalog.AssetUSD), w.s("active"), "1", w.t(created), w.t(created), w.n()},
-		{w.u(PortfolioAliceTrading), w.u(UserAlice), w.s("Trading"), w.s("Asia/Shanghai"), w.u(catalog.AssetCNY), w.s("active"), "1", w.t(created), w.t(created), w.n()},
-		{w.u(PortfolioBobMain), w.u(UserBob), w.s("Main"), w.s("UTC"), w.u(catalog.AssetUSD), w.s("active"), "1", w.t(created), w.t(created), w.n()},
+	w.insert("portfolios", "id, user_id, name, timezone, display_asset_id, status, undeletable, version, created_at, updated_at, archived_at", [][]string{
+		{w.u(PortfolioAliceMain), w.u(UserAlice), w.s("default"), w.s("Asia/Shanghai"), w.u(catalog.AssetUSD), w.s("active"), "1", "1", w.t(created), w.t(created), w.n()},
+		{w.u(PortfolioAliceTrading), w.u(UserAlice), w.s("trading"), w.s("Asia/Shanghai"), w.u(catalog.AssetCNY), w.s("active"), "0", "1", w.t(created), w.t(created), w.n()},
+		{w.u(PortfolioBobMain), w.u(UserBob), w.s("default"), w.s("UTC"), w.u(catalog.AssetUSD), w.s("active"), "1", "1", w.t(created), w.t(created), w.n()},
 	})
 }
 

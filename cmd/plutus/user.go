@@ -22,7 +22,7 @@ func newUserCreateCommand() *cobra.Command {
 	var username, password string
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create an active user and default Main portfolio",
+		Short: "Create an active user and default undeletable portfolio",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			svc, cleanup, err := newUserService(cmd)
@@ -100,6 +100,6 @@ func newUserService(cmd *cobra.Command) (*auth.Service, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	svc := auth.NewService(db, cfg.Auth.RegistrationEnabled, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
+	svc := auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
 	return svc, func() { _ = db.Close() }, nil
 }
