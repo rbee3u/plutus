@@ -7,6 +7,7 @@ import { safeJson } from "@/features/data/json";
 import { useProjectionFollow } from "@/features/data/useProjectionFollow";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { formatInstant } from "@/shared/lib/datetime";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -24,7 +25,7 @@ export function JobsPage() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const follow = useProjectionFollow(portfolioId);
-  const rebuildKey = useRef(crypto.randomUUID());
+  const rebuildKey = useRef(newIdempotencyKey());
   const [rebuildOpen, setRebuildOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState<Job | null>(null);
@@ -58,7 +59,7 @@ export function JobsPage() {
         setError(problemMessage(result.error, "The projection rebuild could not be queued."));
         return;
       }
-      rebuildKey.current = crypto.randomUUID();
+      rebuildKey.current = newIdempotencyKey();
       follow.follow(result.data, overview.context.generationId);
       setRebuildOpen(false);
       setReason("");

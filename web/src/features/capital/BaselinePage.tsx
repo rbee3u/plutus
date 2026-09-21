@@ -9,6 +9,7 @@ import {
 import type { CapitalBaseline, CatalogAsset } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import {
   readEtag,
   SessionExpiredError,
@@ -116,7 +117,7 @@ function BaselineForm({
   redirect: () => void;
   onInvalidate: () => Promise<void>;
 }) {
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(newIdempotencyKey());
   const [effectiveAt, setEffectiveAt] = useState(
     view.item ? toDatetimeLocalValue(view.item.effectiveAt) : "",
   );
@@ -191,7 +192,7 @@ function BaselineForm({
         result.data.baseline,
         readEtag(result.response, `"capital-baseline:${String(result.data.baseline.version)}"`),
       );
-      idempotencyKey.current = crypto.randomUUID();
+      idempotencyKey.current = newIdempotencyKey();
       setNotice("Capital baseline saved. A projection rebuild was queued.");
       await onInvalidate();
     } catch (cause) {

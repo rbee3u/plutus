@@ -2,7 +2,7 @@
 # Put the MySQL DSN and master key in gitignored config/local.env.
 
 [server]
-listen_address = "127.0.0.1"
+listen_address = "0.0.0.0"
 port = 8080
 
 [server.tls]

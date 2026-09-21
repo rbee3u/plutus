@@ -17,6 +17,7 @@ import {
   PLATFORMS,
   type AccountMode,
 } from "@/features/data/platforms";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -50,7 +51,7 @@ export function IdentitiesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
-  const createKey = useRef(crypto.randomUUID());
+  const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<IdentityForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [etag, setEtag] = useState("");
@@ -198,7 +199,7 @@ export function IdentitiesPage() {
           setError(problemMessage(result.error, "The identity could not be created."));
           return;
         }
-        createKey.current = crypto.randomUUID();
+        createKey.current = newIdempotencyKey();
         setForm({ ...emptyForm, platformId: form.platformId, accountMode: form.accountMode });
         setNotice("Identity created.");
       }

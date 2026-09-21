@@ -15,6 +15,7 @@ import type { Portfolio } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { iconSize } from "@/shared/icons/iconSizes";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { storePreference } from "@/shared/lib/preferences";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Dialog } from "@/shared/ui/Dialog";
@@ -38,7 +39,7 @@ export function PortfolioSwitcher({
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const createKey = useRef(crypto.randomUUID());
+  const createKey = useRef(newIdempotencyKey());
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
@@ -114,7 +115,7 @@ export function PortfolioSwitcher({
         setError(problemMessage(result.error, "The portfolio could not be created."));
         return;
       }
-      createKey.current = crypto.randomUUID();
+      createKey.current = newIdempotencyKey();
       setName("");
       setCreateOpen(false);
       storePreference(LAST_PORTFOLIO_KEY, result.data.id);

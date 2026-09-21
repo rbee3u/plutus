@@ -12,6 +12,7 @@ import {
 import type { Connection, ConnectionCredentials } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { formatInstant } from "@/shared/lib/datetime";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -47,7 +48,7 @@ export function ConnectionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
-  const createKey = useRef(crypto.randomUUID());
+  const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<ConnectionForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [etag, setEtag] = useState("");
@@ -214,7 +215,7 @@ export function ConnectionsPage() {
           setError(problemMessage(result.error, "The connection could not be created."));
           return;
         }
-        createKey.current = crypto.randomUUID();
+        createKey.current = newIdempotencyKey();
         setForm(emptyForm);
         setNotice("Connection created. Secrets are write-only and were not returned.");
       }

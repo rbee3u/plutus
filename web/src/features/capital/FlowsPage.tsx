@@ -14,6 +14,7 @@ import type { CapitalFlow } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant, fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -52,7 +53,7 @@ export function FlowsPage() {
   const redirect = () => {
     void navigate("/login", { replace: true });
   };
-  const createKey = useRef(crypto.randomUUID());
+  const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<FlowForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [etag, setEtag] = useState("");
@@ -195,7 +196,7 @@ export function FlowsPage() {
           setError(problemMessage(result.error, "The capital flow could not be created."));
           return;
         }
-        createKey.current = crypto.randomUUID();
+        createKey.current = newIdempotencyKey();
         setForm(emptyForm);
         setNotice("Capital flow created. A projection rebuild was queued.");
       }

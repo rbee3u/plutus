@@ -17,8 +17,13 @@ if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   exit 1
 fi
 
-echo "Starting local serve on 127.0.0.1:8080 using $config and $envfile."
+echo "Starting local serve on 0.0.0.0:8080 using $config and $envfile."
 echo "This script does not reset the database."
+echo "This machine: http://127.0.0.1:8080"
+lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+if [[ -n "$lan_ip" ]]; then
+  echo "LAN: http://${lan_ip}:8080"
+fi
 echo
 
 exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve

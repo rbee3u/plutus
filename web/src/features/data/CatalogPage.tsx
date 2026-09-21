@@ -18,6 +18,7 @@ import type {
 import { useProjectionFollow } from "@/features/data/useProjectionFollow";
 import { PLATFORMS, platformLabel } from "@/features/data/platforms";
 import { problemMessage, refreshCsrf } from "@/api/http";
+import { newIdempotencyKey } from "@/shared/lib/id";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
 import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
@@ -189,8 +190,8 @@ function ListingResults({
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const follow = useProjectionFollow(portfolioId);
-  const mappingKey = useRef(crypto.randomUUID());
-  const pinKey = useRef(crypto.randomUUID());
+  const mappingKey = useRef(newIdempotencyKey());
+  const pinKey = useRef(newIdempotencyKey());
   const [mappingTarget, setMappingTarget] = useState<CatalogAssetListing | null>(null);
   const [pinTarget, setPinTarget] = useState<CatalogAssetListing | null>(null);
   const [assetId, setAssetId] = useState("");
@@ -281,7 +282,7 @@ function ListingResults({
         setError(problemMessage(result.error, "The mapping could not be saved."));
         return;
       }
-      mappingKey.current = crypto.randomUUID();
+      mappingKey.current = newIdempotencyKey();
       follow.follow(result.data.job, generationId);
       setMappingTarget(null);
       await queryClient.invalidateQueries({
@@ -327,7 +328,7 @@ function ListingResults({
         setError(problemMessage(result.error, "The tracking revision could not be saved."));
         return;
       }
-      pinKey.current = crypto.randomUUID();
+      pinKey.current = newIdempotencyKey();
       storePreference(
         pinStorageKey(portfolioId, "listing", pinTarget.id),
         `"catalog-pin:${String(result.data.pin.version)}"`,
@@ -509,7 +510,7 @@ function InstrumentResults({
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const follow = useProjectionFollow(portfolioId);
-  const pinKey = useRef(crypto.randomUUID());
+  const pinKey = useRef(newIdempotencyKey());
   const [pinTarget, setPinTarget] = useState<CatalogInstrument | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -573,7 +574,7 @@ function InstrumentResults({
         setError(problemMessage(result.error, "The tracking revision could not be saved."));
         return;
       }
-      pinKey.current = crypto.randomUUID();
+      pinKey.current = newIdempotencyKey();
       storePreference(
         pinStorageKey(portfolioId, "instrument", pinTarget.id),
         `"catalog-pin:${String(result.data.pin.version)}"`,
