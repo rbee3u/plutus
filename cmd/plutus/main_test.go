@@ -41,4 +41,10 @@ func TestRootCommandHelp(t *testing.T) {
 	if !strings.Contains(out, "db") {
 		t.Fatalf("help output does not mention db: %q", out)
 	}
+	if !strings.Contains(out, "config") {
+		t.Fatalf("help output does not mention --config: %q", out)
+	}
+	if !strings.Contains(out, "env-file") {
+		t.Fatalf("help output does not mention --env-file: %q", out)
+	}
 }

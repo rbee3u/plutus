@@ -17,16 +17,16 @@ Completed. Stopped for review after every item in this section was checked.
 
 ### Milestone 2 — Configuration and serve skeleton
 
-- [x] Load process config from `plutus.toml` with `PLUTUS_*` overrides
-- [x] Accept the MySQL DSN from gitignored `plutus.toml`, with an optional exclusive `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` override
+- [x] Load process config from `config/local.toml` (or `--config`) with `PLUTUS_*` overrides
+- [x] Accept the MySQL DSN from the selected gitignored env file, with an optional exclusive `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` override
 - [x] Accept the master key from exactly one of `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` when provided
 - [x] Validate the HTTP / HTTPS / mTLS startup matrix and refuse invalid combinations
 - [x] Reject non-loopback cleartext startup when public registration is enabled
 - [x] Implement `plutus serve` with structured `log/slog` logging
 - [x] Implement `GET /health/live`
 - [x] Fail `GET /health/ready` when MySQL is unavailable (schema and worker checks come later)
-- [x] Commit `configs/plutus.example.toml` with no secrets
-- [x] Gitignore `.env` and a local `plutus.toml`
+- [x] Commit `config/*-example.toml` and `config/*-example.env` with no secrets
+- [x] Gitignore `config/local.toml`, `config/local.env`, `config/agent.toml`, `config/agent.env`, `config/walk.toml`, `config/walk.env`, and `config/test.env`
 
 ### Milestone 3 — Migrations and sqlc
 

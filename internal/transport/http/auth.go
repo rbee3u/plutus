@@ -13,7 +13,7 @@ func (a *API) current(ctx context.Context) (auth.User, auth.Session, error) {
 	if a.Auth == nil {
 		return auth.User{}, auth.Session{}, auth.ErrUnauthenticated
 	}
-	return a.Auth.Authenticate(ctx, requestCookie(ctx, auth.SessionCookieName))
+	return a.Auth.Authenticate(ctx, requestCookie(ctx, a.SessionCookieName))
 }
 
 func (a *API) currentSession(ctx context.Context) (auth.User, auth.Session, bool) {
@@ -32,7 +32,7 @@ func (a *API) requireCSRF(ctx context.Context, header *string, session *auth.Ses
 		}
 		return nil
 	}
-	if !auth.CSRFValid(token, requestCookie(ctx, auth.CSRFCookieName)) {
+	if !auth.CSRFValid(token, requestCookie(ctx, a.CSRFCookieName)) {
 		return auth.ErrCSRF
 	}
 	return nil
@@ -42,7 +42,7 @@ func (a *API) GetAuthCsrf(ctx context.Context, _ api.GetAuthCsrfRequestObject) (
 	if _, session, err := a.current(ctx); err == nil {
 		c := ginFrom(ctx)
 		if c != nil {
-			writeCookie(c, auth.CSRFCookieName, session.CSRF, 3600, false, a.SecureCookies)
+			writeCookie(c, a.CSRFCookieName, session.CSRF, 3600, false, a.SecureCookies)
 		}
 		return api.GetAuthCsrf200JSONResponse{Token: session.CSRF}, nil
 	}

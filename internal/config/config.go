@@ -15,8 +15,13 @@ const (
 	envMasterKey       = "PLUTUS_MASTER_KEY"
 	envMasterKeyFile   = "PLUTUS_MASTER_KEY_FILE"
 
-	defaultListenAddress = "127.0.0.1"
-	defaultPort          = 8080
+	defaultListenAddress     = "127.0.0.1"
+	defaultPort              = 8080
+	defaultConfigFileName    = "config/local.toml"
+	defaultEnvFileName       = "config/local.env"
+	defaultTestEnvFileName   = "config/test.env"
+	defaultSessionCookieName = "plutus_session"
+	defaultCSRFCookieName    = "plutus_csrf"
 
 	minSessionIdle         = time.Minute
 	maxSessionIdle         = 90 * 24 * time.Hour
@@ -69,11 +74,13 @@ type TLS struct {
 	ClientCAs     *x509.CertPool
 }
 
-// Auth holds registration and session lifetime settings.
+// Auth holds registration, session lifetime, and cookie name settings.
 type Auth struct {
 	RegistrationEnabled     bool
 	SessionIdleLifetime     time.Duration
 	SessionAbsoluteLifetime time.Duration
+	SessionCookieName       string
+	CSRFCookieName          string
 }
 
 // Jobs holds durable worker settings.

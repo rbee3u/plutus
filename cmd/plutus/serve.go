@@ -18,7 +18,6 @@ import (
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
-	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/jobs"
@@ -30,22 +29,19 @@ import (
 )
 
 func newServeCommand() *cobra.Command {
-	var configPath string
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "serve",
 		Short: "Run the HTTP API and embedded web process",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runServe(cmd, configPath)
+			return runServe(cmd)
 		},
 	}
-	cmd.Flags().StringVar(&configPath, "config", "", "path to a non-secret TOML config file")
-	return cmd
 }
 
-func runServe(cmd *cobra.Command, configPath string) error {
+func runServe(cmd *cobra.Command) error {
 	logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: slog.LevelInfo}))
-	cfg, err := config.Load(config.Options{Path: configPath})
+	cfg, err := loadProcessConfig(cmd)
 	if err != nil {
 		return err
 	}
@@ -103,6 +99,8 @@ func runServe(cmd *cobra.Command, configPath string) error {
 		Auth:                authSvc,
 		RegistrationEnabled: cfg.Auth.RegistrationEnabled,
 		SecureCookies:       cfg.Server.TLS.HTTPSEnabled,
+		SessionCookieName:   cfg.Auth.SessionCookieName,
+		CSRFCookieName:      cfg.Auth.CSRFCookieName,
 		AllowedOrigins:      []string{"http://127.0.0.1:5173", "http://localhost:5173"},
 		Portfolios:          portfolios,
 		Access:              accessSvc,

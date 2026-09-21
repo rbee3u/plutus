@@ -15,12 +15,13 @@ import { IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CursorPager } from "@/shared/ui/Pager";
 import { Select, TextInput } from "@/shared/ui/FormControls";
+import { useHistorySearchWindow } from "@/features/history/historyWindow";
 import { useOverview } from "@/features/overview/useOverview";
 import styles from "@/features/pages.module.css";
 import type { EChartsCoreOption } from "echarts/core";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 const PAGE_SIZE = 50;
 const PERIODS = ["day", "iso_week", "month", "quarter", "year"] as const;
@@ -29,21 +30,10 @@ const GRAINS = ["", "auto", "hour", "day", "iso_week", "month", "quarter", "year
 export function ValueChangesPage() {
   const { portfolioId = "" } = useParams();
   const overview = useOverview(portfolioId);
-  const [params, setParams] = useSearchParams();
+  const { from, to, params, update } = useHistorySearchWindow(overview.data?.context.cutoffAt);
   const periodKind = readPeriod(params.get("periodKind"));
-  const from = params.get("from") ?? "";
-  const to = params.get("to") ?? "";
   const granularity = readGrain(params.get("granularity"));
   const generationId = overview.data?.context.generationId ?? "";
-
-  function update(next: Record<string, string>) {
-    const merged = new URLSearchParams(params);
-    for (const [key, value] of Object.entries(next)) {
-      if (value) merged.set(key, value);
-      else merged.delete(key);
-    }
-    setParams(merged, { replace: true });
-  }
 
   return (
     <section className={styles.wide}>
@@ -141,7 +131,7 @@ function ValueChangeResults({
       granularity,
       cursor,
     ],
-    enabled: Boolean(user.data?.id && portfolioId),
+    enabled: Boolean(user.data?.id && portfolioId && from && to),
     refetchInterval: 4000,
     queryFn: async (): Promise<ValueChangeList> =>
       unwrapOrRedirect(
@@ -170,7 +160,7 @@ function ValueChangeResults({
       to,
       summaryCursor,
     ],
-    enabled: Boolean(user.data?.id && portfolioId),
+    enabled: Boolean(user.data?.id && portfolioId && from && to),
     refetchInterval: 4000,
     queryFn: async (): Promise<PeriodSummaryList> =>
       unwrapOrRedirect(

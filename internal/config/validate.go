@@ -12,7 +12,7 @@ import (
 )
 
 // Validate checks durations, listen settings, the TLS matrix, and registration transport rules.
-func Validate(cfg *Config, opts Options) error {
+func Validate(cfg *Config, opts *Options) error {
 	if strings.TrimSpace(cfg.Server.ListenAddress) == "" {
 		return errors.New("server.listen_address is required")
 	}
@@ -27,6 +27,15 @@ func Validate(cfg *Config, opts Options) error {
 	}
 	if cfg.Auth.SessionAbsoluteLifetime < cfg.Auth.SessionIdleLifetime {
 		return errors.New("auth.session_absolute_lifetime must be greater than or equal to auth.session_idle_lifetime")
+	}
+	if err := validateCookieName("auth.session_cookie_name", cfg.Auth.SessionCookieName); err != nil {
+		return err
+	}
+	if err := validateCookieName("auth.csrf_cookie_name", cfg.Auth.CSRFCookieName); err != nil {
+		return err
+	}
+	if cfg.Auth.SessionCookieName == cfg.Auth.CSRFCookieName {
+		return errors.New("auth.session_cookie_name and auth.csrf_cookie_name must differ")
 	}
 	if err := durationInRange("jobs.worker_poll_interval", cfg.Jobs.WorkerPollInterval, minWorkerPoll, maxWorkerPoll); err != nil {
 		return err
@@ -49,6 +58,21 @@ func Validate(cfg *Config, opts Options) error {
 	return validateTLS(&cfg.Server.TLS, opts)
 }
 
+func validateCookieName(field, name string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("%s is required", field)
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+			continue
+		default:
+			return fmt.Errorf("%s must be a cookie token of letters, digits, '_' or '-'", field)
+		}
+	}
+	return nil
+}
+
 func durationInRange(name string, d, lower, upper time.Duration) error {
 	if d <= 0 {
 		return fmt.Errorf("%s must be a positive duration", name)
@@ -68,7 +92,7 @@ func isLoopback(address string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-func validateTLS(tlsCfg *TLS, opts Options) error {
+func validateTLS(tlsCfg *TLS, opts *Options) error {
 	certSet := strings.TrimSpace(tlsCfg.HTTPSCertPath) != ""
 	keySet := strings.TrimSpace(tlsCfg.HTTPSKeyPath) != ""
 	caSet := strings.TrimSpace(tlsCfg.MTLSCAPath) != ""
@@ -108,7 +132,7 @@ func validateTLS(tlsCfg *TLS, opts Options) error {
 	return nil
 }
 
-func loadCertificate(opts Options, certPath, keyPath string) (tls.Certificate, error) {
+func loadCertificate(opts *Options, certPath, keyPath string) (tls.Certificate, error) {
 	certPEM, err := opts.ReadFile(certPath)
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("read TLS certificate: %w", err)
@@ -138,7 +162,7 @@ func loadCertificate(opts Options, certPath, keyPath string) (tls.Certificate, e
 	return cert, nil
 }
 
-func loadCAPool(opts Options, path string) (*x509.CertPool, error) {
+func loadCAPool(opts *Options, path string) (*x509.CertPool, error) {
 	raw, err := opts.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read mTLS CA bundle: %w", err)

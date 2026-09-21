@@ -30,7 +30,7 @@ func newProjectionRebuildCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("portfolio: %w", err)
 			}
-			db, _, err := openConfiguredDB()
+			db, _, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}

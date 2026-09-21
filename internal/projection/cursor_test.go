@@ -48,3 +48,27 @@ func TestSamplePointsBucketsAndMissingIntervals(t *testing.T) {
 		t.Fatalf("missing %+v", got)
 	}
 }
+
+func TestInferGrainUsesTypicalSpacing(t *testing.T) {
+	t.Parallel()
+
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	points := make([]samplePoint, 0, 46)
+	for i := range 45 {
+		points = append(points, samplePoint{At: start.AddDate(0, 0, i).Add(16 * time.Hour)})
+	}
+	points = append(points, samplePoint{At: start.AddDate(0, 0, 45).Add(2 * time.Hour)})
+	if got := inferGrain(points); got != "day" {
+		t.Fatalf("typical daily series inferred %s", got)
+	}
+
+	hourly := []samplePoint{
+		{At: start},
+		{At: start.Add(time.Hour)},
+		{At: start.Add(2 * time.Hour)},
+		{At: start.Add(3 * time.Hour)},
+	}
+	if got := inferGrain(hourly); got != "hour" {
+		t.Fatalf("hourly series inferred %s", got)
+	}
+}

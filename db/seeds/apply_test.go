@@ -69,10 +69,10 @@ func TestWalkthroughSQLMatchesSchema(t *testing.T) {
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM audit_events").Scan(&audits); err != nil {
 		t.Fatal(err)
 	}
-	if observations < 100 {
-		t.Fatalf("observations=%d, want at least 100", observations)
+	if observations < 1500 {
+		t.Fatalf("observations=%d, want at least 1500", observations)
 	}
-	if identities < 5 {
+	if identities < 6 {
 		t.Fatalf("identities=%d, want at least 5", identities)
 	}
 	if audits < 8 {

@@ -24,7 +24,7 @@ func newMigrateStatusCommand() *cobra.Command {
 		Short: "Show applied and pending Goose migrations",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, _, err := openConfiguredDB()
+			db, _, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}
@@ -40,7 +40,7 @@ func newMigrateUpCommand() *cobra.Command {
 		Short: "Apply all pending Goose migrations",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, _, err := openConfiguredDB()
+			db, _, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}

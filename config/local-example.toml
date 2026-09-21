@@ -1,7 +1,5 @@
-# Example configuration. Copy to plutus.toml in the working directory
-# (gitignored) or pass --config. Put the local MySQL DSN in [database].
-# The Connection encryption master key must not appear here; use
-# PLUTUS_MASTER_KEY or PLUTUS_MASTER_KEY_FILE, including via a gitignored `.env`.
+# Local development example. Copy to gitignored config/local.toml.
+# Put the MySQL DSN and master key in gitignored config/local.env.
 
 [server]
 listen_address = "127.0.0.1"
@@ -18,6 +16,8 @@ mtls_ca_path = ""
 registration_enabled = false
 session_idle_lifetime = "168h"
 session_absolute_lifetime = "720h"
+session_cookie_name = "plutus_session_local"
+csrf_cookie_name = "plutus_csrf_local"
 
 [jobs]
 worker_poll_interval = "1s"
@@ -29,6 +29,5 @@ default_interval = "15m"
 default_freshness_multiplier = 2
 
 [database]
-dsn = "user:password@tcp(127.0.0.1:3306)/plutus"
 # allow_reset enables the development-only `plutus db reset` command.
 allow_reset = false

@@ -61,6 +61,8 @@ type EngineOptions struct {
 	Auth                *auth.Service
 	RegistrationEnabled bool
 	SecureCookies       bool
+	SessionCookieName   string
+	CSRFCookieName      string
 	AllowedOrigins      []string
 	Portfolios          *portfolio.Service
 	Access              *access.Service
@@ -91,6 +93,8 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		RegistrationEnabled: opts.RegistrationEnabled,
 		Auth:                opts.Auth,
 		SecureCookies:       opts.SecureCookies,
+		SessionCookieName:   cookieName(opts.SessionCookieName, auth.SessionCookieName),
+		CSRFCookieName:      cookieName(opts.CSRFCookieName, auth.CSRFCookieName),
 		Portfolios:          opts.Portfolios,
 		Access:              opts.Access,
 		Catalog:             opts.Catalog,
@@ -109,6 +113,13 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	api.RegisterHandlers(engine, strict)
 	mountWeb(engine)
 	return engine
+}
+
+func cookieName(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
 }
 
 // Run serves HTTP or HTTPS until ctx is cancelled.

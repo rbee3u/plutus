@@ -12,7 +12,7 @@ import (
 const testDatabaseDSNEnv = "PLUTUS_TEST_DATABASE_DSN"
 
 // TestDSN returns the MySQL DSN for integration tests.
-// It reads PLUTUS_TEST_DATABASE_DSN from the process environment, then `.env` in the working directory or Go module root.
+// It reads PLUTUS_TEST_DATABASE_DSN from the process environment, then `config/test.env` in the working directory or Go module root.
 func TestDSN(tb testing.TB) string {
 	tb.Helper()
 	dsn, err := config.Lookup(testDatabaseDSNEnv)
@@ -20,7 +20,7 @@ func TestDSN(tb testing.TB) string {
 		tb.Fatal(err)
 	}
 	if dsn == "" {
-		tb.Skip("PLUTUS_TEST_DATABASE_DSN is not set in the environment, working-directory .env, or module-root .env")
+		tb.Skip("PLUTUS_TEST_DATABASE_DSN is not set in the environment, working-directory config/test.env, or module-root config/test.env")
 	}
 	return dsn
 }

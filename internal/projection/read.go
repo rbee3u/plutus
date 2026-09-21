@@ -194,14 +194,10 @@ func (s *Service) Overview(ctx context.Context, portfolioID uuid.UUID) (Overview
 	if err != nil {
 		return Overview{}, err
 	}
+	applyLatestValuationContext(&out.Context, vals)
 	latestVal := latestValuation(vals)
 	if latestVal != nil {
 		out.Valuation = amountFromValuation(latestVal)
-		out.Context.Completeness = latestVal.Completeness
-		out.Context.Freshness = latestVal.FreshnessState
-		out.Context.Coverage = coverageFromCompleteness(latestVal.Completeness)
-		cutoff := latestVal.EvaluatedAt
-		out.Context.CutoffAt = &cutoff
 	} else {
 		out.Valuation = missingAmount()
 	}
@@ -915,6 +911,18 @@ func latestValuation(rows []sqlcgen.PortfolioValuationProjection) *sqlcgen.Portf
 		}
 	}
 	return best
+}
+
+func applyLatestValuationContext(ctx *Context, rows []sqlcgen.PortfolioValuationProjection) {
+	latest := latestValuation(rows)
+	if latest == nil {
+		return
+	}
+	ctx.Completeness = latest.Completeness
+	ctx.Freshness = latest.FreshnessState
+	ctx.Coverage = coverageFromCompleteness(latest.Completeness)
+	cutoff := latest.EvaluatedAt
+	ctx.CutoffAt = &cutoff
 }
 
 func amountFromValuation(row *sqlcgen.PortfolioValuationProjection) Amount {

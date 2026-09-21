@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func applySecrets(cfg *Config, opts Options) error {
+func applySecrets(cfg *Config, opts *Options) error {
 	dsn, err := exclusiveSecret(opts, envDatabaseDSN, envDatabaseDSNFile, "database DSN")
 	if err != nil {
 		return err
@@ -30,7 +30,7 @@ func applySecrets(cfg *Config, opts Options) error {
 	return nil
 }
 
-func exclusiveSecret(opts Options, envKey, fileEnvKey, label string) (string, error) {
+func exclusiveSecret(opts *Options, envKey, fileEnvKey, label string) (string, error) {
 	direct, directOK := opts.LookupEnv(envKey)
 	filePath, fileOK := opts.LookupEnv(fileEnvKey)
 	if directOK && strings.TrimSpace(direct) != "" && fileOK && strings.TrimSpace(filePath) != "" {

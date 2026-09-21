@@ -18,6 +18,13 @@ type Options struct {
 	Now       time.Time
 
 	getwd func() (string, error)
+
+	// walkEnvFile, when EnvFile is empty, is the relative path walked from cwd to the module root.
+	// Empty means config/local.env. Lookup uses config/test.env.
+	walkEnvFile string
+
+	// EnvFile, when set, is the only env file loaded. The nearest walked env file is skipped.
+	EnvFile string
 }
 
 type fileConfig struct {
@@ -36,6 +43,8 @@ type fileConfig struct {
 		RegistrationEnabled     bool   `toml:"registration_enabled"`
 		SessionIdleLifetime     string `toml:"session_idle_lifetime"`
 		SessionAbsoluteLifetime string `toml:"session_absolute_lifetime"`
+		SessionCookieName       string `toml:"session_cookie_name"`
+		CSRFCookieName          string `toml:"csrf_cookie_name"`
 	} `toml:"auth"`
 	Jobs struct {
 		WorkerPollInterval string `toml:"worker_poll_interval"`
@@ -52,9 +61,12 @@ type fileConfig struct {
 	} `toml:"database"`
 }
 
-// Load reads defaults, an optional `.env` in the working directory or Go module root, an optional TOML file, environment overrides, and secrets.
-// Existing process environment values win over `.env`. A missing `.env` is ignored. The nearest `.env` wins.
-func Load(opts Options) (Config, error) {
+// Load reads defaults, an env file, an optional TOML file, environment overrides, and secrets.
+// When Options.EnvFile is set, only that file is read. Otherwise an optional `config/local.env`
+// in the working directory or Go module root is used. Existing process environment values win
+// over the env file. A missing default env file is ignored. The nearest `config/local.env` wins
+// when walking. Integration tests read `PLUTUS_TEST_DATABASE_DSN` from `config/test.env` instead.
+func Load(opts Options) (Config, error) { //nolint:gocritic // Options is a process-boundary parameter object.
 	if opts.LookupEnv == nil {
 		opts.LookupEnv = os.LookupEnv
 	}
@@ -69,16 +81,16 @@ func Load(opts Options) (Config, error) {
 	}
 
 	cfg := defaults()
-	if err := applyFile(&cfg, opts); err != nil {
+	if err := applyFile(&cfg, &opts); err != nil {
 		return Config{}, err
 	}
 	if err := applyEnv(&cfg, opts.LookupEnv); err != nil {
 		return Config{}, err
 	}
-	if err := applySecrets(&cfg, opts); err != nil {
+	if err := applySecrets(&cfg, &opts); err != nil {
 		return Config{}, err
 	}
-	if err := Validate(&cfg, opts); err != nil {
+	if err := Validate(&cfg, &opts); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
@@ -94,6 +106,8 @@ func defaults() Config {
 			RegistrationEnabled:     false,
 			SessionIdleLifetime:     7 * 24 * time.Hour,
 			SessionAbsoluteLifetime: 30 * 24 * time.Hour,
+			SessionCookieName:       defaultSessionCookieName,
+			CSRFCookieName:          defaultCSRFCookieName,
 		},
 		Jobs: Jobs{
 			WorkerPollInterval: time.Second,
@@ -107,11 +121,11 @@ func defaults() Config {
 	}
 }
 
-func applyFile(cfg *Config, opts Options) error {
+func applyFile(cfg *Config, opts *Options) error {
 	path := opts.Path
 	required := path != ""
 	if path == "" {
-		path = "plutus.toml"
+		path = defaultConfigFileName
 	}
 	raw, err := opts.ReadFile(path)
 	if err != nil {
@@ -141,6 +155,12 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	cfg.Server.TLS.MTLSCAPath = parsed.Server.TLS.MTLSCAPath
 
 	cfg.Auth.RegistrationEnabled = parsed.Auth.RegistrationEnabled
+	if strings.TrimSpace(parsed.Auth.SessionCookieName) != "" {
+		cfg.Auth.SessionCookieName = strings.TrimSpace(parsed.Auth.SessionCookieName)
+	}
+	if strings.TrimSpace(parsed.Auth.CSRFCookieName) != "" {
+		cfg.Auth.CSRFCookieName = strings.TrimSpace(parsed.Auth.CSRFCookieName)
+	}
 	if err := optionalDuration(&cfg.Auth.SessionIdleLifetime, parsed.Auth.SessionIdleLifetime, "auth.session_idle_lifetime"); err != nil {
 		return err
 	}

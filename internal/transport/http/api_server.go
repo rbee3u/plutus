@@ -26,6 +26,8 @@ type API struct {
 	RegistrationEnabled bool
 	Auth                *auth.Service
 	SecureCookies       bool
+	SessionCookieName   string
+	CSRFCookieName      string
 	Portfolios          *portfolio.Service
 	Access              *access.Service
 	Catalog             *catalog.Service

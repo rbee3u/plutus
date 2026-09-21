@@ -77,23 +77,22 @@ func inferGrain(points []samplePoint) string {
 	if len(points) < 2 {
 		return "auto"
 	}
-	minGap := points[1].At.Sub(points[0].At)
-	for i := 2; i < len(points); i++ {
-		gap := points[i].At.Sub(points[i-1].At)
-		if gap > 0 && gap < minGap {
-			minGap = gap
-		}
+	times := make([]time.Time, len(points))
+	for i := range points {
+		times[i] = points[i].At
 	}
+	sort.Slice(times, func(i, j int) bool { return times[i].Before(times[j]) })
+	typical := medianGap(times)
 	switch {
-	case minGap <= 2*time.Hour:
+	case typical <= 2*time.Hour:
 		return "hour"
-	case minGap <= 36*time.Hour:
+	case typical <= 36*time.Hour:
 		return "day"
-	case minGap <= 10*24*time.Hour:
+	case typical <= 10*24*time.Hour:
 		return "iso_week"
-	case minGap <= 40*24*time.Hour:
+	case typical <= 40*24*time.Hour:
 		return "month"
-	case minGap <= 100*24*time.Hour:
+	case typical <= 100*24*time.Hour:
 		return "quarter"
 	default:
 		return "year"

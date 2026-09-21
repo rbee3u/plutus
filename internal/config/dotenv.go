@@ -9,25 +9,25 @@ import (
 	"unicode"
 )
 
-const envFileName = ".env"
-
 const goModFileName = "go.mod"
 
-// Lookup reports a process environment value, falling back to `.env` in the working directory
-// or, when tests or processes run from a subdirectory, the Go module root.
-// Existing process environment values win. A missing `.env` is ignored. The nearest `.env` wins.
+// Lookup reports a process environment value, falling back to `config/test.env` in the working
+// directory or, when tests run from a subdirectory, the Go module root.
+// Existing process environment values win. A missing `config/test.env` is ignored.
+// The nearest `config/test.env` wins. `config/local.env` is not read.
 func Lookup(key string) (string, error) {
-	return lookup(key, Options{})
+	opts := Options{walkEnvFile: defaultTestEnvFileName}
+	return lookup(key, &opts)
 }
 
-func lookup(key string, opts Options) (string, error) {
+func lookup(key string, opts *Options) (string, error) {
 	if opts.LookupEnv == nil {
 		opts.LookupEnv = os.LookupEnv
 	}
 	if opts.ReadFile == nil {
 		opts.ReadFile = os.ReadFile
 	}
-	if err := applyDotEnv(&opts); err != nil {
+	if err := applyDotEnv(opts); err != nil {
 		return "", err
 	}
 	value, _ := opts.LookupEnv(key)
@@ -35,7 +35,7 @@ func lookup(key string, opts Options) (string, error) {
 }
 
 func applyDotEnv(opts *Options) error {
-	raw, err := readNearestDotEnv(opts)
+	raw, label, err := readDotEnv(opts)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func applyDotEnv(opts *Options) error {
 	}
 	values, err := parseDotEnv(string(raw))
 	if err != nil {
-		return fmt.Errorf("parse %s: %w", envFileName, err)
+		return fmt.Errorf("parse %s: %w", label, err)
 	}
 	if len(values) == 0 {
 		return nil
@@ -60,22 +60,33 @@ func applyDotEnv(opts *Options) error {
 	return nil
 }
 
-func readNearestDotEnv(opts *Options) ([]byte, error) {
+func readDotEnv(opts *Options) ([]byte, string, error) {
+	if opts.EnvFile != "" {
+		raw, err := opts.ReadFile(opts.EnvFile)
+		if err != nil {
+			return nil, opts.EnvFile, fmt.Errorf("read env file %s: %w", opts.EnvFile, err)
+		}
+		return raw, opts.EnvFile, nil
+	}
 	for _, path := range dotEnvPaths(opts) {
 		raw, err := opts.ReadFile(path)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return nil, fmt.Errorf("read %s: %w", envFileName, err)
+			return nil, path, fmt.Errorf("read %s: %w", path, err)
 		}
-		return raw, nil
+		return raw, path, nil
 	}
-	return nil, nil
+	return nil, "", nil
 }
 
 func dotEnvPaths(opts *Options) []string {
-	paths := []string{envFileName}
+	name := defaultEnvFileName
+	if opts.walkEnvFile != "" {
+		name = opts.walkEnvFile
+	}
+	paths := []string{name}
 	getwd := os.Getwd
 	if opts.getwd != nil {
 		getwd = opts.getwd
@@ -96,9 +107,9 @@ func dotEnvPaths(opts *Options) []string {
 		}
 		dir = parent
 	}
-	seen := map[string]struct{}{envFileName: {}}
+	seen := map[string]struct{}{name: {}}
 	for _, d := range chain {
-		path := filepath.Join(d, envFileName)
+		path := filepath.Join(d, name)
 		if _, ok := seen[path]; ok {
 			continue
 		}

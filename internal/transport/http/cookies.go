@@ -20,8 +20,8 @@ func (a *API) setSessionCookies(ctx context.Context, session *auth.Session) {
 	if maxAge < 1 {
 		maxAge = 1
 	}
-	writeCookie(c, auth.SessionCookieName, session.Token, maxAge, true, a.SecureCookies)
-	writeCookie(c, auth.CSRFCookieName, session.CSRF, maxAge, false, a.SecureCookies)
+	writeCookie(c, a.SessionCookieName, session.Token, maxAge, true, a.SecureCookies)
+	writeCookie(c, a.CSRFCookieName, session.CSRF, maxAge, false, a.SecureCookies)
 }
 
 func (a *API) setPreauthCSRFCookie(ctx context.Context, token string) {
@@ -29,7 +29,7 @@ func (a *API) setPreauthCSRFCookie(ctx context.Context, token string) {
 	if c == nil {
 		return
 	}
-	writeCookie(c, auth.CSRFCookieName, token, 3600, false, a.SecureCookies)
+	writeCookie(c, a.CSRFCookieName, token, 3600, false, a.SecureCookies)
 }
 
 func (a *API) clearSessionCookies(ctx context.Context) {
@@ -37,8 +37,8 @@ func (a *API) clearSessionCookies(ctx context.Context) {
 	if c == nil {
 		return
 	}
-	writeCookie(c, auth.SessionCookieName, "", -1, true, a.SecureCookies)
-	writeCookie(c, auth.CSRFCookieName, "", -1, false, a.SecureCookies)
+	writeCookie(c, a.SessionCookieName, "", -1, true, a.SecureCookies)
+	writeCookie(c, a.CSRFCookieName, "", -1, false, a.SecureCookies)
 }
 
 func writeCookie(c *gin.Context, name, value string, maxAge int, httpOnly, secure bool) {

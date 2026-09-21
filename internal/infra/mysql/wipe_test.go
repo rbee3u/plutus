@@ -17,7 +17,7 @@ func TestSplitSQL(t *testing.T) {
 func TestAllowDevReset(t *testing.T) {
 	t.Parallel()
 
-	allowed := []string{"plutus", "plutus_test", "plutus_ci1"}
+	allowed := []string{"plutus", "plutus_local", "plutus_agent", "plutus_walk", "plutus_test", "plutus_ci1"}
 	for _, name := range allowed {
 		if err := AllowDevReset(name); err != nil {
 			t.Fatalf("%s: %v", name, err)

@@ -150,7 +150,11 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 	if err != nil {
 		return err
 	}
+	enabledIdentities := map[uuid.UUID]bool{}
 	for i := range identities {
+		if identities[i].Status != "enabled" {
+			continue
+		}
 		id, err := uuid.FromBytes(identities[i].ID)
 		if err != nil {
 			return err
@@ -160,6 +164,7 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 			return err
 		}
 		out.identities = append(out.identities, identityFact{ID: id, PlatformID: platform})
+		enabledIdentities[id] = true
 	}
 	accounts, err := s.q.ListAllAccountsByPortfolio(ctx, mustBin(out.portfolioID))
 	if err != nil {
@@ -173,6 +178,9 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 		identityID, err := uuid.FromBytes(accounts[i].IdentityID)
 		if err != nil {
 			return err
+		}
+		if !enabledIdentities[identityID] {
+			continue
 		}
 		out.accounts = append(out.accounts, accountFact{ID: id, IdentityID: identityID})
 	}

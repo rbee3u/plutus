@@ -781,7 +781,9 @@ Route-level errors preserve the shell and provide retry, navigation, trace ID, a
 
 ### 8.1 Configuration sources
 
-Non-secret process settings and the local MySQL DSN are read from `plutus.toml`; `PLUTUS_*` environment variables override file values. A gitignored `.env` in the working directory or Go module root may set those same `PLUTUS_*` values at process start and does not override already-set environment variables. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. The DSN may live in a gitignored working-directory `plutus.toml` for local convenience; it still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
+Non-secret process settings are read from a TOML file (`config/local.toml` by default, or `--config`). `PLUTUS_*` environment variables override file values. Without `--env-file`, a gitignored `config/local.env` in the working directory or Go module root may set those same `PLUTUS_*` values at process start and does not override already-set environment variables. With `--env-file`, only that file is loaded; it does not merge with `config/local.env`. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. Local DSN values belong in the matching gitignored env file under `config/` (`local.env`, `agent.env`, or `walk.env`); integration tests use `config/test.env` for `PLUTUS_TEST_DATABASE_DSN` only. A gitignored TOML file may still hold a DSN for convenience. The DSN still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
+
+Local development uses three isolated processes: local serve on `127.0.0.1:8080` with database `plutus_local`, agent self-check on `:8081` with `plutus_agent`, and human walkthrough on `:8082` with `plutus_walk`. Each lane has its own files in `config/`, MySQL database, HTTP port, and session cookie names. Scripts `scripts/local-serve.sh`, `scripts/agent-wipe-and-serve.sh`, and `scripts/walk-wipe-and-serve.sh` pass `--config` and `--env-file` explicitly.
 
 The initial configuration surface is:
 
@@ -801,6 +803,8 @@ mtls_ca_path = ""
 registration_enabled = false
 session_idle_lifetime = "168h"
 session_absolute_lifetime = "720h"
+session_cookie_name = "plutus_session_local"
+csrf_cookie_name = "plutus_csrf_local"
 
 [jobs]
 worker_poll_interval = "1s"
@@ -812,10 +816,11 @@ default_interval = "15m"
 default_freshness_multiplier = 2
 
 [database]
-dsn = "user:password@tcp(127.0.0.1:3306)/plutus"
+# DSN typically lives in the lane env file; TOML may still set it.
+allow_reset = false
 ```
 
-The MySQL DSN is read from `plutus.toml` `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` overrides the file; exactly one of those two environment sources is allowed. See [ADR 0010](./adr/0010-keep-local-mysql-dsn-in-gitignored-plutus-toml.md). The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
+The MySQL DSN is read from the selected env file or the selected TOML `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` overrides the file; exactly one of those two environment sources is allowed. See [ADR 0010](./adr/0010-keep-local-mysql-dsn-in-gitignored-plutus-toml.md). The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
 
 The server defaults to `127.0.0.1` and plain HTTP. Public registration defaults to disabled. If registration is enabled while the listen address is not loopback and HTTPS is disabled, startup fails rather than exposing password registration over cleartext transport.
 
@@ -861,24 +866,24 @@ Retries use bounded exponential backoff with jitter and error-class policy. Auth
 The planned CLI surface is:
 
 ```text
-plutus serve
-plutus migrate status
-plutus migrate up
-plutus user create
-plutus user disable
-plutus user reset-password
-plutus db seed --profile minimal|edge-cases|walkthrough
-plutus db reset --profile minimal|edge-cases|walkthrough
-plutus projection rebuild --portfolio <uuid>
+plutus [--config FILE] [--env-file FILE] serve
+plutus [--config FILE] [--env-file FILE] migrate status
+plutus [--config FILE] [--env-file FILE] migrate up
+plutus [--config FILE] [--env-file FILE] user create
+plutus [--config FILE] [--env-file FILE] user disable
+plutus [--config FILE] [--env-file FILE] user reset-password
+plutus [--config FILE] [--env-file FILE] db seed --profile minimal|edge-cases|walkthrough
+plutus [--config FILE] [--env-file FILE] db reset --profile minimal|edge-cases|walkthrough
+plutus [--config FILE] [--env-file FILE] projection rebuild --portfolio <uuid>
 ```
 
-Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set in the process environment or a `.env` in the working directory or Go module root (process environment wins) and must not target the operator's development database as a sacrificial instance.
+Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set in the process environment or `config/test.env` in the working directory or Go module root (process environment wins) and must not target the operator's development database as a sacrificial instance.
 
 Migrations are forward-only in shared environments and run in their own deployment step. The server never migrates automatically. `db reset` is development-only: it must require an explicit development environment marker, verify that the database name matches an allowed development pattern, print the exact target, and reject production-like or unrecognized targets.
 
 All seed profiles are deterministic: fixed UUIDs, fixed UTC timestamps, fixed values, and stable credentials suitable only for local development. Seed SQL inserts configuration and source facts but never derived Projection rows. The real Projection application logic builds every read model after seeding.
 
-The `minimal` profile contains two Users, at least one User with two Portfolios, mapped catalog entries, a Capital Baseline, Capital Flows, complete Observations, and enough history to render the principal pages. The `edge-cases` profile additionally contains partial success, stale and failed scopes, an Asset Listing mapped only to its provisional Asset, missing Price and FX inputs, Reported Equity containment and partial overlap, opposing Positions with net-zero Exposure, a coverage change, timezone-boundary observations, and an edited Capital Flow. The `walkthrough` profile is the local UI dataset: multiple Platforms and Identities (including a subordinate Identity), Catalog pins, Account Metrics, richer history, Capital revisions, audit rows, and the same incomplete-coverage cases. `scripts/dev-wipe-and-serve.sh` uses `walkthrough`.
+The `minimal` profile contains two Users, at least one User with two Portfolios, mapped catalog entries, a Capital Baseline, Capital Flows, complete Observations, and enough history to render the principal pages. The `edge-cases` profile additionally contains partial success, stale and failed scopes, an Asset Listing mapped only to its provisional Asset, missing Price and FX inputs, Reported Equity containment and partial overlap, opposing Positions with net-zero Exposure, a coverage change, timezone-boundary observations, and an edited Capital Flow. The `walkthrough` profile is the local UI dataset: daily history across Binance, OKX, and Bybit, extra assets (including BNB, XRP, DOGE, ADA, AVAX, and LINK), Catalog pins, Account Metrics, Capital revisions, audit rows, and the same incomplete-coverage cases kept in the middle of the series so the latest cutoff stays complete. `scripts/agent-wipe-and-serve.sh` and `scripts/walk-wipe-and-serve.sh` rebuild the embedded SPA, then reset their isolated databases with `walkthrough`. `scripts/dev-wipe-and-serve.sh` is an alias for the walkthrough script. `scripts/dev-serve.sh` is an alias for `scripts/local-serve.sh`. History pages always fill From/To (45 days before the active cutoff, or now when cutoff is still unknown) so the first list query is bounded; the filters stay editable. Auto sampling uses typical spacing so a nearby as-of timestamp does not collapse a daily series to hour resolution.
 
 Expected repository layout:
 
@@ -894,6 +899,7 @@ db/migrations/               Goose migrations
 db/queries/                  sqlc query source
 db/seeds/                    deterministic source-fact SQL
 web/                         React application
+config/                      Lane TOML and env examples (`local`, `agent`, `walk`) plus `test-example.env`
 ```
 
 The actual layout may consolidate very small packages, but it must preserve the dependency direction in section 3 rather than create layers containing only pass-through code.

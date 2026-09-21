@@ -4,5 +4,18 @@
 /web/node_modules/
 
 # Local configuration, including the MySQL DSN. Never commit real credentials.
+/config/local.toml
+/config/local.env
+/config/agent.toml
+/config/agent.env
+/config/walk.toml
+/config/walk.env
+/config/test.env
+
+# Leftover root-level lane files from before config/.
 /plutus.toml
+/plutus-agent.toml
+/plutus-walk.toml
 .env
+/agent.env
+/walk.env

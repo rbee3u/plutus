@@ -25,7 +25,7 @@ func newUserCreateCommand() *cobra.Command {
 		Short: "Create an active user and default Main portfolio",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService()
+			svc, cleanup, err := newUserService(cmd)
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ func newUserDisableCommand() *cobra.Command {
 		Short: "Disable a user and revoke every session",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService()
+			svc, cleanup, err := newUserService(cmd)
 			if err != nil {
 				return err
 			}
@@ -76,7 +76,7 @@ func newUserResetPasswordCommand() *cobra.Command {
 		Short: "Replace a user's password and revoke every session",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService()
+			svc, cleanup, err := newUserService(cmd)
 			if err != nil {
 				return err
 			}
@@ -95,8 +95,8 @@ func newUserResetPasswordCommand() *cobra.Command {
 	return cmd
 }
 
-func newUserService() (*auth.Service, func(), error) {
-	db, cfg, err := openConfiguredDB()
+func newUserService(cmd *cobra.Command) (*auth.Service, func(), error) {
+	db, cfg, err := openConfiguredDB(cmd)
 	if err != nil {
 		return nil, nil, err
 	}

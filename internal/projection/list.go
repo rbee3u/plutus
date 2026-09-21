@@ -663,6 +663,13 @@ func (s *Service) seriesSetup(ctx context.Context, portfolioID uuid.UUID, in *Se
 	if err != nil {
 		return seriesPage{}, snapshot{}, err
 	}
+	if snap.generationID != uuid.Nil {
+		rows, err := s.q.ListPortfolioValuationProjections(ctx, mustBin(snap.generationID))
+		if err != nil {
+			return seriesPage{}, snapshot{}, err
+		}
+		applyLatestValuationContext(&snap.context, rows)
+	}
 	return page, snap, nil
 }
 

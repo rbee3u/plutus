@@ -36,7 +36,7 @@ func newDBSeedCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			db, _, err := openConfiguredDB()
+			db, _, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}
@@ -66,13 +66,13 @@ func newDBResetCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			db, cfg, err := openConfiguredDB()
+			db, cfg, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
 			if !cfg.Database.AllowReset {
-				return errors.New("db reset requires [database].allow_reset = true in the local plutus.toml")
+				return errors.New("db reset requires [database].allow_reset = true in the selected config file")
 			}
 			ctx := cmd.Context()
 			name, err := mysql.GuardDevReset(ctx, db)

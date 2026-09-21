@@ -148,6 +148,62 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 }
 
+func TestConfiguredCookieNames(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	svc := auth.NewService(db, false, time.Hour, 24*time.Hour)
+	username := "cookie-" + uuid.NewString()[:8]
+	password := "correct horse battery staple"
+	if _, err := svc.CreateUser(context.Background(), username, password); err != nil {
+		t.Fatal(err)
+	}
+
+	engine := Engine(&EngineOptions{
+		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Ready:             StaticReady{},
+		Auth:              svc,
+		SessionCookieName: "plutus_session_agent",
+		CSRFCookieName:    "plutus_csrf_agent",
+	})
+
+	csrf := httptest.NewRecorder()
+	engine.ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	if cookieValue(csrf, auth.CSRFCookieName) != "" {
+		t.Fatal("default csrf cookie should be absent")
+	}
+	csrfCookie := cookieValue(csrf, "plutus_csrf_agent")
+	var csrfBody struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(csrf.Body.Bytes(), &csrfBody); err != nil {
+		t.Fatal(err)
+	}
+
+	login := httptest.NewRecorder()
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
+	okReq.Header.Set("Content-Type", "application/json")
+	okReq.Header.Set("X-CSRF-Token", csrfBody.Token)
+	okReq.AddCookie(&http.Cookie{Name: "plutus_csrf_agent", Value: csrfCookie})
+	engine.ServeHTTP(login, okReq)
+	if login.Code != http.StatusOK {
+		t.Fatalf("login %d %s", login.Code, login.Body.String())
+	}
+	if cookieValue(login, auth.SessionCookieName) != "" {
+		t.Fatal("default session cookie should be absent")
+	}
+	sessionCookie := cookieValue(login, "plutus_session_agent")
+	if sessionCookie == "" {
+		t.Fatal("missing configured session cookie")
+	}
+
+	me := httptest.NewRecorder()
+	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq.AddCookie(&http.Cookie{Name: "plutus_session_agent", Value: sessionCookie})
+	engine.ServeHTTP(me, meReq)
+	if me.Code != http.StatusOK {
+		t.Fatalf("me %d %s", me.Code, me.Body.String())
+	}
+}
+
 func cookieValue(rec *httptest.ResponseRecorder, name string) string {
 	for _, raw := range rec.Header().Values("Set-Cookie") {
 		cookie, err := http.ParseSetCookie(raw)

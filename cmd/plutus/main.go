@@ -29,6 +29,8 @@ func newRootCommand() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
+	cmd.PersistentFlags().String("config", "", "path to a non-secret TOML config file")
+	cmd.PersistentFlags().String("env-file", "", "path to an env file used instead of walking config/local.env")
 	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newProjectionCommand(), newDatabaseCommand())
 	return cmd
 }

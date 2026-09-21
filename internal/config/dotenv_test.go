@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+func withTestEnvWalk(opts *Options) *Options {
+	opts.walkEnvFile = defaultTestEnvFileName
+	return opts
+}
+
 func TestParseDotEnv(t *testing.T) {
 	t.Parallel()
 
@@ -35,26 +40,26 @@ func TestLoadMasterKeyFromDotEnv(t *testing.T) {
 	cfg, err := Load(Options{
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			envFileName: "PLUTUS_MASTER_KEY=" + encoded + "\n",
+			defaultEnvFileName: "PLUTUS_MASTER_KEY=" + encoded + "\n",
 		}),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.Crypto.HasMasterKey() {
-		t.Fatal("expected master key from .env")
+		t.Fatal("expected master key from config/local.env")
 	}
 }
 
 func TestLookupUsesDotEnvWhenProcessEnvMissing(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			envFileName: "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
+			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
 		}),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,12 +71,12 @@ func TestLookupUsesDotEnvWhenProcessEnvMissing(t *testing.T) {
 func TestLookupPrefersProcessEnvOverDotEnv(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(map[string]string{"PLUTUS_TEST_DATABASE_DSN": "from-env"}),
 		ReadFile: filesMap(map[string]string{
-			envFileName: "PLUTUS_TEST_DATABASE_DSN=from-file\n",
+			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-file\n",
 		}),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,10 +88,10 @@ func TestLookupPrefersProcessEnvOverDotEnv(t *testing.T) {
 func TestLookupMissingDotEnvAndProcessEnv(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile:  filesMap(nil),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,10 +103,10 @@ func TestLookupMissingDotEnvAndProcessEnv(t *testing.T) {
 func TestLookupInvalidDotEnv(t *testing.T) {
 	t.Parallel()
 
-	_, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	_, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
-		ReadFile:  filesMap(map[string]string{envFileName: "not-a-assignment\n"}),
-	})
+		ReadFile:  filesMap(map[string]string{defaultTestEnvFileName: "not-a-assignment\n"}),
+	}))
 	if err == nil {
 		t.Fatal("expected parse error")
 	}
@@ -112,14 +117,14 @@ func TestLookupUsesModuleRootDotEnvWhenCwdIsNested(t *testing.T) {
 
 	root := filepath.Join(string(filepath.Separator), "repo")
 	pkg := filepath.Join(root, "internal", "infra", "mysql")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			filepath.Join(root, envFileName):   "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
-			filepath.Join(root, goModFileName): "module github.com/rbee3u/plutus\n",
+			filepath.Join(root, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
+			filepath.Join(root, goModFileName):          "module github.com/rbee3u/plutus\n",
 		}),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,15 +138,15 @@ func TestLookupPrefersWorkingDirectoryDotEnvOverModuleRoot(t *testing.T) {
 
 	root := filepath.Join(string(filepath.Separator), "repo")
 	pkg := filepath.Join(root, "internal", "infra", "mysql")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			envFileName:                        "PLUTUS_TEST_DATABASE_DSN=from-cwd\n",
-			filepath.Join(root, envFileName):   "PLUTUS_TEST_DATABASE_DSN=from-module\n",
-			filepath.Join(root, goModFileName): "module github.com/rbee3u/plutus\n",
+			defaultTestEnvFileName:                      "PLUTUS_TEST_DATABASE_DSN=from-cwd\n",
+			filepath.Join(root, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=from-module\n",
+			filepath.Join(root, goModFileName):          "module github.com/rbee3u/plutus\n",
 		}),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,18 +160,106 @@ func TestLookupIgnoresParentDotEnvWithoutGoMod(t *testing.T) {
 
 	home := filepath.Join(string(filepath.Separator), "home", "dev")
 	pkg := filepath.Join(home, "scratch")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", Options{
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			filepath.Join(home, envFileName): "PLUTUS_TEST_DATABASE_DSN=from-home\n",
+			filepath.Join(home, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=from-home\n",
 		}),
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if value != "" {
 		t.Fatalf("lookup %q", value)
+	}
+}
+
+func TestLookupTestDSNIgnoresLocalEnv(t *testing.T) {
+	t.Parallel()
+
+	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			defaultEnvFileName:     "PLUTUS_TEST_DATABASE_DSN=from-local\n",
+			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-test\n",
+		}),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value != "from-test" {
+		t.Fatalf("lookup %q", value)
+	}
+
+	missing, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			defaultEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-local\n",
+		}),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing != "" {
+		t.Fatalf("test DSN leaked from config/local.env: %q", missing)
+	}
+}
+
+func TestLoadSpecifiedEnvFileDoesNotMergeDotEnv(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		EnvFile:   "config/agent.env",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			defaultEnvFileName: "PLUTUS_DATABASE_DSN=from-dotenv\n",
+			"config/agent.env": "PLUTUS_DATABASE_DSN=from-agent\n",
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.DSN != "from-agent" {
+		t.Fatalf("dsn %q", cfg.Database.DSN)
+	}
+}
+
+func TestLoadSpecifiedEnvFileIgnoresMissingKeysInDotEnv(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		EnvFile:   "config/agent.env",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			defaultEnvFileName: "PLUTUS_DATABASE_DSN=from-dotenv\nPLUTUS_SERVER_PORT=9090\n",
+			"config/agent.env": "PLUTUS_MASTER_KEY=" + base64.StdEncoding.EncodeToString(bytesOf(t)) + "\n",
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.DSN != "" {
+		t.Fatalf("dsn leaked from config/local.env: %q", cfg.Database.DSN)
+	}
+	if cfg.Server.Port != 8080 {
+		t.Fatalf("port leaked from config/local.env: %d", cfg.Server.Port)
+	}
+	if !cfg.Crypto.HasMasterKey() {
+		t.Fatal("expected master key from config/agent.env")
+	}
+}
+
+func TestLoadSpecifiedEnvFileRequired(t *testing.T) {
+	t.Parallel()
+
+	_, err := Load(Options{
+		EnvFile:   "missing.env",
+		LookupEnv: envMap(nil),
+		ReadFile:  filesMap(nil),
+	})
+	if err == nil {
+		t.Fatal("expected missing env file error")
 	}
 }
 
@@ -178,14 +271,14 @@ func TestLoadPrefersProcessEnvOverDotEnv(t *testing.T) {
 	cfg, err := Load(Options{
 		LookupEnv: envMap(map[string]string{envMasterKey: base64.StdEncoding.EncodeToString(fromEnv)}),
 		ReadFile: filesMap(map[string]string{
-			envFileName: "PLUTUS_MASTER_KEY=" + base64.StdEncoding.EncodeToString(fromFile) + "\n",
+			defaultEnvFileName: "PLUTUS_MASTER_KEY=" + base64.StdEncoding.EncodeToString(fromFile) + "\n",
 		}),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(cfg.Crypto.MasterKey) != string(fromEnv) {
-		t.Fatal("process environment should win over .env")
+		t.Fatal("process environment should win over config/local.env")
 	}
 }
 

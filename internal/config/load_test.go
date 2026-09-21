@@ -48,6 +48,9 @@ func TestLoadDefaultsWithoutFile(t *testing.T) {
 	if cfg.Auth.RegistrationEnabled {
 		t.Fatal("registration should default to disabled")
 	}
+	if cfg.Auth.SessionCookieName != "plutus_session" || cfg.Auth.CSRFCookieName != "plutus_csrf" {
+		t.Fatalf("cookie defaults %s %s", cfg.Auth.SessionCookieName, cfg.Auth.CSRFCookieName)
+	}
 	if cfg.Database.DSN != "" || cfg.Crypto.HasMasterKey() {
 		t.Fatal("secrets should be absent by default")
 	}
@@ -302,24 +305,53 @@ func TestTLSMatrix(t *testing.T) {
 	})
 }
 
-func TestExampleTOMLLoads(t *testing.T) {
-	t.Parallel()
-
+func loadExampleTOML(t *testing.T, path string) Config {
+	t.Helper()
 	cfg, err := Load(Options{
-		Path:      "../../configs/plutus.example.toml",
+		Path:      path,
 		LookupEnv: envMap(nil),
+		EnvFile:   "empty.env",
+		ReadFile: func(name string) ([]byte, error) {
+			if name == "empty.env" {
+				return []byte{}, nil
+			}
+			return os.ReadFile(name)
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	return cfg
+}
+
+func TestExampleTOMLLoads(t *testing.T) {
+	t.Parallel()
+
+	cfg := loadExampleTOML(t, "../../config/local-example.toml")
 	if cfg.Server.Port != 8080 || cfg.Auth.RegistrationEnabled {
 		t.Fatalf("unexpected example config: %+v", cfg.Server)
 	}
-	if cfg.Database.DSN == "" {
-		t.Fatal("example DSN placeholder should load")
+	if cfg.Database.DSN != "" {
+		t.Fatal("local example must keep the DSN out of TOML")
 	}
 	if cfg.Database.AllowReset {
 		t.Fatal("example config must not enable db reset")
+	}
+	if cfg.Auth.SessionCookieName != "plutus_session_local" {
+		t.Fatalf("session cookie %s", cfg.Auth.SessionCookieName)
+	}
+}
+
+func TestLaneExampleTOMLLoads(t *testing.T) {
+	t.Parallel()
+
+	agent := loadExampleTOML(t, "../../config/agent-example.toml")
+	if agent.Server.Port != 8081 || !agent.Database.AllowReset || agent.Auth.SessionCookieName != "plutus_session_agent" {
+		t.Fatalf("agent example %+v %+v", agent.Server, agent.Auth)
+	}
+	walk := loadExampleTOML(t, "../../config/walk-example.toml")
+	if walk.Server.Port != 8082 || !walk.Database.AllowReset || walk.Auth.SessionCookieName != "plutus_session_walk" {
+		t.Fatalf("walk example %+v %+v", walk.Server, walk.Auth)
 	}
 }
 
@@ -363,6 +395,61 @@ allow_reset = true
 	}
 	if !cfg.Database.AllowReset {
 		t.Fatal("allow_reset should load from TOML")
+	}
+}
+
+func TestCookieNamesFromTOML(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[auth]
+session_cookie_name = "plutus_session_agent"
+csrf_cookie_name = "plutus_csrf_agent"
+`,
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Auth.SessionCookieName != "plutus_session_agent" || cfg.Auth.CSRFCookieName != "plutus_csrf_agent" {
+		t.Fatalf("cookies %s %s", cfg.Auth.SessionCookieName, cfg.Auth.CSRFCookieName)
+	}
+}
+
+func TestCookieNameValidation(t *testing.T) {
+	t.Parallel()
+
+	_, err := Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[auth]
+session_cookie_name = "bad name"
+`,
+		}),
+	})
+	if err == nil {
+		t.Fatal("expected invalid cookie name")
+	}
+
+	_, err = Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": `
+[auth]
+session_cookie_name = "same"
+csrf_cookie_name = "same"
+`,
+		}),
+	})
+	if err == nil {
+		t.Fatal("expected cookie names to differ")
 	}
 }
 
