@@ -50,14 +50,14 @@ the temporary Settings group appear; child URLs still load directly.
 
 ## Stage 3 — Settings ownership
 
-- [ ] Add `Portfolio Settings` next to `New Portfolio` in the switcher group
-- [ ] Add the User menu (`username` trigger, Account & Security, Sign out)
-- [ ] Make `/account/security` canonical; heading `Account & Security`
-- [ ] Redirect `/p/:portfolioId/settings/security` with replacement and keep
+- [x] Add `Portfolio Settings` next to `New Portfolio` in the switcher group
+- [x] Add the User menu (`username` trigger, Account & Security, Sign out)
+- [x] Make `/account/security` canonical; heading `Account & Security`
+- [x] Redirect `/p/:portfolioId/settings/security` with replacement and keep
       the last Portfolio id
-- [ ] On `/account/security`, switching Portfolios stays on the page; creating
+- [x] On `/account/security`, switching Portfolios stays on the page; creating
       a Portfolio opens its Overview
-- [ ] Remove the empty `SETTINGS` sidebar group
+- [x] Remove the empty `SETTINGS` sidebar group
 
 Exit: Portfolio-owned and User-owned settings are reached from the correct
 chrome, and no security URL implies Portfolio ownership.

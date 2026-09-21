@@ -9,15 +9,16 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { createPortfolio } from "@/api/generated/sdk.gen";
 import type { Portfolio } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
-import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
+import { LAST_PORTFOLIO_KEY, isAccountPath } from "@/app/shell/navigation";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { storePreference } from "@/shared/lib/preferences";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import buttonStyles from "@/shared/ui/ActionButton.module.css";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
 import styles from "@/app/shell/Shell.module.css";
@@ -28,9 +29,11 @@ export type PortfolioOption = Pick<Portfolio, "id" | "name" | "undeletable">;
 export function PortfolioSwitcher({
   portfolioId,
   portfolios,
+  onPortfolioRemembered,
 }: {
   portfolioId: string;
   portfolios: PortfolioOption[];
+  onPortfolioRemembered?: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -93,6 +96,10 @@ export function PortfolioSwitcher({
   function selectPortfolio(next: string) {
     storePreference(LAST_PORTFOLIO_KEY, next);
     setMenuOpen(false);
+    if (isAccountPath(location.pathname)) {
+      onPortfolioRemembered?.(next);
+      return;
+    }
     const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
     void navigate(`/p/${next}${suffix}`);
   }
@@ -119,8 +126,12 @@ export function PortfolioSwitcher({
       setName("");
       setCreateOpen(false);
       storePreference(LAST_PORTFOLIO_KEY, result.data.id);
-      const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
-      void navigate(`/p/${result.data.id}${suffix}`);
+      if (isAccountPath(location.pathname)) {
+        void navigate(`/p/${result.data.id}/overview`);
+      } else {
+        const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
+        void navigate(`/p/${result.data.id}${suffix}`);
+      }
     } catch (cause) {
       setError(
         problemMessage(cause, "The portfolio could not be created. Check the network and retry."),
@@ -187,8 +198,17 @@ export function PortfolioSwitcher({
             setCreateOpen(true);
           }}
         >
-          New
+          New Portfolio
         </ActionButton>
+        {portfolioId ? (
+          <Link
+            className={`${buttonStyles.button} ${buttonStyles.secondary} ${styles.settingsLink}`}
+            to={`/p/${portfolioId}/settings/portfolio`}
+            aria-current={location.pathname.endsWith("/settings/portfolio") ? "page" : undefined}
+          >
+            Portfolio Settings
+          </Link>
+        ) : null}
       </div>
       <Dialog
         open={createOpen}

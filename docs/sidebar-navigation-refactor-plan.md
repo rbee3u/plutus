@@ -281,14 +281,14 @@ in the sidebar.
 
 ### Stage 3 — Correct settings ownership and placement
 
-- [ ] Move Portfolio Settings access to the Portfolio controls without changing
+- [x] Move Portfolio Settings access to the Portfolio controls without changing
       `/p/:portfolioId/settings/portfolio`.
-- [ ] Add the User menu with `Account & Security` and `Sign out`.
-- [ ] Make `/account/security` the canonical security route.
-- [ ] Redirect the legacy Portfolio-scoped security route.
-- [ ] Ensure Account & Security does not require a Portfolio ID and preserves
+- [x] Add the User menu with `Account & Security` and `Sign out`.
+- [x] Make `/account/security` the canonical security route.
+- [x] Redirect the legacy Portfolio-scoped security route.
+- [x] Ensure Account & Security does not require a Portfolio ID and preserves
       the last active Portfolio context.
-- [ ] Remove the empty `SETTINGS` sidebar group.
+- [x] Remove the empty `SETTINGS` sidebar group.
 
 Exit condition: Portfolio-owned and User-owned settings are reached from their
 correct contexts, and no security URL implies Portfolio ownership.

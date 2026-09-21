@@ -122,6 +122,15 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 		t.Fatalf("login spa body %s", login.Body.String())
 	}
 
+	account := httptest.NewRecorder()
+	engine.ServeHTTP(account, httptest.NewRequest(http.MethodGet, "/account/security", nil))
+	if account.Code != http.StatusOK {
+		t.Fatalf("account spa status %d", account.Code)
+	}
+	if !strings.Contains(strings.ToLower(account.Body.String()), "<!doctype html>") {
+		t.Fatalf("account spa body %s", account.Body.String())
+	}
+
 	unknownAPI := httptest.NewRecorder()
 	engine.ServeHTTP(unknownAPI, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
 	if unknownAPI.Code != http.StatusNotFound {

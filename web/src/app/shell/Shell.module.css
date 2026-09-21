@@ -696,6 +696,55 @@
 .switcherOption[aria-selected="true"] {
   background: var(--surface-selected);
 }
+
+.settingsLink {
+  text-decoration: none;
+}
+
+.userMenuButton {
+  display: inline-flex;
+  max-width: 160px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.userMenu {
+  position: fixed;
+  z-index: var(--layer-portal-menu);
+  min-width: 200px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--line-structural);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+.userMenuItem {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+}
+
+.userMenuItem:hover {
+  background: var(--surface-selected);
+}
 .boot {
   display: grid;
   height: 100%;

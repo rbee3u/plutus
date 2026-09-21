@@ -5,8 +5,10 @@ import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
 import { BrandMark, SidebarUtilities } from "@/app/shell/SidebarUtilities";
+import { UserMenu } from "@/app/shell/UserMenu";
 import {
   LAST_PORTFOLIO_KEY,
+  isAccountPath,
   isNavItemActive,
   navigationFor,
   pageTitle,
@@ -22,7 +24,9 @@ export function Shell() {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const portfolioId = params.portfolioId ?? "";
+  const urlPortfolioId = params.portfolioId ?? "";
+  const [rememberedId, setRememberedId] = useState(() => readPreference(LAST_PORTFOLIO_KEY) || "");
+  const navPortfolioId = urlPortfolioId || rememberedId;
   const [collapsed, setCollapsed] = useState(
     () => readPreference("plutus-sidebar-collapsed") === "true",
   );
@@ -30,7 +34,7 @@ export function Shell() {
   const [portfolios, setPortfolios] = useState<PortfolioOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { open, setOpen, close, mobileLayout, sidebarRef, menuButtonRef } = useMobileNavigation();
-  const groups = navigationFor(portfolioId);
+  const groups = navPortfolioId ? navigationFor(navPortfolioId) : [];
   const title = pageTitle(location.pathname, location.search);
 
   useEffect(() => {
@@ -57,14 +61,24 @@ export function Shell() {
           .filter((item) => item.status === "active")
           .map((item) => ({ id: item.id, name: item.name, undeletable: item.undeletable }));
         setPortfolios(items);
-        if (!items.some((item) => item.id === portfolioId)) {
+        if (urlPortfolioId) {
+          if (!items.some((item) => item.id === urlPortfolioId)) {
+            const remembered = readPreference(LAST_PORTFOLIO_KEY);
+            const next = items.find((item) => item.id === remembered) ?? items[0];
+            if (next) {
+              void navigate(`/p/${next.id}/overview`, { replace: true });
+            }
+          } else {
+            storePreference(LAST_PORTFOLIO_KEY, urlPortfolioId);
+            setRememberedId(urlPortfolioId);
+          }
+        } else if (isAccountPath(location.pathname)) {
           const remembered = readPreference(LAST_PORTFOLIO_KEY);
           const next = items.find((item) => item.id === remembered) ?? items[0];
           if (next) {
-            void navigate(`/p/${next.id}/overview`, { replace: true });
+            storePreference(LAST_PORTFOLIO_KEY, next.id);
+            setRememberedId(next.id);
           }
-        } else {
-          storePreference(LAST_PORTFOLIO_KEY, portfolioId);
         }
       } catch (error) {
         setLoadError(
@@ -72,7 +86,7 @@ export function Shell() {
         );
       }
     })();
-  }, [navigate, portfolioId]);
+  }, [location.pathname, navigate, urlPortfolioId]);
 
   async function logout() {
     try {
@@ -159,10 +173,12 @@ export function Shell() {
           <h1 id="console-page-title" className={styles.pageTitle}>
             {title}
           </h1>
-          <PortfolioSwitcher portfolioId={portfolioId} portfolios={portfolios} />
-          <button type="button" onClick={() => void logout()}>
-            Sign out
-          </button>
+          <PortfolioSwitcher
+            portfolioId={navPortfolioId}
+            portfolios={portfolios}
+            onPortfolioRemembered={setRememberedId}
+          />
+          <UserMenu onSignOut={() => void logout()} />
         </header>
         <main
           id="main-content"

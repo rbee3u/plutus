@@ -6,8 +6,6 @@ import {
   LayoutDashboard,
   ListOrdered,
   Scale,
-  Settings2,
-  Shield,
   Users,
   Wallet,
   type LucideIcon,
@@ -180,8 +178,11 @@ const PAGE_TITLES: readonly {
     })),
   ),
   { suffix: "/settings/portfolio", title: "Portfolio" },
-  { suffix: "/settings/security", title: "Security" },
 ];
+
+export function isAccountPath(pathname: string): boolean {
+  return pathname === "/account/security" || pathname.startsWith("/account/");
+}
 
 export function catalogTabFromSearch(search: string): "listings" | "instruments" {
   const query = search.startsWith("?") ? search.slice(1) : search;
@@ -221,6 +222,9 @@ export function activeModuleId(pathname: string): string | null {
 }
 
 export function pageTitle(pathname: string, search = ""): string {
+  if (isAccountPath(pathname)) {
+    return "Account & Security";
+  }
   const suffix = portfolioPathSuffix(pathname);
   if (suffix === null) {
     return "Plutus";
@@ -251,25 +255,5 @@ export function navigationFor(portfolioId: string): NavGroup[] {
       activeSuffixes: definition.activePathSuffixes,
     });
   }
-  groups.push({
-    id: "settings",
-    label: "Settings",
-    items: [
-      {
-        to: `${base}/settings/portfolio`,
-        label: "Portfolio",
-        icon: Settings2,
-        phase: "working",
-        activeSuffixes: ["/settings/portfolio"],
-      },
-      {
-        to: `${base}/settings/security`,
-        label: "Security",
-        icon: Shield,
-        phase: "working",
-        activeSuffixes: ["/settings/security"],
-      },
-    ],
-  });
   return groups;
 }

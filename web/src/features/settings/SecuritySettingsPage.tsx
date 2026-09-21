@@ -98,7 +98,7 @@ export function SecuritySettingsPage() {
 
   return (
     <section className={styles.page}>
-      <h2>Security</h2>
+      <h2>Account & Security</h2>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
