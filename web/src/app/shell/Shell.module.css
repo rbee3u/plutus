@@ -130,7 +130,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.drawerCloseButton {
+.sidebar .drawerCloseButton {
   display: none;
   margin-left: auto;
 }
@@ -382,7 +382,8 @@
   font: var(--text-xs) var(--font-mono);
 }
 
-.collapseButton {
+.sidebarUtilities .collapseButton {
+  display: inline-grid;
   flex: 0 0 var(--control-md);
   margin-left: auto;
 }
@@ -484,7 +485,7 @@
   white-space: nowrap;
 }
 
-.menuButton {
+.topbar .menuButton {
   display: none;
 }
 
@@ -737,7 +738,7 @@
   line-height: 1.2;
   letter-spacing: -0.03em;
 }
-.collapsed .collapseButton {
+.collapsed .sidebarUtilities .collapseButton {
   margin-left: 0;
 }
 
@@ -754,7 +755,7 @@
 @media (pointer: coarse) {
   .moduleNav a,
   .utilityItem,
-  .collapseButton {
+  .sidebarUtilities .collapseButton {
     min-height: 44px;
   }
 }
@@ -779,7 +780,7 @@
     visibility: visible;
     pointer-events: auto;
   }
-  .drawerCloseButton {
+  .sidebar .drawerCloseButton {
     display: inline-grid;
   }
   .collapsed .brand {
@@ -799,7 +800,7 @@
     opacity: 1;
     visibility: visible;
   }
-  .collapseButton {
+  .sidebarUtilities .collapseButton {
     display: none;
   }
   .collapsed .moduleNav {
@@ -861,7 +862,7 @@
     min-width: 0;
     flex: 1;
   }
-  .menuButton {
+  .topbar .menuButton {
     display: inline-grid;
   }
   .scrim {

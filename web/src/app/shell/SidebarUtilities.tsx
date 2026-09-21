@@ -1,9 +1,10 @@
-import { Box, Check, ChevronLeft, ChevronRight, ChevronUp, Monitor, Moon, Sun } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ChevronUp, Monitor, Moon, Sun } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ThemePreference } from "@/app/theme/usePersistentTheme";
 import { iconSize } from "@/shared/icons/iconSizes";
+import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/app/shell/Shell.module.css";
 
@@ -15,6 +16,7 @@ const themeOptions = [
 
 interface SidebarUtilitiesProps {
   collapsed: boolean;
+  mobileLayout: boolean;
   onThemeChange: (theme: ThemePreference) => void;
   onToggleCollapsed: () => void;
   theme: ThemePreference;
@@ -22,6 +24,7 @@ interface SidebarUtilitiesProps {
 
 export function SidebarUtilities({
   collapsed,
+  mobileLayout,
   onThemeChange,
   onToggleCollapsed,
   theme,
@@ -33,17 +36,19 @@ export function SidebarUtilities({
         <span className={styles.sidebarVersion} title="v0.1.0-dev">
           v0.1.0-dev
         </span>
-        <IconButton
-          className={styles.collapseButton}
-          label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          onClick={onToggleCollapsed}
-        >
-          {collapsed ? (
-            <ChevronRight size={iconSize.md} aria-hidden="true" />
-          ) : (
-            <ChevronLeft size={iconSize.md} aria-hidden="true" />
-          )}
-        </IconButton>
+        {mobileLayout ? null : (
+          <IconButton
+            className={styles.collapseButton}
+            label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={onToggleCollapsed}
+          >
+            {collapsed ? (
+              <ChevronRight size={iconSize.md} aria-hidden="true" />
+            ) : (
+              <ChevronLeft size={iconSize.md} aria-hidden="true" />
+            )}
+          </IconButton>
+        )}
       </div>
     </footer>
   );
@@ -149,7 +154,7 @@ function ThemeMenu({
 export function BrandMark() {
   return (
     <span className={styles.mark}>
-      <Box size={iconSize.lg} />
+      <PlutusIcon size={iconSize.lg} />
     </span>
   );
 }

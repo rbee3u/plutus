@@ -1,4 +1,4 @@
-import { Box, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
@@ -17,6 +17,7 @@ import { useMobileNavigation } from "@/app/shell/useMobileNavigation";
 import { usePersistentTheme } from "@/app/theme/usePersistentTheme";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
 import { iconSize } from "@/shared/icons/iconSizes";
+import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/app/shell/Shell.module.css";
 
@@ -118,13 +119,15 @@ export function Shell() {
             </span>
             <small>Observe portfolios</small>
           </span>
-          <IconButton
-            className={styles.drawerCloseButton}
-            label="Close navigation"
-            onClick={() => close()}
-          >
-            <X size={iconSize.md} aria-hidden="true" />
-          </IconButton>
+          {mobileLayout ? (
+            <IconButton
+              className={styles.drawerCloseButton}
+              label="Close navigation"
+              onClick={() => close()}
+            >
+              <X size={iconSize.md} aria-hidden="true" />
+            </IconButton>
+          ) : null}
         </div>
         <nav className={styles.moduleNav} aria-label="Modules">
           {groups.map((group) => (
@@ -152,6 +155,7 @@ export function Shell() {
         </nav>
         <SidebarUtilities
           collapsed={collapsed}
+          mobileLayout={mobileLayout}
           onThemeChange={setTheme}
           onToggleCollapsed={() => setCollapsed((value) => !value)}
           theme={theme}
@@ -160,16 +164,18 @@ export function Shell() {
       {open && <div className={styles.scrim} aria-hidden="true" onClick={() => close()} />}
       <div className={styles.workspace}>
         <header className={styles.topbar}>
-          <IconButton
-            className={styles.menuButton}
-            label="Open navigation"
-            aria-controls="console-navigation"
-            aria-expanded={open}
-            onClick={() => setOpen(true)}
-            ref={menuButtonRef}
-          >
-            <Menu size={iconSize.md} />
-          </IconButton>
+          {mobileLayout ? (
+            <IconButton
+              className={styles.menuButton}
+              label="Open navigation"
+              aria-controls="console-navigation"
+              aria-expanded={open}
+              onClick={() => setOpen(true)}
+              ref={menuButtonRef}
+            >
+              <Menu size={iconSize.md} />
+            </IconButton>
+          ) : null}
           <h1 id="console-page-title" className={styles.pageTitle}>
             {title}
           </h1>
@@ -205,7 +211,7 @@ export function Shell() {
 export function RootRedirect() {
   return (
     <div className={styles.boot}>
-      <Box size={iconSize.xl} />
+      <PlutusIcon size={iconSize.xl} />
       <span>Opening Plutus</span>
     </div>
   );
