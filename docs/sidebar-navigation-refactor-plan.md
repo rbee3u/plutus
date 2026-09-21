@@ -2,6 +2,8 @@
 
 Status: approved for staged implementation; not yet implemented
 
+Working commit sequence: [sidebar-navigation-refactor-checklist.md](./sidebar-navigation-refactor-checklist.md).
+
 This document defines the accepted information architecture and implementation
 sequence for simplifying the Plutus application navigation. It is an
 implementation brief for contributors changing the React shell and related
@@ -212,13 +214,15 @@ The sidebar footer remains separate from module navigation and contains:
 
 ```text
 Theme
-Development environment indicator
+Version label
 Collapse / Expand
 ```
 
 Keep Theme and the collapse control available in expanded and collapsed modes.
-The development indicator must be visible only in non-production builds; a
-hard-coded `dev` label must not appear in production.
+The version label is the placeholder product string `v0.1.0-dev`. It is visible
+in Vite development and in the embedded production SPA, including the Agent
+lane on port 8081. Do not hide it in production builds. Do not change the CLI
+`plutus --version` string, which remains independently `dev`.
 
 ## 6. Interaction and accessibility requirements
 
@@ -292,15 +296,16 @@ correct contexts, and no security URL implies Portfolio ownership.
 ### Stage 4 — Footer, responsive behavior, and cleanup
 
 - [ ] Keep Theme and Collapse / Expand in the sidebar footer.
-- [ ] Limit the development indicator to non-production builds.
+- [ ] Show the version label `v0.1.0-dev` in expanded and collapsed footer
+      states, including the embedded production SPA.
 - [ ] Remove obsolete navigation metadata, imports, icons, and styles that are
       no longer referenced.
 - [ ] Verify expanded, collapsed, and mobile navigation states.
 - [ ] Verify keyboard and screen-reader behavior for menus and secondary
       navigation.
 
-Exit condition: no obsolete entry or production `dev` label remains, and the
-refactored navigation works at every supported shell width.
+Exit condition: no obsolete entry remains, the footer shows `v0.1.0-dev`, and
+the refactored navigation works at every supported shell width.
 
 ### Stage 5 — Final verification and documentation sync
 
