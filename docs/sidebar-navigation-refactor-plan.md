@@ -295,13 +295,13 @@ correct contexts, and no security URL implies Portfolio ownership.
 
 ### Stage 4 — Footer, responsive behavior, and cleanup
 
-- [ ] Keep Theme and Collapse / Expand in the sidebar footer.
-- [ ] Show the version label `v0.1.0-dev` in expanded and collapsed footer
+- [x] Keep Theme and Collapse / Expand in the sidebar footer.
+- [x] Show the version label `v0.1.0-dev` in expanded and collapsed footer
       states, including the embedded production SPA.
-- [ ] Remove obsolete navigation metadata, imports, icons, and styles that are
+- [x] Remove obsolete navigation metadata, imports, icons, and styles that are
       no longer referenced.
-- [ ] Verify expanded, collapsed, and mobile navigation states.
-- [ ] Verify keyboard and screen-reader behavior for menus and secondary
+- [x] Verify expanded, collapsed, and mobile navigation states.
+- [x] Verify keyboard and screen-reader behavior for menus and secondary
       navigation.
 
 Exit condition: no obsolete entry remains, the footer shows `v0.1.0-dev`, and

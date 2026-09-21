@@ -64,10 +64,10 @@ chrome, and no security URL implies Portfolio ownership.
 
 ## Stage 4 — Footer, responsive behavior, and cleanup
 
-- [ ] Keep Theme and Collapse / Expand in the footer
-- [ ] Show `v0.1.0-dev` in expanded and collapsed states
-- [ ] Remove obsolete navigation metadata, imports, icons, and styles
-- [ ] Verify expanded, collapsed, and mobile navigation
+- [x] Keep Theme and Collapse / Expand in the footer
+- [x] Show `v0.1.0-dev` in expanded and collapsed states
+- [x] Remove obsolete navigation metadata, imports, icons, and styles
+- [x] Verify expanded, collapsed, and mobile navigation
 
 Exit: no obsolete entry remains, and navigation works at every supported shell
 width.

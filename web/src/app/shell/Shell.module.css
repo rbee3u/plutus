@@ -257,71 +257,6 @@
   background: var(--bg-shell);
 }
 
-.resourceSection {
-  display: grid;
-  gap: 4px;
-}
-
-.resourceHeader {
-  padding: 0 4px 2px;
-  color: var(--faint);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-}
-
-.resourceRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.resourceLinks {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  padding: 2px 4px;
-}
-
-.resourceLink {
-  display: inline-grid;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  place-items: center;
-  border: 1px solid var(--line-control);
-  border-radius: var(--radius-md);
-  color: var(--muted);
-  background: var(--surface);
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-  transition:
-    color var(--transition-fast),
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.sidebar .resourceLink:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--surface-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.sidebar .resourceLink:active {
-  background: var(--surface-pressed);
-  transform: translateY(0);
-}
-
-.resourceLink:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
 .utilityItem {
   display: flex;
   width: 100%;
@@ -363,17 +298,10 @@
 
 .utilityLabel,
 .themeValue,
-.themeChevron,
-.sidebarVersion {
+.themeChevron {
   overflow: hidden;
   white-space: nowrap;
   transition: opacity var(--transition-fast);
-}
-
-.utilityDivider {
-  height: 1px;
-  margin: 3px 4px;
-  background: var(--line-content);
 }
 
 .themeButton {
@@ -773,8 +701,7 @@
 .collapsed .navGroupLabel,
 .collapsed .utilityLabel,
 .collapsed .themeValue,
-.collapsed .themeChevron,
-.collapsed .sidebarVersion {
+.collapsed .themeChevron {
   width: 0;
   min-width: 0;
   flex: 0 0 0;
@@ -788,17 +715,6 @@
   gap: 0;
   padding: 11px;
 }
-.collapsed .resourceHeader {
-  display: none;
-}
-.collapsed .resourceRow {
-  flex-direction: column;
-}
-.collapsed .resourceLinks {
-  flex-direction: column;
-  justify-content: center;
-  padding: 0;
-}
 .collapsed .utilityItem {
   width: 36px;
   justify-content: center;
@@ -807,8 +723,19 @@
   padding: 7px;
 }
 .collapsed .sidebarMeta {
+  flex-direction: column;
   justify-content: center;
-  padding-left: 0;
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+.collapsed .sidebarVersion {
+  width: 100%;
+  overflow: visible;
+  text-align: center;
+  white-space: normal;
+  font-size: 8px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
 }
 .collapsed .collapseButton {
   margin-left: 0;
@@ -826,14 +753,9 @@
  */
 @media (pointer: coarse) {
   .moduleNav a,
-  .resourceLink,
   .utilityItem,
   .collapseButton {
     min-height: 44px;
-  }
-
-  .resourceLink {
-    min-width: 44px;
   }
 }
 
@@ -869,8 +791,7 @@
   .collapsed .navGroupLabel,
   .collapsed .utilityLabel,
   .collapsed .themeValue,
-  .collapsed .themeChevron,
-  .collapsed .sidebarVersion {
+  .collapsed .themeChevron {
     width: auto;
     flex: initial;
     margin: initial;
@@ -889,11 +810,6 @@
     gap: 10px;
     padding: 11px 12px;
   }
-  .collapsed .resourceLinks {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 0 4px;
-  }
   .collapsed .utilityItem {
     width: 100%;
     justify-content: flex-start;
@@ -905,8 +821,19 @@
     margin-left: auto;
   }
   .collapsed .sidebarMeta {
+    flex-direction: row;
     justify-content: flex-start;
+    gap: 0;
     padding-left: 9px;
+  }
+  .collapsed .sidebarVersion {
+    width: auto;
+    overflow: hidden;
+    text-align: left;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    line-height: inherit;
+    letter-spacing: normal;
   }
   .workspace {
     width: 100%;

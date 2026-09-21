@@ -17,7 +17,6 @@ export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  phase: "working" | "2" | "3";
   activeSuffixes: readonly string[];
 }
 
@@ -45,7 +44,6 @@ export interface ModuleDefinition {
   subviews: readonly ModuleSubview[];
 }
 
-/** Target nine-module tree. Stage 1 does not render this. */
 export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
   {
     id: "overview",
@@ -251,7 +249,6 @@ export function navigationFor(portfolioId: string): NavGroup[] {
       to: `${base}${definition.defaultPathSuffix}`,
       label: definition.label,
       icon: definition.icon,
-      phase: "working",
       activeSuffixes: definition.activePathSuffixes,
     });
   }

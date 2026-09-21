@@ -30,7 +30,9 @@ export function SidebarUtilities({
     <footer className={styles.sidebarUtilities}>
       <ThemeMenu collapsed={collapsed} onChange={onThemeChange} value={theme} />
       <div className={styles.sidebarMeta}>
-        <span className={styles.sidebarVersion}>dev</span>
+        <span className={styles.sidebarVersion} title="v0.1.0-dev">
+          v0.1.0-dev
+        </span>
         <IconButton
           className={styles.collapseButton}
           label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
