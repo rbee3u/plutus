@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0017 and ADR-0018
 ---
 
 # Preserve platform-specific price observations

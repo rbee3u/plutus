@@ -1,104 +1,123 @@
 # Portfolio Observation
 
-Plutus records normalized observations across configured financial identities and derives portfolio valuations, exposure, and capital-adjusted value changes over time.
+Plutus periodically collects the balances, positions, and account reports that configured exchange accounts disclose, values them in USD, and shows how the total changed over time once the owner's own transfers in and out are excluded.
 
 ## Language
 
 ### Identity and access
 
 **User**:
-A person authenticated by Plutus who owns and directly manages one or more Portfolios. A User is distinct from every Platform Identity.
+A person authenticated by Plutus who owns one or more Portfolios. A User is distinct from every Platform Identity.
 _Avoid_: Administrator, Identity, Account (as synonyms for a Plutus login)
 
 **Platform**:
-An exchange or other financial service that provides accounts and market information, such as Binance, OKX, or Bybit.
+An exchange or other financial service that provides Accounts and market prices, such as Binance, OKX, or Bybit.
 
 **Identity**:
-A distinct identity recognized by one Platform, under which Accounts are organized. Main and subordinate identities are separate Identities, distinct from Plutus login users and independent of access credentials.
-_Avoid_: User, Account, API key, Connection (as synonyms for platform identity)
+One login identity recognized by a Platform, under which that Platform organizes Accounts. A main account and each of its sub-accounts are separate, unrelated Identities.
+_Avoid_: User, Account, API key, Connection, sub-account (as synonyms for platform identity)
+
+**Account Mode**:
+The Platform-defined margin or account regime an Identity runs in, such as Binance Portfolio Margin or Bybit Unified Trading Account 2.0. It determines which Account Types the Platform can offer.
+
+**Account Type**:
+One kind of Platform wallet or trading account that an Adapter knows how to collect for a given Platform and Account Mode, such as a unified trading account, a funding account, or an earn account.
 
 **Account**:
-A platform-defined financial account belonging to one Identity, such as a funding or unified trading account, with a particular asset scope. A product category does not by itself define an Account.
-_Avoid_: Identity, product type (as synonyms for Account)
+One Account Type selected by the User for one Identity. Only selected Accounts are collected and valued.
+_Avoid_: Identity, wallet, product type (as synonyms for Account)
 
 **Connection**:
-A configured access path to one Identity on one Platform. Replacing its credentials does not change the Identity or its Accounts.
+The read-only API credentials configured for one Identity. Replacing credentials does not change the Identity or its Accounts.
 _Avoid_: Identity, Account, API key (as synonyms for configured access)
+
+**Adapter**:
+The Plutus component that talks to one Platform and translates its responses into Observations. It declares the Account Modes and Account Types it supports.
 
 ### Asset catalog
 
 **Asset**:
-A distinct unit of financial value with a shared identity across Accounts and Platforms, such as BTC, USDT, or USD. Related assets, including wrapped assets and their underlying assets, remain distinct.
-_Avoid_: Ticker, symbol (as sufficient asset identity)
+A unit of financial value identified by its normalized symbol across Platforms, such as BTC or USDT. Assets with different symbols remain distinct even when economically related.
+_Avoid_: Ticker, coin (as synonyms for canonical asset identity)
 
 **Asset Listing**:
-A Platform's representation of an Asset, retaining its platform-native identity and symbol. Listings with matching symbols do not by themselves establish a shared Asset identity.
-_Avoid_: Asset, ticker (as sufficient cross-platform identity)
+One Platform's symbol for an Asset. A listing maps to an Asset automatically by symbol unless the User overrides the mapping.
+_Avoid_: Asset (when the Platform-specific spelling matters)
 
 **Instrument**:
-A specific trading market or contract on a Platform, identified by its assets and product characteristics, including settlement asset and expiry where applicable. A spot pair, a perpetual contract, and a delivery contract are distinct Instruments even when they reference the same Asset.
-_Avoid_: Asset (when referring to a trading pair or contract)
+A specific tradable contract or market on one Platform, identified by its symbol, product kind, settlement Asset, and expiry where applicable. A perpetual and a delivery contract on the same Asset are distinct Instruments.
+_Avoid_: Asset, pair (when referring to a contract)
 
-### Balances and positions
+**Valuation Asset**:
+The Asset in which every derived value is expressed. It is USD; USDT and USDC are treated as equal to USD when valuing.
 
-**Balance**:
-The state of one Asset in one Account, expressed through reported measures such as total, available, or locked quantities. Different measures can describe overlapping quantities.
-_Avoid_: Equity (as a synonym for an asset quantity)
+### Collection and observations
 
-**Position**:
-An open directional exposure in one Instrument held in one Account, with its quantity and associated reported measures. Opposing Positions remain distinct even when their net Exposure is zero.
-_Avoid_: Balance, margin (as synonyms for a position)
+**Collection Cycle**:
+One scheduled or manual pass over every enabled Connection in a Portfolio, ending in one Valuation Point.
+_Avoid_: Refresh, sync, snapshot (as synonyms for the cycle)
 
-### Observations
+**Collection Run**:
+The work done for one Connection within one Collection Cycle.
 
 **Observation**:
-A normalized, time-qualified fact obtained from one Platform for a declared scope. It retains its provenance, coverage, and completeness and is distinct from any derived result.
-_Avoid_: Platform response, aggregate (as synonyms for a normalized source fact)
+A fact obtained from one Platform during one Collection Run, stored with its Platform observation time. Observations are never edited; the next Collection Run produces new ones.
+_Avoid_: Platform response, projection (as synonyms for a stored source fact)
 
-**Identity Snapshot**:
-A collection of Observations gathered for one Identity across its Accounts during a refresh, including Balances, Positions, Reported Equity, and Account Metrics. Its contents can have different source observation times.
+**Account Report**:
+The Observation of one Account in one Collection Run: whether collection succeeded, the Account's reported equity when the Platform provides one, and a fixed set of Plutus-defined account-level measures such as margin ratios.
+_Avoid_: Snapshot, metrics, equity (as the whole report)
+
+**Balance**:
+The Observation of one Asset Listing in one Account Report, led by that Asset's equity in the Account together with availability, liability, and unrealized-profit measures.
+_Avoid_: Quantity, holding (as the equity measure)
+
+**Position**:
+The Observation of one open directional contract holding in one Account Report, with its side, size, prices, and margin measures. Opposing long and short holdings are separate Positions.
+_Avoid_: Balance, margin, exposure (as synonyms for a position)
 
 **Price Observation**:
-A price for a particular Instrument or Asset on a Platform, with a price type, quote Asset, and observation time. Market, mark, and index prices are distinct Observations.
-_Avoid_: Price (without qualification when source, type, or time matters)
+A market or mark price for one Asset Listing or Instrument on one Platform at an observation time, quoted in a stated Asset.
 
-**Reported Equity**:
-The net value supplied by a Platform for a specified coverage scope and denomination. Discounted collateral values and margin requirements are different measures.
-_Avoid_: Notional value, collateral value, margin requirement (as synonyms for equity)
+**Complete Set**:
+The rule that the Balances and Positions in a successful Account Report are everything the Account holds; anything absent is no longer held.
 
-**Account Metric**:
-A Platform-defined measure reported for one Account, with its unit and observation time, such as UniMMR. Metrics are not comparable or aggregatable across Platforms unless their semantics are established.
+**Stale**:
+The state of an Account whose latest Collection Run failed, so its most recent successful Account Report is still in use, labeled with that report's age.
 
-### Portfolio and capital
+### Portfolio and boundary
 
 **Portfolio**:
-The collection of enabled Identities selected by one User for asset observation and the boundary for Capital Flows. A User can own multiple Portfolios, but each Identity belongs to exactly one Portfolio.
-_Avoid_: User, Identity, Account, filtered view (as synonyms for the portfolio boundary)
+One User's ledger: the set of enabled Identities and their selected Accounts whose values are totaled together and whose Capital Flows are recorded. Each Identity belongs to exactly one Portfolio.
+_Avoid_: User, Identity, Account, view (as synonyms for the portfolio boundary)
 
-**Capital Baseline**:
-The known cumulative contributed capital for the Portfolio at an effective time, expressed in a specified denomination. A Portfolio has one logical Capital Baseline whose current value can be corrected.
-_Avoid_: Balance, Portfolio Valuation (as synonyms for contributed capital)
+**Portfolio Boundary**:
+The set of Accounts currently selected under enabled Identities in a Portfolio. Value inside the boundary is counted; value outside it is invisible to Plutus.
 
 **Capital Flow**:
-An external contribution or withdrawal that crosses the Portfolio boundary, stated as a quantity of one Asset with an effective time and, when known, the Account through which it entered or left. Movement between Accounts within the Portfolio is not a Capital Flow.
-_Avoid_: Internal transfer, Balance change (as synonyms for external capital movement)
+A transfer of value across the Portfolio Boundary recorded manually by the User as an Asset quantity at an effective time, either a contribution or a withdrawal. Transfers between Accounts inside the boundary are not Capital Flows.
+_Avoid_: Deposit, internal transfer, balance change (as synonyms for boundary-crossing value)
 
-**Contributed Capital**:
-The Capital Baseline adjusted by subsequent Capital Flows for a specified time and denomination.
-_Avoid_: Portfolio Valuation, profit
+**Boundary Event**:
+An Account entering or leaving the Portfolio Boundary, whether by selection, deselection, or Identity archive. It is treated as an implicit Capital Flow equal to that Account's first or last valued amount.
 
 ### Derived results
 
-**Calculated Valuation**:
-An estimate derived from Balance and Position Observations and Price Observations for a specified scope and denomination. It is distinct from Reported Equity, even when the amounts agree.
+**Account Valuation**:
+The USD value of one Account at one Valuation Point, taken from the Account Report's reported equity when present and otherwise calculated from its Balances and Price Observations, with its method, freshness, and completeness recorded.
+_Avoid_: Balance total, equity (without stating the method)
 
-**Portfolio Valuation**:
-The derived net value of the Portfolio for a specified evaluation time, coverage, and denomination, combining non-overlapping Reported Equity and sufficient Calculated Valuations. It retains the provenance, freshness, and completeness of its inputs.
+**Valuation Point**:
+The USD total of every Account Valuation in a Portfolio at the end of one Collection Cycle, stored once and never recalculated except after a mapping correction.
+_Avoid_: Snapshot, projection, generation
 
-**Exposure**:
-The amount of an underlying Asset represented by Balances and Positions, expressed in comparable underlying-asset units. Long and short components remain distinct from their net amount and from equity.
-_Avoid_: Equity, Portfolio Valuation (as synonyms for directional exposure)
+**Incomplete**:
+The state of a Valuation Point or Account Valuation whose total omits value that could not be determined, such as a Balance without a price. The total remains a real number and names what it omits.
+_Avoid_: Null, zero (as representations of unknown value)
+
+**Period Close**:
+The last Valuation Point at or before the end of a calendar day, ISO week, month, quarter, or year in the Portfolio's timezone. A period with no Valuation Point has no Period Close.
 
 **Value Change**:
-The change between comparable Portfolio Valuations after subtracting contributions and adding withdrawals over the interval; from the Capital Baseline, it uses that baseline as the starting basis. It does not attribute the change or represent an investment return.
-_Avoid_: Profit, P&L, return
+The difference between two Valuation Points minus the contributions and plus the withdrawals, including Boundary Events, whose effective times fall between them. It is an absolute USD amount, not a return.
+_Avoid_: Profit, P&L, return, performance

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0014, ADR-0016, and ADR-0020
 ---
 
 # Persist normalized observations and rebuild derived results

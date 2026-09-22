@@ -1,26 +1,30 @@
 # Plutus
 
-Plutus is a personal, read-only portfolio observation project. It is intended to periodically collect normalized account observations, persist their history, and present balances, positions, valuations, and basic directional exposure through a web frontend.
+Plutus is a personal, read-only portfolio observation tool. It periodically collects the balances, positions, and account reports that configured exchange accounts disclose, values them in USD, and shows how the total changed over time once the owner's own transfers in and out are excluded.
 
-The domain hierarchy is `Platform -> Identity -> Account`: each main or subordinate identity on a financial Platform has its own funding or trading Accounts. A Connection configures access to one Identity. An authenticated Plutus User is a separate concept, owns one or more independent Portfolios, and directly manages the Identities selected into each Portfolio.
+The domain hierarchy is `Platform -> Identity -> Account`: each exchange login (main account or sub-account, configured independently) has the Accounts the User selects from the Account Types its Adapter supports. A Connection holds that Identity's read-only API credentials. A Plutus User owns one or more Portfolios; a Portfolio is one person's ledger.
 
 ## Current status
 
-Phase 3 (complete MVP UI and management) is implemented and waiting for review. The process is a Go CLI at `cmd/plutus` with an embedded React frontend:
+Phases 1–3 are implemented on the **previous** domain model and work end to end with synthetic data. On 2026-09-22 the design was revised (ADRs [0014](./docs/adr/0014-store-one-valuation-point-per-collection-cycle.md)–[0021](./docs/adr/0021-report-each-account-with-one-aligned-account-report.md)); Phase 4 restructures the code to the revised model before any real exchange integration. Until Phase 4 lands, the running code still has the old shape:
 
-- Configuration from TOML and `PLUTUS_*`, including `--config` / `--env-file` for isolated local lanes and the HTTP / HTTPS / mTLS startup matrix.
+- Configuration from TOML and `PLUTUS_*`, `--config` / `--env-file` lanes, the HTTP / HTTPS / mTLS startup matrix.
 - Explicit Goose migrations and sqlc access. `serve` never migrates automatically.
-- Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, and write-only Connection credentials encrypted with AES-256-GCM. `/health/ready` fails when ciphertext exists without a master key.
-- Development `plutus db seed` and `plutus db reset` with deterministic `minimal`, `edge-cases`, and `walkthrough` source-fact profiles. Seeds stay secret-free. Reset requires `[database].allow_reset = true` in the selected TOML and a database name matching `plutus` or `plutus_<suffix>`.
-- Normalized Observations, catalog mapping and pin revisions, Observation correction, Capital Baseline / Flow revisions, and portfolio audit events.
-- A durable Projection worker that rebuilds latest balances, positions, valuations, contributed capital, value changes, exposure, and period summaries, then atomically activates a ready generation. A failed rebuild leaves the previous generation readable. `POST /projection-rebuilds` enqueues a full rebuild.
-- Working Overview, Balances, Positions, Exposure, Valuations, Value Changes, Capital, Identity, Connection, Catalog, Observation, Jobs, and Audit pages. Overview charts include a text summary and an accessible exact-value table. Query failures keep last-good data and show Retry plus a trace ID.
+- Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD, Identity CRUD, write-only Connection credentials encrypted with AES-256-GCM.
+- Development `plutus db seed` and `plutus db reset` with deterministic `minimal`, `edge-cases`, and `walkthrough` profiles.
+- Old-model Observations, catalog mapping and pin revisions, Observation correction, Capital Baseline / Flow revisions, audit events, and a generation-based projection worker with `POST /projection-rebuilds`.
+- Working Overview, Balances, Positions, Exposure, Valuations, Value Changes, Capital, Identity, Connection, Catalog, Observation, Jobs, and Audit pages.
 
-Not implemented yet: real Platform adapters, collection scheduling, Identity refresh, or Connection validate against a live Platform. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
+Not implemented: the revised schema and modules, real Platform adapters, the Collection Cycle scheduler, Connection validation against a live Platform. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
 
-## First-release scope
+## Product scope
 
-Initial integrations target these account modes:
+Two questions, in priority order:
+
+1. **How much is there now, and where.** A Platform → Identity → Account tree with each Account's report fields (equity, adjusted equity, available equity, margin ratios), its Balances and Positions, and USD totals per Account, Platform, and Portfolio. The numbers are meant to match each exchange app.
+2. **How did the total change over a period, excluding my own transfers.** One Valuation Point per Collection Cycle (default every 15 minutes), Period Closes, and absolute USD Value Change by calendar day, ISO week, month, quarter, and year, after subtracting manual Capital Flows and derived Boundary Events.
+
+Initial integrations target these Account Modes:
 
 | Platform | Account modes |
 | --- | --- |
@@ -28,36 +32,35 @@ Initial integrations target these account modes:
 | OKX | Multi-currency margin (MCM), Portfolio margin (PM) |
 | Bybit | Unified Trading Account 2.0 (UTA 2.0) |
 
-The product scope includes spot balances and stablecoin-margined (linear) and coin-margined (inverse) perpetual and delivery contracts. Availability and report coverage must be verified for each selected platform and mode.
+Rules that shape the product:
 
-Each enabled Identity has at most one enabled Connection. Its Accounts and Platform catalog entries are discovered automatically, while subordinate Identities require explicit enablement. Every reported Balance and Position is retained even before a newly discovered Asset Listing is mapped, and prices are tracked for current holdings, open Positions, and any additional entries pinned by the User within that Portfolio.
-
-The planned frontend presents Balance and Position tables that can be filtered or grouped by Platform, Identity, Account, Asset, and Instrument. Platform-specific Account Metrics such as UniMMR remain visible at Account scope rather than being treated as cross-platform aggregates.
-
-Portfolio Valuation uses Reported Equity for its declared coverage and sufficient Calculated Valuation for uncovered scopes. One editable Capital Baseline and manually entered external Capital Flows support absolute Value Changes for calendar days, ISO weeks, months, quarters, and years, including provisional period-to-date results. Observation times, failures, stale data, incomplete coverage, and incomparable periods remain visible. Display defaults to USD with a CNY option while preserving original quantities and denominations.
-
-Plutus persists normalized Observations rather than raw Platform response payloads. Latest state, aggregates, valuations, exposure, contributed capital, value changes, and period summaries are rebuildable projections; correcting an Observation or manual source fact invalidates and rebuilds affected projections.
-
-Value Changes are not investment returns. Percentage returns, return attribution, a full transaction ledger, trading execution, and internal-transfer tracking are outside the first release; asynchronous observations around an internal transfer can therefore create a temporary discrepancy. Manual asset management, including manually tracked securities or DeFi assets, is deferred to a later product release.
+- The User selects which Account Types to collect for each Identity; nothing is discovered or probed beyond that selection.
+- An Account's value is the Platform's reported equity when it provides one, otherwise the sum of its Balances times the same Platform's prices. USD is the only valuation currency; USDT and USDC count as 1 USD.
+- A failed Account collection keeps its last successful report, labeled stale with its age. A successful report is the complete set: a coin not listed is no longer held. A Balance without a price is shown but left out of the total, which is marked incomplete.
+- Adding or removing an Account from the Portfolio is a Boundary Event treated as an implicit Capital Flow, so Value Change does not jump. Capital Flows are recorded manually; Plutus only ever needs read-only API keys.
+- Value Change is not an investment return. Percentage returns, attribution, trade history, automatic deposit import, CNY display, and Exposure aggregation are out of scope.
 
 ## Roadmap
 
-1. Foundation (done): configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, an embedded React shell, and a persistent Projection worker.
-2. End-to-end vertical slice (done): deterministic source-fact seeds, normalized Observations, generation-based Projections, and working Overview, Balances, Positions, and Capital pages.
-3. Complete MVP UI and management (done): Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
-4. Integrations: scheduling and real Binance, OKX, and Bybit adapters.
+1. Foundation (done): configuration, explicit MySQL migrations, OpenAPI generation, authentication, multiple Portfolios, embedded React shell, durable job worker.
+2. End-to-end vertical slice (done, previous model): deterministic seeds, Observations, projections, Overview / Balances / Positions / Capital pages.
+3. Complete MVP UI and management (done, previous model): Exposure, History, Data, Jobs, Connection and Catalog management, audit, and correction workflows.
+4. Restructure to the accepted model: rewrite the baseline migration, replace projections with write-once Valuation Points, Account selection, Boundary Events, fake Adapter, new Holdings / History / Capital / Identities pages.
+5. Integrations: Binance, OKX, and Bybit Adapters and live validation of the collection rules.
 
-The accepted design uses a contract-first modular Go monolith, a versioned JSON API, an embedded React frontend, and an externally managed MySQL database.
+The accepted architecture is a contract-first modular Go monolith, a versioned JSON API, an embedded React frontend, and an externally managed MySQL database.
 
 ## Documentation
 
 - [Domain glossary](./CONTEXT.md)
-- [MVP technical design](./docs/technical-design.md)
+- [Technical design](./docs/technical-design.md)
 - [Architecture decision records](./docs/adr/)
 - [Implementation checklist](./docs/implementation-checklist.md)
 - [Contributor and agent guidance](./AGENTS.md)
 
 ## Development
+
+The commands and seed behavior below describe the code as it runs today (previous model). Phase 4 replaces the projection worker, `plutus projection rebuild`, and the CNY Portfolio option; the checklist tracks that switch.
 
 Use the Go toolchain required by `go.mod`, Node.js as required by `web/package.json`, and Make. Install the pinned formatting, lint, sqlc, Goose, and frontend tools with `make deps`, and ensure the Go tool installation directory is on `PATH`.
 

@@ -1,28 +1,33 @@
-# MVP Technical Design
+# Technical Design
 
-Status: approved for implementation
+Status: approved for implementation. Sections marked **implemented** describe code that exists on `dev`; everything else is the target that Phase 4 (restructure) and Phase 5 (integrations) build toward.
 
-This document specifies the technical contract for the Plutus MVP. It turns the domain decisions in the [glossary](../CONTEXT.md) and [ADRs](./adr/) into an implementation plan for independently building the backend and frontend. Unless a section is explicitly marked as implemented, every command, endpoint, table, and component described here is planned work.
+This document turns the [glossary](../CONTEXT.md) and the accepted [ADRs](./adr/) into a contract for building the backend and frontend. It replaces the earlier projection-generation design; the reasons are recorded in ADRs [0014](./adr/0014-store-one-valuation-point-per-collection-cycle.md) through [0021](./adr/0021-report-each-account-with-one-aligned-account-report.md).
 
 ## 1. Goals and boundaries
 
-The MVP must let an authenticated User manage multiple independent Portfolios, observe normalized financial facts, and inspect rebuildable portfolio projections through a responsive web application. The first three implementation phases use deterministic synthetic source facts; real Platform collection begins only in phase 4.
+Plutus answers two questions for one User's Portfolio, in this order of importance:
 
-The following are deliberately outside phases 1–3:
+1. **How much is there now, and where.** A Platform → Identity → Account tree with each Account's report, Balances, and Positions, and a USD total per Account, per Platform, and for the Portfolio. This view must match what the owner sees in each exchange app.
+2. **How did the total change over a period, excluding my own transfers.** A Valuation Point series, Period Closes, and Value Change by calendar day, ISO week, month, quarter, and year, with manual Capital Flows and Boundary Events subtracted.
 
-- real Binance, OKX, or Bybit network calls;
+Deliberately outside the product:
+
+- percentage returns, return attribution, per-trade or per-strategy analysis, a transaction ledger;
+- trading, transfers, or any Platform write operation, and any Platform call that needs more than read-only balance, position, and market-data permission ([ADR 0020](./adr/0020-record-capital-flows-manually-with-read-only-credentials.md));
+- automatic deposit/withdrawal import or internal-transfer matching;
 - storage of raw Platform response payloads;
-- trading, transfer, arbitrage, or other write operations against a Platform;
-- percentage returns, return attribution, a full transaction ledger, or internal-transfer tracking;
-- shared Portfolios, roles, application administrators, email, OAuth, or password-recovery email;
-- multi-instance high availability, PWA or offline support, native applications, Prometheus, or OpenTelemetry;
-- cross-Platform price averaging or an assumption that a stablecoin is always worth one unit of a fiat currency.
+- currencies other than USD, and observed stablecoin or fiat exchange rates ([ADR 0017](./adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md));
+- Exposure aggregation by underlying Asset ([ADR 0021](./adr/0021-report-each-account-with-one-aligned-account-report.md));
+- sub-account collection through a main-account credential ([ADR 0015](./adr/0015-select-account-types-per-identity.md));
+- shared Portfolios, roles, email, OAuth, password recovery, multi-instance HA, PWA, native apps, Prometheus, OpenTelemetry;
+- manually tracked non-exchange assets (a later product release).
 
-The Platform and account-mode scope remains the one accepted by [ADR 0005](./adr/0005-support-explicitly-selected-unified-account-modes.md). Every implementation must preserve the distinctions and missing-data rules in ADRs [0002](./adr/0002-separate-identities-accounts-assets-and-instruments.md), [0003](./adr/0003-prefer-scoped-reported-equity.md), [0004](./adr/0004-preserve-platform-specific-price-observations.md), [0006](./adr/0006-configure-identity-access-and-discover-catalog-entries.md), [0007](./adr/0007-persist-normalized-observations-and-rebuild-derived-results.md), [0008](./adr/0008-support-user-owned-multiple-portfolios.md), and [0009](./adr/0009-use-a-contract-first-modular-web-monolith.md).
+Platform and Account Mode scope remains [ADR 0005](./adr/0005-support-explicitly-selected-unified-account-modes.md): Binance Portfolio Margin, OKX Multi-currency margin and Portfolio margin, Bybit Unified Trading Account 2.0.
 
 ## 2. Technology baseline
 
-Versions below are implementation baselines. Patch releases may be updated without another ADR when generated output, tests, and browser support remain compatible; major-version changes require an explicit review of this document and the transport contract.
+Versions are baselines. Patch releases may move without a new ADR; major versions require reviewing this document and the transport contract.
 
 | Area | Choice |
 | --- | --- |
@@ -42,13 +47,13 @@ Versions below are implementation baselines. Patch releases may be updated witho
 | Charts and arithmetic | ECharts 6, decimal.js 10.6 |
 | Styling and icons | CSS Modules, semantic CSS custom properties, Lucide 1.30 |
 
-Exact direct dependencies must be pinned in `go.mod` and `package-lock.json`. Generated files are committed so that contract drift is visible in review.
+Direct dependencies are pinned in `go.mod` and `package-lock.json`. Generated files are committed so contract drift is visible in review.
 
 ## 3. Runtime architecture
 
-### 3.1 Deployment unit
+### 3.1 Deployment unit (implemented)
 
-The production deployment has one active Plutus process and one externally managed MySQL server. The Go process serves the JSON API, runs persistent job workers, hosts scheduling when integrations are enabled, and serves the embedded React build. Plutus does not start, stop, back up, or upgrade MySQL.
+One Go process and one externally managed MySQL server. The process serves the JSON API, runs the scheduler and job worker, and serves the embedded React build. Plutus does not start, stop, back up, or upgrade MySQL.
 
 ```text
 Browser
@@ -58,20 +63,18 @@ Go process
   +-- HTTP transport (Gin, generated strict interface)
   +-- application services
   +-- domain calculations and policies
-  +-- repository implementations --------------------> MySQL 8.4
-  +-- projection worker -------- persistent jobs -----^
-  +-- scheduler (phase 4) ------- collection jobs ----^
-  +-- Platform adapters (phase 4) --> external Platforms
+  +-- repositories ---------------------------------> MySQL 8.4
+  +-- scheduler: one Collection Cycle per Portfolio -^
+  +-- job worker: runs cycles, writes Valuation Points
+  +-- Platform adapters ---------------------------> external Platforms
   +-- embedded React SPA
 ```
 
-Only one Plutus process may be active for an MVP database. Job leases provide restart recovery, not multi-instance coordination. A deployment that needs concurrent application instances requires a later ADR covering scheduler leadership, distributed work claims, cache invalidation, and migration coordination.
+Only one Plutus process may be active for a database. Job leases give restart recovery, not multi-instance coordination.
 
-During frontend development, Vite serves the SPA and proxies `/api`, `/health`, and cookie traffic to the Go server. The production binary serves immutable hashed assets and routes unknown non-API paths to `index.html`.
+### 3.2 Module boundaries and dependency direction (implemented, module list changes in Phase 4)
 
-### 3.2 Module boundaries and dependency direction
-
-The repository is a modular monolith. A module may call another module's application-facing interface; it must not read another module's SQL tables directly outside an explicitly documented projection query.
+A modular monolith. A module calls another module's application interface; it does not read another module's tables outside a documented read query.
 
 ```text
 HTTP / worker / CLI transport
@@ -86,937 +89,475 @@ HTTP / worker / CLI transport
                                              +-- Platform adapters
 ```
 
-The intended modules are:
+Target modules:
 
-- `auth`: Users, password hashes, Sessions, CSRF, and login throttling;
-- `portfolio`: Portfolio ownership, Identity, Connection, and Account configuration;
-- `catalog`: Assets, Asset Listings, Instruments, mappings, and tracking choices;
-- `observation`: collection runs, normalized Observations, completeness, coverage, and correction;
-- `capital`: Capital Baseline and Capital Flow source facts;
-- `projection`: latest state, valuation, exposure, contributed capital, Value Change, and period summaries;
-- `jobs`: durable job lifecycle, attempts, leases, deduplication, and retry policy;
-- `adapters`: ports and Platform-specific normalized batch implementations.
+- `auth`: Users, password hashes, Sessions, CSRF, login throttling;
+- `portfolio`: Portfolios, Identities, Connections, Account selection;
+- `catalog`: Assets, Asset Listings, Instruments, mapping overrides;
+- `collection`: Collection Cycles and Runs, Account Reports, Balances, Positions, Price Observations;
+- `capital`: manual Capital Flows;
+- `valuation`: Account Valuation and Valuation Point calculation at the end of a cycle, plus the read-time Value Change, Period Close, and Boundary Event queries;
+- `jobs`: durable job lifecycle, attempts, leases, deduplication, retry policy;
+- `adapters`: the adapter port and one implementation per Platform.
 
-Generated OpenAPI types are transport-only types. Handwritten handlers convert them to application commands and queries. Domain packages must not import Gin, sqlc output, generated OpenAPI packages, or MySQL drivers. Repository implementations convert between domain values and database rows.
+Phase 4 removes the `observation` correction paths and the `projection` module, and renames what remains of them into `collection` and `valuation`. Generated OpenAPI types stay at the transport boundary. Domain packages do not import Gin, sqlc output, generated OpenAPI packages, or MySQL drivers.
 
-### 3.3 Request and projection flow
+### 3.3 Collection Cycle flow
 
 ```text
-OpenAPI request
-  -> strict validation
-  -> authentication and Portfolio ownership check
-  -> application command/query
-  -> transaction through repository ports
-  -> typed OpenAPI response
-
-Source-fact mutation
-  -> commit normalized source fact and audit event
-  -> enqueue or merge a projection invalidation job in the same transaction
-  -> worker builds a new generation
-  -> validate generation completeness
-  -> atomically switch Portfolio.active_projection_generation_id
+scheduler tick (every Portfolio interval, default 15 min) or POST /collection-cycles
+  -> create or merge one `collection_cycle` job for the Portfolio
+  -> worker claims it
+  -> for each enabled Connection, staggered by a few seconds:
+       adapter.Collect(connection, selected Accounts)
+       -> one collection_run row
+       -> one account_report row per selected Account (ok or failed)
+       -> balance/position rows under each ok report
+       -> price rows for every listing/instrument held
+  -> valuation: for each Account in the boundary
+       pick this cycle's ok report, else the latest earlier ok report (stale)
+       value it (reported equity, else Σ balance.equity × price)
+  -> write one valuation_point + account_valuations in one transaction
+  -> job succeeded
 ```
 
-A failed rebuild leaves the previous active generation available. Readers never combine rows from two generations.
+A cycle never rewrites earlier rows. A wholly failed cycle (every Connection failed) still writes a Valuation Point built entirely from stale reports, so the series has no gaps while the process is alive; a day on which the process was down has no points and therefore no Period Close.
 
 ### 3.4 Adapter boundary
 
-The adapter port is defined in phase 1 even though its registry is empty until phase 4. A Platform adapter receives one Connection and a collection request and returns a normalized batch containing discovered Accounts and catalog entries, typed Observation candidates, source observation times, explicit coverage, and structured failures. Error classes distinguish authentication, authorization, rate limiting, temporary Platform failure, unsupported scope, invalid configuration, and normalization failure.
+```go
+type Adapter interface {
+    // Capabilities lists the Account Types this adapter can collect per Account Mode.
+    Capabilities() map[AccountMode][]AccountType
+    // Validate performs one read-only call and returns the Platform's own identity ref.
+    Validate(ctx, creds Credentials, mode AccountMode) (ValidationResult, error)
+    // Collect returns one AccountReport per requested Account, with balances,
+    // positions, and the prices needed to value them.
+    Collect(ctx, creds Credentials, mode AccountMode, accounts []AccountType) (Batch, error)
+}
+```
 
-Raw payload bytes must not cross the adapter boundary or be logged, audited, or persisted. Adapters may retain only the minimum native identifiers and normalized fields needed by the schema.
+`Batch` carries only normalized values, Platform observation times, and structured per-Account failures. Error classes distinguish authentication, authorization, rate limiting, temporary Platform failure, unsupported scope, and normalization failure. Raw payload bytes never cross this boundary, are never logged, and are never persisted. An Adapter maps every Platform field into the fixed columns of §5.5; unsupported measures are null.
 
-## 4. Cross-cutting data rules
+## 4. Cross-cutting data rules (implemented)
 
 ### 4.1 Database settings and identifiers
 
-- All tables use InnoDB and `utf8mb4`. MySQL strict mode is required.
-- Entity identifiers are application-generated UUIDv7 values stored as canonical big-endian `BINARY(16)`. The API uses lower-case canonical UUID strings.
-- Status and kind fields use `VARCHAR` plus `CHECK` constraints, not MySQL `ENUM`, so migrations can extend values deliberately.
-- Foreign keys use `RESTRICT` by default. Source facts are archived or tombstoned rather than cascade-deleted, except that deleting an additional Portfolio removes every row scoped to that Portfolio.
-- Every Portfolio-scoped table contains `portfolio_id`, has `UNIQUE (portfolio_id, id)` when `id` is its primary key, and uses composite foreign keys such as `(portfolio_id, identity_id) -> identities(portfolio_id, id)`. This prevents cross-Portfolio references in the database itself.
-- Repository entry points for scoped data require both `user_id` and `portfolio_id`. A missing Portfolio and another User's Portfolio both return HTTP 404.
+- InnoDB, `utf8mb4`, MySQL strict mode required.
+- Entity identifiers are application-generated UUIDv7 stored as `BINARY(16)`; the API uses lower-case canonical UUID strings.
+- Status and kind fields are `VARCHAR` plus `CHECK`, not MySQL `ENUM`.
+- Foreign keys use `RESTRICT` by default. Deleting an additional Portfolio removes every row scoped to it.
+- Every Portfolio-scoped table has `portfolio_id`, `UNIQUE (portfolio_id, id)`, and composite foreign keys such as `(portfolio_id, identity_id) -> identities(portfolio_id, id)`.
+- Repository entry points for scoped data require `user_id` and `portfolio_id`. A missing Portfolio and another User's Portfolio both return HTTP 404.
 
 ### 4.2 Decimal and JSON representation
 
-All financial quantities, prices, amounts, and calculated values use `DECIMAL(65,30)`. Application arithmetic uses a decimal context with precision 65 and an explicitly selected rounding mode at each operation boundary. The database must never receive a Go `float64` for a financial column.
-
-JSON represents every financial decimal as a string, including zero. `null` means unknown, unavailable, or not applicable; it never means zero. Examples are `"0"`, `"1.25000000"`, and `null`. The frontend uses `decimal.js` for arithmetic and formatting. Chart adapters alone may convert display samples to JavaScript numbers; exact strings remain available for tooltips and accessible tables.
-
-JSON columns are limited to versioned normalized configuration, safe structured issue details, and canonical audit before/after documents. Platform response payloads are forbidden.
+All quantities, prices, and values are `DECIMAL(65,30)`; application arithmetic uses precision 65 with explicit rounding at each boundary. No `float64` reaches a financial column. JSON represents every financial decimal as a string, including `"0"`. `null` means unknown or not applicable, never zero. The frontend uses `decimal.js`; only chart adapters convert to JavaScript numbers.
 
 ### 4.3 Time and timezone
 
-MySQL session timezone is UTC. Time points use UTC `DATETIME(6)`, not `TIMESTAMP`: this avoids MySQL's narrower `TIMESTAMP` range while retaining microsecond precision. The application treats these values as UTC and serializes them as RFC 3339 strings with `Z` or an explicit offset. Calendar-only values use `DATE`.
-
-Each Portfolio stores an IANA timezone, defaulting to `Asia/Shanghai`. The application computes local day, ISO-week, month, quarter, and year boundaries in that timezone and then converts the boundaries to UTC. Changing the timezone enqueues a full rebuild of every period-based projection. Each projection generation records the timezone used, so old and new boundaries cannot be mixed.
+MySQL session timezone is UTC. Time points are UTC `DATETIME(6)` serialized as RFC 3339. Calendar-only values are `DATE`. Each Portfolio stores an IANA timezone (default `Asia/Shanghai`) used to compute Period Close boundaries at query time; changing it changes what future queries return and requires no recalculation because Valuation Points are timezone-free.
 
 ### 4.4 Versioning and retention
 
-Mutable configuration rows have an integer `version` used for ETags. Manual facts and catalog decisions use append-only revisions with a current pointer. Normalized Observations are correctable in place in one transaction: increment the row version, record canonical before/after audit documents, and enqueue an affected projection rebuild. This limited correction model is intentional and does not create an Observation revision chain.
-
-Normalized Observations, manual source-fact revisions, and audit events are retained indefinitely for the MVP. Sessions expire normally. Completed job attempts and safe failure details are retained for 90 days by default. Keep the active projection generation and the two most recent successful inactive generations; failed or older generations may be purged after their diagnostic retention window.
+Configuration rows carry an integer `version` for ETags. Observations, Valuation Points, and audit events are append-only and kept indefinitely. Completed job attempts are retained 90 days. There is no retention or downsampling for Observations or Valuation Points in this release ([ADR 0014](./adr/0014-store-one-valuation-point-per-collection-cycle.md)).
 
 ## 5. MySQL schema catalog
 
-The tables below are the normative logical schema. Migration names and physical column ordering may differ, but fields, nullability, keys, ownership boundaries, and invariants must remain equivalent. Common `created_at` and `updated_at` fields are UTC `DATETIME(6)` unless stated otherwise.
+Normative logical schema. Phase 4 rewrites the single baseline migration to match it; the previous schema is dropped, not migrated ([Phase 4](#phase-4-restructure-to-the-accepted-model)).
 
-For compact prose catalogs, every field ending in `_id` is `BINARY(16)`; an ID is required unless explicitly nullable. Fields ending in `_at` are UTC `DATETIME(6)`, fields ending in `_date` are `DATE`, versions and watermarks are `BIGINT UNSIGNED`, counts are `INT UNSIGNED`, flags are `BOOLEAN`, codes/kinds/states are `VARCHAR(64)`, safe human-readable details are `VARCHAR(1024)`, and JSON documents are `JSON`. Financial quantities and values are always `DECIMAL(65,30)`. These defaults are part of the field specification, not suggestions.
+Conventions: `_id` fields are `BINARY(16)` and required unless marked nullable; `_at` fields are UTC `DATETIME(6)`; codes and states are `VARCHAR(64)`; safe human-readable details are `VARCHAR(1024)`; financial values are `DECIMAL(65,30)`; versions are `BIGINT UNSIGNED`. `created_at` and `updated_at` are present on every configuration table and omitted below.
 
-### 5.1 Authentication
+### 5.1 Authentication (implemented, unchanged)
 
-#### `users`
-
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, UUIDv7 |
-| `username` | `VARCHAR(191)` | required display spelling |
-| `username_normalized` | `VARCHAR(191)` | required Unicode NFC plus case-folded value; unique |
-| `status` | `VARCHAR(32)` | `active` or `disabled`; indexed |
-| `password_hash` | `VARCHAR(255)` | required encoded Argon2id PHC string |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
-
-Usernames are trimmed and normalized before storage. Login and uniqueness use `username_normalized`; the display spelling is not an identity key. Create, password change, CLI reset, and login rehash write `password_hash` and bump `updated_at`. There is no separate credentials table or password-changed timestamp.
-
-#### `sessions`
-
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, UUIDv7 |
-| `user_id` | `BINARY(16)` | FK to `users.id`; index with active expiry |
-| `token_hash` | `BINARY(32)` | SHA-256 of the random cookie token; unique |
-| `csrf_secret` | `BINARY(32)` | random per-Session synchronizer secret; never logged |
-| `created_at`, `last_seen_at` | `DATETIME(6)` | required |
-| `idle_expires_at`, `absolute_expires_at` | `DATETIME(6)` | required, indexed |
-| `revoked_at` | `DATETIME(6)` | nullable |
-| `client_label` | `VARCHAR(255)` | nullable, safe browser description only |
-
-The cookie contains only the random token, never the password hash or User data. Expiry checks use the earlier of idle and absolute expiry.
+`users` (`id`, `username`, `username_normalized` unique, `status` active|disabled, `password_hash`) and `sessions` (`id`, `user_id`, `token_hash` unique, `csrf_secret`, `created_at`, `last_seen_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at` nullable, `client_label` nullable). See ADRs [0011](./adr/0011-create-users-through-the-cli-only.md) and [0012](./adr/0012-store-password-hashes-on-users.md).
 
 ### 5.2 Portfolio and access configuration
 
 #### `portfolios`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, UUIDv7; also `UNIQUE (user_id, id)` |
-| `user_id` | `BINARY(16)` | FK to `users.id`; indexed |
-| `name` | `VARCHAR(120)` | required; `UNIQUE (user_id, name)` |
-| `timezone` | `VARCHAR(64)` | required IANA name; default `Asia/Shanghai` |
-| `display_asset_id` | `BINARY(16)` | FK to `assets.id`; USD by default, CNY supported |
-| `status` | `VARCHAR(32)` | `active` or `archived`; the product no longer archives Portfolios |
-| `undeletable` | `BOOLEAN` | true for the Portfolio created with the User; that row cannot be deleted |
-| `active_projection_generation_id` | `BINARY(16)` | nullable composite FK added after generation table |
-| `version` | `BIGINT UNSIGNED` | required optimistic-lock version |
-| `created_at`, `updated_at`, `archived_at` | `DATETIME(6)` | `archived_at` nullable; unused by Portfolio HTTP |
+| Field | Rules |
+| --- | --- |
+| `id`, `user_id` | PK; `UNIQUE (user_id, id)`; FK to `users` |
+| `name` | `VARCHAR(120)`; `UNIQUE (user_id, name)` |
+| `timezone` | IANA name, default `Asia/Shanghai` |
+| `collection_interval_seconds` | `INT UNSIGNED`, default 900 |
+| `undeletable` | true for the Portfolio created with the User |
+| `version` | optimistic lock |
 
-CLI user creation creates an active Portfolio named `default` with `undeletable = true`. Additional Portfolios can be renamed and deleted. Deleting an additional Portfolio cascade-deletes every row scoped to it. The undeletable Portfolio cannot be deleted.
+Removed from the previous design: `display_asset_id`, `status`, `archived_at`, `active_projection_generation_id`.
 
-#### `platforms`
+#### `platforms` (implemented, unchanged)
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, stable seeded UUID |
-| `code` | `VARCHAR(32)` | unique, e.g. `binance`, `okx`, `bybit` |
-| `name` | `VARCHAR(120)` | required |
-| `status` | `VARCHAR(32)` | `planned`, `enabled`, or `disabled` |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
+`id` stable seeded UUID, `code` unique (`binance`, `okx`, `bybit`), `name`, `status` planned|enabled|disabled.
 
 #### `identities`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `platform_id` | `BINARY(16)` | FK to `platforms.id` |
-| `parent_identity_id` | `BINARY(16)` | nullable composite self-FK |
-| `external_ref` | `VARCHAR(191)` | normalized Platform-native identity ID |
-| `display_name` | `VARCHAR(120)` | required |
-| `account_mode` | `VARCHAR(64)` | selected supported mode |
-| `kind` | `VARCHAR(32)` | `main` or `subordinate` |
-| `status` | `VARCHAR(32)` | `enabled`, `disabled`, or `archived` |
-| `version` | `BIGINT UNSIGNED` | required |
-| `created_at`, `updated_at`, `archived_at` | `DATETIME(6)` | `archived_at` nullable |
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id` | PK plus scope |
+| `platform_id` | FK to `platforms` |
+| `display_name` | `VARCHAR(120)` required; `UNIQUE (portfolio_id, platform_id, display_name)` among non-archived rows via a stored generated `active_display_name` |
+| `account_mode` | one of the Adapter's declared modes; `CHECK` against the supported list |
+| `external_ref` | `VARCHAR(191)` nullable; the Platform UID returned by Connection validation, informational only |
+| `status` | `enabled` or `archived` |
+| `archived_at` | nullable |
+| `version` | |
 
-Use a stored generated `active_external_ref`, equal to `external_ref` while `status` is not `archived` and NULL otherwise, with `UNIQUE (portfolio_id, platform_id, active_external_ref)`. Archived rows keep their external ref and observations, and the same platform identity can be created again as a new Identity. After the first Observation exists, `portfolio_id`, `platform_id`, `external_ref`, `parent_identity_id`, and `account_mode` are immutable. An archived Identity rejects every later patch. Archive is refused while any subordinate is not archived, or while the Identity still has an enabled Connection.
+Removed: `parent_identity_id`, `kind`, the `disabled` status. Archive is refused while the Identity has an enabled Connection. An archived Identity rejects every later change and is a Boundary Event for each of its selected Accounts at its last Valuation Point. `platform_id` and `account_mode` are immutable after the first Collection Run.
 
-#### `connections`
+#### `connections` (implemented, interval fields removed)
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `identity_id` | `BINARY(16)` | composite FK to `identities` |
-| `label` | `VARCHAR(120)` | required |
-| `status` | `VARCHAR(32)` | `enabled`, `disabled`, or `invalid` |
-| `credentials_ciphertext` | `LONGBLOB` | nullable AES-256-GCM ciphertext; never returned; NULL until credentials are configured |
-| `credentials_nonce` | `BINARY(12)` | nullable random unique nonce per encryption; NULL together with ciphertext |
-| `credential_key_version` | `SMALLINT UNSIGNED` | required; `0` while ciphertext is absent |
-| `config_json` | `JSON` | versioned normalized, non-secret adapter configuration |
-| `collection_interval_seconds` | `INT UNSIGNED` | default 900 |
-| `freshness_after_seconds` | `INT UNSIGNED` | default twice the collection interval |
-| `last_validated_at` | `DATETIME(6)` | nullable |
-| `version` | `BIGINT UNSIGNED` | required |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
-| `enabled_identity_id` | `BINARY(16)` | stored generated value: `identity_id` only while enabled |
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id`, `identity_id` | PK, scope, composite FK |
+| `label` | `VARCHAR(120)` |
+| `status` | `enabled`, `disabled`, or `invalid` |
+| `credentials_ciphertext`, `credentials_nonce`, `credential_key_version` | AES-256-GCM as in §8.2; ciphertext and nonce both null or both present |
+| `config_json` | non-secret adapter configuration (e.g. passphrase-less flags, testnet) |
+| `last_validated_at` | nullable |
+| `last_error_class`, `last_error_detail` | nullable, sanitized |
+| `enabled_identity_id` | stored generated: `identity_id` while enabled, else NULL; `UNIQUE (portfolio_id, enabled_identity_id)` |
+| `version` | |
 
-Use `UNIQUE (portfolio_id, enabled_identity_id)`; MySQL permits multiple `NULL` values, enforcing at most one enabled Connection per Identity. Ciphertext and nonce are both NULL or both present. A Connection without ciphertext cannot become `enabled`. Credential replacement increments `version`, audits metadata only, and never copies plaintext or ciphertext into the audit record.
+Enabling requires a successful `Validate` call. An authentication or authorization failure during any run sets `status = invalid`, records the error, and stops scheduling that Connection until the User re-enables it ([§9](#9-scheduling-and-failure-policy)).
 
 #### `accounts`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `identity_id` | `BINARY(16)` | composite FK to `identities` |
-| `external_ref` | `VARCHAR(191)` | Platform-native account ID |
-| `display_name` | `VARCHAR(120)` | required |
-| `account_type` | `VARCHAR(64)` | Platform-normalized account kind |
-| `status` | `VARCHAR(32)` | `active`, `inactive`, or `disappeared` |
-| `first_seen_at`, `last_seen_at` | `DATETIME(6)` | required |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id`, `identity_id` | PK, scope, composite FK |
+| `account_type` | one of the Adapter's declared types for the Identity's mode; `UNIQUE (portfolio_id, identity_id, account_type)` |
+| `display_name` | `VARCHAR(120)` |
+| `selected` | `BOOLEAN`; only selected Accounts are collected and valued |
+| `selected_at`, `deselected_at` | nullable; last toggle times, informational |
+| `version` | |
 
-Use `UNIQUE (portfolio_id, identity_id, external_ref)` and an index on `(portfolio_id, identity_id, status)`.
+Rows are created when the User configures the Identity and toggled thereafter; they are never created by collection. Deselecting is a Boundary Event ([ADR 0016](./adr/0016-treat-boundary-events-as-implicit-capital-flows.md)).
 
 ### 5.3 Asset and instrument catalog
 
-`assets`, `asset_listings`, and `instruments` are shared reference catalogs. User-editable mapping and tracking decisions remain Portfolio-scoped.
+`assets`, `asset_listings`, and `instruments` are shared reference tables, not Portfolio-scoped.
 
 #### `assets`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, stable UUID |
-| `code` | `VARCHAR(64)` | unique canonical code |
-| `name` | `VARCHAR(191)` | required |
-| `kind` | `VARCHAR(32)` | `fiat`, `crypto`, or `other` |
-| `decimals` | `SMALLINT UNSIGNED` | nullable display metadata |
-| `status` | `VARCHAR(32)` | `active`, `provisional`, or `retired` |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
-
-USD and CNY have stable seeded rows. Discovery creates a distinct provisional Asset for an unknown Asset Listing; it does not merge matching symbols across Platforms. No stablecoin-to-fiat equivalence is encoded here.
+`id`, `symbol` `VARCHAR(64)` unique normalized (upper-case, trimmed), `name` nullable, `kind` fiat|crypto|other, `status` active|retired. USD, USDT, USDC, and the major coins are seeded; unknown symbols are created on first sight with `kind = crypto`.
 
 #### `asset_listings`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id` | `BINARY(16)` | PK, UUIDv7 |
-| `platform_id` | `BINARY(16)` | FK to `platforms.id` |
-| `external_ref` | `VARCHAR(191)` | Platform-native asset identity |
-| `symbol` | `VARCHAR(64)` | Platform-native symbol, not identity by itself |
-| `name` | `VARCHAR(191)` | nullable |
-| `status` | `VARCHAR(32)` | `active`, `inactive`, or `unknown` |
-| `first_seen_at`, `last_seen_at` | `DATETIME(6)` | required |
+| Field | Rules |
+| --- | --- |
+| `id`, `platform_id` | |
+| `symbol` | Platform-native symbol; `UNIQUE (platform_id, symbol)` |
+| `asset_id` | FK to `assets`; set automatically to the Asset with the same normalized symbol |
+| `mapping_source` | `auto` or `manual` |
+| `first_seen_at`, `last_seen_at` | |
 
-Use `UNIQUE (platform_id, external_ref)` and `(platform_id, symbol)` as a non-unique search index.
+Changing `asset_id` manually sets `mapping_source = manual`, writes an audit event, and enqueues a `valuation_recalc` job for every Valuation Point whose Account Valuations include this listing ([ADR 0018](./adr/0018-merge-asset-listings-by-symbol-with-manual-overrides.md)).
 
 #### `instruments`
 
-| Field | Type | Rules |
+`id`, `platform_id`, `symbol` (`UNIQUE (platform_id, symbol)`), `kind` spot|linear_perpetual|inverse_perpetual|linear_delivery|inverse_delivery, nullable `base_asset_id`, `quote_asset_id`, `settlement_asset_id`, nullable `expiry_at` (required for delivery kinds), nullable `contract_size`, `status` active|expired|unknown, `first_seen_at`, `last_seen_at`. Created by Adapters when a Position references an unknown Instrument. No manual management.
+
+Removed: `asset_listing_mappings`, `asset_listing_mapping_revisions`, `catalog_pins`, `catalog_pin_revisions`, provisional Assets.
+
+### 5.4 Jobs (implemented, kinds change)
+
+`jobs` and `job_attempts` keep their lease, dedupe, and `SKIP LOCKED` design. Job kinds become:
+
+| Kind | Dedupe key | Payload table |
 | --- | --- | --- |
-| `id` | `BINARY(16)` | PK, UUIDv7 |
-| `platform_id` | `BINARY(16)` | FK to `platforms.id` |
-| `external_ref`, `symbol` | `VARCHAR(191)`, `VARCHAR(64)` | required Platform identity and display symbol |
-| `kind` | `VARCHAR(32)` | `spot`, `linear_perpetual`, `inverse_perpetual`, `linear_delivery`, or `inverse_delivery` |
-| `base_listing_id`, `quote_listing_id` | `BINARY(16)` | nullable FKs to `asset_listings.id` |
-| `underlying_listing_id`, `settlement_listing_id` | `BINARY(16)` | nullable FKs to `asset_listings.id` |
-| `expiry_at` | `DATETIME(6)` | nullable; required for delivery contracts |
-| `contract_size` | `DECIMAL(65,30)` | nullable normalized contract multiplier |
-| `status` | `VARCHAR(32)` | `active`, `expired`, or `unknown` |
-| `first_seen_at`, `last_seen_at` | `DATETIME(6)` | required |
+| `collection_cycle` | `cycle:<portfolio_id>` | none; the job is the cycle |
+| `connection_validate` | `validate:<connection_id>` | `connection_validate_job_details(job_id, connection_id)` |
+| `valuation_recalc` | `recalc:<portfolio_id>:<listing_id>` | `valuation_recalc_job_details(job_id, asset_listing_id, from_at, to_at)` |
 
-Use `UNIQUE (platform_id, external_ref)` and indexes on symbol, underlying, settlement, and status.
+Removed: `projection` jobs, `projection_job_details`, `projection_job_kinds`, `collection_job_details`.
 
-#### `asset_listing_mappings` and `asset_listing_mapping_revisions`
+### 5.5 Observations
 
-The mapping head contains `id`, `portfolio_id`, `asset_listing_id`, `current_revision_id`, `version`, `created_at`, and `updated_at`, with `UNIQUE (portfolio_id, asset_listing_id)`. Each append-only revision contains `id`, `portfolio_id`, `mapping_id`, required `asset_id`, `state` (`provisional` or `confirmed`), nullable `display_name_override VARCHAR(191)`, nullable `classification_json JSON`, nullable `reason VARCHAR(1024)`, `created_by_user_id`, and `created_at`. Composite foreign keys keep the revision and head in the same Portfolio. A newly discovered unknown listing starts with its distinct provisional Asset; the UI may call that state “unmapped” to a confirmed canonical Asset. Mapping changes enqueue projection invalidation from the earliest affected Observation.
+All Observation tables are append-only. No endpoint modifies them.
 
-#### `catalog_pins` and `catalog_pin_revisions`
+#### `collection_cycles`
 
-The tracking head contains `id`, `portfolio_id`, exactly one of nullable `asset_listing_id` or nullable `instrument_id`, `current_revision_id`, `version`, `created_at`, and `updated_at`. A `CHECK` enforces the exclusive subject. Stored generated columns `listing_subject_key BINARY(16)` and `instrument_subject_key BINARY(16)` copy only their respective non-null subject; unique indexes on `(portfolio_id, listing_subject_key)` and `(portfolio_id, instrument_subject_key)` prevent duplicate heads. Each append-only revision contains `id`, `portfolio_id`, `catalog_pin_id`, `enabled BOOLEAN`, nullable `reason VARCHAR(1024)`, `created_by_user_id`, and `created_at`.
-
-Current holdings, open Positions, and explicit pins determine the catalog entries whose prices are collected. Mapping and pin histories are source facts, not projections.
-
-### 5.4 Jobs and collection
-
-#### `jobs`
-
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `kind` | `VARCHAR(32)` | `collection` or `projection` |
-| `status` | `VARCHAR(32)` | `queued`, `running`, `succeeded`, `failed`, or `cancelled` |
-| `priority` | `SMALLINT` | higher values claimed first |
-| `dedupe_key` | `VARCHAR(255)` | stable logical-work key |
-| `active_dedupe_key` | `VARCHAR(255)` | stored generated value only while queued/running |
-| `requested_by_user_id` | `BINARY(16)` | nullable FK to `users.id`; null for scheduler/system |
-| `available_at` | `DATETIME(6)` | required claim time |
-| `lease_owner` | `VARCHAR(191)` | nullable process identifier |
-| `lease_expires_at` | `DATETIME(6)` | nullable, indexed |
-| `attempt_count`, `max_attempts` | `INT UNSIGNED` | required |
-| `last_error_code`, `last_error_detail` | `VARCHAR(64)`, `VARCHAR(1024)` | nullable, sanitized |
-| `created_at`, `updated_at`, `started_at`, `finished_at` | `DATETIME(6)` | lifecycle times; latter two nullable |
-
-Use `UNIQUE (portfolio_id, active_dedupe_key)` to merge duplicate active work and an index on `(status, available_at, priority, lease_expires_at)` for claims. A worker claims work in a short transaction with `SELECT ... FOR UPDATE SKIP LOCKED`, sets a lease, commits, then performs the job. Expired leases are recoverable after restart.
-
-#### `job_attempts`
-
-Fields are `id`, `portfolio_id`, `job_id`, `attempt_number INT UNSIGNED`, `worker_id VARCHAR(191)`, `started_at`, nullable `finished_at`, `outcome`, nullable `error_class`, nullable `error_code`, nullable `safe_detail VARCHAR(1024)`, and nullable `retry_at`. Use `UNIQUE (portfolio_id, job_id, attempt_number)` and an index on `finished_at` for retention cleanup. Attempts never contain credentials, raw payloads, or complete financial response bodies.
-
-#### `collection_job_details`, `projection_job_details`, and `projection_job_kinds`
-
-`collection_job_details` has `portfolio_id`, `job_id` as its PK/FK, `connection_id`, `trigger` (`schedule`, `manual`, or `retry`), and `scope VARCHAR(64)`. `projection_job_details` has `portfolio_id`, `job_id`, nullable `invalid_from`, nullable `invalid_through`, and `reason VARCHAR(1024)`. `projection_job_kinds` has the composite PK `(portfolio_id, job_id, projection_kind)` and identifies the invalidated projection families. A full-Portfolio rebuild uses null time bounds plus all kinds.
+`id`, `portfolio_id`, `job_id`, `trigger` schedule|manual, `started_at`, `finished_at` nullable, `status` running|succeeded|partial|failed, `connection_count`, `failed_connection_count`. Index `(portfolio_id, started_at DESC)`.
 
 #### `collection_runs`
 
-Fields are `id`, `portfolio_id`, `job_id`, `connection_id`, `identity_id`, `adapter_name VARCHAR(64)`, `adapter_version VARCHAR(64)`, `started_at`, nullable `finished_at`, `status`, `successful_scope_count INT UNSIGNED`, and `failed_scope_count INT UNSIGNED`. Index `(portfolio_id, identity_id, started_at DESC)` and keep every FK composite within the Portfolio.
+`id`, `portfolio_id`, `cycle_id`, `connection_id`, `identity_id`, `adapter_name`, `adapter_version`, `started_at`, `finished_at` nullable, `status` succeeded|partial|failed, `error_class`, `error_detail` nullable sanitized. Index `(portfolio_id, identity_id, started_at DESC)`.
 
-#### `identity_snapshots`
+#### `account_reports`
 
-Fields are `id`, `portfolio_id`, `collection_run_id`, `identity_id`, `started_at`, nullable `completed_at`, `status`, `completeness`, `expected_scope_count INT UNSIGNED`, `successful_scope_count INT UNSIGNED`, and `failed_scope_count INT UNSIGNED`. A Snapshot may be `complete`, `partial`, or `failed`. Observations inside it keep their own source times.
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id`, `run_id`, `account_id` | composite FKs; `UNIQUE (portfolio_id, run_id, account_id)` |
+| `observed_at` | Platform observation time |
+| `status` | `ok` or `failed` |
+| `error_class`, `error_detail` | nullable; required when failed |
+| `equity` | nullable USD; the Platform's own account equity when it reports one |
+| `adjusted_equity` | nullable USD; collateral-discounted equity |
+| `available_equity` | nullable USD |
+| `initial_margin_ratio`, `maintenance_margin_ratio` | nullable ratios |
+| `unified_margin_ratio` | nullable; UniMMR-style Platform ratio |
 
-#### `collection_failures`
-
-Fields are `id`, `portfolio_id`, `collection_run_id`, `identity_snapshot_id`, nullable `account_id`, `scope_kind`, nullable `scope_ref VARCHAR(191)`, `phase`, `error_class`, `error_code`, `safe_detail VARCHAR(1024)`, `retriable BOOLEAN`, and `occurred_at`. The table records omitted or failed normalized scopes without manufacturing zero-valued Observations.
-
-A partial collection transaction persists successful normalized Observations and explicit failure records together. Projection selects, per Identity and scope, the latest Identity Snapshot with `completed_at` at or before the cutoff whose status is not `failed` and whose scope did not fail as a whole. Rows in that snapshot are the full scope: a key that is absent is no longer held. A failure with a specific `scope_ref` carries forward only that key from the previous successful snapshot and marks it stale. A wholly failed snapshot does not replace the previous batch. Price observations remain time-qualified and are not chosen by snapshot batch. See [ADR 0013](adr/0013-select-identity-state-by-snapshot-batch-and-archive-time.md).
-
-### 5.5 Normalized observations
-
-#### `observations`
-
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `identity_snapshot_id` | `BINARY(16)` | composite FK to `identity_snapshots` |
-| `identity_id` | `BINARY(16)` | composite FK to `identities` |
-| `account_id` | `BINARY(16)` | nullable composite FK to `accounts` |
-| `kind` | `VARCHAR(32)` | `balance`, `position`, `reported_equity`, `account_metric`, or `price` |
-| `source_observed_at` | `DATETIME(6)` | Platform observation time |
-| `collected_at` | `DATETIME(6)` | time Plutus obtained the normalized fact |
-| `completeness` | `VARCHAR(32)` | `complete` or `partial` for the declared fact scope |
-| `adapter_name`, `adapter_version`, `schema_version` | `VARCHAR(64)` | required normalization provenance |
-| `version` | `BIGINT UNSIGNED` | starts at 1; incremented by correction |
-| `created_at`, `updated_at` | `DATETIME(6)` | required |
-
-Indexes support `(portfolio_id, kind, source_observed_at DESC)`, `(portfolio_id, identity_id, source_observed_at DESC)`, and `(portfolio_id, account_id, kind, source_observed_at DESC)`. Exactly one subtype row must exist and must match `kind`; repository transactions enforce this invariant in addition to subtype foreign keys.
+Index `(portfolio_id, account_id, observed_at DESC)` for the stale-fallback lookup. The display columns are the complete set for this release; adding one requires defining its mapping for every supported Platform ([ADR 0021](./adr/0021-report-each-account-with-one-aligned-account-report.md)).
 
 #### `balance_observations`
 
-The PK is `(portfolio_id, observation_id)`, also a composite FK to `observations`. Fields are `asset_listing_id` and nullable `total_quantity`, `available_quantity`, and `locked_quantity`, all `DECIMAL(65,30)`. At least one quantity is required. The source fact retains the Platform listing; projections resolve the current mapping revision so a correction can reinterpret history without rewriting provenance. Measures may overlap and must not be added unless adapter semantics establish that relationship.
+`id`, `portfolio_id`, `report_id`, `asset_listing_id`, `equity` required, nullable `available_to_withdraw`, `available_to_trade`, `liability`, `interest`, `unrealized_pnl`. `UNIQUE (portfolio_id, report_id, asset_listing_id)`. Only rows for an `ok` report exist. A successful report's rows are the Complete Set.
 
 #### `position_observations`
 
-The PK is `(portfolio_id, observation_id)`. Fields are `instrument_id`, `platform_position_ref VARCHAR(191)`, `side` (`long`, `short`, or `net`), `quantity`, nullable `entry_price`, nullable `mark_price`, nullable `unrealized_value`, and nullable `leverage`. Quantity and financial values use `DECIMAL(65,30)`. Index `(portfolio_id, instrument_id, platform_position_ref)` for lineage; separate Observation headers preserve opposing Platform Positions even when their derived net Exposure is zero.
-
-#### `reported_equity_observations`
-
-The PK is `(portfolio_id, observation_id)`. Fields are `denomination_listing_id` and `amount DECIMAL(65,30)`. Projections resolve the listing through the current Portfolio mapping. Coverage is never inferred from the reporting Account alone.
-
-`reported_equity_covered_identities` has composite PK `(portfolio_id, observation_id, identity_id)` and composite FKs to both the Reported Equity header and Identity. `reported_equity_covered_accounts` has composite PK `(portfolio_id, observation_id, account_id)` and composite FKs to both the header and Account. Every Reported Equity row must have at least one explicit covered Identity or Account; the repository transaction enforces this cross-row invariant. Covered Accounts must belong to a covered Identity when both are listed.
-
-#### `account_metric_observations`
-
-The PK is `(portfolio_id, observation_id)`. Fields are `metric_code`, `unit`, nullable `decimal_value DECIMAL(65,30)`, nullable `text_value VARCHAR(512)`, and `semantics_version`. A `CHECK` requires exactly one value column. Metrics remain at Account scope unless a later decision establishes cross-Platform semantics.
+`id`, `portfolio_id`, `report_id`, `instrument_id`, `platform_position_ref` `VARCHAR(191)`, `side` long|short, `quantity`, `quantity_unit` contracts|base|quote, nullable `entry_price`, `mark_price`, `liquidation_price`, `unrealized_pnl`, `leverage`, `margin`. `UNIQUE (portfolio_id, report_id, platform_position_ref)`. A Platform `net` position is mapped to long or short by sign; a zero net position is omitted.
 
 #### `price_observations`
 
-The PK is `(portfolio_id, observation_id)`. Fields are nullable `instrument_id`, nullable `base_listing_id`, required `quote_listing_id`, `price_type` (`market`, `mark`, `index`, or `exchange_rate`), and `price DECIMAL(65,30)`. A `CHECK` requires exactly one of Instrument or base Asset Listing. Indexes support `(portfolio_id, instrument_id, price_type, source_observed_at DESC)` and `(portfolio_id, base_listing_id, quote_listing_id, price_type, source_observed_at DESC)`.
+`id`, `platform_id`, exactly one of nullable `asset_listing_id` or `instrument_id` (`CHECK`), `quote_asset_id`, `price_type` market|mark, `price`, `observed_at`. Index `(platform_id, asset_listing_id, price_type, observed_at DESC)` and the Instrument equivalent. Not Portfolio-scoped: a price is a Platform fact. Removed price types: `index`, `exchange_rate`.
 
-Corrections update the header and subtype in the same transaction, increment `observations.version`, append an `audit_events` row containing canonical normalized before/after documents, and enqueue or merge a Projection job. The audit document contains no raw Platform payload.
+Removed tables: `identity_snapshots`, `collection_failures`, `observations` header, `reported_equity_observations` and both covered-scope tables, `account_metric_observations`.
 
 ### 5.6 Manual source facts
 
-#### `capital_baselines` and `capital_baseline_revisions`
+#### `capital_flows`
 
-A Portfolio has at most one logical baseline head. `capital_baselines` contains `id`, `portfolio_id`, `current_revision_id`, `version`, `created_at`, and `updated_at`, with `UNIQUE (portfolio_id)`. Each append-only revision contains `id`, `portfolio_id`, `capital_baseline_id`, `effective_at`, `asset_id`, signed `quantity DECIMAL(65,30)`, nullable `note VARCHAR(1024)`, `created_by_user_id`, and `created_at`. Composite head/revision foreign keys are added after both tables exist. A correction appends a revision and changes the head pointer atomically.
+`id`, `portfolio_id`, `direction` contribution|withdrawal, `asset_id`, `quantity` > 0, `effective_at`, nullable `account_id` (composite FK), nullable `note`, `version`. Editable in place with ETag; every create, update, and delete writes an `audit_events` row with canonical before/after documents. Removed: `capital_baselines`, `capital_baseline_revisions`, `capital_flow_revisions`.
 
-#### `capital_flows` and `capital_flow_revisions`
+### 5.7 Derived results
 
-The head contains `id`, `portfolio_id`, `current_revision_id`, `version`, `created_at`, and `updated_at`. Each append-only revision contains `id`, `portfolio_id`, `capital_flow_id`, `direction` (`contribution` or `withdrawal`), positive `quantity DECIMAL(65,30)`, `asset_id`, `effective_at`, nullable `account_id`, nullable `note VARCHAR(1024)`, `state` (`active` or `deleted`), `created_by_user_id`, and `created_at`. Composite head/revision foreign keys are added after both tables exist. Editing or deleting appends a revision and atomically updates the current pointer. An Account is optional, but if present its composite FK guarantees it belongs to the same Portfolio.
+#### `valuation_points`
 
-Capital Flow quantities remain in their original Assets. Their contribution to another denomination requires a valid time-qualified Price Observation at the effective time; a missing conversion yields an issue and incomplete derived value, never zero.
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id`, `cycle_id` | `UNIQUE (portfolio_id, cycle_id)` |
+| `evaluated_at` | cycle finish time; `UNIQUE (portfolio_id, evaluated_at)` |
+| `total_usd` | required; sum of non-null Account Valuations |
+| `completeness` | `complete` or `incomplete` |
+| `stale_account_count`, `incomplete_account_count` | `INT UNSIGNED` |
+| `recalculated_at` | nullable; set by `valuation_recalc` |
 
-### 5.7 Projection generations and rows
+This is the only table history queries read.
 
-#### `projection_generations`
+#### `account_valuations`
 
-| Field | Type | Rules |
-| --- | --- | --- |
-| `id`, `portfolio_id` | `BINARY(16)` | PK plus Portfolio scope; composite unique |
-| `job_id` | `BINARY(16)` | composite FK to the Projection job |
-| `status` | `VARCHAR(32)` | `building`, `ready`, `active`, `failed`, or `retired` |
-| `timezone`, `display_asset_id` | `VARCHAR(64)`, `BINARY(16)` | calculation settings captured for generation |
-| `source_watermark_at` | `DATETIME(6)` | latest included source mutation time |
-| `started_at`, `completed_at`, `activated_at` | `DATETIME(6)` | latter two nullable |
-| `failure_code`, `failure_detail` | `VARCHAR(64)`, `VARCHAR(1024)` | nullable and sanitized |
+| Field | Rules |
+| --- | --- |
+| `id`, `portfolio_id`, `valuation_point_id`, `account_id` | `UNIQUE (portfolio_id, valuation_point_id, account_id)` |
+| `report_id` | the Account Report used, null when the Account has never succeeded |
+| `method` | `reported`, `calculated`, or `missing` |
+| `value_usd` | nullable; null only when `missing` |
+| `freshness` | `fresh` (report from this cycle) or `stale` |
+| `report_observed_at` | nullable copy for display |
+| `completeness` | `complete` or `incomplete` |
+| `omitted_json` | nullable list of `{listingId, symbol, equity, reason}` for Balances left out of a calculated value |
 
-Only one generation is selected through `portfolios.active_projection_generation_id`. Activation locks the Portfolio row, verifies the generation is ready and belongs to that Portfolio, switches the pointer, marks the generation active, and commits in one transaction.
+One row per Account in the boundary at that point. Boundary Events are derived by comparing the Account sets of consecutive points.
 
-Every projection table contains `generation_id`, `portfolio_id`, composite FKs to the generation, and indexes beginning with those fields. Values use `DECIMAL(65,30)`.
+#### `valuation_issues`
 
-#### Latest-state projections
+`id`, `portfolio_id`, `valuation_point_id`, nullable `account_id`, `code` (missing_price, stale_report, never_collected, connection_invalid, unmapped_listing), `severity`, `summary`. Read alongside the point.
 
-- `latest_balance_projections`: `generation_id`, `portfolio_id`, `identity_id`, `account_id`, `asset_listing_id`, nullable `asset_id`, source `observation_id`, quantities, `source_observed_at`, `freshness_state`, and `completeness`; unique per generation/account/listing.
-- `latest_position_projections`: the same generation and provenance fields plus `instrument_id`, `platform_position_ref`, side, quantity, selected mark, derived underlying long/short quantities, `freshness_state`, and `completeness`; unique per generation/source position identity.
+### 5.8 Operations (implemented, unchanged)
 
-For each Identity still inside its membership window, the latest successful scope snapshot at or before a cutoff supplies that scope. An Identity is inside the window from `created_at` until `archived_at`. Current totals use the rebuild time, so an archived Identity is absent from latest balances, positions, and overview. Earlier cutoffs still include it. A disabled Identity is not required coverage; its successful batches still count. An enabled Identity, or an archived Identity before `archived_at`, with no successful batch makes the valuation incomplete rather than zero. A collection failure can make a carried-forward key stale or incomplete but cannot erase a scope that did not succeed. Price selection is unchanged: the latest valid price at or before the cutoff, with no cross-platform fallback.
-
-#### Valuation projections
-
-- `portfolio_valuation_projections`: `id`, generation and Portfolio IDs, `evaluated_at`, `denomination_asset_id`, nullable `amount`, `completeness`, `coverage_fingerprint VARCHAR(128)`, `freshness_state`, and `source_cutoff_at`; unique per generation/evaluation time/denomination.
-- `valuation_contribution_projections`: `id`, generation and Portfolio IDs, `portfolio_valuation_id`, `contribution_kind` (`reported_equity` or `calculated`), nullable `identity_id`, nullable `account_id`, nullable `asset_id`, nullable `amount`, `completeness`, and `coverage_fingerprint VARCHAR(128)`.
-- `valuation_contribution_sources`: generation and Portfolio IDs, `valuation_contribution_id`, `observation_id`, and `source_role`; composite PK over contribution, Observation, and role. This retains normalized lineage without storing raw input.
-
-Reported Equity is usable only for its explicit coverage. Disjoint reported scopes may be combined. For nested coverage, the broadest complete scope wins and contained values are not double-counted. Partial overlap without strict containment is ambiguous: the valuation records an issue and is incomplete. Calculated Valuation fills only uncovered scopes with sufficient Balance, Position, mapping, and Price inputs.
-
-#### Exposure and capital projections
-
-- `exposure_projections`: generation and Portfolio IDs, `evaluated_at`, `asset_id`, `long_quantity`, `short_quantity`, `net_quantity`, nullable `long_value`, nullable `short_value`, nullable `net_value`, `denomination_asset_id`, `completeness`, and `freshness_state`; unique per generation/time/Asset. Opposing components remain visible when net is zero.
-- `contributed_capital_projections`: generation and Portfolio IDs, `evaluated_at`, `denomination_asset_id`, nullable `amount`, `completeness`, and `source_revision_watermark BIGINT UNSIGNED`; unique per generation/time/denomination.
-
-Position mark prices take priority for their Position. Otherwise price selection requires matching Platform context and use, then chooses the latest valid observation at or before the cutoff. There is no implicit cross-Platform fallback and no fixed stablecoin exchange rate.
-
-#### Value Change and period projections
-
-- `value_change_projections`: `id`, generation and Portfolio IDs, `period_kind`, local `period_start_date` and `period_end_date`, `as_of_at`, `beginning_valuation_id`, `ending_valuation_id`, nullable `contribution_amount`, nullable `withdrawal_amount`, nullable absolute `amount`, `state` (`complete`, `provisional`, `incomplete`, or `incomparable`), and `coverage_fingerprint VARCHAR(128)`; unique per generation/kind/start/end/as-of.
-- `period_summary_projections`: generation and Portfolio IDs, `period_kind`, local `period_start_date` and `period_end_date`, `as_of_at`, nullable `valuation_open`, `valuation_close`, `valuation_high`, `valuation_low`, nullable `contributed_capital_close`, nullable absolute `value_change`, `freshness_state`, and `completeness`; unique per generation/period/as-of.
-
-Value Change is produced only for the complete Portfolio. It subtracts contributions and adds withdrawals between comparable endpoint valuations. A changed coverage fingerprint makes the interval incomparable. An active period may expose a clearly labeled period-to-date provisional value. No percentage return is calculated.
-
-#### `projection_issues`
-
-Fields are `id`, generation and Portfolio IDs, `projection_kind`, `projection_key VARCHAR(255)`, `severity`, stable `code`, `summary VARCHAR(1024)`, nullable normalized `details_json`, nullable `identity_id`, nullable `account_id`, nullable `observation_id`, `first_effective_at`, and `last_effective_at`. Typical codes include missing price, provisional Asset mapping, stale scope, collection failure, partial equity overlap, changed coverage, and missing Capital Flow conversion.
-
-Projection invalidation is expressed as a Portfolio, optional time range, and set of projection kinds. Early implementation may conservatively rebuild the full Portfolio, but the job and service interfaces must retain this envelope so targeted rebuilding can be introduced without changing callers. Any targeted rebuild that cannot prove its dependency boundary falls back to a full rebuild.
-
-### 5.8 Operations and schema metadata
-
-#### `audit_events`
-
-Fields are `id`, nullable `portfolio_id`, nullable `actor_user_id`, `action`, `resource_type`, `resource_id`, `request_id`, nullable canonical `before_json`, nullable canonical `after_json`, nullable safe `metadata_json`, and `occurred_at`. Index by Portfolio/time, actor/time, and resource. Audit rows are append-only. Passwords, Session tokens, CSRF secrets, credential plaintext/ciphertext, and raw Platform responses are forbidden.
-
-#### `idempotency_records`
-
-Fields are `id`, `user_id`, nullable `portfolio_id`, `key VARCHAR(255)`, `method VARCHAR(16)`, normalized `path VARCHAR(512)`, `request_hash BINARY(32)`, `response_status SMALLINT UNSIGNED`, nullable selected `response_headers_json`, nullable `response_body_json`, `created_at`, and `expires_at`. Use `UNIQUE (user_id, method, path, key)` and an expiry index. Reuse with a different request hash returns 409; an exact retry returns the original response.
-
-Goose owns its normal `goose_db_version` schema-version table. Application migrations must not repurpose it. On startup the server checks the expected version and refuses readiness when migrations are pending; it never applies migrations automatically.
+`audit_events` (`id`, nullable `portfolio_id`, nullable `actor_user_id`, `action`, `resource_type`, `resource_id`, `request_id`, nullable `before_json`, `after_json`, `metadata_json`, `occurred_at`) and `idempotency_records` as before. Goose owns `goose_db_version`; the server refuses readiness when migrations are pending and never migrates automatically.
 
 ## 6. JSON API contract
 
-### 6.1 Contract ownership and conventions
+### 6.1 Conventions (implemented)
 
-OpenAPI 3.1 under a planned `api/openapi/` directory is the source of truth for public HTTP transport. Generated Go strict interfaces, Go wire models, TypeScript wire models, and the TypeScript client must be reproducible with pinned commands. CI fails when regeneration changes committed output.
+OpenAPI 3.1 under `api/openapi/` is the source of truth. Endpoints live below `/api/v1`; Portfolio resources include `{portfolioId}`; health endpoints are unversioned. JSON is `camelCase`, unknown request fields are rejected, decimals are strings, instants are RFC 3339, dates are `YYYY-MM-DD`.
 
-All application endpoints are below `/api/v1`. Portfolio resources explicitly include `{portfolioId}`. Health endpoints are unversioned because they are deployment probes. JSON uses `camelCase`; unknown request fields are rejected; required-but-null, omitted, and explicit `null` have distinct schemas.
+List responses are typed: `items`, `page`, `context`, `issues`. Every financial response carries `completeness` (`complete` | `incomplete`) and, where an Account is involved, `freshness` (`fresh` | `stale`) plus `reportObservedAt`. An incomplete or stale result is a 2xx response with real numbers and an issue list; only request validation, authentication, authorization, ETag, idempotency, and infrastructure failures are non-2xx. Errors use `application/problem+json` with stable `type`, `code`, `traceId`, and `fieldErrors`.
 
-The API uses:
+### 6.2 Authentication and Sessions (implemented, unchanged)
 
-- canonical UUID strings for IDs;
-- decimal strings for financial values;
-- RFC 3339 strings for instants;
-- `YYYY-MM-DD` for local calendar dates;
-- IANA names for timezones;
-- stable string codes for statuses, issue types, filters, grouping dimensions, and sort keys.
+`GET /auth/csrf`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/logout-all`, `GET /auth/me`, `PUT /auth/password`, `GET /auth/sessions`, `DELETE /auth/sessions/{sessionId}`. Cookie, CSRF, rate-limit, Argon2id, and Session lifetime rules are unchanged from the previous design.
 
-List responses are resource-specific and strongly typed. A typical response has `items`, `page`, `context`, and `issues`; it does not use an untyped `data` envelope. `context` carries the Portfolio timezone, display Asset, evaluation cutoff, completeness, coverage fingerprint or summary, and freshness relevant to that resource. Every financial domain response carries completeness, coverage, freshness, and issues, even when the issue list is empty.
+### 6.3 Portfolio endpoints
 
-Observation facts use `complete` or `partial` completeness. Read models use `complete`, `partial`, or `missing`; coverage uses `complete`, `partial`, `ambiguous`, `changed`, or `missing`; freshness uses `fresh`, `stale`, or `unknown`. These dimensions remain separate: a complete older Observation can be stale, and a fresh response can still have partial coverage.
+`GET, POST /portfolios`; `GET, PATCH, DELETE /portfolios/{portfolioId}`. PATCH changes `name`, `timezone`, or `collectionIntervalSeconds`. A timezone change affects only future queries.
 
-For example, a request that is technically successful but lacks an exchange rate remains a 200 response with a null value:
-
-```json
-{
-  "portfolioId": "0195baf2-8d9f-7a62-96ef-8f2508e4b9d2",
-  "evaluatedAt": "2026-09-20T08:00:00Z",
-  "timezone": "Asia/Shanghai",
-  "displayAsset": { "id": "0195baf2-91aa-7cc2-b7eb-3bd41dbe2a45", "code": "USD" },
-  "valuation": {
-    "amount": null,
-    "completeness": "partial",
-    "coverage": "partial",
-    "freshness": "fresh"
-  },
-  "issues": [
-    {
-      "code": "missing_exchange_rate",
-      "severity": "warning",
-      "summary": "CNY could not be converted to USD at the evaluation cutoff."
-    }
-  ]
-}
-```
-
-Stale, incomplete, partial, incomparable, and missing-domain-data results are successful domain responses when the request itself succeeded. They return 2xx with explicit status, `null` values where no defensible value exists, and structured issues. Validation errors, authentication or authorization failures, optimistic-lock conflicts, idempotency conflicts, and infrastructure failures use non-2xx responses.
-
-### 6.2 Errors
-
-Errors use `Content-Type: application/problem+json` and the Problem Details shape:
-
-```json
-{
-  "type": "https://plutus.local/problems/validation",
-  "title": "Request validation failed",
-  "status": 400,
-  "detail": "One or more request fields are invalid.",
-  "instance": "/api/v1/portfolios/0195.../capital-flows",
-  "code": "validation_failed",
-  "traceId": "0195baf2-...",
-  "fieldErrors": [
-    { "field": "quantity", "code": "must_be_positive", "message": "Quantity must be greater than zero." }
-  ]
-}
-```
-
-`type`, `code`, and field-error codes are stable machine contracts. `detail` and `message` are safe English text and may improve without a contract change. Server logs contain the matching trace ID, not sensitive request bodies.
-
-### 6.3 Authentication, Sessions, and CSRF
-
-Planned endpoints are:
+### 6.4 Current-state endpoints (all under `/portfolios/{portfolioId}`)
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/auth/csrf` | issue or rotate the appropriate pre-authentication or Session CSRF token |
-| `POST /api/v1/auth/login` | authenticate username/password and create a Session |
-| `POST /api/v1/auth/logout` | revoke the current Session |
-| `POST /api/v1/auth/logout-all` | revoke all Sessions for the current User |
-| `GET /api/v1/auth/me` | current User and active Sessions summary |
-| `PUT /api/v1/auth/password` | verify current password, replace it, and revoke other Sessions |
-| `GET /api/v1/auth/sessions` | list current User's Sessions |
-| `DELETE /api/v1/auth/sessions/{sessionId}` | revoke one owned Session |
+| `GET /overview` | latest Valuation Point, per-Platform and per-Identity totals, stale/incomplete counts, issues, sparkline |
+| `GET /tree` | the Platform → Identity → Account tree at the latest point: each Account's report fields, `valueUsd`, `method`, `freshness`, `reportObservedAt`; optional `platformId` / `identityId` filters |
+| `GET /accounts/{accountId}/balances` | Balances of the Account's current report with `equityUsd` per row and `noPrice` markers |
+| `GET /accounts/{accountId}/positions` | Positions of the Account's current report with `notionalUsd` |
+| `GET /balances` | flat Balance list across the boundary with Platform/Identity/Account/Asset filters and Asset grouping |
+| `GET /positions` | flat Position list across the boundary with Platform/Identity/Account/Instrument filters |
 
-The Session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and `Secure` whenever HTTPS is active. Authenticated state-changing endpoints require the per-Session synchronizer token from `GET /auth/csrf` in `X-CSRF-Token`. Login uses a short-lived pre-authentication double-submit cookie and matching header issued by the same endpoint. CSRF tokens are returned only to an allowed same-origin client, rotate at authentication boundaries, and are not bearer authentication credentials.
+Grouping totals are computed by the backend; clients never sum paginated rows.
 
-Login is rate-limited by normalized username and client IP using bounded in-process token buckets. Defaults are five login attempts per minute per username and twenty per minute per IP; exhausted attempts return 429 plus `Retry-After`. Since the MVP is single-instance, no distributed limiter is needed. Responses do not reveal whether a username exists. The default idle Session lifetime is 7 days and absolute lifetime is 30 days. Disabling a User or resetting a password through the CLI revokes every Session. Users are created only through the CLI; see [ADR 0011](./adr/0011-create-users-through-the-cli-only.md). Password hashes live on `users`; see [ADR 0012](./adr/0012-store-password-hashes-on-users.md).
-
-Passwords are 8–128 Unicode characters, may be pasted or supplied by a password manager, and are hashed with Argon2id using a 16-byte random salt, a 32-byte output, 64 MiB memory, three iterations, and two lanes by default. The PHC string records every parameter. Configuration may raise these costs after deployment testing; a successful login rehashes a password when stored parameters are obsolete.
-
-### 6.4 Portfolio endpoints
+### 6.5 History endpoints
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/v1/portfolios` | list owned active Portfolios, including the `undeletable` flag |
-| `POST /api/v1/portfolios` | create a Portfolio |
-| `GET /api/v1/portfolios/{portfolioId}` | read one owned Portfolio |
-| `PATCH /api/v1/portfolios/{portfolioId}` | rename or change timezone/display Asset |
-| `DELETE /api/v1/portfolios/{portfolioId}` | delete an additional Portfolio and every row scoped to it |
-
-A timezone change returns the accepted Portfolio representation and a Projection job reference. Until the new generation activates, projection responses continue serving the old generation and clearly report its timezone plus a rebuild-pending issue.
-
-### 6.5 Read-model endpoints
-
-All routes below begin with `/api/v1/portfolios/{portfolioId}`.
-
-| Method and relative path | Purpose |
-| --- | --- |
-| `GET /overview` | summary cards, chart series, completeness, freshness, and issues |
-| `GET /balances` | latest Balance rows, filters, groups, and group totals |
-| `GET /positions` | latest Position rows, filters, groups, and group totals |
-| `GET /exposures` | long, short, and net Exposure by allowed grouping |
-| `GET /valuations` | Portfolio Valuation history |
-| `GET /value-changes` | day, ISO-week, month, quarter, or year absolute Value Changes |
-| `GET /period-summaries` | period summary history |
-
-The backend owns filtering, a whitelist of grouping dimensions, group-level totals, completeness propagation, and time-series resolution. Clients never sum paginated rows to obtain a financial total.
-
-Supported grouping dimensions are resource-specific subsets of Platform, Identity, Account, Asset, Asset Listing, and Instrument. Unsupported groupings are validation errors rather than silently ignored values. Every group has its own coverage, freshness, completeness, and issues.
-
-Time-series queries accept `from`, `to`, `granularity`, and `maxPoints`. `granularity=auto` may choose only the sampling resolution; it cannot alter calendar semantics. Responses identify the actual granularity, Portfolio timezone, evaluation cutoff, and missing intervals.
+| `GET /valuation-points` | series between `from` and `to`, with `granularity` (`raw`, `hour`, `day`) sampling the last point per bucket |
+| `GET /valuation-points/{pointId}` | one point with its Account Valuations and issues |
+| `GET /period-closes` | Period Close per `periodKind` between two dates |
+| `GET /value-changes` | Value Change per `periodKind` between two dates, each with `startPointId`, `endPointId`, `contributions`, `withdrawals`, `boundaryEvents`, `amount`, `completeness` and the reasons |
+| `GET /value-changes/custom?from=&to=` | one Value Change between the last points at or before two instants |
 
 ### 6.6 Capital endpoints
 
-| Method and path suffix | Purpose |
+`GET, POST /capital-flows`; `GET, PATCH, DELETE /capital-flows/{flowId}`. `GET /boundary-events` lists derived Boundary Events between two instants. Both lists are shown together in the UI.
+
+### 6.7 Management endpoints
+
+| Method and path | Purpose |
 | --- | --- |
-| `GET /capital-baseline` | get the current baseline and revision metadata |
-| `PUT /capital-baseline` | create or append a correction to the logical baseline |
-| `GET /capital-baseline/revisions` | list baseline history |
-| `GET /capital-flows` | list current Capital Flows |
-| `POST /capital-flows` | create a Capital Flow |
-| `GET /capital-flows/{flowId}` | read current Flow and revision metadata |
-| `PATCH /capital-flows/{flowId}` | append an edited revision |
-| `DELETE /capital-flows/{flowId}` | append a deletion revision |
-| `GET /capital-flows/{flowId}/revisions` | list Flow revisions |
+| `GET /platforms` | supported Platforms with their Account Modes and Account Types from Adapter capabilities |
+| `GET, POST /identities` | create with `platformId`, `displayName`, `accountMode`, and the initial `selectedAccountTypes` |
+| `GET, PATCH /identities/{identityId}` | rename; toggle `accounts[].selected` |
+| `POST /identities/{identityId}/archive` | refused while a Connection is enabled |
+| `GET, POST /connections`; `GET, PATCH, DELETE /connections/{connectionId}` | credentials write-only; PATCH can set `status` |
+| `POST /connections/{connectionId}/validate` | runs `Validate` synchronously (bounded timeout) and stores the result; enabling calls this first |
+| `POST /collection-cycles` | enqueue a manual cycle; returns the active job if one is queued or running |
+| `GET /collection-cycles`, `GET /collection-cycles/{cycleId}` | cycle and run history with per-Account outcomes |
+| `GET /catalog/asset-listings`, `PUT /catalog/asset-listings/{listingId}/mapping` | view and override mapping |
+| `GET /catalog/instruments` | read-only search |
+| `GET /jobs`, `GET /jobs/{jobId}` | job diagnostics |
+| `GET /audit-events` | Portfolio audit trail |
 
-Every mutation returns or references the enqueued Projection job. Deleting a Flow preserves all revisions and audit events.
+Removed endpoints: `/exposures`, `/period-summaries`, `/capital-baseline*`, `/catalog/pins*`, `/catalog/assets` search, `/observations*`, `/projection-rebuilds`, `/identities/{id}/refresh` (replaced by `/collection-cycles`), `/accounts` list (replaced by `/tree`).
 
-### 6.7 Data-management endpoints
+### 6.8 Concurrency, idempotency, pagination, health (implemented, unchanged)
 
-| Method and path suffix | Purpose |
-| --- | --- |
-| `GET, POST /identities` | list or create a configured Identity; list omits archived rows |
-| `GET, PATCH /identities/{identityId}` | read or update mutable Identity fields; archived rows reject PATCH |
-| `POST /identities/{identityId}/archive` | archive an Identity when it has no unarchived subordinate and no enabled Connection, then rebuild projections |
-| `POST /identities/{identityId}/refresh` | enqueue manual collection; phase 4 |
-| `GET, POST /connections` | list or create Connections; phase 3 management |
-| `GET, PATCH, DELETE /connections/{connectionId}` | manage one Connection without returning credentials |
-| `POST /connections/{connectionId}/validate` | enqueue or perform safe validation; phase 4 |
-| `GET /accounts` | list discovered Accounts |
-| `GET /catalog/assets` | search canonical Assets |
-| `GET /catalog/asset-listings` | search discovered Asset Listings and mapping status |
-| `GET /catalog/instruments` | search discovered Instruments |
-| `PUT /catalog/asset-listings/{listingId}/mapping` | append mapping revision |
-| `PUT /catalog/pins/{subjectKind}/{subjectId}` | append tracking revision |
-| `DELETE /catalog/pins/{subjectKind}/{subjectId}` | append disabled tracking revision |
-| `GET /observations` | search normalized Observation headers and summaries |
-| `GET /observations/{observationId}` | read one typed normalized Observation |
-| `PATCH /observations/{observationId}` | correct permitted normalized fields and enqueue rebuild |
-| `GET /jobs` | list persistent jobs |
-| `GET /jobs/{jobId}` | read job attempts and safe failure details |
-| `POST /projection-rebuilds` | enqueue a full or bounded Projection rebuild |
-| `GET /audit-events` | list Portfolio audit events |
-
-Connection responses expose configuration, status, timestamps, and whether credentials are configured; they never expose credential plaintext, nonce, ciphertext, authentication headers, or a reversible representation. Identity creation is available before real collection so deterministic data and later Connection management use the same ownership model.
-
-### 6.8 Concurrency, idempotency, and asynchronous work
-
-Mutable resources return a strong ETag derived from their persistent `version`, for example `"capital-flow:12"`. `PATCH`, `PUT`, and `DELETE` require `If-Match`; a mismatch returns 412 with the current ETag and a Problem Details body. The API does not silently apply last-write-wins behavior.
-
-Creation endpoints and job-trigger endpoints accept `Idempotency-Key`. The server stores the normalized request hash and completed response. An exact retry receives the original status and response; reuse of the key for different content returns 409. The default retention is 24 hours and may be configured.
-
-Collection and Projection triggers return 202 with a typed job summary and `Location` pointing to the job. If the same Identity already has an equivalent queued or running collection, the active job is returned rather than duplicated. Clients poll `GET /jobs/{jobId}` with backoff; SSE and WebSockets are not part of the MVP.
-
-### 6.9 Pagination
-
-Current-state tables and catalog searches use stable offset pagination:
-
-```json
-{
-  "items": [],
-  "page": { "kind": "offset", "offset": 0, "limit": 50, "total": 143 }
-}
-```
-
-The maximum `limit` is 200. Every allowed sort ends with `id` as a deterministic tie-breaker.
-
-Observations, historical valuations, Value Changes, jobs, revisions, and audit events use opaque cursor pagination:
-
-```json
-{
-  "items": [],
-  "page": { "kind": "cursor", "limit": 50, "nextCursor": "opaque-value", "hasMore": true }
-}
-```
-
-The cursor is a signed or authenticated encoding of the filter fingerprint and final sort tuple, normally time plus ID. Clients cannot reuse it with changed filters or sort order. No endpoint exposes SQL offsets, row IDs as cursor semantics, or unsigned filter state.
-
-### 6.10 Health endpoints
-
-- `GET /health/live` reports only that the process can serve requests.
-- `GET /health/ready` requires MySQL connectivity, the expected schema version, required crypto configuration for any stored Connections, and a running worker loop.
-
-When mutual TLS is enabled, health endpoints require a valid client certificate just like the UI and API. Deployments must configure their probe with an accepted certificate.
+Strong ETags with `If-Match` on `PATCH`/`PUT`/`DELETE`; `Idempotency-Key` on creates and job triggers; offset pagination for current-state lists and cursor pagination for history, jobs, and audit; `GET /health/live` and `GET /health/ready` as before.
 
 ## 7. Frontend design
 
-### 7.1 Information architecture and routes
+### 7.1 Information architecture
 
-Authentication routes are `/login`. Users are created with `plutus user create`; there is no Register screen.
-
-The sidebar has nine module entries: Overview (ungrouped), then `PORTFOLIO` (Balances, Positions, Exposure, History) and `MANAGE` (Identities, Asset Catalog, Capital, Data Activity). History, Capital, Asset Catalog, and Data Activity keep their existing child URLs behind local secondary links. The Identities entry is a single page, and each identity row expands to its Connections. Portfolio Settings and Account & Security live in the top bar, not the sidebar.
-
-Authenticated application routes:
+Sidebar: Overview; **PORTFOLIO** (Holdings, History); **MANAGE** (Identities, Capital, Catalog, Data Activity). Portfolio Settings and Account & Security stay in the top bar.
 
 ```text
 /p/:portfolioId/overview
-/p/:portfolioId/portfolio/balances
-/p/:portfolioId/portfolio/positions
-/p/:portfolioId/portfolio/exposure
-/p/:portfolioId/history/valuations
-/p/:portfolioId/history/value-changes
-/p/:portfolioId/capital/baseline
-/p/:portfolioId/capital/flows
-/p/:portfolioId/data/identities
-/p/:portfolioId/data/catalog
-/p/:portfolioId/data/observations
-/p/:portfolioId/data/jobs
-/p/:portfolioId/data/audit
+/p/:portfolioId/holdings                 tree; a selected Account shows its report, Balances, Positions
+/p/:portfolioId/holdings/balances        flat Balance table
+/p/:portfolioId/holdings/positions       flat Position table
+/p/:portfolioId/history                  Valuation Point chart + Period Close table
+/p/:portfolioId/history/value-changes    Value Change bars by period kind
+/p/:portfolioId/capital                  Capital Flows and Boundary Events in one list
+/p/:portfolioId/data/identities          Identities, their Accounts (checkboxes), and Connections
+/p/:portfolioId/data/catalog             Asset Listing mappings, Instruments
+/p/:portfolioId/data/activity            cycles, runs, jobs, audit
 /p/:portfolioId/settings/portfolio
 /account/security
 ```
 
-`/account/security` is User-owned and is not a Portfolio child route. `/p/:portfolioId/settings/security` redirects to it. The Portfolio switcher navigates to the corresponding Portfolio URL and records only the last visited Portfolio ID in local storage, except on `/account/security` where switching an existing Portfolio updates that preference without leaving the page. On login, a valid URL wins, then a valid remembered active Portfolio, then the earliest active Portfolio. Authorization always comes from the server; local storage is only a navigation preference.
+Removed routes: exposure, valuations/value-changes split under `history` (merged), capital baseline, observations, separate jobs/audit pages (merged into activity).
 
-### 7.2 Visual system and responsive shell
+### 7.2 Visual system, state, charts, failure UX (implemented, unchanged)
 
-Plutus reuses the successful AIBox direction: a compact application shell, semantic design tokens, dense financial tables, system/light/dark themes, strong hierarchy, and responsive navigation. When available during development, `http://127.0.0.1:9923/` and the sibling `../aibox` checkout are visual and implementation references. Tokens and components are copied or reimplemented inside Plutus; there is no runtime or package dependency on AIBox, so both products can evolve independently.
+The shell, tokens, themes, responsive rules, accessibility rules, TanStack Query and React Router ownership, chart accessibility, and recovery UX from the previous design stay in force. Charts show a `stale` or `incomplete` marker on affected points and never draw a line through a day without a Period Close.
 
-The desktop shell uses a 256 px navigation rail that can collapse to 56 px, a persistent top context bar, and a bounded content width appropriate to dense data. Below 900 px the navigation becomes a drawer. Below 760 px dense catalog and detail layouts stack, while tables use deliberate horizontal scrolling or row-card alternatives rather than hiding financial columns.
+## 8. Security and configuration (implemented, `[collection]` changes)
 
-Semantic CSS custom properties cover surfaces, text, borders, focus, positive/negative/neutral financial values, chart series, warning, stale, incomplete, and error states. Theme choice is `system`, `light`, or `dark`; system changes apply live. Components use CSS Modules and Lucide icons. Raw color values do not appear in page components.
-
-Keyboard focus is always visible, dialog focus is trapped and restored, input errors are associated with fields, and interactive targets are at least 44 by 44 CSS pixels on touch layouts. Motion respects `prefers-reduced-motion`. Color never carries completeness, sign, or error meaning alone.
-
-### 7.3 State and data access
-
-React Router owns route and search state. Filters, grouping, sorting, date range, and pagination that should survive reloads remain in the URL. TanStack Query owns server state; query keys include the User identity, Portfolio ID, resource, normalized filters, and active projection generation where relevant. Switching User or Portfolio cancels incompatible requests and removes sensitive cached data.
-
-There is no global Redux-style store in the MVP. Local component state handles transient UI. The generated Hey API client handles wire transport; handwritten query hooks convert wire values to view models while preserving decimal strings and nullability.
-
-Job polling never overlaps requests, backs off after transient errors, stops at terminal state, and slows or pauses in a background tab. A successful Projection job invalidates read-model queries only after the API reports the new active generation.
-
-### 7.4 Overview and charts
-
-Overview contains:
-
-- current Portfolio Valuation, Contributed Capital, and absolute Value Change cards with freshness and completeness;
-- a Portfolio Valuation time-series chart;
-- a Value Change bar chart by selected calendar period;
-- an Exposure composition chart that keeps long, short, and net values distinguishable;
-- prioritized issues and stale/failed scope summaries.
-
-A line is drawn only with enough meaningful samples; fewer than four points use a simpler dot or textual presentation rather than implying a trend. Value Change uses diverging bars. Exposure uses diverging or stacked composition appropriate to the selected grouping and does not hide opposing long and short components when net equals zero.
-
-Every chart has a nearby textual summary, keyboard-reachable controls, non-color cues, and an accessible data-table alternative containing exact decimal strings. ECharts themes are derived from semantic tokens. The frontend formats and presents server calculations; it does not recompute Portfolio Valuation, coverage selection, Capital conversion, or group totals.
-
-### 7.5 Failure and recovery UX
-
-Route-level errors preserve the shell and provide retry, navigation, trace ID, and safe Problem Details. Query errors keep the last successful data visible when safe and label it as stale. A domain issue such as a missing Price appears within otherwise successful content, not as a generic network error. Optimistic-lock conflicts show the latest server value and require the User to review before resubmission.
-
-## 8. Security and configuration
-
-### 8.1 Configuration sources
-
-Non-secret process settings are read from a TOML file (`config/local.toml` by default, or `--config`). `PLUTUS_*` environment variables override file values. Without `--env-file`, a gitignored `config/local.env` in the working directory or Go module root may set those same `PLUTUS_*` values at process start and does not override already-set environment variables. With `--env-file`, only that file is loaded; it does not merge with `config/local.env`. The Connection encryption master key is accepted only through `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML, CLI arguments, logs, audit events, browser responses, or seed data. Local DSN values belong in the matching gitignored env file under `config/` (`local.env`, `agent.env`, or `walk.env`); integration tests use `config/test.env` for `PLUTUS_TEST_DATABASE_DSN` only. A gitignored TOML file may still hold a DSN for convenience. The DSN still must never be logged, audited, or committed as a real credential. Duration values use Go duration strings and are rejected when non-positive or outside documented bounds.
-
-Local development uses three isolated processes: local serve on `0.0.0.0:8080` with database `plutus_local`, agent self-check on `127.0.0.1:8081` with `plutus_agent`, and human walkthrough on `127.0.0.1:8082` with `plutus_walk`. Each lane has its own files in `config/`, MySQL database, HTTP port, and session cookie names. Scripts `scripts/local-serve.sh`, `scripts/local-wipe-and-serve.sh`, `scripts/agent-wipe-and-serve.sh`, and `scripts/walk-wipe-and-serve.sh` pass `--config` and `--env-file` explicitly.
-
-The initial configuration surface is:
+Configuration sources, the three local lanes, the TLS startup matrix, credential encryption, and browser/HTTP security are unchanged. The `[collection]` section becomes:
 
 ```toml
-[server]
-listen_address = "0.0.0.0"
-port = 8080
-
-[server.tls]
-https_enabled = false
-https_cert_path = ""
-https_key_path = ""
-mtls_enabled = false
-mtls_ca_path = ""
-
-[auth]
-session_idle_lifetime = "168h"
-session_absolute_lifetime = "720h"
-session_cookie_name = "plutus_session_local"
-csrf_cookie_name = "plutus_csrf_local"
-
-[jobs]
-worker_poll_interval = "1s"
-lease_duration = "2m"
-completed_retention = "2160h"
-
 [collection]
-default_interval = "15m"
-default_freshness_multiplier = 2
-
-[database]
-# DSN typically lives in the lane env file; TOML may still set it.
-allow_reset = false
+default_interval = "15m"      # new Portfolios; each Portfolio may override
+stagger = "3s"                # delay between Connections within one cycle
+validate_timeout = "15s"
 ```
 
-The MySQL DSN is read from the selected env file or the selected TOML `[database].dsn`. `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` overrides the file; exactly one of those two environment sources is allowed. See [ADR 0010](./adr/0010-keep-local-mysql-dsn-in-gitignored-plutus-toml.md). The application forces the connection session timezone to UTC and validates MySQL 8.4 compatibility, strict mode, and `utf8mb4` at startup.
+`freshness_after_seconds` and per-Connection intervals are removed; freshness is simply whether the report came from the current cycle.
 
-The server defaults to `127.0.0.1` and plain HTTP. Users are created only through the CLI.
+## 9. Scheduling and failure policy
 
-Startup validation follows this matrix:
-
-| Configuration | Result |
-| --- | --- |
-| HTTPS disabled, mTLS disabled, no TLS paths | valid; serve HTTP |
-| HTTPS enabled with readable matching certificate and key | valid; serve HTTPS with TLS 1.3 minimum |
-| HTTPS enabled without either certificate path or key path | invalid; refuse startup |
-| Certificate unreadable, malformed, expired, or not matched to key | invalid; refuse startup |
-| mTLS enabled while HTTPS is disabled | invalid; refuse startup |
-| mTLS enabled without a readable valid CA bundle | invalid; refuse startup |
-| mTLS enabled with valid HTTPS and CA configuration | valid; require and verify a client certificate everywhere |
-| TLS paths set while their feature is disabled | invalid; refuse startup as ambiguous configuration |
-
-Static PEM files are loaded at startup. Certificate changes require restart. The MVP does not implement ACME, hot reload, TLS termination delegation, or different client-certificate policies by route. A valid client certificate is a transport gate only: it is not mapped to a User and does not replace username/password plus Session authentication.
-
-### 8.2 Credential encryption
-
-Connection credentials are serialized to a versioned normalized secret document and encrypted with AES-256-GCM. Every encryption uses a cryptographically random 96-bit nonce and binds the Connection ID, Portfolio ID, schema version, and key version as additional authenticated data.
-
-The deployment-level 32-byte master key is injected as base64 through `PLUTUS_MASTER_KEY` or read from the file named by `PLUTUS_MASTER_KEY_FILE`; exactly one source is allowed. The key is never stored in MySQL. `credential_key_version` permits controlled future rotation, but an online rotation workflow is not required for the MVP. The key is required when encrypting or decrypting Connection credentials. While ciphertext and nonce remain NULL, `serve` does not require a master key.
-
-API and UI surfaces reveal only whether credentials exist and when they were replaced or validated. Diagnostics may name a credential field category but never log its value. Deterministic seeds do not include valid exchange secrets.
-
-### 8.3 Browser and HTTP security
-
-The server sets a restrictive Content Security Policy compatible with the embedded application, `X-Content-Type-Options: nosniff`, an appropriate referrer policy, and frame denial. CORS is disabled in production because the SPA and API are same-origin. The development server allows only its configured Vite origin and still uses credentials plus CSRF protection.
-
-State-changing endpoints accept JSON only, validate `Origin` where available, require the CSRF header, and enforce body-size limits. Login, credential mutation, and audit responses receive `Cache-Control: no-store`. User-facing and log messages do not reveal database queries, stack traces, credential values, password hashes, or raw financial payloads.
-
-## 9. Scheduling, jobs, and collection behavior
-
-The phase-4 scheduler creates collection jobs for enabled Connections. The default interval is 15 minutes and can be overridden per Connection. A fact becomes stale after twice its Connection interval by default; each Connection may explicitly override the threshold. Individual Observation kinds may later define stricter defaults without changing the meaning of freshness.
-
-The scheduler, manual refresh endpoint, and retry policy all use the same job creation service and dedupe key. At most one equivalent queued or running collection exists for an Identity. Manual refresh returns the existing active job when appropriate. The scheduler does not run real collection until phase 4, but its persistent job and lease model is established earlier for Projection work.
-
-Retries use bounded exponential backoff with jitter and error-class policy. Authentication, authorization, invalid configuration, and unsupported-scope errors require User action and do not spin indefinitely. Rate limiting and temporary Platform failures are retriable. A process restart allows an expired job lease to be reclaimed without marking missing scopes as zero.
+- The scheduler enqueues one `collection_cycle` job per Portfolio when `now - last cycle start >= interval`; manual triggers use the same job and dedupe key.
+- Within a cycle, Connections are collected sequentially with the configured stagger. Connections with `status != enabled` are skipped and their Accounts fall back to stale reports.
+- Authentication and authorization errors set the Connection `invalid`, are not retried, and stop future scheduling of that Connection until the User re-enables it. Rate limiting and temporary failures are retried within the run with bounded exponential backoff (default three attempts); on exhaustion the run and its Accounts are `failed` for this cycle.
+- A selected Account whose Platform call returns "not enabled" or "no permission" is a `failed` report with that reason; other Accounts of the same run are unaffected.
+- The Valuation Point is always written, even if every run failed, so that history reflects process uptime rather than Platform uptime.
 
 ## 10. Development workflow and deterministic data
 
-The planned CLI surface is:
+CLI surface after Phase 4:
 
 ```text
 plutus [--config FILE] [--env-file FILE] serve
-plutus [--config FILE] [--env-file FILE] migrate status
-plutus [--config FILE] [--env-file FILE] migrate up
-plutus [--config FILE] [--env-file FILE] user create
-plutus [--config FILE] [--env-file FILE] user disable
-plutus [--config FILE] [--env-file FILE] user reset-password
+plutus [--config FILE] [--env-file FILE] migrate status | migrate up
+plutus [--config FILE] [--env-file FILE] user create | user disable | user reset-password
 plutus [--config FILE] [--env-file FILE] db seed --profile minimal|edge-cases|walkthrough
 plutus [--config FILE] [--env-file FILE] db reset --profile minimal|edge-cases|walkthrough
-plutus [--config FILE] [--env-file FILE] projection rebuild --portfolio <uuid>
+plutus [--config FILE] [--env-file FILE] collect --portfolio <uuid>    # run one cycle now, offline adapters permitted
 ```
 
-Phase 2 implements the full planned CLI surface, including `db seed` and development-only `db reset`. MySQL is started and maintained by the developer or operator. Plutus only connects, checks schema state, and runs an explicit migration or reset command. Integration tests skip unless `PLUTUS_TEST_DATABASE_DSN` is set in the process environment or `config/test.env` in the working directory or Go module root (process environment wins) and must not target the operator's development database as a sacrificial instance.
+`plutus projection rebuild` is removed. Seeds insert configuration and Observations only; the real valuation code writes every Valuation Point after seeding. The `minimal`, `edge-cases`, and `walkthrough` profiles keep their roles; `edge-cases` must contain a stale Account, a never-collected Account, a Balance without a price, a Boundary Event (an Account deselected mid-series), a manual Capital Flow in BTC, and a day without points.
 
-Migrations are forward-only in shared environments and run in their own deployment step. The server never migrates automatically. `db reset` is development-only: it must require an explicit development environment marker, verify that the database name matches an allowed development pattern, print the exact target, and reject production-like or unrecognized targets.
+Lanes, scripts, migration rules, and `db reset` guards are unchanged from the README.
 
-All seed profiles are deterministic: fixed UUIDs, fixed UTC timestamps, fixed values, and stable credentials suitable only for local development. Seed SQL inserts configuration and source facts but never derived Projection rows. The real Projection application logic builds every read model after seeding.
+## 11. Observability and operations (implemented, unchanged)
 
-The `minimal` profile contains two Users, at least one User with two Portfolios, mapped catalog entries, a Capital Baseline, Capital Flows, complete Observations, and enough history to render the principal pages. The `edge-cases` profile additionally contains partial success, stale and failed scopes, an Asset Listing mapped only to its provisional Asset, missing Price and FX inputs, Reported Equity containment and partial overlap, opposing Positions with net-zero Exposure, a coverage change, timezone-boundary observations, and an edited Capital Flow. The `walkthrough` profile is the local UI dataset: daily history across Binance, OKX, and Bybit, extra assets (including BNB, XRP, DOGE, ADA, AVAX, and LINK), Catalog pins, Account Metrics, Capital revisions, audit rows, and the same incomplete-coverage cases kept in the middle of the series so the latest cutoff stays complete. `scripts/local-wipe-and-serve.sh`, `scripts/agent-wipe-and-serve.sh`, and `scripts/walk-wipe-and-serve.sh` rebuild the embedded SPA, then reset their isolated databases with `walkthrough`. History pages always fill From/To (45 days before the active cutoff, or now when cutoff is still unknown) so the first list query is bounded; the filters stay editable. Auto sampling uses typical spacing so a nearby as-of timestamp does not collapse a daily series to hour resolution.
-
-Expected repository layout:
-
-```text
-api/openapi/                 OpenAPI 3.1 source documents
-cmd/plutus/                  CLI composition root
-internal/<module>/domain/    framework-independent domain behavior
-internal/<module>/app/       application commands, queries, and ports
-internal/<module>/infra/     MySQL, crypto, and adapter implementations
-internal/transport/http/     Gin handlers and wire conversion
-internal/worker/             durable job execution
-db/migrations/               Goose migrations
-db/queries/                  sqlc query source
-db/seeds/                    deterministic source-fact SQL
-web/                         React application
-config/                      Lane TOML and env examples (`local`, `agent`, `walk`) plus `test-example.env`
-```
-
-The actual layout may consolidate very small packages, but it must preserve the dependency direction in section 3 rather than create layers containing only pass-through code.
-
-## 11. Observability and operations
-
-The application uses Go structured logging with `log/slog`. Each request and job has a trace/request ID; log fields include safe IDs, route templates, durations, outcomes, retry class, and generation ID. Logs exclude passwords, tokens, CSRF values, connection secrets, raw payloads, complete financial response bodies, and audit before/after documents.
-
-Expected operational behavior includes graceful HTTP shutdown, stopping new job claims, bounded completion of the current job step, lease expiry for unfinished work, database connection-pool metrics in logs, and a startup summary that excludes secrets. Projection activation and migration mismatch are high-signal events. Prometheus and OpenTelemetry are intentionally deferred.
-
-Database backup, restore, TLS certificate issuance, MySQL process management, and secret-file distribution remain deployment responsibilities. The design does not imply that Plutus manages them.
+`log/slog` structured logs with request and job IDs; no secrets, payloads, or audit documents in logs. Graceful shutdown stops new claims and lets the current run finish or lease-expire. High-signal events: Valuation Point written with `incomplete`, Connection set `invalid`, migration mismatch.
 
 ## 12. Implementation phases
 
-### Phase 1: Foundation
+Phases 1–3 are complete on the previous model (see the [checklist](./implementation-checklist.md)).
 
-- configuration loading and validation, including HTTP, HTTPS, mTLS, and master-key sources;
-- explicit Goose migrations, sqlc setup, and schema-version readiness checks;
-- OpenAPI generation for the strict Gin interface and TypeScript client;
-- CLI user creation, login, Sessions, password change, revocation, CSRF, and login rate limiting;
-- multiple Portfolio creation, selection, update, and cascade deletion of additional Portfolios, with an undeletable `default` Portfolio created with the User;
-- embedded React shell, authentication screens, Portfolio switcher, themes, and responsive navigation;
-- durable Projection job worker and empty Platform adapter registry;
-- Connection schema and transport contracts, without operational credential CRUD or real collection.
+### Phase 4: Restructure to the accepted model
 
-### Phase 2: End-to-end vertical slice
+- rewrite the baseline migration to §5; drop removed tables, columns, and job kinds;
+- replace `observation` and `projection` modules with `collection` and `valuation`; delete the generation engine, correction endpoints, coverage logic, Exposure, pins, baseline, revisions;
+- Adapter port per §3.4 with a deterministic `fake` Adapter used by seeds and tests;
+- Account selection UI and API; Connection validate/enable flow against the fake Adapter;
+- Valuation Point writer, stale fallback, incomplete handling, Boundary Event derivation, Value Change and Period Close queries;
+- Holdings tree, History, Capital, Identities, Catalog, Activity pages against the new API;
+- seeds rewritten; README and checklist updated.
 
-- deterministic `minimal`, `edge-cases`, and `walkthrough` source-fact seeds;
-- shared catalog, mappings, normalized Observations, failures, and correction primitives;
-- Capital Baseline and Capital Flow revisions;
-- generation-based latest Balance and Position state, Portfolio Valuation, Contributed Capital, and Value Change;
-- working Overview, Balances, Positions, and Capital pages backed by MySQL and the real JSON API.
+### Phase 5: Integrations
 
-### Phase 3: Complete MVP UI and management
+- Binance Portfolio Margin, OKX MCM/PM, Bybit UTA 2.0 Adapters with the Account Types each declares;
+- per-Platform mapping tables for Account Report, Balance, and Position columns, documented in `docs/adapters/<platform>.md`;
+- live validation of the stale, complete-set, and boundary rules against real accounts.
 
-- Exposure, valuation history, Value Change history, Data, Jobs, Connection, Catalog, Observation, and audit screens;
-- Connection credential CRUD with AES-256-GCM, but no real Platform call;
-- catalog mapping and tracking revision UI;
-- job and issue diagnostics, Observation correction, full Projection rebuild, and complete accessibility/error recovery;
-- deterministic testing of all accepted missing, stale, coverage, price, and timezone cases.
+## 13. Acceptance matrix
 
-### Phase 4: Integrations
+### 13.1 Ownership (implemented)
 
-- active scheduler and manual Identity refresh;
-- Binance Portfolio Margin adapter;
-- OKX Multi-currency margin and Portfolio margin adapters;
-- Bybit Unified Trading Account 2.0 adapter;
-- Platform validation against documented Account, coverage, catalog, price, and failure semantics.
+User A gets 404 on User B's resources; composite FKs prevent cross-Portfolio links; the birth Portfolio is undeletable; additional Portfolios cascade-delete.
 
-An implementation phase is complete only when its UI and API use the same generated contract, migrations work from an empty database, the acceptance scenarios below pass, and README claims are updated to reflect what actually exists.
+### 13.2 Collection and valuation
 
-## 13. Validation and acceptance matrix
+- A cycle with all Connections succeeding writes one point whose total equals the sum of Account Valuations and matches the seeded expectation exactly.
+- A cycle where one Account fails writes a point using that Account's previous report, marked `stale` with the earlier `reportObservedAt`; the total does not drop.
+- A successful report that omits a previously held coin removes that coin from the current holdings and the point's value.
+- An Account with no successful report ever produces `method = missing`, `value_usd = null`, and an `incomplete` point whose `total_usd` is still the sum of the others.
+- A Balance with no price is listed with `noPrice`, excluded from `value_usd`, named in `omitted_json`, and makes the Account and point `incomplete`.
+- USDT and USDC Balances value at exactly 1 USD without a price row.
+- An Account with `equity` reported is valued by it even when its Balances would sum differently; the difference is visible in the Account view.
 
-### 13.1 Ownership and identity
+### 13.3 Boundary, flows, and periods
 
-- User A receives 404 when addressing User B's Portfolio or any nested resource by a known UUID.
-- One User can create and switch between at least two Portfolios without query-cache or URL leakage.
-- A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio.
-- An Identity can be edited before facts exist but cannot move to another Portfolio after any Observation exists.
-- The Portfolio created with a User is undeletable. Additional Portfolios can be deleted, which cascade-deletes every row scoped to them.
+- Selecting a funded Account mid-series produces a Boundary Event contribution equal to its first `value_usd`; the Value Change spanning it is unchanged by the selection.
+- Deselecting an Account produces a withdrawal equal to its last `value_usd` and removes it from the next point.
+- A manual BTC Capital Flow converts at the nearest Platform price at its effective time; with no price within the cycle interval the affected Value Change is `incomplete` and names the flow.
+- Period Close picks the last point before each local boundary in `Asia/Shanghai`; ISO week, month end, quarter end, leap day, and year end are covered.
+- A day without points has no Period Close; the week containing it is `incomplete`.
+- Changing the Portfolio timezone changes Period Close selection without any write.
 
-### 13.2 Authentication and browser security
+### 13.4 Connections and Adapters
 
-- HTTP registration is absent; login and CLI User creation remain usable.
-- Login rate limiting works by username and client address without revealing existence.
-- Correct and incorrect passwords exercise Argon2id verification safely; password change revokes other Sessions.
-- Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset all revoke access as specified.
-- Every state-changing browser request requires a valid CSRF token; a cross-origin form or missing token fails.
+- Enabling a Connection without a successful validation is refused.
+- An authentication error during a run sets `invalid`, records the reason, and the next scheduler tick skips that Connection.
+- A rate-limit error is retried with backoff and does not set `invalid`.
+- A selected Account Type the Platform reports as not enabled yields a `failed` report with the Platform reason; sibling Accounts succeed.
+- No row, log, job detail, or response contains a raw Platform payload or credential material.
 
-### 13.3 Collection and normalized facts
+### 13.5 Catalog
 
-- Complete, partially successful, stale, failed, and entirely missing collections remain distinguishable.
-- A partial collection preserves successful Observations, records each failed scope, and never creates zero-valued replacements.
-- Different source observation times within one Identity Snapshot are preserved.
-- Observation correction records normalized before/after audit data, increments ETag version, and creates or merges the required Projection job.
-- No database row, log, audit event, job failure, or API response contains a raw Platform payload.
+- A new symbol on a second Platform maps to the existing Asset automatically.
+- A manual mapping override recalculates only the points whose Account Valuations include that listing and stamps `recalculated_at`.
 
-### 13.4 Coverage, prices, and calculations
+### 13.6 HTTP, security, frontend (implemented)
 
-- Disjoint Reported Equity scopes combine without double counting.
-- A broad complete Reported Equity scope supersedes strictly contained reported values.
-- Partially overlapping Reported Equity scopes yield an explicit ambiguity issue and incomplete valuation.
-- Calculated Valuation is used only for uncovered scopes and becomes incomplete when a mapping or Price is missing.
-- A stablecoin requires an observed exchange rate; it is not assumed equal to fiat.
-- Price selection respects Platform, Instrument or Asset, price type, and cutoff time; a Position mark takes priority and no cross-Platform fallback occurs.
-- Opposing Positions preserve long and short Exposure while net Exposure is exactly zero.
-- Missing, stale, and incomplete facts remain `null` or issue-bearing states rather than zero.
+Decimal round-trip, ETag 412, idempotency 409, pagination stability, Problem Details, TLS matrix, theme and accessibility checks remain as before.
 
-### 13.5 Capital, generations, and time
+## 14. Documentation acceptance
 
-- Editing a Capital Flow appends a revision, records an audit event, and creates a Projection job.
-- A rebuild writes a new generation without changing readers, then atomically switches the Portfolio pointer only after validation.
-- A failed rebuild leaves the previous active generation fully readable.
-- Day boundaries in `Asia/Shanghai`, ISO-week boundaries, month ends, quarter ends, leap dates, and year ends convert correctly to UTC.
-- Changing Portfolio timezone triggers a full rebuild, and responses never mix period rows calculated in two timezones.
-- A coverage change makes its spanning Value Change incomparable; later equal-coverage periods can become complete again.
-
-### 13.6 HTTP contracts
-
-- Decimal strings round-trip without binary floating-point loss; unknown values round-trip as `null`.
-- ETag mismatch returns 412 and never overwrites the newer revision.
-- An exact Idempotency-Key retry returns the original response, while a changed body returns 409.
-- Offset pagination remains stable under its declared sort and returns totals; cursor pagination neither duplicates nor skips rows under its snapshot/order contract.
-- Domain incompleteness returns a typed 2xx response; malformed input and infrastructure failure return Problem Details.
-- The generated Go and TypeScript artifacts are unchanged after contract regeneration.
-
-### 13.7 Transport security
-
-- Loopback HTTP starts with the default configuration.
-- HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer.
-- mTLS accepts a valid client certificate from the configured CA and rejects absent, expired, or untrusted certificates on UI, API, and health routes.
-- Every invalid combination in the startup matrix refuses startup with a safe actionable error.
-
-### 13.8 Frontend
-
-- System, light, and dark themes render every route and chart with semantic colors and sufficient contrast.
-- Desktop, tablet, and narrow mobile layouts preserve all financial fields and usable navigation.
-- All interactive flows work by keyboard, focus order is visible, dialogs trap and restore focus, and automated accessibility checks find no serious violation.
-- Each chart provides a meaningful text summary and accessible exact-value table.
-- Network failures, stale cached data, domain issues, 401 Session loss, 412 conflicts, and failed jobs each present a specific recovery path.
-
-## 14. Documentation acceptance for this design
-
-Before implementation begins:
-
-- terminology must match the glossary and ADRs 0002–0009;
-- schema references, nullability, API examples, decimal rules, and time rules must agree across sections;
-- all relative Markdown links and ADR numbers must resolve;
-- README must clearly separate the existing placeholder CLI from planned architecture;
-- phases 1–3 must not claim real exchange calls, raw payload storage, trade execution, returns, sharing/RBAC, email/OAuth, multi-instance HA, or PWA support.
+- Terminology matches the glossary and ADRs 0002, 0005, 0008–0012, and 0014–0021; superseded ADRs are referenced only as history.
+- Schema, nullability, endpoint names, and acceptance items agree across sections.
+- README separates implemented Phase 1–3 capabilities from the Phase 4 restructure and Phase 5 integrations.

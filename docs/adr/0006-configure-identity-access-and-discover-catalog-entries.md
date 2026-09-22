@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0015 and ADR-0018
 ---
 
 # Configure identity access and discover catalog entries

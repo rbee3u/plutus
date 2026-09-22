@@ -6,7 +6,9 @@
 - Read [CONTEXT.md](./CONTEXT.md) and the relevant [ADRs](./docs/adr/) before changing domain behavior. Use the canonical terms consistently.
 - Keep `CONTEXT.md` a glossary: concise definitions only, without implementation details, requirements, or roadmap notes.
 - Record durable decisions with meaningful trade-offs in short, sequentially numbered ADRs. Update their status and references when a decision is superseded.
-- Follow accepted scope and valuation decisions, including distinctions between equity, exposure, report coverage, and observation time. Do not silently expand supported account modes or treat missing data as zero.
+- Follow the accepted scope and valuation decisions in ADRs 0014–0021: one Valuation Point per Collection Cycle, User-selected Account Types, Boundary Events as implicit Capital Flows, USD-only valuation with USDT/USDC at 1 USD, symbol-based Asset merging, Account-level stale carry-forward, manual Capital Flows with read-only keys, and one aligned Account Report. Do not silently expand supported Account Modes or Account Types.
+- Unknown value is never written as zero and never dropped silently: a total is the sum of what could be valued, marked `incomplete`, with the omitted items named. Only a successful Account Report may make a coin disappear (the Complete Set rule).
+- Adapters may call only read-only balance, position, account, and market-data endpoints. Raw Platform payloads never cross the adapter boundary, are never logged, and are never stored.
 
 ## Changes and documentation
 

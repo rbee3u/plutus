@@ -1,6 +1,6 @@
 # Implementation checklist
 
-Living progress tracker for the MVP in [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phase 3 is completed and waiting for review. Phase 4 stays unchecked until it begins.
+Living progress tracker for [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phases 1–3 are complete on the previous model. Phase 4 restructures the code to ADRs 0014–0021 and is the current workstream; Phase 5 stays unchecked until Phase 4 is reviewed.
 
 ## Phase 1: Foundation
 
@@ -282,3 +282,50 @@ Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **La
 - [x] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens
 - [x] **Phase 2** — Capital 412 conflicts reload the latest server values
 - [x] **Phase 3** — Query failures keep last-good data, show a Retry action, and display `traceId` when present
+
+## Phase 4: Restructure to the accepted model
+
+Current workstream. The previous schema is dropped, not migrated; every lane database is reset.
+
+### Milestone 1 — Schema and generated code
+
+- [ ] Rewrite the baseline Goose migration to technical-design §5; remove every table, column, job kind, and price type listed there as removed
+- [ ] Regenerate sqlc models and the expected schema version
+- [ ] Rewrite OpenAPI to §6; regenerate Go and TypeScript artifacts; delete removed operations
+
+### Milestone 2 — Modules
+
+- [ ] Replace `observation` and `projection` with `collection` and `valuation`; delete generations, correction, coverage, Exposure, pins, baseline, and revision code
+- [ ] Remove `parent_identity_id`, `kind`, and `disabled` from Identity; add Account selection with `selected` toggling and audit
+- [ ] Adapter port per §3.4 with `Capabilities`, `Validate`, and `Collect`; deterministic `fake` Adapter for seeds and tests
+- [ ] Asset Listings map by normalized symbol on first sight; manual override enqueues `valuation_recalc`
+
+### Milestone 3 — Collection Cycle and valuation
+
+- [ ] Scheduler enqueues one `collection_cycle` job per Portfolio at its interval; `POST /collection-cycles` merges into the same job
+- [ ] Worker runs Connections sequentially with stagger, writes cycles, runs, Account Reports, Balances, Positions, prices
+- [ ] Connection `invalid` on auth errors with scheduling stopped; bounded backoff on rate limit and temporary errors
+- [ ] Valuation writer: reported-else-calculated, USDT/USDC at 1, stale fallback, `missing`, `omitted_json`, issues; one point per cycle in one transaction
+- [ ] Read-time Value Change, Period Close, custom range, and Boundary Event derivation
+
+### Milestone 4 — HTTP and frontend
+
+- [ ] `GET /overview`, `/tree`, per-Account balances and positions, flat balances and positions
+- [ ] `GET /valuation-points`, `/period-closes`, `/value-changes`, `/value-changes/custom`, `/boundary-events`
+- [ ] Capital Flow CRUD without revisions; Identity create with `selectedAccountTypes`; Connection validate/enable flow
+- [ ] Holdings tree, History, Capital, Identities (with Account checkboxes), Catalog, Activity pages; removed routes deleted
+
+### Milestone 5 — Seeds and close-out
+
+- [ ] Rewrite `minimal`, `edge-cases`, and `walkthrough` seeds as configuration plus Observations only; `edge-cases` covers every §13.2–13.5 case
+- [ ] `plutus collect --portfolio` runs one cycle with the fake Adapter; `plutus projection rebuild` removed
+- [ ] README describes the restructured capabilities; `CONTEXT.md` and ADRs re-verified against the code
+- [ ] `make format && make build && make test && make lint` pass; Agent lane exercised on `:8081`
+
+## Phase 5: Integrations
+
+- [ ] Binance Portfolio Margin Adapter with its declared Account Types and `docs/adapters/binance.md` mapping table
+- [ ] OKX MCM and PM Adapters and `docs/adapters/okx.md`
+- [ ] Bybit UTA 2.0 Adapter and `docs/adapters/bybit.md`
+- [ ] Live validation of stale, complete-set, boundary, and no-price rules against real read-only keys
+- [ ] README marks integrations as implemented only after live validation
