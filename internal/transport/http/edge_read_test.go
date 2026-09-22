@@ -15,6 +15,7 @@ import (
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/projection"
@@ -119,6 +120,22 @@ func TestEdgeCaseReadModelsStayIncomplete(t *testing.T) {
 		rejectInventedZero(t, item.Completeness, item.NetValue, "exposure net value")
 		if item.Completeness != "complete" && item.NetValue == nil {
 			nullIncomplete = true
+		}
+	}
+	if !opposing {
+		active, err := jobSvc.ActiveGenerationID(ctx, seeds.PortfolioAliceMain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, err := sqlcgen.New(db).ListExposureProjections(ctx, active[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, row := range rows {
+			if !isZeroDecimal(row.LongQuantity) && !isZeroDecimal(row.ShortQuantity) {
+				opposing = true
+				break
+			}
 		}
 	}
 	if !opposing {

@@ -10,14 +10,14 @@ INSERT INTO identities (
 
 -- name: ListIdentitiesByPortfolio :many
 SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at
+       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
 FROM identities
 WHERE portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY created_at ASC, id ASC;
 
 -- name: GetIdentity :one
 SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at
+       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
 FROM identities
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
@@ -31,6 +31,20 @@ SET display_name = sqlc.arg(display_name),
     version = version + 1,
     updated_at = sqlc.arg(updated_at)
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
+
+-- name: CountActiveSubordinates :one
+SELECT COUNT(*)
+FROM identities
+WHERE portfolio_id = sqlc.arg(portfolio_id)
+  AND parent_identity_id = sqlc.arg(parent_identity_id)
+  AND status <> 'archived';
+
+-- name: CountEnabledConnectionsByIdentity :one
+SELECT COUNT(*)
+FROM connections
+WHERE portfolio_id = sqlc.arg(portfolio_id)
+  AND identity_id = sqlc.arg(identity_id)
+  AND status = 'enabled';
 
 -- name: ArchiveIdentity :execrows
 UPDATE identities

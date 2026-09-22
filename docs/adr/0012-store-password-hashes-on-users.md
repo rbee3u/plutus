@@ -10,6 +10,5 @@ Keeping a satellite table would only preserve a join that every login paid for. 
 
 ## Consequences
 
-- Goose `20260920120015` copies hashes onto `users`, then drops `user_credentials`. The original auth migration is not rewritten.
-- Seeds insert `password_hash` on `users`. There is no `user_credentials` seed row.
-- Down recreates a 1:1 `user_credentials` row and copies `users.updated_at` into the old `password_changed_at` column.
+- `users.password_hash` is created with the table. There is no `user_credentials` table.
+- Seeds insert `password_hash` on `users`.

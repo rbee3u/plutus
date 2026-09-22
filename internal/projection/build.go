@@ -132,37 +132,8 @@ type latestSet struct {
 }
 
 func (b *builder) latest(cutoff time.Time) latestSet {
-	type bkey struct{ Account, Listing uuid.UUID }
-	type pkey struct {
-		Account, Instrument uuid.UUID
-		Ref                 string
-	}
-	bestB := map[bkey]*balanceFact{}
-	for i := range b.facts.balances {
-		item := &b.facts.balances[i]
-		if item.ObservedAt.After(cutoff) {
-			continue
-		}
-		key := bkey{item.AccountID, item.ListingID}
-		cur, ok := bestB[key]
-		if !ok || item.ObservedAt.After(cur.ObservedAt) || (item.ObservedAt.Equal(cur.ObservedAt) && item.ID.String() > cur.ID.String()) {
-			bestB[key] = item
-		}
-	}
-	bestP := map[pkey]*positionFact{}
-	for i := range b.facts.positions {
-		item := &b.facts.positions[i]
-		if item.ObservedAt.After(cutoff) {
-			continue
-		}
-		key := pkey{item.AccountID, item.InstrumentID, item.Ref}
-		cur, ok := bestP[key]
-		if !ok || item.ObservedAt.After(cur.ObservedAt) || (item.ObservedAt.Equal(cur.ObservedAt) && item.ID.String() > cur.ID.String()) {
-			bestP[key] = item
-		}
-	}
 	out := latestSet{}
-	for _, item := range bestB {
+	for _, item := range b.selectedBalances(cutoff) {
 		mapped, assetID := b.mapListing(item.ListingID, item.ObservedAt)
 		fresh, complete := b.freshness(item.IdentityID, item.AccountID, "balance", item.ObservedAt, cutoff, item.Completeness)
 		row := latestBalance{
@@ -175,7 +146,7 @@ func (b *builder) latest(cutoff time.Time) latestSet {
 		}
 		out.balances = append(out.balances, row)
 	}
-	for _, item := range bestP {
+	for _, item := range b.selectedPositions(cutoff) {
 		fresh, complete := b.freshness(item.IdentityID, item.AccountID, "position", item.ObservedAt, cutoff, item.Completeness)
 		inst := b.facts.instruments[item.InstrumentID]
 		long, short := positionExposure(item, &inst)
@@ -298,9 +269,9 @@ func (b *builder) valuation(cutoff time.Time) valBundle {
 		}
 		covered[account.ID] = true
 	}
-	for _, ident := range b.facts.identities {
-		if !b.hasState(ident.ID, cutoff) {
-			b.addIssue("portfolio_valuation", ident.ID.String(), "warning", "stale_scope", "Identity has no valid Observation at the cutoff.", cutoff, &ident.ID, nil, nil)
+	for _, ident := range b.requiredMembers(cutoff) {
+		if !b.hasSuccessfulSnapshot(ident.ID, cutoff) {
+			b.addIssue("portfolio_valuation", ident.ID.String(), "warning", "stale_scope", "Identity has no successful snapshot at the cutoff.", cutoff, &ident.ID, nil, nil)
 			complete = false
 			if fresh == "fresh" {
 				fresh = "unknown"
@@ -326,7 +297,7 @@ func (b *builder) valuation(cutoff time.Time) valBundle {
 		value := formatRat(sum)
 		amount = &value
 	}
-	row := valuationRow{ID: id, EvaluatedAt: cutoff, Amount: amount, Completeness: status, Fingerprint: fingerprintFromContribs(contribs, b.facts.identities, cutoff, b), Freshness: fresh}
+	row := valuationRow{ID: id, EvaluatedAt: cutoff, Amount: amount, Completeness: status, Fingerprint: fingerprintFromContribs(contribs, b.requiredMembers(cutoff), cutoff, b), Freshness: fresh}
 	b.valuations[cutoff.UnixMicro()] = &row
 	return valBundle{row: row, contribs: contribs}
 }
@@ -341,24 +312,7 @@ func completeAmounts(rows []contributionRow) bool {
 }
 
 func (b *builder) selectReported(cutoff time.Time) ([]equityFact, bool) {
-	latestAt := map[uuid.UUID]time.Time{}
-	for _, eq := range b.facts.equities {
-		if eq.ObservedAt.After(cutoff) {
-			continue
-		}
-		if t, ok := latestAt[eq.IdentityID]; !ok || eq.ObservedAt.After(t) {
-			latestAt[eq.IdentityID] = eq.ObservedAt
-		}
-	}
-	var candidates []equityFact
-	for _, eq := range b.facts.equities {
-		if eq.ObservedAt.After(cutoff) {
-			continue
-		}
-		if eq.ObservedAt.Equal(latestAt[eq.IdentityID]) {
-			candidates = append(candidates, eq)
-		}
-	}
+	candidates := b.selectedEquities(cutoff)
 	type scored struct {
 		eq  equityFact
 		set map[uuid.UUID]bool
@@ -371,7 +325,8 @@ func (b *builder) selectReported(cutoff time.Time) ([]equityFact, bool) {
 	var selected []equityFact
 	used := map[uuid.UUID]bool{}
 	overlapping := false
-	for _, item := range items {
+	for i := range items {
+		item := &items[i]
 		contained := true
 		overlap := false
 		for accountID := range item.set {
@@ -1063,7 +1018,8 @@ func (b *builder) freshness(identity, account uuid.UUID, scope string, observed,
 		fresh = "stale"
 		b.addIssue("latest_"+scope, identity.String(), "warning", "stale_scope", "The carried-forward Observation exceeded the freshness threshold.", cutoff, &identity, optionalUUID(account), nil)
 	}
-	for _, fail := range b.facts.failures {
+	for i := range b.facts.failures {
+		fail := &b.facts.failures[i]
 		if fail.IdentityID != identity || fail.OccurredAt.After(cutoff) || fail.OccurredAt.Before(observed) {
 			continue
 		}
@@ -1154,19 +1110,7 @@ func (b *builder) platformForAsset(asset uuid.UUID) uuid.UUID {
 }
 
 func (b *builder) hasState(identity uuid.UUID, cutoff time.Time) bool {
-	for i := range b.facts.balances {
-		item := &b.facts.balances[i]
-		if item.IdentityID == identity && !item.ObservedAt.After(cutoff) {
-			return true
-		}
-	}
-	for i := range b.facts.equities {
-		item := &b.facts.equities[i]
-		if item.IdentityID == identity && !item.ObservedAt.After(cutoff) {
-			return true
-		}
-	}
-	return false
+	return b.hasSuccessfulSnapshot(identity, cutoff)
 }
 
 func (b *builder) addIssue(kind, key, severity, code, summary string, at time.Time, identity, account, observation *uuid.UUID) {

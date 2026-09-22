@@ -124,6 +124,9 @@ func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`UPDATE identities SET created_at = ? WHERE id = ?`, time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), ident.ID[:]); err != nil {
+		t.Fatal(err)
+	}
 	conn, err := accessSvc.CreateConnection(ctx, portfolioID, &access.CreateConnectionInput{
 		IdentityID: ident.ID,
 		Label:      "primary",
@@ -143,17 +146,18 @@ func TestRebuildUsesReportedEquityAndCapturesTimezone(t *testing.T) {
 		t.Fatal(err)
 	}
 	listingID := insertMappedUSDListing(t, db, portfolioID, user.ID)
+	amount := "1250.50"
+	observed := time.Date(2026, 9, 18, 16, 0, 0, 0, time.UTC)
 	snapshot, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
 		IdentityID:     ident.ID,
 		ConnectionID:   conn.ID,
 		AdapterName:    "test",
 		AdapterVersion: "1",
+		StartedAt:      observed,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	amount := "1250.50"
-	observed := time.Date(2026, 9, 18, 16, 0, 0, 0, time.UTC)
 	if _, err := obs.Create(ctx, portfolioID, &observation.CreateInput{
 		IdentitySnapshotID: snapshot.ID,
 		AccountID:          &account.ID,
@@ -255,4 +259,238 @@ func insertMappedUSDListing(t *testing.T, db *sql.DB, portfolioID, userID uuid.U
 		t.Fatal(err)
 	}
 	return listingID
+}
+
+func TestSnapshotReplacesOmittedPositionAndCarriesFailedScope(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	ctx := context.Background()
+	portfolioID, userID, ident, conn, account := setupObservedIdentity(t, db)
+	instrumentID := insertPerpetual(t, db)
+	obs := observation.NewService(db)
+	firstAt := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	secondAt := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	failedAt := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
+	first, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: firstAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := obs.Create(ctx, portfolioID, &observation.CreateInput{
+		IdentitySnapshotID: first.ID, AccountID: &account.ID, Kind: "position", SourceObservedAt: firstAt, Completeness: "complete",
+		Position: &observation.Position{InstrumentID: instrumentID, PlatformPositionRef: "pos-x", Side: "long", Quantity: "2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: secondAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := obs.Create(ctx, portfolioID, &observation.CreateInput{
+		IdentitySnapshotID: second.ID, AccountID: &account.ID, Kind: "position", SourceObservedAt: secondAt, Completeness: "complete",
+		Position: &observation.Position{InstrumentID: instrumentID, PlatformPositionRef: "pos-y", Side: "short", Quantity: "1"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	third, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: failedAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := obs.RecordFailure(ctx, portfolioID, &observation.FailureInput{
+		IdentitySnapshotID: third.ID, AccountID: &account.ID, ScopeKind: "position", Phase: "collect",
+		ErrorClass: "temporary_platform_failure", ErrorCode: "position_unavailable", SafeDetail: "position list failed", OccurredAt: failedAt,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rebuildAt(t, db, portfolioID, userID, failedAt.Add(time.Hour))
+	active := activeGeneration(t, db, portfolioID)
+	positions, err := sqlcgen.New(db).ListLatestPositionProjections(ctx, mustBin(active))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(positions) != 1 || positions[0].PlatformPositionRef != "pos-y" || positions[0].FreshnessState != "stale" {
+		t.Fatalf("positions %+v", positions)
+	}
+}
+
+func TestArchiveDropsCurrentTotalsAndKeepsEarlierCutoff(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	ctx := context.Background()
+	portfolioID, userID, ident, conn, account := setupObservedIdentity(t, db)
+	listingID := insertMappedUSDListing(t, db, portfolioID, userID)
+	obs := observation.NewService(db)
+	observed := time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC)
+	snapshot, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: observed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	total := "10"
+	if _, err := obs.Create(ctx, portfolioID, &observation.CreateInput{
+		IdentitySnapshotID: snapshot.ID, AccountID: &account.ID, Kind: "balance", SourceObservedAt: observed, Completeness: "complete",
+		Balance: &observation.Balance{AssetListingID: listingID, TotalQuantity: &total},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
+	if _, err := accessSvc.CreateIdentity(ctx, portfolioID, &access.CreateIdentityInput{
+		PlatformID: catalog.PlatformOKX, ExternalRef: "uid-empty", DisplayName: "Empty", AccountMode: catalog.AccountModeOKXMCM, Kind: "main",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := accessSvc.ArchiveIdentity(ctx, portfolioID, ident.ID, ident.Version); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := accessSvc.ListIdentities(ctx, portfolioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range listed {
+		if item.ID == ident.ID {
+			t.Fatal("archived identity is still listed")
+		}
+	}
+	asOf := time.Now().UTC().Add(time.Hour)
+	rebuildAt(t, db, portfolioID, userID, asOf)
+	vals, err := sqlcgen.New(db).ListPortfolioValuationProjections(ctx, mustBin(activeGeneration(t, db, portfolioID)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var historical, current *sqlcgen.PortfolioValuationProjection
+	for i := range vals {
+		item := &vals[i]
+		if item.EvaluatedAt.Equal(observed) {
+			historical = item
+		}
+		if item.EvaluatedAt.Equal(asOf) {
+			current = item
+		}
+	}
+	if historical == nil || !historical.Amount.Valid || compactDecimal(historical.Amount.String) != "10" || historical.Completeness != "complete" {
+		t.Fatalf("historical %+v", historical)
+	}
+	if current == nil || current.Completeness == "complete" {
+		t.Fatalf("current %+v", current)
+	}
+	balances, err := sqlcgen.New(db).ListLatestBalanceProjections(ctx, mustBin(activeGeneration(t, db, portfolioID)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(balances) != 0 {
+		t.Fatalf("latest balances %+v", balances)
+	}
+}
+
+func TestOmittedPositionIsNotCarried(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	ctx := context.Background()
+	portfolioID, userID, ident, conn, account := setupObservedIdentity(t, db)
+	instrumentID := insertPerpetual(t, db)
+	obs := observation.NewService(db)
+	firstAt := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	secondAt := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	first, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: firstAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := obs.Create(ctx, portfolioID, &observation.CreateInput{
+		IdentitySnapshotID: first.ID, AccountID: &account.ID, Kind: "position", SourceObservedAt: firstAt, Completeness: "complete",
+		Position: &observation.Position{InstrumentID: instrumentID, PlatformPositionRef: "pos-x", Side: "long", Quantity: "2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := obs.CreateSnapshot(ctx, portfolioID, &observation.CreateSnapshotInput{
+		IdentityID: ident.ID, ConnectionID: conn.ID, AdapterName: "test", AdapterVersion: "1", StartedAt: secondAt,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rebuildAt(t, db, portfolioID, userID, secondAt.Add(time.Hour))
+	positions, err := sqlcgen.New(db).ListLatestPositionProjections(ctx, mustBin(activeGeneration(t, db, portfolioID)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(positions) != 0 {
+		t.Fatalf("closed position carried %+v", positions)
+	}
+}
+
+func setupObservedIdentity(t *testing.T, db *sql.DB) (uuid.UUID, uuid.UUID, access.Identity, access.Connection, observation.Account) {
+	t.Helper()
+	ctx := context.Background()
+	authSvc := auth.NewService(db, time.Hour, 24*time.Hour)
+	user, err := authSvc.CreateUser(ctx, "sn-"+uuid.NewString()[:8], "correct horse battery staple")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := portfolio.NewService(db).List(ctx, user.ID)
+	if err != nil || len(items) == 0 {
+		t.Fatal(err)
+	}
+	accessSvc := access.NewService(db, 15*time.Minute, 30*time.Minute, nil)
+	ident, err := accessSvc.CreateIdentity(ctx, items[0].ID, &access.CreateIdentityInput{
+		PlatformID: catalog.PlatformBinance, ExternalRef: "uid-" + uuid.NewString()[:8], DisplayName: "Binance", AccountMode: catalog.AccountModeBinancePM, Kind: "main",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE identities SET created_at = ? WHERE id = ?`, time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), ident.ID[:]); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := accessSvc.CreateConnection(ctx, items[0].ID, &access.CreateConnectionInput{IdentityID: ident.ID, Label: "primary"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err := observation.NewService(db).CreateAccount(ctx, items[0].ID, &observation.CreateAccountInput{
+		IdentityID: ident.ID, ExternalRef: "unified", DisplayName: "Unified", AccountType: "unified", Status: "active",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return items[0].ID, user.ID, ident, conn, account
+}
+
+func insertPerpetual(t *testing.T, db *sql.DB) uuid.UUID {
+	t.Helper()
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	if _, err := db.Exec(
+		`INSERT INTO instruments (id, platform_id, external_ref, symbol, kind, status, first_seen_at, last_seen_at, created_at, updated_at)
+		 VALUES (?, ?, ?, 'BTCUSDT', 'linear_perpetual', 'active', ?, ?, ?, ?)`,
+		id[:], catalog.PlatformBinance[:], "inst-"+id.String(), now, now, now, now,
+	); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func rebuildAt(t *testing.T, db *sql.DB, portfolioID, userID uuid.UUID, asOf time.Time) {
+	t.Helper()
+	job, err := jobs.NewService(db).EnqueueRebuild(context.Background(), portfolioID, &userID, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(db)
+	svc.now = func() time.Time { return asOf }
+	if err := svc.Rebuild(context.Background(), Request{PortfolioID: portfolioID, JobID: job.ID}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func activeGeneration(t *testing.T, db *sql.DB, portfolioID uuid.UUID) uuid.UUID {
+	t.Helper()
+	active, err := jobs.NewService(db).ActiveGenerationID(context.Background(), portfolioID)
+	if err != nil || active == uuid.Nil {
+		t.Fatalf("active %s %v", active, err)
+	}
+	return active
 }

@@ -42,9 +42,49 @@ func (q *Queries) ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams
 	return result.RowsAffected()
 }
 
+const countActiveSubordinates = `-- name: CountActiveSubordinates :one
+SELECT COUNT(*)
+FROM identities
+WHERE portfolio_id = ?
+  AND parent_identity_id = ?
+  AND status <> 'archived'
+`
+
+type CountActiveSubordinatesParams struct {
+	PortfolioID      []byte
+	ParentIdentityID []byte
+}
+
+func (q *Queries) CountActiveSubordinates(ctx context.Context, arg CountActiveSubordinatesParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveSubordinates, arg.PortfolioID, arg.ParentIdentityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEnabledConnectionsByIdentity = `-- name: CountEnabledConnectionsByIdentity :one
+SELECT COUNT(*)
+FROM connections
+WHERE portfolio_id = ?
+  AND identity_id = ?
+  AND status = 'enabled'
+`
+
+type CountEnabledConnectionsByIdentityParams struct {
+	PortfolioID []byte
+	IdentityID  []byte
+}
+
+func (q *Queries) CountEnabledConnectionsByIdentity(ctx context.Context, arg CountEnabledConnectionsByIdentityParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countEnabledConnectionsByIdentity, arg.PortfolioID, arg.IdentityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getIdentity = `-- name: GetIdentity :one
 SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at
+       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
 FROM identities
 WHERE portfolio_id = ? AND id = ?
 `
@@ -71,6 +111,7 @@ func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Ident
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ArchivedAt,
+		&i.ActiveExternalRef,
 	)
 	return i, err
 }
@@ -123,7 +164,7 @@ func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) 
 
 const listIdentitiesByPortfolio = `-- name: ListIdentitiesByPortfolio :many
 SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at
+       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
 FROM identities
 WHERE portfolio_id = ?
 ORDER BY created_at ASC, id ASC
@@ -152,6 +193,7 @@ func (q *Queries) ListIdentitiesByPortfolio(ctx context.Context, portfolioID []b
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ArchivedAt,
+			&i.ActiveExternalRef,
 		); err != nil {
 			return nil, err
 		}

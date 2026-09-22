@@ -275,19 +275,20 @@ type IdempotencyRecord struct {
 }
 
 type Identity struct {
-	ID               []byte
-	PortfolioID      []byte
-	PlatformID       []byte
-	ParentIdentityID []byte
-	ExternalRef      string
-	DisplayName      string
-	AccountMode      string
-	Kind             string
-	Status           string
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	ArchivedAt       sql.NullTime
+	ID                []byte
+	PortfolioID       []byte
+	PlatformID        []byte
+	ParentIdentityID  []byte
+	ExternalRef       string
+	DisplayName       string
+	AccountMode       string
+	Kind              string
+	Status            string
+	Version           uint64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ArchivedAt        sql.NullTime
+	ActiveExternalRef sql.NullString
 }
 
 type IdentitySnapshot struct {
@@ -447,12 +448,12 @@ type Portfolio struct {
 	Timezone                     string
 	DisplayAssetID               []byte
 	Status                       string
+	Undeletable                  bool
 	ActiveProjectionGenerationID []byte
 	Version                      uint64
 	CreatedAt                    time.Time
 	UpdatedAt                    time.Time
 	ArchivedAt                   sql.NullTime
-	Undeletable                  bool
 }
 
 type PortfolioValuationProjection struct {
@@ -574,9 +575,9 @@ type User struct {
 	Username           string
 	UsernameNormalized string
 	Status             string
+	PasswordHash       string
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	PasswordHash       string
 }
 
 type ValuationContributionProjection struct {

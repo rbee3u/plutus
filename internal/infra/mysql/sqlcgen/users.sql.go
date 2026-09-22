@@ -11,7 +11,7 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
+SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
 FROM users
 WHERE id = ?
 `
@@ -24,15 +24,15 @@ func (q *Queries) GetUserByID(ctx context.Context, id []byte) (User, error) {
 		&i.Username,
 		&i.UsernameNormalized,
 		&i.Status,
+		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const getUserByNormalizedUsername = `-- name: GetUserByNormalizedUsername :one
-SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
+SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
 FROM users
 WHERE username_normalized = ?
 `
@@ -45,9 +45,9 @@ func (q *Queries) GetUserByNormalizedUsername(ctx context.Context, usernameNorma
 		&i.Username,
 		&i.UsernameNormalized,
 		&i.Status,
+		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.PasswordHash,
 	)
 	return i, err
 }

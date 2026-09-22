@@ -1508,6 +1508,10 @@ export type ArchiveIdentityErrors = {
     /**
      * Problem details.
      */
+    409: Problem;
+    /**
+     * Problem details.
+     */
     412: Problem;
 };
 

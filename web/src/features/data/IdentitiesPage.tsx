@@ -598,8 +598,10 @@ export function IdentitiesPage() {
       />
       <Dialog open={Boolean(archiveId)} title="Archive identity" onClose={() => setArchiveId(null)}>
         <p className={styles.lead}>
-          Archived identities stay attached to this Portfolio and cannot be reused as live
-          collection subjects.
+          Archiving removes this identity from the current portfolio totals and from this list.
+          History before the archive time stays on this identity. Disable every enabled connection
+          first, and archive subordinate identities first. The same platform identity can be created
+          again afterward.
         </p>
         <div className={styles.actions}>
           <ActionButton

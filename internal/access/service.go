@@ -144,6 +144,9 @@ func (s *Service) ListIdentities(ctx context.Context, portfolioID uuid.UUID) ([]
 		if err != nil {
 			return nil, err
 		}
+		if item.Status == "archived" {
+			continue
+		}
 		out = append(out, item)
 	}
 	return out, nil
@@ -228,6 +231,9 @@ func (s *Service) PatchIdentity(ctx context.Context, portfolioID, identityID uui
 	}
 	if current.Version != version {
 		return current, ErrPrecondition
+	}
+	if current.Status == "archived" {
+		return Identity{}, ErrIdentityArchived
 	}
 	display := current.DisplayName
 	if in.DisplayName != nil {
@@ -322,6 +328,26 @@ func (s *Service) ArchiveIdentity(ctx context.Context, portfolioID, identityID u
 	}
 	if current.Version != version {
 		return current, ErrPrecondition
+	}
+	children, err := s.q.CountActiveSubordinates(ctx, sqlcgen.CountActiveSubordinatesParams{
+		PortfolioID:      mustBin(portfolioID),
+		ParentIdentityID: mustBin(identityID),
+	})
+	if err != nil {
+		return Identity{}, err
+	}
+	if children > 0 {
+		return Identity{}, ErrArchiveSubordinates
+	}
+	enabled, err := s.q.CountEnabledConnectionsByIdentity(ctx, sqlcgen.CountEnabledConnectionsByIdentityParams{
+		PortfolioID: mustBin(portfolioID),
+		IdentityID:  mustBin(identityID),
+	})
+	if err != nil {
+		return Identity{}, err
+	}
+	if enabled > 0 {
+		return Identity{}, ErrArchiveConnection
 	}
 	now := s.now().UTC()
 	n, err := s.q.ArchiveIdentity(ctx, sqlcgen.ArchiveIdentityParams{

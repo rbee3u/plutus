@@ -80,6 +80,9 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 	if err != nil {
 		return a.createIdentityError(ctx, err), nil
 	}
+	if err := a.enqueueIdentityRebuild(ctx, request.PortfolioId, &user.ID, "identity create"); err != nil {
+		return nil, err
+	}
 	body := toAPIIdentity(&item)
 	etag := item.ETag()
 	id := item.PortfolioID
@@ -152,9 +155,16 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 		return api.PatchIdentity412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
 	case errors.Is(err, access.ErrIdentityFrozen):
 		return api.PatchIdentity409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "identity_frozen", "Identity is frozen", err.Error())), nil
+	case errors.Is(err, access.ErrIdentityArchived):
+		return api.PatchIdentity409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "identity_archived", "Identity is archived", err.Error())), nil
 	case err != nil:
 		return api.PatchIdentity400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 	default:
+		if request.Body.Status != nil {
+			if err := a.enqueueIdentityRebuild(ctx, request.PortfolioId, &user.ID, "identity status change"); err != nil {
+				return nil, err
+			}
+		}
 		return api.PatchIdentity200JSONResponse(toAPIIdentity(&item)), nil
 	}
 }
@@ -180,11 +190,24 @@ func (a *API) ArchiveIdentity(ctx context.Context, request api.ArchiveIdentityRe
 		return api.ArchiveIdentity404ApplicationProblemPlusJSONResponse(a.notFound(ctx)), nil
 	case errors.Is(err, access.ErrPrecondition):
 		return api.ArchiveIdentity412ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")), nil
+	case errors.Is(err, access.ErrArchiveSubordinates), errors.Is(err, access.ErrArchiveConnection):
+		return api.ArchiveIdentity409ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusConflict, "archive_blocked", "Identity cannot be archived", err.Error())), nil
 	case err != nil:
 		return nil, err
 	default:
+		if err := a.enqueueIdentityRebuild(ctx, request.PortfolioId, &user.ID, "identity archive"); err != nil {
+			return nil, err
+		}
 		return api.ArchiveIdentity200JSONResponse(toAPIIdentity(&item)), nil
 	}
+}
+
+func (a *API) enqueueIdentityRebuild(ctx context.Context, portfolioID uuid.UUID, userID *uuid.UUID, reason string) error {
+	if a.Jobs == nil {
+		return nil
+	}
+	_, err := a.Jobs.EnqueueRebuild(ctx, portfolioID, userID, reason)
+	return err
 }
 
 func toAPIIdentity(item *access.Identity) api.Identity {

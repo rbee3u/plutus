@@ -236,7 +236,7 @@ CLI user creation creates an active Portfolio named `default` with `undeletable 
 | `version` | `BIGINT UNSIGNED` | required |
 | `created_at`, `updated_at`, `archived_at` | `DATETIME(6)` | `archived_at` nullable |
 
-Use `UNIQUE (portfolio_id, platform_id, external_ref)`. After the first Observation exists, `portfolio_id`, `platform_id`, `external_ref`, `parent_identity_id`, and `account_mode` are immutable.
+Use a stored generated `active_external_ref`, equal to `external_ref` while `status` is not `archived` and NULL otherwise, with `UNIQUE (portfolio_id, platform_id, active_external_ref)`. Archived rows keep their external ref and observations, and the same platform identity can be created again as a new Identity. After the first Observation exists, `portfolio_id`, `platform_id`, `external_ref`, `parent_identity_id`, and `account_mode` are immutable. An archived Identity rejects every later patch. Archive is refused while any subordinate is not archived, or while the Identity still has an enabled Connection.
 
 #### `connections`
 
@@ -375,7 +375,7 @@ Fields are `id`, `portfolio_id`, `collection_run_id`, `identity_id`, `started_at
 
 Fields are `id`, `portfolio_id`, `collection_run_id`, `identity_snapshot_id`, nullable `account_id`, `scope_kind`, nullable `scope_ref VARCHAR(191)`, `phase`, `error_class`, `error_code`, `safe_detail VARCHAR(1024)`, `retriable BOOLEAN`, and `occurred_at`. The table records omitted or failed normalized scopes without manufacturing zero-valued Observations.
 
-A partial collection transaction persists successful normalized Observations and explicit failure records together. Projection selection carries forward the latest valid fact for a failed scope at or before the evaluation cutoff and marks its age and freshness; it does not replace the scope with zero.
+A partial collection transaction persists successful normalized Observations and explicit failure records together. Projection selects, per Identity and scope, the latest Identity Snapshot with `completed_at` at or before the cutoff whose status is not `failed` and whose scope did not fail as a whole. Rows in that snapshot are the full scope: a key that is absent is no longer held. A failure with a specific `scope_ref` carries forward only that key from the previous successful snapshot and marks it stale. A wholly failed snapshot does not replace the previous batch. Price observations remain time-qualified and are not chosen by snapshot batch. See [ADR 0013](adr/0013-select-identity-state-by-snapshot-batch-and-archive-time.md).
 
 ### 5.5 Normalized observations
 
@@ -456,7 +456,7 @@ Every projection table contains `generation_id`, `portfolio_id`, composite FKs t
 - `latest_balance_projections`: `generation_id`, `portfolio_id`, `identity_id`, `account_id`, `asset_listing_id`, nullable `asset_id`, source `observation_id`, quantities, `source_observed_at`, `freshness_state`, and `completeness`; unique per generation/account/listing.
 - `latest_position_projections`: the same generation and provenance fields plus `instrument_id`, `platform_position_ref`, side, quantity, selected mark, derived underlying long/short quantities, `freshness_state`, and `completeness`; unique per generation/source position identity.
 
-The latest valid Observation at or before a cutoff wins for each declared scope. A collection failure can make that carried-forward fact stale or incomplete but cannot erase it.
+For each Identity still inside its membership window, the latest successful scope snapshot at or before a cutoff supplies that scope. An Identity is inside the window from `created_at` until `archived_at`. Current totals use the rebuild time, so an archived Identity is absent from latest balances, positions, and overview. Earlier cutoffs still include it. A disabled Identity is not required coverage; its successful batches still count. An enabled Identity, or an archived Identity before `archived_at`, with no successful batch makes the valuation incomplete rather than zero. A collection failure can make a carried-forward key stale or incomplete but cannot erase a scope that did not succeed. Price selection is unchanged: the latest valid price at or before the cutoff, with no cross-platform fallback.
 
 #### Valuation projections
 
@@ -639,9 +639,9 @@ Every mutation returns or references the enqueued Projection job. Deleting a Flo
 
 | Method and path suffix | Purpose |
 | --- | --- |
-| `GET, POST /identities` | list or create a configured Identity |
-| `GET, PATCH /identities/{identityId}` | read or update mutable Identity fields |
-| `POST /identities/{identityId}/archive` | archive an Identity |
+| `GET, POST /identities` | list or create a configured Identity; list omits archived rows |
+| `GET, PATCH /identities/{identityId}` | read or update mutable Identity fields; archived rows reject PATCH |
+| `POST /identities/{identityId}/archive` | archive an Identity when it has no unarchived subordinate and no enabled Connection, then rebuild projections |
 | `POST /identities/{identityId}/refresh` | enqueue manual collection; phase 4 |
 | `GET, POST /connections` | list or create Connections; phase 3 management |
 | `GET, PATCH, DELETE /connections/{connectionId}` | manage one Connection without returning credentials |

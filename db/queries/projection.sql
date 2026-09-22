@@ -23,8 +23,14 @@ FROM accounts
 WHERE portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY created_at ASC, id ASC;
 
+-- name: ListIdentitySnapshotFacts :many
+SELECT id, identity_id, completed_at, status
+FROM identity_snapshots
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND completed_at IS NOT NULL
+ORDER BY completed_at ASC, id ASC;
+
 -- name: ListBalanceFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        b.asset_listing_id, b.total_quantity, b.available_quantity, b.locked_quantity
 FROM observations o
 INNER JOIN balance_observations b
@@ -33,7 +39,7 @@ WHERE o.portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY o.source_observed_at ASC, o.id ASC;
 
 -- name: ListPositionFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        p.instrument_id, p.platform_position_ref, p.side, p.quantity, p.entry_price, p.mark_price, p.unrealized_value
 FROM observations o
 INNER JOIN position_observations p
@@ -51,7 +57,7 @@ WHERE o.portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY o.source_observed_at ASC, o.id ASC;
 
 -- name: ListReportedEquityFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        e.denomination_listing_id, e.amount
 FROM observations o
 INNER JOIN reported_equity_observations e
@@ -70,7 +76,7 @@ FROM reported_equity_covered_accounts
 WHERE portfolio_id = sqlc.arg(portfolio_id);
 
 -- name: ListCollectionFailureFacts :many
-SELECT f.account_id, f.scope_kind, f.occurred_at, f.error_code, f.safe_detail, s.identity_id
+SELECT f.identity_snapshot_id, f.account_id, f.scope_kind, f.scope_ref, f.occurred_at, f.error_code, f.safe_detail, s.identity_id
 FROM collection_failures f
 INNER JOIN identity_snapshots s
     ON s.portfolio_id = f.portfolio_id AND s.id = f.identity_snapshot_id

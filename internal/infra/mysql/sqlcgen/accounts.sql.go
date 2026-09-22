@@ -11,7 +11,11 @@ import (
 )
 
 const countAccountsByPortfolio = `-- name: CountAccountsByPortfolio :one
-SELECT COUNT(*) FROM accounts WHERE portfolio_id = ?
+SELECT COUNT(*)
+FROM accounts a
+INNER JOIN identities i
+    ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ? AND i.status <> 'archived'
 `
 
 func (q *Queries) CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error) {
@@ -95,11 +99,13 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) er
 }
 
 const listAccountsByPortfolio = `-- name: ListAccountsByPortfolio :many
-SELECT id, portfolio_id, identity_id, external_ref, display_name, account_type, status,
-       first_seen_at, last_seen_at, created_at, updated_at
-FROM accounts
-WHERE portfolio_id = ?
-ORDER BY display_name ASC, id ASC
+SELECT a.id, a.portfolio_id, a.identity_id, a.external_ref, a.display_name, a.account_type, a.status,
+       a.first_seen_at, a.last_seen_at, a.created_at, a.updated_at
+FROM accounts a
+INNER JOIN identities i
+    ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ? AND i.status <> 'archived'
+ORDER BY a.display_name ASC, a.id ASC
 LIMIT ? OFFSET ?
 `
 

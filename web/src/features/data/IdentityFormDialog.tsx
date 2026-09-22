@@ -43,7 +43,7 @@ function formFromIdentity(item: Identity): IdentityForm {
     externalRef: item.externalRef,
     displayName: item.displayName,
     accountMode: item.accountMode,
-    status: item.status === "disabled" ? "disabled" : "enabled",
+    status: item.status === "enabled" ? "enabled" : "disabled",
   };
 }
 
@@ -137,6 +137,10 @@ function IdentityForm({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (request.mode === "edit" && request.item.status === "archived") {
+      setError("Archived identities cannot be changed.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setNotice(null);

@@ -6,12 +6,12 @@ VALUES (
 );
 
 -- name: GetUserByNormalizedUsername :one
-SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
+SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
 FROM users
 WHERE username_normalized = sqlc.arg(username_normalized);
 
 -- name: GetUserByID :one
-SELECT id, username, username_normalized, status, created_at, updated_at, password_hash
+SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
 FROM users
 WHERE id = sqlc.arg(id);
 

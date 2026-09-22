@@ -21,6 +21,7 @@ type facts struct {
 	listings     map[uuid.UUID]listingFact
 	instruments  map[uuid.UUID]instrumentFact
 	mappings     map[uuid.UUID]mappingFact
+	snapshots    []snapshotFact
 	balances     []balanceFact
 	positions    []positionFact
 	prices       []priceFact
@@ -35,6 +36,16 @@ type facts struct {
 type identityFact struct {
 	ID         uuid.UUID
 	PlatformID uuid.UUID
+	Status     string
+	CreatedAt  time.Time
+	ArchivedAt *time.Time
+}
+
+type snapshotFact struct {
+	ID          uuid.UUID
+	IdentityID  uuid.UUID
+	CompletedAt time.Time
+	Status      string
 }
 
 type accountFact struct {
@@ -62,17 +73,17 @@ type mappingFact struct {
 }
 
 type balanceFact struct {
-	ID, IdentityID, AccountID, ListingID uuid.UUID
-	ObservedAt                           time.Time
-	Completeness                         string
-	Total, Available, Locked             *string
+	ID, SnapshotID, IdentityID, AccountID, ListingID uuid.UUID
+	ObservedAt                                       time.Time
+	Completeness                                     string
+	Total, Available, Locked                         *string
 }
 
 type positionFact struct {
-	ID, IdentityID, AccountID, InstrumentID uuid.UUID
-	Ref, Side, Quantity, Completeness       string
-	ObservedAt                              time.Time
-	Mark, Unrealized                        *string
+	ID, SnapshotID, IdentityID, AccountID, InstrumentID uuid.UUID
+	Ref, Side, Quantity, Completeness                   string
+	ObservedAt                                          time.Time
+	Mark, Unrealized                                    *string
 }
 
 type priceFact struct {
@@ -83,15 +94,17 @@ type priceFact struct {
 }
 
 type equityFact struct {
-	ID, IdentityID, DenomListingID uuid.UUID
-	ObservedAt                     time.Time
-	Completeness, Amount           string
+	ID, SnapshotID, IdentityID, DenomListingID uuid.UUID
+	ObservedAt                                 time.Time
+	Completeness, Amount                       string
 }
 
 type failureFact struct {
+	SnapshotID uuid.UUID
 	IdentityID uuid.UUID
 	AccountID  *uuid.UUID
 	ScopeKind  string
+	ScopeRef   string
 	OccurredAt time.Time
 	ErrorCode  string
 	SafeDetail string
@@ -150,11 +163,7 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 	if err != nil {
 		return err
 	}
-	enabledIdentities := map[uuid.UUID]bool{}
 	for i := range identities {
-		if identities[i].Status != "enabled" {
-			continue
-		}
 		id, err := uuid.FromBytes(identities[i].ID)
 		if err != nil {
 			return err
@@ -163,8 +172,12 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 		if err != nil {
 			return err
 		}
-		out.identities = append(out.identities, identityFact{ID: id, PlatformID: platform})
-		enabledIdentities[id] = true
+		item := identityFact{ID: id, PlatformID: platform, Status: identities[i].Status, CreatedAt: identities[i].CreatedAt}
+		if identities[i].ArchivedAt.Valid {
+			archived := identities[i].ArchivedAt.Time
+			item.ArchivedAt = &archived
+		}
+		out.identities = append(out.identities, item)
 	}
 	accounts, err := s.q.ListAllAccountsByPortfolio(ctx, mustBin(out.portfolioID))
 	if err != nil {
@@ -178,9 +191,6 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 		identityID, err := uuid.FromBytes(accounts[i].IdentityID)
 		if err != nil {
 			return err
-		}
-		if !enabledIdentities[identityID] {
-			continue
 		}
 		out.accounts = append(out.accounts, accountFact{ID: id, IdentityID: identityID})
 	}
@@ -240,6 +250,26 @@ func (s *Service) loadConfigFacts(ctx context.Context, out *facts) error {
 }
 
 func (s *Service) loadObservationFacts(ctx context.Context, out *facts) error {
+	snapshots, err := s.q.ListIdentitySnapshotFacts(ctx, mustBin(out.portfolioID))
+	if err != nil {
+		return err
+	}
+	for i := range snapshots {
+		if !snapshots[i].CompletedAt.Valid {
+			continue
+		}
+		id, err := uuid.FromBytes(snapshots[i].ID)
+		if err != nil {
+			return err
+		}
+		identityID, err := uuid.FromBytes(snapshots[i].IdentityID)
+		if err != nil {
+			return err
+		}
+		out.snapshots = append(out.snapshots, snapshotFact{
+			ID: id, IdentityID: identityID, CompletedAt: snapshots[i].CompletedAt.Time, Status: snapshots[i].Status,
+		})
+	}
 	balances, err := s.q.ListBalanceFacts(ctx, mustBin(out.portfolioID))
 	if err != nil {
 		return err
@@ -331,10 +361,20 @@ func (s *Service) loadFailures(ctx context.Context, out *facts) error {
 		if err != nil {
 			return err
 		}
+		snapshotID, err := uuid.FromBytes(rows[i].IdentitySnapshotID)
+		if err != nil {
+			return err
+		}
+		ref := ""
+		if rows[i].ScopeRef.Valid {
+			ref = rows[i].ScopeRef.String
+		}
 		out.failures = append(out.failures, failureFact{
+			SnapshotID: snapshotID,
 			IdentityID: identityID,
 			AccountID:  optionalID(rows[i].AccountID),
 			ScopeKind:  rows[i].ScopeKind,
+			ScopeRef:   ref,
 			OccurredAt: rows[i].OccurredAt,
 			ErrorCode:  rows[i].ErrorCode,
 			SafeDetail: rows[i].SafeDetail,
@@ -416,8 +456,12 @@ func balanceFromRow(row *sqlcgen.ListBalanceFactsRow) (balanceFact, bool, error)
 	if err != nil {
 		return balanceFact{}, false, err
 	}
+	snapshotID, err := uuid.FromBytes(row.IdentitySnapshotID)
+	if err != nil {
+		return balanceFact{}, false, err
+	}
 	return balanceFact{
-		ID: id, IdentityID: identityID, AccountID: *accountID, ListingID: listingID,
+		ID: id, SnapshotID: snapshotID, IdentityID: identityID, AccountID: *accountID, ListingID: listingID,
 		ObservedAt: row.SourceObservedAt, Completeness: row.Completeness,
 		Total: nullStringPtr(row.TotalQuantity), Available: nullStringPtr(row.AvailableQuantity), Locked: nullStringPtr(row.LockedQuantity),
 	}, true, nil
@@ -440,8 +484,12 @@ func positionFromRow(row *sqlcgen.ListPositionFactsRow) (positionFact, bool, err
 	if err != nil {
 		return positionFact{}, false, err
 	}
+	snapshotID, err := uuid.FromBytes(row.IdentitySnapshotID)
+	if err != nil {
+		return positionFact{}, false, err
+	}
 	return positionFact{
-		ID: id, IdentityID: identityID, AccountID: *accountID, InstrumentID: instrumentID,
+		ID: id, SnapshotID: snapshotID, IdentityID: identityID, AccountID: *accountID, InstrumentID: instrumentID,
 		Ref: row.PlatformPositionRef, Side: row.Side, Quantity: compactDecimal(row.Quantity), Completeness: row.Completeness,
 		ObservedAt: row.SourceObservedAt, Mark: nullStringPtr(row.MarkPrice), Unrealized: nullStringPtr(row.UnrealizedValue),
 	}, true, nil
@@ -480,8 +528,12 @@ func equityFromRow(row *sqlcgen.ListReportedEquityFactsRow) (equityFact, error) 
 	if err != nil {
 		return equityFact{}, err
 	}
+	snapshotID, err := uuid.FromBytes(row.IdentitySnapshotID)
+	if err != nil {
+		return equityFact{}, err
+	}
 	return equityFact{
-		ID: id, IdentityID: identityID, DenomListingID: listingID,
+		ID: id, SnapshotID: snapshotID, IdentityID: identityID, DenomListingID: listingID,
 		ObservedAt: row.SourceObservedAt, Completeness: row.Completeness, Amount: compactDecimal(row.Amount),
 	}, nil
 }

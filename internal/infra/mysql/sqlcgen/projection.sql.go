@@ -610,7 +610,7 @@ func (q *Queries) ListAssetListings(ctx context.Context) ([]AssetListing, error)
 }
 
 const listBalanceFacts = `-- name: ListBalanceFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        b.asset_listing_id, b.total_quantity, b.available_quantity, b.locked_quantity
 FROM observations o
 INNER JOIN balance_observations b
@@ -620,16 +620,17 @@ ORDER BY o.source_observed_at ASC, o.id ASC
 `
 
 type ListBalanceFactsRow struct {
-	ID                []byte
-	IdentityID        []byte
-	AccountID         []byte
-	SourceObservedAt  time.Time
-	CollectedAt       time.Time
-	Completeness      string
-	AssetListingID    []byte
-	TotalQuantity     sql.NullString
-	AvailableQuantity sql.NullString
-	LockedQuantity    sql.NullString
+	ID                 []byte
+	IdentitySnapshotID []byte
+	IdentityID         []byte
+	AccountID          []byte
+	SourceObservedAt   time.Time
+	CollectedAt        time.Time
+	Completeness       string
+	AssetListingID     []byte
+	TotalQuantity      sql.NullString
+	AvailableQuantity  sql.NullString
+	LockedQuantity     sql.NullString
 }
 
 func (q *Queries) ListBalanceFacts(ctx context.Context, portfolioID []byte) ([]ListBalanceFactsRow, error) {
@@ -643,6 +644,7 @@ func (q *Queries) ListBalanceFacts(ctx context.Context, portfolioID []byte) ([]L
 		var i ListBalanceFactsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.IdentitySnapshotID,
 			&i.IdentityID,
 			&i.AccountID,
 			&i.SourceObservedAt,
@@ -719,7 +721,7 @@ func (q *Queries) ListCapitalFlowFacts(ctx context.Context, portfolioID []byte) 
 }
 
 const listCollectionFailureFacts = `-- name: ListCollectionFailureFacts :many
-SELECT f.account_id, f.scope_kind, f.occurred_at, f.error_code, f.safe_detail, s.identity_id
+SELECT f.identity_snapshot_id, f.account_id, f.scope_kind, f.scope_ref, f.occurred_at, f.error_code, f.safe_detail, s.identity_id
 FROM collection_failures f
 INNER JOIN identity_snapshots s
     ON s.portfolio_id = f.portfolio_id AND s.id = f.identity_snapshot_id
@@ -728,12 +730,14 @@ ORDER BY f.occurred_at ASC, f.id ASC
 `
 
 type ListCollectionFailureFactsRow struct {
-	AccountID  []byte
-	ScopeKind  string
-	OccurredAt time.Time
-	ErrorCode  string
-	SafeDetail string
-	IdentityID []byte
+	IdentitySnapshotID []byte
+	AccountID          []byte
+	ScopeKind          string
+	ScopeRef           sql.NullString
+	OccurredAt         time.Time
+	ErrorCode          string
+	SafeDetail         string
+	IdentityID         []byte
 }
 
 func (q *Queries) ListCollectionFailureFacts(ctx context.Context, portfolioID []byte) ([]ListCollectionFailureFactsRow, error) {
@@ -746,8 +750,10 @@ func (q *Queries) ListCollectionFailureFacts(ctx context.Context, portfolioID []
 	for rows.Next() {
 		var i ListCollectionFailureFactsRow
 		if err := rows.Scan(
+			&i.IdentitySnapshotID,
 			&i.AccountID,
 			&i.ScopeKind,
+			&i.ScopeRef,
 			&i.OccurredAt,
 			&i.ErrorCode,
 			&i.SafeDetail,
@@ -872,6 +878,48 @@ func (q *Queries) ListExposureProjections(ctx context.Context, generationID []by
 			&i.DenominationAssetID,
 			&i.Completeness,
 			&i.FreshnessState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIdentitySnapshotFacts = `-- name: ListIdentitySnapshotFacts :many
+SELECT id, identity_id, completed_at, status
+FROM identity_snapshots
+WHERE portfolio_id = ? AND completed_at IS NOT NULL
+ORDER BY completed_at ASC, id ASC
+`
+
+type ListIdentitySnapshotFactsRow struct {
+	ID          []byte
+	IdentityID  []byte
+	CompletedAt sql.NullTime
+	Status      string
+}
+
+func (q *Queries) ListIdentitySnapshotFacts(ctx context.Context, portfolioID []byte) ([]ListIdentitySnapshotFactsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listIdentitySnapshotFacts, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListIdentitySnapshotFactsRow{}
+	for rows.Next() {
+		var i ListIdentitySnapshotFactsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.IdentityID,
+			&i.CompletedAt,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -1116,7 +1164,7 @@ func (q *Queries) ListPortfolioValuationProjections(ctx context.Context, generat
 }
 
 const listPositionFacts = `-- name: ListPositionFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        p.instrument_id, p.platform_position_ref, p.side, p.quantity, p.entry_price, p.mark_price, p.unrealized_value
 FROM observations o
 INNER JOIN position_observations p
@@ -1127,6 +1175,7 @@ ORDER BY o.source_observed_at ASC, o.id ASC
 
 type ListPositionFactsRow struct {
 	ID                  []byte
+	IdentitySnapshotID  []byte
 	IdentityID          []byte
 	AccountID           []byte
 	SourceObservedAt    time.Time
@@ -1152,6 +1201,7 @@ func (q *Queries) ListPositionFacts(ctx context.Context, portfolioID []byte) ([]
 		var i ListPositionFactsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.IdentitySnapshotID,
 			&i.IdentityID,
 			&i.AccountID,
 			&i.SourceObservedAt,
@@ -1350,7 +1400,7 @@ func (q *Queries) ListReportedEquityCoverageIdentities(ctx context.Context, port
 }
 
 const listReportedEquityFacts = `-- name: ListReportedEquityFacts :many
-SELECT o.id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
+SELECT o.id, o.identity_snapshot_id, o.identity_id, o.account_id, o.source_observed_at, o.collected_at, o.completeness,
        e.denomination_listing_id, e.amount
 FROM observations o
 INNER JOIN reported_equity_observations e
@@ -1361,6 +1411,7 @@ ORDER BY o.source_observed_at ASC, o.id ASC
 
 type ListReportedEquityFactsRow struct {
 	ID                    []byte
+	IdentitySnapshotID    []byte
 	IdentityID            []byte
 	AccountID             []byte
 	SourceObservedAt      time.Time
@@ -1381,6 +1432,7 @@ func (q *Queries) ListReportedEquityFacts(ctx context.Context, portfolioID []byt
 		var i ListReportedEquityFactsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.IdentitySnapshotID,
 			&i.IdentityID,
 			&i.AccountID,
 			&i.SourceObservedAt,
