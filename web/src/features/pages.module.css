@@ -281,3 +281,98 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.headingRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.headingCopy {
+  display: grid;
+  gap: var(--space-sm);
+  min-width: min(100%, 280px);
+  flex: 1 1 280px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-md);
+}
+
+.toolbarField {
+  width: min(240px, 100%);
+}
+
+.clickRow,
+.openRow {
+  cursor: pointer;
+}
+
+.clickRow:hover,
+.openRow:hover {
+  background: var(--surface-hover);
+}
+
+.openRow {
+  background: var(--surface-inset);
+}
+
+.clickRow > td,
+.openRow > td {
+  vertical-align: middle;
+}
+
+.detailRow > td {
+  padding: 0;
+  background: var(--surface-inset);
+}
+
+.detail {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-sm);
+  white-space: nowrap;
+}
+
+.sortButton {
+  font-weight: var(--weight-semibold);
+}
+
+.chevron,
+.chevronOpen {
+  transition: transform var(--transition-fast);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .chevronOpen {
+    transition: none;
+  }
+}

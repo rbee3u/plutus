@@ -12,7 +12,6 @@ import { FlowsPage } from "@/features/capital/FlowsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
 import { AuditPage } from "@/features/data/AuditPage";
 import { CatalogPage } from "@/features/data/CatalogPage";
-import { ConnectionsPage } from "@/features/data/ConnectionsPage";
 import { IdentitiesPage } from "@/features/data/IdentitiesPage";
 import { JobsPage } from "@/features/data/JobsPage";
 import { ObservationsPage } from "@/features/data/ObservationsPage";
@@ -60,7 +59,6 @@ export function App() {
               </Route>
               <Route element={<ModuleSubnav moduleId="data-sources" />}>
                 <Route path="data/identities" element={<IdentitiesPage />} />
-                <Route path="data/connections" element={<ConnectionsPage />} />
               </Route>
               <Route element={<ModuleSubnav moduleId="asset-catalog" />}>
                 <Route path="data/catalog" element={<CatalogPage />} />

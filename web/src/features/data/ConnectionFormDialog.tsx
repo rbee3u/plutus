@@ -1,28 +1,16 @@
 import { type FormEvent, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createConnection,
-  deleteConnection,
-  getConnection,
-  listConnections,
-  listIdentities,
-  patchConnection,
-} from "@/api/generated/sdk.gen";
+import { useNavigate } from "react-router";
+import { createConnection, getConnection, patchConnection } from "@/api/generated/sdk.gen";
 import type { Connection, ConnectionCredentials } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
-import { formatInstant } from "@/shared/lib/datetime";
 import { newIdempotencyKey } from "@/shared/lib/id";
-import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
+import { readEtag } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
 interface ConnectionForm {
-  identityId: string;
   label: string;
   status: "enabled" | "disabled" | "invalid";
   collectionIntervalSeconds: string;
@@ -33,7 +21,6 @@ interface ConnectionForm {
 }
 
 const emptyForm: ConnectionForm = {
-  identityId: "",
   label: "",
   status: "disabled",
   collectionIntervalSeconds: "",
@@ -43,68 +30,98 @@ const emptyForm: ConnectionForm = {
   passphrase: "",
 };
 
-export function ConnectionsPage() {
-  const { portfolioId = "" } = useParams();
+export type ConnectionDialogRequest =
+  | { nonce: number; mode: "create"; identityId: string; identityName: string }
+  | {
+      nonce: number;
+      mode: "edit";
+      item: Connection;
+      etag: string;
+      identityName: string;
+    };
+
+function formFromConnection(item: Connection): ConnectionForm {
+  return {
+    label: item.label,
+    status: item.status,
+    collectionIntervalSeconds:
+      item.collectionIntervalSeconds != null ? String(item.collectionIntervalSeconds) : "",
+    freshnessAfterSeconds:
+      item.freshnessAfterSeconds != null ? String(item.freshnessAfterSeconds) : "",
+    apiKey: "",
+    apiSecret: "",
+    passphrase: "",
+  };
+}
+
+export function ConnectionFormDialog({
+  portfolioId,
+  request,
+  onClose,
+  onSaved,
+}: {
+  portfolioId: string;
+  request: ConnectionDialogRequest | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <Dialog
+      open={request !== null}
+      title={request?.mode === "edit" ? "Edit connection" : "Create connection"}
+      onClose={onClose}
+    >
+      {request ? (
+        <ConnectionFormBody
+          key={request.nonce}
+          portfolioId={portfolioId}
+          request={request}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      ) : null}
+    </Dialog>
+  );
+}
+
+function ConnectionFormBody({
+  portfolioId,
+  request,
+  onClose,
+  onSaved,
+}: {
+  portfolioId: string;
+  request: ConnectionDialogRequest;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useCurrentUser();
   const createKey = useRef(newIdempotencyKey());
-  const [form, setForm] = useState<ConnectionForm>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [etag, setEtag] = useState("");
-  const [configured, setConfigured] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [form, setForm] = useState<ConnectionForm>(() =>
+    request.mode === "edit" ? formFromConnection(request.item) : emptyForm,
+  );
+  const [editingId, setEditingId] = useState<string | null>(
+    request.mode === "edit" ? request.item.id : null,
+  );
+  const [etag, setEtag] = useState(request.mode === "edit" ? request.etag : "");
+  const [configured, setConfigured] = useState(
+    request.mode === "edit" ? request.item.credentialsConfigured : false,
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const redirect = () => {
     void navigate("/login", { replace: true });
   };
-  const identities = useQuery({
-    queryKey: ["identities", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(await listIdentities({ path: { portfolioId } }), redirect),
-  });
-  const connections = useQuery({
-    queryKey: ["connections", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(await listConnections({ path: { portfolioId } }), redirect),
-  });
-  const identityName = (id: string) =>
-    identities.data?.items.find((item) => item.id === id)?.displayName ?? id;
   const credentialsFilled = Boolean(form.apiKey.trim() && form.apiSecret.trim());
   const canEnable = configured || credentialsFilled;
+  const boundIdentityId = request.mode === "create" ? request.identityId : null;
 
   function applyConnection(item: Connection, nextEtag: string) {
     setEditingId(item.id);
     setEtag(nextEtag);
     setConfigured(item.credentialsConfigured);
-    setForm({
-      identityId: item.identityId,
-      label: item.label,
-      status: item.status,
-      collectionIntervalSeconds:
-        item.collectionIntervalSeconds != null ? String(item.collectionIntervalSeconds) : "",
-      freshnessAfterSeconds:
-        item.freshnessAfterSeconds != null ? String(item.freshnessAfterSeconds) : "",
-      apiKey: "",
-      apiSecret: "",
-      passphrase: "",
-    });
-  }
-
-  async function startEdit(connectionId: string) {
-    setError(null);
-    setNotice(null);
-    const result = await getConnection({ path: { portfolioId, connectionId } });
-    if (result.response?.status === 401) {
-      redirect();
-      return;
-    }
-    const item = unwrapOrRedirect(result, redirect);
-    applyConnection(item, readEtag(result.response, `"connection:${String(item.version)}"`));
+    setForm(formFromConnection(item));
   }
 
   async function loadLatest(connectionId: string, message: string) {
@@ -120,10 +137,6 @@ export function ConnectionsPage() {
       );
     }
     setError(message);
-  }
-
-  async function invalidate() {
-    await queryClient.invalidateQueries({ queryKey: ["connections", user.data?.id, portfolioId] });
   }
 
   function credentialsBody(): ConnectionCredentials | undefined {
@@ -194,12 +207,12 @@ export function ConnectionsPage() {
           readEtag(result.response, `"connection:${String(result.data.version)}"`),
         );
         setNotice("Connection updated. Secrets are write-only and were not returned.");
-      } else {
+      } else if (boundIdentityId) {
         const result = await createConnection({
           path: { portfolioId },
           headers: { "Idempotency-Key": createKey.current },
           body: {
-            identityId: form.identityId,
+            identityId: boundIdentityId,
             label: form.label,
             status: form.status,
             collectionIntervalSeconds: interval,
@@ -218,8 +231,10 @@ export function ConnectionsPage() {
         createKey.current = newIdempotencyKey();
         setForm(emptyForm);
         setNotice("Connection created. Secrets are write-only and were not returned.");
+      } else {
+        return;
       }
-      await invalidate();
+      await onSaved();
     } catch (cause) {
       setError(problemMessage(cause, "The connection could not be saved."));
     } finally {
@@ -227,64 +242,10 @@ export function ConnectionsPage() {
     }
   }
 
-  async function confirmDelete() {
-    if (!deleteId) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const current = await getConnection({ path: { portfolioId, connectionId: deleteId } });
-      if (current.response?.status === 401) {
-        redirect();
-        return;
-      }
-      const item = unwrapOrRedirect(current, redirect);
-      const match = readEtag(current.response, `"connection:${String(item.version)}"`);
-      await refreshCsrf();
-      const result = await deleteConnection({
-        path: { portfolioId, connectionId: deleteId },
-        headers: { "If-Match": match },
-      });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      if (result.response?.status === 412) {
-        setDeleteId(null);
-        await loadLatest(
-          deleteId,
-          "The connection changed in another session. Reload before deleting.",
-        );
-        return;
-      }
-      if (result.error) {
-        setError(problemMessage(result.error, "The connection could not be deleted."));
-        return;
-      }
-      if (editingId === deleteId) {
-        setEditingId(null);
-        setForm(emptyForm);
-        setEtag("");
-        setConfigured(false);
-      }
-      setDeleteId(null);
-      setNotice("Connection deleted.");
-      await invalidate();
-    } catch (cause) {
-      setError(problemMessage(cause, "The connection could not be deleted."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <section className={styles.wide}>
-      <h2>Connections</h2>
+    <>
       <p className={styles.lead}>
-        Collection interval and freshness windows are stored here. Credential fields are write-only;
-        the API only reports whether ciphertext exists.
+        Credential fields are write-only; the API only reports whether ciphertext exists.
       </p>
       {error ? (
         <p className={styles.alert} role="alert">
@@ -292,37 +253,10 @@ export function ConnectionsPage() {
         </p>
       ) : null}
       {notice ? <p className={styles.notice}>{notice}</p> : null}
-      <QueryRecovery
-        error={connections.error}
-        hasData={Boolean(connections.data)}
-        busy={connections.isFetching}
-        fallback="Connections could not be loaded."
-        onRetry={() => {
-          void connections.refetch();
-        }}
-      />
       <form className={styles.form} onSubmit={(event) => void onSubmit(event)} autoComplete="off">
         <label className={styles.field}>
           <span>Identity</span>
-          <Select
-            value={form.identityId}
-            disabled={Boolean(editingId)}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, identityId: event.target.value }))
-            }
-            required
-          >
-            <option value="" disabled>
-              Select an identity
-            </option>
-            {(identities.data?.items ?? [])
-              .filter((item) => item.status !== "archived")
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.displayName}
-                </option>
-              ))}
-          </Select>
+          <TextInput value={request.identityName} disabled />
         </label>
         <label className={styles.field}>
           <span>Label</span>
@@ -425,86 +359,11 @@ export function ConnectionsPage() {
           <ActionButton type="submit" tone="primary" disabled={busy}>
             {editingId ? "Save connection" : "Create connection"}
           </ActionButton>
-          {editingId ? (
-            <ActionButton
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setForm(emptyForm);
-                setEtag("");
-                setConfigured(false);
-              }}
-            >
-              Cancel edit
-            </ActionButton>
-          ) : null}
-        </div>
-      </form>
-      <DataTable
-        caption="Portfolio connections"
-        columns={[
-          { key: "label", header: "Label" },
-          { key: "identity", header: "Identity" },
-          { key: "status", header: "Status" },
-          { key: "credentials", header: "Credentials" },
-          { key: "interval", header: "Interval" },
-          { key: "freshness", header: "Freshness" },
-          { key: "updated", header: "Secrets updated" },
-        ]}
-        rows={(connections.data?.items ?? []).map((item) => ({
-          id: item.id,
-          label: item.label,
-          identity: identityName(item.identityId),
-          status: item.status,
-          credentials: item.credentialsConfigured ? "configured" : "missing",
-          interval:
-            item.collectionIntervalSeconds != null
-              ? `${String(item.collectionIntervalSeconds)}s`
-              : "—",
-          freshness:
-            item.freshnessAfterSeconds != null ? `${String(item.freshnessAfterSeconds)}s` : "—",
-          updated: formatInstant(item.credentialsUpdatedAt),
-        }))}
-      />
-      <ul className={styles.flowActions}>
-        {(connections.data?.items ?? []).map((item) => (
-          <li key={item.id}>
-            <span>{item.label}</span>
-            <span className={styles.actions}>
-              <ActionButton type="button" disabled={busy} onClick={() => void startEdit(item.id)}>
-                Edit
-              </ActionButton>
-              <ActionButton
-                type="button"
-                tone="dangerQuiet"
-                disabled={busy}
-                onClick={() => setDeleteId(item.id)}
-              >
-                Delete
-              </ActionButton>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <Dialog open={Boolean(deleteId)} title="Delete connection" onClose={() => setDeleteId(null)}>
-        <p className={styles.lead}>
-          This removes the Connection and its ciphertext. Collection history on the Identity is
-          kept.
-        </p>
-        <div className={styles.actions}>
-          <ActionButton
-            type="button"
-            tone="danger"
-            disabled={busy}
-            onClick={() => void confirmDelete()}
-          >
-            Delete
-          </ActionButton>
-          <ActionButton type="button" onClick={() => setDeleteId(null)}>
+          <ActionButton type="button" onClick={onClose}>
             Cancel
           </ActionButton>
         </div>
-      </Dialog>
-    </section>
+      </form>
+    </>
   );
 }

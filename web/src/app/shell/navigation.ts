@@ -99,30 +99,14 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     ],
   },
   {
-    id: "capital",
-    label: "Capital",
-    icon: Landmark,
-    groupId: "manage",
-    groupLabel: "Manage",
-    defaultPathSuffix: "/capital/baseline",
-    activePathSuffixes: ["/capital/baseline", "/capital/flows"],
-    subviews: [
-      { label: "Baseline", title: "Baseline", pathSuffix: "/capital/baseline" },
-      { label: "Flows", title: "Flows", pathSuffix: "/capital/flows" },
-    ],
-  },
-  {
     id: "data-sources",
-    label: "Data Sources",
+    label: "Identities",
     icon: Users,
     groupId: "manage",
     groupLabel: "Manage",
     defaultPathSuffix: "/data/identities",
-    activePathSuffixes: ["/data/identities", "/data/connections"],
-    subviews: [
-      { label: "Identities", title: "Identities", pathSuffix: "/data/identities" },
-      { label: "Connections", title: "Connections", pathSuffix: "/data/connections" },
-    ],
+    activePathSuffixes: ["/data/identities"],
+    subviews: [{ label: "Identities", title: "Identities", pathSuffix: "/data/identities" }],
   },
   {
     id: "asset-catalog",
@@ -145,6 +129,19 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
         pathSuffix: "/data/catalog",
         catalogTab: "instruments",
       },
+    ],
+  },
+  {
+    id: "capital",
+    label: "Capital",
+    icon: Landmark,
+    groupId: "manage",
+    groupLabel: "Manage",
+    defaultPathSuffix: "/capital/baseline",
+    activePathSuffixes: ["/capital/baseline", "/capital/flows"],
+    subviews: [
+      { label: "Baseline", title: "Baseline", pathSuffix: "/capital/baseline" },
+      { label: "Flows", title: "Flows", pathSuffix: "/capital/flows" },
     ],
   },
   {

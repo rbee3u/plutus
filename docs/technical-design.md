@@ -708,7 +708,7 @@ When mutual TLS is enabled, health endpoints require a valid client certificate 
 
 Authentication routes are `/login`. Users are created with `plutus user create`; there is no Register screen.
 
-The sidebar has nine module entries: Overview (ungrouped), then `PORTFOLIO` (Balances, Positions, Exposure, History) and `MANAGE` (Capital, Data Sources, Asset Catalog, Data Activity). History, Capital, Data Sources, Asset Catalog, and Data Activity keep their existing child URLs behind local secondary links. Portfolio Settings and Account & Security live in the top bar, not the sidebar.
+The sidebar has nine module entries: Overview (ungrouped), then `PORTFOLIO` (Balances, Positions, Exposure, History) and `MANAGE` (Identities, Asset Catalog, Capital, Data Activity). History, Capital, Asset Catalog, and Data Activity keep their existing child URLs behind local secondary links. The Identities entry is a single page, and each identity row expands to its Connections. Portfolio Settings and Account & Security live in the top bar, not the sidebar.
 
 Authenticated application routes:
 
@@ -722,7 +722,6 @@ Authenticated application routes:
 /p/:portfolioId/capital/baseline
 /p/:portfolioId/capital/flows
 /p/:portfolioId/data/identities
-/p/:portfolioId/data/connections
 /p/:portfolioId/data/catalog
 /p/:portfolioId/data/observations
 /p/:portfolioId/data/jobs
