@@ -1,6 +1,6 @@
 # Implementation checklist
 
-Living progress tracker for [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phases 1–3 are complete on the previous model. Phase 4 restructures the code to ADRs 0014–0021 and is the current workstream; Phase 5 stays unchecked until Phase 4 is reviewed.
+Living progress tracker for [technical-design.md](./technical-design.md). Check an item in the same commit that finishes it. Phases 1–3 were completed on the previous model and are kept as history. Phase 4 restructured the code to ADRs 0014–0021 and is complete. Phase 5 (live Adapters) is the current workstream.
 
 ## Phase 1: Foundation
 
@@ -198,134 +198,101 @@ Completed. Stopped for review after every item in this section was checked.
 - [x] README describes implemented Phase 3 capabilities
 - [x] `make format && make build && make test && make lint` pass
 
-## Phase 4: Integrations
-
-- [ ] Active scheduler and manual Identity refresh
-- [ ] Binance Portfolio Margin adapter
-- [ ] OKX Multi-currency margin and Portfolio margin adapters
-- [ ] Bybit Unified Trading Account 2.0 adapter
-- [ ] Platform validation against documented Account, coverage, catalog, price, and failure semantics
-
 ## Acceptance matrix
 
-Labels: **Phase 1** and **Phase 2** mark workstreams that covered the item. **Later** waits for a later phase.
+The Phase 1–3 matrix covered the previous model (Reported Equity scopes, projection generations, revisions). Those rows were retired with the restructure; the current matrix is technical-design §13, tracked here. Coverage labels: **test** (automated in `go test`), **seed** (asserted by the `edge-cases` integration test in `db/seeds`), **lane** (exercised on the Agent lane against the fake Adapter, through the SPA and `curl`), **build** (verified by the make gates and by `make generate` leaving the tree unchanged), **Phase 5** (needs a live Adapter).
 
-### 13.1 Ownership and identity
+### 13.1 Ownership
 
-- [x] **Phase 1** — User A receives 404 when addressing User B's Portfolio or nested resource by a known UUID
-- [x] **Phase 1** — One User can create and switch between at least two Portfolios without query-cache or URL leakage
-- [x] **Phase 2** — A composite FK rejects linking an Identity, Account, Connection, Observation, Capital Flow Account, or job to another Portfolio
-- [x] **Phase 1** — An Identity can be edited before facts exist
-- [x] **Phase 2** — An Identity cannot move to another Portfolio after any Observation exists
-- [x] **Phase 2** — The Portfolio created with a User cannot be deleted; additional Portfolios can be cascade-deleted even when they have source facts
+- [x] **test** — User A receives 404 when addressing User B's Portfolio or nested resource by a known UUID
+- [x] **test** — Composite FKs reject linking an Identity, Account, Account Report, Capital Flow, or job to another Portfolio
+- [x] **test** — The Portfolio created with a User cannot be deleted; additional Portfolios cascade-delete with their reports and points
 
-### 13.2 Authentication and browser security
+### 13.2 Collection and valuation
 
-- [x] **Phase 1** — HTTP registration is absent; login and CLI User creation remain usable
-- [x] **Phase 1** — Login rate limiting works by username and client address without revealing existence
-- [x] **Phase 1** — Correct and incorrect passwords exercise Argon2id; password change revokes other Sessions
-- [x] **Phase 1** — Current-Session logout, all-Session logout, individual Session revocation, idle expiry, absolute expiry, User disable, and CLI password reset revoke access
-- [x] **Phase 1** — Every state-changing browser request requires a valid CSRF token
+- [x] **seed** — A cycle with all Connections succeeding writes one point whose total equals the sum of Account values
+- [x] **seed** — A failed Account keeps its previous report, marked `stale` with the earlier `reportObservedAt`; the total does not drop
+- [x] **lane** — A successful report that omits a previously held coin removes it from holdings and from the point
+- [x] **seed** — An Account with no successful report is `missing` with `valueUsd: null` and makes the point `incomplete`
+- [x] **seed** — A Balance with no price is excluded, named in `omitted`, and marks the Account and point `incomplete`
+- [x] **test** — USDT and USDC value at exactly 1 USD without a price row
+- [x] **seed** — Reported equity wins over the Balance sum when both exist
 
-### 13.3 Collection and normalized facts
+### 13.3 Boundary, flows, and periods
 
-- [x] **Phase 2** — Complete, partial, stale, failed, and missing collections remain distinguishable
-- [x] **Phase 2** — A partial collection preserves successful Observations and records failed scopes without zero replacements
-- [x] **Phase 2** — Different source observation times within one Identity Snapshot are preserved
-- [x] **Phase 2** — Observation correction audits before/after, increments ETag version, and merges a Projection job
-- [x] **Phase 1** — No database row, log, audit event, job failure, or API response contains a raw Platform payload
+- [x] **seed** — Selecting a funded Account produces a contribution Boundary Event; deselecting produces a withdrawal; the spanning Value Change subtracts both
+- [x] **seed** — A BTC Capital Flow is valued at the nearest Platform price; a flow without a price within 24 hours leaves the Value Change `incomplete` and names the flow
+- [x] **seed** — A day without points has no Period Close; the week containing it is `incomplete`
+- [x] **lane** — Changing the Portfolio timezone changes Period Close selection without any write
 
-### 13.4 Coverage, prices, and calculations
+### 13.4 Connections and Adapters
 
-- [x] **Phase 2** — Disjoint Reported Equity scopes combine without double counting
-- [x] **Phase 2** — A broad complete Reported Equity scope supersedes strictly contained reported values
-- [x] **Phase 2** — Partially overlapping Reported Equity scopes yield ambiguity and incomplete valuation
-- [x] **Phase 2** — Calculated Valuation fills only uncovered scopes and is incomplete when mapping or Price is missing
-- [x] **Phase 2** — A stablecoin requires an observed exchange rate
-- [x] **Phase 2** — Price selection respects Platform, instrument or asset, price type, and cutoff; no cross-Platform fallback
-- [x] **Phase 2** — Opposing Positions preserve long and short Exposure while net Exposure is zero
-- [x] **Phase 2** — Missing, stale, and incomplete facts remain `null` or issue-bearing rather than zero
+- [x] **lane** — Enabling a Connection without a successful validation is refused with 422
+- [x] **test** — An authentication error sets the Connection `invalid` and the scheduler skips that Identity (fake Adapter)
+- [x] **test** — A rate-limit error is retried and does not set `invalid` (fake Adapter)
+- [ ] **Phase 5** — A selected Account Type the Platform reports as not enabled yields a `failed` report with the Platform reason; sibling Accounts succeed
+- [ ] **Phase 5** — No row, log, job detail, or response contains a raw Platform payload or credential material (verified against live Adapters)
 
-### 13.5 Capital, generations, and time
+### 13.5 Catalog
 
-- [x] **Phase 2** — Editing a Capital Flow appends a revision, audits, and creates a Projection job
-- [x] **Phase 2** — A rebuild writes a new generation without changing readers, then atomically switches the Portfolio pointer only after validation
-- [x] **Phase 2** — A failed rebuild leaves the previous active generation fully readable
-- [x] **Phase 2** — Day, ISO-week, month, quarter, leap-date, and year boundaries convert correctly to UTC
-- [x] **Phase 2** — Changing Portfolio timezone triggers a full rebuild without mixing timezones
-- [x] **Phase 2** — A coverage change makes its spanning Value Change incomparable
+- [x] **test** — A new symbol on a second Platform maps to the existing Asset automatically
+- [x] **seed** — A manual mapping override recalculates the affected Portfolios and stamps `recalculated_at`
 
-### 13.6 HTTP contracts
+### 13.6 HTTP, security, frontend
 
-- [x] **Phase 1** — Decimal strings round-trip without binary floating-point loss when present; unknown values round-trip as `null`
-- [x] **Phase 1** — ETag mismatch returns 412 and never overwrites the newer revision
-- [x] **Phase 1** — An exact Idempotency-Key retry returns the original response; a changed body returns 409
-- [x] **Phase 1** — Offset pagination remains stable; cursor pagination neither duplicates nor skips under its contract (jobs/sessions as applicable)
-- [x] **Phase 1** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details
-- [x] **Phase 1** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
-- [x] **Phase 2** — `GET /overview`, `GET /balances`, `GET /positions`, and Capital endpoints return decimal strings or `null`, typed 2xx incompleteness, and 404 across Users
-- [x] **Phase 3** — Exposure, valuation, value-change, and period-summary reads keep incomplete amounts null, surface issues, and return Problem Details with `traceId`
-
-### 13.7 Transport security
-
-- [x] **Phase 1** — Loopback HTTP starts with the default configuration
-- [x] **Phase 1** — HTTPS starts with a valid certificate/key pair and negotiates TLS 1.3 or newer
-- [x] **Phase 1** — mTLS accepts a valid client certificate and rejects absent, expired, or untrusted certificates on UI, API, and health routes
-- [x] **Phase 1** — Every invalid combination in the startup matrix refuses startup with a safe actionable error
-
-### 13.8 Frontend
-
-- [x] **Phase 1** — System, light, and dark themes render implemented routes with semantic colors
-- [x] **Phase 1** — Desktop, tablet, and narrow mobile layouts preserve usable navigation
-- [x] **Phase 1** — Implemented interactive flows work by keyboard with visible focus
-- [x] **Phase 2** — Overview charts provide a text summary and accessible exact-value table
-- [x] **Phase 1** — Network failures and 401 Session loss present a specific recovery path on implemented screens
-- [x] **Phase 2** — Capital 412 conflicts reload the latest server values
-- [x] **Phase 3** — Query failures keep last-good data, show a Retry action, and display `traceId` when present
+- [x] **test** — Decimal strings round-trip without floating-point loss; unknown values round-trip as `null`
+- [x] **lane** — ETag mismatch returns 412; an exact `Idempotency-Key` retry replays the response and a changed body returns 409
+- [x] **lane** — Domain incompleteness returns typed 2xx; malformed input and infrastructure failure return Problem Details with `traceId`
+- [x] **build** — Generated Go and TypeScript artifacts are unchanged after contract regeneration
+- [x] **test** — Loopback HTTP, HTTPS, and mTLS start or refuse exactly as the startup matrix specifies
+- [x] **lane** — Themes, a phone-width layout without horizontal scrolling, keyboard activation, chart text summaries, and the 401 redirect to login work on the implemented routes; network-loss recovery is not exercised automatically
 
 ## Phase 4: Restructure to the accepted model
 
-Current workstream. The previous schema is dropped, not migrated; every lane database is reset.
+Completed. The previous schema was dropped, not migrated; every lane database was reset.
 
 ### Milestone 1 — Schema and generated code
 
-- [ ] Rewrite the baseline Goose migration to technical-design §5; remove every table, column, job kind, and price type listed there as removed
-- [ ] Regenerate sqlc models and the expected schema version
-- [ ] Rewrite OpenAPI to §6; regenerate Go and TypeScript artifacts; delete removed operations
+- [x] Rewrite the baseline Goose migration to technical-design §5 (16 tables); remove every table, column, job kind, and price type listed there as removed
+- [x] Regenerate sqlc models and the expected schema version
+- [x] Rewrite OpenAPI to §6; regenerate Go and TypeScript artifacts; delete removed operations
 
 ### Milestone 2 — Modules
 
-- [ ] Replace `observation` and `projection` with `collection` and `valuation`; delete generations, correction, coverage, Exposure, pins, baseline, and revision code
-- [ ] Remove `parent_identity_id`, `kind`, and `disabled` from Identity; add Account selection with `selected` toggling and audit
-- [ ] Adapter port per §3.4 with `Capabilities`, `Validate`, and `Collect`; deterministic `fake` Adapter for seeds and tests
-- [ ] Asset Listings map by normalized symbol on first sight; manual override enqueues `valuation_recalc`
+- [x] Replace `observation`, `projection`, and `access` with `collection` and `valuation`; delete generations, correction, coverage, Exposure, pins, baseline, and revision code
+- [x] Merge the Connection into the Identity; remove `parent_identity_id`, `kind`, and `disabled`; add Account selection with `selected` toggling and audit
+- [x] Adapter port per §3.5 with `Capabilities`, `Validate`, and `Collect`; deterministic `fake` Adapter for seeds, tests, and lanes
+- [x] Asset Listings map by normalized symbol on first sight; manual override enqueues `valuation_recalc`
 
 ### Milestone 3 — Collection Cycle and valuation
 
-- [ ] Scheduler enqueues one `collection_cycle` job per Portfolio at its interval; `POST /collection-cycles` merges into the same job
-- [ ] Worker runs Connections sequentially with stagger, writes cycles, runs, Account Reports, Balances, Positions, prices
-- [ ] Connection `invalid` on auth errors with scheduling stopped; bounded backoff on rate limit and temporary errors
-- [ ] Valuation writer: reported-else-calculated, USDT/USDC at 1, stale fallback, `missing`, `omitted_json`, issues; one point per cycle in one transaction
-- [ ] Read-time Value Change, Period Close, custom range, and Boundary Event derivation
+- [x] Scheduler enqueues one `collection_cycle` job per Portfolio at its interval; `POST /collection-cycles` merges into the same job
+- [x] Worker runs Identities sequentially with stagger and writes Account Reports, Balances, Positions, and prices per job
+- [x] Connection `invalid` on auth errors with scheduling stopped; bounded retry on rate limit and temporary errors
+- [x] Valuation writer: reported-else-calculated, USDT/USDC at 1, stale fallback, `missing`, `omitted`, issues; one point per cycle in one transaction
+- [x] Read-time Value Change, Period Close, custom range, and Boundary Event derivation
 
 ### Milestone 4 — HTTP and frontend
 
-- [ ] `GET /overview`, `/tree`, per-Account balances and positions, flat balances and positions
-- [ ] `GET /valuation-points`, `/period-closes`, `/value-changes`, `/value-changes/custom`, `/boundary-events`
-- [ ] Capital Flow CRUD without revisions; Identity create with `selectedAccountTypes`; Connection validate/enable flow
-- [ ] Holdings tree, History, Capital, Identities (with Account checkboxes), Catalog, Activity pages; removed routes deleted
+- [x] `GET /overview`, `/tree`, per-Account balances and positions, flat balances and positions with grouping
+- [x] `GET /valuation-points`, `/period-closes`, `/value-changes`, `/value-changes/custom`, `/boundary-events`
+- [x] Capital Flow CRUD without revisions; Identity create with `selectedAccountTypes`; credentials, validate, enable, disable, archive
+- [x] Holdings tree, History, Capital, Identities (with Account checkboxes), Catalog, Activity pages; removed routes deleted
 
 ### Milestone 5 — Seeds and close-out
 
-- [ ] Rewrite `minimal`, `edge-cases`, and `walkthrough` seeds as configuration plus Observations only; `edge-cases` covers every §13.2–13.5 case
-- [ ] `plutus collect --portfolio` runs one cycle with the fake Adapter; `plutus projection rebuild` removed
-- [ ] README describes the restructured capabilities; `CONTEXT.md` and ADRs re-verified against the code
-- [ ] `make format && make build && make test && make lint` pass; Agent lane exercised on `:8081`
+- [x] Rewrite `minimal`, `edge-cases`, and `walkthrough` seeds as Go generators over the fake scenario; `edge-cases` covers the §13.2–13.3 cases and is asserted by an integration test
+- [x] `plutus collect --portfolio` runs one cycle with the configured Adapter; `plutus projection rebuild` removed
+- [x] README describes the restructured capabilities; `CONTEXT.md` and ADRs re-verified against the code
+- [x] `make format && make build && make test && make lint` pass; Agent lane exercised on `:8081`
 
 ## Phase 5: Integrations
+
+Current workstream. Nothing below is started.
 
 - [ ] Binance Portfolio Margin Adapter with its declared Account Types and `docs/adapters/binance.md` mapping table
 - [ ] OKX MCM and PM Adapters and `docs/adapters/okx.md`
 - [ ] Bybit UTA 2.0 Adapter and `docs/adapters/bybit.md`
+- [ ] Register live Adapters when `[collection] fake_adapter = false`; keep the fake for tests and offline lanes
 - [ ] Live validation of stale, complete-set, boundary, and no-price rules against real read-only keys
 - [ ] README marks integrations as implemented only after live validation

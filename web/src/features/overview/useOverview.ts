@@ -1,26 +1,18 @@
 import { getOverview } from "@/api/generated/sdk.gen";
 import type { Overview } from "@/api/generated/types.gen";
-import { SessionExpiredError, unwrapData, useCurrentUser } from "@/shared/lib/session";
+import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
 
+const OVERVIEW_REFETCH_MS = 5000;
+
+/** The latest Valuation Point summary; polls so a finished Collection Cycle shows up. */
 export function useOverview(portfolioId: string) {
-  const navigate = useNavigate();
-  const user = useCurrentUser();
+  const { userId, redirect } = useSessionScope();
   return useQuery({
-    queryKey: ["overview", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    refetchInterval: 4000,
-    queryFn: async (): Promise<Overview> => {
-      const result = await getOverview({ path: { portfolioId } });
-      try {
-        return unwrapData(result);
-      } catch (error) {
-        if (error instanceof SessionExpiredError) {
-          void navigate("/login", { replace: true });
-        }
-        throw error;
-      }
-    },
+    queryKey: ["overview", userId, portfolioId],
+    enabled: Boolean(userId && portfolioId),
+    refetchInterval: OVERVIEW_REFETCH_MS,
+    queryFn: async (): Promise<Overview> =>
+      unwrapOrRedirect(await getOverview({ path: { portfolioId } }), redirect),
   });
 }

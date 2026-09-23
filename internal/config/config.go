@@ -23,20 +23,22 @@ const (
 	defaultSessionCookieName = "plutus_session"
 	defaultCSRFCookieName    = "plutus_csrf"
 
-	minSessionIdle         = time.Minute
-	maxSessionIdle         = 90 * 24 * time.Hour
-	minSessionAbsolute     = time.Hour
-	maxSessionAbsolute     = 365 * 24 * time.Hour
-	minWorkerPoll          = 100 * time.Millisecond
-	maxWorkerPoll          = time.Minute
-	minLease               = 5 * time.Second
-	maxLease               = 30 * time.Minute
-	minCompletedRetain     = 24 * time.Hour
-	maxCompletedRetain     = 365 * 24 * time.Hour
-	minCollectionInterval  = time.Minute
-	maxCollectionInterval  = 24 * time.Hour
-	minFreshnessMultiplier = 1
-	maxFreshnessMultiplier = 100
+	minSessionIdle        = time.Minute
+	maxSessionIdle        = 90 * 24 * time.Hour
+	minSessionAbsolute    = time.Hour
+	maxSessionAbsolute    = 365 * 24 * time.Hour
+	minWorkerPoll         = 100 * time.Millisecond
+	maxWorkerPoll         = time.Minute
+	minLease              = 5 * time.Second
+	maxLease              = 30 * time.Minute
+	minCompletedRetain    = 24 * time.Hour
+	maxCompletedRetain    = 365 * 24 * time.Hour
+	minCollectionInterval = time.Minute
+	maxCollectionInterval = 24 * time.Hour
+	minStagger            = 0
+	maxStagger            = time.Minute
+	minValidateTimeout    = time.Second
+	maxValidateTimeout    = 2 * time.Minute
 
 	masterKeySize = 32
 )
@@ -89,10 +91,16 @@ type Jobs struct {
 	CompletedRetention time.Duration
 }
 
-// Collection holds default collection freshness settings.
+// Collection holds Collection Cycle defaults and the adapter selection.
 type Collection struct {
-	DefaultInterval            time.Duration
-	DefaultFreshnessMultiplier int
+	// DefaultInterval is the Collection Cycle interval given to new Portfolios.
+	DefaultInterval time.Duration
+	// Stagger is the delay between Identities within one cycle.
+	Stagger time.Duration
+	// ValidateTimeout bounds one synchronous Connection validation call.
+	ValidateTimeout time.Duration
+	// FakeAdapter registers the deterministic offline adapter for every Platform.
+	FakeAdapter bool
 }
 
 // Database holds the MySQL DSN and development-reset permission. The DSN must never be logged.

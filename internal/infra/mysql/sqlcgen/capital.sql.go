@@ -11,71 +11,28 @@ import (
 	"time"
 )
 
-const countActiveCapitalFlows = `-- name: CountActiveCapitalFlows :one
-SELECT COUNT(*)
-FROM capital_flows f
-INNER JOIN capital_flow_revisions r
-    ON r.portfolio_id = f.portfolio_id AND r.id = f.current_revision_id
-WHERE f.portfolio_id = ? AND r.state = 'active'
+const deleteCapitalFlow = `-- name: DeleteCapitalFlow :execrows
+DELETE FROM capital_flows
+WHERE portfolio_id = ? AND id = ? AND version = ?
 `
 
-func (q *Queries) CountActiveCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveCapitalFlows, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const getCapitalBaselineByPortfolio = `-- name: GetCapitalBaselineByPortfolio :one
-SELECT id, portfolio_id, current_revision_id, version, created_at, updated_at
-FROM capital_baselines
-WHERE portfolio_id = ?
-`
-
-func (q *Queries) GetCapitalBaselineByPortfolio(ctx context.Context, portfolioID []byte) (CapitalBaseline, error) {
-	row := q.db.QueryRowContext(ctx, getCapitalBaselineByPortfolio, portfolioID)
-	var i CapitalBaseline
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.CurrentRevisionID,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getCapitalBaselineRevision = `-- name: GetCapitalBaselineRevision :one
-SELECT id, portfolio_id, capital_baseline_id, effective_at, asset_id, quantity, note, created_by_user_id, created_at
-FROM capital_baseline_revisions
-WHERE portfolio_id = ? AND id = ?
-`
-
-type GetCapitalBaselineRevisionParams struct {
+type DeleteCapitalFlowParams struct {
 	PortfolioID []byte
 	ID          []byte
+	Version     uint64
 }
 
-func (q *Queries) GetCapitalBaselineRevision(ctx context.Context, arg GetCapitalBaselineRevisionParams) (CapitalBaselineRevision, error) {
-	row := q.db.QueryRowContext(ctx, getCapitalBaselineRevision, arg.PortfolioID, arg.ID)
-	var i CapitalBaselineRevision
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.CapitalBaselineID,
-		&i.EffectiveAt,
-		&i.AssetID,
-		&i.Quantity,
-		&i.Note,
-		&i.CreatedByUserID,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteCapitalFlow, arg.PortfolioID, arg.ID, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getCapitalFlow = `-- name: GetCapitalFlow :one
-SELECT id, portfolio_id, current_revision_id, version, created_at, updated_at
+SELECT id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+       created_by_user_id, version, created_at, updated_at
 FROM capital_flows
 WHERE portfolio_id = ? AND id = ?
 `
@@ -91,7 +48,14 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.PortfolioID,
-		&i.CurrentRevisionID,
+		&i.Direction,
+		&i.AssetSymbol,
+		&i.Quantity,
+		&i.ValueUsd,
+		&i.EffectiveAt,
+		&i.AccountID,
+		&i.Note,
+		&i.CreatedByUserID,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -99,237 +63,90 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 	return i, err
 }
 
-const getCapitalFlowRevision = `-- name: GetCapitalFlowRevision :one
-SELECT id, portfolio_id, capital_flow_id, direction, quantity, asset_id, effective_at, account_id, note, state,
-       created_by_user_id, created_at
-FROM capital_flow_revisions
-WHERE portfolio_id = ? AND id = ?
-`
-
-type GetCapitalFlowRevisionParams struct {
-	PortfolioID []byte
-	ID          []byte
-}
-
-func (q *Queries) GetCapitalFlowRevision(ctx context.Context, arg GetCapitalFlowRevisionParams) (CapitalFlowRevision, error) {
-	row := q.db.QueryRowContext(ctx, getCapitalFlowRevision, arg.PortfolioID, arg.ID)
-	var i CapitalFlowRevision
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.CapitalFlowID,
-		&i.Direction,
-		&i.Quantity,
-		&i.AssetID,
-		&i.EffectiveAt,
-		&i.AccountID,
-		&i.Note,
-		&i.State,
-		&i.CreatedByUserID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const insertCapitalBaseline = `-- name: InsertCapitalBaseline :exec
-INSERT INTO capital_baselines (
-    id, portfolio_id, current_revision_id, version, created_at, updated_at
-) VALUES (
-    ?, ?, ?, ?,
-    ?, ?
-)
-`
-
-type InsertCapitalBaselineParams struct {
-	ID                []byte
-	PortfolioID       []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) InsertCapitalBaseline(ctx context.Context, arg InsertCapitalBaselineParams) error {
-	_, err := q.db.ExecContext(ctx, insertCapitalBaseline,
-		arg.ID,
-		arg.PortfolioID,
-		arg.CurrentRevisionID,
-		arg.Version,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertCapitalBaselineRevision = `-- name: InsertCapitalBaselineRevision :exec
-INSERT INTO capital_baseline_revisions (
-    id, portfolio_id, capital_baseline_id, effective_at, asset_id, quantity, note, created_by_user_id, created_at
-) VALUES (
-    ?, ?, ?, ?,
-    ?, ?, ?, ?, ?
-)
-`
-
-type InsertCapitalBaselineRevisionParams struct {
-	ID                []byte
-	PortfolioID       []byte
-	CapitalBaselineID []byte
-	EffectiveAt       time.Time
-	AssetID           []byte
-	Quantity          string
-	Note              sql.NullString
-	CreatedByUserID   []byte
-	CreatedAt         time.Time
-}
-
-func (q *Queries) InsertCapitalBaselineRevision(ctx context.Context, arg InsertCapitalBaselineRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, insertCapitalBaselineRevision,
-		arg.ID,
-		arg.PortfolioID,
-		arg.CapitalBaselineID,
-		arg.EffectiveAt,
-		arg.AssetID,
-		arg.Quantity,
-		arg.Note,
-		arg.CreatedByUserID,
-		arg.CreatedAt,
-	)
-	return err
-}
-
 const insertCapitalFlow = `-- name: InsertCapitalFlow :exec
 INSERT INTO capital_flows (
-    id, portfolio_id, current_revision_id, version, created_at, updated_at
+    id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+    created_by_user_id, version, created_at, updated_at
 ) VALUES (
+    ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
-    ?, ?
+    ?, ?, ?, ?
 )
 `
 
 type InsertCapitalFlowParams struct {
-	ID                []byte
-	PortfolioID       []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID              []byte
+	PortfolioID     []byte
+	Direction       string
+	AssetSymbol     string
+	Quantity        string
+	ValueUsd        sql.NullString
+	EffectiveAt     time.Time
+	AccountID       []byte
+	Note            sql.NullString
+	CreatedByUserID []byte
+	Version         uint64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error {
 	_, err := q.db.ExecContext(ctx, insertCapitalFlow,
 		arg.ID,
 		arg.PortfolioID,
-		arg.CurrentRevisionID,
-		arg.Version,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertCapitalFlowRevision = `-- name: InsertCapitalFlowRevision :exec
-INSERT INTO capital_flow_revisions (
-    id, portfolio_id, capital_flow_id, direction, quantity, asset_id, effective_at, account_id, note, state,
-    created_by_user_id, created_at
-) VALUES (
-    ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?,
-    ?, ?
-)
-`
-
-type InsertCapitalFlowRevisionParams struct {
-	ID              []byte
-	PortfolioID     []byte
-	CapitalFlowID   []byte
-	Direction       string
-	Quantity        string
-	AssetID         []byte
-	EffectiveAt     time.Time
-	AccountID       []byte
-	Note            sql.NullString
-	State           string
-	CreatedByUserID []byte
-	CreatedAt       time.Time
-}
-
-func (q *Queries) InsertCapitalFlowRevision(ctx context.Context, arg InsertCapitalFlowRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, insertCapitalFlowRevision,
-		arg.ID,
-		arg.PortfolioID,
-		arg.CapitalFlowID,
 		arg.Direction,
+		arg.AssetSymbol,
 		arg.Quantity,
-		arg.AssetID,
+		arg.ValueUsd,
 		arg.EffectiveAt,
 		arg.AccountID,
 		arg.Note,
-		arg.State,
 		arg.CreatedByUserID,
+		arg.Version,
 		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }
 
-const listActiveCapitalFlows = `-- name: ListActiveCapitalFlows :many
-SELECT
-    f.id, f.portfolio_id, f.current_revision_id, f.version, f.created_at, f.updated_at,
-    r.direction, r.quantity, r.asset_id, r.effective_at, r.account_id, r.note, r.state, r.id AS revision_id
-FROM capital_flows f
-INNER JOIN capital_flow_revisions r
-    ON r.portfolio_id = f.portfolio_id AND r.id = f.current_revision_id
-WHERE f.portfolio_id = ? AND r.state = 'active'
-ORDER BY r.effective_at ASC, f.id ASC
-LIMIT ? OFFSET ?
+const listCapitalFlows = `-- name: ListCapitalFlows :many
+SELECT id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+       created_by_user_id, version, created_at, updated_at
+FROM capital_flows
+WHERE portfolio_id = ?
+  AND effective_at >= ? AND effective_at < ?
+ORDER BY effective_at DESC, id DESC
 `
 
-type ListActiveCapitalFlowsParams struct {
+type ListCapitalFlowsParams struct {
 	PortfolioID []byte
-	Limit       int32
-	Offset      int32
+	FromAt      time.Time
+	ToAt        time.Time
 }
 
-type ListActiveCapitalFlowsRow struct {
-	ID                []byte
-	PortfolioID       []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	Direction         string
-	Quantity          string
-	AssetID           []byte
-	EffectiveAt       time.Time
-	AccountID         []byte
-	Note              sql.NullString
-	State             string
-	RevisionID        []byte
-}
-
-func (q *Queries) ListActiveCapitalFlows(ctx context.Context, arg ListActiveCapitalFlowsParams) ([]ListActiveCapitalFlowsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveCapitalFlows, arg.PortfolioID, arg.Limit, arg.Offset)
+func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error) {
+	rows, err := q.db.QueryContext(ctx, listCapitalFlows, arg.PortfolioID, arg.FromAt, arg.ToAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListActiveCapitalFlowsRow{}
+	items := []CapitalFlow{}
 	for rows.Next() {
-		var i ListActiveCapitalFlowsRow
+		var i CapitalFlow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PortfolioID,
-			&i.CurrentRevisionID,
+			&i.Direction,
+			&i.AssetSymbol,
+			&i.Quantity,
+			&i.ValueUsd,
+			&i.EffectiveAt,
+			&i.AccountID,
+			&i.Note,
+			&i.CreatedByUserID,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Direction,
-			&i.Quantity,
-			&i.AssetID,
-			&i.EffectiveAt,
-			&i.AccountID,
-			&i.Note,
-			&i.State,
-			&i.RevisionID,
 		); err != nil {
 			return nil, err
 		}
@@ -344,233 +161,43 @@ func (q *Queries) ListActiveCapitalFlows(ctx context.Context, arg ListActiveCapi
 	return items, nil
 }
 
-const listCapitalBaselineRevisions = `-- name: ListCapitalBaselineRevisions :many
-SELECT id, portfolio_id, capital_baseline_id, effective_at, asset_id, quantity, note, created_by_user_id, created_at
-FROM capital_baseline_revisions
-WHERE portfolio_id = ? AND capital_baseline_id = ?
-  AND (
-      ? = 0
-      OR created_at < ?
-      OR (created_at = ? AND id < ?)
-  )
-ORDER BY created_at DESC, id DESC
-LIMIT ?
-`
-
-type ListCapitalBaselineRevisionsParams struct {
-	PortfolioID       []byte
-	CapitalBaselineID []byte
-	HasCursor         interface{}
-	CursorCreatedAt   time.Time
-	CursorID          []byte
-	Limit             int32
-}
-
-func (q *Queries) ListCapitalBaselineRevisions(ctx context.Context, arg ListCapitalBaselineRevisionsParams) ([]CapitalBaselineRevision, error) {
-	rows, err := q.db.QueryContext(ctx, listCapitalBaselineRevisions,
-		arg.PortfolioID,
-		arg.CapitalBaselineID,
-		arg.HasCursor,
-		arg.CursorCreatedAt,
-		arg.CursorCreatedAt,
-		arg.CursorID,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CapitalBaselineRevision{}
-	for rows.Next() {
-		var i CapitalBaselineRevision
-		if err := rows.Scan(
-			&i.ID,
-			&i.PortfolioID,
-			&i.CapitalBaselineID,
-			&i.EffectiveAt,
-			&i.AssetID,
-			&i.Quantity,
-			&i.Note,
-			&i.CreatedByUserID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listCapitalFlowRevisions = `-- name: ListCapitalFlowRevisions :many
-SELECT id, portfolio_id, capital_flow_id, direction, quantity, asset_id, effective_at, account_id, note, state,
-       created_by_user_id, created_at
-FROM capital_flow_revisions
-WHERE portfolio_id = ? AND capital_flow_id = ?
-  AND (
-      ? = 0
-      OR created_at < ?
-      OR (created_at = ? AND id < ?)
-  )
-ORDER BY created_at DESC, id DESC
-LIMIT ?
-`
-
-type ListCapitalFlowRevisionsParams struct {
-	PortfolioID     []byte
-	CapitalFlowID   []byte
-	HasCursor       interface{}
-	CursorCreatedAt time.Time
-	CursorID        []byte
-	Limit           int32
-}
-
-func (q *Queries) ListCapitalFlowRevisions(ctx context.Context, arg ListCapitalFlowRevisionsParams) ([]CapitalFlowRevision, error) {
-	rows, err := q.db.QueryContext(ctx, listCapitalFlowRevisions,
-		arg.PortfolioID,
-		arg.CapitalFlowID,
-		arg.HasCursor,
-		arg.CursorCreatedAt,
-		arg.CursorCreatedAt,
-		arg.CursorID,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CapitalFlowRevision{}
-	for rows.Next() {
-		var i CapitalFlowRevision
-		if err := rows.Scan(
-			&i.ID,
-			&i.PortfolioID,
-			&i.CapitalFlowID,
-			&i.Direction,
-			&i.Quantity,
-			&i.AssetID,
-			&i.EffectiveAt,
-			&i.AccountID,
-			&i.Note,
-			&i.State,
-			&i.CreatedByUserID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const setCapitalBaselineRevision = `-- name: SetCapitalBaselineRevision :exec
-UPDATE capital_baselines
-SET current_revision_id = ?,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ?
-`
-
-type SetCapitalBaselineRevisionParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-}
-
-func (q *Queries) SetCapitalBaselineRevision(ctx context.Context, arg SetCapitalBaselineRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, setCapitalBaselineRevision,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-	)
-	return err
-}
-
-const setCapitalFlowRevision = `-- name: SetCapitalFlowRevision :exec
+const updateCapitalFlow = `-- name: UpdateCapitalFlow :execrows
 UPDATE capital_flows
-SET current_revision_id = ?,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ?
-`
-
-type SetCapitalFlowRevisionParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-}
-
-func (q *Queries) SetCapitalFlowRevision(ctx context.Context, arg SetCapitalFlowRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, setCapitalFlowRevision,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-	)
-	return err
-}
-
-const updateCapitalBaselinePointer = `-- name: UpdateCapitalBaselinePointer :execrows
-UPDATE capital_baselines
-SET current_revision_id = ?,
+SET direction = ?,
+    asset_symbol = ?,
+    quantity = ?,
+    value_usd = ?,
+    effective_at = ?,
+    account_id = ?,
+    note = ?,
     version = version + 1,
     updated_at = ?
 WHERE portfolio_id = ? AND id = ? AND version = ?
 `
 
-type UpdateCapitalBaselinePointerParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-	Version           uint64
+type UpdateCapitalFlowParams struct {
+	Direction   string
+	AssetSymbol string
+	Quantity    string
+	ValueUsd    sql.NullString
+	EffectiveAt time.Time
+	AccountID   []byte
+	Note        sql.NullString
+	UpdatedAt   time.Time
+	PortfolioID []byte
+	ID          []byte
+	Version     uint64
 }
 
-func (q *Queries) UpdateCapitalBaselinePointer(ctx context.Context, arg UpdateCapitalBaselinePointerParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateCapitalBaselinePointer,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-		arg.Version,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const updateCapitalFlowPointer = `-- name: UpdateCapitalFlowPointer :execrows
-UPDATE capital_flows
-SET current_revision_id = ?,
-    version = version + 1,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ? AND version = ?
-`
-
-type UpdateCapitalFlowPointerParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-	Version           uint64
-}
-
-func (q *Queries) UpdateCapitalFlowPointer(ctx context.Context, arg UpdateCapitalFlowPointerParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateCapitalFlowPointer,
-		arg.CurrentRevisionID,
+func (q *Queries) UpdateCapitalFlow(ctx context.Context, arg UpdateCapitalFlowParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCapitalFlow,
+		arg.Direction,
+		arg.AssetSymbol,
+		arg.Quantity,
+		arg.ValueUsd,
+		arg.EffectiveAt,
+		arg.AccountID,
+		arg.Note,
 		arg.UpdatedAt,
 		arg.PortfolioID,
 		arg.ID,

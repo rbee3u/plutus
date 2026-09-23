@@ -5,7 +5,7 @@ import * as echarts from "echarts/core";
 import type { EChartsCoreOption } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { withChartTheme } from "@/shared/lib/chartTheme";
-import { DataTable, type DataColumn } from "@/shared/ui/DataTable";
+import { DataTable, type DataTableProps } from "@/shared/ui/DataTable";
 import styles from "@/features/pages.module.css";
 
 echarts.use([
@@ -17,16 +17,24 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-interface ChartBlockProps {
+interface ChartBlockProps extends Partial<Omit<DataTableProps, "caption" | "empty">> {
   title: string;
   summary: string;
   option: EChartsCoreOption | null;
-  columns: DataColumn[];
-  rows: Record<string, string>[];
+  /** Shown instead of the chart when there is nothing to draw. */
   empty: string;
+  /** Shown in the table when there are no rows; defaults to `empty`. */
+  emptyRows?: string;
 }
 
-export function ChartBlock({ title, summary, option, columns, rows, empty }: ChartBlockProps) {
+export function ChartBlock({
+  title,
+  summary,
+  option,
+  empty,
+  emptyRows,
+  ...table
+}: ChartBlockProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [themeTick, setThemeTick] = useState(0);
 
@@ -47,24 +55,32 @@ export function ChartBlock({ title, summary, option, columns, rows, empty }: Cha
     }
     const chart = echarts.init(host);
     chart.setOption(withChartTheme(option), true);
-    const resize = () => chart.resize();
-    window.addEventListener("resize", resize);
+    const observer = new ResizeObserver(() => chart.resize());
+    observer.observe(host);
     return () => {
-      window.removeEventListener("resize", resize);
+      observer.disconnect();
       chart.dispose();
     };
   }, [option, themeTick]);
 
   return (
     <section className={styles.panel}>
-      <h3>{title}</h3>
+      <h2>{title}</h2>
       <p className={styles.muted}>{summary}</p>
       {option ? (
         <div ref={hostRef} className={styles.chart} role="img" aria-label={title} />
       ) : (
         <p className={styles.notice}>{empty}</p>
       )}
-      <DataTable caption={`${title} exact values`} columns={columns} rows={rows} />
+      {table.columns && table.rows && (table.rows.length > 0 || option) ? (
+        <DataTable
+          caption={`${title} values`}
+          empty={emptyRows ?? empty}
+          {...table}
+          columns={table.columns}
+          rows={table.rows}
+        />
+      ) : null}
     </section>
   );
 }

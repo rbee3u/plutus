@@ -1,208 +1,151 @@
-import { type FormEvent, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, useRef, useState } from "react";
+import { useParams } from "react-router";
 import {
-  deleteCatalogPin,
-  getOverview,
-  putCatalogListingMapping,
-  putCatalogPin,
-  searchCatalogAssetListings,
-  searchCatalogAssets,
-  searchCatalogInstruments,
+  listAssetListings,
+  listInstruments,
+  putAssetListingMapping,
 } from "@/api/generated/sdk.gen";
-import type {
-  CatalogAssetListing,
-  CatalogInstrument,
-  CatalogPinSubjectKind,
-} from "@/api/generated/types.gen";
-import { useProjectionFollow } from "@/features/data/useProjectionFollow";
-import { PLATFORMS, platformLabel } from "@/features/data/platforms";
+import type { AssetListing } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
-import { newIdempotencyKey } from "@/shared/lib/id";
-import { readPreference, storePreference } from "@/shared/lib/preferences";
-import { unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
+import { catalogTabFromSearch } from "@/app/shell/navigation";
+import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
+import { formatDecimal } from "@/shared/lib/amount";
+import { formatInstant } from "@/shared/lib/datetime";
+import { usePortfolio } from "@/shared/lib/portfolio";
+import { invalidatePortfolioReads } from "@/shared/lib/queryKeys";
+import { readOffset, useSearchState } from "@/shared/lib/searchParams";
+import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { capitalize } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { Select, TextInput } from "@/shared/ui/FormControls";
 import { Pager } from "@/shared/ui/Pager";
-import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/pages.module.css";
 
 const PAGE_SIZE = 50;
 
-function pinStorageKey(
-  portfolioId: string,
-  kind: CatalogPinSubjectKind,
-  subjectId: string,
-): string {
-  return `plutus-catalog-pin-etag:${portfolioId}:${kind}:${subjectId}`;
+export function listingEtag(item: AssetListing): string {
+  return `"listing:${String(item.version)}"`;
 }
 
-function pinEtag(
-  portfolioId: string,
-  kind: CatalogPinSubjectKind,
-  subjectId: string,
-  pinned: boolean,
-): string {
-  if (!pinned) {
-    return "*";
-  }
-  return readPreference(pinStorageKey(portfolioId, kind, subjectId)) ?? `"catalog-pin:1"`;
-}
-
-function mappingEtag(listing: CatalogAssetListing): string {
-  if (!listing.mappingVersion || listing.mappingState === "unmapped") {
-    return "*";
-  }
-  return `"listing-mapping:${String(listing.mappingVersion)}"`;
+interface MappingRequest {
+  nonce: number;
+  item: AssetListing;
 }
 
 export function CatalogPage() {
   const { portfolioId = "" } = useParams();
-  const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "instruments" ? "instruments" : "listings";
+  const { params, update } = useSearchState();
+  const tab = catalogTabFromSearch(params.toString());
+  const platform = params.get("platform") ?? "";
   const q = params.get("q") ?? "";
-  const platformId = params.get("platformId") ?? "";
-  const mappingState = params.get("mappingState") ?? "";
-  const pinned = params.get("pinned") ?? "";
-  const offset = Math.max(0, Number(params.get("offset") ?? "0") || 0);
+  const offset = readOffset(params);
+  const platforms = usePlatforms();
+  const portfolio = usePortfolio(portfolioId);
+  const timezone = portfolio.data?.item.timezone;
+  const [draftQuery, setDraftQuery] = useState(q);
 
-  function update(next: Record<string, string>) {
-    const merged = new URLSearchParams(params);
-    for (const [key, value] of Object.entries(next)) {
-      if (value) merged.set(key, value);
-      else merged.delete(key);
-    }
-    if (!("offset" in next)) {
-      merged.delete("offset");
-    }
-    setParams(merged, { replace: true });
+  function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    update({ q: draftQuery.trim() });
   }
 
   return (
     <section className={styles.wide}>
-      <h2>{tab === "instruments" ? "Instruments" : "Asset Listings"}</h2>
       <p className={styles.lead}>
-        Search discovered listings and instruments. Mapping and tracking revisions enqueue a full
-        projection rebuild.
+        {tab === "listings"
+          ? "Every Platform symbol the collector has seen and the Asset symbol it merges into. Remap a listing when the Platform symbol does not name the canonical Asset."
+          : "Instruments seen on the connected Platforms, with the symbols and contract terms used to value positions."}
       </p>
-      <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field}>
-          <span>Search</span>
-          <TextInput value={q} onChange={(event) => update({ q: event.target.value })} />
-        </label>
+      <form className={styles.filters} onSubmit={submitSearch}>
         <label className={styles.field}>
           <span>Platform</span>
-          <Select
-            value={platformId}
-            onChange={(event) => update({ platformId: event.target.value })}
-          >
-            <option value="">All</option>
-            {PLATFORMS.map((item) => (
+          <Select value={platform} onChange={(event) => update({ platform: event.target.value })}>
+            <option value="">All platforms</option>
+            {(platforms.data?.items ?? []).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </Select>
         </label>
-        {tab === "listings" ? (
-          <label className={styles.field}>
-            <span>Mapping</span>
-            <Select
-              value={mappingState}
-              onChange={(event) => update({ mappingState: event.target.value })}
+        <label className={styles.field}>
+          <span>Search</span>
+          <TextInput
+            value={draftQuery}
+            onChange={(event) => setDraftQuery(event.target.value)}
+            placeholder="Symbol or name"
+          />
+        </label>
+        <div className={styles.actions}>
+          <ActionButton type="submit">Search</ActionButton>
+          {q ? (
+            <ActionButton
+              type="button"
+              tone="ghost"
+              onClick={() => {
+                setDraftQuery("");
+                update({ q: "" });
+              }}
             >
-              <option value="">All</option>
-              <option value="unmapped">Unmapped</option>
-              <option value="provisional">Provisional</option>
-              <option value="confirmed">Confirmed</option>
-            </Select>
-          </label>
-        ) : (
-          <label className={styles.field}>
-            <span>Pinned</span>
-            <Select value={pinned} onChange={(event) => update({ pinned: event.target.value })}>
-              <option value="">All</option>
-              <option value="true">Pinned</option>
-              <option value="false">Unpinned</option>
-            </Select>
-          </label>
-        )}
+              Clear
+            </ActionButton>
+          ) : null}
+        </div>
       </form>
       {tab === "listings" ? (
-        <ListingResults
-          key={`${q}|${platformId}|${mappingState}|${offset}`}
+        <ListingsTab
           portfolioId={portfolioId}
+          platform={platform}
           q={q}
-          platformId={platformId}
-          mappingState={mappingState}
           offset={offset}
-          onOffset={(nextOffset) => update({ offset: nextOffset > 0 ? String(nextOffset) : "" })}
+          timezone={timezone}
+          onOffset={(next) => update({ offset: next > 0 ? String(next) : "" })}
         />
       ) : (
-        <InstrumentResults
-          key={`${q}|${platformId}|${pinned}|${offset}`}
+        <InstrumentsTab
           portfolioId={portfolioId}
+          platform={platform}
           q={q}
-          platformId={platformId}
-          pinned={pinned}
           offset={offset}
-          onOffset={(nextOffset) => update({ offset: nextOffset > 0 ? String(nextOffset) : "" })}
+          timezone={timezone}
+          onOffset={(next) => update({ offset: next > 0 ? String(next) : "" })}
         />
       )}
     </section>
   );
 }
 
-function ListingResults({
-  portfolioId,
-  q,
-  platformId,
-  mappingState,
-  offset,
-  onOffset,
-}: {
+interface TabProps {
   portfolioId: string;
+  platform: string;
   q: string;
-  platformId: string;
-  mappingState: string;
   offset: number;
+  timezone?: string;
   onOffset: (offset: number) => void;
-}) {
-  const navigate = useNavigate();
+}
+
+function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: TabProps) {
+  const { userId, redirect } = useSessionScope();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
-  const follow = useProjectionFollow(portfolioId);
-  const mappingKey = useRef(newIdempotencyKey());
-  const pinKey = useRef(newIdempotencyKey());
-  const [mappingTarget, setMappingTarget] = useState<CatalogAssetListing | null>(null);
-  const [pinTarget, setPinTarget] = useState<CatalogAssetListing | null>(null);
-  const [assetId, setAssetId] = useState("");
-  const [state, setState] = useState<"provisional" | "confirmed">("provisional");
-  const [reason, setReason] = useState("");
-  const [override, setOverride] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const redirect = () => {
-    void navigate("/login", { replace: true });
-  };
-  const listings = useQuery({
-    queryKey: ["catalog-listings", user.data?.id, portfolioId, q, platformId, mappingState, offset],
-    enabled: Boolean(user.data?.id && portfolioId),
+  const platforms = usePlatforms();
+  const nonce = useRef(0);
+  const [request, setRequest] = useState<MappingRequest | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["catalog-listings", userId, portfolioId, platform, q, offset],
+    enabled: Boolean(userId && portfolioId),
     queryFn: async () =>
       unwrapOrRedirect(
-        await searchCatalogAssetListings({
+        await listAssetListings({
           path: { portfolioId },
           query: {
+            platform: platform || undefined,
             q: q || undefined,
-            platformId: platformId || undefined,
-            mappingState:
-              mappingState === "unmapped" ||
-              mappingState === "provisional" ||
-              mappingState === "confirmed"
-                ? mappingState
-                : undefined,
             offset,
             limit: PAGE_SIZE,
           },
@@ -210,68 +153,151 @@ function ListingResults({
         redirect,
       ),
   });
-  const assets = useQuery({
-    queryKey: ["catalog-assets", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await searchCatalogAssets({ path: { portfolioId }, query: { limit: 200 } }),
-        redirect,
-      ),
-  });
 
-  async function snapshotGeneration(): Promise<string> {
-    const overview = await queryClient.fetchQuery({
-      queryKey: ["overview", user.data?.id, portfolioId],
-      queryFn: async () => unwrapOrRedirect(await getOverview({ path: { portfolioId } }), redirect),
-    });
-    return overview.context.generationId ?? "";
+  async function invalidateListings() {
+    await queryClient.invalidateQueries({ queryKey: ["catalog-listings", userId, portfolioId] });
   }
 
-  async function saveMapping(event: FormEvent) {
+  return (
+    <>
+      {notice ? (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
+      ) : null}
+      <QueryRecovery
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
+        fallback="Asset listings could not be loaded."
+        onRetry={() => {
+          void query.refetch();
+        }}
+      />
+      <DataTable
+        caption="Asset listings"
+        columns={[
+          { key: "platform", header: "Platform" },
+          { key: "symbol", header: "Platform symbol" },
+          { key: "assetSymbol", header: "Asset symbol" },
+          { key: "mappingSource", header: "Mapping" },
+          { key: "name", header: "Name" },
+          { key: "lastSeenAt", header: "Last seen", nowrap: true },
+          { key: "actions", header: "" },
+        ]}
+        rows={(query.data?.items ?? []).map((item) => ({
+          id: item.id,
+          platform: platformLabel(platforms.data?.items, item.platform),
+          symbol: item.symbol,
+          assetSymbol: <strong>{item.assetSymbol}</strong>,
+          mappingSource: <StatusBadge value={item.mappingSource} />,
+          name: item.name ?? "—",
+          lastSeenAt: formatInstant(item.lastSeenAt, timezone),
+          actions: (
+            <span className={styles.rowActions}>
+              <ActionButton
+                type="button"
+                tone="ghost"
+                onClick={() => {
+                  setNotice(null);
+                  nonce.current += 1;
+                  setRequest({ nonce: nonce.current, item });
+                }}
+              >
+                Map
+              </ActionButton>
+            </span>
+          ),
+        }))}
+        empty={
+          query.isPending
+            ? "Loading asset listings."
+            : q || platform
+              ? "No listing matches these filters."
+              : "No asset listings yet. Listings appear after the first Collection Cycle reports balances."
+        }
+      />
+      <Pager
+        offset={query.data?.page.offset ?? offset}
+        limit={query.data?.page.limit ?? PAGE_SIZE}
+        total={query.data?.page.total ?? 0}
+        onChange={onOffset}
+      />
+      <Dialog
+        open={request !== null}
+        title={request ? `Map ${request.item.symbol}` : "Map listing"}
+        onClose={() => setRequest(null)}
+      >
+        {request ? (
+          <MappingForm
+            key={request.nonce}
+            portfolioId={portfolioId}
+            item={request.item}
+            onClose={() => setRequest(null)}
+            onDone={async (message) => {
+              setRequest(null);
+              setNotice(message);
+              await invalidateListings();
+              await invalidatePortfolioReads(queryClient, userId, portfolioId);
+            }}
+          />
+        ) : null}
+      </Dialog>
+    </>
+  );
+}
+
+function MappingForm({
+  portfolioId,
+  item,
+  onClose,
+  onDone,
+}: {
+  portfolioId: string;
+  item: AssetListing;
+  onClose: () => void;
+  onDone: (message: string) => Promise<void>;
+}) {
+  const { redirect } = useSessionScope();
+  const platforms = usePlatforms();
+  const platform = platformLabel(platforms.data?.items, item.platform);
+  const [assetSymbol, setAssetSymbol] = useState(item.assetSymbol);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!mappingTarget) {
+    const symbol = assetSymbol.trim().toUpperCase();
+    if (!symbol) {
+      setError("Enter the Asset symbol this listing should merge into.");
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const generationId = await snapshotGeneration();
       await refreshCsrf();
-      const result = await putCatalogListingMapping({
-        path: { portfolioId, listingId: mappingTarget.id },
-        headers: {
-          "If-Match": mappingEtag(mappingTarget),
-          "Idempotency-Key": mappingKey.current,
-        },
-        body: {
-          assetId,
-          state,
-          displayNameOverride: override.trim() ? override : null,
-          reason: reason.trim() ? reason : null,
-        },
+      const result = await putAssetListingMapping({
+        path: { portfolioId, listingId: item.id },
+        headers: { "If-Match": listingEtag(item) },
+        body: { assetSymbol: symbol },
       });
       if (result.response?.status === 401) {
         redirect();
         return;
       }
       if (result.response?.status === 412) {
-        await queryClient.invalidateQueries({
-          queryKey: ["catalog-listings", user.data?.id, portfolioId],
-        });
-        setError("The mapping changed in another session. Search again, then retry.");
+        await onDone(
+          "The listing changed in another session. The list was reloaded; open it again.",
+        );
         return;
       }
       if (result.error || !result.data) {
         setError(problemMessage(result.error, "The mapping could not be saved."));
         return;
       }
-      mappingKey.current = newIdempotencyKey();
-      follow.follow(result.data.job, generationId);
-      setMappingTarget(null);
-      await queryClient.invalidateQueries({
-        queryKey: ["catalog-listings", user.data?.id, portfolioId],
-      });
+      await onDone(
+        `${platform} ${result.data.symbol} now maps to ${result.data.assetSymbol}. Valuations use it from the next Collection Cycle.`,
+      );
     } catch (cause) {
       setError(problemMessage(cause, "The mapping could not be saved."));
     } finally {
@@ -279,240 +305,52 @@ function ListingResults({
     }
   }
 
-  async function savePin(event: FormEvent) {
-    event.preventDefault();
-    if (!pinTarget) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const generationId = await snapshotGeneration();
-      await refreshCsrf();
-      const match = pinEtag(portfolioId, "listing", pinTarget.id, Boolean(pinTarget.pinned));
-      const result = pinTarget.pinned
-        ? await deleteCatalogPin({
-            path: { portfolioId, subjectKind: "listing", subjectId: pinTarget.id },
-            headers: { "If-Match": match },
-          })
-        : await putCatalogPin({
-            path: { portfolioId, subjectKind: "listing", subjectId: pinTarget.id },
-            headers: { "If-Match": match, "Idempotency-Key": pinKey.current },
-            body: { reason: reason.trim() ? reason : null },
-          });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      if (result.response?.status === 412) {
-        setError("The pin changed in another session. Search again, then retry.");
-        return;
-      }
-      if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The tracking revision could not be saved."));
-        return;
-      }
-      pinKey.current = newIdempotencyKey();
-      storePreference(
-        pinStorageKey(portfolioId, "listing", pinTarget.id),
-        `"catalog-pin:${String(result.data.pin.version)}"`,
-      );
-      follow.follow(result.data.job, generationId);
-      setPinTarget(null);
-      await queryClient.invalidateQueries({
-        queryKey: ["catalog-listings", user.data?.id, portfolioId],
-      });
-    } catch (cause) {
-      setError(problemMessage(cause, "The tracking revision could not be saved."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <>
-      <QueryRecovery
-        error={listings.error}
-        hasData={Boolean(listings.data)}
-        busy={listings.isFetching}
-        fallback="Listings could not be loaded."
-        onRetry={() => {
-          void listings.refetch();
-        }}
-      />
-      {follow.notice ? <p className={styles.notice}>{follow.notice}</p> : null}
+    <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
+      <p className={styles.lead}>
+        Assets merge by symbol across Platforms. Map {platform} {item.symbol}
+        {item.name ? ` (${item.name})` : ""} to the symbol that names the same Asset elsewhere.
+      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
         </p>
       ) : null}
-      <DataTable
-        caption="Asset listings"
-        columns={[
-          { key: "symbol", header: "Symbol" },
-          { key: "platform", header: "Platform" },
-          { key: "asset", header: "Mapped asset" },
-          { key: "state", header: "Mapping" },
-          { key: "pinned", header: "Pinned" },
-        ]}
-        rows={(listings.data?.items ?? []).map((item) => ({
-          id: item.id,
-          symbol: item.symbol,
-          platform: item.platformCode ?? platformLabel(item.platformId),
-          asset: item.mappedAssetCode ?? "—",
-          state: item.mappingState ?? "unmapped",
-          pinned: item.pinned ? "yes" : "no",
-        }))}
-      />
-      <ul className={styles.flowActions}>
-        {(listings.data?.items ?? []).map((item) => (
-          <li key={item.id}>
-            <span>{item.symbol}</span>
-            <span className={styles.actions}>
-              <ActionButton
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setError(null);
-                  setMappingTarget(item);
-                  setAssetId(item.mappedAssetId ?? "");
-                  setState(item.mappingState === "confirmed" ? "confirmed" : "provisional");
-                  setOverride("");
-                  setReason("");
-                }}
-              >
-                Map
-              </ActionButton>
-              <ActionButton
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setError(null);
-                  setPinTarget(item);
-                  setReason("");
-                }}
-              >
-                {item.pinned ? "Unpin" : "Pin"}
-              </ActionButton>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <Pager
-        offset={offset}
-        limit={PAGE_SIZE}
-        total={listings.data?.page.total ?? 0}
-        onChange={onOffset}
-      />
-      <Dialog
-        open={Boolean(mappingTarget)}
-        title="Mapping revision"
-        onClose={() => setMappingTarget(null)}
-      >
-        <form className={styles.form} onSubmit={(event) => void saveMapping(event)}>
-          <label className={styles.field}>
-            <span>Asset</span>
-            <Select value={assetId} onChange={(event) => setAssetId(event.target.value)} required>
-              <option value="" disabled>
-                Select an asset
-              </option>
-              {(assets.data?.items ?? []).map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.code}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className={styles.field}>
-            <span>State</span>
-            <Select
-              value={state}
-              onChange={(event) => setState(event.target.value as "provisional" | "confirmed")}
-            >
-              <option value="provisional">Provisional</option>
-              <option value="confirmed">Confirmed</option>
-            </Select>
-          </label>
-          <label className={styles.field}>
-            <span>Display name override</span>
-            <TextInput value={override} onChange={(event) => setOverride(event.target.value)} />
-          </label>
-          <label className={styles.field}>
-            <span>Reason</span>
-            <TextArea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
-          </label>
-          <div className={styles.actions}>
-            <ActionButton type="submit" tone="primary" disabled={busy}>
-              Save mapping
-            </ActionButton>
-            <ActionButton type="button" onClick={() => setMappingTarget(null)}>
-              Cancel
-            </ActionButton>
-          </div>
-        </form>
-      </Dialog>
-      <Dialog
-        open={Boolean(pinTarget)}
-        title={pinTarget?.pinned ? "Disable tracking" : "Pin listing"}
-        onClose={() => setPinTarget(null)}
-      >
-        <form className={styles.form} onSubmit={(event) => void savePin(event)}>
-          <label className={styles.field}>
-            <span>Reason</span>
-            <TextArea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
-          </label>
-          <div className={styles.actions}>
-            <ActionButton type="submit" tone="primary" disabled={busy}>
-              {pinTarget?.pinned ? "Unpin" : "Pin"}
-            </ActionButton>
-            <ActionButton type="button" onClick={() => setPinTarget(null)}>
-              Cancel
-            </ActionButton>
-          </div>
-        </form>
-      </Dialog>
-    </>
+      <label className={styles.field}>
+        <span>Asset symbol</span>
+        <TextInput
+          value={assetSymbol}
+          onChange={(event) => setAssetSymbol(event.target.value)}
+          maxLength={32}
+          autoFocus
+          required
+        />
+      </label>
+      <div className={styles.actions}>
+        <ActionButton type="submit" tone="primary" disabled={busy}>
+          Save mapping
+        </ActionButton>
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+          Cancel
+        </ActionButton>
+      </div>
+    </form>
   );
 }
 
-function InstrumentResults({
-  portfolioId,
-  q,
-  platformId,
-  pinned,
-  offset,
-  onOffset,
-}: {
-  portfolioId: string;
-  q: string;
-  platformId: string;
-  pinned: string;
-  offset: number;
-  onOffset: (offset: number) => void;
-}) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useCurrentUser();
-  const follow = useProjectionFollow(portfolioId);
-  const pinKey = useRef(newIdempotencyKey());
-  const [pinTarget, setPinTarget] = useState<CatalogInstrument | null>(null);
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const redirect = () => {
-    void navigate("/login", { replace: true });
-  };
-  const instruments = useQuery({
-    queryKey: ["catalog-instruments", user.data?.id, portfolioId, q, platformId, pinned, offset],
-    enabled: Boolean(user.data?.id && portfolioId),
+function InstrumentsTab({ portfolioId, platform, q, offset, timezone, onOffset }: TabProps) {
+  const { userId, redirect } = useSessionScope();
+  const platforms = usePlatforms();
+  const query = useQuery({
+    queryKey: ["catalog-instruments", userId, portfolioId, platform, q, offset],
+    enabled: Boolean(userId && portfolioId),
     queryFn: async () =>
       unwrapOrRedirect(
-        await searchCatalogInstruments({
+        await listInstruments({
           path: { portfolioId },
           query: {
+            platform: platform || undefined,
             q: q || undefined,
-            platformId: platformId || undefined,
-            pinned: pinned === "true" ? true : pinned === "false" ? false : undefined,
             offset,
             limit: PAGE_SIZE,
           },
@@ -521,141 +359,56 @@ function InstrumentResults({
       ),
   });
 
-  async function savePin(event: FormEvent) {
-    event.preventDefault();
-    if (!pinTarget) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const overview = await queryClient.fetchQuery({
-        queryKey: ["overview", user.data?.id, portfolioId],
-        queryFn: async () =>
-          unwrapOrRedirect(await getOverview({ path: { portfolioId } }), redirect),
-      });
-      await refreshCsrf();
-      const match = pinEtag(portfolioId, "instrument", pinTarget.id, Boolean(pinTarget.pinned));
-      const result = pinTarget.pinned
-        ? await deleteCatalogPin({
-            path: { portfolioId, subjectKind: "instrument", subjectId: pinTarget.id },
-            headers: { "If-Match": match },
-          })
-        : await putCatalogPin({
-            path: { portfolioId, subjectKind: "instrument", subjectId: pinTarget.id },
-            headers: { "If-Match": match, "Idempotency-Key": pinKey.current },
-            body: { reason: reason.trim() ? reason : null },
-          });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      if (result.response?.status === 412) {
-        setError("The pin changed in another session. Search again, then retry.");
-        return;
-      }
-      if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The tracking revision could not be saved."));
-        return;
-      }
-      pinKey.current = newIdempotencyKey();
-      storePreference(
-        pinStorageKey(portfolioId, "instrument", pinTarget.id),
-        `"catalog-pin:${String(result.data.pin.version)}"`,
-      );
-      follow.follow(result.data.job, overview.context.generationId);
-      setPinTarget(null);
-      await queryClient.invalidateQueries({
-        queryKey: ["catalog-instruments", user.data?.id, portfolioId],
-      });
-    } catch (cause) {
-      setError(problemMessage(cause, "The tracking revision could not be saved."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <QueryRecovery
-        error={instruments.error}
-        hasData={Boolean(instruments.data)}
-        busy={instruments.isFetching}
+        error={query.error}
+        hasData={Boolean(query.data)}
+        busy={query.isFetching}
         fallback="Instruments could not be loaded."
         onRetry={() => {
-          void instruments.refetch();
+          void query.refetch();
         }}
       />
-      {follow.notice ? <p className={styles.notice}>{follow.notice}</p> : null}
-      {error ? (
-        <p className={styles.alert} role="alert">
-          {error}
-        </p>
-      ) : null}
       <DataTable
         caption="Instruments"
         columns={[
-          { key: "symbol", header: "Symbol" },
           { key: "platform", header: "Platform" },
+          { key: "symbol", header: "Symbol" },
           { key: "kind", header: "Kind" },
-          { key: "status", header: "Status" },
-          { key: "pinned", header: "Pinned" },
+          { key: "base", header: "Base" },
+          { key: "quote", header: "Quote" },
+          { key: "settlement", header: "Settlement" },
+          { key: "expiryAt", header: "Expiry" },
+          { key: "contractSize", header: "Contract size", numeric: true },
+          { key: "lastSeenAt", header: "Last seen", nowrap: true },
         ]}
-        rows={(instruments.data?.items ?? []).map((item) => ({
+        rows={(query.data?.items ?? []).map((item) => ({
           id: item.id,
+          platform: platformLabel(platforms.data?.items, item.platform),
           symbol: item.symbol,
-          platform: item.platformCode ?? platformLabel(item.platformId),
-          kind: item.kind,
-          status: item.status,
-          pinned: item.pinned ? "yes" : "no",
+          kind: capitalize(item.kind.replaceAll("_", " ")),
+          base: item.baseSymbol ?? "—",
+          quote: item.quoteSymbol ?? "—",
+          settlement: item.settlementSymbol ?? "—",
+          expiryAt: item.expiryAt ? formatInstant(item.expiryAt, timezone) : "Perpetual",
+          contractSize: formatDecimal(item.contractSize),
+          lastSeenAt: formatInstant(item.lastSeenAt, timezone),
         }))}
+        empty={
+          query.isPending
+            ? "Loading instruments."
+            : q || platform
+              ? "No instrument matches these filters."
+              : "No instruments yet. Instruments appear after a Collection Cycle reports positions."
+        }
       />
-      <ul className={styles.flowActions}>
-        {(instruments.data?.items ?? []).map((item) => (
-          <li key={item.id}>
-            <span>{item.symbol}</span>
-            <span className={styles.actions}>
-              <ActionButton
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setError(null);
-                  setPinTarget(item);
-                  setReason("");
-                }}
-              >
-                {item.pinned ? "Unpin" : "Pin"}
-              </ActionButton>
-            </span>
-          </li>
-        ))}
-      </ul>
       <Pager
-        offset={offset}
-        limit={PAGE_SIZE}
-        total={instruments.data?.page.total ?? 0}
+        offset={query.data?.page.offset ?? offset}
+        limit={query.data?.page.limit ?? PAGE_SIZE}
+        total={query.data?.page.total ?? 0}
         onChange={onOffset}
       />
-      <Dialog
-        open={Boolean(pinTarget)}
-        title={pinTarget?.pinned ? "Disable tracking" : "Pin instrument"}
-        onClose={() => setPinTarget(null)}
-      >
-        <form className={styles.form} onSubmit={(event) => void savePin(event)}>
-          <label className={styles.field}>
-            <span>Reason</span>
-            <TextArea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} />
-          </label>
-          <div className={styles.actions}>
-            <ActionButton type="submit" tone="primary" disabled={busy}>
-              {pinTarget?.pinned ? "Unpin" : "Pin"}
-            </ActionButton>
-            <ActionButton type="button" onClick={() => setPinTarget(null)}>
-              Cancel
-            </ActionButton>
-          </div>
-        </form>
-      </Dialog>
     </>
   );
 }

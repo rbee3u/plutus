@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/rbee3u/plutus/internal/catalog"
 )
 
 func TestMigrateUpAndSeeds(t *testing.T) {
@@ -34,18 +32,11 @@ func TestMigrateUpAndSeeds(t *testing.T) {
 		t.Fatalf("version %d, want %d", version, ExpectedSchemaVersion)
 	}
 
-	var usd []byte
-	if err := db.QueryRowContext(ctx, "SELECT id FROM assets WHERE code = ?", "USD").Scan(&usd); err != nil {
+	var tables int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME <> 'goose_db_version'").Scan(&tables); err != nil {
 		t.Fatal(err)
 	}
-	if catalog.AssetUSD.String() == "" {
-		t.Fatal("usd constant")
-	}
-	got, err := catalog.AssetUSD.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(usd) != string(got) {
-		t.Fatalf("usd id mismatch")
+	if tables != 16 {
+		t.Fatalf("base tables %d, want 16", tables)
 	}
 }

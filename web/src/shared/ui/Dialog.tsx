@@ -67,7 +67,7 @@ export function Dialog({
       }}
     >
       <header className={styles.header}>
-        <h3 id={titleId}>{title}</h3>
+        <h2 id={titleId}>{title}</h2>
         <IconButton label="Close dialog" onClick={onClose}>
           <X size={iconSize.md} aria-hidden="true" />
         </IconButton>

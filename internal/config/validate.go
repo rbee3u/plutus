@@ -48,8 +48,11 @@ func Validate(cfg *Config, opts *Options) error {
 	if err := durationInRange("collection.default_interval", cfg.Collection.DefaultInterval, minCollectionInterval, maxCollectionInterval); err != nil {
 		return err
 	}
-	if cfg.Collection.DefaultFreshnessMultiplier < minFreshnessMultiplier || cfg.Collection.DefaultFreshnessMultiplier > maxFreshnessMultiplier {
-		return fmt.Errorf("collection.default_freshness_multiplier must be between %d and %d", minFreshnessMultiplier, maxFreshnessMultiplier)
+	if cfg.Collection.Stagger < minStagger || cfg.Collection.Stagger > maxStagger {
+		return fmt.Errorf("collection.stagger must be between %s and %s", time.Duration(minStagger), maxStagger)
+	}
+	if err := durationInRange("collection.validate_timeout", cfg.Collection.ValidateTimeout, minValidateTimeout, maxValidateTimeout); err != nil {
+		return err
 	}
 	return validateTLS(&cfg.Server.TLS, opts)
 }

@@ -7,7 +7,6 @@ package sqlcgen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 )
 
@@ -31,59 +30,32 @@ func (q *Queries) DeletePortfolio(ctx context.Context, arg DeletePortfolioParams
 }
 
 const getPortfolioByID = `-- name: GetPortfolioByID :one
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code,
-    p.active_projection_generation_id
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.id = ?
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE id = ?
 `
 
-type GetPortfolioByIDRow struct {
-	ID                           []byte
-	UserID                       []byte
-	Name                         string
-	Timezone                     string
-	DisplayAssetID               []byte
-	Status                       string
-	Undeletable                  bool
-	Version                      uint64
-	CreatedAt                    time.Time
-	UpdatedAt                    time.Time
-	ArchivedAt                   sql.NullTime
-	DisplayAssetCode             string
-	ActiveProjectionGenerationID []byte
-}
-
-func (q *Queries) GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error) {
+func (q *Queries) GetPortfolioByID(ctx context.Context, id []byte) (Portfolio, error) {
 	row := q.db.QueryRowContext(ctx, getPortfolioByID, id)
-	var i GetPortfolioByIDRow
+	var i Portfolio
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Name,
 		&i.Timezone,
-		&i.DisplayAssetID,
-		&i.Status,
+		&i.CollectionIntervalSeconds,
 		&i.Undeletable,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ArchivedAt,
-		&i.DisplayAssetCode,
-		&i.ActiveProjectionGenerationID,
 	)
 	return i, err
 }
 
 const getPortfolioByUserAndID = `-- name: GetPortfolioByUserAndID :one
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.user_id = ? AND p.id = ?
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE user_id = ? AND id = ?
 `
 
 type GetPortfolioByUserAndIDParams struct {
@@ -91,62 +63,42 @@ type GetPortfolioByUserAndIDParams struct {
 	ID     []byte
 }
 
-type GetPortfolioByUserAndIDRow struct {
-	ID               []byte
-	UserID           []byte
-	Name             string
-	Timezone         string
-	DisplayAssetID   []byte
-	Status           string
-	Undeletable      bool
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	ArchivedAt       sql.NullTime
-	DisplayAssetCode string
-}
-
-func (q *Queries) GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error) {
+func (q *Queries) GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (Portfolio, error) {
 	row := q.db.QueryRowContext(ctx, getPortfolioByUserAndID, arg.UserID, arg.ID)
-	var i GetPortfolioByUserAndIDRow
+	var i Portfolio
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Name,
 		&i.Timezone,
-		&i.DisplayAssetID,
-		&i.Status,
+		&i.CollectionIntervalSeconds,
 		&i.Undeletable,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ArchivedAt,
-		&i.DisplayAssetCode,
 	)
 	return i, err
 }
 
 const insertPortfolio = `-- name: InsertPortfolio :exec
 INSERT INTO portfolios (
-    id, user_id, name, timezone, display_asset_id, status, undeletable, version, created_at, updated_at, archived_at
+    id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
 ) VALUES (
     ?, ?, ?, ?, ?,
-    ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?
 )
 `
 
 type InsertPortfolioParams struct {
-	ID             []byte
-	UserID         []byte
-	Name           string
-	Timezone       string
-	DisplayAssetID []byte
-	Status         string
-	Undeletable    bool
-	Version        uint64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	ArchivedAt     sql.NullTime
+	ID                        []byte
+	UserID                    []byte
+	Name                      string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	Undeletable               bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 func (q *Queries) InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error {
@@ -155,66 +107,82 @@ func (q *Queries) InsertPortfolio(ctx context.Context, arg InsertPortfolioParams
 		arg.UserID,
 		arg.Name,
 		arg.Timezone,
-		arg.DisplayAssetID,
-		arg.Status,
+		arg.CollectionIntervalSeconds,
 		arg.Undeletable,
 		arg.Version,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.ArchivedAt,
 	)
 	return err
 }
 
 const listPortfoliosByUser = `-- name: ListPortfoliosByUser :many
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.user_id = ?
-  AND p.status = 'active'
-ORDER BY p.created_at ASC, p.id ASC
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE user_id = ?
+ORDER BY created_at ASC, id ASC
 `
 
-type ListPortfoliosByUserRow struct {
-	ID               []byte
-	UserID           []byte
-	Name             string
-	Timezone         string
-	DisplayAssetID   []byte
-	Status           string
-	Undeletable      bool
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	ArchivedAt       sql.NullTime
-	DisplayAssetCode string
-}
-
-func (q *Queries) ListPortfoliosByUser(ctx context.Context, userID []byte) ([]ListPortfoliosByUserRow, error) {
+func (q *Queries) ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error) {
 	rows, err := q.db.QueryContext(ctx, listPortfoliosByUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListPortfoliosByUserRow{}
+	items := []Portfolio{}
 	for rows.Next() {
-		var i ListPortfoliosByUserRow
+		var i Portfolio
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
 			&i.Timezone,
-			&i.DisplayAssetID,
-			&i.Status,
+			&i.CollectionIntervalSeconds,
 			&i.Undeletable,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.ArchivedAt,
-			&i.DisplayAssetCode,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPortfoliosForScheduling = `-- name: ListPortfoliosForScheduling :many
+SELECT p.id, p.collection_interval_seconds,
+       (SELECT MAX(j.created_at) FROM jobs j WHERE j.portfolio_id = p.id AND j.kind = 'collection_cycle') AS last_cycle_at
+FROM portfolios p
+WHERE EXISTS (
+    SELECT 1 FROM identities i
+    WHERE i.portfolio_id = p.id AND i.status = 'enabled' AND i.connection_status = 'enabled'
+)
+ORDER BY p.created_at ASC, p.id ASC
+`
+
+type ListPortfoliosForSchedulingRow struct {
+	ID                        []byte
+	CollectionIntervalSeconds uint32
+	LastCycleAt               interface{}
+}
+
+func (q *Queries) ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfoliosForSchedulingRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfoliosForScheduling)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPortfoliosForSchedulingRow{}
+	for rows.Next() {
+		var i ListPortfoliosForSchedulingRow
+		if err := rows.Scan(&i.ID, &i.CollectionIntervalSeconds, &i.LastCycleAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -232,27 +200,27 @@ const updatePortfolio = `-- name: UpdatePortfolio :execrows
 UPDATE portfolios
 SET name = ?,
     timezone = ?,
-    display_asset_id = ?,
+    collection_interval_seconds = ?,
     version = version + 1,
     updated_at = ?
 WHERE id = ? AND user_id = ? AND version = ?
 `
 
 type UpdatePortfolioParams struct {
-	Name           string
-	Timezone       string
-	DisplayAssetID []byte
-	UpdatedAt      time.Time
-	ID             []byte
-	UserID         []byte
-	Version        uint64
+	Name                      string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	UpdatedAt                 time.Time
+	ID                        []byte
+	UserID                    []byte
+	Version                   uint64
 }
 
 func (q *Queries) UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updatePortfolio,
 		arg.Name,
 		arg.Timezone,
-		arg.DisplayAssetID,
+		arg.CollectionIntervalSeconds,
 		arg.UpdatedAt,
 		arg.ID,
 		arg.UserID,

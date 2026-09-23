@@ -21,8 +21,8 @@ func newRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plutus",
 		Short: "Personal read-only portfolio observation",
-		Long: "plutus collects normalized account observations, persists their history,\n" +
-			"and presents balances, positions, valuations, and directional exposure.",
+		Long: "plutus collects read-only Account Reports from crypto Platforms, writes one Valuation Point\n" +
+			"per Collection Cycle, and presents holdings, history, and value changes.",
 		Example:       "  plutus --help",
 		Args:          cobra.NoArgs,
 		Version:       version,
@@ -31,6 +31,6 @@ func newRootCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().String("config", "", "path to a non-secret TOML config file")
 	cmd.PersistentFlags().String("env-file", "", "path to an env file used instead of walking config/local.env")
-	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newProjectionCommand(), newDatabaseCommand())
+	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand())
 	return cmd
 }

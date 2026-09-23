@@ -17,3 +17,16 @@ export function newIdempotencyKey(): string {
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * The last eight hex digits of a server identifier. Identifiers are UUIDv7,
+ * whose leading blocks are a timestamp shared by everything created in the
+ * same minute; only the tail tells two of them apart.
+ */
+export function shortId(id: string | null | undefined): string {
+  if (!id) {
+    return "—";
+  }
+  const tail = id.split("-").at(-1) ?? id;
+  return tail.slice(-8);
+}

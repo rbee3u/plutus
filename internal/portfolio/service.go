@@ -1,3 +1,4 @@
+// Package portfolio owns Portfolio ownership, settings, and cascade deletion.
 package portfolio
 
 import (
@@ -10,43 +11,46 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
 const (
 	// DefaultName is the display name of the portfolio created with a user.
-	DefaultName     = "default"
-	defaultTimezone = "Asia/Shanghai"
+	DefaultName = "default"
+	// DefaultTimezone is the IANA zone used when none is given.
+	DefaultTimezone = "Asia/Shanghai"
 	maxNameLength   = 120
+	minInterval     = 60
+	maxInterval     = 86400
 )
 
 // Service owns portfolio use cases.
 type Service struct {
-	db  *sql.DB
-	q   *sqlcgen.Queries
-	now func() time.Time
+	db              *sql.DB
+	q               *sqlcgen.Queries
+	now             func() time.Time
+	defaultInterval time.Duration
 }
 
-// NewService constructs a portfolio service.
-func NewService(db *sql.DB) *Service {
-	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
+// NewService constructs a portfolio service. defaultInterval seeds new Portfolios' Collection Cycle interval.
+func NewService(db *sql.DB, defaultInterval time.Duration) *Service {
+	if defaultInterval <= 0 {
+		defaultInterval = 15 * time.Minute
+	}
+	return &Service{db: db, q: sqlcgen.New(db), now: time.Now, defaultInterval: defaultInterval}
 }
 
-// Portfolio is an owned workspace.
+// Portfolio is one person's ledger.
 type Portfolio struct {
-	ID             uuid.UUID
-	Name           string
-	Timezone       string
-	DisplayAssetID uuid.UUID
-	DisplayAsset   string
-	Status         string
-	Undeletable    bool
-	Version        uint64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	ArchivedAt     *time.Time
+	ID                        uuid.UUID
+	Name                      string
+	Timezone                  string
+	CollectionIntervalSeconds int
+	Undeletable               bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 // ETag returns the strong validator for this revision.
@@ -54,33 +58,38 @@ func (p *Portfolio) ETag() string {
 	return fmt.Sprintf(`"portfolio:%d"`, p.Version)
 }
 
+// Location returns the Portfolio's time zone, falling back to UTC.
+func (p *Portfolio) Location() *time.Location {
+	loc, err := time.LoadLocation(p.Timezone)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}
+
 // CreateInput is the accepted create payload.
 type CreateInput struct {
-	Name           string
-	Timezone       string
-	DisplayAssetID *uuid.UUID
+	Name                      string
+	Timezone                  string
+	CollectionIntervalSeconds *int
 }
 
 // PatchInput is the accepted patch payload.
 type PatchInput struct {
-	Name           *string
-	Timezone       *string
-	DisplayAssetID *uuid.UUID
+	Name                      *string
+	Timezone                  *string
+	CollectionIntervalSeconds *int
 }
 
-// List returns owned active portfolios.
+// List returns owned portfolios.
 func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]Portfolio, error) {
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := s.q.ListPortfoliosByUser(ctx, userBytes)
+	rows, err := s.q.ListPortfoliosByUser(ctx, bin(userID))
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Portfolio, 0, len(rows))
 	for i := range rows {
-		item, err := fromListRow(&rows[i])
+		item, err := fromRow(&rows[i])
 		if err != nil {
 			return nil, err
 		}
@@ -91,11 +100,26 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]Portfolio, erro
 
 // Get returns one owned portfolio.
 func (s *Service) Get(ctx context.Context, userID, portfolioID uuid.UUID) (Portfolio, error) {
-	row, err := s.getRow(ctx, userID, portfolioID)
+	row, err := s.q.GetPortfolioByUserAndID(ctx, sqlcgen.GetPortfolioByUserAndIDParams{UserID: bin(userID), ID: bin(portfolioID)})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Portfolio{}, ErrNotFound
+	}
 	if err != nil {
 		return Portfolio{}, err
 	}
-	return fromGetRow(&row)
+	return fromRow(&row)
+}
+
+// GetByID returns a portfolio regardless of owner (worker and CLI paths).
+func (s *Service) GetByID(ctx context.Context, portfolioID uuid.UUID) (Portfolio, error) {
+	row, err := s.q.GetPortfolioByID(ctx, bin(portfolioID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Portfolio{}, ErrNotFound
+	}
+	if err != nil {
+		return Portfolio{}, err
+	}
+	return fromRow(&row)
 }
 
 // Create inserts a portfolio.
@@ -108,11 +132,11 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, in CreateInput) 
 	if err != nil {
 		return Portfolio{}, err
 	}
-	displayID := catalog.AssetUSD
-	if in.DisplayAssetID != nil {
-		displayID = *in.DisplayAssetID
+	interval := int(s.defaultInterval / time.Second)
+	if in.CollectionIntervalSeconds != nil {
+		interval = *in.CollectionIntervalSeconds
 	}
-	if err := validateDisplayAsset(displayID); err != nil {
+	if err := validateInterval(interval); err != nil {
 		return Portfolio{}, err
 	}
 	id, err := uuid.NewV7()
@@ -120,29 +144,16 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, in CreateInput) 
 		return Portfolio{}, err
 	}
 	now := s.now().UTC()
-	idBytes, err := id.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
-	assetBytes, err := displayID.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
 	if err := s.q.InsertPortfolio(ctx, sqlcgen.InsertPortfolioParams{
-		ID:             idBytes,
-		UserID:         userBytes,
-		Name:           name,
-		Timezone:       timezone,
-		DisplayAssetID: assetBytes,
-		Status:         "active",
-		Undeletable:    false,
-		Version:        1,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:                        bin(id),
+		UserID:                    bin(userID),
+		Name:                      name,
+		Timezone:                  timezone,
+		CollectionIntervalSeconds: uint32(interval),
+		Undeletable:               false,
+		Version:                   1,
+		CreatedAt:                 now,
+		UpdatedAt:                 now,
 	}); err != nil {
 		if mysql.IsDuplicate(err) {
 			return Portfolio{}, ErrConflict
@@ -175,33 +186,21 @@ func (s *Service) Patch(ctx context.Context, userID, portfolioID uuid.UUID, vers
 			return Portfolio{}, err
 		}
 	}
-	displayID := current.DisplayAssetID
-	if in.DisplayAssetID != nil {
-		displayID = *in.DisplayAssetID
-		if err := validateDisplayAsset(displayID); err != nil {
+	interval := current.CollectionIntervalSeconds
+	if in.CollectionIntervalSeconds != nil {
+		interval = *in.CollectionIntervalSeconds
+		if err := validateInterval(interval); err != nil {
 			return Portfolio{}, err
 		}
 	}
-	idBytes, err := portfolioID.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
-	assetBytes, err := displayID.MarshalBinary()
-	if err != nil {
-		return Portfolio{}, err
-	}
 	n, err := s.q.UpdatePortfolio(ctx, sqlcgen.UpdatePortfolioParams{
-		Name:           name,
-		Timezone:       timezone,
-		DisplayAssetID: assetBytes,
-		UpdatedAt:      s.now().UTC(),
-		ID:             idBytes,
-		UserID:         userBytes,
-		Version:        version,
+		Name:                      name,
+		Timezone:                  timezone,
+		CollectionIntervalSeconds: uint32(interval),
+		UpdatedAt:                 s.now().UTC(),
+		ID:                        bin(portfolioID),
+		UserID:                    bin(userID),
+		Version:                   version,
 	})
 	if err != nil {
 		if mysql.IsDuplicate(err) {
@@ -227,36 +226,12 @@ func (s *Service) Delete(ctx context.Context, userID, portfolioID uuid.UUID, ver
 	if current.Undeletable {
 		return ErrUndeletable
 	}
-	idBytes, err := portfolioID.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	err = s.deleteCascade(ctx, userBytes, idBytes, version)
+	err = s.deleteCascade(ctx, bin(userID), bin(portfolioID), version)
 	if errors.Is(err, ErrPrecondition) {
 		_, stale := s.staleOrMissing(ctx, userID, portfolioID)
 		return stale
 	}
 	return err
-}
-
-func (s *Service) getRow(ctx context.Context, userID, portfolioID uuid.UUID) (sqlcgen.GetPortfolioByUserAndIDRow, error) {
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return sqlcgen.GetPortfolioByUserAndIDRow{}, err
-	}
-	idBytes, err := portfolioID.MarshalBinary()
-	if err != nil {
-		return sqlcgen.GetPortfolioByUserAndIDRow{}, err
-	}
-	row, err := s.q.GetPortfolioByUserAndID(ctx, sqlcgen.GetPortfolioByUserAndIDParams{UserID: userBytes, ID: idBytes})
-	if errors.Is(err, sql.ErrNoRows) {
-		return sqlcgen.GetPortfolioByUserAndIDRow{}, ErrNotFound
-	}
-	return row, err
 }
 
 func (s *Service) staleOrMissing(ctx context.Context, userID, portfolioID uuid.UUID) (Portfolio, error) {
@@ -267,40 +242,21 @@ func (s *Service) staleOrMissing(ctx context.Context, userID, portfolioID uuid.U
 	return current, ErrPrecondition
 }
 
-func fromListRow(row *sqlcgen.ListPortfoliosByUserRow) (Portfolio, error) {
-	return fromFields(row.ID, row.Name, row.Timezone, row.DisplayAssetID, row.DisplayAssetCode, row.Status, row.Undeletable, row.Version, row.CreatedAt, row.UpdatedAt, row.ArchivedAt)
-}
-
-func fromGetRow(row *sqlcgen.GetPortfolioByUserAndIDRow) (Portfolio, error) {
-	return fromFields(row.ID, row.Name, row.Timezone, row.DisplayAssetID, row.DisplayAssetCode, row.Status, row.Undeletable, row.Version, row.CreatedAt, row.UpdatedAt, row.ArchivedAt)
-}
-
-func fromFields(id []byte, name, timezone string, displayAssetID []byte, displayAssetCode, status string, undeletable bool, version uint64, createdAt, updatedAt time.Time, archivedAt sql.NullTime) (Portfolio, error) {
-	parsedID, err := uuid.FromBytes(id)
+func fromRow(row *sqlcgen.Portfolio) (Portfolio, error) {
+	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return Portfolio{}, err
 	}
-	assetID, err := uuid.FromBytes(displayAssetID)
-	if err != nil {
-		return Portfolio{}, err
-	}
-	item := Portfolio{
-		ID:             parsedID,
-		Name:           name,
-		Timezone:       timezone,
-		DisplayAssetID: assetID,
-		DisplayAsset:   displayAssetCode,
-		Status:         status,
-		Undeletable:    undeletable,
-		Version:        version,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
-	}
-	if archivedAt.Valid {
-		t := archivedAt.Time
-		item.ArchivedAt = &t
-	}
-	return item, nil
+	return Portfolio{
+		ID:                        id,
+		Name:                      row.Name,
+		Timezone:                  row.Timezone,
+		CollectionIntervalSeconds: int(row.CollectionIntervalSeconds),
+		Undeletable:               row.Undeletable,
+		Version:                   row.Version,
+		CreatedAt:                 row.CreatedAt,
+		UpdatedAt:                 row.UpdatedAt,
+	}, nil
 }
 
 func normalizeName(raw string) (string, error) {
@@ -313,7 +269,7 @@ func normalizeName(raw string) (string, error) {
 
 func normalizeTimezone(raw string) (string, error) {
 	if strings.TrimSpace(raw) == "" {
-		return defaultTimezone, nil
+		return DefaultTimezone, nil
 	}
 	if _, err := time.LoadLocation(raw); err != nil {
 		return "", ErrInvalidTimezone
@@ -321,11 +277,11 @@ func normalizeTimezone(raw string) (string, error) {
 	return raw, nil
 }
 
-func validateDisplayAsset(id uuid.UUID) error {
-	if id == catalog.AssetUSD || id == catalog.AssetCNY {
-		return nil
+func validateInterval(seconds int) error {
+	if seconds < minInterval || seconds > maxInterval {
+		return ErrInvalidInterval
 	}
-	return ErrInvalidDisplayAsset
+	return nil
 }
 
 // ParseETag extracts the version from a portfolio ETag.
@@ -335,4 +291,8 @@ func ParseETag(value string) (uint64, bool) {
 		return 0, false
 	}
 	return version, true
+}
+
+func bin(id uuid.UUID) []byte {
+	return id[:]
 }

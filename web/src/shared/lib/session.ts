@@ -2,6 +2,7 @@ import { getAuthMe } from "@/api/generated/sdk.gen";
 import type { User } from "@/api/generated/types.gen";
 import { problemError } from "@/api/http";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { useNavigate } from "react-router";
 
 export class SessionExpiredError extends Error {
@@ -59,4 +60,17 @@ export function useCurrentUser() {
     },
     retry: (count, error) => !(error instanceof SessionExpiredError) && count < 1,
   });
+}
+
+/**
+ * The current user id for query keys plus the login redirect every
+ * portfolio-scoped query and mutation shares.
+ */
+export function useSessionScope() {
+  const navigate = useNavigate();
+  const user = useCurrentUser();
+  const redirect = useCallback(() => {
+    void navigate("/login", { replace: true });
+  }, [navigate]);
+  return { userId: user.data?.id, redirect };
 }

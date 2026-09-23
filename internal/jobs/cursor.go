@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
-const cursorVersion byte = 1
+const cursorVersion byte = 2
 
-var cursorHMACKey = []byte("plutus-job-cursor-v1")
+var cursorHMACKey = []byte("plutus-job-cursor-v2")
 
 type listCursor struct {
 	PortfolioID uuid.UUID
@@ -38,21 +38,19 @@ func decodeCursor(raw string, portfolioID uuid.UUID) (listCursor, error) {
 	if err != nil || len(data) != 73 || data[0] != cursorVersion {
 		return listCursor{}, ErrInvalidCursor
 	}
-	payload := data[:41]
-	sum := data[41:]
 	mac := hmac.New(sha256.New, cursorHMACKey)
-	if _, err := mac.Write(payload); err != nil {
+	if _, err := mac.Write(data[:41]); err != nil {
 		return listCursor{}, err
 	}
-	if !hmac.Equal(sum, mac.Sum(nil)) {
+	if !hmac.Equal(mac.Sum(nil), data[41:]) {
 		return listCursor{}, ErrInvalidCursor
 	}
-	var cursor listCursor
-	copy(cursor.PortfolioID[:], payload[1:17])
-	cursor.CreatedAt = int64(binary.BigEndian.Uint64(payload[17:25]))
-	copy(cursor.ID[:], payload[25:41])
-	if cursor.PortfolioID != portfolioID {
+	var c listCursor
+	copy(c.PortfolioID[:], data[1:17])
+	c.CreatedAt = int64(binary.BigEndian.Uint64(data[17:25]))
+	copy(c.ID[:], data[25:41])
+	if c.PortfolioID != portfolioID {
 		return listCursor{}, ErrInvalidCursor
 	}
-	return cursor, nil
+	return c, nil
 }

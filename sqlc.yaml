@@ -22,25 +22,10 @@ sql:
             go_type:
               import: "github.com/rbee3u/plutus/internal/infra/sqljson"
               type: "Column"
-          - column: "identities.parent_identity_id"
+          - column: "identities.credentials_ciphertext"
             go_type:
               type: "[]byte"
-          - column: "portfolios.active_projection_generation_id"
-            go_type:
-              type: "[]byte"
-          - column: "connections.credentials_ciphertext"
-            go_type:
-              type: "[]byte"
-          - column: "connections.credentials_nonce"
-            go_type:
-              type: "[]byte"
-          - column: "connections.enabled_identity_id"
-            go_type:
-              type: "[]byte"
-          - column: "idempotency_records.portfolio_id"
-            go_type:
-              type: "[]byte"
-          - column: "jobs.requested_by_user_id"
+          - column: "identities.credentials_nonce"
             go_type:
               type: "[]byte"
           - db_type: binary

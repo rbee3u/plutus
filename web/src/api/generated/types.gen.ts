@@ -62,25 +62,15 @@ export type SessionList = {
     items: Array<Session>;
 };
 
-export type AssetRef = {
-    id: Uuid;
-    code: string;
-};
-
 export type Portfolio = {
     id: Uuid;
     name: string;
     timezone: string;
-    displayAsset: AssetRef;
-    status: 'active' | 'archived';
-    /**
-     * True for the portfolio created with the user. It cannot be deleted.
-     */
+    collectionIntervalSeconds: number;
     undeletable: boolean;
     version: number;
     createdAt: string;
     updatedAt: string;
-    archivedAt?: string | null;
 };
 
 export type PortfolioList = {
@@ -90,26 +80,70 @@ export type PortfolioList = {
 export type CreatePortfolioRequest = {
     name: string;
     timezone?: string;
-    displayAssetId?: Uuid;
+    collectionIntervalSeconds?: number;
 };
 
 export type PatchPortfolioRequest = {
     name?: string;
     timezone?: string;
-    displayAssetId?: Uuid;
+    collectionIntervalSeconds?: number;
+};
+
+export type Platform = {
+    id: string;
+    name: string;
+    adapterAvailable: boolean;
+    accountModes: Array<AccountMode>;
+};
+
+export type AccountMode = {
+    id: string;
+    name: string;
+    accountTypes: Array<AccountTypeInfo>;
+};
+
+export type AccountTypeInfo = {
+    id: string;
+    name: string;
+};
+
+export type PlatformList = {
+    items: Array<Platform>;
+};
+
+export type Connection = {
+    status: 'unconfigured' | 'disabled' | 'enabled' | 'invalid';
+    credentialsConfigured: boolean;
+    credentialsUpdatedAt?: string | null;
+    lastValidatedAt?: string | null;
+    lastCollectedAt?: string | null;
+    lastErrorClass?: string | null;
+    lastErrorDetail?: string | null;
+};
+
+export type Account = {
+    id: Uuid;
+    identityId: Uuid;
+    accountType: string;
+    displayName: string;
+    selected: boolean;
+    version: number;
 };
 
 export type Identity = {
     id: Uuid;
     portfolioId: Uuid;
-    platformId: Uuid;
-    parentIdentityId?: string | null;
-    externalRef: string;
+    platform: string;
     displayName: string;
-    accountMode: 'binance_pm' | 'okx_mcm' | 'okx_pm' | 'bybit_uta_2_0';
-    kind: 'main' | 'subordinate';
-    status: 'enabled' | 'disabled' | 'archived';
+    accountMode: string;
+    externalRef?: string | null;
+    status: 'enabled' | 'archived';
+    archivedAt?: string | null;
+    connection: Connection;
+    accounts: Array<Account>;
     version: number;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type IdentityList = {
@@ -117,91 +151,460 @@ export type IdentityList = {
 };
 
 export type CreateIdentityRequest = {
-    platformId: Uuid;
-    parentIdentityId?: string | null;
-    externalRef: string;
+    platform: string;
     displayName: string;
-    accountMode: 'binance_pm' | 'okx_mcm' | 'okx_pm' | 'bybit_uta_2_0';
-    kind: 'main' | 'subordinate';
+    accountMode: string;
+    selectedAccountTypes: Array<string>;
+};
+
+export type AccountPatch = {
+    id: Uuid;
+    selected?: boolean;
+    displayName?: string;
 };
 
 export type PatchIdentityRequest = {
     displayName?: string;
-    status?: 'enabled' | 'disabled';
-    parentIdentityId?: string | null;
-    externalRef?: string;
-    accountMode?: 'binance_pm' | 'okx_mcm' | 'okx_pm' | 'bybit_uta_2_0';
+    accounts?: Array<AccountPatch>;
 };
 
-export type Connection = {
-    id: Uuid;
-    portfolioId: Uuid;
-    identityId: Uuid;
-    label: string;
-    status: 'enabled' | 'disabled' | 'invalid';
-    credentialsConfigured: boolean;
-    collectionIntervalSeconds?: number;
-    freshnessAfterSeconds?: number;
-    lastValidatedAt?: string | null;
-    credentialsUpdatedAt?: string | null;
-    version: number;
-};
-
-export type ConnectionList = {
-    items: Array<Connection>;
-};
-
-export type CreateConnectionRequest = {
-    identityId: Uuid;
-    label: string;
-    collectionIntervalSeconds?: number;
-    freshnessAfterSeconds?: number;
-    status?: 'enabled' | 'disabled' | 'invalid';
-};
-
-export type PatchConnectionRequest = {
-    label?: string;
-    status?: 'enabled' | 'disabled' | 'invalid';
-    collectionIntervalSeconds?: number;
-    freshnessAfterSeconds?: number;
-};
-
-export type ConnectionCredentials = {
+export type PutCredentialsRequest = {
     apiKey: string;
     apiSecret: string;
     passphrase?: string;
 };
 
-export type Job = {
+export type ValidationOutcome = {
+    ok: boolean;
+    externalRef?: string | null;
+    errorClass?: string | null;
+    errorDetail?: string | null;
+    validatedAt: string;
+    identity: Identity;
+};
+
+export type CollectionCycle = {
     id: Uuid;
     portfolioId: Uuid;
-    kind: 'collection' | 'projection';
-    status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+    status: JobStatus;
+    trigger: 'schedule' | 'manual' | 'system';
     attemptCount: number;
     maxAttempts: number;
-    lastErrorCode?: string | null;
-    lastErrorDetail?: string | null;
+    lastErrorClass?: string | null;
+    /**
+     * Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+     */
+    lastDetail?: string | null;
     createdAt: string;
     startedAt?: string | null;
     finishedAt?: string | null;
-    attempts?: Array<JobAttempt>;
+    point?: ValuationPointSummary | null;
 };
 
-export type JobAttempt = {
-    attemptNumber: number;
-    workerId: string;
-    startedAt: string;
-    finishedAt?: string | null;
-    outcome: 'succeeded' | 'failed' | 'cancelled';
+export type CollectionCycleList = {
+    items: Array<CollectionCycle>;
+    page: CursorPage;
+};
+
+export type CollectionCycleDetail = {
+    cycle: CollectionCycle;
+    accounts: Array<AccountValuation>;
+    issues: Array<Issue>;
+};
+
+export type ReadContext = {
+    portfolioId: Uuid;
+    timezone: string;
+    pointId?: string | null;
+    jobId?: string | null;
+    evaluatedAt?: string | null;
+};
+
+export type Issue = {
+    code: string;
+    detail: string;
+    accountId?: string | null;
+    accountName?: string | null;
+    symbol?: string | null;
+};
+
+export type OmittedBalance = {
+    symbol: string;
+    /**
+     * The Asset symbol the listing is mapped to, present only when it differs from the Platform symbol.
+     */
+    assetSymbol?: string;
+    equity: Decimal;
+    reason: string;
+};
+
+export type GroupTotal = {
+    key: string;
+    label: string;
+    platform?: string | null;
+    valueUsd: NullableDecimal;
+    accountCount: number;
+    rowCount: number;
+    completeness: Completeness;
+};
+
+export type ValuationPointSummary = {
+    id: Uuid;
+    jobId: Uuid;
+    evaluatedAt: string;
+    totalUsd: Decimal;
+    completeness: Completeness;
+    accountCount: number;
+    staleAccountCount: number;
+    incompleteAccountCount: number;
+    boundaryContributionUsd: Decimal;
+    boundaryWithdrawalUsd: Decimal;
+    recalculatedAt?: string | null;
+};
+
+export type Overview = {
+    context: ReadContext;
+    point?: ValuationPointSummary | null;
+    totalUsd?: NullableDecimal;
+    completeness: Completeness;
+    accountCount: number;
+    staleAccountCount: number;
+    incompleteAccountCount: number;
+    byPlatform: Array<GroupTotal>;
+    byIdentity: Array<GroupTotal>;
+    issues: Array<Issue>;
+    sparkline: Array<ValuationPointSummary>;
+};
+
+export type AccountValuation = {
+    reportId?: string | null;
+    accountId: Uuid;
+    accountName: string;
+    accountType: string;
+    selected: boolean;
+    identityId: Uuid;
+    identityName: string;
+    identityStatus?: string | null;
+    connectionStatus?: string | null;
+    platform: string;
+    status: 'ok' | 'failed';
     errorClass?: string | null;
-    errorCode?: string | null;
-    safeDetail?: string | null;
+    errorDetail?: string | null;
+    method: 'reported' | 'calculated' | 'missing';
+    freshness: Freshness;
+    completeness: Completeness;
+    valueUsd?: NullableDecimal;
+    reportObservedAt?: string | null;
+    equity?: NullableDecimal;
+    adjustedEquity?: NullableDecimal;
+    availableEquity?: NullableDecimal;
+    initialMarginRatio?: NullableDecimal;
+    maintenanceMarginRatio?: NullableDecimal;
+    unifiedMarginRatio?: NullableDecimal;
+    omitted: Array<OmittedBalance>;
+};
+
+export type TreeIdentity = {
+    id: Uuid;
+    displayName: string;
+    status: string;
+    connectionStatus: string;
+    valueUsd: NullableDecimal;
+    completeness: Completeness;
+    accounts: Array<AccountValuation>;
+};
+
+export type TreePlatform = {
+    platform: string;
+    label: string;
+    valueUsd: NullableDecimal;
+    completeness: Completeness;
+    identities: Array<TreeIdentity>;
+};
+
+export type HoldingsTree = {
+    context: ReadContext;
+    totalUsd: NullableDecimal;
+    completeness: Completeness;
+    platforms: Array<TreePlatform>;
+    issues: Array<Issue>;
+};
+
+export type BalanceRow = {
+    accountId: Uuid;
+    accountName: string;
+    accountType: string;
+    identityId: Uuid;
+    identityName: string;
+    platform: string;
+    listingId: Uuid;
+    symbol: string;
+    assetSymbol: string;
+    equity: Decimal;
+    availableToWithdraw?: NullableDecimal;
+    availableToTrade?: NullableDecimal;
+    liability?: NullableDecimal;
+    interest?: NullableDecimal;
+    unrealizedPnl?: NullableDecimal;
+    priceUsd?: NullableDecimal;
+    equityUsd?: NullableDecimal;
+    noPrice: boolean;
+    freshness: Freshness;
+    reportObservedAt?: string | null;
+};
+
+export type PositionRow = {
+    accountId: Uuid;
+    accountName: string;
+    accountType: string;
+    identityId: Uuid;
+    identityName: string;
+    platform: string;
+    platformPositionRef: string;
+    instrumentId: Uuid;
+    symbol: string;
+    kind: string;
+    baseSymbol?: string | null;
+    quoteSymbol?: string | null;
+    settlementSymbol?: string | null;
+    expiryAt?: string | null;
+    contractSize?: NullableDecimal;
+    side: 'long' | 'short';
+    quantity: Decimal;
+    quantityUnit: 'contracts' | 'base' | 'quote';
+    entryPrice?: NullableDecimal;
+    markPrice?: NullableDecimal;
+    liquidationPrice?: NullableDecimal;
+    unrealizedPnl?: NullableDecimal;
+    leverage?: NullableDecimal;
+    margin?: NullableDecimal;
+    notionalUsd?: NullableDecimal;
+    freshness: Freshness;
+    reportObservedAt?: string | null;
+};
+
+export type AccountBalanceList = {
+    context: ReadContext;
+    account: AccountValuation;
+    items: Array<BalanceRow>;
+    issues: Array<Issue>;
+};
+
+export type AccountPositionList = {
+    context: ReadContext;
+    account: AccountValuation;
+    items: Array<PositionRow>;
+    issues: Array<Issue>;
+};
+
+export type BalanceList = {
+    context: ReadContext;
+    items: Array<BalanceRow>;
+    groups: Array<GroupTotal>;
+    page: OffsetPage;
+    totalUsd: NullableDecimal;
+    completeness: Completeness;
+    issues: Array<Issue>;
+};
+
+export type PositionList = {
+    context: ReadContext;
+    items: Array<PositionRow>;
+    page: OffsetPage;
+    totalNotionalUsd: NullableDecimal;
+    completeness: Completeness;
+    issues: Array<Issue>;
+};
+
+export type ValuationPointList = {
+    context: ReadContext;
+    items: Array<ValuationPointSummary>;
+    granularity: TimeGranularity;
+    from: string;
+    to: string;
+};
+
+export type BoundaryEvent = {
+    pointId: Uuid;
+    evaluatedAt: string;
+    accountId: Uuid;
+    accountName: string;
+    identityId?: string | null;
+    identityName?: string | null;
+    platform?: string | null;
+    direction: 'contribution' | 'withdrawal';
+    valueUsd?: NullableDecimal;
+    method: string;
+};
+
+export type BoundaryEventList = {
+    items: Array<BoundaryEvent>;
+};
+
+export type ValuationPointDetail = {
+    point: ValuationPointSummary;
+    accounts: Array<AccountValuation>;
+    issues: Array<Issue>;
+    boundaryEvents: Array<BoundaryEvent>;
+};
+
+export type PeriodClose = {
+    periodKind: PeriodKind;
+    label: string;
+    periodStart: string;
+    periodEnd: string;
+    point?: ValuationPointSummary | null;
+    completeness: Completeness;
+    reasons: Array<string>;
+};
+
+export type PeriodCloseList = {
+    context: ReadContext;
+    periodKind: PeriodKind;
+    items: Array<PeriodClose>;
+};
+
+export type ValueChange = {
+    periodKind: string;
+    label: string;
+    from: string;
+    to: string;
+    startPoint?: ValuationPointSummary | null;
+    endPoint?: ValuationPointSummary | null;
+    contributionsUsd: Decimal;
+    withdrawalsUsd: Decimal;
+    boundaryContributionsUsd: Decimal;
+    boundaryWithdrawalsUsd: Decimal;
+    amountUsd?: NullableDecimal;
+    completeness: Completeness;
+    reasons: Array<string>;
+    boundaryEvents: Array<BoundaryEvent>;
+};
+
+export type ValueChangeList = {
+    context: ReadContext;
+    periodKind: PeriodKind;
+    items: Array<ValueChange>;
+};
+
+export type CapitalFlow = {
+    id: Uuid;
+    portfolioId: Uuid;
+    direction: 'contribution' | 'withdrawal';
+    assetSymbol: string;
+    quantity: Decimal;
+    valueUsd?: NullableDecimal;
+    effectiveAt: string;
+    accountId?: string | null;
+    accountName?: string | null;
+    note?: string | null;
+    version: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type CapitalFlowList = {
+    items: Array<CapitalFlow>;
+};
+
+export type CreateCapitalFlowRequest = {
+    direction: 'contribution' | 'withdrawal';
+    assetSymbol: string;
+    quantity: Decimal;
+    valueUsd?: Decimal;
+    effectiveAt: string;
+    accountId?: Uuid;
+    note?: string;
+};
+
+export type PatchCapitalFlowRequest = {
+    direction?: 'contribution' | 'withdrawal';
+    assetSymbol?: string;
+    quantity?: Decimal;
+    valueUsd?: NullableDecimal;
+    effectiveAt?: string;
+    accountId?: string | null;
+    note?: string | null;
+};
+
+export type AssetListing = {
+    id: Uuid;
+    platform: string;
+    symbol: string;
+    assetSymbol: string;
+    name?: string | null;
+    mappingSource: 'auto' | 'manual';
+    firstSeenAt: string;
+    lastSeenAt: string;
+    version: number;
+};
+
+export type AssetListingList = {
+    items: Array<AssetListing>;
+    page: OffsetPage;
+};
+
+export type PutAssetListingMappingRequest = {
+    assetSymbol: string;
+};
+
+export type Instrument = {
+    id: Uuid;
+    platform: string;
+    symbol: string;
+    kind: string;
+    baseSymbol?: string | null;
+    quoteSymbol?: string | null;
+    settlementSymbol?: string | null;
+    expiryAt?: string | null;
+    contractSize?: NullableDecimal;
+    firstSeenAt: string;
+    lastSeenAt: string;
+};
+
+export type InstrumentList = {
+    items: Array<Instrument>;
+    page: OffsetPage;
+};
+
+export type Job = {
+    id: Uuid;
+    portfolioId: Uuid;
+    kind: JobKind;
+    status: JobStatus;
+    trigger: 'schedule' | 'manual' | 'system';
+    attemptCount: number;
+    maxAttempts: number;
+    lastErrorClass?: string | null;
+    /**
+     * Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+     */
+    lastDetail?: string | null;
+    createdAt: string;
+    startedAt?: string | null;
+    finishedAt?: string | null;
 };
 
 export type JobList = {
     items: Array<Job>;
     page: CursorPage;
 };
+
+export type JobKind = 'collection_cycle' | 'valuation_recalc';
+
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+export type Decimal = string;
+
+export type NullableDecimal = string | null;
+
+export type Completeness = 'complete' | 'incomplete';
+
+export type Freshness = 'fresh' | 'stale';
+
+export type TimeGranularity = 'raw' | 'hour' | 'day';
+
+export type PeriodKind = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
 export type CursorPage = {
     kind: 'cursor';
@@ -215,480 +618,6 @@ export type OffsetPage = {
     offset: number;
     limit: number;
     total: number;
-};
-
-export type Decimal = string;
-
-export type NullableDecimal = string | null;
-
-export type Completeness = 'complete' | 'partial' | 'missing';
-
-export type Freshness = 'fresh' | 'stale' | 'unknown';
-
-export type Coverage = 'complete' | 'partial' | 'ambiguous' | 'changed' | 'missing';
-
-export type DisplayAsset = {
-    id: Uuid;
-    code: string;
-};
-
-export type ProjectionContext = {
-    timezone: string;
-    displayAsset: DisplayAsset;
-    cutoffAt: string | null;
-    completeness: Completeness;
-    coverage: Coverage;
-    freshness: Freshness;
-    generationId?: string | null;
-    rebuildPending?: boolean;
-};
-
-export type ProjectionIssue = {
-    id?: string | null;
-    projectionKind: string;
-    projectionKey?: string;
-    code: string;
-    severity: 'info' | 'warning' | 'error';
-    summary: string;
-    identityId?: string | null;
-    accountId?: string | null;
-    observationId?: string | null;
-    firstEffectiveAt?: string;
-    lastEffectiveAt?: string;
-};
-
-export type AmountStatus = {
-    amount: NullableDecimal;
-    completeness: Completeness;
-    coverage: Coverage;
-    freshness: Freshness;
-    evaluatedAt?: string | null;
-    state?: string | null;
-    periodKind?: string | null;
-    periodStartDate?: string | null;
-    periodEndDate?: string | null;
-};
-
-export type ValuationPoint = {
-    evaluatedAt: string;
-    amount: NullableDecimal;
-    completeness: Completeness;
-};
-
-export type ValueChangePoint = {
-    periodKind: 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
-    periodStartDate: string;
-    periodEndDate: string;
-    amount: NullableDecimal;
-    state: 'complete' | 'provisional' | 'incomplete' | 'incomparable';
-};
-
-export type ExposurePoint = {
-    assetId: Uuid;
-    assetCode?: string;
-    longQuantity: Decimal;
-    shortQuantity: Decimal;
-    netQuantity: Decimal;
-    longValue?: NullableDecimal;
-    shortValue?: NullableDecimal;
-    netValue?: NullableDecimal;
-    completeness: Completeness;
-    freshness: Freshness;
-};
-
-export type Overview = {
-    portfolioId: Uuid;
-    context: ProjectionContext;
-    valuation: AmountStatus;
-    contributedCapital: AmountStatus;
-    valueChange: AmountStatus;
-    valuationSeries: Array<ValuationPoint>;
-    valueChanges: Array<ValueChangePoint>;
-    exposures: Array<ExposurePoint>;
-    issues: Array<ProjectionIssue>;
-};
-
-export type BalanceRow = {
-    identityId: Uuid;
-    identityName?: string;
-    accountId: Uuid;
-    accountName?: string;
-    platformId?: Uuid;
-    platformCode?: string;
-    assetListingId: Uuid;
-    listingSymbol?: string;
-    assetId?: string | null;
-    assetCode?: string | null;
-    totalQuantity?: NullableDecimal;
-    availableQuantity?: NullableDecimal;
-    lockedQuantity?: NullableDecimal;
-    sourceObservedAt: string;
-    freshness: Freshness;
-    completeness: Completeness;
-};
-
-export type PositionRow = {
-    identityId: Uuid;
-    identityName?: string;
-    accountId: Uuid;
-    accountName?: string;
-    platformId?: Uuid;
-    platformCode?: string;
-    instrumentId: Uuid;
-    instrumentSymbol?: string;
-    platformPositionRef: string;
-    side: 'long' | 'short' | 'net';
-    quantity: Decimal;
-    selectedMarkPrice?: NullableDecimal;
-    underlyingLongQuantity: Decimal;
-    underlyingShortQuantity: Decimal;
-    sourceObservedAt: string;
-    freshness: Freshness;
-    completeness: Completeness;
-};
-
-export type GroupTotals = {
-    totalQuantity?: NullableDecimal;
-    availableQuantity?: NullableDecimal;
-    lockedQuantity?: NullableDecimal;
-    quantity?: NullableDecimal;
-    underlyingLongQuantity?: NullableDecimal;
-    underlyingShortQuantity?: NullableDecimal;
-    longQuantity?: NullableDecimal;
-    shortQuantity?: NullableDecimal;
-    netQuantity?: NullableDecimal;
-    longValue?: NullableDecimal;
-    shortValue?: NullableDecimal;
-    netValue?: NullableDecimal;
-};
-
-export type ProjectionGroup = {
-    grouping: string;
-    key: string;
-    label: string;
-    completeness: Completeness;
-    freshness: Freshness;
-    totals: GroupTotals;
-};
-
-export type BalanceList = {
-    items: Array<BalanceRow>;
-    groups: Array<ProjectionGroup>;
-    page: OffsetPage;
-    context: ProjectionContext;
-    issues: Array<ProjectionIssue>;
-};
-
-export type PositionList = {
-    items: Array<PositionRow>;
-    groups: Array<ProjectionGroup>;
-    page: OffsetPage;
-    context: ProjectionContext;
-    issues: Array<ProjectionIssue>;
-};
-
-export type Account = {
-    id: Uuid;
-    portfolioId: Uuid;
-    identityId: Uuid;
-    externalRef: string;
-    displayName: string;
-    accountType: string;
-    status: 'active' | 'inactive' | 'disappeared';
-};
-
-export type AccountList = {
-    items: Array<Account>;
-    page: OffsetPage;
-};
-
-export type CatalogAsset = {
-    id: Uuid;
-    code: string;
-    name: string;
-    kind: 'fiat' | 'crypto' | 'other';
-    status: 'active' | 'provisional' | 'retired';
-    decimals?: number | null;
-};
-
-export type AssetList = {
-    items: Array<CatalogAsset>;
-    page: OffsetPage;
-};
-
-export type Observation = {
-    id: Uuid;
-    portfolioId: Uuid;
-    identitySnapshotId: Uuid;
-    identityId: Uuid;
-    accountId?: string | null;
-    kind: ObservationKind;
-    sourceObservedAt: string;
-    collectedAt: string;
-    completeness: 'complete' | 'partial';
-    version: number;
-    balance?: BalanceObservation;
-    position?: PositionObservation;
-    reportedEquity?: ReportedEquityObservation;
-    price?: PriceObservation;
-    accountMetric?: AccountMetricObservation;
-};
-
-export type ObservationKind = 'balance' | 'position' | 'reported_equity' | 'account_metric' | 'price';
-
-export type BalanceObservation = {
-    assetListingId: Uuid;
-    totalQuantity?: string | null;
-    availableQuantity?: string | null;
-    lockedQuantity?: string | null;
-};
-
-export type PositionObservation = {
-    instrumentId: Uuid;
-    platformPositionRef: string;
-    side: 'long' | 'short' | 'net';
-    quantity: Decimal;
-    entryPrice?: string | null;
-    markPrice?: string | null;
-    unrealizedValue?: string | null;
-    leverage?: string | null;
-};
-
-export type ReportedEquityObservation = {
-    denominationListingId: Uuid;
-    amount: Decimal;
-    coveredIdentityIds: Array<Uuid>;
-    coveredAccountIds: Array<Uuid>;
-};
-
-export type PriceObservation = {
-    instrumentId?: string | null;
-    baseListingId?: string | null;
-    quoteListingId: Uuid;
-    priceType: 'market' | 'mark' | 'index' | 'exchange_rate';
-    price: Decimal;
-};
-
-export type AccountMetricObservation = {
-    metricCode: string;
-    unit: string;
-    decimalValue?: string | null;
-    textValue?: string | null;
-    semanticsVersion: string;
-};
-
-export type PatchObservationRequest = {
-    completeness?: 'complete' | 'partial';
-    totalQuantity?: string | null;
-    availableQuantity?: string | null;
-    lockedQuantity?: string | null;
-    side?: 'long' | 'short' | 'net';
-    quantity?: Decimal;
-    entryPrice?: string | null;
-    markPrice?: string | null;
-    unrealizedValue?: string | null;
-    leverage?: string | null;
-    amount?: Decimal;
-    price?: Decimal;
-    decimalValue?: string | null;
-    textValue?: string | null;
-};
-
-export type ObservationCorrection = {
-    observation: Observation;
-    job: Job;
-};
-
-export type ObservationSummary = {
-    id: Uuid;
-    portfolioId: Uuid;
-    identitySnapshotId: Uuid;
-    identityId: Uuid;
-    accountId?: string | null;
-    kind: ObservationKind;
-    sourceObservedAt: string;
-    collectedAt: string;
-    completeness: 'complete' | 'partial';
-    version: number;
-    summary?: string;
-};
-
-export type ObservationList = {
-    items: Array<ObservationSummary>;
-    page: CursorPage;
-};
-
-export type CatalogPinSubjectKind = 'listing' | 'instrument';
-
-export type TimeGranularity = 'auto' | 'hour' | 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
-
-export type CalendarPeriodKind = 'day' | 'iso_week' | 'month' | 'quarter' | 'year';
-
-export type MissingInterval = {
-    start: string;
-    end: string;
-};
-
-export type CatalogAssetListing = {
-    id: Uuid;
-    platformId: Uuid;
-    platformCode?: string;
-    externalRef: string;
-    symbol: string;
-    name?: string | null;
-    status: 'active' | 'inactive' | 'unknown';
-    mappedAssetId?: string | null;
-    mappedAssetCode?: string | null;
-    mappingState?: 'unmapped' | 'provisional' | 'confirmed';
-    mappingVersion?: number | null;
-    pinned?: boolean;
-};
-
-export type AssetListingList = {
-    items: Array<CatalogAssetListing>;
-    page: OffsetPage;
-};
-
-export type CatalogInstrument = {
-    id: Uuid;
-    platformId: Uuid;
-    platformCode?: string;
-    externalRef: string;
-    symbol: string;
-    kind: 'spot' | 'linear_perpetual' | 'inverse_perpetual' | 'linear_delivery' | 'inverse_delivery';
-    status: 'active' | 'expired' | 'unknown';
-    expiryAt?: string | null;
-    pinned?: boolean;
-};
-
-export type InstrumentList = {
-    items: Array<CatalogInstrument>;
-    page: OffsetPage;
-};
-
-export type CatalogMapping = {
-    id: Uuid;
-    portfolioId: Uuid;
-    listingId: Uuid;
-    assetId: Uuid;
-    state: 'provisional' | 'confirmed';
-    displayNameOverride?: string | null;
-    currentRevisionId?: Uuid;
-    version: number;
-};
-
-export type CatalogMappingMutation = {
-    mapping: CatalogMapping;
-    job: Job;
-};
-
-export type PutCatalogMappingRequest = {
-    assetId: Uuid;
-    state: 'provisional' | 'confirmed';
-    displayNameOverride?: string | null;
-    reason?: string | null;
-};
-
-export type CatalogPin = {
-    id: Uuid;
-    portfolioId: Uuid;
-    subjectKind: CatalogPinSubjectKind;
-    subjectId: Uuid;
-    enabled: boolean;
-    currentRevisionId?: Uuid;
-    version: number;
-};
-
-export type CatalogPinMutation = {
-    pin: CatalogPin;
-    job: Job;
-};
-
-export type PutCatalogPinRequest = {
-    reason?: string | null;
-};
-
-export type ExposureRow = {
-    assetId: Uuid;
-    assetCode?: string;
-    platformId?: string | null;
-    platformCode?: string | null;
-    identityId?: string | null;
-    identityName?: string | null;
-    accountId?: string | null;
-    accountName?: string | null;
-    longQuantity: Decimal;
-    shortQuantity: Decimal;
-    netQuantity: Decimal;
-    longValue?: NullableDecimal;
-    shortValue?: NullableDecimal;
-    netValue?: NullableDecimal;
-    completeness: Completeness;
-    freshness: Freshness;
-    evaluatedAt?: string | null;
-};
-
-export type ExposureList = {
-    items: Array<ExposureRow>;
-    groups: Array<ProjectionGroup>;
-    page: OffsetPage;
-    context: ProjectionContext;
-    issues: Array<ProjectionIssue>;
-};
-
-export type ValuationList = {
-    items: Array<ValuationPoint>;
-    page: CursorPage;
-    context: ProjectionContext;
-    granularity?: TimeGranularity;
-    missingIntervals?: Array<MissingInterval>;
-    issues: Array<ProjectionIssue>;
-};
-
-export type ValueChangeRow = {
-    periodKind: CalendarPeriodKind;
-    periodStartDate: string;
-    periodEndDate: string;
-    amount: NullableDecimal;
-    state: 'complete' | 'provisional' | 'incomplete' | 'incomparable';
-    contributionAmount?: NullableDecimal;
-    withdrawalAmount?: NullableDecimal;
-    coverageFingerprint?: string | null;
-};
-
-export type ValueChangeList = {
-    items: Array<ValueChangeRow>;
-    page: CursorPage;
-    context: ProjectionContext;
-    granularity?: TimeGranularity;
-    missingIntervals?: Array<MissingInterval>;
-    issues: Array<ProjectionIssue>;
-};
-
-export type PeriodSummary = {
-    periodKind: CalendarPeriodKind;
-    periodStartDate: string;
-    periodEndDate: string;
-    asOfAt?: string | null;
-    valuationOpen?: NullableDecimal;
-    valuationClose?: NullableDecimal;
-    valuationHigh?: NullableDecimal;
-    valuationLow?: NullableDecimal;
-    contributedCapitalClose?: NullableDecimal;
-    valueChange?: NullableDecimal;
-    completeness: Completeness;
-    freshness: Freshness;
-};
-
-export type PeriodSummaryList = {
-    items: Array<PeriodSummary>;
-    page: CursorPage;
-    context: ProjectionContext;
-    issues: Array<ProjectionIssue>;
-};
-
-export type CreateProjectionRebuildRequest = {
-    reason?: string;
 };
 
 export type AuditEvent = {
@@ -716,104 +645,6 @@ export type AuditEventList = {
     page: CursorPage;
 };
 
-export type CapitalBaseline = {
-    id: Uuid;
-    portfolioId: Uuid;
-    currentRevisionId: Uuid;
-    version: number;
-    effectiveAt: string;
-    assetId: Uuid;
-    quantity: Decimal;
-    note?: string | null;
-};
-
-export type CapitalBaselineMutation = {
-    baseline: CapitalBaseline;
-    job: Job;
-};
-
-export type PutCapitalBaselineRequest = {
-    effectiveAt: string;
-    assetId: Uuid;
-    quantity: Decimal;
-    note?: string | null;
-};
-
-export type CapitalBaselineRevision = {
-    id: Uuid;
-    effectiveAt: string;
-    assetId: Uuid;
-    quantity: Decimal;
-    note?: string | null;
-    createdByUserId: Uuid;
-    createdAt: string;
-};
-
-export type CapitalBaselineRevisionList = {
-    items: Array<CapitalBaselineRevision>;
-    page: CursorPage;
-};
-
-export type CapitalFlow = {
-    id: Uuid;
-    portfolioId: Uuid;
-    currentRevisionId: Uuid;
-    version: number;
-    direction: 'contribution' | 'withdrawal';
-    quantity: Decimal;
-    assetId: Uuid;
-    effectiveAt: string;
-    accountId?: string | null;
-    note?: string | null;
-    state: 'active' | 'deleted';
-};
-
-export type CapitalFlowMutation = {
-    flow: CapitalFlow;
-    job: Job;
-};
-
-export type CapitalFlowList = {
-    items: Array<CapitalFlow>;
-    page: OffsetPage;
-};
-
-export type CreateCapitalFlowRequest = {
-    direction: 'contribution' | 'withdrawal';
-    quantity: Decimal;
-    assetId: Uuid;
-    effectiveAt: string;
-    accountId?: string | null;
-    note?: string | null;
-};
-
-export type PatchCapitalFlowRequest = {
-    direction?: 'contribution' | 'withdrawal';
-    quantity?: Decimal;
-    assetId?: Uuid;
-    effectiveAt?: string;
-    accountId?: string | null;
-    note?: string | null;
-};
-
-export type CapitalFlowRevision = {
-    id: Uuid;
-    direction: 'contribution' | 'withdrawal';
-    quantity: Decimal;
-    assetId: Uuid;
-    effectiveAt: string;
-    accountId?: string | null;
-    note?: string | null;
-    state: 'active' | 'deleted';
-    createdByUserId: Uuid;
-    createdAt: string;
-};
-
-export type CapitalFlowRevisionList = {
-    items: Array<CapitalFlowRevision>;
-    page: CursorPage;
-};
-
 export type Problem = {
     type: string;
     title: string;
@@ -831,23 +662,6 @@ export type FieldError = {
     message: string;
 };
 
-export type CreateConnectionRequestWritable = {
-    identityId: Uuid;
-    label: string;
-    collectionIntervalSeconds?: number;
-    freshnessAfterSeconds?: number;
-    status?: 'enabled' | 'disabled' | 'invalid';
-    credentials?: ConnectionCredentials;
-};
-
-export type PatchConnectionRequestWritable = {
-    label?: string;
-    status?: 'enabled' | 'disabled' | 'invalid';
-    collectionIntervalSeconds?: number;
-    freshnessAfterSeconds?: number;
-    credentials?: ConnectionCredentials;
-};
-
 export type CsrfToken = string;
 
 export type IdempotencyKey = string;
@@ -858,11 +672,13 @@ export type PortfolioId = Uuid;
 
 export type IdentityId = Uuid;
 
-export type ConnectionId = Uuid;
+export type AccountId = Uuid;
+
+export type CycleId = Uuid;
+
+export type PointId = Uuid;
 
 export type JobId = Uuid;
-
-export type ObservationId = Uuid;
 
 export type FlowId = Uuid;
 
@@ -870,19 +686,14 @@ export type SessionId = Uuid;
 
 export type ListingId = Uuid;
 
-export type SubjectKind = CatalogPinSubjectKind;
-
-export type SubjectId = Uuid;
-
+/**
+ * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+ */
 export type TimeFrom = string;
 
 export type TimeTo = string;
 
-export type Granularity = TimeGranularity;
-
-export type MaxPoints = number;
-
-export type PeriodKind = CalendarPeriodKind;
+export type PeriodKind2 = PeriodKind;
 
 export type GetHealthLiveData = {
     body?: never;
@@ -1167,7 +978,7 @@ export type ListPortfoliosError = ListPortfoliosErrors[keyof ListPortfoliosError
 
 export type ListPortfoliosResponses = {
     /**
-     * Portfolios.
+     * Owned portfolios.
      */
     200: PortfolioList;
 };
@@ -1204,7 +1015,7 @@ export type CreatePortfolioError = CreatePortfolioErrors[keyof CreatePortfolioEr
 
 export type CreatePortfolioResponses = {
     /**
-     * Created.
+     * Portfolio created.
      */
     201: Portfolio;
 };
@@ -1247,7 +1058,7 @@ export type DeletePortfolioError = DeletePortfolioErrors[keyof DeletePortfolioEr
 
 export type DeletePortfolioResponses = {
     /**
-     * Deleted the portfolio and every row scoped to it.
+     * Deleted.
      */
     204: void;
 };
@@ -1278,7 +1089,7 @@ export type GetPortfolioError = GetPortfolioErrors[keyof GetPortfolioErrors];
 
 export type GetPortfolioResponses = {
     /**
-     * Portfolio.
+     * The portfolio.
      */
     200: Portfolio;
 };
@@ -1321,12 +1132,37 @@ export type PatchPortfolioError = PatchPortfolioErrors[keyof PatchPortfolioError
 
 export type PatchPortfolioResponses = {
     /**
-     * Updated.
+     * Updated portfolio.
      */
     200: Portfolio;
 };
 
 export type PatchPortfolioResponse = PatchPortfolioResponses[keyof PatchPortfolioResponses];
+
+export type ListPlatformsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/platforms';
+};
+
+export type ListPlatformsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+};
+
+export type ListPlatformsError = ListPlatformsErrors[keyof ListPlatformsErrors];
+
+export type ListPlatformsResponses = {
+    /**
+     * Supported platforms.
+     */
+    200: PlatformList;
+};
+
+export type ListPlatformsResponse = ListPlatformsResponses[keyof ListPlatformsResponses];
 
 export type ListIdentitiesData = {
     body?: never;
@@ -1395,7 +1231,7 @@ export type CreateIdentityError = CreateIdentityErrors[keyof CreateIdentityError
 
 export type CreateIdentityResponses = {
     /**
-     * Created.
+     * Identity created.
      */
     201: Identity;
 };
@@ -1427,7 +1263,7 @@ export type GetIdentityError = GetIdentityErrors[keyof GetIdentityErrors];
 
 export type GetIdentityResponses = {
     /**
-     * Identity.
+     * The identity.
      */
     200: Identity;
 };
@@ -1475,7 +1311,7 @@ export type PatchIdentityError = PatchIdentityErrors[keyof PatchIdentityErrors];
 
 export type PatchIdentityResponses = {
     /**
-     * Updated.
+     * Updated identity.
      */
     200: Identity;
 };
@@ -1519,23 +1355,265 @@ export type ArchiveIdentityError = ArchiveIdentityErrors[keyof ArchiveIdentityEr
 
 export type ArchiveIdentityResponses = {
     /**
-     * Archived.
+     * Archived identity.
      */
     200: Identity;
 };
 
 export type ArchiveIdentityResponse = ArchiveIdentityResponses[keyof ArchiveIdentityResponses];
 
-export type ListConnectionsData = {
+export type DeleteIdentityCredentialsData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials';
+};
+
+export type DeleteIdentityCredentialsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type DeleteIdentityCredentialsError = DeleteIdentityCredentialsErrors[keyof DeleteIdentityCredentialsErrors];
+
+export type DeleteIdentityCredentialsResponses = {
+    /**
+     * Credentials removed.
+     */
+    200: Identity;
+};
+
+export type DeleteIdentityCredentialsResponse = DeleteIdentityCredentialsResponses[keyof DeleteIdentityCredentialsResponses];
+
+export type PutIdentityCredentialsData = {
+    body: PutCredentialsRequest;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials';
+};
+
+export type PutIdentityCredentialsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+    /**
+     * Problem details.
+     */
+    503: Problem;
+};
+
+export type PutIdentityCredentialsError = PutIdentityCredentialsErrors[keyof PutIdentityCredentialsErrors];
+
+export type PutIdentityCredentialsResponses = {
+    /**
+     * Credentials stored; the connection is disabled until enabled.
+     */
+    200: Identity;
+};
+
+export type PutIdentityCredentialsResponse = PutIdentityCredentialsResponses[keyof PutIdentityCredentialsResponses];
+
+export type ValidateIdentityConnectionData = {
+    body?: never;
+    headers?: {
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/validate';
+};
+
+export type ValidateIdentityConnectionErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    503: Problem;
+};
+
+export type ValidateIdentityConnectionError = ValidateIdentityConnectionErrors[keyof ValidateIdentityConnectionErrors];
+
+export type ValidateIdentityConnectionResponses = {
+    /**
+     * Validation outcome.
+     */
+    200: ValidationOutcome;
+};
+
+export type ValidateIdentityConnectionResponse = ValidateIdentityConnectionResponses[keyof ValidateIdentityConnectionResponses];
+
+export type EnableIdentityConnectionData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/enable';
+};
+
+export type EnableIdentityConnectionErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+    /**
+     * Validation failed; the connection stays disabled or became invalid.
+     */
+    422: ValidationOutcome;
+    /**
+     * Problem details.
+     */
+    503: Problem;
+};
+
+export type EnableIdentityConnectionError = EnableIdentityConnectionErrors[keyof EnableIdentityConnectionErrors];
+
+export type EnableIdentityConnectionResponses = {
+    /**
+     * Connection enabled.
+     */
+    200: ValidationOutcome;
+};
+
+export type EnableIdentityConnectionResponse = EnableIdentityConnectionResponses[keyof EnableIdentityConnectionResponses];
+
+export type DisableIdentityConnectionData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/disable';
+};
+
+export type DisableIdentityConnectionErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type DisableIdentityConnectionError = DisableIdentityConnectionErrors[keyof DisableIdentityConnectionErrors];
+
+export type DisableIdentityConnectionResponses = {
+    /**
+     * Connection disabled.
+     */
+    200: Identity;
+};
+
+export type DisableIdentityConnectionResponse = DisableIdentityConnectionResponses[keyof DisableIdentityConnectionResponses];
+
+export type ListCollectionCyclesData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/connections';
+    query?: {
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles';
 };
 
-export type ListConnectionsErrors = {
+export type ListCollectionCyclesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -1546,19 +1624,19 @@ export type ListConnectionsErrors = {
     404: Problem;
 };
 
-export type ListConnectionsError = ListConnectionsErrors[keyof ListConnectionsErrors];
+export type ListCollectionCyclesError = ListCollectionCyclesErrors[keyof ListCollectionCyclesErrors];
 
-export type ListConnectionsResponses = {
+export type ListCollectionCyclesResponses = {
     /**
-     * Connections without credential material.
+     * Collection cycles, newest first.
      */
-    200: ConnectionList;
+    200: CollectionCycleList;
 };
 
-export type ListConnectionsResponse = ListConnectionsResponses[keyof ListConnectionsResponses];
+export type ListCollectionCyclesResponse = ListCollectionCyclesResponses[keyof ListCollectionCyclesResponses];
 
-export type CreateConnectionData = {
-    body: CreateConnectionRequestWritable;
+export type CreateCollectionCycleData = {
+    body?: never;
     headers?: {
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
@@ -1567,14 +1645,10 @@ export type CreateConnectionData = {
         portfolioId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/connections';
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles';
 };
 
-export type CreateConnectionErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
+export type CreateCollectionCycleErrors = {
     /**
      * Problem details.
      */
@@ -1583,74 +1657,30 @@ export type CreateConnectionErrors = {
      * Problem details.
      */
     404: Problem;
-    /**
-     * Problem details.
-     */
-    409: Problem;
 };
 
-export type CreateConnectionError = CreateConnectionErrors[keyof CreateConnectionErrors];
+export type CreateCollectionCycleError = CreateCollectionCycleErrors[keyof CreateCollectionCycleErrors];
 
-export type CreateConnectionResponses = {
+export type CreateCollectionCycleResponses = {
     /**
-     * Created without credentials.
+     * The queued or running cycle.
      */
-    201: Connection;
+    202: CollectionCycle;
 };
 
-export type CreateConnectionResponse = CreateConnectionResponses[keyof CreateConnectionResponses];
+export type CreateCollectionCycleResponse = CreateCollectionCycleResponses[keyof CreateCollectionCycleResponses];
 
-export type DeleteConnectionData = {
-    body?: never;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-        connectionId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}';
-};
-
-export type DeleteConnectionErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type DeleteConnectionError = DeleteConnectionErrors[keyof DeleteConnectionErrors];
-
-export type DeleteConnectionResponses = {
-    /**
-     * Deleted.
-     */
-    204: void;
-};
-
-export type DeleteConnectionResponse = DeleteConnectionResponses[keyof DeleteConnectionResponses];
-
-export type GetConnectionData = {
+export type GetCollectionCycleData = {
     body?: never;
     path: {
         portfolioId: Uuid;
-        connectionId: Uuid;
+        cycleId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}';
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId}';
 };
 
-export type GetConnectionErrors = {
+export type GetCollectionCycleErrors = {
     /**
      * Problem details.
      */
@@ -1661,36 +1691,27 @@ export type GetConnectionErrors = {
     404: Problem;
 };
 
-export type GetConnectionError = GetConnectionErrors[keyof GetConnectionErrors];
+export type GetCollectionCycleError = GetCollectionCycleErrors[keyof GetCollectionCycleErrors];
 
-export type GetConnectionResponses = {
+export type GetCollectionCycleResponses = {
     /**
-     * Connection.
+     * The cycle.
      */
-    200: Connection;
+    200: CollectionCycleDetail;
 };
 
-export type GetConnectionResponse = GetConnectionResponses[keyof GetConnectionResponses];
+export type GetCollectionCycleResponse = GetCollectionCycleResponses[keyof GetCollectionCycleResponses];
 
-export type PatchConnectionData = {
-    body: PatchConnectionRequestWritable;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
+export type GetOverviewData = {
+    body?: never;
     path: {
         portfolioId: Uuid;
-        connectionId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}';
+    url: '/api/v1/portfolios/{portfolioId}/overview';
 };
 
-export type PatchConnectionErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
+export type GetOverviewErrors = {
     /**
      * Problem details.
      */
@@ -1699,102 +1720,136 @@ export type PatchConnectionErrors = {
      * Problem details.
      */
     404: Problem;
+};
+
+export type GetOverviewError = GetOverviewErrors[keyof GetOverviewErrors];
+
+export type GetOverviewResponses = {
+    /**
+     * Overview.
+     */
+    200: Overview;
+};
+
+export type GetOverviewResponse = GetOverviewResponses[keyof GetOverviewResponses];
+
+export type GetHoldingsTreeData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/tree';
+};
+
+export type GetHoldingsTreeErrors = {
     /**
      * Problem details.
      */
-    412: Problem;
-};
-
-export type PatchConnectionError = PatchConnectionErrors[keyof PatchConnectionErrors];
-
-export type PatchConnectionResponses = {
+    401: Problem;
     /**
-     * Updated.
+     * Problem details.
      */
-    200: Connection;
+    404: Problem;
 };
 
-export type PatchConnectionResponse = PatchConnectionResponses[keyof PatchConnectionResponses];
+export type GetHoldingsTreeError = GetHoldingsTreeErrors[keyof GetHoldingsTreeErrors];
 
-export type ListJobsData = {
+export type GetHoldingsTreeResponses = {
+    /**
+     * Holdings tree.
+     */
+    200: HoldingsTree;
+};
+
+export type GetHoldingsTreeResponse = GetHoldingsTreeResponses[keyof GetHoldingsTreeResponses];
+
+export type ListAccountBalancesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        accountId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances';
+};
+
+export type ListAccountBalancesErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAccountBalancesError = ListAccountBalancesErrors[keyof ListAccountBalancesErrors];
+
+export type ListAccountBalancesResponses = {
+    /**
+     * Account balances.
+     */
+    200: AccountBalanceList;
+};
+
+export type ListAccountBalancesResponse = ListAccountBalancesResponses[keyof ListAccountBalancesResponses];
+
+export type ListAccountPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        accountId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions';
+};
+
+export type ListAccountPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAccountPositionsError = ListAccountPositionsErrors[keyof ListAccountPositionsErrors];
+
+export type ListAccountPositionsResponses = {
+    /**
+     * Account positions.
+     */
+    200: AccountPositionList;
+};
+
+export type ListAccountPositionsResponse = ListAccountPositionsResponses[keyof ListAccountPositionsResponses];
+
+export type ListBalancesData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
     query?: {
-        limit?: number;
-        cursor?: string;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/jobs';
-};
-
-export type ListJobsErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListJobsError = ListJobsErrors[keyof ListJobsErrors];
-
-export type ListJobsResponses = {
-    /**
-     * Jobs.
-     */
-    200: JobList;
-};
-
-export type ListJobsResponse = ListJobsResponses[keyof ListJobsResponses];
-
-export type GetJobData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        jobId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}';
-};
-
-export type GetJobErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type GetJobError = GetJobErrors[keyof GetJobErrors];
-
-export type GetJobResponses = {
-    /**
-     * Job.
-     */
-    200: Job;
-};
-
-export type GetJobResponse = GetJobResponses[keyof GetJobResponses];
-
-export type ListAccountsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
+        platform?: string;
+        identityId?: string;
+        accountId?: string;
+        symbol?: string;
+        groupBy?: 'asset' | 'platform' | 'identity' | 'account';
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/accounts';
+    url: '/api/v1/portfolios/{portfolioId}/balances';
 };
 
-export type ListAccountsErrors = {
+export type ListBalancesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -1805,31 +1860,38 @@ export type ListAccountsErrors = {
     404: Problem;
 };
 
-export type ListAccountsError = ListAccountsErrors[keyof ListAccountsErrors];
+export type ListBalancesError = ListBalancesErrors[keyof ListBalancesErrors];
 
-export type ListAccountsResponses = {
+export type ListBalancesResponses = {
     /**
-     * Discovered accounts.
+     * Balances.
      */
-    200: AccountList;
+    200: BalanceList;
 };
 
-export type ListAccountsResponse = ListAccountsResponses[keyof ListAccountsResponses];
+export type ListBalancesResponse = ListBalancesResponses[keyof ListBalancesResponses];
 
-export type SearchCatalogAssetsData = {
+export type ListPositionsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
     query?: {
-        q?: string;
+        platform?: string;
+        identityId?: string;
+        accountId?: string;
+        symbol?: string;
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/assets';
+    url: '/api/v1/portfolios/{portfolioId}/positions';
 };
 
-export type SearchCatalogAssetsErrors = {
+export type ListPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -1840,265 +1902,34 @@ export type SearchCatalogAssetsErrors = {
     404: Problem;
 };
 
-export type SearchCatalogAssetsError = SearchCatalogAssetsErrors[keyof SearchCatalogAssetsErrors];
+export type ListPositionsError = ListPositionsErrors[keyof ListPositionsErrors];
 
-export type SearchCatalogAssetsResponses = {
+export type ListPositionsResponses = {
     /**
-     * Canonical assets.
+     * Positions.
      */
-    200: AssetList;
+    200: PositionList;
 };
 
-export type SearchCatalogAssetsResponse = SearchCatalogAssetsResponses[keyof SearchCatalogAssetsResponses];
+export type ListPositionsResponse = ListPositionsResponses[keyof ListPositionsResponses];
 
-export type SearchCatalogAssetListingsData = {
+export type ListValuationPointsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
     query?: {
-        q?: string;
-        platformId?: Uuid;
-        mappingState?: 'unmapped' | 'provisional' | 'confirmed';
-        offset?: number;
-        limit?: number;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings';
-};
-
-export type SearchCatalogAssetListingsErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type SearchCatalogAssetListingsError = SearchCatalogAssetListingsErrors[keyof SearchCatalogAssetListingsErrors];
-
-export type SearchCatalogAssetListingsResponses = {
-    /**
-     * Asset listings.
-     */
-    200: AssetListingList;
-};
-
-export type SearchCatalogAssetListingsResponse = SearchCatalogAssetListingsResponses[keyof SearchCatalogAssetListingsResponses];
-
-export type SearchCatalogInstrumentsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        q?: string;
-        platformId?: Uuid;
-        pinned?: boolean;
-        offset?: number;
-        limit?: number;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments';
-};
-
-export type SearchCatalogInstrumentsErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type SearchCatalogInstrumentsError = SearchCatalogInstrumentsErrors[keyof SearchCatalogInstrumentsErrors];
-
-export type SearchCatalogInstrumentsResponses = {
-    /**
-     * Instruments.
-     */
-    200: InstrumentList;
-};
-
-export type SearchCatalogInstrumentsResponse = SearchCatalogInstrumentsResponses[keyof SearchCatalogInstrumentsResponses];
-
-export type PutCatalogListingMappingData = {
-    body: PutCatalogMappingRequest;
-    headers: {
-        'If-Match': string;
-        'Idempotency-Key'?: string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-        listingId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping';
-};
-
-export type PutCatalogListingMappingErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    409: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type PutCatalogListingMappingError = PutCatalogListingMappingErrors[keyof PutCatalogListingMappingErrors];
-
-export type PutCatalogListingMappingResponses = {
-    /**
-     * Mapping revised.
-     */
-    200: CatalogMappingMutation;
-    /**
-     * Mapping created.
-     */
-    201: CatalogMappingMutation;
-};
-
-export type PutCatalogListingMappingResponse = PutCatalogListingMappingResponses[keyof PutCatalogListingMappingResponses];
-
-export type DeleteCatalogPinData = {
-    body?: never;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-        subjectKind: CatalogPinSubjectKind;
-        subjectId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}';
-};
-
-export type DeleteCatalogPinErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type DeleteCatalogPinError = DeleteCatalogPinErrors[keyof DeleteCatalogPinErrors];
-
-export type DeleteCatalogPinResponses = {
-    /**
-     * Pin disabled.
-     */
-    200: CatalogPinMutation;
-};
-
-export type DeleteCatalogPinResponse = DeleteCatalogPinResponses[keyof DeleteCatalogPinResponses];
-
-export type PutCatalogPinData = {
-    body: PutCatalogPinRequest;
-    headers: {
-        'If-Match': string;
-        'Idempotency-Key'?: string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-        subjectKind: CatalogPinSubjectKind;
-        subjectId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}';
-};
-
-export type PutCatalogPinErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    409: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type PutCatalogPinError = PutCatalogPinErrors[keyof PutCatalogPinErrors];
-
-export type PutCatalogPinResponses = {
-    /**
-     * Pin revised.
-     */
-    200: CatalogPinMutation;
-    /**
-     * Pin created.
-     */
-    201: CatalogPinMutation;
-};
-
-export type PutCatalogPinResponse = PutCatalogPinResponses[keyof PutCatalogPinResponses];
-
-export type ListObservationsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        kind?: ObservationKind;
-        identityId?: Uuid;
-        accountId?: Uuid;
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
         from?: string;
         to?: string;
-        limit?: number;
-        cursor?: string;
+        granularity?: TimeGranularity;
     };
-    url: '/api/v1/portfolios/{portfolioId}/observations';
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points';
 };
 
-export type ListObservationsErrors = {
+export type ListValuationPointsErrors = {
     /**
      * Problem details.
      */
@@ -2113,28 +1944,28 @@ export type ListObservationsErrors = {
     404: Problem;
 };
 
-export type ListObservationsError = ListObservationsErrors[keyof ListObservationsErrors];
+export type ListValuationPointsError = ListValuationPointsErrors[keyof ListValuationPointsErrors];
 
-export type ListObservationsResponses = {
+export type ListValuationPointsResponses = {
     /**
-     * Observation headers.
+     * Valuation points.
      */
-    200: ObservationList;
+    200: ValuationPointList;
 };
 
-export type ListObservationsResponse = ListObservationsResponses[keyof ListObservationsResponses];
+export type ListValuationPointsResponse = ListValuationPointsResponses[keyof ListValuationPointsResponses];
 
-export type GetObservationData = {
+export type GetValuationPointData = {
     body?: never;
     path: {
         portfolioId: Uuid;
-        observationId: Uuid;
+        pointId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}';
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{pointId}';
 };
 
-export type GetObservationErrors = {
+export type GetValuationPointErrors = {
     /**
      * Problem details.
      */
@@ -2145,157 +1976,38 @@ export type GetObservationErrors = {
     404: Problem;
 };
 
-export type GetObservationError = GetObservationErrors[keyof GetObservationErrors];
+export type GetValuationPointError = GetValuationPointErrors[keyof GetValuationPointErrors];
 
-export type GetObservationResponses = {
+export type GetValuationPointResponses = {
     /**
-     * Observation.
+     * Valuation point detail.
      */
-    200: Observation;
+    200: ValuationPointDetail;
 };
 
-export type GetObservationResponse = GetObservationResponses[keyof GetObservationResponses];
+export type GetValuationPointResponse = GetValuationPointResponses[keyof GetValuationPointResponses];
 
-export type PatchObservationData = {
-    body: PatchObservationRequest;
-    headers: {
-        'If-Match': string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-        observationId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}';
-};
-
-export type PatchObservationErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type PatchObservationError = PatchObservationErrors[keyof PatchObservationErrors];
-
-export type PatchObservationResponses = {
-    /**
-     * Corrected observation and the enqueued projection job.
-     */
-    200: ObservationCorrection;
-};
-
-export type PatchObservationResponse = PatchObservationResponses[keyof PatchObservationResponses];
-
-export type GetCapitalBaselineData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline';
-};
-
-export type GetCapitalBaselineErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type GetCapitalBaselineError = GetCapitalBaselineErrors[keyof GetCapitalBaselineErrors];
-
-export type GetCapitalBaselineResponses = {
-    /**
-     * Current capital baseline.
-     */
-    200: CapitalBaseline;
-};
-
-export type GetCapitalBaselineResponse = GetCapitalBaselineResponses[keyof GetCapitalBaselineResponses];
-
-export type PutCapitalBaselineData = {
-    body: PutCapitalBaselineRequest;
-    headers: {
-        'If-Match': string;
-        'Idempotency-Key'?: string;
-        'X-CSRF-Token'?: string;
-    };
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline';
-};
-
-export type PutCapitalBaselineErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-    /**
-     * Problem details.
-     */
-    409: Problem;
-    /**
-     * Problem details.
-     */
-    412: Problem;
-};
-
-export type PutCapitalBaselineError = PutCapitalBaselineErrors[keyof PutCapitalBaselineErrors];
-
-export type PutCapitalBaselineResponses = {
-    /**
-     * Baseline revised.
-     */
-    200: CapitalBaselineMutation;
-    /**
-     * Baseline created.
-     */
-    201: CapitalBaselineMutation;
-};
-
-export type PutCapitalBaselineResponse = PutCapitalBaselineResponses[keyof PutCapitalBaselineResponses];
-
-export type ListCapitalBaselineRevisionsData = {
+export type ListPeriodClosesData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
     query?: {
-        limit?: number;
-        cursor?: string;
+        periodKind?: PeriodKind;
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
+        from?: string;
+        to?: string;
     };
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline/revisions';
+    url: '/api/v1/portfolios/{portfolioId}/period-closes';
 };
 
-export type ListCapitalBaselineRevisionsErrors = {
+export type ListPeriodClosesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -2306,16 +2018,96 @@ export type ListCapitalBaselineRevisionsErrors = {
     404: Problem;
 };
 
-export type ListCapitalBaselineRevisionsError = ListCapitalBaselineRevisionsErrors[keyof ListCapitalBaselineRevisionsErrors];
+export type ListPeriodClosesError = ListPeriodClosesErrors[keyof ListPeriodClosesErrors];
 
-export type ListCapitalBaselineRevisionsResponses = {
+export type ListPeriodClosesResponses = {
     /**
-     * Baseline revisions.
+     * Period closes.
      */
-    200: CapitalBaselineRevisionList;
+    200: PeriodCloseList;
 };
 
-export type ListCapitalBaselineRevisionsResponse = ListCapitalBaselineRevisionsResponses[keyof ListCapitalBaselineRevisionsResponses];
+export type ListPeriodClosesResponse = ListPeriodClosesResponses[keyof ListPeriodClosesResponses];
+
+export type ListValueChangesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        periodKind?: PeriodKind;
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/value-changes';
+};
+
+export type ListValueChangesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListValueChangesError = ListValueChangesErrors[keyof ListValueChangesErrors];
+
+export type ListValueChangesResponses = {
+    /**
+     * Value changes.
+     */
+    200: ValueChangeList;
+};
+
+export type ListValueChangesResponse = ListValueChangesResponses[keyof ListValueChangesResponses];
+
+export type GetCustomValueChangeData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query: {
+        from: string;
+        to: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/value-changes/custom';
+};
+
+export type GetCustomValueChangeErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetCustomValueChangeError = GetCustomValueChangeErrors[keyof GetCustomValueChangeErrors];
+
+export type GetCustomValueChangeResponses = {
+    /**
+     * Value change.
+     */
+    200: ValueChange;
+};
+
+export type GetCustomValueChangeResponse = GetCustomValueChangeResponses[keyof GetCustomValueChangeResponses];
 
 export type ListCapitalFlowsData = {
     body?: never;
@@ -2323,13 +2115,20 @@ export type ListCapitalFlowsData = {
         portfolioId: Uuid;
     };
     query?: {
-        offset?: number;
-        limit?: number;
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
+        from?: string;
+        to?: string;
     };
     url: '/api/v1/portfolios/{portfolioId}/capital-flows';
 };
 
 export type ListCapitalFlowsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -2344,7 +2143,7 @@ export type ListCapitalFlowsError = ListCapitalFlowsErrors[keyof ListCapitalFlow
 
 export type ListCapitalFlowsResponses = {
     /**
-     * Current capital flows.
+     * Capital flows, newest first.
      */
     200: CapitalFlowList;
 };
@@ -2389,7 +2188,7 @@ export type CreateCapitalFlowResponses = {
     /**
      * Flow created.
      */
-    201: CapitalFlowMutation;
+    201: CapitalFlow;
 };
 
 export type CreateCapitalFlowResponse = CreateCapitalFlowResponses[keyof CreateCapitalFlowResponses];
@@ -2427,9 +2226,9 @@ export type DeleteCapitalFlowError = DeleteCapitalFlowErrors[keyof DeleteCapital
 
 export type DeleteCapitalFlowResponses = {
     /**
-     * Flow marked deleted by a new revision.
+     * Deleted.
      */
-    200: CapitalFlowMutation;
+    204: void;
 };
 
 export type DeleteCapitalFlowResponse = DeleteCapitalFlowResponses[keyof DeleteCapitalFlowResponses];
@@ -2459,7 +2258,7 @@ export type GetCapitalFlowError = GetCapitalFlowErrors[keyof GetCapitalFlowError
 
 export type GetCapitalFlowResponses = {
     /**
-     * Current capital flow.
+     * The flow.
      */
     200: CapitalFlow;
 };
@@ -2503,27 +2302,33 @@ export type PatchCapitalFlowError = PatchCapitalFlowErrors[keyof PatchCapitalFlo
 
 export type PatchCapitalFlowResponses = {
     /**
-     * Flow revised.
+     * Updated flow.
      */
-    200: CapitalFlowMutation;
+    200: CapitalFlow;
 };
 
 export type PatchCapitalFlowResponse = PatchCapitalFlowResponses[keyof PatchCapitalFlowResponses];
 
-export type ListCapitalFlowRevisionsData = {
+export type ListBoundaryEventsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
-        flowId: Uuid;
     };
     query?: {
-        limit?: number;
-        cursor?: string;
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
+        from?: string;
+        to?: string;
     };
-    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions';
+    url: '/api/v1/portfolios/{portfolioId}/boundary-events';
 };
 
-export type ListCapitalFlowRevisionsErrors = {
+export type ListBoundaryEventsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
     /**
      * Problem details.
      */
@@ -2534,66 +2339,32 @@ export type ListCapitalFlowRevisionsErrors = {
     404: Problem;
 };
 
-export type ListCapitalFlowRevisionsError = ListCapitalFlowRevisionsErrors[keyof ListCapitalFlowRevisionsErrors];
+export type ListBoundaryEventsError = ListBoundaryEventsErrors[keyof ListBoundaryEventsErrors];
 
-export type ListCapitalFlowRevisionsResponses = {
+export type ListBoundaryEventsResponses = {
     /**
-     * Flow revisions.
+     * Boundary events.
      */
-    200: CapitalFlowRevisionList;
+    200: BoundaryEventList;
 };
 
-export type ListCapitalFlowRevisionsResponse = ListCapitalFlowRevisionsResponses[keyof ListCapitalFlowRevisionsResponses];
+export type ListBoundaryEventsResponse = ListBoundaryEventsResponses[keyof ListBoundaryEventsResponses];
 
-export type GetOverviewData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/overview';
-};
-
-export type GetOverviewErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type GetOverviewError = GetOverviewErrors[keyof GetOverviewErrors];
-
-export type GetOverviewResponses = {
-    /**
-     * Overview for the active projection generation.
-     */
-    200: Overview;
-};
-
-export type GetOverviewResponse = GetOverviewResponses[keyof GetOverviewResponses];
-
-export type ListBalancesData = {
+export type ListAssetListingsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
     };
     query?: {
-        groupBy?: 'platform' | 'identity' | 'account' | 'asset' | 'listing';
-        identityId?: Uuid;
-        accountId?: Uuid;
-        assetId?: Uuid;
-        listingId?: Uuid;
+        platform?: string;
+        q?: string;
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/balances';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings';
 };
 
-export type ListBalancesErrors = {
+export type ListAssetListingsErrors = {
     /**
      * Problem details.
      */
@@ -2608,241 +2379,32 @@ export type ListBalancesErrors = {
     404: Problem;
 };
 
-export type ListBalancesError = ListBalancesErrors[keyof ListBalancesErrors];
+export type ListAssetListingsError = ListAssetListingsErrors[keyof ListAssetListingsErrors];
 
-export type ListBalancesResponses = {
+export type ListAssetListingsResponses = {
     /**
-     * Latest balances.
+     * Asset listings.
      */
-    200: BalanceList;
+    200: AssetListingList;
 };
 
-export type ListBalancesResponse = ListBalancesResponses[keyof ListBalancesResponses];
+export type ListAssetListingsResponse = ListAssetListingsResponses[keyof ListAssetListingsResponses];
 
-export type ListPositionsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        groupBy?: 'platform' | 'identity' | 'account' | 'instrument';
-        identityId?: Uuid;
-        accountId?: Uuid;
-        instrumentId?: Uuid;
-        offset?: number;
-        limit?: number;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/positions';
-};
-
-export type ListPositionsErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListPositionsError = ListPositionsErrors[keyof ListPositionsErrors];
-
-export type ListPositionsResponses = {
-    /**
-     * Latest positions.
-     */
-    200: PositionList;
-};
-
-export type ListPositionsResponse = ListPositionsResponses[keyof ListPositionsResponses];
-
-export type ListExposuresData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        groupBy?: 'asset' | 'platform' | 'identity' | 'account';
-        identityId?: Uuid;
-        accountId?: Uuid;
-        assetId?: Uuid;
-        offset?: number;
-        limit?: number;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/exposures';
-};
-
-export type ListExposuresErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListExposuresError = ListExposuresErrors[keyof ListExposuresErrors];
-
-export type ListExposuresResponses = {
-    /**
-     * Exposure rows.
-     */
-    200: ExposureList;
-};
-
-export type ListExposuresResponse = ListExposuresResponses[keyof ListExposuresResponses];
-
-export type ListValuationsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        from?: string;
-        to?: string;
-        granularity?: TimeGranularity;
-        maxPoints?: number;
-        limit?: number;
-        cursor?: string;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/valuations';
-};
-
-export type ListValuationsErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListValuationsError = ListValuationsErrors[keyof ListValuationsErrors];
-
-export type ListValuationsResponses = {
-    /**
-     * Valuation history.
-     */
-    200: ValuationList;
-};
-
-export type ListValuationsResponse = ListValuationsResponses[keyof ListValuationsResponses];
-
-export type ListValueChangesData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        periodKind?: CalendarPeriodKind;
-        from?: string;
-        to?: string;
-        granularity?: TimeGranularity;
-        maxPoints?: number;
-        limit?: number;
-        cursor?: string;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/value-changes';
-};
-
-export type ListValueChangesErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListValueChangesError = ListValueChangesErrors[keyof ListValueChangesErrors];
-
-export type ListValueChangesResponses = {
-    /**
-     * Value changes.
-     */
-    200: ValueChangeList;
-};
-
-export type ListValueChangesResponse = ListValueChangesResponses[keyof ListValueChangesResponses];
-
-export type ListPeriodSummariesData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        periodKind?: CalendarPeriodKind;
-        from?: string;
-        to?: string;
-        limit?: number;
-        cursor?: string;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/period-summaries';
-};
-
-export type ListPeriodSummariesErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListPeriodSummariesError = ListPeriodSummariesErrors[keyof ListPeriodSummariesErrors];
-
-export type ListPeriodSummariesResponses = {
-    /**
-     * Period summaries.
-     */
-    200: PeriodSummaryList;
-};
-
-export type ListPeriodSummariesResponse = ListPeriodSummariesResponses[keyof ListPeriodSummariesResponses];
-
-export type CreateProjectionRebuildData = {
-    body?: CreateProjectionRebuildRequest;
-    headers?: {
-        'Idempotency-Key'?: string;
+export type PutAssetListingMappingData = {
+    body: PutAssetListingMappingRequest;
+    headers: {
+        'If-Match': string;
         'X-CSRF-Token'?: string;
     };
     path: {
         portfolioId: Uuid;
+        listingId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/projection-rebuilds';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping';
 };
 
-export type CreateProjectionRebuildErrors = {
+export type PutAssetListingMappingErrors = {
     /**
      * Problem details.
      */
@@ -2858,19 +2420,130 @@ export type CreateProjectionRebuildErrors = {
     /**
      * Problem details.
      */
-    409: Problem;
+    412: Problem;
 };
 
-export type CreateProjectionRebuildError = CreateProjectionRebuildErrors[keyof CreateProjectionRebuildErrors];
+export type PutAssetListingMappingError = PutAssetListingMappingErrors[keyof PutAssetListingMappingErrors];
 
-export type CreateProjectionRebuildResponses = {
+export type PutAssetListingMappingResponses = {
     /**
-     * Rebuild enqueued, or the active equivalent job returned.
+     * Updated listing.
      */
-    202: Job;
+    200: AssetListing;
 };
 
-export type CreateProjectionRebuildResponse = CreateProjectionRebuildResponses[keyof CreateProjectionRebuildResponses];
+export type PutAssetListingMappingResponse = PutAssetListingMappingResponses[keyof PutAssetListingMappingResponses];
+
+export type ListInstrumentsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        platform?: string;
+        q?: string;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments';
+};
+
+export type ListInstrumentsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListInstrumentsError = ListInstrumentsErrors[keyof ListInstrumentsErrors];
+
+export type ListInstrumentsResponses = {
+    /**
+     * Instruments.
+     */
+    200: InstrumentList;
+};
+
+export type ListInstrumentsResponse = ListInstrumentsResponses[keyof ListInstrumentsResponses];
+
+export type ListJobsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        kind?: JobKind;
+        limit?: number;
+        cursor?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/jobs';
+};
+
+export type ListJobsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListJobsError = ListJobsErrors[keyof ListJobsErrors];
+
+export type ListJobsResponses = {
+    /**
+     * Jobs, newest first.
+     */
+    200: JobList;
+};
+
+export type ListJobsResponse = ListJobsResponses[keyof ListJobsResponses];
+
+export type GetJobData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        jobId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}';
+};
+
+export type GetJobErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetJobError = GetJobErrors[keyof GetJobErrors];
+
+export type GetJobResponses = {
+    /**
+     * The job.
+     */
+    200: Job;
+};
+
+export type GetJobResponse = GetJobResponses[keyof GetJobResponses];
 
 export type ListAuditEventsData = {
     body?: never;

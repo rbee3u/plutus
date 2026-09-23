@@ -1,17 +1,17 @@
-import { Menu, X } from "lucide-react";
+import { Menu as MenuIcon, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
-import { BrandMark, SidebarUtilities } from "@/app/shell/SidebarUtilities";
+import { SidebarUtilities } from "@/app/shell/SidebarUtilities";
 import { UserMenu } from "@/app/shell/UserMenu";
 import {
   LAST_PORTFOLIO_KEY,
   isAccountPath,
   isNavItemActive,
   navigationFor,
-  pageTitle,
+  pageHeading,
 } from "@/app/shell/navigation";
 import { useMobileNavigation } from "@/app/shell/useMobileNavigation";
 import { usePersistentTheme } from "@/app/theme/usePersistentTheme";
@@ -36,11 +36,11 @@ export function Shell() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const { open, setOpen, close, mobileLayout, sidebarRef, menuButtonRef } = useMobileNavigation();
   const groups = navPortfolioId ? navigationFor(navPortfolioId) : [];
-  const title = pageTitle(location.pathname, location.search);
+  const heading = pageHeading(location.pathname, location.search);
 
   useEffect(() => {
-    document.title = `${title} - Plutus`;
-  }, [title]);
+    document.title = `${heading.documentTitle} · Plutus`;
+  }, [heading.documentTitle]);
 
   useEffect(() => {
     storePreference("plutus-sidebar-collapsed", String(collapsed));
@@ -58,9 +58,7 @@ export function Shell() {
           setLoadError(problemMessage(result.error, "Portfolios could not be loaded."));
           return;
         }
-        const items = result.data.items
-          .filter((item) => item.status === "active")
-          .map((item) => ({ id: item.id, name: item.name, undeletable: item.undeletable }));
+        const items = result.data.items.map((item) => ({ id: item.id, name: item.name }));
         setPortfolios(items);
         if (urlPortfolioId) {
           if (!items.some((item) => item.id === urlPortfolioId)) {
@@ -110,15 +108,11 @@ export function Shell() {
         aria-label="Application navigation"
         aria-hidden={mobileLayout && !open ? "true" : undefined}
       >
-        <div className={styles.brand} title={collapsed ? "Plutus" : undefined}>
-          <BrandMark />
-          <span className={styles.brandCopy}>
+        <div className={styles.brandRow}>
+          <Link className={styles.brand} to="/" title={collapsed ? "Plutus" : undefined}>
+            <PlutusIcon size={iconSize.lg} />
             <strong>Plutus</strong>
-            <span className={styles.brandSeparator} aria-hidden="true">
-              ·
-            </span>
-            <small>Observe portfolios</small>
-          </span>
+          </Link>
           {mobileLayout ? (
             <IconButton
               className={styles.drawerCloseButton}
@@ -145,8 +139,8 @@ export function Shell() {
                       if (mobileLayout) close(false);
                     }}
                   >
-                    <Icon size={iconSize.md} />
-                    <strong>{item.label}</strong>
+                    <Icon size={iconSize.sm} aria-hidden="true" />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
@@ -173,18 +167,29 @@ export function Shell() {
               onClick={() => setOpen(true)}
               ref={menuButtonRef}
             >
-              <Menu size={iconSize.md} />
+              <MenuIcon size={iconSize.md} aria-hidden="true" />
             </IconButton>
           ) : null}
           <h1 id="console-page-title" className={styles.pageTitle}>
-            {title}
+            {heading.title}
           </h1>
-          <PortfolioSwitcher
-            portfolioId={navPortfolioId}
-            portfolios={portfolios}
-            onPortfolioRemembered={setRememberedId}
-          />
-          <UserMenu onSignOut={() => void logout()} />
+          {heading.tabs.length > 0 ? (
+            <nav className={styles.tabs} aria-label={`${heading.title} views`}>
+              {heading.tabs.map((tab) => (
+                <Link key={tab.label} to={tab.to} aria-current={tab.active ? "page" : undefined}>
+                  {tab.label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
+          <div className={styles.topbarEnd}>
+            <PortfolioSwitcher
+              portfolioId={navPortfolioId}
+              portfolios={portfolios}
+              onPortfolioRemembered={setRememberedId}
+            />
+            <UserMenu onSignOut={() => void logout()} />
+          </div>
         </header>
         <main
           id="main-content"
@@ -200,7 +205,8 @@ export function Shell() {
               </button>
             </div>
           ) : (
-            <Outlet />
+            // Page state (notices, open rows, a followed cycle) belongs to one Portfolio.
+            <Outlet key={urlPortfolioId} />
           )}
         </main>
       </div>

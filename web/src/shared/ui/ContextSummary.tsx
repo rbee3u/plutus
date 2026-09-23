@@ -1,40 +1,17 @@
-import type { ProjectionContext } from "@/api/generated/types.gen";
+import type { ReadContext } from "@/api/generated/types.gen";
 import { formatInstant } from "@/shared/lib/datetime";
 import styles from "@/features/pages.module.css";
 
-export function ContextSummary({ context }: { context: ProjectionContext }) {
+/**
+ * When the view was evaluated and in which timezone, as one quiet line. A
+ * series view has no single point, so only the timezone shows.
+ */
+export function ContextSummary({ context }: { context: ReadContext }) {
   return (
-    <dl className={styles.metaList}>
-      <div>
-        <dt>Display asset</dt>
-        <dd>{context.displayAsset.code}</dd>
-      </div>
-      <div>
-        <dt>Timezone</dt>
-        <dd>{context.timezone}</dd>
-      </div>
-      <div>
-        <dt>Cutoff</dt>
-        <dd>{formatInstant(context.cutoffAt, context.timezone)}</dd>
-      </div>
-      <div>
-        <dt>Completeness</dt>
-        <dd>{context.completeness}</dd>
-      </div>
-      <div>
-        <dt>Coverage</dt>
-        <dd>{context.coverage}</dd>
-      </div>
-      <div>
-        <dt>Freshness</dt>
-        <dd>{context.freshness}</dd>
-      </div>
-      {context.rebuildPending ? (
-        <div>
-          <dt>Rebuild</dt>
-          <dd>A newer timezone is queued; this view still uses the active generation.</dd>
-        </div>
-      ) : null}
-    </dl>
+    <p className={styles.muted}>
+      {context.evaluatedAt
+        ? `Latest Valuation Point ${formatInstant(context.evaluatedAt, context.timezone)} · ${context.timezone}`
+        : `Times in ${context.timezone}`}
+    </p>
   );
 }

@@ -4,22 +4,18 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "
 import { getAuthMe, listPortfolios } from "@/api/generated/sdk.gen";
 import { configureApiClient, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
-import { ModuleSubnav } from "@/app/shell/RoutedSubnav";
 import { RootRedirect, Shell } from "@/app/shell/Shell";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { BaselinePage } from "@/features/capital/BaselinePage";
-import { FlowsPage } from "@/features/capital/FlowsPage";
-import { OverviewPage } from "@/features/overview/OverviewPage";
-import { AuditPage } from "@/features/data/AuditPage";
+import { CapitalPage } from "@/features/capital/CapitalPage";
+import { ActivityPage } from "@/features/data/ActivityPage";
 import { CatalogPage } from "@/features/data/CatalogPage";
 import { IdentitiesPage } from "@/features/data/IdentitiesPage";
-import { JobsPage } from "@/features/data/JobsPage";
-import { ObservationsPage } from "@/features/data/ObservationsPage";
-import { ExposurePage } from "@/features/portfolio/ExposurePage";
-import { BalancesPage } from "@/features/portfolio/BalancesPage";
-import { PositionsPage } from "@/features/portfolio/PositionsPage";
-import { ValuationsPage } from "@/features/history/ValuationsPage";
+import { ValuationPointsPage } from "@/features/history/ValuationPointsPage";
 import { ValueChangesPage } from "@/features/history/ValueChangesPage";
+import { BalancesPage } from "@/features/holdings/BalancesPage";
+import { PositionsPage } from "@/features/holdings/PositionsPage";
+import { TreePage } from "@/features/holdings/TreePage";
+import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
 import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
@@ -35,6 +31,19 @@ const queryClient = new QueryClient({
 
 configureApiClient();
 
+/** Old bookmarks from the projection-era information architecture. */
+const LEGACY_PATHS: readonly { from: string; to: string }[] = [
+  { from: "portfolio/balances", to: "holdings/balances" },
+  { from: "portfolio/positions", to: "holdings/positions" },
+  { from: "portfolio/exposure", to: "holdings" },
+  { from: "history/valuations", to: "history" },
+  { from: "capital/baseline", to: "capital" },
+  { from: "capital/flows", to: "capital" },
+  { from: "data/observations", to: "data/activity?tab=cycles" },
+  { from: "data/jobs", to: "data/activity?tab=jobs" },
+  { from: "data/audit", to: "data/activity?tab=audit" },
+];
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -46,30 +55,24 @@ export function App() {
             <Route path="account/security" element={<SecuritySettingsPage />} />
             <Route path="p/:portfolioId">
               <Route path="overview" element={<OverviewPage />} />
-              <Route path="portfolio/balances" element={<BalancesPage />} />
-              <Route path="portfolio/positions" element={<PositionsPage />} />
-              <Route path="portfolio/exposure" element={<ExposurePage />} />
-              <Route element={<ModuleSubnav moduleId="history" />}>
-                <Route path="history/valuations" element={<ValuationsPage />} />
-                <Route path="history/value-changes" element={<ValueChangesPage />} />
-              </Route>
-              <Route element={<ModuleSubnav moduleId="capital" />}>
-                <Route path="capital/baseline" element={<BaselinePage />} />
-                <Route path="capital/flows" element={<FlowsPage />} />
-              </Route>
-              <Route element={<ModuleSubnav moduleId="data-sources" />}>
-                <Route path="data/identities" element={<IdentitiesPage />} />
-              </Route>
-              <Route element={<ModuleSubnav moduleId="asset-catalog" />}>
-                <Route path="data/catalog" element={<CatalogPage />} />
-              </Route>
-              <Route element={<ModuleSubnav moduleId="data-activity" />}>
-                <Route path="data/observations" element={<ObservationsPage />} />
-                <Route path="data/jobs" element={<JobsPage />} />
-                <Route path="data/audit" element={<AuditPage />} />
-              </Route>
+              <Route path="holdings" element={<TreePage />} />
+              <Route path="holdings/balances" element={<BalancesPage />} />
+              <Route path="holdings/positions" element={<PositionsPage />} />
+              <Route path="history" element={<ValuationPointsPage />} />
+              <Route path="history/value-changes" element={<ValueChangesPage />} />
+              <Route path="capital" element={<CapitalPage />} />
+              <Route path="data/identities" element={<IdentitiesPage />} />
+              <Route path="data/catalog" element={<CatalogPage />} />
+              <Route path="data/activity" element={<ActivityPage />} />
               <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
               <Route path="settings/security" element={<LegacySecurityRedirect />} />
+              {LEGACY_PATHS.map((item) => (
+                <Route
+                  key={item.from}
+                  path={item.from}
+                  element={<PortfolioRedirect to={item.to} />}
+                />
+              ))}
               <Route index element={<Navigate to="overview" replace />} />
             </Route>
           </Route>
@@ -94,7 +97,7 @@ function Bootstrap() {
           return;
         }
         const listed = await listPortfolios();
-        const items = listed.data?.items.filter((item) => item.status === "active") ?? [];
+        const items = listed.data?.items ?? [];
         const remembered = readPreference(LAST_PORTFOLIO_KEY);
         const next = items.find((item) => item.id === remembered) ?? items[0];
         if (!next) {
@@ -126,4 +129,9 @@ function LegacySecurityRedirect() {
     storePreference(LAST_PORTFOLIO_KEY, portfolioId);
   }
   return <Navigate to="/account/security" replace />;
+}
+
+function PortfolioRedirect({ to }: { to: string }) {
+  const { portfolioId = "" } = useParams();
+  return <Navigate to={`/p/${portfolioId}/${to}`} replace />;
 }

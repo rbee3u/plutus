@@ -7,18 +7,19 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/db/seeds"
+	"github.com/rbee3u/plutus/internal/config"
+	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func newDatabaseCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db",
-		Short: "Load deterministic source facts or reset a development database",
+		Short: "Load a deterministic seed profile or reset a development database",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(newDBSeedCommand(), newDBResetCommand())
@@ -29,26 +30,15 @@ func newDBSeedCommand() *cobra.Command {
 	var profile string
 	cmd := &cobra.Command{
 		Use:   "seed",
-		Short: "Insert a deterministic source-fact profile",
+		Short: "Insert a deterministic seed profile and rebuild its Valuation Points",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			sqlText, err := seedSQL(profile)
-			if err != nil {
-				return err
-			}
-			db, _, err := openConfiguredDB(cmd)
+			db, cfg, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
-			if err := mysql.ExecSQLStatements(cmd.Context(), db, sqlText); err != nil {
-				return err
-			}
-			if err := enqueueSeedRebuilds(cmd.Context(), db, cmd.OutOrStdout()); err != nil {
-				return err
-			}
-			printSeedLogins(cmd.OutOrStdout(), profile)
-			return nil
+			return seedDatabase(cmd.Context(), db, &cfg, profile, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
@@ -59,13 +49,9 @@ func newDBResetCommand() *cobra.Command {
 	var profile string
 	cmd := &cobra.Command{
 		Use:   "reset",
-		Short: "Drop development tables, migrate, and seed source facts",
+		Short: "Drop development tables, migrate, seed, and rebuild Valuation Points",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			sqlText, err := seedSQL(profile)
-			if err != nil {
-				return err
-			}
 			db, cfg, err := openConfiguredDB(cmd)
 			if err != nil {
 				return err
@@ -86,69 +72,73 @@ func newDBResetCommand() *cobra.Command {
 			if err := mysql.Up(db); err != nil {
 				return err
 			}
-			if err := mysql.ExecSQLStatements(ctx, db, sqlText); err != nil {
-				return err
-			}
-			if err := enqueueSeedRebuilds(ctx, db, cmd.OutOrStdout()); err != nil {
-				return err
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "reset %q with %s source facts\n", name, profile)
-			printSeedLogins(cmd.OutOrStdout(), profile)
-			return nil
+			return seedDatabase(ctx, db, &cfg, profile, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
 	return cmd
 }
 
-func seedSQL(profile string) (string, error) {
-	switch profile {
-	case seeds.ProfileMinimal:
-		return seeds.MinimalSQL()
-	case seeds.ProfileEdgeCases:
-		return seeds.EdgeCasesSQL()
-	case seeds.ProfileWalkthrough:
-		return seeds.WalkthroughSQL()
-	default:
-		return "", fmt.Errorf("unknown seed profile %q", profile)
-	}
-}
-
-func enqueueSeedRebuilds(ctx context.Context, db *sql.DB, out io.Writer) error {
-	rows, err := db.QueryContext(ctx, `SELECT id FROM portfolios ORDER BY created_at, id`)
+// seedDatabase runs the profile SQL, activates live Identities, and rebuilds every Valuation Point.
+func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, profileName string, out io.Writer) error {
+	profile, err := seeds.Build(profileName)
 	if err != nil {
-		return fmt.Errorf("list portfolios: %w", err)
+		return err
 	}
-	defer func() { _ = rows.Close() }()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var raw []byte
-		if err := rows.Scan(&raw); err != nil {
-			return fmt.Errorf("scan portfolio id: %w", err)
-		}
-		id, err := uuid.FromBytes(raw)
+	if err := mysql.ExecSQLStatements(ctx, db, profile.SQL); err != nil {
+		return err
+	}
+	if err := activateSeedIdentities(ctx, db, cfg, profile.Live, out); err != nil {
+		return err
+	}
+	svc := valuation.NewService(db)
+	for _, portfolioID := range profile.Portfolios {
+		count, err := svc.Rebuild(ctx, portfolioID)
 		if err != nil {
-			return fmt.Errorf("portfolio id: %w", err)
+			return fmt.Errorf("rebuild valuation points for %s: %w", portfolioID, err)
 		}
-		ids = append(ids, id)
+		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points\n", portfolioID, count)
 	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("list portfolios: %w", err)
-	}
-
-	svc := jobs.NewService(db)
-	for _, id := range ids {
-		job, err := svc.EnqueueRebuild(ctx, id, nil, "seed")
-		if err != nil {
-			return fmt.Errorf("enqueue rebuild for %s: %w", id, err)
-		}
-		_, _ = fmt.Fprintf(out, "enqueued %s job %s for portfolio %s\n", job.Kind, job.ID, job.PortfolioID)
-	}
+	_, _ = fmt.Fprintf(out, "seeded %s profile\n", profile.Name)
+	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bob=123456")
 	return nil
 }
 
-func printSeedLogins(out io.Writer, profile string) {
-	_, _ = fmt.Fprintf(out, "seeded %s source facts\n", profile)
-	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bob=123456")
+// activateSeedIdentities seals deterministic credentials and enables each live Identity through the
+// configured adapters, so the scheduler collects them like User-configured Connections.
+func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config, live []seeds.LiveIdentity, out io.Writer) error {
+	if len(live) == 0 {
+		return nil
+	}
+	if !cfg.Crypto.HasMasterKey() {
+		_, _ = fmt.Fprintln(out, "no master key configured: seeded identities stay unconfigured")
+		return nil
+	}
+	registry := buildAdapters(cfg)
+	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ValidateTimeout})
+	if err != nil {
+		return err
+	}
+	for _, item := range live {
+		current, err := identities.Get(ctx, item.PortfolioID, item.IdentityID)
+		if err != nil {
+			return fmt.Errorf("load seeded identity %s: %w", item.IdentityID, err)
+		}
+		stored, err := identities.PutCredentials(ctx, item.PortfolioID, item.IdentityID, current.Version, identity.ActionInput{}, item.Credentials)
+		if err != nil {
+			return fmt.Errorf("store credentials for %s: %w", current.DisplayName, err)
+		}
+		enabled, _, err := identities.Enable(ctx, item.PortfolioID, item.IdentityID, stored.Version, identity.ActionInput{})
+		switch {
+		case errors.Is(err, identity.ErrValidationFailed):
+			_, _ = fmt.Fprintf(out, "identity %q: validation failed, connection is %s\n", current.DisplayName, enabled.Connection.Status)
+		case errors.Is(err, identity.ErrAdapterUnavailable):
+			_, _ = fmt.Fprintf(out, "identity %q: no adapter for %s (set [collection] fake_adapter = true for offline lanes); credentials stored, connection disabled\n", current.DisplayName, current.Platform)
+		case err != nil:
+			return fmt.Errorf("enable %s: %w", current.DisplayName, err)
+		default:
+			_, _ = fmt.Fprintf(out, "identity %q: connection enabled\n", current.DisplayName)
+		}
+	}
+	return nil
 }

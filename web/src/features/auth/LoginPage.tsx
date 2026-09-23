@@ -4,6 +4,8 @@ import { getAuthMe, postAuthLogin } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { readPreference } from "@/shared/lib/preferences";
+import { iconSize } from "@/shared/icons/iconSizes";
+import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
@@ -16,7 +18,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign in - Plutus";
+    document.title = "Sign in · Plutus";
     void (async () => {
       try {
         await refreshCsrf();
@@ -53,10 +55,11 @@ export function LoginPage() {
   return (
     <div className={styles.auth}>
       <form className={styles.card} onSubmit={(event) => void onSubmit(event)}>
-        <h1>Sign in to Plutus</h1>
-        <p className={styles.lead}>
-          Create users with the CLI command <code>plutus user create</code>.
-        </p>
+        <div className={styles.cardBrand}>
+          <PlutusIcon size={iconSize.lg} />
+          <span>Plutus</span>
+        </div>
+        <h1>Sign in</h1>
         {error ? (
           <p className={styles.alert} role="alert">
             {error}
@@ -86,6 +89,9 @@ export function LoginPage() {
             Sign in
           </ActionButton>
         </div>
+        <p className={styles.muted}>
+          Users are created with the CLI: <code>plutus user create</code>.
+        </p>
       </form>
     </div>
   );

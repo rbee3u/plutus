@@ -9,9 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -24,48 +22,75 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for AccountStatus.
+// Defines values for AccountValuationMethod.
 const (
-	AccountStatusActive      AccountStatus = "active"
-	AccountStatusDisappeared AccountStatus = "disappeared"
-	AccountStatusInactive    AccountStatus = "inactive"
+	Calculated AccountValuationMethod = "calculated"
+	Missing    AccountValuationMethod = "missing"
+	Reported   AccountValuationMethod = "reported"
 )
 
-// Valid indicates whether the value is a known member of the AccountStatus enum.
-func (e AccountStatus) Valid() bool {
+// Valid indicates whether the value is a known member of the AccountValuationMethod enum.
+func (e AccountValuationMethod) Valid() bool {
 	switch e {
-	case AccountStatusActive:
+	case Calculated:
 		return true
-	case AccountStatusDisappeared:
+	case Missing:
 		return true
-	case AccountStatusInactive:
+	case Reported:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for CalendarPeriodKind.
+// Defines values for AccountValuationStatus.
 const (
-	CalendarPeriodKindDay     CalendarPeriodKind = "day"
-	CalendarPeriodKindIsoWeek CalendarPeriodKind = "iso_week"
-	CalendarPeriodKindMonth   CalendarPeriodKind = "month"
-	CalendarPeriodKindQuarter CalendarPeriodKind = "quarter"
-	CalendarPeriodKindYear    CalendarPeriodKind = "year"
+	AccountValuationStatusFailed AccountValuationStatus = "failed"
+	AccountValuationStatusOk     AccountValuationStatus = "ok"
 )
 
-// Valid indicates whether the value is a known member of the CalendarPeriodKind enum.
-func (e CalendarPeriodKind) Valid() bool {
+// Valid indicates whether the value is a known member of the AccountValuationStatus enum.
+func (e AccountValuationStatus) Valid() bool {
 	switch e {
-	case CalendarPeriodKindDay:
+	case AccountValuationStatusFailed:
 		return true
-	case CalendarPeriodKindIsoWeek:
+	case AccountValuationStatusOk:
 		return true
-	case CalendarPeriodKindMonth:
+	default:
+		return false
+	}
+}
+
+// Defines values for AssetListingMappingSource.
+const (
+	AssetListingMappingSourceAuto   AssetListingMappingSource = "auto"
+	AssetListingMappingSourceManual AssetListingMappingSource = "manual"
+)
+
+// Valid indicates whether the value is a known member of the AssetListingMappingSource enum.
+func (e AssetListingMappingSource) Valid() bool {
+	switch e {
+	case AssetListingMappingSourceAuto:
 		return true
-	case CalendarPeriodKindQuarter:
+	case AssetListingMappingSourceManual:
 		return true
-	case CalendarPeriodKindYear:
+	default:
+		return false
+	}
+}
+
+// Defines values for BoundaryEventDirection.
+const (
+	BoundaryEventDirectionContribution BoundaryEventDirection = "contribution"
+	BoundaryEventDirectionWithdrawal   BoundaryEventDirection = "withdrawal"
+)
+
+// Valid indicates whether the value is a known member of the BoundaryEventDirection enum.
+func (e BoundaryEventDirection) Valid() bool {
+	switch e {
+	case BoundaryEventDirectionContribution:
+		return true
+	case BoundaryEventDirectionWithdrawal:
 		return true
 	default:
 		return false
@@ -90,222 +115,21 @@ func (e CapitalFlowDirection) Valid() bool {
 	}
 }
 
-// Defines values for CapitalFlowState.
+// Defines values for CollectionCycleTrigger.
 const (
-	CapitalFlowStateActive  CapitalFlowState = "active"
-	CapitalFlowStateDeleted CapitalFlowState = "deleted"
+	CollectionCycleTriggerManual   CollectionCycleTrigger = "manual"
+	CollectionCycleTriggerSchedule CollectionCycleTrigger = "schedule"
+	CollectionCycleTriggerSystem   CollectionCycleTrigger = "system"
 )
 
-// Valid indicates whether the value is a known member of the CapitalFlowState enum.
-func (e CapitalFlowState) Valid() bool {
+// Valid indicates whether the value is a known member of the CollectionCycleTrigger enum.
+func (e CollectionCycleTrigger) Valid() bool {
 	switch e {
-	case CapitalFlowStateActive:
+	case CollectionCycleTriggerManual:
 		return true
-	case CapitalFlowStateDeleted:
+	case CollectionCycleTriggerSchedule:
 		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CapitalFlowRevisionDirection.
-const (
-	CapitalFlowRevisionDirectionContribution CapitalFlowRevisionDirection = "contribution"
-	CapitalFlowRevisionDirectionWithdrawal   CapitalFlowRevisionDirection = "withdrawal"
-)
-
-// Valid indicates whether the value is a known member of the CapitalFlowRevisionDirection enum.
-func (e CapitalFlowRevisionDirection) Valid() bool {
-	switch e {
-	case CapitalFlowRevisionDirectionContribution:
-		return true
-	case CapitalFlowRevisionDirectionWithdrawal:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CapitalFlowRevisionState.
-const (
-	CapitalFlowRevisionStateActive  CapitalFlowRevisionState = "active"
-	CapitalFlowRevisionStateDeleted CapitalFlowRevisionState = "deleted"
-)
-
-// Valid indicates whether the value is a known member of the CapitalFlowRevisionState enum.
-func (e CapitalFlowRevisionState) Valid() bool {
-	switch e {
-	case CapitalFlowRevisionStateActive:
-		return true
-	case CapitalFlowRevisionStateDeleted:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogAssetKind.
-const (
-	Crypto CatalogAssetKind = "crypto"
-	Fiat   CatalogAssetKind = "fiat"
-	Other  CatalogAssetKind = "other"
-)
-
-// Valid indicates whether the value is a known member of the CatalogAssetKind enum.
-func (e CatalogAssetKind) Valid() bool {
-	switch e {
-	case Crypto:
-		return true
-	case Fiat:
-		return true
-	case Other:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogAssetStatus.
-const (
-	CatalogAssetStatusActive      CatalogAssetStatus = "active"
-	CatalogAssetStatusProvisional CatalogAssetStatus = "provisional"
-	CatalogAssetStatusRetired     CatalogAssetStatus = "retired"
-)
-
-// Valid indicates whether the value is a known member of the CatalogAssetStatus enum.
-func (e CatalogAssetStatus) Valid() bool {
-	switch e {
-	case CatalogAssetStatusActive:
-		return true
-	case CatalogAssetStatusProvisional:
-		return true
-	case CatalogAssetStatusRetired:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogAssetListingMappingState.
-const (
-	CatalogAssetListingMappingStateConfirmed   CatalogAssetListingMappingState = "confirmed"
-	CatalogAssetListingMappingStateProvisional CatalogAssetListingMappingState = "provisional"
-	CatalogAssetListingMappingStateUnmapped    CatalogAssetListingMappingState = "unmapped"
-)
-
-// Valid indicates whether the value is a known member of the CatalogAssetListingMappingState enum.
-func (e CatalogAssetListingMappingState) Valid() bool {
-	switch e {
-	case CatalogAssetListingMappingStateConfirmed:
-		return true
-	case CatalogAssetListingMappingStateProvisional:
-		return true
-	case CatalogAssetListingMappingStateUnmapped:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogAssetListingStatus.
-const (
-	CatalogAssetListingStatusActive   CatalogAssetListingStatus = "active"
-	CatalogAssetListingStatusInactive CatalogAssetListingStatus = "inactive"
-	CatalogAssetListingStatusUnknown  CatalogAssetListingStatus = "unknown"
-)
-
-// Valid indicates whether the value is a known member of the CatalogAssetListingStatus enum.
-func (e CatalogAssetListingStatus) Valid() bool {
-	switch e {
-	case CatalogAssetListingStatusActive:
-		return true
-	case CatalogAssetListingStatusInactive:
-		return true
-	case CatalogAssetListingStatusUnknown:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogInstrumentKind.
-const (
-	InverseDelivery  CatalogInstrumentKind = "inverse_delivery"
-	InversePerpetual CatalogInstrumentKind = "inverse_perpetual"
-	LinearDelivery   CatalogInstrumentKind = "linear_delivery"
-	LinearPerpetual  CatalogInstrumentKind = "linear_perpetual"
-	Spot             CatalogInstrumentKind = "spot"
-)
-
-// Valid indicates whether the value is a known member of the CatalogInstrumentKind enum.
-func (e CatalogInstrumentKind) Valid() bool {
-	switch e {
-	case InverseDelivery:
-		return true
-	case InversePerpetual:
-		return true
-	case LinearDelivery:
-		return true
-	case LinearPerpetual:
-		return true
-	case Spot:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogInstrumentStatus.
-const (
-	CatalogInstrumentStatusActive  CatalogInstrumentStatus = "active"
-	CatalogInstrumentStatusExpired CatalogInstrumentStatus = "expired"
-	CatalogInstrumentStatusUnknown CatalogInstrumentStatus = "unknown"
-)
-
-// Valid indicates whether the value is a known member of the CatalogInstrumentStatus enum.
-func (e CatalogInstrumentStatus) Valid() bool {
-	switch e {
-	case CatalogInstrumentStatusActive:
-		return true
-	case CatalogInstrumentStatusExpired:
-		return true
-	case CatalogInstrumentStatusUnknown:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogMappingState.
-const (
-	CatalogMappingStateConfirmed   CatalogMappingState = "confirmed"
-	CatalogMappingStateProvisional CatalogMappingState = "provisional"
-)
-
-// Valid indicates whether the value is a known member of the CatalogMappingState enum.
-func (e CatalogMappingState) Valid() bool {
-	switch e {
-	case CatalogMappingStateConfirmed:
-		return true
-	case CatalogMappingStateProvisional:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CatalogPinSubjectKind.
-const (
-	CatalogPinSubjectKindInstrument CatalogPinSubjectKind = "instrument"
-	CatalogPinSubjectKindListing    CatalogPinSubjectKind = "listing"
-)
-
-// Valid indicates whether the value is a known member of the CatalogPinSubjectKind enum.
-func (e CatalogPinSubjectKind) Valid() bool {
-	switch e {
-	case CatalogPinSubjectKindInstrument:
-		return true
-	case CatalogPinSubjectKindListing:
+	case CollectionCycleTriggerSystem:
 		return true
 	default:
 		return false
@@ -314,19 +138,16 @@ func (e CatalogPinSubjectKind) Valid() bool {
 
 // Defines values for Completeness.
 const (
-	CompletenessComplete Completeness = "complete"
-	CompletenessMissing  Completeness = "missing"
-	CompletenessPartial  Completeness = "partial"
+	Complete   Completeness = "complete"
+	Incomplete Completeness = "incomplete"
 )
 
 // Valid indicates whether the value is a known member of the Completeness enum.
 func (e Completeness) Valid() bool {
 	switch e {
-	case CompletenessComplete:
+	case Complete:
 		return true
-	case CompletenessMissing:
-		return true
-	case CompletenessPartial:
+	case Incomplete:
 		return true
 	default:
 		return false
@@ -335,9 +156,10 @@ func (e Completeness) Valid() bool {
 
 // Defines values for ConnectionStatus.
 const (
-	ConnectionStatusDisabled ConnectionStatus = "disabled"
-	ConnectionStatusEnabled  ConnectionStatus = "enabled"
-	ConnectionStatusInvalid  ConnectionStatus = "invalid"
+	ConnectionStatusDisabled     ConnectionStatus = "disabled"
+	ConnectionStatusEnabled      ConnectionStatus = "enabled"
+	ConnectionStatusInvalid      ConnectionStatus = "invalid"
+	ConnectionStatusUnconfigured ConnectionStatus = "unconfigured"
 )
 
 // Valid indicates whether the value is a known member of the ConnectionStatus enum.
@@ -349,32 +171,7 @@ func (e ConnectionStatus) Valid() bool {
 		return true
 	case ConnectionStatusInvalid:
 		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for Coverage.
-const (
-	CoverageAmbiguous Coverage = "ambiguous"
-	CoverageChanged   Coverage = "changed"
-	CoverageComplete  Coverage = "complete"
-	CoverageMissing   Coverage = "missing"
-	CoveragePartial   Coverage = "partial"
-)
-
-// Valid indicates whether the value is a known member of the Coverage enum.
-func (e Coverage) Valid() bool {
-	switch e {
-	case CoverageAmbiguous:
-		return true
-	case CoverageChanged:
-		return true
-	case CoverageComplete:
-		return true
-	case CoverageMissing:
-		return true
-	case CoveragePartial:
+	case ConnectionStatusUnconfigured:
 		return true
 	default:
 		return false
@@ -399,69 +196,6 @@ func (e CreateCapitalFlowRequestDirection) Valid() bool {
 	}
 }
 
-// Defines values for CreateConnectionRequestStatus.
-const (
-	CreateConnectionRequestStatusDisabled CreateConnectionRequestStatus = "disabled"
-	CreateConnectionRequestStatusEnabled  CreateConnectionRequestStatus = "enabled"
-	CreateConnectionRequestStatusInvalid  CreateConnectionRequestStatus = "invalid"
-)
-
-// Valid indicates whether the value is a known member of the CreateConnectionRequestStatus enum.
-func (e CreateConnectionRequestStatus) Valid() bool {
-	switch e {
-	case CreateConnectionRequestStatusDisabled:
-		return true
-	case CreateConnectionRequestStatusEnabled:
-		return true
-	case CreateConnectionRequestStatusInvalid:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateIdentityRequestAccountMode.
-const (
-	CreateIdentityRequestAccountModeBinancePm  CreateIdentityRequestAccountMode = "binance_pm"
-	CreateIdentityRequestAccountModeBybitUta20 CreateIdentityRequestAccountMode = "bybit_uta_2_0"
-	CreateIdentityRequestAccountModeOkxMcm     CreateIdentityRequestAccountMode = "okx_mcm"
-	CreateIdentityRequestAccountModeOkxPm      CreateIdentityRequestAccountMode = "okx_pm"
-)
-
-// Valid indicates whether the value is a known member of the CreateIdentityRequestAccountMode enum.
-func (e CreateIdentityRequestAccountMode) Valid() bool {
-	switch e {
-	case CreateIdentityRequestAccountModeBinancePm:
-		return true
-	case CreateIdentityRequestAccountModeBybitUta20:
-		return true
-	case CreateIdentityRequestAccountModeOkxMcm:
-		return true
-	case CreateIdentityRequestAccountModeOkxPm:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateIdentityRequestKind.
-const (
-	CreateIdentityRequestKindMain        CreateIdentityRequestKind = "main"
-	CreateIdentityRequestKindSubordinate CreateIdentityRequestKind = "subordinate"
-)
-
-// Valid indicates whether the value is a known member of the CreateIdentityRequestKind enum.
-func (e CreateIdentityRequestKind) Valid() bool {
-	switch e {
-	case CreateIdentityRequestKindMain:
-		return true
-	case CreateIdentityRequestKindSubordinate:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for CursorPageKind.
 const (
 	Cursor CursorPageKind = "cursor"
@@ -479,19 +213,16 @@ func (e CursorPageKind) Valid() bool {
 
 // Defines values for Freshness.
 const (
-	FreshnessFresh   Freshness = "fresh"
-	FreshnessStale   Freshness = "stale"
-	FreshnessUnknown Freshness = "unknown"
+	Fresh Freshness = "fresh"
+	Stale Freshness = "stale"
 )
 
 // Valid indicates whether the value is a known member of the Freshness enum.
 func (e Freshness) Valid() bool {
 	switch e {
-	case FreshnessFresh:
+	case Fresh:
 		return true
-	case FreshnessStale:
-		return true
-	case FreshnessUnknown:
+	case Stale:
 		return true
 	default:
 		return false
@@ -543,52 +274,9 @@ func (e HealthReadyStatus) Valid() bool {
 	}
 }
 
-// Defines values for IdentityAccountMode.
-const (
-	IdentityAccountModeBinancePm  IdentityAccountMode = "binance_pm"
-	IdentityAccountModeBybitUta20 IdentityAccountMode = "bybit_uta_2_0"
-	IdentityAccountModeOkxMcm     IdentityAccountMode = "okx_mcm"
-	IdentityAccountModeOkxPm      IdentityAccountMode = "okx_pm"
-)
-
-// Valid indicates whether the value is a known member of the IdentityAccountMode enum.
-func (e IdentityAccountMode) Valid() bool {
-	switch e {
-	case IdentityAccountModeBinancePm:
-		return true
-	case IdentityAccountModeBybitUta20:
-		return true
-	case IdentityAccountModeOkxMcm:
-		return true
-	case IdentityAccountModeOkxPm:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for IdentityKind.
-const (
-	IdentityKindMain        IdentityKind = "main"
-	IdentityKindSubordinate IdentityKind = "subordinate"
-)
-
-// Valid indicates whether the value is a known member of the IdentityKind enum.
-func (e IdentityKind) Valid() bool {
-	switch e {
-	case IdentityKindMain:
-		return true
-	case IdentityKindSubordinate:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for IdentityStatus.
 const (
 	IdentityStatusArchived IdentityStatus = "archived"
-	IdentityStatusDisabled IdentityStatus = "disabled"
 	IdentityStatusEnabled  IdentityStatus = "enabled"
 )
 
@@ -597,9 +285,28 @@ func (e IdentityStatus) Valid() bool {
 	switch e {
 	case IdentityStatusArchived:
 		return true
-	case IdentityStatusDisabled:
-		return true
 	case IdentityStatusEnabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobTrigger.
+const (
+	JobTriggerManual   JobTrigger = "manual"
+	JobTriggerSchedule JobTrigger = "schedule"
+	JobTriggerSystem   JobTrigger = "system"
+)
+
+// Valid indicates whether the value is a known member of the JobTrigger enum.
+func (e JobTrigger) Valid() bool {
+	switch e {
+	case JobTriggerManual:
+		return true
+	case JobTriggerSchedule:
+		return true
+	case JobTriggerSystem:
 		return true
 	default:
 		return false
@@ -608,16 +315,16 @@ func (e IdentityStatus) Valid() bool {
 
 // Defines values for JobKind.
 const (
-	Collection JobKind = "collection"
-	Projection JobKind = "projection"
+	JobKindCollectionCycle JobKind = "collection_cycle"
+	JobKindValuationRecalc JobKind = "valuation_recalc"
 )
 
 // Valid indicates whether the value is a known member of the JobKind enum.
 func (e JobKind) Valid() bool {
 	switch e {
-	case Collection:
+	case JobKindCollectionCycle:
 		return true
-	case Projection:
+	case JobKindValuationRecalc:
 		return true
 	default:
 		return false
@@ -645,90 +352,6 @@ func (e JobStatus) Valid() bool {
 	case JobStatusRunning:
 		return true
 	case JobStatusSucceeded:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for JobAttemptOutcome.
-const (
-	JobAttemptOutcomeCancelled JobAttemptOutcome = "cancelled"
-	JobAttemptOutcomeFailed    JobAttemptOutcome = "failed"
-	JobAttemptOutcomeSucceeded JobAttemptOutcome = "succeeded"
-)
-
-// Valid indicates whether the value is a known member of the JobAttemptOutcome enum.
-func (e JobAttemptOutcome) Valid() bool {
-	switch e {
-	case JobAttemptOutcomeCancelled:
-		return true
-	case JobAttemptOutcomeFailed:
-		return true
-	case JobAttemptOutcomeSucceeded:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ObservationCompleteness.
-const (
-	ObservationCompletenessComplete ObservationCompleteness = "complete"
-	ObservationCompletenessPartial  ObservationCompleteness = "partial"
-)
-
-// Valid indicates whether the value is a known member of the ObservationCompleteness enum.
-func (e ObservationCompleteness) Valid() bool {
-	switch e {
-	case ObservationCompletenessComplete:
-		return true
-	case ObservationCompletenessPartial:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ObservationKind.
-const (
-	AccountMetric  ObservationKind = "account_metric"
-	Balance        ObservationKind = "balance"
-	Position       ObservationKind = "position"
-	Price          ObservationKind = "price"
-	ReportedEquity ObservationKind = "reported_equity"
-)
-
-// Valid indicates whether the value is a known member of the ObservationKind enum.
-func (e ObservationKind) Valid() bool {
-	switch e {
-	case AccountMetric:
-		return true
-	case Balance:
-		return true
-	case Position:
-		return true
-	case Price:
-		return true
-	case ReportedEquity:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ObservationSummaryCompleteness.
-const (
-	ObservationSummaryCompletenessComplete ObservationSummaryCompleteness = "complete"
-	ObservationSummaryCompletenessPartial  ObservationSummaryCompleteness = "partial"
-)
-
-// Valid indicates whether the value is a known member of the ObservationSummaryCompleteness enum.
-func (e ObservationSummaryCompleteness) Valid() bool {
-	switch e {
-	case ObservationSummaryCompletenessComplete:
-		return true
-	case ObservationSummaryCompletenessPartial:
 		return true
 	default:
 		return false
@@ -768,141 +391,48 @@ func (e PatchCapitalFlowRequestDirection) Valid() bool {
 	}
 }
 
-// Defines values for PatchConnectionRequestStatus.
+// Defines values for PeriodKind.
 const (
-	PatchConnectionRequestStatusDisabled PatchConnectionRequestStatus = "disabled"
-	PatchConnectionRequestStatusEnabled  PatchConnectionRequestStatus = "enabled"
-	PatchConnectionRequestStatusInvalid  PatchConnectionRequestStatus = "invalid"
+	PeriodKindDay     PeriodKind = "day"
+	PeriodKindMonth   PeriodKind = "month"
+	PeriodKindQuarter PeriodKind = "quarter"
+	PeriodKindWeek    PeriodKind = "week"
+	PeriodKindYear    PeriodKind = "year"
 )
 
-// Valid indicates whether the value is a known member of the PatchConnectionRequestStatus enum.
-func (e PatchConnectionRequestStatus) Valid() bool {
+// Valid indicates whether the value is a known member of the PeriodKind enum.
+func (e PeriodKind) Valid() bool {
 	switch e {
-	case PatchConnectionRequestStatusDisabled:
+	case PeriodKindDay:
 		return true
-	case PatchConnectionRequestStatusEnabled:
+	case PeriodKindMonth:
 		return true
-	case PatchConnectionRequestStatusInvalid:
+	case PeriodKindQuarter:
+		return true
+	case PeriodKindWeek:
+		return true
+	case PeriodKindYear:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for PatchIdentityRequestAccountMode.
+// Defines values for PositionRowQuantityUnit.
 const (
-	PatchIdentityRequestAccountModeBinancePm  PatchIdentityRequestAccountMode = "binance_pm"
-	PatchIdentityRequestAccountModeBybitUta20 PatchIdentityRequestAccountMode = "bybit_uta_2_0"
-	PatchIdentityRequestAccountModeOkxMcm     PatchIdentityRequestAccountMode = "okx_mcm"
-	PatchIdentityRequestAccountModeOkxPm      PatchIdentityRequestAccountMode = "okx_pm"
+	Base      PositionRowQuantityUnit = "base"
+	Contracts PositionRowQuantityUnit = "contracts"
+	Quote     PositionRowQuantityUnit = "quote"
 )
 
-// Valid indicates whether the value is a known member of the PatchIdentityRequestAccountMode enum.
-func (e PatchIdentityRequestAccountMode) Valid() bool {
+// Valid indicates whether the value is a known member of the PositionRowQuantityUnit enum.
+func (e PositionRowQuantityUnit) Valid() bool {
 	switch e {
-	case PatchIdentityRequestAccountModeBinancePm:
+	case Base:
 		return true
-	case PatchIdentityRequestAccountModeBybitUta20:
+	case Contracts:
 		return true
-	case PatchIdentityRequestAccountModeOkxMcm:
-		return true
-	case PatchIdentityRequestAccountModeOkxPm:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PatchIdentityRequestStatus.
-const (
-	PatchIdentityRequestStatusDisabled PatchIdentityRequestStatus = "disabled"
-	PatchIdentityRequestStatusEnabled  PatchIdentityRequestStatus = "enabled"
-)
-
-// Valid indicates whether the value is a known member of the PatchIdentityRequestStatus enum.
-func (e PatchIdentityRequestStatus) Valid() bool {
-	switch e {
-	case PatchIdentityRequestStatusDisabled:
-		return true
-	case PatchIdentityRequestStatusEnabled:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PatchObservationRequestCompleteness.
-const (
-	PatchObservationRequestCompletenessComplete PatchObservationRequestCompleteness = "complete"
-	PatchObservationRequestCompletenessPartial  PatchObservationRequestCompleteness = "partial"
-)
-
-// Valid indicates whether the value is a known member of the PatchObservationRequestCompleteness enum.
-func (e PatchObservationRequestCompleteness) Valid() bool {
-	switch e {
-	case PatchObservationRequestCompletenessComplete:
-		return true
-	case PatchObservationRequestCompletenessPartial:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PatchObservationRequestSide.
-const (
-	PatchObservationRequestSideLong  PatchObservationRequestSide = "long"
-	PatchObservationRequestSideNet   PatchObservationRequestSide = "net"
-	PatchObservationRequestSideShort PatchObservationRequestSide = "short"
-)
-
-// Valid indicates whether the value is a known member of the PatchObservationRequestSide enum.
-func (e PatchObservationRequestSide) Valid() bool {
-	switch e {
-	case PatchObservationRequestSideLong:
-		return true
-	case PatchObservationRequestSideNet:
-		return true
-	case PatchObservationRequestSideShort:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PortfolioStatus.
-const (
-	PortfolioStatusActive   PortfolioStatus = "active"
-	PortfolioStatusArchived PortfolioStatus = "archived"
-)
-
-// Valid indicates whether the value is a known member of the PortfolioStatus enum.
-func (e PortfolioStatus) Valid() bool {
-	switch e {
-	case PortfolioStatusActive:
-		return true
-	case PortfolioStatusArchived:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PositionObservationSide.
-const (
-	PositionObservationSideLong  PositionObservationSide = "long"
-	PositionObservationSideNet   PositionObservationSide = "net"
-	PositionObservationSideShort PositionObservationSide = "short"
-)
-
-// Valid indicates whether the value is a known member of the PositionObservationSide enum.
-func (e PositionObservationSide) Valid() bool {
-	switch e {
-	case PositionObservationSideLong:
-		return true
-	case PositionObservationSideNet:
-		return true
-	case PositionObservationSideShort:
+	case Quote:
 		return true
 	default:
 		return false
@@ -911,82 +441,16 @@ func (e PositionObservationSide) Valid() bool {
 
 // Defines values for PositionRowSide.
 const (
-	PositionRowSideLong  PositionRowSide = "long"
-	PositionRowSideNet   PositionRowSide = "net"
-	PositionRowSideShort PositionRowSide = "short"
+	Long  PositionRowSide = "long"
+	Short PositionRowSide = "short"
 )
 
 // Valid indicates whether the value is a known member of the PositionRowSide enum.
 func (e PositionRowSide) Valid() bool {
 	switch e {
-	case PositionRowSideLong:
+	case Long:
 		return true
-	case PositionRowSideNet:
-		return true
-	case PositionRowSideShort:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PriceObservationPriceType.
-const (
-	ExchangeRate PriceObservationPriceType = "exchange_rate"
-	Index        PriceObservationPriceType = "index"
-	Mark         PriceObservationPriceType = "mark"
-	Market       PriceObservationPriceType = "market"
-)
-
-// Valid indicates whether the value is a known member of the PriceObservationPriceType enum.
-func (e PriceObservationPriceType) Valid() bool {
-	switch e {
-	case ExchangeRate:
-		return true
-	case Index:
-		return true
-	case Mark:
-		return true
-	case Market:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ProjectionIssueSeverity.
-const (
-	Error   ProjectionIssueSeverity = "error"
-	Info    ProjectionIssueSeverity = "info"
-	Warning ProjectionIssueSeverity = "warning"
-)
-
-// Valid indicates whether the value is a known member of the ProjectionIssueSeverity enum.
-func (e ProjectionIssueSeverity) Valid() bool {
-	switch e {
-	case Error:
-		return true
-	case Info:
-		return true
-	case Warning:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutCatalogMappingRequestState.
-const (
-	PutCatalogMappingRequestStateConfirmed   PutCatalogMappingRequestState = "confirmed"
-	PutCatalogMappingRequestStateProvisional PutCatalogMappingRequestState = "provisional"
-)
-
-// Valid indicates whether the value is a known member of the PutCatalogMappingRequestState enum.
-func (e PutCatalogMappingRequestState) Valid() bool {
-	switch e {
-	case PutCatalogMappingRequestStateConfirmed:
-		return true
-	case PutCatalogMappingRequestStateProvisional:
+	case Short:
 		return true
 	default:
 		return false
@@ -995,31 +459,19 @@ func (e PutCatalogMappingRequestState) Valid() bool {
 
 // Defines values for TimeGranularity.
 const (
-	TimeGranularityAuto    TimeGranularity = "auto"
-	TimeGranularityDay     TimeGranularity = "day"
-	TimeGranularityHour    TimeGranularity = "hour"
-	TimeGranularityIsoWeek TimeGranularity = "iso_week"
-	TimeGranularityMonth   TimeGranularity = "month"
-	TimeGranularityQuarter TimeGranularity = "quarter"
-	TimeGranularityYear    TimeGranularity = "year"
+	TimeGranularityDay  TimeGranularity = "day"
+	TimeGranularityHour TimeGranularity = "hour"
+	TimeGranularityRaw  TimeGranularity = "raw"
 )
 
 // Valid indicates whether the value is a known member of the TimeGranularity enum.
 func (e TimeGranularity) Valid() bool {
 	switch e {
-	case TimeGranularityAuto:
-		return true
 	case TimeGranularityDay:
 		return true
 	case TimeGranularityHour:
 		return true
-	case TimeGranularityIsoWeek:
-		return true
-	case TimeGranularityMonth:
-		return true
-	case TimeGranularityQuarter:
-		return true
-	case TimeGranularityYear:
+	case TimeGranularityRaw:
 		return true
 	default:
 		return false
@@ -1044,87 +496,11 @@ func (e UserStatus) Valid() bool {
 	}
 }
 
-// Defines values for ValueChangePointPeriodKind.
-const (
-	ValueChangePointPeriodKindDay     ValueChangePointPeriodKind = "day"
-	ValueChangePointPeriodKindIsoWeek ValueChangePointPeriodKind = "iso_week"
-	ValueChangePointPeriodKindMonth   ValueChangePointPeriodKind = "month"
-	ValueChangePointPeriodKindQuarter ValueChangePointPeriodKind = "quarter"
-	ValueChangePointPeriodKindYear    ValueChangePointPeriodKind = "year"
-)
-
-// Valid indicates whether the value is a known member of the ValueChangePointPeriodKind enum.
-func (e ValueChangePointPeriodKind) Valid() bool {
-	switch e {
-	case ValueChangePointPeriodKindDay:
-		return true
-	case ValueChangePointPeriodKindIsoWeek:
-		return true
-	case ValueChangePointPeriodKindMonth:
-		return true
-	case ValueChangePointPeriodKindQuarter:
-		return true
-	case ValueChangePointPeriodKindYear:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ValueChangePointState.
-const (
-	ValueChangePointStateComplete     ValueChangePointState = "complete"
-	ValueChangePointStateIncomparable ValueChangePointState = "incomparable"
-	ValueChangePointStateIncomplete   ValueChangePointState = "incomplete"
-	ValueChangePointStateProvisional  ValueChangePointState = "provisional"
-)
-
-// Valid indicates whether the value is a known member of the ValueChangePointState enum.
-func (e ValueChangePointState) Valid() bool {
-	switch e {
-	case ValueChangePointStateComplete:
-		return true
-	case ValueChangePointStateIncomparable:
-		return true
-	case ValueChangePointStateIncomplete:
-		return true
-	case ValueChangePointStateProvisional:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ValueChangeRowState.
-const (
-	ValueChangeRowStateComplete     ValueChangeRowState = "complete"
-	ValueChangeRowStateIncomparable ValueChangeRowState = "incomparable"
-	ValueChangeRowStateIncomplete   ValueChangeRowState = "incomplete"
-	ValueChangeRowStateProvisional  ValueChangeRowState = "provisional"
-)
-
-// Valid indicates whether the value is a known member of the ValueChangeRowState enum.
-func (e ValueChangeRowState) Valid() bool {
-	switch e {
-	case ValueChangeRowStateComplete:
-		return true
-	case ValueChangeRowStateIncomparable:
-		return true
-	case ValueChangeRowStateIncomplete:
-		return true
-	case ValueChangeRowStateProvisional:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for ListBalancesParamsGroupBy.
 const (
 	ListBalancesParamsGroupByAccount  ListBalancesParamsGroupBy = "account"
 	ListBalancesParamsGroupByAsset    ListBalancesParamsGroupBy = "asset"
 	ListBalancesParamsGroupByIdentity ListBalancesParamsGroupBy = "identity"
-	ListBalancesParamsGroupByListing  ListBalancesParamsGroupBy = "listing"
 	ListBalancesParamsGroupByPlatform ListBalancesParamsGroupBy = "platform"
 )
 
@@ -1137,78 +513,7 @@ func (e ListBalancesParamsGroupBy) Valid() bool {
 		return true
 	case ListBalancesParamsGroupByIdentity:
 		return true
-	case ListBalancesParamsGroupByListing:
-		return true
 	case ListBalancesParamsGroupByPlatform:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for SearchCatalogAssetListingsParamsMappingState.
-const (
-	SearchCatalogAssetListingsParamsMappingStateConfirmed   SearchCatalogAssetListingsParamsMappingState = "confirmed"
-	SearchCatalogAssetListingsParamsMappingStateProvisional SearchCatalogAssetListingsParamsMappingState = "provisional"
-	SearchCatalogAssetListingsParamsMappingStateUnmapped    SearchCatalogAssetListingsParamsMappingState = "unmapped"
-)
-
-// Valid indicates whether the value is a known member of the SearchCatalogAssetListingsParamsMappingState enum.
-func (e SearchCatalogAssetListingsParamsMappingState) Valid() bool {
-	switch e {
-	case SearchCatalogAssetListingsParamsMappingStateConfirmed:
-		return true
-	case SearchCatalogAssetListingsParamsMappingStateProvisional:
-		return true
-	case SearchCatalogAssetListingsParamsMappingStateUnmapped:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListExposuresParamsGroupBy.
-const (
-	ListExposuresParamsGroupByAccount  ListExposuresParamsGroupBy = "account"
-	ListExposuresParamsGroupByAsset    ListExposuresParamsGroupBy = "asset"
-	ListExposuresParamsGroupByIdentity ListExposuresParamsGroupBy = "identity"
-	ListExposuresParamsGroupByPlatform ListExposuresParamsGroupBy = "platform"
-)
-
-// Valid indicates whether the value is a known member of the ListExposuresParamsGroupBy enum.
-func (e ListExposuresParamsGroupBy) Valid() bool {
-	switch e {
-	case ListExposuresParamsGroupByAccount:
-		return true
-	case ListExposuresParamsGroupByAsset:
-		return true
-	case ListExposuresParamsGroupByIdentity:
-		return true
-	case ListExposuresParamsGroupByPlatform:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListPositionsParamsGroupBy.
-const (
-	ListPositionsParamsGroupByAccount    ListPositionsParamsGroupBy = "account"
-	ListPositionsParamsGroupByIdentity   ListPositionsParamsGroupBy = "identity"
-	ListPositionsParamsGroupByInstrument ListPositionsParamsGroupBy = "instrument"
-	ListPositionsParamsGroupByPlatform   ListPositionsParamsGroupBy = "platform"
-)
-
-// Valid indicates whether the value is a known member of the ListPositionsParamsGroupBy enum.
-func (e ListPositionsParamsGroupBy) Valid() bool {
-	switch e {
-	case ListPositionsParamsGroupByAccount:
-		return true
-	case ListPositionsParamsGroupByIdentity:
-		return true
-	case ListPositionsParamsGroupByInstrument:
-		return true
-	case ListPositionsParamsGroupByPlatform:
 		return true
 	default:
 		return false
@@ -1217,62 +522,105 @@ func (e ListPositionsParamsGroupBy) Valid() bool {
 
 // Account defines model for Account.
 type Account struct {
-	AccountType string        `json:"accountType"`
-	DisplayName string        `json:"displayName"`
-	ExternalRef string        `json:"externalRef"`
-	Id          UUID          `json:"id"`
-	IdentityId  UUID          `json:"identityId"`
-	PortfolioId UUID          `json:"portfolioId"`
-	Status      AccountStatus `json:"status"`
+	AccountType string `json:"accountType"`
+	DisplayName string `json:"displayName"`
+	Id          UUID   `json:"id"`
+	IdentityId  UUID   `json:"identityId"`
+	Selected    bool   `json:"selected"`
+	Version     int    `json:"version"`
 }
 
-// AccountStatus defines model for Account.Status.
-type AccountStatus string
-
-// AccountList defines model for AccountList.
-type AccountList struct {
-	Items []Account  `json:"items"`
-	Page  OffsetPage `json:"page"`
+// AccountBalanceList defines model for AccountBalanceList.
+type AccountBalanceList struct {
+	Account AccountValuation `json:"account"`
+	Context ReadContext      `json:"context"`
+	Issues  []Issue          `json:"issues"`
+	Items   []BalanceRow     `json:"items"`
 }
 
-// AccountMetricObservation defines model for AccountMetricObservation.
-type AccountMetricObservation struct {
-	DecimalValue     *string `json:"decimalValue,omitempty"`
-	MetricCode       string  `json:"metricCode"`
-	SemanticsVersion string  `json:"semanticsVersion"`
-	TextValue        *string `json:"textValue,omitempty"`
-	Unit             string  `json:"unit"`
+// AccountMode defines model for AccountMode.
+type AccountMode struct {
+	AccountTypes []AccountTypeInfo `json:"accountTypes"`
+	Id           string            `json:"id"`
+	Name         string            `json:"name"`
 }
 
-// AmountStatus defines model for AmountStatus.
-type AmountStatus struct {
-	Amount          *NullableDecimal    `json:"amount"`
-	Completeness    Completeness        `json:"completeness"`
-	Coverage        Coverage            `json:"coverage"`
-	EvaluatedAt     *time.Time          `json:"evaluatedAt,omitempty"`
-	Freshness       Freshness           `json:"freshness"`
-	PeriodEndDate   *openapi_types.Date `json:"periodEndDate,omitempty"`
-	PeriodKind      *string             `json:"periodKind,omitempty"`
-	PeriodStartDate *openapi_types.Date `json:"periodStartDate,omitempty"`
-	State           *string             `json:"state,omitempty"`
+// AccountPatch defines model for AccountPatch.
+type AccountPatch struct {
+	DisplayName *string `json:"displayName,omitempty"`
+	Id          UUID    `json:"id"`
+	Selected    *bool   `json:"selected,omitempty"`
 }
 
-// AssetList defines model for AssetList.
-type AssetList struct {
-	Items []CatalogAsset `json:"items"`
-	Page  OffsetPage     `json:"page"`
+// AccountPositionList defines model for AccountPositionList.
+type AccountPositionList struct {
+	Account AccountValuation `json:"account"`
+	Context ReadContext      `json:"context"`
+	Issues  []Issue          `json:"issues"`
+	Items   []PositionRow    `json:"items"`
 }
+
+// AccountTypeInfo defines model for AccountTypeInfo.
+type AccountTypeInfo struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// AccountValuation defines model for AccountValuation.
+type AccountValuation struct {
+	AccountId              UUID                   `json:"accountId"`
+	AccountName            string                 `json:"accountName"`
+	AccountType            string                 `json:"accountType"`
+	AdjustedEquity         *NullableDecimal       `json:"adjustedEquity,omitempty"`
+	AvailableEquity        *NullableDecimal       `json:"availableEquity,omitempty"`
+	Completeness           Completeness           `json:"completeness"`
+	ConnectionStatus       *string                `json:"connectionStatus,omitempty"`
+	Equity                 *NullableDecimal       `json:"equity,omitempty"`
+	ErrorClass             *string                `json:"errorClass,omitempty"`
+	ErrorDetail            *string                `json:"errorDetail,omitempty"`
+	Freshness              Freshness              `json:"freshness"`
+	IdentityId             UUID                   `json:"identityId"`
+	IdentityName           string                 `json:"identityName"`
+	IdentityStatus         *string                `json:"identityStatus,omitempty"`
+	InitialMarginRatio     *NullableDecimal       `json:"initialMarginRatio,omitempty"`
+	MaintenanceMarginRatio *NullableDecimal       `json:"maintenanceMarginRatio,omitempty"`
+	Method                 AccountValuationMethod `json:"method"`
+	Omitted                []OmittedBalance       `json:"omitted"`
+	Platform               string                 `json:"platform"`
+	ReportId               *openapi_types.UUID    `json:"reportId,omitempty"`
+	ReportObservedAt       *time.Time             `json:"reportObservedAt,omitempty"`
+	Selected               bool                   `json:"selected"`
+	Status                 AccountValuationStatus `json:"status"`
+	UnifiedMarginRatio     *NullableDecimal       `json:"unifiedMarginRatio,omitempty"`
+	ValueUsd               *NullableDecimal       `json:"valueUsd,omitempty"`
+}
+
+// AccountValuationMethod defines model for AccountValuation.Method.
+type AccountValuationMethod string
+
+// AccountValuationStatus defines model for AccountValuation.Status.
+type AccountValuationStatus string
+
+// AssetListing defines model for AssetListing.
+type AssetListing struct {
+	AssetSymbol   string                    `json:"assetSymbol"`
+	FirstSeenAt   time.Time                 `json:"firstSeenAt"`
+	Id            UUID                      `json:"id"`
+	LastSeenAt    time.Time                 `json:"lastSeenAt"`
+	MappingSource AssetListingMappingSource `json:"mappingSource"`
+	Name          *string                   `json:"name,omitempty"`
+	Platform      string                    `json:"platform"`
+	Symbol        string                    `json:"symbol"`
+	Version       int                       `json:"version"`
+}
+
+// AssetListingMappingSource defines model for AssetListing.MappingSource.
+type AssetListingMappingSource string
 
 // AssetListingList defines model for AssetListingList.
 type AssetListingList struct {
-	Items []CatalogAssetListing `json:"items"`
-	Page  OffsetPage            `json:"page"`
-}
-
-// AssetRef defines model for AssetRef.
-type AssetRef struct {
-	Code string `json:"code"`
-	Id   UUID   `json:"id"`
+	Items []AssetListing `json:"items"`
+	Page  OffsetPage     `json:"page"`
 }
 
 // AuditEvent defines model for AuditEvent.
@@ -1303,235 +651,85 @@ type AuthSession struct {
 
 // BalanceList defines model for BalanceList.
 type BalanceList struct {
-	Context ProjectionContext `json:"context"`
-	Groups  []ProjectionGroup `json:"groups"`
-	Issues  []ProjectionIssue `json:"issues"`
-	Items   []BalanceRow      `json:"items"`
-	Page    OffsetPage        `json:"page"`
-}
-
-// BalanceObservation defines model for BalanceObservation.
-type BalanceObservation struct {
-	AssetListingId    UUID    `json:"assetListingId"`
-	AvailableQuantity *string `json:"availableQuantity,omitempty"`
-	LockedQuantity    *string `json:"lockedQuantity,omitempty"`
-	TotalQuantity     *string `json:"totalQuantity,omitempty"`
+	Completeness Completeness     `json:"completeness"`
+	Context      ReadContext      `json:"context"`
+	Groups       []GroupTotal     `json:"groups"`
+	Issues       []Issue          `json:"issues"`
+	Items        []BalanceRow     `json:"items"`
+	Page         OffsetPage       `json:"page"`
+	TotalUsd     *NullableDecimal `json:"totalUsd"`
 }
 
 // BalanceRow defines model for BalanceRow.
 type BalanceRow struct {
-	AccountId         UUID                `json:"accountId"`
-	AccountName       *string             `json:"accountName,omitempty"`
-	AssetCode         *string             `json:"assetCode,omitempty"`
-	AssetId           *openapi_types.UUID `json:"assetId,omitempty"`
-	AssetListingId    UUID                `json:"assetListingId"`
-	AvailableQuantity *NullableDecimal    `json:"availableQuantity,omitempty"`
-	Completeness      Completeness        `json:"completeness"`
-	Freshness         Freshness           `json:"freshness"`
-	IdentityId        UUID                `json:"identityId"`
-	IdentityName      *string             `json:"identityName,omitempty"`
-	ListingSymbol     *string             `json:"listingSymbol,omitempty"`
-	LockedQuantity    *NullableDecimal    `json:"lockedQuantity,omitempty"`
-	PlatformCode      *string             `json:"platformCode,omitempty"`
-	PlatformId        *UUID               `json:"platformId,omitempty"`
-	SourceObservedAt  time.Time           `json:"sourceObservedAt"`
-	TotalQuantity     *NullableDecimal    `json:"totalQuantity,omitempty"`
+	AccountId           UUID             `json:"accountId"`
+	AccountName         string           `json:"accountName"`
+	AccountType         string           `json:"accountType"`
+	AssetSymbol         string           `json:"assetSymbol"`
+	AvailableToTrade    *NullableDecimal `json:"availableToTrade,omitempty"`
+	AvailableToWithdraw *NullableDecimal `json:"availableToWithdraw,omitempty"`
+	Equity              Decimal          `json:"equity"`
+	EquityUsd           *NullableDecimal `json:"equityUsd,omitempty"`
+	Freshness           Freshness        `json:"freshness"`
+	IdentityId          UUID             `json:"identityId"`
+	IdentityName        string           `json:"identityName"`
+	Interest            *NullableDecimal `json:"interest,omitempty"`
+	Liability           *NullableDecimal `json:"liability,omitempty"`
+	ListingId           UUID             `json:"listingId"`
+	NoPrice             bool             `json:"noPrice"`
+	Platform            string           `json:"platform"`
+	PriceUsd            *NullableDecimal `json:"priceUsd,omitempty"`
+	ReportObservedAt    *time.Time       `json:"reportObservedAt,omitempty"`
+	Symbol              string           `json:"symbol"`
+	UnrealizedPnl       *NullableDecimal `json:"unrealizedPnl,omitempty"`
 }
 
-// CalendarPeriodKind defines model for CalendarPeriodKind.
-type CalendarPeriodKind string
-
-// CapitalBaseline defines model for CapitalBaseline.
-type CapitalBaseline struct {
-	AssetId           UUID      `json:"assetId"`
-	CurrentRevisionId UUID      `json:"currentRevisionId"`
-	EffectiveAt       time.Time `json:"effectiveAt"`
-	Id                UUID      `json:"id"`
-	Note              *string   `json:"note,omitempty"`
-	PortfolioId       UUID      `json:"portfolioId"`
-	Quantity          Decimal   `json:"quantity"`
-	Version           int       `json:"version"`
+// BoundaryEvent defines model for BoundaryEvent.
+type BoundaryEvent struct {
+	AccountId    UUID                   `json:"accountId"`
+	AccountName  string                 `json:"accountName"`
+	Direction    BoundaryEventDirection `json:"direction"`
+	EvaluatedAt  time.Time              `json:"evaluatedAt"`
+	IdentityId   *openapi_types.UUID    `json:"identityId,omitempty"`
+	IdentityName *string                `json:"identityName,omitempty"`
+	Method       string                 `json:"method"`
+	Platform     *string                `json:"platform,omitempty"`
+	PointId      UUID                   `json:"pointId"`
+	ValueUsd     *NullableDecimal       `json:"valueUsd,omitempty"`
 }
 
-// CapitalBaselineMutation defines model for CapitalBaselineMutation.
-type CapitalBaselineMutation struct {
-	Baseline CapitalBaseline `json:"baseline"`
-	Job      Job             `json:"job"`
-}
+// BoundaryEventDirection defines model for BoundaryEvent.Direction.
+type BoundaryEventDirection string
 
-// CapitalBaselineRevision defines model for CapitalBaselineRevision.
-type CapitalBaselineRevision struct {
-	AssetId         UUID      `json:"assetId"`
-	CreatedAt       time.Time `json:"createdAt"`
-	CreatedByUserId UUID      `json:"createdByUserId"`
-	EffectiveAt     time.Time `json:"effectiveAt"`
-	Id              UUID      `json:"id"`
-	Note            *string   `json:"note,omitempty"`
-	Quantity        Decimal   `json:"quantity"`
-}
-
-// CapitalBaselineRevisionList defines model for CapitalBaselineRevisionList.
-type CapitalBaselineRevisionList struct {
-	Items []CapitalBaselineRevision `json:"items"`
-	Page  CursorPage                `json:"page"`
+// BoundaryEventList defines model for BoundaryEventList.
+type BoundaryEventList struct {
+	Items []BoundaryEvent `json:"items"`
 }
 
 // CapitalFlow defines model for CapitalFlow.
 type CapitalFlow struct {
-	AccountId         *openapi_types.UUID  `json:"accountId,omitempty"`
-	AssetId           UUID                 `json:"assetId"`
-	CurrentRevisionId UUID                 `json:"currentRevisionId"`
-	Direction         CapitalFlowDirection `json:"direction"`
-	EffectiveAt       time.Time            `json:"effectiveAt"`
-	Id                UUID                 `json:"id"`
-	Note              *string              `json:"note,omitempty"`
-	PortfolioId       UUID                 `json:"portfolioId"`
-	Quantity          Decimal              `json:"quantity"`
-	State             CapitalFlowState     `json:"state"`
-	Version           int                  `json:"version"`
+	AccountId   *openapi_types.UUID  `json:"accountId,omitempty"`
+	AccountName *string              `json:"accountName,omitempty"`
+	AssetSymbol string               `json:"assetSymbol"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	Direction   CapitalFlowDirection `json:"direction"`
+	EffectiveAt time.Time            `json:"effectiveAt"`
+	Id          UUID                 `json:"id"`
+	Note        *string              `json:"note,omitempty"`
+	PortfolioId UUID                 `json:"portfolioId"`
+	Quantity    Decimal              `json:"quantity"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
+	ValueUsd    *NullableDecimal     `json:"valueUsd,omitempty"`
+	Version     int                  `json:"version"`
 }
 
 // CapitalFlowDirection defines model for CapitalFlow.Direction.
 type CapitalFlowDirection string
 
-// CapitalFlowState defines model for CapitalFlow.State.
-type CapitalFlowState string
-
 // CapitalFlowList defines model for CapitalFlowList.
 type CapitalFlowList struct {
 	Items []CapitalFlow `json:"items"`
-	Page  OffsetPage    `json:"page"`
 }
-
-// CapitalFlowMutation defines model for CapitalFlowMutation.
-type CapitalFlowMutation struct {
-	Flow CapitalFlow `json:"flow"`
-	Job  Job         `json:"job"`
-}
-
-// CapitalFlowRevision defines model for CapitalFlowRevision.
-type CapitalFlowRevision struct {
-	AccountId       *openapi_types.UUID          `json:"accountId,omitempty"`
-	AssetId         UUID                         `json:"assetId"`
-	CreatedAt       time.Time                    `json:"createdAt"`
-	CreatedByUserId UUID                         `json:"createdByUserId"`
-	Direction       CapitalFlowRevisionDirection `json:"direction"`
-	EffectiveAt     time.Time                    `json:"effectiveAt"`
-	Id              UUID                         `json:"id"`
-	Note            *string                      `json:"note,omitempty"`
-	Quantity        Decimal                      `json:"quantity"`
-	State           CapitalFlowRevisionState     `json:"state"`
-}
-
-// CapitalFlowRevisionDirection defines model for CapitalFlowRevision.Direction.
-type CapitalFlowRevisionDirection string
-
-// CapitalFlowRevisionState defines model for CapitalFlowRevision.State.
-type CapitalFlowRevisionState string
-
-// CapitalFlowRevisionList defines model for CapitalFlowRevisionList.
-type CapitalFlowRevisionList struct {
-	Items []CapitalFlowRevision `json:"items"`
-	Page  CursorPage            `json:"page"`
-}
-
-// CatalogAsset defines model for CatalogAsset.
-type CatalogAsset struct {
-	Code     string             `json:"code"`
-	Decimals *int               `json:"decimals,omitempty"`
-	Id       UUID               `json:"id"`
-	Kind     CatalogAssetKind   `json:"kind"`
-	Name     string             `json:"name"`
-	Status   CatalogAssetStatus `json:"status"`
-}
-
-// CatalogAssetKind defines model for CatalogAsset.Kind.
-type CatalogAssetKind string
-
-// CatalogAssetStatus defines model for CatalogAsset.Status.
-type CatalogAssetStatus string
-
-// CatalogAssetListing defines model for CatalogAssetListing.
-type CatalogAssetListing struct {
-	ExternalRef     string                           `json:"externalRef"`
-	Id              UUID                             `json:"id"`
-	MappedAssetCode *string                          `json:"mappedAssetCode,omitempty"`
-	MappedAssetId   *openapi_types.UUID              `json:"mappedAssetId,omitempty"`
-	MappingState    *CatalogAssetListingMappingState `json:"mappingState,omitempty"`
-	MappingVersion  *int                             `json:"mappingVersion,omitempty"`
-	Name            *string                          `json:"name,omitempty"`
-	Pinned          *bool                            `json:"pinned,omitempty"`
-	PlatformCode    *string                          `json:"platformCode,omitempty"`
-	PlatformId      UUID                             `json:"platformId"`
-	Status          CatalogAssetListingStatus        `json:"status"`
-	Symbol          string                           `json:"symbol"`
-}
-
-// CatalogAssetListingMappingState defines model for CatalogAssetListing.MappingState.
-type CatalogAssetListingMappingState string
-
-// CatalogAssetListingStatus defines model for CatalogAssetListing.Status.
-type CatalogAssetListingStatus string
-
-// CatalogInstrument defines model for CatalogInstrument.
-type CatalogInstrument struct {
-	ExpiryAt     *time.Time              `json:"expiryAt,omitempty"`
-	ExternalRef  string                  `json:"externalRef"`
-	Id           UUID                    `json:"id"`
-	Kind         CatalogInstrumentKind   `json:"kind"`
-	Pinned       *bool                   `json:"pinned,omitempty"`
-	PlatformCode *string                 `json:"platformCode,omitempty"`
-	PlatformId   UUID                    `json:"platformId"`
-	Status       CatalogInstrumentStatus `json:"status"`
-	Symbol       string                  `json:"symbol"`
-}
-
-// CatalogInstrumentKind defines model for CatalogInstrument.Kind.
-type CatalogInstrumentKind string
-
-// CatalogInstrumentStatus defines model for CatalogInstrument.Status.
-type CatalogInstrumentStatus string
-
-// CatalogMapping defines model for CatalogMapping.
-type CatalogMapping struct {
-	AssetId             UUID                `json:"assetId"`
-	CurrentRevisionId   *UUID               `json:"currentRevisionId,omitempty"`
-	DisplayNameOverride *string             `json:"displayNameOverride,omitempty"`
-	Id                  UUID                `json:"id"`
-	ListingId           UUID                `json:"listingId"`
-	PortfolioId         UUID                `json:"portfolioId"`
-	State               CatalogMappingState `json:"state"`
-	Version             int                 `json:"version"`
-}
-
-// CatalogMappingState defines model for CatalogMapping.State.
-type CatalogMappingState string
-
-// CatalogMappingMutation defines model for CatalogMappingMutation.
-type CatalogMappingMutation struct {
-	Job     Job            `json:"job"`
-	Mapping CatalogMapping `json:"mapping"`
-}
-
-// CatalogPin defines model for CatalogPin.
-type CatalogPin struct {
-	CurrentRevisionId *UUID                 `json:"currentRevisionId,omitempty"`
-	Enabled           bool                  `json:"enabled"`
-	Id                UUID                  `json:"id"`
-	PortfolioId       UUID                  `json:"portfolioId"`
-	SubjectId         UUID                  `json:"subjectId"`
-	SubjectKind       CatalogPinSubjectKind `json:"subjectKind"`
-	Version           int                   `json:"version"`
-}
-
-// CatalogPinMutation defines model for CatalogPinMutation.
-type CatalogPinMutation struct {
-	Job Job        `json:"job"`
-	Pin CatalogPin `json:"pin"`
-}
-
-// CatalogPinSubjectKind defines model for CatalogPinSubjectKind.
-type CatalogPinSubjectKind string
 
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
@@ -1539,94 +737,84 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"newPassword"`
 }
 
+// CollectionCycle defines model for CollectionCycle.
+type CollectionCycle struct {
+	AttemptCount int        `json:"attemptCount"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	FinishedAt   *time.Time `json:"finishedAt,omitempty"`
+	Id           UUID       `json:"id"`
+
+	// LastDetail Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+	LastDetail     *string                `json:"lastDetail,omitempty"`
+	LastErrorClass *string                `json:"lastErrorClass,omitempty"`
+	MaxAttempts    int                    `json:"maxAttempts"`
+	Point          *ValuationPointSummary `json:"point,omitempty"`
+	PortfolioId    UUID                   `json:"portfolioId"`
+	StartedAt      *time.Time             `json:"startedAt,omitempty"`
+	Status         JobStatus              `json:"status"`
+	Trigger        CollectionCycleTrigger `json:"trigger"`
+}
+
+// CollectionCycleTrigger defines model for CollectionCycle.Trigger.
+type CollectionCycleTrigger string
+
+// CollectionCycleDetail defines model for CollectionCycleDetail.
+type CollectionCycleDetail struct {
+	Accounts []AccountValuation `json:"accounts"`
+	Cycle    CollectionCycle    `json:"cycle"`
+	Issues   []Issue            `json:"issues"`
+}
+
+// CollectionCycleList defines model for CollectionCycleList.
+type CollectionCycleList struct {
+	Items []CollectionCycle `json:"items"`
+	Page  CursorPage        `json:"page"`
+}
+
 // Completeness defines model for Completeness.
 type Completeness string
 
 // Connection defines model for Connection.
 type Connection struct {
-	CollectionIntervalSeconds *int             `json:"collectionIntervalSeconds,omitempty"`
-	CredentialsConfigured     bool             `json:"credentialsConfigured"`
-	CredentialsUpdatedAt      *time.Time       `json:"credentialsUpdatedAt,omitempty"`
-	FreshnessAfterSeconds     *int             `json:"freshnessAfterSeconds,omitempty"`
-	Id                        UUID             `json:"id"`
-	IdentityId                UUID             `json:"identityId"`
-	Label                     string           `json:"label"`
-	LastValidatedAt           *time.Time       `json:"lastValidatedAt,omitempty"`
-	PortfolioId               UUID             `json:"portfolioId"`
-	Status                    ConnectionStatus `json:"status"`
-	Version                   int              `json:"version"`
+	CredentialsConfigured bool             `json:"credentialsConfigured"`
+	CredentialsUpdatedAt  *time.Time       `json:"credentialsUpdatedAt,omitempty"`
+	LastCollectedAt       *time.Time       `json:"lastCollectedAt,omitempty"`
+	LastErrorClass        *string          `json:"lastErrorClass,omitempty"`
+	LastErrorDetail       *string          `json:"lastErrorDetail,omitempty"`
+	LastValidatedAt       *time.Time       `json:"lastValidatedAt,omitempty"`
+	Status                ConnectionStatus `json:"status"`
 }
 
 // ConnectionStatus defines model for Connection.Status.
 type ConnectionStatus string
 
-// ConnectionCredentials defines model for ConnectionCredentials.
-type ConnectionCredentials struct {
-	ApiKey     *string `json:"apiKey,omitempty"`
-	ApiSecret  *string `json:"apiSecret,omitempty"`
-	Passphrase *string `json:"passphrase,omitempty"`
-}
-
-// ConnectionList defines model for ConnectionList.
-type ConnectionList struct {
-	Items []Connection `json:"items"`
-}
-
-// Coverage defines model for Coverage.
-type Coverage string
-
 // CreateCapitalFlowRequest defines model for CreateCapitalFlowRequest.
 type CreateCapitalFlowRequest struct {
-	AccountId   *openapi_types.UUID               `json:"accountId,omitempty"`
-	AssetId     UUID                              `json:"assetId"`
+	AccountId   *UUID                             `json:"accountId,omitempty"`
+	AssetSymbol string                            `json:"assetSymbol"`
 	Direction   CreateCapitalFlowRequestDirection `json:"direction"`
 	EffectiveAt time.Time                         `json:"effectiveAt"`
 	Note        *string                           `json:"note,omitempty"`
 	Quantity    Decimal                           `json:"quantity"`
+	ValueUsd    *Decimal                          `json:"valueUsd,omitempty"`
 }
 
 // CreateCapitalFlowRequestDirection defines model for CreateCapitalFlowRequest.Direction.
 type CreateCapitalFlowRequestDirection string
 
-// CreateConnectionRequest defines model for CreateConnectionRequest.
-type CreateConnectionRequest struct {
-	CollectionIntervalSeconds *int                           `json:"collectionIntervalSeconds,omitempty"`
-	Credentials               *ConnectionCredentials         `json:"credentials,omitempty"`
-	FreshnessAfterSeconds     *int                           `json:"freshnessAfterSeconds,omitempty"`
-	IdentityId                UUID                           `json:"identityId"`
-	Label                     string                         `json:"label"`
-	Status                    *CreateConnectionRequestStatus `json:"status,omitempty"`
-}
-
-// CreateConnectionRequestStatus defines model for CreateConnectionRequest.Status.
-type CreateConnectionRequestStatus string
-
 // CreateIdentityRequest defines model for CreateIdentityRequest.
 type CreateIdentityRequest struct {
-	AccountMode      CreateIdentityRequestAccountMode `json:"accountMode"`
-	DisplayName      string                           `json:"displayName"`
-	ExternalRef      string                           `json:"externalRef"`
-	Kind             CreateIdentityRequestKind        `json:"kind"`
-	ParentIdentityId *openapi_types.UUID              `json:"parentIdentityId,omitempty"`
-	PlatformId       UUID                             `json:"platformId"`
+	AccountMode          string   `json:"accountMode"`
+	DisplayName          string   `json:"displayName"`
+	Platform             string   `json:"platform"`
+	SelectedAccountTypes []string `json:"selectedAccountTypes"`
 }
-
-// CreateIdentityRequestAccountMode defines model for CreateIdentityRequest.AccountMode.
-type CreateIdentityRequestAccountMode string
-
-// CreateIdentityRequestKind defines model for CreateIdentityRequest.Kind.
-type CreateIdentityRequestKind string
 
 // CreatePortfolioRequest defines model for CreatePortfolioRequest.
 type CreatePortfolioRequest struct {
-	DisplayAssetId *UUID   `json:"displayAssetId,omitempty"`
-	Name           string  `json:"name"`
-	Timezone       *string `json:"timezone,omitempty"`
-}
-
-// CreateProjectionRebuildRequest defines model for CreateProjectionRebuildRequest.
-type CreateProjectionRebuildRequest struct {
-	Reason *string `json:"reason,omitempty"`
+	CollectionIntervalSeconds *int    `json:"collectionIntervalSeconds,omitempty"`
+	Name                      string  `json:"name"`
+	Timezone                  *string `json:"timezone,omitempty"`
 }
 
 // CsrfResponse defines model for CsrfResponse.
@@ -1654,56 +842,6 @@ type CursorPageKind string
 // Decimal defines model for Decimal.
 type Decimal = string
 
-// DisplayAsset defines model for DisplayAsset.
-type DisplayAsset struct {
-	Code string `json:"code"`
-	Id   UUID   `json:"id"`
-}
-
-// ExposureList defines model for ExposureList.
-type ExposureList struct {
-	Context ProjectionContext `json:"context"`
-	Groups  []ProjectionGroup `json:"groups"`
-	Issues  []ProjectionIssue `json:"issues"`
-	Items   []ExposureRow     `json:"items"`
-	Page    OffsetPage        `json:"page"`
-}
-
-// ExposurePoint defines model for ExposurePoint.
-type ExposurePoint struct {
-	AssetCode     *string          `json:"assetCode,omitempty"`
-	AssetId       UUID             `json:"assetId"`
-	Completeness  Completeness     `json:"completeness"`
-	Freshness     Freshness        `json:"freshness"`
-	LongQuantity  Decimal          `json:"longQuantity"`
-	LongValue     *NullableDecimal `json:"longValue,omitempty"`
-	NetQuantity   Decimal          `json:"netQuantity"`
-	NetValue      *NullableDecimal `json:"netValue,omitempty"`
-	ShortQuantity Decimal          `json:"shortQuantity"`
-	ShortValue    *NullableDecimal `json:"shortValue,omitempty"`
-}
-
-// ExposureRow defines model for ExposureRow.
-type ExposureRow struct {
-	AccountId     *openapi_types.UUID `json:"accountId,omitempty"`
-	AccountName   *string             `json:"accountName,omitempty"`
-	AssetCode     *string             `json:"assetCode,omitempty"`
-	AssetId       UUID                `json:"assetId"`
-	Completeness  Completeness        `json:"completeness"`
-	EvaluatedAt   *time.Time          `json:"evaluatedAt,omitempty"`
-	Freshness     Freshness           `json:"freshness"`
-	IdentityId    *openapi_types.UUID `json:"identityId,omitempty"`
-	IdentityName  *string             `json:"identityName,omitempty"`
-	LongQuantity  Decimal             `json:"longQuantity"`
-	LongValue     *NullableDecimal    `json:"longValue,omitempty"`
-	NetQuantity   Decimal             `json:"netQuantity"`
-	NetValue      *NullableDecimal    `json:"netValue,omitempty"`
-	PlatformCode  *string             `json:"platformCode,omitempty"`
-	PlatformId    *openapi_types.UUID `json:"platformId,omitempty"`
-	ShortQuantity Decimal             `json:"shortQuantity"`
-	ShortValue    *NullableDecimal    `json:"shortValue,omitempty"`
-}
-
 // FieldError defines model for FieldError.
 type FieldError struct {
 	Code    string `json:"code"`
@@ -1714,20 +852,15 @@ type FieldError struct {
 // Freshness defines model for Freshness.
 type Freshness string
 
-// GroupTotals defines model for GroupTotals.
-type GroupTotals struct {
-	AvailableQuantity       *NullableDecimal `json:"availableQuantity,omitempty"`
-	LockedQuantity          *NullableDecimal `json:"lockedQuantity,omitempty"`
-	LongQuantity            *NullableDecimal `json:"longQuantity,omitempty"`
-	LongValue               *NullableDecimal `json:"longValue,omitempty"`
-	NetQuantity             *NullableDecimal `json:"netQuantity,omitempty"`
-	NetValue                *NullableDecimal `json:"netValue,omitempty"`
-	Quantity                *NullableDecimal `json:"quantity,omitempty"`
-	ShortQuantity           *NullableDecimal `json:"shortQuantity,omitempty"`
-	ShortValue              *NullableDecimal `json:"shortValue,omitempty"`
-	TotalQuantity           *NullableDecimal `json:"totalQuantity,omitempty"`
-	UnderlyingLongQuantity  *NullableDecimal `json:"underlyingLongQuantity,omitempty"`
-	UnderlyingShortQuantity *NullableDecimal `json:"underlyingShortQuantity,omitempty"`
+// GroupTotal defines model for GroupTotal.
+type GroupTotal struct {
+	AccountCount int              `json:"accountCount"`
+	Completeness Completeness     `json:"completeness"`
+	Key          string           `json:"key"`
+	Label        string           `json:"label"`
+	Platform     *string          `json:"platform,omitempty"`
+	RowCount     int              `json:"rowCount"`
+	ValueUsd     *NullableDecimal `json:"valueUsd"`
 }
 
 // HealthLive defines model for HealthLive.
@@ -1755,25 +888,31 @@ type HealthReady struct {
 // HealthReadyStatus defines model for HealthReady.Status.
 type HealthReadyStatus string
 
-// Identity defines model for Identity.
-type Identity struct {
-	AccountMode      IdentityAccountMode `json:"accountMode"`
-	DisplayName      string              `json:"displayName"`
-	ExternalRef      string              `json:"externalRef"`
-	Id               UUID                `json:"id"`
-	Kind             IdentityKind        `json:"kind"`
-	ParentIdentityId *openapi_types.UUID `json:"parentIdentityId,omitempty"`
-	PlatformId       UUID                `json:"platformId"`
-	PortfolioId      UUID                `json:"portfolioId"`
-	Status           IdentityStatus      `json:"status"`
-	Version          int                 `json:"version"`
+// HoldingsTree defines model for HoldingsTree.
+type HoldingsTree struct {
+	Completeness Completeness     `json:"completeness"`
+	Context      ReadContext      `json:"context"`
+	Issues       []Issue          `json:"issues"`
+	Platforms    []TreePlatform   `json:"platforms"`
+	TotalUsd     *NullableDecimal `json:"totalUsd"`
 }
 
-// IdentityAccountMode defines model for Identity.AccountMode.
-type IdentityAccountMode string
-
-// IdentityKind defines model for Identity.Kind.
-type IdentityKind string
+// Identity defines model for Identity.
+type Identity struct {
+	AccountMode string         `json:"accountMode"`
+	Accounts    []Account      `json:"accounts"`
+	ArchivedAt  *time.Time     `json:"archivedAt,omitempty"`
+	Connection  Connection     `json:"connection"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	DisplayName string         `json:"displayName"`
+	ExternalRef *string        `json:"externalRef,omitempty"`
+	Id          UUID           `json:"id"`
+	Platform    string         `json:"platform"`
+	PortfolioId UUID           `json:"portfolioId"`
+	Status      IdentityStatus `json:"status"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+	Version     int            `json:"version"`
+}
 
 // IdentityStatus defines model for Identity.Status.
 type IdentityStatus string
@@ -1783,48 +922,59 @@ type IdentityList struct {
 	Items []Identity `json:"items"`
 }
 
+// Instrument defines model for Instrument.
+type Instrument struct {
+	BaseSymbol       *string          `json:"baseSymbol,omitempty"`
+	ContractSize     *NullableDecimal `json:"contractSize,omitempty"`
+	ExpiryAt         *time.Time       `json:"expiryAt,omitempty"`
+	FirstSeenAt      time.Time        `json:"firstSeenAt"`
+	Id               UUID             `json:"id"`
+	Kind             string           `json:"kind"`
+	LastSeenAt       time.Time        `json:"lastSeenAt"`
+	Platform         string           `json:"platform"`
+	QuoteSymbol      *string          `json:"quoteSymbol,omitempty"`
+	SettlementSymbol *string          `json:"settlementSymbol,omitempty"`
+	Symbol           string           `json:"symbol"`
+}
+
 // InstrumentList defines model for InstrumentList.
 type InstrumentList struct {
-	Items []CatalogInstrument `json:"items"`
-	Page  OffsetPage          `json:"page"`
+	Items []Instrument `json:"items"`
+	Page  OffsetPage   `json:"page"`
+}
+
+// Issue defines model for Issue.
+type Issue struct {
+	AccountId   *openapi_types.UUID `json:"accountId,omitempty"`
+	AccountName *string             `json:"accountName,omitempty"`
+	Code        string              `json:"code"`
+	Detail      string              `json:"detail"`
+	Symbol      *string             `json:"symbol,omitempty"`
 }
 
 // Job defines model for Job.
 type Job struct {
-	AttemptCount    int           `json:"attemptCount"`
-	Attempts        *[]JobAttempt `json:"attempts,omitempty"`
-	CreatedAt       time.Time     `json:"createdAt"`
-	FinishedAt      *time.Time    `json:"finishedAt,omitempty"`
-	Id              UUID          `json:"id"`
-	Kind            JobKind       `json:"kind"`
-	LastErrorCode   *string       `json:"lastErrorCode,omitempty"`
-	LastErrorDetail *string       `json:"lastErrorDetail,omitempty"`
-	MaxAttempts     int           `json:"maxAttempts"`
-	PortfolioId     UUID          `json:"portfolioId"`
-	StartedAt       *time.Time    `json:"startedAt,omitempty"`
-	Status          JobStatus     `json:"status"`
+	AttemptCount int        `json:"attemptCount"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	FinishedAt   *time.Time `json:"finishedAt,omitempty"`
+	Id           UUID       `json:"id"`
+	Kind         JobKind    `json:"kind"`
+
+	// LastDetail Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+	LastDetail     *string    `json:"lastDetail,omitempty"`
+	LastErrorClass *string    `json:"lastErrorClass,omitempty"`
+	MaxAttempts    int        `json:"maxAttempts"`
+	PortfolioId    UUID       `json:"portfolioId"`
+	StartedAt      *time.Time `json:"startedAt,omitempty"`
+	Status         JobStatus  `json:"status"`
+	Trigger        JobTrigger `json:"trigger"`
 }
 
-// JobKind defines model for Job.Kind.
+// JobTrigger defines model for Job.Trigger.
+type JobTrigger string
+
+// JobKind defines model for JobKind.
 type JobKind string
-
-// JobStatus defines model for Job.Status.
-type JobStatus string
-
-// JobAttempt defines model for JobAttempt.
-type JobAttempt struct {
-	AttemptNumber int               `json:"attemptNumber"`
-	ErrorClass    *string           `json:"errorClass,omitempty"`
-	ErrorCode     *string           `json:"errorCode,omitempty"`
-	FinishedAt    *time.Time        `json:"finishedAt,omitempty"`
-	Outcome       JobAttemptOutcome `json:"outcome"`
-	SafeDetail    *string           `json:"safeDetail,omitempty"`
-	StartedAt     time.Time         `json:"startedAt"`
-	WorkerId      string            `json:"workerId"`
-}
-
-// JobAttemptOutcome defines model for JobAttempt.Outcome.
-type JobAttemptOutcome string
 
 // JobList defines model for JobList.
 type JobList struct {
@@ -1832,75 +982,17 @@ type JobList struct {
 	Page  CursorPage `json:"page"`
 }
 
+// JobStatus defines model for JobStatus.
+type JobStatus string
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Password string `json:"password"`
 	Username string `json:"username"`
 }
 
-// MissingInterval defines model for MissingInterval.
-type MissingInterval struct {
-	End   time.Time `json:"end"`
-	Start time.Time `json:"start"`
-}
-
 // NullableDecimal defines model for NullableDecimal.
 type NullableDecimal = string
-
-// Observation defines model for Observation.
-type Observation struct {
-	AccountId          *openapi_types.UUID        `json:"accountId,omitempty"`
-	AccountMetric      *AccountMetricObservation  `json:"accountMetric,omitempty"`
-	Balance            *BalanceObservation        `json:"balance,omitempty"`
-	CollectedAt        time.Time                  `json:"collectedAt"`
-	Completeness       ObservationCompleteness    `json:"completeness"`
-	Id                 UUID                       `json:"id"`
-	IdentityId         UUID                       `json:"identityId"`
-	IdentitySnapshotId UUID                       `json:"identitySnapshotId"`
-	Kind               ObservationKind            `json:"kind"`
-	PortfolioId        UUID                       `json:"portfolioId"`
-	Position           *PositionObservation       `json:"position,omitempty"`
-	Price              *PriceObservation          `json:"price,omitempty"`
-	ReportedEquity     *ReportedEquityObservation `json:"reportedEquity,omitempty"`
-	SourceObservedAt   time.Time                  `json:"sourceObservedAt"`
-	Version            int                        `json:"version"`
-}
-
-// ObservationCompleteness defines model for Observation.Completeness.
-type ObservationCompleteness string
-
-// ObservationCorrection defines model for ObservationCorrection.
-type ObservationCorrection struct {
-	Job         Job         `json:"job"`
-	Observation Observation `json:"observation"`
-}
-
-// ObservationKind defines model for ObservationKind.
-type ObservationKind string
-
-// ObservationList defines model for ObservationList.
-type ObservationList struct {
-	Items []ObservationSummary `json:"items"`
-	Page  CursorPage           `json:"page"`
-}
-
-// ObservationSummary defines model for ObservationSummary.
-type ObservationSummary struct {
-	AccountId          *openapi_types.UUID            `json:"accountId,omitempty"`
-	CollectedAt        time.Time                      `json:"collectedAt"`
-	Completeness       ObservationSummaryCompleteness `json:"completeness"`
-	Id                 UUID                           `json:"id"`
-	IdentityId         UUID                           `json:"identityId"`
-	IdentitySnapshotId UUID                           `json:"identitySnapshotId"`
-	Kind               ObservationKind                `json:"kind"`
-	PortfolioId        UUID                           `json:"portfolioId"`
-	SourceObservedAt   time.Time                      `json:"sourceObservedAt"`
-	Summary            *string                        `json:"summary,omitempty"`
-	Version            int                            `json:"version"`
-}
-
-// ObservationSummaryCompleteness defines model for ObservationSummary.Completeness.
-type ObservationSummaryCompleteness string
 
 // OffsetPage defines model for OffsetPage.
 type OffsetPage struct {
@@ -1913,132 +1005,102 @@ type OffsetPage struct {
 // OffsetPageKind defines model for OffsetPage.Kind.
 type OffsetPageKind string
 
+// OmittedBalance defines model for OmittedBalance.
+type OmittedBalance struct {
+	// AssetSymbol The Asset symbol the listing is mapped to, present only when it differs from the Platform symbol.
+	AssetSymbol *string `json:"assetSymbol,omitempty"`
+	Equity      Decimal `json:"equity"`
+	Reason      string  `json:"reason"`
+	Symbol      string  `json:"symbol"`
+}
+
 // Overview defines model for Overview.
 type Overview struct {
-	Context            ProjectionContext  `json:"context"`
-	ContributedCapital AmountStatus       `json:"contributedCapital"`
-	Exposures          []ExposurePoint    `json:"exposures"`
-	Issues             []ProjectionIssue  `json:"issues"`
-	PortfolioId        UUID               `json:"portfolioId"`
-	Valuation          AmountStatus       `json:"valuation"`
-	ValuationSeries    []ValuationPoint   `json:"valuationSeries"`
-	ValueChange        AmountStatus       `json:"valueChange"`
-	ValueChanges       []ValueChangePoint `json:"valueChanges"`
+	AccountCount           int                     `json:"accountCount"`
+	ByIdentity             []GroupTotal            `json:"byIdentity"`
+	ByPlatform             []GroupTotal            `json:"byPlatform"`
+	Completeness           Completeness            `json:"completeness"`
+	Context                ReadContext             `json:"context"`
+	IncompleteAccountCount int                     `json:"incompleteAccountCount"`
+	Issues                 []Issue                 `json:"issues"`
+	Point                  *ValuationPointSummary  `json:"point,omitempty"`
+	Sparkline              []ValuationPointSummary `json:"sparkline"`
+	StaleAccountCount      int                     `json:"staleAccountCount"`
+	TotalUsd               *NullableDecimal        `json:"totalUsd,omitempty"`
 }
 
 // PatchCapitalFlowRequest defines model for PatchCapitalFlowRequest.
 type PatchCapitalFlowRequest struct {
 	AccountId   *openapi_types.UUID               `json:"accountId,omitempty"`
-	AssetId     *UUID                             `json:"assetId,omitempty"`
+	AssetSymbol *string                           `json:"assetSymbol,omitempty"`
 	Direction   *PatchCapitalFlowRequestDirection `json:"direction,omitempty"`
 	EffectiveAt *time.Time                        `json:"effectiveAt,omitempty"`
 	Note        *string                           `json:"note,omitempty"`
 	Quantity    *Decimal                          `json:"quantity,omitempty"`
+	ValueUsd    *NullableDecimal                  `json:"valueUsd,omitempty"`
 }
 
 // PatchCapitalFlowRequestDirection defines model for PatchCapitalFlowRequest.Direction.
 type PatchCapitalFlowRequestDirection string
 
-// PatchConnectionRequest defines model for PatchConnectionRequest.
-type PatchConnectionRequest struct {
-	CollectionIntervalSeconds *int                          `json:"collectionIntervalSeconds,omitempty"`
-	Credentials               *ConnectionCredentials        `json:"credentials,omitempty"`
-	FreshnessAfterSeconds     *int                          `json:"freshnessAfterSeconds,omitempty"`
-	Label                     *string                       `json:"label,omitempty"`
-	Status                    *PatchConnectionRequestStatus `json:"status,omitempty"`
-}
-
-// PatchConnectionRequestStatus defines model for PatchConnectionRequest.Status.
-type PatchConnectionRequestStatus string
-
 // PatchIdentityRequest defines model for PatchIdentityRequest.
 type PatchIdentityRequest struct {
-	AccountMode      *PatchIdentityRequestAccountMode `json:"accountMode,omitempty"`
-	DisplayName      *string                          `json:"displayName,omitempty"`
-	ExternalRef      *string                          `json:"externalRef,omitempty"`
-	ParentIdentityId *openapi_types.UUID              `json:"parentIdentityId,omitempty"`
-	Status           *PatchIdentityRequestStatus      `json:"status,omitempty"`
+	Accounts    *[]AccountPatch `json:"accounts,omitempty"`
+	DisplayName *string         `json:"displayName,omitempty"`
 }
-
-// PatchIdentityRequestAccountMode defines model for PatchIdentityRequest.AccountMode.
-type PatchIdentityRequestAccountMode string
-
-// PatchIdentityRequestStatus defines model for PatchIdentityRequest.Status.
-type PatchIdentityRequestStatus string
-
-// PatchObservationRequest defines model for PatchObservationRequest.
-type PatchObservationRequest struct {
-	Amount            *Decimal                             `json:"amount,omitempty"`
-	AvailableQuantity *string                              `json:"availableQuantity,omitempty"`
-	Completeness      *PatchObservationRequestCompleteness `json:"completeness,omitempty"`
-	DecimalValue      *string                              `json:"decimalValue,omitempty"`
-	EntryPrice        *string                              `json:"entryPrice,omitempty"`
-	Leverage          *string                              `json:"leverage,omitempty"`
-	LockedQuantity    *string                              `json:"lockedQuantity,omitempty"`
-	MarkPrice         *string                              `json:"markPrice,omitempty"`
-	Price             *Decimal                             `json:"price,omitempty"`
-	Quantity          *Decimal                             `json:"quantity,omitempty"`
-	Side              *PatchObservationRequestSide         `json:"side,omitempty"`
-	TextValue         *string                              `json:"textValue,omitempty"`
-	TotalQuantity     *string                              `json:"totalQuantity,omitempty"`
-	UnrealizedValue   *string                              `json:"unrealizedValue,omitempty"`
-}
-
-// PatchObservationRequestCompleteness defines model for PatchObservationRequest.Completeness.
-type PatchObservationRequestCompleteness string
-
-// PatchObservationRequestSide defines model for PatchObservationRequest.Side.
-type PatchObservationRequestSide string
 
 // PatchPortfolioRequest defines model for PatchPortfolioRequest.
 type PatchPortfolioRequest struct {
-	DisplayAssetId *UUID   `json:"displayAssetId,omitempty"`
-	Name           *string `json:"name,omitempty"`
-	Timezone       *string `json:"timezone,omitempty"`
+	CollectionIntervalSeconds *int    `json:"collectionIntervalSeconds,omitempty"`
+	Name                      *string `json:"name,omitempty"`
+	Timezone                  *string `json:"timezone,omitempty"`
 }
 
-// PeriodSummary defines model for PeriodSummary.
-type PeriodSummary struct {
-	AsOfAt                  *time.Time         `json:"asOfAt,omitempty"`
-	Completeness            Completeness       `json:"completeness"`
-	ContributedCapitalClose *NullableDecimal   `json:"contributedCapitalClose,omitempty"`
-	Freshness               Freshness          `json:"freshness"`
-	PeriodEndDate           openapi_types.Date `json:"periodEndDate"`
-	PeriodKind              CalendarPeriodKind `json:"periodKind"`
-	PeriodStartDate         openapi_types.Date `json:"periodStartDate"`
-	ValuationClose          *NullableDecimal   `json:"valuationClose,omitempty"`
-	ValuationHigh           *NullableDecimal   `json:"valuationHigh,omitempty"`
-	ValuationLow            *NullableDecimal   `json:"valuationLow,omitempty"`
-	ValuationOpen           *NullableDecimal   `json:"valuationOpen,omitempty"`
-	ValueChange             *NullableDecimal   `json:"valueChange,omitempty"`
+// PeriodClose defines model for PeriodClose.
+type PeriodClose struct {
+	Completeness Completeness           `json:"completeness"`
+	Label        string                 `json:"label"`
+	PeriodEnd    time.Time              `json:"periodEnd"`
+	PeriodKind   PeriodKind             `json:"periodKind"`
+	PeriodStart  time.Time              `json:"periodStart"`
+	Point        *ValuationPointSummary `json:"point,omitempty"`
+	Reasons      []string               `json:"reasons"`
 }
 
-// PeriodSummaryList defines model for PeriodSummaryList.
-type PeriodSummaryList struct {
-	Context ProjectionContext `json:"context"`
-	Issues  []ProjectionIssue `json:"issues"`
-	Items   []PeriodSummary   `json:"items"`
-	Page    CursorPage        `json:"page"`
+// PeriodCloseList defines model for PeriodCloseList.
+type PeriodCloseList struct {
+	Context    ReadContext   `json:"context"`
+	Items      []PeriodClose `json:"items"`
+	PeriodKind PeriodKind    `json:"periodKind"`
+}
+
+// PeriodKind defines model for PeriodKind.
+type PeriodKind string
+
+// Platform defines model for Platform.
+type Platform struct {
+	AccountModes     []AccountMode `json:"accountModes"`
+	AdapterAvailable bool          `json:"adapterAvailable"`
+	Id               string        `json:"id"`
+	Name             string        `json:"name"`
+}
+
+// PlatformList defines model for PlatformList.
+type PlatformList struct {
+	Items []Platform `json:"items"`
 }
 
 // Portfolio defines model for Portfolio.
 type Portfolio struct {
-	ArchivedAt   *time.Time      `json:"archivedAt,omitempty"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	DisplayAsset AssetRef        `json:"displayAsset"`
-	Id           UUID            `json:"id"`
-	Name         string          `json:"name"`
-	Status       PortfolioStatus `json:"status"`
-	Timezone     string          `json:"timezone"`
-
-	// Undeletable True for the portfolio created with the user. It cannot be deleted.
-	Undeletable bool      `json:"undeletable"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	Version     int       `json:"version"`
+	CollectionIntervalSeconds int       `json:"collectionIntervalSeconds"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	Id                        UUID      `json:"id"`
+	Name                      string    `json:"name"`
+	Timezone                  string    `json:"timezone"`
+	Undeletable               bool      `json:"undeletable"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
+	Version                   int       `json:"version"`
 }
-
-// PortfolioStatus defines model for Portfolio.Status.
-type PortfolioStatus string
 
 // PortfolioList defines model for PortfolioList.
 type PortfolioList struct {
@@ -2047,63 +1109,50 @@ type PortfolioList struct {
 
 // PositionList defines model for PositionList.
 type PositionList struct {
-	Context ProjectionContext `json:"context"`
-	Groups  []ProjectionGroup `json:"groups"`
-	Issues  []ProjectionIssue `json:"issues"`
-	Items   []PositionRow     `json:"items"`
-	Page    OffsetPage        `json:"page"`
+	Completeness     Completeness     `json:"completeness"`
+	Context          ReadContext      `json:"context"`
+	Issues           []Issue          `json:"issues"`
+	Items            []PositionRow    `json:"items"`
+	Page             OffsetPage       `json:"page"`
+	TotalNotionalUsd *NullableDecimal `json:"totalNotionalUsd"`
 }
-
-// PositionObservation defines model for PositionObservation.
-type PositionObservation struct {
-	EntryPrice          *string                 `json:"entryPrice,omitempty"`
-	InstrumentId        UUID                    `json:"instrumentId"`
-	Leverage            *string                 `json:"leverage,omitempty"`
-	MarkPrice           *string                 `json:"markPrice,omitempty"`
-	PlatformPositionRef string                  `json:"platformPositionRef"`
-	Quantity            Decimal                 `json:"quantity"`
-	Side                PositionObservationSide `json:"side"`
-	UnrealizedValue     *string                 `json:"unrealizedValue,omitempty"`
-}
-
-// PositionObservationSide defines model for PositionObservation.Side.
-type PositionObservationSide string
 
 // PositionRow defines model for PositionRow.
 type PositionRow struct {
-	AccountId               UUID             `json:"accountId"`
-	AccountName             *string          `json:"accountName,omitempty"`
-	Completeness            Completeness     `json:"completeness"`
-	Freshness               Freshness        `json:"freshness"`
-	IdentityId              UUID             `json:"identityId"`
-	IdentityName            *string          `json:"identityName,omitempty"`
-	InstrumentId            UUID             `json:"instrumentId"`
-	InstrumentSymbol        *string          `json:"instrumentSymbol,omitempty"`
-	PlatformCode            *string          `json:"platformCode,omitempty"`
-	PlatformId              *UUID            `json:"platformId,omitempty"`
-	PlatformPositionRef     string           `json:"platformPositionRef"`
-	Quantity                Decimal          `json:"quantity"`
-	SelectedMarkPrice       *NullableDecimal `json:"selectedMarkPrice,omitempty"`
-	Side                    PositionRowSide  `json:"side"`
-	SourceObservedAt        time.Time        `json:"sourceObservedAt"`
-	UnderlyingLongQuantity  Decimal          `json:"underlyingLongQuantity"`
-	UnderlyingShortQuantity Decimal          `json:"underlyingShortQuantity"`
+	AccountId           UUID                    `json:"accountId"`
+	AccountName         string                  `json:"accountName"`
+	AccountType         string                  `json:"accountType"`
+	BaseSymbol          *string                 `json:"baseSymbol,omitempty"`
+	ContractSize        *NullableDecimal        `json:"contractSize,omitempty"`
+	EntryPrice          *NullableDecimal        `json:"entryPrice,omitempty"`
+	ExpiryAt            *time.Time              `json:"expiryAt,omitempty"`
+	Freshness           Freshness               `json:"freshness"`
+	IdentityId          UUID                    `json:"identityId"`
+	IdentityName        string                  `json:"identityName"`
+	InstrumentId        UUID                    `json:"instrumentId"`
+	Kind                string                  `json:"kind"`
+	Leverage            *NullableDecimal        `json:"leverage,omitempty"`
+	LiquidationPrice    *NullableDecimal        `json:"liquidationPrice,omitempty"`
+	Margin              *NullableDecimal        `json:"margin,omitempty"`
+	MarkPrice           *NullableDecimal        `json:"markPrice,omitempty"`
+	NotionalUsd         *NullableDecimal        `json:"notionalUsd,omitempty"`
+	Platform            string                  `json:"platform"`
+	PlatformPositionRef string                  `json:"platformPositionRef"`
+	Quantity            Decimal                 `json:"quantity"`
+	QuantityUnit        PositionRowQuantityUnit `json:"quantityUnit"`
+	QuoteSymbol         *string                 `json:"quoteSymbol,omitempty"`
+	ReportObservedAt    *time.Time              `json:"reportObservedAt,omitempty"`
+	SettlementSymbol    *string                 `json:"settlementSymbol,omitempty"`
+	Side                PositionRowSide         `json:"side"`
+	Symbol              string                  `json:"symbol"`
+	UnrealizedPnl       *NullableDecimal        `json:"unrealizedPnl,omitempty"`
 }
+
+// PositionRowQuantityUnit defines model for PositionRow.QuantityUnit.
+type PositionRowQuantityUnit string
 
 // PositionRowSide defines model for PositionRow.Side.
 type PositionRowSide string
-
-// PriceObservation defines model for PriceObservation.
-type PriceObservation struct {
-	BaseListingId  *openapi_types.UUID       `json:"baseListingId,omitempty"`
-	InstrumentId   *openapi_types.UUID       `json:"instrumentId,omitempty"`
-	Price          Decimal                   `json:"price"`
-	PriceType      PriceObservationPriceType `json:"priceType"`
-	QuoteListingId UUID                      `json:"quoteListingId"`
-}
-
-// PriceObservationPriceType defines model for PriceObservation.PriceType.
-type PriceObservationPriceType string
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -2117,76 +1166,25 @@ type Problem struct {
 	Type        string        `json:"type"`
 }
 
-// ProjectionContext defines model for ProjectionContext.
-type ProjectionContext struct {
-	Completeness   Completeness        `json:"completeness"`
-	Coverage       Coverage            `json:"coverage"`
-	CutoffAt       *time.Time          `json:"cutoffAt"`
-	DisplayAsset   DisplayAsset        `json:"displayAsset"`
-	Freshness      Freshness           `json:"freshness"`
-	GenerationId   *openapi_types.UUID `json:"generationId,omitempty"`
-	RebuildPending *bool               `json:"rebuildPending,omitempty"`
-	Timezone       string              `json:"timezone"`
+// PutAssetListingMappingRequest defines model for PutAssetListingMappingRequest.
+type PutAssetListingMappingRequest struct {
+	AssetSymbol string `json:"assetSymbol"`
 }
 
-// ProjectionGroup defines model for ProjectionGroup.
-type ProjectionGroup struct {
-	Completeness Completeness `json:"completeness"`
-	Freshness    Freshness    `json:"freshness"`
-	Grouping     string       `json:"grouping"`
-	Key          string       `json:"key"`
-	Label        string       `json:"label"`
-	Totals       GroupTotals  `json:"totals"`
+// PutCredentialsRequest defines model for PutCredentialsRequest.
+type PutCredentialsRequest struct {
+	ApiKey     string  `json:"apiKey"`
+	ApiSecret  string  `json:"apiSecret"`
+	Passphrase *string `json:"passphrase,omitempty"`
 }
 
-// ProjectionIssue defines model for ProjectionIssue.
-type ProjectionIssue struct {
-	AccountId        *openapi_types.UUID     `json:"accountId,omitempty"`
-	Code             string                  `json:"code"`
-	FirstEffectiveAt *time.Time              `json:"firstEffectiveAt,omitempty"`
-	Id               *openapi_types.UUID     `json:"id,omitempty"`
-	IdentityId       *openapi_types.UUID     `json:"identityId,omitempty"`
-	LastEffectiveAt  *time.Time              `json:"lastEffectiveAt,omitempty"`
-	ObservationId    *openapi_types.UUID     `json:"observationId,omitempty"`
-	ProjectionKey    *string                 `json:"projectionKey,omitempty"`
-	ProjectionKind   string                  `json:"projectionKind"`
-	Severity         ProjectionIssueSeverity `json:"severity"`
-	Summary          string                  `json:"summary"`
-}
-
-// ProjectionIssueSeverity defines model for ProjectionIssue.Severity.
-type ProjectionIssueSeverity string
-
-// PutCapitalBaselineRequest defines model for PutCapitalBaselineRequest.
-type PutCapitalBaselineRequest struct {
-	AssetId     UUID      `json:"assetId"`
-	EffectiveAt time.Time `json:"effectiveAt"`
-	Note        *string   `json:"note,omitempty"`
-	Quantity    Decimal   `json:"quantity"`
-}
-
-// PutCatalogMappingRequest defines model for PutCatalogMappingRequest.
-type PutCatalogMappingRequest struct {
-	AssetId             UUID                          `json:"assetId"`
-	DisplayNameOverride *string                       `json:"displayNameOverride,omitempty"`
-	Reason              *string                       `json:"reason,omitempty"`
-	State               PutCatalogMappingRequestState `json:"state"`
-}
-
-// PutCatalogMappingRequestState defines model for PutCatalogMappingRequest.State.
-type PutCatalogMappingRequestState string
-
-// PutCatalogPinRequest defines model for PutCatalogPinRequest.
-type PutCatalogPinRequest struct {
-	Reason *string `json:"reason,omitempty"`
-}
-
-// ReportedEquityObservation defines model for ReportedEquityObservation.
-type ReportedEquityObservation struct {
-	Amount                Decimal `json:"amount"`
-	CoveredAccountIds     []UUID  `json:"coveredAccountIds"`
-	CoveredIdentityIds    []UUID  `json:"coveredIdentityIds"`
-	DenominationListingId UUID    `json:"denominationListingId"`
+// ReadContext defines model for ReadContext.
+type ReadContext struct {
+	EvaluatedAt *time.Time          `json:"evaluatedAt,omitempty"`
+	JobId       *openapi_types.UUID `json:"jobId,omitempty"`
+	PointId     *openapi_types.UUID `json:"pointId,omitempty"`
+	PortfolioId UUID                `json:"portfolioId"`
+	Timezone    string              `json:"timezone"`
 }
 
 // Session defines model for Session.
@@ -2208,6 +1206,26 @@ type SessionList struct {
 // TimeGranularity defines model for TimeGranularity.
 type TimeGranularity string
 
+// TreeIdentity defines model for TreeIdentity.
+type TreeIdentity struct {
+	Accounts         []AccountValuation `json:"accounts"`
+	Completeness     Completeness       `json:"completeness"`
+	ConnectionStatus string             `json:"connectionStatus"`
+	DisplayName      string             `json:"displayName"`
+	Id               UUID               `json:"id"`
+	Status           string             `json:"status"`
+	ValueUsd         *NullableDecimal   `json:"valueUsd"`
+}
+
+// TreePlatform defines model for TreePlatform.
+type TreePlatform struct {
+	Completeness Completeness     `json:"completeness"`
+	Identities   []TreeIdentity   `json:"identities"`
+	Label        string           `json:"label"`
+	Platform     string           `json:"platform"`
+	ValueUsd     *NullableDecimal `json:"valueUsd"`
+}
+
 // UUID defines model for UUID.
 type UUID = openapi_types.UUID
 
@@ -2221,74 +1239,84 @@ type User struct {
 // UserStatus defines model for User.Status.
 type UserStatus string
 
-// ValuationList defines model for ValuationList.
-type ValuationList struct {
-	Context          ProjectionContext  `json:"context"`
-	Granularity      *TimeGranularity   `json:"granularity,omitempty"`
-	Issues           []ProjectionIssue  `json:"issues"`
-	Items            []ValuationPoint   `json:"items"`
-	MissingIntervals *[]MissingInterval `json:"missingIntervals,omitempty"`
-	Page             CursorPage         `json:"page"`
+// ValidationOutcome defines model for ValidationOutcome.
+type ValidationOutcome struct {
+	ErrorClass  *string   `json:"errorClass,omitempty"`
+	ErrorDetail *string   `json:"errorDetail,omitempty"`
+	ExternalRef *string   `json:"externalRef,omitempty"`
+	Identity    Identity  `json:"identity"`
+	Ok          bool      `json:"ok"`
+	ValidatedAt time.Time `json:"validatedAt"`
 }
 
-// ValuationPoint defines model for ValuationPoint.
-type ValuationPoint struct {
-	Amount       *NullableDecimal `json:"amount"`
-	Completeness Completeness     `json:"completeness"`
-	EvaluatedAt  time.Time        `json:"evaluatedAt"`
+// ValuationPointDetail defines model for ValuationPointDetail.
+type ValuationPointDetail struct {
+	Accounts       []AccountValuation    `json:"accounts"`
+	BoundaryEvents []BoundaryEvent       `json:"boundaryEvents"`
+	Issues         []Issue               `json:"issues"`
+	Point          ValuationPointSummary `json:"point"`
+}
+
+// ValuationPointList defines model for ValuationPointList.
+type ValuationPointList struct {
+	Context     ReadContext             `json:"context"`
+	From        time.Time               `json:"from"`
+	Granularity TimeGranularity         `json:"granularity"`
+	Items       []ValuationPointSummary `json:"items"`
+	To          time.Time               `json:"to"`
+}
+
+// ValuationPointSummary defines model for ValuationPointSummary.
+type ValuationPointSummary struct {
+	AccountCount            int          `json:"accountCount"`
+	BoundaryContributionUsd Decimal      `json:"boundaryContributionUsd"`
+	BoundaryWithdrawalUsd   Decimal      `json:"boundaryWithdrawalUsd"`
+	Completeness            Completeness `json:"completeness"`
+	EvaluatedAt             time.Time    `json:"evaluatedAt"`
+	Id                      UUID         `json:"id"`
+	IncompleteAccountCount  int          `json:"incompleteAccountCount"`
+	JobId                   UUID         `json:"jobId"`
+	RecalculatedAt          *time.Time   `json:"recalculatedAt,omitempty"`
+	StaleAccountCount       int          `json:"staleAccountCount"`
+	TotalUsd                Decimal      `json:"totalUsd"`
+}
+
+// ValueChange defines model for ValueChange.
+type ValueChange struct {
+	AmountUsd                *NullableDecimal       `json:"amountUsd,omitempty"`
+	BoundaryContributionsUsd Decimal                `json:"boundaryContributionsUsd"`
+	BoundaryEvents           []BoundaryEvent        `json:"boundaryEvents"`
+	BoundaryWithdrawalsUsd   Decimal                `json:"boundaryWithdrawalsUsd"`
+	Completeness             Completeness           `json:"completeness"`
+	ContributionsUsd         Decimal                `json:"contributionsUsd"`
+	EndPoint                 *ValuationPointSummary `json:"endPoint,omitempty"`
+	From                     time.Time              `json:"from"`
+	Label                    string                 `json:"label"`
+	PeriodKind               string                 `json:"periodKind"`
+	Reasons                  []string               `json:"reasons"`
+	StartPoint               *ValuationPointSummary `json:"startPoint,omitempty"`
+	To                       time.Time              `json:"to"`
+	WithdrawalsUsd           Decimal                `json:"withdrawalsUsd"`
 }
 
 // ValueChangeList defines model for ValueChangeList.
 type ValueChangeList struct {
-	Context          ProjectionContext  `json:"context"`
-	Granularity      *TimeGranularity   `json:"granularity,omitempty"`
-	Issues           []ProjectionIssue  `json:"issues"`
-	Items            []ValueChangeRow   `json:"items"`
-	MissingIntervals *[]MissingInterval `json:"missingIntervals,omitempty"`
-	Page             CursorPage         `json:"page"`
+	Context    ReadContext   `json:"context"`
+	Items      []ValueChange `json:"items"`
+	PeriodKind PeriodKind    `json:"periodKind"`
 }
 
-// ValueChangePoint defines model for ValueChangePoint.
-type ValueChangePoint struct {
-	Amount          *NullableDecimal           `json:"amount"`
-	PeriodEndDate   openapi_types.Date         `json:"periodEndDate"`
-	PeriodKind      ValueChangePointPeriodKind `json:"periodKind"`
-	PeriodStartDate openapi_types.Date         `json:"periodStartDate"`
-	State           ValueChangePointState      `json:"state"`
-}
-
-// ValueChangePointPeriodKind defines model for ValueChangePoint.PeriodKind.
-type ValueChangePointPeriodKind string
-
-// ValueChangePointState defines model for ValueChangePoint.State.
-type ValueChangePointState string
-
-// ValueChangeRow defines model for ValueChangeRow.
-type ValueChangeRow struct {
-	Amount              *NullableDecimal    `json:"amount"`
-	ContributionAmount  *NullableDecimal    `json:"contributionAmount,omitempty"`
-	CoverageFingerprint *string             `json:"coverageFingerprint,omitempty"`
-	PeriodEndDate       openapi_types.Date  `json:"periodEndDate"`
-	PeriodKind          CalendarPeriodKind  `json:"periodKind"`
-	PeriodStartDate     openapi_types.Date  `json:"periodStartDate"`
-	State               ValueChangeRowState `json:"state"`
-	WithdrawalAmount    *NullableDecimal    `json:"withdrawalAmount,omitempty"`
-}
-
-// ValueChangeRowState defines model for ValueChangeRow.State.
-type ValueChangeRowState string
+// AccountID defines model for AccountID.
+type AccountID = UUID
 
 // CSRFToken defines model for CSRFToken.
 type CSRFToken = string
 
-// ConnectionID defines model for ConnectionID.
-type ConnectionID = UUID
+// CycleID defines model for CycleID.
+type CycleID = UUID
 
 // FlowID defines model for FlowID.
 type FlowID = UUID
-
-// Granularity defines model for Granularity.
-type Granularity = TimeGranularity
 
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
@@ -2305,26 +1333,14 @@ type JobID = UUID
 // ListingID defines model for ListingID.
 type ListingID = UUID
 
-// MaxPoints defines model for MaxPoints.
-type MaxPoints = int
-
-// ObservationID defines model for ObservationID.
-type ObservationID = UUID
-
-// PeriodKind defines model for PeriodKind.
-type PeriodKind = CalendarPeriodKind
+// PointID defines model for PointID.
+type PointID = UUID
 
 // PortfolioID defines model for PortfolioID.
 type PortfolioID = UUID
 
 // SessionID defines model for SessionID.
 type SessionID = UUID
-
-// SubjectID defines model for SubjectID.
-type SubjectID = UUID
-
-// SubjectKind defines model for SubjectKind.
-type SubjectKind = CatalogPinSubjectKind
 
 // TimeFrom defines model for TimeFrom.
 type TimeFrom = time.Time
@@ -2375,12 +1391,6 @@ type PatchPortfolioParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListAccountsParams defines parameters for ListAccounts.
-type ListAccountsParams struct {
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
 // ListAuditEventsParams defines parameters for ListAuditEvents.
 type ListAuditEventsParams struct {
 	Action       *string `form:"action,omitempty" json:"action,omitempty"`
@@ -2391,11 +1401,11 @@ type ListAuditEventsParams struct {
 
 // ListBalancesParams defines parameters for ListBalances.
 type ListBalancesParams struct {
+	Platform   *string                    `form:"platform,omitempty" json:"platform,omitempty"`
+	IdentityId *openapi_types.UUID        `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId  *openapi_types.UUID        `form:"accountId,omitempty" json:"accountId,omitempty"`
+	Symbol     *string                    `form:"symbol,omitempty" json:"symbol,omitempty"`
 	GroupBy    *ListBalancesParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
-	IdentityId *UUID                      `form:"identityId,omitempty" json:"identityId,omitempty"`
-	AccountId  *UUID                      `form:"accountId,omitempty" json:"accountId,omitempty"`
-	AssetId    *UUID                      `form:"assetId,omitempty" json:"assetId,omitempty"`
-	ListingId  *UUID                      `form:"listingId,omitempty" json:"listingId,omitempty"`
 	Offset     *int                       `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit      *int                       `form:"limit,omitempty" json:"limit,omitempty"`
 }
@@ -2403,23 +1413,18 @@ type ListBalancesParams struct {
 // ListBalancesParamsGroupBy defines parameters for ListBalances.
 type ListBalancesParamsGroupBy string
 
-// PutCapitalBaselineParams defines parameters for PutCapitalBaseline.
-type PutCapitalBaselineParams struct {
-	IfMatch        IfMatch         `json:"If-Match"`
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
-}
-
-// ListCapitalBaselineRevisionsParams defines parameters for ListCapitalBaselineRevisions.
-type ListCapitalBaselineRevisionsParams struct {
-	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+// ListBoundaryEventsParams defines parameters for ListBoundaryEvents.
+type ListBoundaryEventsParams struct {
+	// From Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // ListCapitalFlowsParams defines parameters for ListCapitalFlows.
 type ListCapitalFlowsParams struct {
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+	// From Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // CreateCapitalFlowParams defines parameters for CreateCapitalFlow.
@@ -2440,90 +1445,39 @@ type PatchCapitalFlowParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListCapitalFlowRevisionsParams defines parameters for ListCapitalFlowRevisions.
-type ListCapitalFlowRevisionsParams struct {
+// ListAssetListingsParams defines parameters for ListAssetListings.
+type ListAssetListingsParams struct {
+	Platform *string `form:"platform,omitempty" json:"platform,omitempty"`
+	Q        *string `form:"q,omitempty" json:"q,omitempty"`
+	Offset   *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// PutAssetListingMappingParams defines parameters for PutAssetListingMapping.
+type PutAssetListingMappingParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListInstrumentsParams defines parameters for ListInstruments.
+type ListInstrumentsParams struct {
+	Platform *string `form:"platform,omitempty" json:"platform,omitempty"`
+	Q        *string `form:"q,omitempty" json:"q,omitempty"`
+	Offset   *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListCollectionCyclesParams defines parameters for ListCollectionCycles.
+type ListCollectionCyclesParams struct {
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
-// SearchCatalogAssetListingsParams defines parameters for SearchCatalogAssetListings.
-type SearchCatalogAssetListingsParams struct {
-	Q            *string                                       `form:"q,omitempty" json:"q,omitempty"`
-	PlatformId   *UUID                                         `form:"platformId,omitempty" json:"platformId,omitempty"`
-	MappingState *SearchCatalogAssetListingsParamsMappingState `form:"mappingState,omitempty" json:"mappingState,omitempty"`
-	Offset       *int                                          `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit        *int                                          `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// SearchCatalogAssetListingsParamsMappingState defines parameters for SearchCatalogAssetListings.
-type SearchCatalogAssetListingsParamsMappingState string
-
-// PutCatalogListingMappingParams defines parameters for PutCatalogListingMapping.
-type PutCatalogListingMappingParams struct {
-	IfMatch        IfMatch         `json:"If-Match"`
+// CreateCollectionCycleParams defines parameters for CreateCollectionCycle.
+type CreateCollectionCycleParams struct {
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
-
-// SearchCatalogAssetsParams defines parameters for SearchCatalogAssets.
-type SearchCatalogAssetsParams struct {
-	Q      *string `form:"q,omitempty" json:"q,omitempty"`
-	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// SearchCatalogInstrumentsParams defines parameters for SearchCatalogInstruments.
-type SearchCatalogInstrumentsParams struct {
-	Q          *string `form:"q,omitempty" json:"q,omitempty"`
-	PlatformId *UUID   `form:"platformId,omitempty" json:"platformId,omitempty"`
-	Pinned     *bool   `form:"pinned,omitempty" json:"pinned,omitempty"`
-	Offset     *int    `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit      *int    `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// DeleteCatalogPinParams defines parameters for DeleteCatalogPin.
-type DeleteCatalogPinParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// PutCatalogPinParams defines parameters for PutCatalogPin.
-type PutCatalogPinParams struct {
-	IfMatch        IfMatch         `json:"If-Match"`
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
-}
-
-// CreateConnectionParams defines parameters for CreateConnection.
-type CreateConnectionParams struct {
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
-}
-
-// DeleteConnectionParams defines parameters for DeleteConnection.
-type DeleteConnectionParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// PatchConnectionParams defines parameters for PatchConnection.
-type PatchConnectionParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// ListExposuresParams defines parameters for ListExposures.
-type ListExposuresParams struct {
-	GroupBy    *ListExposuresParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
-	IdentityId *UUID                       `form:"identityId,omitempty" json:"identityId,omitempty"`
-	AccountId  *UUID                       `form:"accountId,omitempty" json:"accountId,omitempty"`
-	AssetId    *UUID                       `form:"assetId,omitempty" json:"assetId,omitempty"`
-	Offset     *int                        `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit      *int                        `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// ListExposuresParamsGroupBy defines parameters for ListExposures.
-type ListExposuresParamsGroupBy string
 
 // CreateIdentityParams defines parameters for CreateIdentity.
 type CreateIdentityParams struct {
@@ -2543,76 +1497,82 @@ type ArchiveIdentityParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListJobsParams defines parameters for ListJobs.
-type ListJobsParams struct {
-	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
-}
-
-// ListObservationsParams defines parameters for ListObservations.
-type ListObservationsParams struct {
-	Kind       *ObservationKind `form:"kind,omitempty" json:"kind,omitempty"`
-	IdentityId *UUID            `form:"identityId,omitempty" json:"identityId,omitempty"`
-	AccountId  *UUID            `form:"accountId,omitempty" json:"accountId,omitempty"`
-	From       *time.Time       `form:"from,omitempty" json:"from,omitempty"`
-	To         *time.Time       `form:"to,omitempty" json:"to,omitempty"`
-	Limit      *int             `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor     *string          `form:"cursor,omitempty" json:"cursor,omitempty"`
-}
-
-// PatchObservationParams defines parameters for PatchObservation.
-type PatchObservationParams struct {
+// DeleteIdentityCredentialsParams defines parameters for DeleteIdentityCredentials.
+type DeleteIdentityCredentialsParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListPeriodSummariesParams defines parameters for ListPeriodSummaries.
-type ListPeriodSummariesParams struct {
+// PutIdentityCredentialsParams defines parameters for PutIdentityCredentials.
+type PutIdentityCredentialsParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// DisableIdentityConnectionParams defines parameters for DisableIdentityConnection.
+type DisableIdentityConnectionParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// EnableIdentityConnectionParams defines parameters for EnableIdentityConnection.
+type EnableIdentityConnectionParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ValidateIdentityConnectionParams defines parameters for ValidateIdentityConnection.
+type ValidateIdentityConnectionParams struct {
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListJobsParams defines parameters for ListJobs.
+type ListJobsParams struct {
+	Kind   *JobKind `form:"kind,omitempty" json:"kind,omitempty"`
+	Limit  *int     `form:"limit,omitempty" json:"limit,omitempty"`
+	Cursor *string  `form:"cursor,omitempty" json:"cursor,omitempty"`
+}
+
+// ListPeriodClosesParams defines parameters for ListPeriodCloses.
+type ListPeriodClosesParams struct {
 	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
-	From       *TimeFrom   `form:"from,omitempty" json:"from,omitempty"`
-	To         *TimeTo     `form:"to,omitempty" json:"to,omitempty"`
-	Limit      *int        `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor     *string     `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// From Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // ListPositionsParams defines parameters for ListPositions.
 type ListPositionsParams struct {
-	GroupBy      *ListPositionsParamsGroupBy `form:"groupBy,omitempty" json:"groupBy,omitempty"`
-	IdentityId   *UUID                       `form:"identityId,omitempty" json:"identityId,omitempty"`
-	AccountId    *UUID                       `form:"accountId,omitempty" json:"accountId,omitempty"`
-	InstrumentId *UUID                       `form:"instrumentId,omitempty" json:"instrumentId,omitempty"`
-	Offset       *int                        `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit        *int                        `form:"limit,omitempty" json:"limit,omitempty"`
+	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
+	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
+	AccountId  *openapi_types.UUID `form:"accountId,omitempty" json:"accountId,omitempty"`
+	Symbol     *string             `form:"symbol,omitempty" json:"symbol,omitempty"`
+	Offset     *int                `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit      *int                `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// ListPositionsParamsGroupBy defines parameters for ListPositions.
-type ListPositionsParamsGroupBy string
-
-// CreateProjectionRebuildParams defines parameters for CreateProjectionRebuild.
-type CreateProjectionRebuildParams struct {
-	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
-}
-
-// ListValuationsParams defines parameters for ListValuations.
-type ListValuationsParams struct {
-	From        *TimeFrom    `form:"from,omitempty" json:"from,omitempty"`
-	To          *TimeTo      `form:"to,omitempty" json:"to,omitempty"`
-	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
-	MaxPoints   *MaxPoints   `form:"maxPoints,omitempty" json:"maxPoints,omitempty"`
-	Limit       *int         `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor      *string      `form:"cursor,omitempty" json:"cursor,omitempty"`
+// ListValuationPointsParams defines parameters for ListValuationPoints.
+type ListValuationPointsParams struct {
+	// From Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+	From        *TimeFrom        `form:"from,omitempty" json:"from,omitempty"`
+	To          *TimeTo          `form:"to,omitempty" json:"to,omitempty"`
+	Granularity *TimeGranularity `form:"granularity,omitempty" json:"granularity,omitempty"`
 }
 
 // ListValueChangesParams defines parameters for ListValueChanges.
 type ListValueChangesParams struct {
-	PeriodKind  *PeriodKind  `form:"periodKind,omitempty" json:"periodKind,omitempty"`
-	From        *TimeFrom    `form:"from,omitempty" json:"from,omitempty"`
-	To          *TimeTo      `form:"to,omitempty" json:"to,omitempty"`
-	Granularity *Granularity `form:"granularity,omitempty" json:"granularity,omitempty"`
-	MaxPoints   *MaxPoints   `form:"maxPoints,omitempty" json:"maxPoints,omitempty"`
-	Limit       *int         `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor      *string      `form:"cursor,omitempty" json:"cursor,omitempty"`
+	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
+
+	// From Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// GetCustomValueChangeParams defines parameters for GetCustomValueChange.
+type GetCustomValueChangeParams struct {
+	From time.Time `form:"from" json:"from"`
+	To   time.Time `form:"to" json:"to"`
 }
 
 // PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
@@ -2627,26 +1587,14 @@ type CreatePortfolioJSONRequestBody = CreatePortfolioRequest
 // PatchPortfolioJSONRequestBody defines body for PatchPortfolio for application/json ContentType.
 type PatchPortfolioJSONRequestBody = PatchPortfolioRequest
 
-// PutCapitalBaselineJSONRequestBody defines body for PutCapitalBaseline for application/json ContentType.
-type PutCapitalBaselineJSONRequestBody = PutCapitalBaselineRequest
-
 // CreateCapitalFlowJSONRequestBody defines body for CreateCapitalFlow for application/json ContentType.
 type CreateCapitalFlowJSONRequestBody = CreateCapitalFlowRequest
 
 // PatchCapitalFlowJSONRequestBody defines body for PatchCapitalFlow for application/json ContentType.
 type PatchCapitalFlowJSONRequestBody = PatchCapitalFlowRequest
 
-// PutCatalogListingMappingJSONRequestBody defines body for PutCatalogListingMapping for application/json ContentType.
-type PutCatalogListingMappingJSONRequestBody = PutCatalogMappingRequest
-
-// PutCatalogPinJSONRequestBody defines body for PutCatalogPin for application/json ContentType.
-type PutCatalogPinJSONRequestBody = PutCatalogPinRequest
-
-// CreateConnectionJSONRequestBody defines body for CreateConnection for application/json ContentType.
-type CreateConnectionJSONRequestBody = CreateConnectionRequest
-
-// PatchConnectionJSONRequestBody defines body for PatchConnection for application/json ContentType.
-type PatchConnectionJSONRequestBody = PatchConnectionRequest
+// PutAssetListingMappingJSONRequestBody defines body for PutAssetListingMapping for application/json ContentType.
+type PutAssetListingMappingJSONRequestBody = PutAssetListingMappingRequest
 
 // CreateIdentityJSONRequestBody defines body for CreateIdentity for application/json ContentType.
 type CreateIdentityJSONRequestBody = CreateIdentityRequest
@@ -2654,11 +1602,8 @@ type CreateIdentityJSONRequestBody = CreateIdentityRequest
 // PatchIdentityJSONRequestBody defines body for PatchIdentity for application/json ContentType.
 type PatchIdentityJSONRequestBody = PatchIdentityRequest
 
-// PatchObservationJSONRequestBody defines body for PatchObservation for application/json ContentType.
-type PatchObservationJSONRequestBody = PatchObservationRequest
-
-// CreateProjectionRebuildJSONRequestBody defines body for CreateProjectionRebuild for application/json ContentType.
-type CreateProjectionRebuildJSONRequestBody = CreateProjectionRebuildRequest
+// PutIdentityCredentialsJSONRequestBody defines body for PutIdentityCredentials for application/json ContentType.
+type PutIdentityCredentialsJSONRequestBody = PutCredentialsRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -2686,141 +1631,132 @@ type ServerInterface interface {
 	// DeleteAuthSession Revoke one owned session
 	// (DELETE /api/v1/auth/sessions/{sessionId})
 	DeleteAuthSession(c *gin.Context, sessionId SessionID, params DeleteAuthSessionParams)
+	// ListPlatforms List supported platforms with account modes and account types
+	// (GET /api/v1/platforms)
+	ListPlatforms(c *gin.Context)
 	// ListPortfolios List owned portfolios
 	// (GET /api/v1/portfolios)
 	ListPortfolios(c *gin.Context)
 	// CreatePortfolio Create a portfolio
 	// (POST /api/v1/portfolios)
 	CreatePortfolio(c *gin.Context, params CreatePortfolioParams)
-
+	// DeletePortfolio Delete an additional portfolio
 	// (DELETE /api/v1/portfolios/{portfolioId})
 	DeletePortfolio(c *gin.Context, portfolioId PortfolioID, params DeletePortfolioParams)
-
+	// GetPortfolio Get a portfolio
 	// (GET /api/v1/portfolios/{portfolioId})
 	GetPortfolio(c *gin.Context, portfolioId PortfolioID)
-
+	// PatchPortfolio Update portfolio settings
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(c *gin.Context, portfolioId PortfolioID, params PatchPortfolioParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/accounts)
-	ListAccounts(c *gin.Context, portfolioId PortfolioID, params ListAccountsParams)
+	// ListAccountBalances Balances of an account's current report
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances)
+	ListAccountBalances(c *gin.Context, portfolioId PortfolioID, accountId AccountID)
+	// ListAccountPositions Positions of an account's current report
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions)
+	ListAccountPositions(c *gin.Context, portfolioId PortfolioID, accountId AccountID)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(c *gin.Context, portfolioId PortfolioID, params ListAuditEventsParams)
-	// ListBalances Latest balances with grouping and offset pagination
+	// ListBalances Flat balance list across the boundary at the latest point
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(c *gin.Context, portfolioId PortfolioID, params ListBalancesParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
-	GetCapitalBaseline(c *gin.Context, portfolioId PortfolioID)
-
-	// (PUT /api/v1/portfolios/{portfolioId}/capital-baseline)
-	PutCapitalBaseline(c *gin.Context, portfolioId PortfolioID, params PutCapitalBaselineParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline/revisions)
-	ListCapitalBaselineRevisions(c *gin.Context, portfolioId PortfolioID, params ListCapitalBaselineRevisionsParams)
-
+	// ListBoundaryEvents Derived boundary events between two instants
+	// (GET /api/v1/portfolios/{portfolioId}/boundary-events)
+	ListBoundaryEvents(c *gin.Context, portfolioId PortfolioID, params ListBoundaryEventsParams)
+	// ListCapitalFlows List manual capital flows
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows)
 	ListCapitalFlows(c *gin.Context, portfolioId PortfolioID, params ListCapitalFlowsParams)
-
+	// CreateCapitalFlow Record a manual capital flow
 	// (POST /api/v1/portfolios/{portfolioId}/capital-flows)
 	CreateCapitalFlow(c *gin.Context, portfolioId PortfolioID, params CreateCapitalFlowParams)
-
+	// DeleteCapitalFlow Delete a capital flow
 	// (DELETE /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	DeleteCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params DeleteCapitalFlowParams)
-
+	// GetCapitalFlow Get a capital flow
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	GetCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID)
-
+	// PatchCapitalFlow Edit a capital flow
 	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	PatchCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params PatchCapitalFlowParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
-	ListCapitalFlowRevisions(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params ListCapitalFlowRevisionsParams)
-	// SearchCatalogAssetListings Search discovered asset listings and mapping status
+	// ListAssetListings List platform asset listings and their asset mapping
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/asset-listings)
-	SearchCatalogAssetListings(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetListingsParams)
-	// PutCatalogListingMapping Append an asset listing mapping revision
+	ListAssetListings(c *gin.Context, portfolioId PortfolioID, params ListAssetListingsParams)
+	// PutAssetListingMapping Override the asset symbol of a listing and recalculate affected points
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping)
-	PutCatalogListingMapping(c *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutCatalogListingMappingParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
-	SearchCatalogAssets(c *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams)
-	// SearchCatalogInstruments Search discovered instruments
+	PutAssetListingMapping(c *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutAssetListingMappingParams)
+	// ListInstruments List platform instruments
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/instruments)
-	SearchCatalogInstruments(c *gin.Context, portfolioId PortfolioID, params SearchCatalogInstrumentsParams)
-	// DeleteCatalogPin Append a disabled tracking revision
-	// (DELETE /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
-	DeleteCatalogPin(c *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params DeleteCatalogPinParams)
-	// PutCatalogPin Append an enabled tracking revision
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
-	PutCatalogPin(c *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params PutCatalogPinParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/connections)
-	ListConnections(c *gin.Context, portfolioId PortfolioID)
-
-	// (POST /api/v1/portfolios/{portfolioId}/connections)
-	CreateConnection(c *gin.Context, portfolioId PortfolioID, params CreateConnectionParams)
-
-	// (DELETE /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	DeleteConnection(c *gin.Context, portfolioId PortfolioID, connectionId ConnectionID, params DeleteConnectionParams)
-
-	// (GET /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	GetConnection(c *gin.Context, portfolioId PortfolioID, connectionId ConnectionID)
-
-	// (PATCH /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	PatchConnection(c *gin.Context, portfolioId PortfolioID, connectionId ConnectionID, params PatchConnectionParams)
-	// ListExposures Long, short, and net exposure with grouping
-	// (GET /api/v1/portfolios/{portfolioId}/exposures)
-	ListExposures(c *gin.Context, portfolioId PortfolioID, params ListExposuresParams)
-
+	ListInstruments(c *gin.Context, portfolioId PortfolioID, params ListInstrumentsParams)
+	// ListCollectionCycles List collection cycles with their valuation points
+	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles)
+	ListCollectionCycles(c *gin.Context, portfolioId PortfolioID, params ListCollectionCyclesParams)
+	// CreateCollectionCycle Enqueue a manual collection cycle or return the active one
+	// (POST /api/v1/portfolios/{portfolioId}/collection-cycles)
+	CreateCollectionCycle(c *gin.Context, portfolioId PortfolioID, params CreateCollectionCycleParams)
+	// GetCollectionCycle Get one cycle with its per-account outcomes
+	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId})
+	GetCollectionCycle(c *gin.Context, portfolioId PortfolioID, cycleId CycleID)
+	// ListIdentities List identities with their accounts and connection state
 	// (GET /api/v1/portfolios/{portfolioId}/identities)
 	ListIdentities(c *gin.Context, portfolioId PortfolioID)
-
+	// CreateIdentity Create an identity and select its account types
 	// (POST /api/v1/portfolios/{portfolioId}/identities)
 	CreateIdentity(c *gin.Context, portfolioId PortfolioID, params CreateIdentityParams)
-
+	// GetIdentity Get an identity
 	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId})
 	GetIdentity(c *gin.Context, portfolioId PortfolioID, identityId IdentityID)
-
+	// PatchIdentity Rename an identity or change account selection
 	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId})
 	PatchIdentity(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params PatchIdentityParams)
-
+	// ArchiveIdentity Archive an identity; refused while its connection is enabled
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive)
 	ArchiveIdentity(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ArchiveIdentityParams)
-
+	// DeleteIdentityCredentials Remove stored credentials
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	DeleteIdentityCredentials(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DeleteIdentityCredentialsParams)
+	// PutIdentityCredentials Store read-only API credentials (write-only)
+	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	PutIdentityCredentials(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params PutIdentityCredentialsParams)
+	// DisableIdentityConnection Stop scheduling the connection
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/disable)
+	DisableIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DisableIdentityConnectionParams)
+	// EnableIdentityConnection Validate and enable the connection for scheduling
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
+	EnableIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params EnableIdentityConnectionParams)
+	// ValidateIdentityConnection Run one read-only validation call and store the outcome
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
+	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
+	// ListJobs List durable jobs
 	// (GET /api/v1/portfolios/{portfolioId}/jobs)
 	ListJobs(c *gin.Context, portfolioId PortfolioID, params ListJobsParams)
-
+	// GetJob Get a job
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(c *gin.Context, portfolioId PortfolioID, jobId JobID)
-	// ListObservations Search normalized observation headers
-	// (GET /api/v1/portfolios/{portfolioId}/observations)
-	ListObservations(c *gin.Context, portfolioId PortfolioID, params ListObservationsParams)
-	// GetObservation Read one typed normalized observation
-	// (GET /api/v1/portfolios/{portfolioId}/observations/{observationId})
-	GetObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID)
-
-	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
-	PatchObservation(c *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams)
-	// GetOverview Portfolio overview cards, series, exposure, and issues
+	// GetOverview Latest valuation point with platform and identity totals
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(c *gin.Context, portfolioId PortfolioID)
-	// ListPeriodSummaries Period summary history
-	// (GET /api/v1/portfolios/{portfolioId}/period-summaries)
-	ListPeriodSummaries(c *gin.Context, portfolioId PortfolioID, params ListPeriodSummariesParams)
-	// ListPositions Latest positions with grouping and offset pagination
+	// ListPeriodCloses Period closes per period kind
+	// (GET /api/v1/portfolios/{portfolioId}/period-closes)
+	ListPeriodCloses(c *gin.Context, portfolioId PortfolioID, params ListPeriodClosesParams)
+	// ListPositions Flat position list across the boundary at the latest point
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(c *gin.Context, portfolioId PortfolioID, params ListPositionsParams)
-	// CreateProjectionRebuild Enqueue a full projection rebuild
-	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
-	CreateProjectionRebuild(c *gin.Context, portfolioId PortfolioID, params CreateProjectionRebuildParams)
-	// ListValuations Portfolio valuation history
-	// (GET /api/v1/portfolios/{portfolioId}/valuations)
-	ListValuations(c *gin.Context, portfolioId PortfolioID, params ListValuationsParams)
-	// ListValueChanges Calendar value-change history
+	// GetHoldingsTree Platform → identity → account tree at the latest point
+	// (GET /api/v1/portfolios/{portfolioId}/tree)
+	GetHoldingsTree(c *gin.Context, portfolioId PortfolioID)
+	// ListValuationPoints Valuation point series
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
+	ListValuationPoints(c *gin.Context, portfolioId PortfolioID, params ListValuationPointsParams)
+	// GetValuationPoint One valuation point with its account valuations
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{pointId})
+	GetValuationPoint(c *gin.Context, portfolioId PortfolioID, pointId PointID)
+	// ListValueChanges Value changes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(c *gin.Context, portfolioId PortfolioID, params ListValueChangesParams)
+	// GetCustomValueChange One value change between the last points at or before two instants
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes/custom)
+	GetCustomValueChange(c *gin.Context, portfolioId PortfolioID, params GetCustomValueChangeParams)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
 	GetHealthLive(c *gin.Context)
@@ -3086,6 +2022,19 @@ func (siw *ServerInterfaceWrapper) DeleteAuthSession(c *gin.Context) {
 	siw.Handler.DeleteAuthSession(c, sessionId, params)
 }
 
+// ListPlatforms operation middleware
+func (siw *ServerInterfaceWrapper) ListPlatforms(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListPlatforms(c)
+}
+
 // ListPortfolios operation middleware
 func (siw *ServerInterfaceWrapper) ListPortfolios(c *gin.Context) {
 
@@ -3325,8 +2274,8 @@ func (siw *ServerInterfaceWrapper) PatchPortfolio(c *gin.Context) {
 	siw.Handler.PatchPortfolio(c, portfolioId, params)
 }
 
-// ListAccounts operation middleware
-func (siw *ServerInterfaceWrapper) ListAccounts(c *gin.Context) {
+// ListAccountBalances operation middleware
+func (siw *ServerInterfaceWrapper) ListAccountBalances(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -3340,22 +2289,12 @@ func (siw *ServerInterfaceWrapper) ListAccounts(c *gin.Context) {
 		return
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListAccountsParams
+	// ------------- Path parameter "accountId" -------------
+	var accountId AccountID
 
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "accountId", c.Param("accountId"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3366,7 +2305,41 @@ func (siw *ServerInterfaceWrapper) ListAccounts(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListAccounts(c, portfolioId, params)
+	siw.Handler.ListAccountBalances(c, portfolioId, accountId)
+}
+
+// ListAccountPositions operation middleware
+func (siw *ServerInterfaceWrapper) ListAccountPositions(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "accountId" -------------
+	var accountId AccountID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "accountId", c.Param("accountId"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAccountPositions(c, portfolioId, accountId)
 }
 
 // ListAuditEvents operation middleware
@@ -3447,11 +2420,11 @@ func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListBalancesParams
 
-	// ------------- Optional query parameter "groupBy" -------------
+	// ------------- Optional query parameter "platform" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3471,19 +2444,19 @@ func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "assetId" -------------
+	// ------------- Optional query parameter "symbol" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "assetId", c.Request.URL.Query(), &params.AssetId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "listingId" -------------
+	// ------------- Optional query parameter "groupBy" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "listingId", c.Request.URL.Query(), &params.ListingId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter listingId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3513,33 +2486,8 @@ func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 	siw.Handler.ListBalances(c, portfolioId, params)
 }
 
-// GetCapitalBaseline operation middleware
-func (siw *ServerInterfaceWrapper) GetCapitalBaseline(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetCapitalBaseline(c, portfolioId)
-}
-
-// PutCapitalBaseline operation middleware
-func (siw *ServerInterfaceWrapper) PutCapitalBaseline(c *gin.Context) {
+// ListBoundaryEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListBoundaryEvents(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -3554,111 +2502,21 @@ func (siw *ServerInterfaceWrapper) PutCapitalBaseline(c *gin.Context) {
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params PutCapitalBaselineParams
+	var params ListBoundaryEventsParams
 
-	headers := c.Request.Header
+	// ------------- Optional query parameter "from" -------------
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
+	// ------------- Optional query parameter "to" -------------
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = &IdempotencyKey
-
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PutCapitalBaseline(c, portfolioId, params)
-}
-
-// ListCapitalBaselineRevisions operation middleware
-func (siw *ServerInterfaceWrapper) ListCapitalBaselineRevisions(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListCapitalBaselineRevisionsParams
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3669,7 +2527,7 @@ func (siw *ServerInterfaceWrapper) ListCapitalBaselineRevisions(c *gin.Context) 
 		}
 	}
 
-	siw.Handler.ListCapitalBaselineRevisions(c, portfolioId, params)
+	siw.Handler.ListBoundaryEvents(c, portfolioId, params)
 }
 
 // ListCapitalFlows operation middleware
@@ -3690,19 +2548,19 @@ func (siw *ServerInterfaceWrapper) ListCapitalFlows(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListCapitalFlowsParams
 
-	// ------------- Optional query parameter "offset" -------------
+	// ------------- Optional query parameter "from" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "limit" -------------
+	// ------------- Optional query parameter "to" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3978,8 +2836,8 @@ func (siw *ServerInterfaceWrapper) PatchCapitalFlow(c *gin.Context) {
 	siw.Handler.PatchCapitalFlow(c, portfolioId, flowId, params)
 }
 
-// ListCapitalFlowRevisions operation middleware
-func (siw *ServerInterfaceWrapper) ListCapitalFlowRevisions(c *gin.Context) {
+// ListAssetListings operation middleware
+func (siw *ServerInterfaceWrapper) ListAssetListings(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -3993,17 +2851,208 @@ func (siw *ServerInterfaceWrapper) ListCapitalFlowRevisions(c *gin.Context) {
 		return
 	}
 
-	// ------------- Path parameter "flowId" -------------
-	var flowId FlowID
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAssetListingsParams
 
-	err = runtime.BindStyledParameterWithOptions("simple", "flowId", c.Param("flowId"), &flowId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	// ------------- Optional query parameter "platform" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter flowId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAssetListings(c, portfolioId, params)
+}
+
+// PutAssetListingMapping operation middleware
+func (siw *ServerInterfaceWrapper) PutAssetListingMapping(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "listingId" -------------
+	var listingId ListingID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "listingId", c.Param("listingId"), &listingId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter listingId: %w", err), http.StatusBadRequest)
 		return
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params ListCapitalFlowRevisionsParams
+	var params PutAssetListingMappingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutAssetListingMapping(c, portfolioId, listingId, params)
+}
+
+// ListInstruments operation middleware
+func (siw *ServerInterfaceWrapper) ListInstruments(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListInstrumentsParams
+
+	// ------------- Optional query parameter "platform" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListInstruments(c, portfolioId, params)
+}
+
+// ListCollectionCycles operation middleware
+func (siw *ServerInterfaceWrapper) ListCollectionCycles(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCollectionCyclesParams
 
 	// ------------- Optional query parameter "limit" -------------
 
@@ -4028,11 +3077,11 @@ func (siw *ServerInterfaceWrapper) ListCapitalFlowRevisions(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListCapitalFlowRevisions(c, portfolioId, flowId, params)
+	siw.Handler.ListCollectionCycles(c, portfolioId, params)
 }
 
-// SearchCatalogAssetListings operation middleware
-func (siw *ServerInterfaceWrapper) SearchCatalogAssetListings(c *gin.Context) {
+// CreateCollectionCycle operation middleware
+func (siw *ServerInterfaceWrapper) CreateCollectionCycle(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -4047,516 +3096,7 @@ func (siw *ServerInterfaceWrapper) SearchCatalogAssetListings(c *gin.Context) {
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params SearchCatalogAssetListingsParams
-
-	// ------------- Optional query parameter "q" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "platformId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "platformId", c.Request.URL.Query(), &params.PlatformId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "mappingState" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "mappingState", c.Request.URL.Query(), &params.MappingState, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter mappingState: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.SearchCatalogAssetListings(c, portfolioId, params)
-}
-
-// PutCatalogListingMapping operation middleware
-func (siw *ServerInterfaceWrapper) PutCatalogListingMapping(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "listingId" -------------
-	var listingId ListingID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "listingId", c.Param("listingId"), &listingId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter listingId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PutCatalogListingMappingParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = &IdempotencyKey
-
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PutCatalogListingMapping(c, portfolioId, listingId, params)
-}
-
-// SearchCatalogAssets operation middleware
-func (siw *ServerInterfaceWrapper) SearchCatalogAssets(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params SearchCatalogAssetsParams
-
-	// ------------- Optional query parameter "q" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.SearchCatalogAssets(c, portfolioId, params)
-}
-
-// SearchCatalogInstruments operation middleware
-func (siw *ServerInterfaceWrapper) SearchCatalogInstruments(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params SearchCatalogInstrumentsParams
-
-	// ------------- Optional query parameter "q" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "platformId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "platformId", c.Request.URL.Query(), &params.PlatformId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "pinned" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "pinned", c.Request.URL.Query(), &params.Pinned, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pinned: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.SearchCatalogInstruments(c, portfolioId, params)
-}
-
-// DeleteCatalogPin operation middleware
-func (siw *ServerInterfaceWrapper) DeleteCatalogPin(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "subjectKind" -------------
-	var subjectKind SubjectKind
-
-	err = runtime.BindStyledParameterWithOptions("simple", "subjectKind", c.Param("subjectKind"), &subjectKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectKind: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "subjectId" -------------
-	var subjectId SubjectID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "subjectId", c.Param("subjectId"), &subjectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DeleteCatalogPinParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.DeleteCatalogPin(c, portfolioId, subjectKind, subjectId, params)
-}
-
-// PutCatalogPin operation middleware
-func (siw *ServerInterfaceWrapper) PutCatalogPin(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "subjectKind" -------------
-	var subjectKind SubjectKind
-
-	err = runtime.BindStyledParameterWithOptions("simple", "subjectKind", c.Param("subjectKind"), &subjectKind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectKind: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "subjectId" -------------
-	var subjectId SubjectID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "subjectId", c.Param("subjectId"), &subjectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter subjectId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PutCatalogPinParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = &IdempotencyKey
-
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PutCatalogPin(c, portfolioId, subjectKind, subjectId, params)
-}
-
-// ListConnections operation middleware
-func (siw *ServerInterfaceWrapper) ListConnections(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListConnections(c, portfolioId)
-}
-
-// CreateConnection operation middleware
-func (siw *ServerInterfaceWrapper) CreateConnection(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateConnectionParams
+	var params CreateCollectionCycleParams
 
 	headers := c.Request.Header
 
@@ -4605,11 +3145,11 @@ func (siw *ServerInterfaceWrapper) CreateConnection(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateConnection(c, portfolioId, params)
+	siw.Handler.CreateCollectionCycle(c, portfolioId, params)
 }
 
-// DeleteConnection operation middleware
-func (siw *ServerInterfaceWrapper) DeleteConnection(c *gin.Context) {
+// GetCollectionCycle operation middleware
+func (siw *ServerInterfaceWrapper) GetCollectionCycle(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -4623,92 +3163,12 @@ func (siw *ServerInterfaceWrapper) DeleteConnection(c *gin.Context) {
 		return
 	}
 
-	// ------------- Path parameter "connectionId" -------------
-	var connectionId ConnectionID
+	// ------------- Path parameter "cycleId" -------------
+	var cycleId CycleID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "connectionId", c.Param("connectionId"), &connectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "cycleId", c.Param("cycleId"), &cycleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter connectionId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params DeleteConnectionParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.DeleteConnection(c, portfolioId, connectionId, params)
-}
-
-// GetConnection operation middleware
-func (siw *ServerInterfaceWrapper) GetConnection(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "connectionId" -------------
-	var connectionId ConnectionID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "connectionId", c.Param("connectionId"), &connectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter connectionId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4719,163 +3179,7 @@ func (siw *ServerInterfaceWrapper) GetConnection(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetConnection(c, portfolioId, connectionId)
-}
-
-// PatchConnection operation middleware
-func (siw *ServerInterfaceWrapper) PatchConnection(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "connectionId" -------------
-	var connectionId ConnectionID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "connectionId", c.Param("connectionId"), &connectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter connectionId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PatchConnectionParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PatchConnection(c, portfolioId, connectionId, params)
-}
-
-// ListExposures operation middleware
-func (siw *ServerInterfaceWrapper) ListExposures(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListExposuresParams
-
-	// ------------- Optional query parameter "groupBy" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "identityId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "accountId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "assetId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "assetId", c.Request.URL.Query(), &params.AssetId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListExposures(c, portfolioId, params)
+	siw.Handler.GetCollectionCycle(c, portfolioId, cycleId)
 }
 
 // ListIdentities operation middleware
@@ -5165,6 +3469,384 @@ func (siw *ServerInterfaceWrapper) ArchiveIdentity(c *gin.Context) {
 	siw.Handler.ArchiveIdentity(c, portfolioId, identityId, params)
 }
 
+// DeleteIdentityCredentials operation middleware
+func (siw *ServerInterfaceWrapper) DeleteIdentityCredentials(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteIdentityCredentialsParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteIdentityCredentials(c, portfolioId, identityId, params)
+}
+
+// PutIdentityCredentials operation middleware
+func (siw *ServerInterfaceWrapper) PutIdentityCredentials(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutIdentityCredentialsParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutIdentityCredentials(c, portfolioId, identityId, params)
+}
+
+// DisableIdentityConnection operation middleware
+func (siw *ServerInterfaceWrapper) DisableIdentityConnection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DisableIdentityConnectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DisableIdentityConnection(c, portfolioId, identityId, params)
+}
+
+// EnableIdentityConnection operation middleware
+func (siw *ServerInterfaceWrapper) EnableIdentityConnection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params EnableIdentityConnectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.EnableIdentityConnection(c, portfolioId, identityId, params)
+}
+
+// ValidateIdentityConnection operation middleware
+func (siw *ServerInterfaceWrapper) ValidateIdentityConnection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ValidateIdentityConnectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ValidateIdentityConnection(c, portfolioId, identityId, params)
+}
+
 // ListJobs operation middleware
 func (siw *ServerInterfaceWrapper) ListJobs(c *gin.Context) {
 
@@ -5182,6 +3864,14 @@ func (siw *ServerInterfaceWrapper) ListJobs(c *gin.Context) {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListJobsParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", c.Request.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter kind: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	// ------------- Optional query parameter "limit" -------------
 
@@ -5243,204 +3933,6 @@ func (siw *ServerInterfaceWrapper) GetJob(c *gin.Context) {
 	siw.Handler.GetJob(c, portfolioId, jobId)
 }
 
-// ListObservations operation middleware
-func (siw *ServerInterfaceWrapper) ListObservations(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListObservationsParams
-
-	// ------------- Optional query parameter "kind" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", c.Request.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter kind: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "identityId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "identityId", c.Request.URL.Query(), &params.IdentityId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "accountId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "accountId", c.Request.URL.Query(), &params.AccountId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "from" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListObservations(c, portfolioId, params)
-}
-
-// GetObservation operation middleware
-func (siw *ServerInterfaceWrapper) GetObservation(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "observationId" -------------
-	var observationId ObservationID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "observationId", c.Param("observationId"), &observationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter observationId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetObservation(c, portfolioId, observationId)
-}
-
-// PatchObservation operation middleware
-func (siw *ServerInterfaceWrapper) PatchObservation(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "observationId" -------------
-	var observationId ObservationID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "observationId", c.Param("observationId"), &observationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter observationId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PatchObservationParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PatchObservation(c, portfolioId, observationId, params)
-}
-
 // GetOverview operation middleware
 func (siw *ServerInterfaceWrapper) GetOverview(c *gin.Context) {
 
@@ -5466,8 +3958,8 @@ func (siw *ServerInterfaceWrapper) GetOverview(c *gin.Context) {
 	siw.Handler.GetOverview(c, portfolioId)
 }
 
-// ListPeriodSummaries operation middleware
-func (siw *ServerInterfaceWrapper) ListPeriodSummaries(c *gin.Context) {
+// ListPeriodCloses operation middleware
+func (siw *ServerInterfaceWrapper) ListPeriodCloses(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -5482,7 +3974,7 @@ func (siw *ServerInterfaceWrapper) ListPeriodSummaries(c *gin.Context) {
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params ListPeriodSummariesParams
+	var params ListPeriodClosesParams
 
 	// ------------- Optional query parameter "periodKind" -------------
 
@@ -5508,22 +4000,6 @@ func (siw *ServerInterfaceWrapper) ListPeriodSummaries(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
-		return
-	}
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -5531,7 +4007,7 @@ func (siw *ServerInterfaceWrapper) ListPeriodSummaries(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListPeriodSummaries(c, portfolioId, params)
+	siw.Handler.ListPeriodCloses(c, portfolioId, params)
 }
 
 // ListPositions operation middleware
@@ -5552,11 +4028,11 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListPositionsParams
 
-	// ------------- Optional query parameter "groupBy" -------------
+	// ------------- Optional query parameter "platform" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "groupBy", c.Request.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter groupBy: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5576,11 +4052,11 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "instrumentId" -------------
+	// ------------- Optional query parameter "symbol" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "instrumentId", c.Request.URL.Query(), &params.InstrumentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter instrumentId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5610,8 +4086,8 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 	siw.Handler.ListPositions(c, portfolioId, params)
 }
 
-// CreateProjectionRebuild operation middleware
-func (siw *ServerInterfaceWrapper) CreateProjectionRebuild(c *gin.Context) {
+// GetHoldingsTree operation middleware
+func (siw *ServerInterfaceWrapper) GetHoldingsTree(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -5623,49 +4099,6 @@ func (siw *ServerInterfaceWrapper) CreateProjectionRebuild(c *gin.Context) {
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
 		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateProjectionRebuildParams
-
-	headers := c.Request.Header
-
-	// ------------- Optional header parameter "Idempotency-Key" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
-		var IdempotencyKey IdempotencyKey
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IdempotencyKey = &IdempotencyKey
-
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5675,11 +4108,11 @@ func (siw *ServerInterfaceWrapper) CreateProjectionRebuild(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateProjectionRebuild(c, portfolioId, params)
+	siw.Handler.GetHoldingsTree(c, portfolioId)
 }
 
-// ListValuations operation middleware
-func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
+// ListValuationPoints operation middleware
+func (siw *ServerInterfaceWrapper) ListValuationPoints(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -5694,7 +4127,7 @@ func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params ListValuationsParams
+	var params ListValuationPointsParams
 
 	// ------------- Optional query parameter "from" -------------
 
@@ -5720,27 +4153,37 @@ func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "maxPoints" -------------
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPoints", c.Request.URL.Query(), &params.MaxPoints, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	siw.Handler.ListValuationPoints(c, portfolioId, params)
+}
+
+// GetValuationPoint operation middleware
+func (siw *ServerInterfaceWrapper) GetValuationPoint(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter maxPoints: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "limit" -------------
+	// ------------- Path parameter "pointId" -------------
+	var pointId PointID
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "pointId", c.Param("pointId"), &pointId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pointId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5751,7 +4194,7 @@ func (siw *ServerInterfaceWrapper) ListValuations(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListValuations(c, portfolioId, params)
+	siw.Handler.GetValuationPoint(c, portfolioId, pointId)
 }
 
 // ListValueChanges operation middleware
@@ -5796,35 +4239,47 @@ func (siw *ServerInterfaceWrapper) ListValueChanges(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "granularity" -------------
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", c.Request.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	siw.Handler.ListValueChanges(c, portfolioId, params)
+}
+
+// GetCustomValueChange operation middleware
+func (siw *ServerInterfaceWrapper) GetCustomValueChange(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter granularity: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "maxPoints" -------------
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCustomValueChangeParams
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPoints", c.Request.URL.Query(), &params.MaxPoints, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter maxPoints: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// ------------- Optional query parameter "limit" -------------
+	// ------------- Required query parameter "to" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5835,7 +4290,7 @@ func (siw *ServerInterfaceWrapper) ListValueChanges(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListValueChanges(c, portfolioId, params)
+	siw.Handler.GetCustomValueChange(c, portfolioId, params)
 }
 
 // GetHealthLive operation middleware
@@ -5906,45 +4361,42 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.DeletePortfolio)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.GetPortfolio)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId", wrapper.PatchPortfolio)
+	router.GET(options.BaseURL+"/api/v1/platforms", wrapper.ListPlatforms)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities", wrapper.ListIdentities)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities", wrapper.CreateIdentity)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId", wrapper.GetIdentity)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId", wrapper.PatchIdentity)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/archive", wrapper.ArchiveIdentity)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections", wrapper.ListConnections)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections", wrapper.CreateConnection)
-	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections/:connectionId", wrapper.DeleteConnection)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections/:connectionId", wrapper.GetConnection)
-	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/connections/:connectionId", wrapper.PatchConnection)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts", wrapper.ListAccounts)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets", wrapper.SearchCatalogAssets)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings", wrapper.SearchCatalogAssetListings)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/instruments", wrapper.SearchCatalogInstruments)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings/:listingId/mapping", wrapper.PutCatalogListingMapping)
-	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/pins/:subjectKind/:subjectId", wrapper.DeleteCatalogPin)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/pins/:subjectKind/:subjectId", wrapper.PutCatalogPin)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations", wrapper.ListObservations)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.GetObservation)
-	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/observations/:observationId", wrapper.PatchObservation)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.GetCapitalBaseline)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline", wrapper.PutCapitalBaseline)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-baseline/revisions", wrapper.ListCapitalBaselineRevisions)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/credentials", wrapper.DeleteIdentityCredentials)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/credentials", wrapper.PutIdentityCredentials)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/validate", wrapper.ValidateIdentityConnection)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/enable", wrapper.EnableIdentityConnection)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/disable", wrapper.DisableIdentityConnection)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles", wrapper.ListCollectionCycles)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles", wrapper.CreateCollectionCycle)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles/:cycleId", wrapper.GetCollectionCycle)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/overview", wrapper.GetOverview)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/tree", wrapper.GetHoldingsTree)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/balances", wrapper.ListAccountBalances)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/positions", wrapper.ListAccountPositions)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/balances", wrapper.ListBalances)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/positions", wrapper.ListPositions)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points", wrapper.ListValuationPoints)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/:pointId", wrapper.GetValuationPoint)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/period-closes", wrapper.ListPeriodCloses)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes", wrapper.ListValueChanges)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes/custom", wrapper.GetCustomValueChange)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.ListCapitalFlows)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.CreateCapitalFlow)
 	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.DeleteCapitalFlow)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.GetCapitalFlow)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.PatchCapitalFlow)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId/revisions", wrapper.ListCapitalFlowRevisions)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/overview", wrapper.GetOverview)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/balances", wrapper.ListBalances)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/positions", wrapper.ListPositions)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/exposures", wrapper.ListExposures)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuations", wrapper.ListValuations)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes", wrapper.ListValueChanges)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/period-summaries", wrapper.ListPeriodSummaries)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/projection-rebuilds", wrapper.CreateProjectionRebuild)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/boundary-events", wrapper.ListBoundaryEvents)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings", wrapper.ListAssetListings)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/asset-listings/:listingId/mapping", wrapper.PutAssetListingMapping)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/instruments", wrapper.ListInstruments)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/audit-events", wrapper.ListAuditEvents)
 }
 
@@ -6266,6 +4718,43 @@ func (response DeleteAuthSession404ApplicationProblemPlusJSONResponse) VisitDele
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatformsRequestObject struct {
+}
+
+type ListPlatformsResponseObject interface {
+	VisitListPlatformsResponse(w http.ResponseWriter) error
+}
+
+type ListPlatforms200JSONResponse PlatformList
+
+func (response ListPlatforms200JSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatforms401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListPlatforms401ApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6613,18 +5102,18 @@ func (response PatchPortfolio412ApplicationProblemPlusJSONResponse) VisitPatchPo
 	return err
 }
 
-type ListAccountsRequestObject struct {
+type ListAccountBalancesRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListAccountsParams
+	AccountId   AccountID   `json:"accountId"`
 }
 
-type ListAccountsResponseObject interface {
-	VisitListAccountsResponse(w http.ResponseWriter) error
+type ListAccountBalancesResponseObject interface {
+	VisitListAccountBalancesResponse(w http.ResponseWriter) error
 }
 
-type ListAccounts200JSONResponse AccountList
+type ListAccountBalances200JSONResponse AccountBalanceList
 
-func (response ListAccounts200JSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+func (response ListAccountBalances200JSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6636,11 +5125,11 @@ func (response ListAccounts200JSONResponse) VisitListAccountsResponse(w http.Res
 	return err
 }
 
-type ListAccounts401ApplicationProblemPlusJSONResponse struct {
+type ListAccountBalances401ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListAccounts401ApplicationProblemPlusJSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+func (response ListAccountBalances401ApplicationProblemPlusJSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6652,9 +5141,62 @@ func (response ListAccounts401ApplicationProblemPlusJSONResponse) VisitListAccou
 	return err
 }
 
-type ListAccounts404ApplicationProblemPlusJSONResponse Problem
+type ListAccountBalances404ApplicationProblemPlusJSONResponse Problem
 
-func (response ListAccounts404ApplicationProblemPlusJSONResponse) VisitListAccountsResponse(w http.ResponseWriter) error {
+func (response ListAccountBalances404ApplicationProblemPlusJSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAccountPositionsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	AccountId   AccountID   `json:"accountId"`
+}
+
+type ListAccountPositionsResponseObject interface {
+	VisitListAccountPositionsResponse(w http.ResponseWriter) error
+}
+
+type ListAccountPositions200JSONResponse AccountPositionList
+
+func (response ListAccountPositions200JSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAccountPositions401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListAccountPositions401ApplicationProblemPlusJSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAccountPositions404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAccountPositions404ApplicationProblemPlusJSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6800,131 +5342,34 @@ func (response ListBalances404ApplicationProblemPlusJSONResponse) VisitListBalan
 	return err
 }
 
-type GetCapitalBaselineRequestObject struct {
+type ListBoundaryEventsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListBoundaryEventsParams
 }
 
-type GetCapitalBaselineResponseObject interface {
-	VisitGetCapitalBaselineResponse(w http.ResponseWriter) error
+type ListBoundaryEventsResponseObject interface {
+	VisitListBoundaryEventsResponse(w http.ResponseWriter) error
 }
 
-type GetCapitalBaseline200ResponseHeaders struct {
-	ETag *string
-}
+type ListBoundaryEvents200JSONResponse BoundaryEventList
 
-type GetCapitalBaseline200JSONResponse struct {
-	Body    CapitalBaseline
-	Headers GetCapitalBaseline200ResponseHeaders
-}
-
-func (response GetCapitalBaseline200JSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetCapitalBaseline401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response GetCapitalBaseline401ApplicationProblemPlusJSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
+func (response ListBoundaryEvents200JSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetCapitalBaseline404ApplicationProblemPlusJSONResponse Problem
-
-func (response GetCapitalBaseline404ApplicationProblemPlusJSONResponse) VisitGetCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCapitalBaselineRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      PutCapitalBaselineParams
-	Body        *PutCapitalBaselineJSONRequestBody
-}
-
-type PutCapitalBaselineResponseObject interface {
-	VisitPutCapitalBaselineResponse(w http.ResponseWriter) error
-}
-
-type PutCapitalBaseline200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutCapitalBaseline200JSONResponse struct {
-	Body    CapitalBaselineMutation
-	Headers PutCapitalBaseline200ResponseHeaders
-}
-
-func (response PutCapitalBaseline200JSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type PutCapitalBaseline201ResponseHeaders struct {
-	ETag *string
-}
-
-type PutCapitalBaseline201JSONResponse struct {
-	Body    CapitalBaselineMutation
-	Headers PutCapitalBaseline201ResponseHeaders
-}
-
-func (response PutCapitalBaseline201JSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCapitalBaseline400ApplicationProblemPlusJSONResponse struct {
+type ListBoundaryEvents400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response PutCapitalBaseline400ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
+func (response ListBoundaryEvents400ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6936,90 +5381,9 @@ func (response PutCapitalBaseline400ApplicationProblemPlusJSONResponse) VisitPut
 	return err
 }
 
-type PutCapitalBaseline401ApplicationProblemPlusJSONResponse Problem
+type ListBoundaryEvents401ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCapitalBaseline401ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCapitalBaseline404ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCapitalBaseline404ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCapitalBaseline409ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCapitalBaseline409ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCapitalBaseline412ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCapitalBaseline412ApplicationProblemPlusJSONResponse) VisitPutCapitalBaselineResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListCapitalBaselineRevisionsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListCapitalBaselineRevisionsParams
-}
-
-type ListCapitalBaselineRevisionsResponseObject interface {
-	VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error
-}
-
-type ListCapitalBaselineRevisions200JSONResponse CapitalBaselineRevisionList
-
-func (response ListCapitalBaselineRevisions200JSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListCapitalBaselineRevisions401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListCapitalBaselineRevisions401ApplicationProblemPlusJSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
+func (response ListBoundaryEvents401ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7031,9 +5395,9 @@ func (response ListCapitalBaselineRevisions401ApplicationProblemPlusJSONResponse
 	return err
 }
 
-type ListCapitalBaselineRevisions404ApplicationProblemPlusJSONResponse Problem
+type ListBoundaryEvents404ApplicationProblemPlusJSONResponse Problem
 
-func (response ListCapitalBaselineRevisions404ApplicationProblemPlusJSONResponse) VisitListCapitalBaselineRevisionsResponse(w http.ResponseWriter) error {
+func (response ListBoundaryEvents404ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7068,9 +5432,23 @@ func (response ListCapitalFlows200JSONResponse) VisitListCapitalFlowsResponse(w 
 	return err
 }
 
-type ListCapitalFlows401ApplicationProblemPlusJSONResponse struct {
+type ListCapitalFlows400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ListCapitalFlows400ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlows401ApplicationProblemPlusJSONResponse Problem
 
 func (response ListCapitalFlows401ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
 
@@ -7113,7 +5491,7 @@ type CreateCapitalFlow201ResponseHeaders struct {
 }
 
 type CreateCapitalFlow201JSONResponse struct {
-	Body    CapitalFlowMutation
+	Body    CapitalFlow
 	Headers CreateCapitalFlow201ResponseHeaders
 }
 
@@ -7200,28 +5578,12 @@ type DeleteCapitalFlowResponseObject interface {
 	VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error
 }
 
-type DeleteCapitalFlow200ResponseHeaders struct {
-	ETag *string
+type DeleteCapitalFlow204Response struct {
 }
 
-type DeleteCapitalFlow200JSONResponse struct {
-	Body    CapitalFlowMutation
-	Headers DeleteCapitalFlow200ResponseHeaders
-}
-
-func (response DeleteCapitalFlow200JSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
+func (response DeleteCapitalFlow204Response) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
 }
 
 type DeleteCapitalFlow401ApplicationProblemPlusJSONResponse struct {
@@ -7347,7 +5709,7 @@ type PatchCapitalFlow200ResponseHeaders struct {
 }
 
 type PatchCapitalFlow200JSONResponse struct {
-	Body    CapitalFlowMutation
+	Body    CapitalFlow
 	Headers PatchCapitalFlow200ResponseHeaders
 }
 
@@ -7424,19 +5786,18 @@ func (response PatchCapitalFlow412ApplicationProblemPlusJSONResponse) VisitPatch
 	return err
 }
 
-type ListCapitalFlowRevisionsRequestObject struct {
+type ListAssetListingsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	FlowId      FlowID      `json:"flowId"`
-	Params      ListCapitalFlowRevisionsParams
+	Params      ListAssetListingsParams
 }
 
-type ListCapitalFlowRevisionsResponseObject interface {
-	VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error
+type ListAssetListingsResponseObject interface {
+	VisitListAssetListingsResponse(w http.ResponseWriter) error
 }
 
-type ListCapitalFlowRevisions200JSONResponse CapitalFlowRevisionList
+type ListAssetListings200JSONResponse AssetListingList
 
-func (response ListCapitalFlowRevisions200JSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
+func (response ListAssetListings200JSONResponse) VisitListAssetListingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7448,64 +5809,11 @@ func (response ListCapitalFlowRevisions200JSONResponse) VisitListCapitalFlowRevi
 	return err
 }
 
-type ListCapitalFlowRevisions401ApplicationProblemPlusJSONResponse struct {
+type ListAssetListings400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListCapitalFlowRevisions401ApplicationProblemPlusJSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListCapitalFlowRevisions404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListCapitalFlowRevisions404ApplicationProblemPlusJSONResponse) VisitListCapitalFlowRevisionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogAssetListingsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      SearchCatalogAssetListingsParams
-}
-
-type SearchCatalogAssetListingsResponseObject interface {
-	VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error
-}
-
-type SearchCatalogAssetListings200JSONResponse AssetListingList
-
-func (response SearchCatalogAssetListings200JSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogAssetListings400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response SearchCatalogAssetListings400ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+func (response ListAssetListings400ApplicationProblemPlusJSONResponse) VisitListAssetListingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7517,9 +5825,9 @@ func (response SearchCatalogAssetListings400ApplicationProblemPlusJSONResponse) 
 	return err
 }
 
-type SearchCatalogAssetListings401ApplicationProblemPlusJSONResponse Problem
+type ListAssetListings401ApplicationProblemPlusJSONResponse Problem
 
-func (response SearchCatalogAssetListings401ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+func (response ListAssetListings401ApplicationProblemPlusJSONResponse) VisitListAssetListingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7531,9 +5839,9 @@ func (response SearchCatalogAssetListings401ApplicationProblemPlusJSONResponse) 
 	return err
 }
 
-type SearchCatalogAssetListings404ApplicationProblemPlusJSONResponse Problem
+type ListAssetListings404ApplicationProblemPlusJSONResponse Problem
 
-func (response SearchCatalogAssetListings404ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetListingsResponse(w http.ResponseWriter) error {
+func (response ListAssetListings404ApplicationProblemPlusJSONResponse) VisitListAssetListingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7545,27 +5853,27 @@ func (response SearchCatalogAssetListings404ApplicationProblemPlusJSONResponse) 
 	return err
 }
 
-type PutCatalogListingMappingRequestObject struct {
+type PutAssetListingMappingRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	ListingId   ListingID   `json:"listingId"`
-	Params      PutCatalogListingMappingParams
-	Body        *PutCatalogListingMappingJSONRequestBody
+	Params      PutAssetListingMappingParams
+	Body        *PutAssetListingMappingJSONRequestBody
 }
 
-type PutCatalogListingMappingResponseObject interface {
-	VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error
+type PutAssetListingMappingResponseObject interface {
+	VisitPutAssetListingMappingResponse(w http.ResponseWriter) error
 }
 
-type PutCatalogListingMapping200ResponseHeaders struct {
+type PutAssetListingMapping200ResponseHeaders struct {
 	ETag *string
 }
 
-type PutCatalogListingMapping200JSONResponse struct {
-	Body    CatalogMappingMutation
-	Headers PutCatalogListingMapping200ResponseHeaders
+type PutAssetListingMapping200JSONResponse struct {
+	Body    AssetListing
+	Headers PutAssetListingMapping200ResponseHeaders
 }
 
-func (response PutCatalogListingMapping200JSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+func (response PutAssetListingMapping200JSONResponse) VisitPutAssetListingMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -7580,35 +5888,11 @@ func (response PutCatalogListingMapping200JSONResponse) VisitPutCatalogListingMa
 	return err
 }
 
-type PutCatalogListingMapping201ResponseHeaders struct {
-	ETag *string
-}
-
-type PutCatalogListingMapping201JSONResponse struct {
-	Body    CatalogMappingMutation
-	Headers PutCatalogListingMapping201ResponseHeaders
-}
-
-func (response PutCatalogListingMapping201JSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCatalogListingMapping400ApplicationProblemPlusJSONResponse struct {
+type PutAssetListingMapping400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response PutCatalogListingMapping400ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+func (response PutAssetListingMapping400ApplicationProblemPlusJSONResponse) VisitPutAssetListingMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7620,9 +5904,9 @@ func (response PutCatalogListingMapping400ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type PutCatalogListingMapping401ApplicationProblemPlusJSONResponse Problem
+type PutAssetListingMapping401ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCatalogListingMapping401ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+func (response PutAssetListingMapping401ApplicationProblemPlusJSONResponse) VisitPutAssetListingMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7634,9 +5918,9 @@ func (response PutCatalogListingMapping401ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type PutCatalogListingMapping404ApplicationProblemPlusJSONResponse Problem
+type PutAssetListingMapping404ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCatalogListingMapping404ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+func (response PutAssetListingMapping404ApplicationProblemPlusJSONResponse) VisitPutAssetListingMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7648,23 +5932,9 @@ func (response PutCatalogListingMapping404ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type PutCatalogListingMapping409ApplicationProblemPlusJSONResponse Problem
+type PutAssetListingMapping412ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCatalogListingMapping409ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCatalogListingMapping412ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCatalogListingMapping412ApplicationProblemPlusJSONResponse) VisitPutCatalogListingMappingResponse(w http.ResponseWriter) error {
+func (response PutAssetListingMapping412ApplicationProblemPlusJSONResponse) VisitPutAssetListingMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7676,18 +5946,18 @@ func (response PutCatalogListingMapping412ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type SearchCatalogAssetsRequestObject struct {
+type ListInstrumentsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      SearchCatalogAssetsParams
+	Params      ListInstrumentsParams
 }
 
-type SearchCatalogAssetsResponseObject interface {
-	VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error
+type ListInstrumentsResponseObject interface {
+	VisitListInstrumentsResponse(w http.ResponseWriter) error
 }
 
-type SearchCatalogAssets200JSONResponse AssetList
+type ListInstruments200JSONResponse InstrumentList
 
-func (response SearchCatalogAssets200JSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
+func (response ListInstruments200JSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7699,64 +5969,11 @@ func (response SearchCatalogAssets200JSONResponse) VisitSearchCatalogAssetsRespo
 	return err
 }
 
-type SearchCatalogAssets401ApplicationProblemPlusJSONResponse struct {
+type ListInstruments400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response SearchCatalogAssets401ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogAssets404ApplicationProblemPlusJSONResponse Problem
-
-func (response SearchCatalogAssets404ApplicationProblemPlusJSONResponse) VisitSearchCatalogAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogInstrumentsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      SearchCatalogInstrumentsParams
-}
-
-type SearchCatalogInstrumentsResponseObject interface {
-	VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error
-}
-
-type SearchCatalogInstruments200JSONResponse InstrumentList
-
-func (response SearchCatalogInstruments200JSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogInstruments400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response SearchCatalogInstruments400ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
+func (response ListInstruments400ApplicationProblemPlusJSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7768,74 +5985,9 @@ func (response SearchCatalogInstruments400ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type SearchCatalogInstruments401ApplicationProblemPlusJSONResponse Problem
+type ListInstruments401ApplicationProblemPlusJSONResponse Problem
 
-func (response SearchCatalogInstruments401ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type SearchCatalogInstruments404ApplicationProblemPlusJSONResponse Problem
-
-func (response SearchCatalogInstruments404ApplicationProblemPlusJSONResponse) VisitSearchCatalogInstrumentsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteCatalogPinRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	SubjectKind SubjectKind `json:"subjectKind"`
-	SubjectId   SubjectID   `json:"subjectId"`
-	Params      DeleteCatalogPinParams
-}
-
-type DeleteCatalogPinResponseObject interface {
-	VisitDeleteCatalogPinResponse(w http.ResponseWriter) error
-}
-
-type DeleteCatalogPin200ResponseHeaders struct {
-	ETag *string
-}
-
-type DeleteCatalogPin200JSONResponse struct {
-	Body    CatalogPinMutation
-	Headers DeleteCatalogPin200ResponseHeaders
-}
-
-func (response DeleteCatalogPin200JSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteCatalogPin401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response DeleteCatalogPin401ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+func (response ListInstruments401ApplicationProblemPlusJSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7847,9 +5999,9 @@ func (response DeleteCatalogPin401ApplicationProblemPlusJSONResponse) VisitDelet
 	return err
 }
 
-type DeleteCatalogPin404ApplicationProblemPlusJSONResponse Problem
+type ListInstruments404ApplicationProblemPlusJSONResponse Problem
 
-func (response DeleteCatalogPin404ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+func (response ListInstruments404ApplicationProblemPlusJSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7861,85 +6013,34 @@ func (response DeleteCatalogPin404ApplicationProblemPlusJSONResponse) VisitDelet
 	return err
 }
 
-type DeleteCatalogPin412ApplicationProblemPlusJSONResponse Problem
+type ListCollectionCyclesRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListCollectionCyclesParams
+}
 
-func (response DeleteCatalogPin412ApplicationProblemPlusJSONResponse) VisitDeleteCatalogPinResponse(w http.ResponseWriter) error {
+type ListCollectionCyclesResponseObject interface {
+	VisitListCollectionCyclesResponse(w http.ResponseWriter) error
+}
+
+type ListCollectionCycles200JSONResponse CollectionCycleList
+
+func (response ListCollectionCycles200JSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCatalogPinRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	SubjectKind SubjectKind `json:"subjectKind"`
-	SubjectId   SubjectID   `json:"subjectId"`
-	Params      PutCatalogPinParams
-	Body        *PutCatalogPinJSONRequestBody
-}
-
-type PutCatalogPinResponseObject interface {
-	VisitPutCatalogPinResponse(w http.ResponseWriter) error
-}
-
-type PutCatalogPin200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutCatalogPin200JSONResponse struct {
-	Body    CatalogPinMutation
-	Headers PutCatalogPin200ResponseHeaders
-}
-
-func (response PutCatalogPin200JSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type PutCatalogPin201ResponseHeaders struct {
-	ETag *string
-}
-
-type PutCatalogPin201JSONResponse struct {
-	Body    CatalogPinMutation
-	Headers PutCatalogPin201ResponseHeaders
-}
-
-func (response PutCatalogPin201JSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCatalogPin400ApplicationProblemPlusJSONResponse struct {
+type ListCollectionCycles400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response PutCatalogPin400ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+func (response ListCollectionCycles400ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7951,9 +6052,9 @@ func (response PutCatalogPin400ApplicationProblemPlusJSONResponse) VisitPutCatal
 	return err
 }
 
-type PutCatalogPin401ApplicationProblemPlusJSONResponse Problem
+type ListCollectionCycles401ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCatalogPin401ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+func (response ListCollectionCycles401ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7965,9 +6066,9 @@ func (response PutCatalogPin401ApplicationProblemPlusJSONResponse) VisitPutCatal
 	return err
 }
 
-type PutCatalogPin404ApplicationProblemPlusJSONResponse Problem
+type ListCollectionCycles404ApplicationProblemPlusJSONResponse Problem
 
-func (response PutCatalogPin404ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
+func (response ListCollectionCycles404ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -7979,61 +6080,34 @@ func (response PutCatalogPin404ApplicationProblemPlusJSONResponse) VisitPutCatal
 	return err
 }
 
-type PutCatalogPin409ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCatalogPin409ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutCatalogPin412ApplicationProblemPlusJSONResponse Problem
-
-func (response PutCatalogPin412ApplicationProblemPlusJSONResponse) VisitPutCatalogPinResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListConnectionsRequestObject struct {
+type CreateCollectionCycleRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      CreateCollectionCycleParams
 }
 
-type ListConnectionsResponseObject interface {
-	VisitListConnectionsResponse(w http.ResponseWriter) error
+type CreateCollectionCycleResponseObject interface {
+	VisitCreateCollectionCycleResponse(w http.ResponseWriter) error
 }
 
-type ListConnections200JSONResponse ConnectionList
+type CreateCollectionCycle202JSONResponse CollectionCycle
 
-func (response ListConnections200JSONResponse) VisitListConnectionsResponse(w http.ResponseWriter) error {
+func (response CreateCollectionCycle202JSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type ListConnections401ApplicationProblemPlusJSONResponse struct {
+type CreateCollectionCycle401ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListConnections401ApplicationProblemPlusJSONResponse) VisitListConnectionsResponse(w http.ResponseWriter) error {
+func (response CreateCollectionCycle401ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8045,9 +6119,9 @@ func (response ListConnections401ApplicationProblemPlusJSONResponse) VisitListCo
 	return err
 }
 
-type ListConnections404ApplicationProblemPlusJSONResponse Problem
+type CreateCollectionCycle404ApplicationProblemPlusJSONResponse Problem
 
-func (response ListConnections404ApplicationProblemPlusJSONResponse) VisitListConnectionsResponse(w http.ResponseWriter) error {
+func (response CreateCollectionCycle404ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8059,162 +6133,18 @@ func (response ListConnections404ApplicationProblemPlusJSONResponse) VisitListCo
 	return err
 }
 
-type CreateConnectionRequestObject struct {
+type GetCollectionCycleRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      CreateConnectionParams
-	Body        *CreateConnectionJSONRequestBody
+	CycleId     CycleID     `json:"cycleId"`
 }
 
-type CreateConnectionResponseObject interface {
-	VisitCreateConnectionResponse(w http.ResponseWriter) error
+type GetCollectionCycleResponseObject interface {
+	VisitGetCollectionCycleResponse(w http.ResponseWriter) error
 }
 
-type CreateConnection201JSONResponse Connection
+type GetCollectionCycle200JSONResponse CollectionCycleDetail
 
-func (response CreateConnection201JSONResponse) VisitCreateConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateConnection400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response CreateConnection400ApplicationProblemPlusJSONResponse) VisitCreateConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateConnection401ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateConnection401ApplicationProblemPlusJSONResponse) VisitCreateConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateConnection404ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateConnection404ApplicationProblemPlusJSONResponse) VisitCreateConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateConnection409ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateConnection409ApplicationProblemPlusJSONResponse) VisitCreateConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteConnectionRequestObject struct {
-	PortfolioId  PortfolioID  `json:"portfolioId"`
-	ConnectionId ConnectionID `json:"connectionId"`
-	Params       DeleteConnectionParams
-}
-
-type DeleteConnectionResponseObject interface {
-	VisitDeleteConnectionResponse(w http.ResponseWriter) error
-}
-
-type DeleteConnection204Response struct {
-}
-
-func (response DeleteConnection204Response) VisitDeleteConnectionResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type DeleteConnection401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response DeleteConnection401ApplicationProblemPlusJSONResponse) VisitDeleteConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteConnection404ApplicationProblemPlusJSONResponse Problem
-
-func (response DeleteConnection404ApplicationProblemPlusJSONResponse) VisitDeleteConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DeleteConnection412ApplicationProblemPlusJSONResponse Problem
-
-func (response DeleteConnection412ApplicationProblemPlusJSONResponse) VisitDeleteConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetConnectionRequestObject struct {
-	PortfolioId  PortfolioID  `json:"portfolioId"`
-	ConnectionId ConnectionID `json:"connectionId"`
-}
-
-type GetConnectionResponseObject interface {
-	VisitGetConnectionResponse(w http.ResponseWriter) error
-}
-
-type GetConnection200JSONResponse Connection
-
-func (response GetConnection200JSONResponse) VisitGetConnectionResponse(w http.ResponseWriter) error {
+func (response GetCollectionCycle200JSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8226,11 +6156,11 @@ func (response GetConnection200JSONResponse) VisitGetConnectionResponse(w http.R
 	return err
 }
 
-type GetConnection401ApplicationProblemPlusJSONResponse struct {
+type GetCollectionCycle401ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response GetConnection401ApplicationProblemPlusJSONResponse) VisitGetConnectionResponse(w http.ResponseWriter) error {
+func (response GetCollectionCycle401ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8242,159 +6172,9 @@ func (response GetConnection401ApplicationProblemPlusJSONResponse) VisitGetConne
 	return err
 }
 
-type GetConnection404ApplicationProblemPlusJSONResponse Problem
+type GetCollectionCycle404ApplicationProblemPlusJSONResponse Problem
 
-func (response GetConnection404ApplicationProblemPlusJSONResponse) VisitGetConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchConnectionRequestObject struct {
-	PortfolioId  PortfolioID  `json:"portfolioId"`
-	ConnectionId ConnectionID `json:"connectionId"`
-	Params       PatchConnectionParams
-	Body         *PatchConnectionJSONRequestBody
-}
-
-type PatchConnectionResponseObject interface {
-	VisitPatchConnectionResponse(w http.ResponseWriter) error
-}
-
-type PatchConnection200JSONResponse Connection
-
-func (response PatchConnection200JSONResponse) VisitPatchConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchConnection400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response PatchConnection400ApplicationProblemPlusJSONResponse) VisitPatchConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchConnection401ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchConnection401ApplicationProblemPlusJSONResponse) VisitPatchConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchConnection404ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchConnection404ApplicationProblemPlusJSONResponse) VisitPatchConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchConnection412ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchConnection412ApplicationProblemPlusJSONResponse) VisitPatchConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListExposuresRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListExposuresParams
-}
-
-type ListExposuresResponseObject interface {
-	VisitListExposuresResponse(w http.ResponseWriter) error
-}
-
-type ListExposures200JSONResponse ExposureList
-
-func (response ListExposures200JSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListExposures400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListExposures400ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListExposures401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListExposures401ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListExposures404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListExposures404ApplicationProblemPlusJSONResponse) VisitListExposuresResponse(w http.ResponseWriter) error {
+func (response GetCollectionCycle404ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8624,15 +6404,25 @@ type PatchIdentityResponseObject interface {
 	VisitPatchIdentityResponse(w http.ResponseWriter) error
 }
 
-type PatchIdentity200JSONResponse Identity
+type PatchIdentity200ResponseHeaders struct {
+	ETag *string
+}
+
+type PatchIdentity200JSONResponse struct {
+	Body    Identity
+	Headers PatchIdentity200ResponseHeaders
+}
 
 func (response PatchIdentity200JSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8720,15 +6510,25 @@ type ArchiveIdentityResponseObject interface {
 	VisitArchiveIdentityResponse(w http.ResponseWriter) error
 }
 
-type ArchiveIdentity200JSONResponse Identity
+type ArchiveIdentity200ResponseHeaders struct {
+	ETag *string
+}
+
+type ArchiveIdentity200JSONResponse struct {
+	Body    Identity
+	Headers ArchiveIdentity200ResponseHeaders
+}
 
 func (response ArchiveIdentity200JSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8792,6 +6592,533 @@ func (response ArchiveIdentity412ApplicationProblemPlusJSONResponse) VisitArchiv
 	return err
 }
 
+type DeleteIdentityCredentialsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      DeleteIdentityCredentialsParams
+}
+
+type DeleteIdentityCredentialsResponseObject interface {
+	VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error
+}
+
+type DeleteIdentityCredentials200ResponseHeaders struct {
+	ETag *string
+}
+
+type DeleteIdentityCredentials200JSONResponse struct {
+	Body    Identity
+	Headers DeleteIdentityCredentials200ResponseHeaders
+}
+
+func (response DeleteIdentityCredentials200JSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials404ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteIdentityCredentials404ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials409ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteIdentityCredentials409ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials412ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteIdentityCredentials412ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentialsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      PutIdentityCredentialsParams
+	Body        *PutIdentityCredentialsJSONRequestBody
+}
+
+type PutIdentityCredentialsResponseObject interface {
+	VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error
+}
+
+type PutIdentityCredentials200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutIdentityCredentials200JSONResponse struct {
+	Body    Identity
+	Headers PutIdentityCredentials200ResponseHeaders
+}
+
+func (response PutIdentityCredentials200JSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutIdentityCredentials400ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials401ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials404ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials409ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials409ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials412ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials503ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials503ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnectionRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      DisableIdentityConnectionParams
+}
+
+type DisableIdentityConnectionResponseObject interface {
+	VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error
+}
+
+type DisableIdentityConnection200ResponseHeaders struct {
+	ETag *string
+}
+
+type DisableIdentityConnection200JSONResponse struct {
+	Body    Identity
+	Headers DisableIdentityConnection200ResponseHeaders
+}
+
+func (response DisableIdentityConnection200JSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DisableIdentityConnection401ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection404ApplicationProblemPlusJSONResponse Problem
+
+func (response DisableIdentityConnection404ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection409ApplicationProblemPlusJSONResponse Problem
+
+func (response DisableIdentityConnection409ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection412ApplicationProblemPlusJSONResponse Problem
+
+func (response DisableIdentityConnection412ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnectionRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      EnableIdentityConnectionParams
+}
+
+type EnableIdentityConnectionResponseObject interface {
+	VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error
+}
+
+type EnableIdentityConnection200ResponseHeaders struct {
+	ETag *string
+}
+
+type EnableIdentityConnection200JSONResponse struct {
+	Body    ValidationOutcome
+	Headers EnableIdentityConnection200ResponseHeaders
+}
+
+func (response EnableIdentityConnection200JSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response EnableIdentityConnection401ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection404ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection404ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection409ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection409ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection412ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection412ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection422ResponseHeaders struct {
+	ETag *string
+}
+
+type EnableIdentityConnection422JSONResponse struct {
+	Body    ValidationOutcome
+	Headers EnableIdentityConnection422ResponseHeaders
+}
+
+func (response EnableIdentityConnection422JSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection503ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection503ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnectionRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      ValidateIdentityConnectionParams
+}
+
+type ValidateIdentityConnectionResponseObject interface {
+	VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error
+}
+
+type ValidateIdentityConnection200ResponseHeaders struct {
+	ETag *string
+}
+
+type ValidateIdentityConnection200JSONResponse struct {
+	Body    ValidationOutcome
+	Headers ValidateIdentityConnection200ResponseHeaders
+}
+
+func (response ValidateIdentityConnection200JSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ValidateIdentityConnection401ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection404ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection404ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection409ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection409ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection503ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection503ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListJobsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ListJobsParams
@@ -8815,9 +7142,23 @@ func (response ListJobs200JSONResponse) VisitListJobsResponse(w http.ResponseWri
 	return err
 }
 
-type ListJobs401ApplicationProblemPlusJSONResponse struct {
+type ListJobs400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ListJobs400ApplicationProblemPlusJSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListJobs401ApplicationProblemPlusJSONResponse Problem
 
 func (response ListJobs401ApplicationProblemPlusJSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
 
@@ -8898,229 +7239,6 @@ func (response GetJob404ApplicationProblemPlusJSONResponse) VisitGetJobResponse(
 	return err
 }
 
-type ListObservationsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListObservationsParams
-}
-
-type ListObservationsResponseObject interface {
-	VisitListObservationsResponse(w http.ResponseWriter) error
-}
-
-type ListObservations200JSONResponse ObservationList
-
-func (response ListObservations200JSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListObservations400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListObservations400ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListObservations401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListObservations401ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListObservations404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListObservations404ApplicationProblemPlusJSONResponse) VisitListObservationsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetObservationRequestObject struct {
-	PortfolioId   PortfolioID   `json:"portfolioId"`
-	ObservationId ObservationID `json:"observationId"`
-}
-
-type GetObservationResponseObject interface {
-	VisitGetObservationResponse(w http.ResponseWriter) error
-}
-
-type GetObservation200ResponseHeaders struct {
-	ETag *string
-}
-
-type GetObservation200JSONResponse struct {
-	Body    Observation
-	Headers GetObservation200ResponseHeaders
-}
-
-func (response GetObservation200JSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetObservation401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response GetObservation401ApplicationProblemPlusJSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetObservation404ApplicationProblemPlusJSONResponse Problem
-
-func (response GetObservation404ApplicationProblemPlusJSONResponse) VisitGetObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchObservationRequestObject struct {
-	PortfolioId   PortfolioID   `json:"portfolioId"`
-	ObservationId ObservationID `json:"observationId"`
-	Params        PatchObservationParams
-	Body          *PatchObservationJSONRequestBody
-}
-
-type PatchObservationResponseObject interface {
-	VisitPatchObservationResponse(w http.ResponseWriter) error
-}
-
-type PatchObservation200ResponseHeaders struct {
-	ETag *string
-}
-
-type PatchObservation200JSONResponse struct {
-	Body    ObservationCorrection
-	Headers PatchObservation200ResponseHeaders
-}
-
-func (response PatchObservation200JSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchObservation400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response PatchObservation400ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchObservation401ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchObservation401ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchObservation404ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchObservation404ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PatchObservation412ApplicationProblemPlusJSONResponse Problem
-
-func (response PatchObservation412ApplicationProblemPlusJSONResponse) VisitPatchObservationResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GetOverviewRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 }
@@ -9173,18 +7291,18 @@ func (response GetOverview404ApplicationProblemPlusJSONResponse) VisitGetOvervie
 	return err
 }
 
-type ListPeriodSummariesRequestObject struct {
+type ListPeriodClosesRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListPeriodSummariesParams
+	Params      ListPeriodClosesParams
 }
 
-type ListPeriodSummariesResponseObject interface {
-	VisitListPeriodSummariesResponse(w http.ResponseWriter) error
+type ListPeriodClosesResponseObject interface {
+	VisitListPeriodClosesResponse(w http.ResponseWriter) error
 }
 
-type ListPeriodSummaries200JSONResponse PeriodSummaryList
+type ListPeriodCloses200JSONResponse PeriodCloseList
 
-func (response ListPeriodSummaries200JSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+func (response ListPeriodCloses200JSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9196,11 +7314,11 @@ func (response ListPeriodSummaries200JSONResponse) VisitListPeriodSummariesRespo
 	return err
 }
 
-type ListPeriodSummaries400ApplicationProblemPlusJSONResponse struct {
+type ListPeriodCloses400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListPeriodSummaries400ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+func (response ListPeriodCloses400ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9212,9 +7330,9 @@ func (response ListPeriodSummaries400ApplicationProblemPlusJSONResponse) VisitLi
 	return err
 }
 
-type ListPeriodSummaries401ApplicationProblemPlusJSONResponse Problem
+type ListPeriodCloses401ApplicationProblemPlusJSONResponse Problem
 
-func (response ListPeriodSummaries401ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+func (response ListPeriodCloses401ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9226,9 +7344,9 @@ func (response ListPeriodSummaries401ApplicationProblemPlusJSONResponse) VisitLi
 	return err
 }
 
-type ListPeriodSummaries404ApplicationProblemPlusJSONResponse Problem
+type ListPeriodCloses404ApplicationProblemPlusJSONResponse Problem
 
-func (response ListPeriodSummaries404ApplicationProblemPlusJSONResponse) VisitListPeriodSummariesResponse(w http.ResponseWriter) error {
+func (response ListPeriodCloses404ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9307,110 +7425,17 @@ func (response ListPositions404ApplicationProblemPlusJSONResponse) VisitListPosi
 	return err
 }
 
-type CreateProjectionRebuildRequestObject struct {
+type GetHoldingsTreeRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      CreateProjectionRebuildParams
-	Body        *CreateProjectionRebuildJSONRequestBody
 }
 
-type CreateProjectionRebuildResponseObject interface {
-	VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error
+type GetHoldingsTreeResponseObject interface {
+	VisitGetHoldingsTreeResponse(w http.ResponseWriter) error
 }
 
-type CreateProjectionRebuild202ResponseHeaders struct {
-	Location *string
-}
+type GetHoldingsTree200JSONResponse HoldingsTree
 
-type CreateProjectionRebuild202JSONResponse struct {
-	Body    Job
-	Headers CreateProjectionRebuild202ResponseHeaders
-}
-
-func (response CreateProjectionRebuild202JSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.Location != nil {
-		w.Header().Set("Location", fmt.Sprint(*response.Headers.Location))
-	}
-	w.WriteHeader(202)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateProjectionRebuild400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response CreateProjectionRebuild400ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateProjectionRebuild401ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateProjectionRebuild401ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateProjectionRebuild404ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateProjectionRebuild404ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateProjectionRebuild409ApplicationProblemPlusJSONResponse Problem
-
-func (response CreateProjectionRebuild409ApplicationProblemPlusJSONResponse) VisitCreateProjectionRebuildResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuationsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListValuationsParams
-}
-
-type ListValuationsResponseObject interface {
-	VisitListValuationsResponse(w http.ResponseWriter) error
-}
-
-type ListValuations200JSONResponse ValuationList
-
-func (response ListValuations200JSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+func (response GetHoldingsTree200JSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9422,25 +7447,11 @@ func (response ListValuations200JSONResponse) VisitListValuationsResponse(w http
 	return err
 }
 
-type ListValuations400ApplicationProblemPlusJSONResponse struct {
+type GetHoldingsTree401ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListValuations400ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuations401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListValuations401ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+func (response GetHoldingsTree401ApplicationProblemPlusJSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9452,9 +7463,129 @@ func (response ListValuations401ApplicationProblemPlusJSONResponse) VisitListVal
 	return err
 }
 
-type ListValuations404ApplicationProblemPlusJSONResponse Problem
+type GetHoldingsTree404ApplicationProblemPlusJSONResponse Problem
 
-func (response ListValuations404ApplicationProblemPlusJSONResponse) VisitListValuationsResponse(w http.ResponseWriter) error {
+func (response GetHoldingsTree404ApplicationProblemPlusJSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPointsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListValuationPointsParams
+}
+
+type ListValuationPointsResponseObject interface {
+	VisitListValuationPointsResponse(w http.ResponseWriter) error
+}
+
+type ListValuationPoints200JSONResponse ValuationPointList
+
+func (response ListValuationPoints200JSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListValuationPoints400ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints401ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints404ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPointRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	PointId     PointID     `json:"pointId"`
+}
+
+type GetValuationPointResponseObject interface {
+	VisitGetValuationPointResponse(w http.ResponseWriter) error
+}
+
+type GetValuationPoint200JSONResponse ValuationPointDetail
+
+func (response GetValuationPoint200JSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPoint401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetValuationPoint401ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPoint404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationPoint404ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9522,6 +7653,73 @@ func (response ListValueChanges401ApplicationProblemPlusJSONResponse) VisitListV
 type ListValueChanges404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListValueChanges404ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChangeRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      GetCustomValueChangeParams
+}
+
+type GetCustomValueChangeResponseObject interface {
+	VisitGetCustomValueChangeResponse(w http.ResponseWriter) error
+}
+
+type GetCustomValueChange200JSONResponse ValueChange
+
+func (response GetCustomValueChange200JSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChange400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetCustomValueChange400ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChange401ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCustomValueChange401ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChange404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCustomValueChange404ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9615,141 +7813,132 @@ type StrictServerInterface interface {
 	// DeleteAuthSession Revoke one owned session
 	// (DELETE /api/v1/auth/sessions/{sessionId})
 	DeleteAuthSession(ctx context.Context, request DeleteAuthSessionRequestObject) (DeleteAuthSessionResponseObject, error)
+	// ListPlatforms List supported platforms with account modes and account types
+	// (GET /api/v1/platforms)
+	ListPlatforms(ctx context.Context, request ListPlatformsRequestObject) (ListPlatformsResponseObject, error)
 	// ListPortfolios List owned portfolios
 	// (GET /api/v1/portfolios)
 	ListPortfolios(ctx context.Context, request ListPortfoliosRequestObject) (ListPortfoliosResponseObject, error)
 	// CreatePortfolio Create a portfolio
 	// (POST /api/v1/portfolios)
 	CreatePortfolio(ctx context.Context, request CreatePortfolioRequestObject) (CreatePortfolioResponseObject, error)
-
+	// DeletePortfolio Delete an additional portfolio
 	// (DELETE /api/v1/portfolios/{portfolioId})
 	DeletePortfolio(ctx context.Context, request DeletePortfolioRequestObject) (DeletePortfolioResponseObject, error)
-
+	// GetPortfolio Get a portfolio
 	// (GET /api/v1/portfolios/{portfolioId})
 	GetPortfolio(ctx context.Context, request GetPortfolioRequestObject) (GetPortfolioResponseObject, error)
-
+	// PatchPortfolio Update portfolio settings
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(ctx context.Context, request PatchPortfolioRequestObject) (PatchPortfolioResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/accounts)
-	ListAccounts(ctx context.Context, request ListAccountsRequestObject) (ListAccountsResponseObject, error)
+	// ListAccountBalances Balances of an account's current report
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances)
+	ListAccountBalances(ctx context.Context, request ListAccountBalancesRequestObject) (ListAccountBalancesResponseObject, error)
+	// ListAccountPositions Positions of an account's current report
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions)
+	ListAccountPositions(ctx context.Context, request ListAccountPositionsRequestObject) (ListAccountPositionsResponseObject, error)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(ctx context.Context, request ListAuditEventsRequestObject) (ListAuditEventsResponseObject, error)
-	// ListBalances Latest balances with grouping and offset pagination
+	// ListBalances Flat balance list across the boundary at the latest point
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(ctx context.Context, request ListBalancesRequestObject) (ListBalancesResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline)
-	GetCapitalBaseline(ctx context.Context, request GetCapitalBaselineRequestObject) (GetCapitalBaselineResponseObject, error)
-
-	// (PUT /api/v1/portfolios/{portfolioId}/capital-baseline)
-	PutCapitalBaseline(ctx context.Context, request PutCapitalBaselineRequestObject) (PutCapitalBaselineResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-baseline/revisions)
-	ListCapitalBaselineRevisions(ctx context.Context, request ListCapitalBaselineRevisionsRequestObject) (ListCapitalBaselineRevisionsResponseObject, error)
-
+	// ListBoundaryEvents Derived boundary events between two instants
+	// (GET /api/v1/portfolios/{portfolioId}/boundary-events)
+	ListBoundaryEvents(ctx context.Context, request ListBoundaryEventsRequestObject) (ListBoundaryEventsResponseObject, error)
+	// ListCapitalFlows List manual capital flows
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows)
 	ListCapitalFlows(ctx context.Context, request ListCapitalFlowsRequestObject) (ListCapitalFlowsResponseObject, error)
-
+	// CreateCapitalFlow Record a manual capital flow
 	// (POST /api/v1/portfolios/{portfolioId}/capital-flows)
 	CreateCapitalFlow(ctx context.Context, request CreateCapitalFlowRequestObject) (CreateCapitalFlowResponseObject, error)
-
+	// DeleteCapitalFlow Delete a capital flow
 	// (DELETE /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	DeleteCapitalFlow(ctx context.Context, request DeleteCapitalFlowRequestObject) (DeleteCapitalFlowResponseObject, error)
-
+	// GetCapitalFlow Get a capital flow
 	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	GetCapitalFlow(ctx context.Context, request GetCapitalFlowRequestObject) (GetCapitalFlowResponseObject, error)
-
+	// PatchCapitalFlow Edit a capital flow
 	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	PatchCapitalFlow(ctx context.Context, request PatchCapitalFlowRequestObject) (PatchCapitalFlowResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions)
-	ListCapitalFlowRevisions(ctx context.Context, request ListCapitalFlowRevisionsRequestObject) (ListCapitalFlowRevisionsResponseObject, error)
-	// SearchCatalogAssetListings Search discovered asset listings and mapping status
+	// ListAssetListings List platform asset listings and their asset mapping
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/asset-listings)
-	SearchCatalogAssetListings(ctx context.Context, request SearchCatalogAssetListingsRequestObject) (SearchCatalogAssetListingsResponseObject, error)
-	// PutCatalogListingMapping Append an asset listing mapping revision
+	ListAssetListings(ctx context.Context, request ListAssetListingsRequestObject) (ListAssetListingsResponseObject, error)
+	// PutAssetListingMapping Override the asset symbol of a listing and recalculate affected points
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping)
-	PutCatalogListingMapping(ctx context.Context, request PutCatalogListingMappingRequestObject) (PutCatalogListingMappingResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
-	SearchCatalogAssets(ctx context.Context, request SearchCatalogAssetsRequestObject) (SearchCatalogAssetsResponseObject, error)
-	// SearchCatalogInstruments Search discovered instruments
+	PutAssetListingMapping(ctx context.Context, request PutAssetListingMappingRequestObject) (PutAssetListingMappingResponseObject, error)
+	// ListInstruments List platform instruments
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/instruments)
-	SearchCatalogInstruments(ctx context.Context, request SearchCatalogInstrumentsRequestObject) (SearchCatalogInstrumentsResponseObject, error)
-	// DeleteCatalogPin Append a disabled tracking revision
-	// (DELETE /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
-	DeleteCatalogPin(ctx context.Context, request DeleteCatalogPinRequestObject) (DeleteCatalogPinResponseObject, error)
-	// PutCatalogPin Append an enabled tracking revision
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId})
-	PutCatalogPin(ctx context.Context, request PutCatalogPinRequestObject) (PutCatalogPinResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/connections)
-	ListConnections(ctx context.Context, request ListConnectionsRequestObject) (ListConnectionsResponseObject, error)
-
-	// (POST /api/v1/portfolios/{portfolioId}/connections)
-	CreateConnection(ctx context.Context, request CreateConnectionRequestObject) (CreateConnectionResponseObject, error)
-
-	// (DELETE /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	DeleteConnection(ctx context.Context, request DeleteConnectionRequestObject) (DeleteConnectionResponseObject, error)
-
-	// (GET /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	GetConnection(ctx context.Context, request GetConnectionRequestObject) (GetConnectionResponseObject, error)
-
-	// (PATCH /api/v1/portfolios/{portfolioId}/connections/{connectionId})
-	PatchConnection(ctx context.Context, request PatchConnectionRequestObject) (PatchConnectionResponseObject, error)
-	// ListExposures Long, short, and net exposure with grouping
-	// (GET /api/v1/portfolios/{portfolioId}/exposures)
-	ListExposures(ctx context.Context, request ListExposuresRequestObject) (ListExposuresResponseObject, error)
-
+	ListInstruments(ctx context.Context, request ListInstrumentsRequestObject) (ListInstrumentsResponseObject, error)
+	// ListCollectionCycles List collection cycles with their valuation points
+	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles)
+	ListCollectionCycles(ctx context.Context, request ListCollectionCyclesRequestObject) (ListCollectionCyclesResponseObject, error)
+	// CreateCollectionCycle Enqueue a manual collection cycle or return the active one
+	// (POST /api/v1/portfolios/{portfolioId}/collection-cycles)
+	CreateCollectionCycle(ctx context.Context, request CreateCollectionCycleRequestObject) (CreateCollectionCycleResponseObject, error)
+	// GetCollectionCycle Get one cycle with its per-account outcomes
+	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId})
+	GetCollectionCycle(ctx context.Context, request GetCollectionCycleRequestObject) (GetCollectionCycleResponseObject, error)
+	// ListIdentities List identities with their accounts and connection state
 	// (GET /api/v1/portfolios/{portfolioId}/identities)
 	ListIdentities(ctx context.Context, request ListIdentitiesRequestObject) (ListIdentitiesResponseObject, error)
-
+	// CreateIdentity Create an identity and select its account types
 	// (POST /api/v1/portfolios/{portfolioId}/identities)
 	CreateIdentity(ctx context.Context, request CreateIdentityRequestObject) (CreateIdentityResponseObject, error)
-
+	// GetIdentity Get an identity
 	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId})
 	GetIdentity(ctx context.Context, request GetIdentityRequestObject) (GetIdentityResponseObject, error)
-
+	// PatchIdentity Rename an identity or change account selection
 	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId})
 	PatchIdentity(ctx context.Context, request PatchIdentityRequestObject) (PatchIdentityResponseObject, error)
-
+	// ArchiveIdentity Archive an identity; refused while its connection is enabled
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive)
 	ArchiveIdentity(ctx context.Context, request ArchiveIdentityRequestObject) (ArchiveIdentityResponseObject, error)
-
+	// DeleteIdentityCredentials Remove stored credentials
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	DeleteIdentityCredentials(ctx context.Context, request DeleteIdentityCredentialsRequestObject) (DeleteIdentityCredentialsResponseObject, error)
+	// PutIdentityCredentials Store read-only API credentials (write-only)
+	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	PutIdentityCredentials(ctx context.Context, request PutIdentityCredentialsRequestObject) (PutIdentityCredentialsResponseObject, error)
+	// DisableIdentityConnection Stop scheduling the connection
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/disable)
+	DisableIdentityConnection(ctx context.Context, request DisableIdentityConnectionRequestObject) (DisableIdentityConnectionResponseObject, error)
+	// EnableIdentityConnection Validate and enable the connection for scheduling
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
+	EnableIdentityConnection(ctx context.Context, request EnableIdentityConnectionRequestObject) (EnableIdentityConnectionResponseObject, error)
+	// ValidateIdentityConnection Run one read-only validation call and store the outcome
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
+	ValidateIdentityConnection(ctx context.Context, request ValidateIdentityConnectionRequestObject) (ValidateIdentityConnectionResponseObject, error)
+	// ListJobs List durable jobs
 	// (GET /api/v1/portfolios/{portfolioId}/jobs)
 	ListJobs(ctx context.Context, request ListJobsRequestObject) (ListJobsResponseObject, error)
-
+	// GetJob Get a job
 	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
 	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
-	// ListObservations Search normalized observation headers
-	// (GET /api/v1/portfolios/{portfolioId}/observations)
-	ListObservations(ctx context.Context, request ListObservationsRequestObject) (ListObservationsResponseObject, error)
-	// GetObservation Read one typed normalized observation
-	// (GET /api/v1/portfolios/{portfolioId}/observations/{observationId})
-	GetObservation(ctx context.Context, request GetObservationRequestObject) (GetObservationResponseObject, error)
-
-	// (PATCH /api/v1/portfolios/{portfolioId}/observations/{observationId})
-	PatchObservation(ctx context.Context, request PatchObservationRequestObject) (PatchObservationResponseObject, error)
-	// GetOverview Portfolio overview cards, series, exposure, and issues
+	// GetOverview Latest valuation point with platform and identity totals
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(ctx context.Context, request GetOverviewRequestObject) (GetOverviewResponseObject, error)
-	// ListPeriodSummaries Period summary history
-	// (GET /api/v1/portfolios/{portfolioId}/period-summaries)
-	ListPeriodSummaries(ctx context.Context, request ListPeriodSummariesRequestObject) (ListPeriodSummariesResponseObject, error)
-	// ListPositions Latest positions with grouping and offset pagination
+	// ListPeriodCloses Period closes per period kind
+	// (GET /api/v1/portfolios/{portfolioId}/period-closes)
+	ListPeriodCloses(ctx context.Context, request ListPeriodClosesRequestObject) (ListPeriodClosesResponseObject, error)
+	// ListPositions Flat position list across the boundary at the latest point
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(ctx context.Context, request ListPositionsRequestObject) (ListPositionsResponseObject, error)
-	// CreateProjectionRebuild Enqueue a full projection rebuild
-	// (POST /api/v1/portfolios/{portfolioId}/projection-rebuilds)
-	CreateProjectionRebuild(ctx context.Context, request CreateProjectionRebuildRequestObject) (CreateProjectionRebuildResponseObject, error)
-	// ListValuations Portfolio valuation history
-	// (GET /api/v1/portfolios/{portfolioId}/valuations)
-	ListValuations(ctx context.Context, request ListValuationsRequestObject) (ListValuationsResponseObject, error)
-	// ListValueChanges Calendar value-change history
+	// GetHoldingsTree Platform → identity → account tree at the latest point
+	// (GET /api/v1/portfolios/{portfolioId}/tree)
+	GetHoldingsTree(ctx context.Context, request GetHoldingsTreeRequestObject) (GetHoldingsTreeResponseObject, error)
+	// ListValuationPoints Valuation point series
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
+	ListValuationPoints(ctx context.Context, request ListValuationPointsRequestObject) (ListValuationPointsResponseObject, error)
+	// GetValuationPoint One valuation point with its account valuations
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{pointId})
+	GetValuationPoint(ctx context.Context, request GetValuationPointRequestObject) (GetValuationPointResponseObject, error)
+	// ListValueChanges Value changes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(ctx context.Context, request ListValueChangesRequestObject) (ListValueChangesResponseObject, error)
+	// GetCustomValueChange One value change between the last points at or before two instants
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes/custom)
+	GetCustomValueChange(ctx context.Context, request GetCustomValueChangeRequestObject) (GetCustomValueChangeResponseObject, error)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
 	GetHealthLive(ctx context.Context, request GetHealthLiveRequestObject) (GetHealthLiveResponseObject, error)
@@ -10032,6 +8221,30 @@ func (sh *strictHandler) DeleteAuthSession(ctx *gin.Context, sessionId SessionID
 	}
 }
 
+// ListPlatforms operation middleware
+func (sh *strictHandler) ListPlatforms(ctx *gin.Context) {
+	var request ListPlatformsRequestObject
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPlatforms(ctx, request.(ListPlatformsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPlatforms")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListPlatformsResponseObject); ok {
+		if err := validResponse.VisitListPlatformsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListPortfolios operation middleware
 func (sh *strictHandler) ListPortfolios(ctx *gin.Context) {
 	var request ListPortfoliosRequestObject
@@ -10176,26 +8389,53 @@ func (sh *strictHandler) PatchPortfolio(ctx *gin.Context, portfolioId PortfolioI
 	}
 }
 
-// ListAccounts operation middleware
-func (sh *strictHandler) ListAccounts(ctx *gin.Context, portfolioId PortfolioID, params ListAccountsParams) {
-	var request ListAccountsRequestObject
+// ListAccountBalances operation middleware
+func (sh *strictHandler) ListAccountBalances(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID) {
+	var request ListAccountBalancesRequestObject
 
 	request.PortfolioId = portfolioId
-	request.Params = params
+	request.AccountId = accountId
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListAccounts(ctx, request.(ListAccountsRequestObject))
+		return sh.ssi.ListAccountBalances(ctx, request.(ListAccountBalancesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListAccounts")
+		handler = middleware(handler, "ListAccountBalances")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListAccountsResponseObject); ok {
-		if err := validResponse.VisitListAccountsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListAccountBalancesResponseObject); ok {
+		if err := validResponse.VisitListAccountBalancesResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListAccountPositions operation middleware
+func (sh *strictHandler) ListAccountPositions(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID) {
+	var request ListAccountPositionsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.AccountId = accountId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAccountPositions(ctx, request.(ListAccountPositionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAccountPositions")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListAccountPositionsResponseObject); ok {
+		if err := validResponse.VisitListAccountPositionsResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10257,86 +8497,26 @@ func (sh *strictHandler) ListBalances(ctx *gin.Context, portfolioId PortfolioID,
 	}
 }
 
-// GetCapitalBaseline operation middleware
-func (sh *strictHandler) GetCapitalBaseline(ctx *gin.Context, portfolioId PortfolioID) {
-	var request GetCapitalBaselineRequestObject
-
-	request.PortfolioId = portfolioId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetCapitalBaseline(ctx, request.(GetCapitalBaselineRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetCapitalBaseline")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetCapitalBaselineResponseObject); ok {
-		if err := validResponse.VisitGetCapitalBaselineResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PutCapitalBaseline operation middleware
-func (sh *strictHandler) PutCapitalBaseline(ctx *gin.Context, portfolioId PortfolioID, params PutCapitalBaselineParams) {
-	var request PutCapitalBaselineRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	var body PutCapitalBaselineJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutCapitalBaseline(ctx, request.(PutCapitalBaselineRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutCapitalBaseline")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PutCapitalBaselineResponseObject); ok {
-		if err := validResponse.VisitPutCapitalBaselineResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListCapitalBaselineRevisions operation middleware
-func (sh *strictHandler) ListCapitalBaselineRevisions(ctx *gin.Context, portfolioId PortfolioID, params ListCapitalBaselineRevisionsParams) {
-	var request ListCapitalBaselineRevisionsRequestObject
+// ListBoundaryEvents operation middleware
+func (sh *strictHandler) ListBoundaryEvents(ctx *gin.Context, portfolioId PortfolioID, params ListBoundaryEventsParams) {
+	var request ListBoundaryEventsRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListCapitalBaselineRevisions(ctx, request.(ListCapitalBaselineRevisionsRequestObject))
+		return sh.ssi.ListBoundaryEvents(ctx, request.(ListBoundaryEventsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListCapitalBaselineRevisions")
+		handler = middleware(handler, "ListBoundaryEvents")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListCapitalBaselineRevisionsResponseObject); ok {
-		if err := validResponse.VisitListCapitalBaselineRevisionsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListBoundaryEventsResponseObject); ok {
+		if err := validResponse.VisitListBoundaryEventsResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10495,27 +8675,26 @@ func (sh *strictHandler) PatchCapitalFlow(ctx *gin.Context, portfolioId Portfoli
 	}
 }
 
-// ListCapitalFlowRevisions operation middleware
-func (sh *strictHandler) ListCapitalFlowRevisions(ctx *gin.Context, portfolioId PortfolioID, flowId FlowID, params ListCapitalFlowRevisionsParams) {
-	var request ListCapitalFlowRevisionsRequestObject
+// ListAssetListings operation middleware
+func (sh *strictHandler) ListAssetListings(ctx *gin.Context, portfolioId PortfolioID, params ListAssetListingsParams) {
+	var request ListAssetListingsRequestObject
 
 	request.PortfolioId = portfolioId
-	request.FlowId = flowId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListCapitalFlowRevisions(ctx, request.(ListCapitalFlowRevisionsRequestObject))
+		return sh.ssi.ListAssetListings(ctx, request.(ListAssetListingsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListCapitalFlowRevisions")
+		handler = middleware(handler, "ListAssetListings")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListCapitalFlowRevisionsResponseObject); ok {
-		if err := validResponse.VisitListCapitalFlowRevisionsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListAssetListingsResponseObject); ok {
+		if err := validResponse.VisitListAssetListingsResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10523,42 +8702,15 @@ func (sh *strictHandler) ListCapitalFlowRevisions(ctx *gin.Context, portfolioId 
 	}
 }
 
-// SearchCatalogAssetListings operation middleware
-func (sh *strictHandler) SearchCatalogAssetListings(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetListingsParams) {
-	var request SearchCatalogAssetListingsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchCatalogAssetListings(ctx, request.(SearchCatalogAssetListingsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchCatalogAssetListings")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(SearchCatalogAssetListingsResponseObject); ok {
-		if err := validResponse.VisitSearchCatalogAssetListingsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PutCatalogListingMapping operation middleware
-func (sh *strictHandler) PutCatalogListingMapping(ctx *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutCatalogListingMappingParams) {
-	var request PutCatalogListingMappingRequestObject
+// PutAssetListingMapping operation middleware
+func (sh *strictHandler) PutAssetListingMapping(ctx *gin.Context, portfolioId PortfolioID, listingId ListingID, params PutAssetListingMappingParams) {
+	var request PutAssetListingMappingRequestObject
 
 	request.PortfolioId = portfolioId
 	request.ListingId = listingId
 	request.Params = params
 
-	var body PutCatalogListingMappingJSONRequestBody
+	var body PutAssetListingMappingJSONRequestBody
 	if err := ctx.ShouldBindJSON(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(ctx, err)
 		return
@@ -10566,18 +8718,18 @@ func (sh *strictHandler) PutCatalogListingMapping(ctx *gin.Context, portfolioId 
 	request.Body = &body
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutCatalogListingMapping(ctx, request.(PutCatalogListingMappingRequestObject))
+		return sh.ssi.PutAssetListingMapping(ctx, request.(PutAssetListingMappingRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutCatalogListingMapping")
+		handler = middleware(handler, "PutAssetListingMapping")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PutCatalogListingMappingResponseObject); ok {
-		if err := validResponse.VisitPutCatalogListingMappingResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(PutAssetListingMappingResponseObject); ok {
+		if err := validResponse.VisitPutAssetListingMappingResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10585,26 +8737,26 @@ func (sh *strictHandler) PutCatalogListingMapping(ctx *gin.Context, portfolioId 
 	}
 }
 
-// SearchCatalogAssets operation middleware
-func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogAssetsParams) {
-	var request SearchCatalogAssetsRequestObject
+// ListInstruments operation middleware
+func (sh *strictHandler) ListInstruments(ctx *gin.Context, portfolioId PortfolioID, params ListInstrumentsParams) {
+	var request ListInstrumentsRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchCatalogAssets(ctx, request.(SearchCatalogAssetsRequestObject))
+		return sh.ssi.ListInstruments(ctx, request.(ListInstrumentsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchCatalogAssets")
+		handler = middleware(handler, "ListInstruments")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(SearchCatalogAssetsResponseObject); ok {
-		if err := validResponse.VisitSearchCatalogAssetsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListInstrumentsResponseObject); ok {
+		if err := validResponse.VisitListInstrumentsResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10612,26 +8764,26 @@ func (sh *strictHandler) SearchCatalogAssets(ctx *gin.Context, portfolioId Portf
 	}
 }
 
-// SearchCatalogInstruments operation middleware
-func (sh *strictHandler) SearchCatalogInstruments(ctx *gin.Context, portfolioId PortfolioID, params SearchCatalogInstrumentsParams) {
-	var request SearchCatalogInstrumentsRequestObject
+// ListCollectionCycles operation middleware
+func (sh *strictHandler) ListCollectionCycles(ctx *gin.Context, portfolioId PortfolioID, params ListCollectionCyclesParams) {
+	var request ListCollectionCyclesRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchCatalogInstruments(ctx, request.(SearchCatalogInstrumentsRequestObject))
+		return sh.ssi.ListCollectionCycles(ctx, request.(ListCollectionCyclesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchCatalogInstruments")
+		handler = middleware(handler, "ListCollectionCycles")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(SearchCatalogInstrumentsResponseObject); ok {
-		if err := validResponse.VisitSearchCatalogInstrumentsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListCollectionCyclesResponseObject); ok {
+		if err := validResponse.VisitListCollectionCyclesResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -10639,241 +8791,53 @@ func (sh *strictHandler) SearchCatalogInstruments(ctx *gin.Context, portfolioId 
 	}
 }
 
-// DeleteCatalogPin operation middleware
-func (sh *strictHandler) DeleteCatalogPin(ctx *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params DeleteCatalogPinParams) {
-	var request DeleteCatalogPinRequestObject
-
-	request.PortfolioId = portfolioId
-	request.SubjectKind = subjectKind
-	request.SubjectId = subjectId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteCatalogPin(ctx, request.(DeleteCatalogPinRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteCatalogPin")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(DeleteCatalogPinResponseObject); ok {
-		if err := validResponse.VisitDeleteCatalogPinResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PutCatalogPin operation middleware
-func (sh *strictHandler) PutCatalogPin(ctx *gin.Context, portfolioId PortfolioID, subjectKind SubjectKind, subjectId SubjectID, params PutCatalogPinParams) {
-	var request PutCatalogPinRequestObject
-
-	request.PortfolioId = portfolioId
-	request.SubjectKind = subjectKind
-	request.SubjectId = subjectId
-	request.Params = params
-
-	var body PutCatalogPinJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutCatalogPin(ctx, request.(PutCatalogPinRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutCatalogPin")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PutCatalogPinResponseObject); ok {
-		if err := validResponse.VisitPutCatalogPinResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListConnections operation middleware
-func (sh *strictHandler) ListConnections(ctx *gin.Context, portfolioId PortfolioID) {
-	var request ListConnectionsRequestObject
-
-	request.PortfolioId = portfolioId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListConnections(ctx, request.(ListConnectionsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListConnections")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListConnectionsResponseObject); ok {
-		if err := validResponse.VisitListConnectionsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateConnection operation middleware
-func (sh *strictHandler) CreateConnection(ctx *gin.Context, portfolioId PortfolioID, params CreateConnectionParams) {
-	var request CreateConnectionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	var body CreateConnectionJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateConnection(ctx, request.(CreateConnectionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateConnection")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(CreateConnectionResponseObject); ok {
-		if err := validResponse.VisitCreateConnectionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DeleteConnection operation middleware
-func (sh *strictHandler) DeleteConnection(ctx *gin.Context, portfolioId PortfolioID, connectionId ConnectionID, params DeleteConnectionParams) {
-	var request DeleteConnectionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.ConnectionId = connectionId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteConnection(ctx, request.(DeleteConnectionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteConnection")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(DeleteConnectionResponseObject); ok {
-		if err := validResponse.VisitDeleteConnectionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetConnection operation middleware
-func (sh *strictHandler) GetConnection(ctx *gin.Context, portfolioId PortfolioID, connectionId ConnectionID) {
-	var request GetConnectionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.ConnectionId = connectionId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetConnection(ctx, request.(GetConnectionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetConnection")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetConnectionResponseObject); ok {
-		if err := validResponse.VisitGetConnectionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PatchConnection operation middleware
-func (sh *strictHandler) PatchConnection(ctx *gin.Context, portfolioId PortfolioID, connectionId ConnectionID, params PatchConnectionParams) {
-	var request PatchConnectionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.ConnectionId = connectionId
-	request.Params = params
-
-	var body PatchConnectionJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PatchConnection(ctx, request.(PatchConnectionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PatchConnection")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PatchConnectionResponseObject); ok {
-		if err := validResponse.VisitPatchConnectionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListExposures operation middleware
-func (sh *strictHandler) ListExposures(ctx *gin.Context, portfolioId PortfolioID, params ListExposuresParams) {
-	var request ListExposuresRequestObject
+// CreateCollectionCycle operation middleware
+func (sh *strictHandler) CreateCollectionCycle(ctx *gin.Context, portfolioId PortfolioID, params CreateCollectionCycleParams) {
+	var request CreateCollectionCycleRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListExposures(ctx, request.(ListExposuresRequestObject))
+		return sh.ssi.CreateCollectionCycle(ctx, request.(CreateCollectionCycleRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListExposures")
+		handler = middleware(handler, "CreateCollectionCycle")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListExposuresResponseObject); ok {
-		if err := validResponse.VisitListExposuresResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(CreateCollectionCycleResponseObject); ok {
+		if err := validResponse.VisitCreateCollectionCycleResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCollectionCycle operation middleware
+func (sh *strictHandler) GetCollectionCycle(ctx *gin.Context, portfolioId PortfolioID, cycleId CycleID) {
+	var request GetCollectionCycleRequestObject
+
+	request.PortfolioId = portfolioId
+	request.CycleId = cycleId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCollectionCycle(ctx, request.(GetCollectionCycleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCollectionCycle")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetCollectionCycleResponseObject); ok {
+		if err := validResponse.VisitGetCollectionCycleResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11031,6 +8995,153 @@ func (sh *strictHandler) ArchiveIdentity(ctx *gin.Context, portfolioId Portfolio
 	}
 }
 
+// DeleteIdentityCredentials operation middleware
+func (sh *strictHandler) DeleteIdentityCredentials(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DeleteIdentityCredentialsParams) {
+	var request DeleteIdentityCredentialsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteIdentityCredentials(ctx, request.(DeleteIdentityCredentialsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteIdentityCredentials")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(DeleteIdentityCredentialsResponseObject); ok {
+		if err := validResponse.VisitDeleteIdentityCredentialsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutIdentityCredentials operation middleware
+func (sh *strictHandler) PutIdentityCredentials(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params PutIdentityCredentialsParams) {
+	var request PutIdentityCredentialsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	var body PutIdentityCredentialsJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutIdentityCredentials(ctx, request.(PutIdentityCredentialsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutIdentityCredentials")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutIdentityCredentialsResponseObject); ok {
+		if err := validResponse.VisitPutIdentityCredentialsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DisableIdentityConnection operation middleware
+func (sh *strictHandler) DisableIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DisableIdentityConnectionParams) {
+	var request DisableIdentityConnectionRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DisableIdentityConnection(ctx, request.(DisableIdentityConnectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DisableIdentityConnection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(DisableIdentityConnectionResponseObject); ok {
+		if err := validResponse.VisitDisableIdentityConnectionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// EnableIdentityConnection operation middleware
+func (sh *strictHandler) EnableIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params EnableIdentityConnectionParams) {
+	var request EnableIdentityConnectionRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.EnableIdentityConnection(ctx, request.(EnableIdentityConnectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "EnableIdentityConnection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(EnableIdentityConnectionResponseObject); ok {
+		if err := validResponse.VisitEnableIdentityConnectionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ValidateIdentityConnection operation middleware
+func (sh *strictHandler) ValidateIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams) {
+	var request ValidateIdentityConnectionRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ValidateIdentityConnection(ctx, request.(ValidateIdentityConnectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ValidateIdentityConnection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ValidateIdentityConnectionResponseObject); ok {
+		if err := validResponse.VisitValidateIdentityConnectionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListJobs operation middleware
 func (sh *strictHandler) ListJobs(ctx *gin.Context, portfolioId PortfolioID, params ListJobsParams) {
 	var request ListJobsRequestObject
@@ -11085,95 +9196,6 @@ func (sh *strictHandler) GetJob(ctx *gin.Context, portfolioId PortfolioID, jobId
 	}
 }
 
-// ListObservations operation middleware
-func (sh *strictHandler) ListObservations(ctx *gin.Context, portfolioId PortfolioID, params ListObservationsParams) {
-	var request ListObservationsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListObservations(ctx, request.(ListObservationsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListObservations")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListObservationsResponseObject); ok {
-		if err := validResponse.VisitListObservationsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetObservation operation middleware
-func (sh *strictHandler) GetObservation(ctx *gin.Context, portfolioId PortfolioID, observationId ObservationID) {
-	var request GetObservationRequestObject
-
-	request.PortfolioId = portfolioId
-	request.ObservationId = observationId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetObservation(ctx, request.(GetObservationRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetObservation")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetObservationResponseObject); ok {
-		if err := validResponse.VisitGetObservationResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PatchObservation operation middleware
-func (sh *strictHandler) PatchObservation(ctx *gin.Context, portfolioId PortfolioID, observationId ObservationID, params PatchObservationParams) {
-	var request PatchObservationRequestObject
-
-	request.PortfolioId = portfolioId
-	request.ObservationId = observationId
-	request.Params = params
-
-	var body PatchObservationJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PatchObservation(ctx, request.(PatchObservationRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PatchObservation")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PatchObservationResponseObject); ok {
-		if err := validResponse.VisitPatchObservationResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetOverview operation middleware
 func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) {
 	var request GetOverviewRequestObject
@@ -11200,26 +9222,26 @@ func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) 
 	}
 }
 
-// ListPeriodSummaries operation middleware
-func (sh *strictHandler) ListPeriodSummaries(ctx *gin.Context, portfolioId PortfolioID, params ListPeriodSummariesParams) {
-	var request ListPeriodSummariesRequestObject
+// ListPeriodCloses operation middleware
+func (sh *strictHandler) ListPeriodCloses(ctx *gin.Context, portfolioId PortfolioID, params ListPeriodClosesParams) {
+	var request ListPeriodClosesRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListPeriodSummaries(ctx, request.(ListPeriodSummariesRequestObject))
+		return sh.ssi.ListPeriodCloses(ctx, request.(ListPeriodClosesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListPeriodSummaries")
+		handler = middleware(handler, "ListPeriodCloses")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListPeriodSummariesResponseObject); ok {
-		if err := validResponse.VisitListPeriodSummariesResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListPeriodClosesResponseObject); ok {
+		if err := validResponse.VisitListPeriodClosesResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11254,36 +9276,25 @@ func (sh *strictHandler) ListPositions(ctx *gin.Context, portfolioId PortfolioID
 	}
 }
 
-// CreateProjectionRebuild operation middleware
-func (sh *strictHandler) CreateProjectionRebuild(ctx *gin.Context, portfolioId PortfolioID, params CreateProjectionRebuildParams) {
-	var request CreateProjectionRebuildRequestObject
+// GetHoldingsTree operation middleware
+func (sh *strictHandler) GetHoldingsTree(ctx *gin.Context, portfolioId PortfolioID) {
+	var request GetHoldingsTreeRequestObject
 
 	request.PortfolioId = portfolioId
-	request.Params = params
-
-	var body CreateProjectionRebuildJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(ctx, err)
-			return
-		}
-	} else {
-		request.Body = &body
-	}
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateProjectionRebuild(ctx, request.(CreateProjectionRebuildRequestObject))
+		return sh.ssi.GetHoldingsTree(ctx, request.(GetHoldingsTreeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateProjectionRebuild")
+		handler = middleware(handler, "GetHoldingsTree")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(CreateProjectionRebuildResponseObject); ok {
-		if err := validResponse.VisitCreateProjectionRebuildResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(GetHoldingsTreeResponseObject); ok {
+		if err := validResponse.VisitGetHoldingsTreeResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11291,26 +9302,53 @@ func (sh *strictHandler) CreateProjectionRebuild(ctx *gin.Context, portfolioId P
 	}
 }
 
-// ListValuations operation middleware
-func (sh *strictHandler) ListValuations(ctx *gin.Context, portfolioId PortfolioID, params ListValuationsParams) {
-	var request ListValuationsRequestObject
+// ListValuationPoints operation middleware
+func (sh *strictHandler) ListValuationPoints(ctx *gin.Context, portfolioId PortfolioID, params ListValuationPointsParams) {
+	var request ListValuationPointsRequestObject
 
 	request.PortfolioId = portfolioId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListValuations(ctx, request.(ListValuationsRequestObject))
+		return sh.ssi.ListValuationPoints(ctx, request.(ListValuationPointsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListValuations")
+		handler = middleware(handler, "ListValuationPoints")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListValuationsResponseObject); ok {
-		if err := validResponse.VisitListValuationsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListValuationPointsResponseObject); ok {
+		if err := validResponse.VisitListValuationPointsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetValuationPoint operation middleware
+func (sh *strictHandler) GetValuationPoint(ctx *gin.Context, portfolioId PortfolioID, pointId PointID) {
+	var request GetValuationPointRequestObject
+
+	request.PortfolioId = portfolioId
+	request.PointId = pointId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetValuationPoint(ctx, request.(GetValuationPointRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetValuationPoint")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetValuationPointResponseObject); ok {
+		if err := validResponse.VisitGetValuationPointResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11338,6 +9376,33 @@ func (sh *strictHandler) ListValueChanges(ctx *gin.Context, portfolioId Portfoli
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ListValueChangesResponseObject); ok {
 		if err := validResponse.VisitListValueChangesResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCustomValueChange operation middleware
+func (sh *strictHandler) GetCustomValueChange(ctx *gin.Context, portfolioId PortfolioID, params GetCustomValueChangeParams) {
+	var request GetCustomValueChangeRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCustomValueChange(ctx, request.(GetCustomValueChangeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCustomValueChange")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetCustomValueChangeResponseObject); ok {
+		if err := validResponse.VisitGetCustomValueChangeResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11398,132 +9463,124 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -1,11 +1,8 @@
-import { Check, ChevronLeft, ChevronRight, ChevronUp, Monitor, Moon, Sun } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Monitor, Moon, Sun } from "lucide-react";
 import type { ThemePreference } from "@/app/theme/usePersistentTheme";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { IconButton } from "@/shared/ui/IconButton";
+import { Menu, MenuItem, useMenu } from "@/shared/ui/Menu";
 import styles from "@/app/shell/Shell.module.css";
 
 const themeOptions = [
@@ -33,9 +30,7 @@ export function SidebarUtilities({
     <footer className={styles.sidebarUtilities}>
       <ThemeMenu collapsed={collapsed} onChange={onThemeChange} value={theme} />
       <div className={styles.sidebarMeta}>
-        <span className={styles.sidebarVersion} title="v0.1.0-dev">
-          v0.1.0-dev
-        </span>
+        <span className={styles.sidebarVersion}>v0.1.0-dev</span>
         {mobileLayout ? null : (
           <IconButton
             className={styles.collapseButton}
@@ -63,98 +58,44 @@ function ThemeMenu({
   onChange: (theme: ThemePreference) => void;
   value: ThemePreference;
 }) {
-  const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-  const Current = themeOptions.find((option) => option.value === value)?.icon ?? Monitor;
-
-  useLayoutEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setMenuStyle({
-      top: Math.max(8, rect.top - 8),
-      left: rect.right + 8,
-      transform: "translateY(-100%)",
-    });
-  }, [open, collapsed]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: MouseEvent) => {
-      if (
-        menuRef.current?.contains(event.target as Node) ||
-        buttonRef.current?.contains(event.target as Node)
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const menu = useMenu("top-start");
+  const current = themeOptions.find((option) => option.value === value) ?? themeOptions[0];
+  const Current = current?.icon ?? Monitor;
 
   return (
     <>
       <button
-        ref={buttonRef}
+        ref={(node) => menu.setAnchor(node)}
         type="button"
-        className={`${styles.utilityItem} ${styles.themeButton}`}
+        className={styles.utilityItem}
+        title={collapsed ? `Theme: ${current?.label ?? "System"}` : undefined}
         aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        aria-expanded={menu.open}
+        onClick={() => menu.setOpen((open) => !open)}
       >
-        <Current size={iconSize.md} aria-hidden="true" />
+        <Current size={iconSize.sm} aria-hidden="true" />
         <span className={styles.utilityLabel}>Theme</span>
-        <span className={styles.themeValue}>{value}</span>
-        <ChevronUp
-          size={iconSize.sm}
-          className={`${styles.themeChevron} ${open ? styles.themeChevronOpen : ""}`}
-          aria-hidden="true"
-        />
+        <span className={styles.utilityValue}>{current?.label}</span>
       </button>
-      {open &&
-        createPortal(
-          <div ref={menuRef} className={styles.themeMenu} role="menu" style={menuStyle}>
-            {themeOptions.map((option) => {
-              const Icon = option.icon;
-              const checked = option.value === value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={checked}
-                  className={styles.themeOption}
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Icon size={iconSize.md} aria-hidden="true" />
-                  {option.label}
-                  {checked ? <Check size={iconSize.sm} className={styles.themeCheck} /> : null}
-                </button>
-              );
-            })}
-          </div>,
-          document.body,
-        )}
+      <Menu menu={menu} label="Theme">
+        {themeOptions.map((option) => {
+          const Icon = option.icon;
+          return (
+            <MenuItem
+              key={option.value}
+              role="menuitemradio"
+              icon={<Icon size={iconSize.sm} />}
+              checked={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                menu.close(true);
+              }}
+            >
+              {option.label}
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </>
-  );
-}
-
-export function BrandMark() {
-  return (
-    <span className={styles.mark}>
-      <PlutusIcon size={iconSize.lg} />
-    </span>
   );
 }

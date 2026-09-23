@@ -4,20 +4,20 @@ import (
 	"context"
 	"errors"
 
-	"github.com/rbee3u/plutus/internal/access"
+	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/auth"
 	"github.com/rbee3u/plutus/internal/capital"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/jobs"
-	"github.com/rbee3u/plutus/internal/observation"
 	"github.com/rbee3u/plutus/internal/portfolio"
-	"github.com/rbee3u/plutus/internal/projection"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
+	"github.com/rbee3u/plutus/internal/valuation"
 )
 
-// ErrNotImplemented marks contract operations that still need application services.
+// ErrNotImplemented marks contract operations whose application service is not wired.
 var ErrNotImplemented = errors.New("not_implemented")
 
 // API implements the generated strict OpenAPI server.
@@ -28,14 +28,14 @@ type API struct {
 	SessionCookieName string
 	CSRFCookieName    string
 	Portfolios        *portfolio.Service
-	Access            *access.Service
+	Identities        *identity.Service
+	Adapters          *adapters.Registry
 	Catalog           *catalog.Service
-	Observations      *observation.Service
 	Capital           *capital.Service
+	Valuation         *valuation.Service
+	Jobs              *jobs.Service
 	Audit             *audit.Service
 	Idempotency       *idempotency.Store
-	Jobs              *jobs.Service
-	Projection        *projection.Service
 }
 
 func (a *API) GetHealthLive(context.Context, api.GetHealthLiveRequestObject) (api.GetHealthLiveResponseObject, error) {

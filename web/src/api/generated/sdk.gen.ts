@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateConnectionData, CreateConnectionErrors, CreateConnectionResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, CreateProjectionRebuildData, CreateProjectionRebuildErrors, CreateProjectionRebuildResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteCatalogPinData, DeleteCatalogPinErrors, DeleteCatalogPinResponses, DeleteConnectionData, DeleteConnectionErrors, DeleteConnectionResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalBaselineData, GetCapitalBaselineErrors, GetCapitalBaselineResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetConnectionData, GetConnectionErrors, GetConnectionResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetObservationData, GetObservationErrors, GetObservationResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, ListAccountsData, ListAccountsErrors, ListAccountsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListCapitalBaselineRevisionsData, ListCapitalBaselineRevisionsErrors, ListCapitalBaselineRevisionsResponses, ListCapitalFlowRevisionsData, ListCapitalFlowRevisionsErrors, ListCapitalFlowRevisionsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListExposuresData, ListExposuresErrors, ListExposuresResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListObservationsData, ListObservationsErrors, ListObservationsResponses, ListPeriodSummariesData, ListPeriodSummariesErrors, ListPeriodSummariesResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationsData, ListValuationsErrors, ListValuationsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchConnectionData, PatchConnectionErrors, PatchConnectionResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchObservationData, PatchObservationErrors, PatchObservationResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutCapitalBaselineData, PutCapitalBaselineErrors, PutCapitalBaselineResponses, PutCatalogListingMappingData, PutCatalogListingMappingErrors, PutCatalogListingMappingResponses, PutCatalogPinData, PutCatalogPinErrors, PutCatalogPinResponses, SearchCatalogAssetListingsData, SearchCatalogAssetListingsErrors, SearchCatalogAssetListingsResponses, SearchCatalogAssetsData, SearchCatalogAssetsErrors, SearchCatalogAssetsResponses, SearchCatalogInstrumentsData, SearchCatalogInstrumentsErrors, SearchCatalogInstrumentsResponses } from './types.gen';
+import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetListingsData, ListAssetListingsErrors, ListAssetListingsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListInstrumentsData, ListInstrumentsErrors, ListInstrumentsResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetListingMappingData, PutAssetListingMappingErrors, PutAssetListingMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -157,6 +157,9 @@ export const createPortfolio = <ThrowOnError extends boolean = false>(options: O
     }
 });
 
+/**
+ * Delete an additional portfolio
+ */
 export const deletePortfolio = <ThrowOnError extends boolean = false>(options: Options<DeletePortfolioData, ThrowOnError>): RequestResult<DeletePortfolioResponses, DeletePortfolioErrors, ThrowOnError> => (options.client ?? client).delete<DeletePortfolioResponses, DeletePortfolioErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -167,6 +170,9 @@ export const deletePortfolio = <ThrowOnError extends boolean = false>(options: O
     ...options
 });
 
+/**
+ * Get a portfolio
+ */
 export const getPortfolio = <ThrowOnError extends boolean = false>(options: Options<GetPortfolioData, ThrowOnError>): RequestResult<GetPortfolioResponses, GetPortfolioErrors, ThrowOnError> => (options.client ?? client).get<GetPortfolioResponses, GetPortfolioErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -177,6 +183,9 @@ export const getPortfolio = <ThrowOnError extends boolean = false>(options: Opti
     ...options
 });
 
+/**
+ * Update portfolio settings
+ */
 export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Options<PatchPortfolioData, ThrowOnError>): RequestResult<PatchPortfolioResponses, PatchPortfolioErrors, ThrowOnError> => (options.client ?? client).patch<PatchPortfolioResponses, PatchPortfolioErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -191,6 +200,22 @@ export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Op
     }
 });
 
+/**
+ * List supported platforms with account modes and account types
+ */
+export const listPlatforms = <ThrowOnError extends boolean = false>(options?: Options<ListPlatformsData, ThrowOnError>): RequestResult<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError> => (options?.client ?? client).get<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/platforms',
+    ...options
+});
+
+/**
+ * List identities with their accounts and connection state
+ */
 export const listIdentities = <ThrowOnError extends boolean = false>(options: Options<ListIdentitiesData, ThrowOnError>): RequestResult<ListIdentitiesResponses, ListIdentitiesErrors, ThrowOnError> => (options.client ?? client).get<ListIdentitiesResponses, ListIdentitiesErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -201,6 +226,9 @@ export const listIdentities = <ThrowOnError extends boolean = false>(options: Op
     ...options
 });
 
+/**
+ * Create an identity and select its account types
+ */
 export const createIdentity = <ThrowOnError extends boolean = false>(options: Options<CreateIdentityData, ThrowOnError>): RequestResult<CreateIdentityResponses, CreateIdentityErrors, ThrowOnError> => (options.client ?? client).post<CreateIdentityResponses, CreateIdentityErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -215,6 +243,9 @@ export const createIdentity = <ThrowOnError extends boolean = false>(options: Op
     }
 });
 
+/**
+ * Get an identity
+ */
 export const getIdentity = <ThrowOnError extends boolean = false>(options: Options<GetIdentityData, ThrowOnError>): RequestResult<GetIdentityResponses, GetIdentityErrors, ThrowOnError> => (options.client ?? client).get<GetIdentityResponses, GetIdentityErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -225,6 +256,9 @@ export const getIdentity = <ThrowOnError extends boolean = false>(options: Optio
     ...options
 });
 
+/**
+ * Rename an identity or change account selection
+ */
 export const patchIdentity = <ThrowOnError extends boolean = false>(options: Options<PatchIdentityData, ThrowOnError>): RequestResult<PatchIdentityResponses, PatchIdentityErrors, ThrowOnError> => (options.client ?? client).patch<PatchIdentityResponses, PatchIdentityErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -239,6 +273,9 @@ export const patchIdentity = <ThrowOnError extends boolean = false>(options: Opt
     }
 });
 
+/**
+ * Archive an identity; refused while its connection is enabled
+ */
 export const archiveIdentity = <ThrowOnError extends boolean = false>(options: Options<ArchiveIdentityData, ThrowOnError>): RequestResult<ArchiveIdentityResponses, ArchiveIdentityErrors, ThrowOnError> => (options.client ?? client).post<ArchiveIdentityResponses, ArchiveIdentityErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -249,140 +286,29 @@ export const archiveIdentity = <ThrowOnError extends boolean = false>(options: O
     ...options
 });
 
-export const listConnections = <ThrowOnError extends boolean = false>(options: Options<ListConnectionsData, ThrowOnError>): RequestResult<ListConnectionsResponses, ListConnectionsErrors, ThrowOnError> => (options.client ?? client).get<ListConnectionsResponses, ListConnectionsErrors, ThrowOnError>({
+/**
+ * Remove stored credentials
+ */
+export const deleteIdentityCredentials = <ThrowOnError extends boolean = false>(options: Options<DeleteIdentityCredentialsData, ThrowOnError>): RequestResult<DeleteIdentityCredentialsResponses, DeleteIdentityCredentialsErrors, ThrowOnError> => (options.client ?? client).delete<DeleteIdentityCredentialsResponses, DeleteIdentityCredentialsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/connections',
-    ...options
-});
-
-export const createConnection = <ThrowOnError extends boolean = false>(options: Options<CreateConnectionData, ThrowOnError>): RequestResult<CreateConnectionResponses, CreateConnectionErrors, ThrowOnError> => (options.client ?? client).post<CreateConnectionResponses, CreateConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/connections',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const deleteConnection = <ThrowOnError extends boolean = false>(options: Options<DeleteConnectionData, ThrowOnError>): RequestResult<DeleteConnectionResponses, DeleteConnectionErrors, ThrowOnError> => (options.client ?? client).delete<DeleteConnectionResponses, DeleteConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}',
-    ...options
-});
-
-export const getConnection = <ThrowOnError extends boolean = false>(options: Options<GetConnectionData, ThrowOnError>): RequestResult<GetConnectionResponses, GetConnectionErrors, ThrowOnError> => (options.client ?? client).get<GetConnectionResponses, GetConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}',
-    ...options
-});
-
-export const patchConnection = <ThrowOnError extends boolean = false>(options: Options<PatchConnectionData, ThrowOnError>): RequestResult<PatchConnectionResponses, PatchConnectionErrors, ThrowOnError> => (options.client ?? client).patch<PatchConnectionResponses, PatchConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/connections/{connectionId}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const listJobs = <ThrowOnError extends boolean = false>(options: Options<ListJobsData, ThrowOnError>): RequestResult<ListJobsResponses, ListJobsErrors, ThrowOnError> => (options.client ?? client).get<ListJobsResponses, ListJobsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/jobs',
-    ...options
-});
-
-export const getJob = <ThrowOnError extends boolean = false>(options: Options<GetJobData, ThrowOnError>): RequestResult<GetJobResponses, GetJobErrors, ThrowOnError> => (options.client ?? client).get<GetJobResponses, GetJobErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}',
-    ...options
-});
-
-export const listAccounts = <ThrowOnError extends boolean = false>(options: Options<ListAccountsData, ThrowOnError>): RequestResult<ListAccountsResponses, ListAccountsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountsResponses, ListAccountsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/accounts',
-    ...options
-});
-
-export const searchCatalogAssets = <ThrowOnError extends boolean = false>(options: Options<SearchCatalogAssetsData, ThrowOnError>): RequestResult<SearchCatalogAssetsResponses, SearchCatalogAssetsErrors, ThrowOnError> => (options.client ?? client).get<SearchCatalogAssetsResponses, SearchCatalogAssetsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/assets',
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials',
     ...options
 });
 
 /**
- * Search discovered asset listings and mapping status
+ * Store read-only API credentials (write-only)
  */
-export const searchCatalogAssetListings = <ThrowOnError extends boolean = false>(options: Options<SearchCatalogAssetListingsData, ThrowOnError>): RequestResult<SearchCatalogAssetListingsResponses, SearchCatalogAssetListingsErrors, ThrowOnError> => (options.client ?? client).get<SearchCatalogAssetListingsResponses, SearchCatalogAssetListingsErrors, ThrowOnError>({
+export const putIdentityCredentials = <ThrowOnError extends boolean = false>(options: Options<PutIdentityCredentialsData, ThrowOnError>): RequestResult<PutIdentityCredentialsResponses, PutIdentityCredentialsErrors, ThrowOnError> => (options.client ?? client).put<PutIdentityCredentialsResponses, PutIdentityCredentialsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings',
-    ...options
-});
-
-/**
- * Search discovered instruments
- */
-export const searchCatalogInstruments = <ThrowOnError extends boolean = false>(options: Options<SearchCatalogInstrumentsData, ThrowOnError>): RequestResult<SearchCatalogInstrumentsResponses, SearchCatalogInstrumentsErrors, ThrowOnError> => (options.client ?? client).get<SearchCatalogInstrumentsResponses, SearchCatalogInstrumentsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments',
-    ...options
-});
-
-/**
- * Append an asset listing mapping revision
- */
-export const putCatalogListingMapping = <ThrowOnError extends boolean = false>(options: Options<PutCatalogListingMappingData, ThrowOnError>): RequestResult<PutCatalogListingMappingResponses, PutCatalogListingMappingErrors, ThrowOnError> => (options.client ?? client).put<PutCatalogListingMappingResponses, PutCatalogListingMappingErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping',
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -391,109 +317,229 @@ export const putCatalogListingMapping = <ThrowOnError extends boolean = false>(o
 });
 
 /**
- * Append a disabled tracking revision
+ * Run one read-only validation call and store the outcome
  */
-export const deleteCatalogPin = <ThrowOnError extends boolean = false>(options: Options<DeleteCatalogPinData, ThrowOnError>): RequestResult<DeleteCatalogPinResponses, DeleteCatalogPinErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCatalogPinResponses, DeleteCatalogPinErrors, ThrowOnError>({
+export const validateIdentityConnection = <ThrowOnError extends boolean = false>(options: Options<ValidateIdentityConnectionData, ThrowOnError>): RequestResult<ValidateIdentityConnectionResponses, ValidateIdentityConnectionErrors, ThrowOnError> => (options.client ?? client).post<ValidateIdentityConnectionResponses, ValidateIdentityConnectionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}',
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/validate',
     ...options
 });
 
 /**
- * Append an enabled tracking revision
+ * Validate and enable the connection for scheduling
  */
-export const putCatalogPin = <ThrowOnError extends boolean = false>(options: Options<PutCatalogPinData, ThrowOnError>): RequestResult<PutCatalogPinResponses, PutCatalogPinErrors, ThrowOnError> => (options.client ?? client).put<PutCatalogPinResponses, PutCatalogPinErrors, ThrowOnError>({
+export const enableIdentityConnection = <ThrowOnError extends boolean = false>(options: Options<EnableIdentityConnectionData, ThrowOnError>): RequestResult<EnableIdentityConnectionResponses, EnableIdentityConnectionErrors, ThrowOnError> => (options.client ?? client).post<EnableIdentityConnectionResponses, EnableIdentityConnectionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/catalog/pins/{subjectKind}/{subjectId}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Search normalized observation headers
- */
-export const listObservations = <ThrowOnError extends boolean = false>(options: Options<ListObservationsData, ThrowOnError>): RequestResult<ListObservationsResponses, ListObservationsErrors, ThrowOnError> => (options.client ?? client).get<ListObservationsResponses, ListObservationsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/observations',
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/enable',
     ...options
 });
 
 /**
- * Read one typed normalized observation
+ * Stop scheduling the connection
  */
-export const getObservation = <ThrowOnError extends boolean = false>(options: Options<GetObservationData, ThrowOnError>): RequestResult<GetObservationResponses, GetObservationErrors, ThrowOnError> => (options.client ?? client).get<GetObservationResponses, GetObservationErrors, ThrowOnError>({
+export const disableIdentityConnection = <ThrowOnError extends boolean = false>(options: Options<DisableIdentityConnectionData, ThrowOnError>): RequestResult<DisableIdentityConnectionResponses, DisableIdentityConnectionErrors, ThrowOnError> => (options.client ?? client).post<DisableIdentityConnectionResponses, DisableIdentityConnectionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}',
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/disable',
     ...options
 });
 
-export const patchObservation = <ThrowOnError extends boolean = false>(options: Options<PatchObservationData, ThrowOnError>): RequestResult<PatchObservationResponses, PatchObservationErrors, ThrowOnError> => (options.client ?? client).patch<PatchObservationResponses, PatchObservationErrors, ThrowOnError>({
+/**
+ * List collection cycles with their valuation points
+ */
+export const listCollectionCycles = <ThrowOnError extends boolean = false>(options: Options<ListCollectionCyclesData, ThrowOnError>): RequestResult<ListCollectionCyclesResponses, ListCollectionCyclesErrors, ThrowOnError> => (options.client ?? client).get<ListCollectionCyclesResponses, ListCollectionCyclesErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/observations/{observationId}',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const getCapitalBaseline = <ThrowOnError extends boolean = false>(options: Options<GetCapitalBaselineData, ThrowOnError>): RequestResult<GetCapitalBaselineResponses, GetCapitalBaselineErrors, ThrowOnError> => (options.client ?? client).get<GetCapitalBaselineResponses, GetCapitalBaselineErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline',
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles',
     ...options
 });
 
-export const putCapitalBaseline = <ThrowOnError extends boolean = false>(options: Options<PutCapitalBaselineData, ThrowOnError>): RequestResult<PutCapitalBaselineResponses, PutCapitalBaselineErrors, ThrowOnError> => (options.client ?? client).put<PutCapitalBaselineResponses, PutCapitalBaselineErrors, ThrowOnError>({
+/**
+ * Enqueue a manual collection cycle or return the active one
+ */
+export const createCollectionCycle = <ThrowOnError extends boolean = false>(options: Options<CreateCollectionCycleData, ThrowOnError>): RequestResult<CreateCollectionCycleResponses, CreateCollectionCycleErrors, ThrowOnError> => (options.client ?? client).post<CreateCollectionCycleResponses, CreateCollectionCycleErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-export const listCapitalBaselineRevisions = <ThrowOnError extends boolean = false>(options: Options<ListCapitalBaselineRevisionsData, ThrowOnError>): RequestResult<ListCapitalBaselineRevisionsResponses, ListCapitalBaselineRevisionsErrors, ThrowOnError> => (options.client ?? client).get<ListCapitalBaselineRevisionsResponses, ListCapitalBaselineRevisionsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/capital-baseline/revisions',
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles',
     ...options
 });
 
+/**
+ * Get one cycle with its per-account outcomes
+ */
+export const getCollectionCycle = <ThrowOnError extends boolean = false>(options: Options<GetCollectionCycleData, ThrowOnError>): RequestResult<GetCollectionCycleResponses, GetCollectionCycleErrors, ThrowOnError> => (options.client ?? client).get<GetCollectionCycleResponses, GetCollectionCycleErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId}',
+    ...options
+});
+
+/**
+ * Latest valuation point with platform and identity totals
+ */
+export const getOverview = <ThrowOnError extends boolean = false>(options: Options<GetOverviewData, ThrowOnError>): RequestResult<GetOverviewResponses, GetOverviewErrors, ThrowOnError> => (options.client ?? client).get<GetOverviewResponses, GetOverviewErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/overview',
+    ...options
+});
+
+/**
+ * Platform → identity → account tree at the latest point
+ */
+export const getHoldingsTree = <ThrowOnError extends boolean = false>(options: Options<GetHoldingsTreeData, ThrowOnError>): RequestResult<GetHoldingsTreeResponses, GetHoldingsTreeErrors, ThrowOnError> => (options.client ?? client).get<GetHoldingsTreeResponses, GetHoldingsTreeErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/tree',
+    ...options
+});
+
+/**
+ * Balances of an account's current report
+ */
+export const listAccountBalances = <ThrowOnError extends boolean = false>(options: Options<ListAccountBalancesData, ThrowOnError>): RequestResult<ListAccountBalancesResponses, ListAccountBalancesErrors, ThrowOnError> => (options.client ?? client).get<ListAccountBalancesResponses, ListAccountBalancesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances',
+    ...options
+});
+
+/**
+ * Positions of an account's current report
+ */
+export const listAccountPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountPositionsData, ThrowOnError>): RequestResult<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions',
+    ...options
+});
+
+/**
+ * Flat balance list across the boundary at the latest point
+ */
+export const listBalances = <ThrowOnError extends boolean = false>(options: Options<ListBalancesData, ThrowOnError>): RequestResult<ListBalancesResponses, ListBalancesErrors, ThrowOnError> => (options.client ?? client).get<ListBalancesResponses, ListBalancesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/balances',
+    ...options
+});
+
+/**
+ * Flat position list across the boundary at the latest point
+ */
+export const listPositions = <ThrowOnError extends boolean = false>(options: Options<ListPositionsData, ThrowOnError>): RequestResult<ListPositionsResponses, ListPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListPositionsResponses, ListPositionsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/positions',
+    ...options
+});
+
+/**
+ * Valuation point series
+ */
+export const listValuationPoints = <ThrowOnError extends boolean = false>(options: Options<ListValuationPointsData, ThrowOnError>): RequestResult<ListValuationPointsResponses, ListValuationPointsErrors, ThrowOnError> => (options.client ?? client).get<ListValuationPointsResponses, ListValuationPointsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points',
+    ...options
+});
+
+/**
+ * One valuation point with its account valuations
+ */
+export const getValuationPoint = <ThrowOnError extends boolean = false>(options: Options<GetValuationPointData, ThrowOnError>): RequestResult<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError> => (options.client ?? client).get<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{pointId}',
+    ...options
+});
+
+/**
+ * Period closes per period kind
+ */
+export const listPeriodCloses = <ThrowOnError extends boolean = false>(options: Options<ListPeriodClosesData, ThrowOnError>): RequestResult<ListPeriodClosesResponses, ListPeriodClosesErrors, ThrowOnError> => (options.client ?? client).get<ListPeriodClosesResponses, ListPeriodClosesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/period-closes',
+    ...options
+});
+
+/**
+ * Value changes per period kind
+ */
+export const listValueChanges = <ThrowOnError extends boolean = false>(options: Options<ListValueChangesData, ThrowOnError>): RequestResult<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError> => (options.client ?? client).get<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/value-changes',
+    ...options
+});
+
+/**
+ * One value change between the last points at or before two instants
+ */
+export const getCustomValueChange = <ThrowOnError extends boolean = false>(options: Options<GetCustomValueChangeData, ThrowOnError>): RequestResult<GetCustomValueChangeResponses, GetCustomValueChangeErrors, ThrowOnError> => (options.client ?? client).get<GetCustomValueChangeResponses, GetCustomValueChangeErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/value-changes/custom',
+    ...options
+});
+
+/**
+ * List manual capital flows
+ */
 export const listCapitalFlows = <ThrowOnError extends boolean = false>(options: Options<ListCapitalFlowsData, ThrowOnError>): RequestResult<ListCapitalFlowsResponses, ListCapitalFlowsErrors, ThrowOnError> => (options.client ?? client).get<ListCapitalFlowsResponses, ListCapitalFlowsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -504,6 +550,9 @@ export const listCapitalFlows = <ThrowOnError extends boolean = false>(options: 
     ...options
 });
 
+/**
+ * Record a manual capital flow
+ */
 export const createCapitalFlow = <ThrowOnError extends boolean = false>(options: Options<CreateCapitalFlowData, ThrowOnError>): RequestResult<CreateCapitalFlowResponses, CreateCapitalFlowErrors, ThrowOnError> => (options.client ?? client).post<CreateCapitalFlowResponses, CreateCapitalFlowErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -518,6 +567,9 @@ export const createCapitalFlow = <ThrowOnError extends boolean = false>(options:
     }
 });
 
+/**
+ * Delete a capital flow
+ */
 export const deleteCapitalFlow = <ThrowOnError extends boolean = false>(options: Options<DeleteCapitalFlowData, ThrowOnError>): RequestResult<DeleteCapitalFlowResponses, DeleteCapitalFlowErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCapitalFlowResponses, DeleteCapitalFlowErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -528,6 +580,9 @@ export const deleteCapitalFlow = <ThrowOnError extends boolean = false>(options:
     ...options
 });
 
+/**
+ * Get a capital flow
+ */
 export const getCapitalFlow = <ThrowOnError extends boolean = false>(options: Options<GetCapitalFlowData, ThrowOnError>): RequestResult<GetCapitalFlowResponses, GetCapitalFlowErrors, ThrowOnError> => (options.client ?? client).get<GetCapitalFlowResponses, GetCapitalFlowErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -538,6 +593,9 @@ export const getCapitalFlow = <ThrowOnError extends boolean = false>(options: Op
     ...options
 });
 
+/**
+ * Edit a capital flow
+ */
 export const patchCapitalFlow = <ThrowOnError extends boolean = false>(options: Options<PatchCapitalFlowData, ThrowOnError>): RequestResult<PatchCapitalFlowResponses, PatchCapitalFlowErrors, ThrowOnError> => (options.client ?? client).patch<PatchCapitalFlowResponses, PatchCapitalFlowErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -552,122 +610,86 @@ export const patchCapitalFlow = <ThrowOnError extends boolean = false>(options: 
     }
 });
 
-export const listCapitalFlowRevisions = <ThrowOnError extends boolean = false>(options: Options<ListCapitalFlowRevisionsData, ThrowOnError>): RequestResult<ListCapitalFlowRevisionsResponses, ListCapitalFlowRevisionsErrors, ThrowOnError> => (options.client ?? client).get<ListCapitalFlowRevisionsResponses, ListCapitalFlowRevisionsErrors, ThrowOnError>({
+/**
+ * Derived boundary events between two instants
+ */
+export const listBoundaryEvents = <ThrowOnError extends boolean = false>(options: Options<ListBoundaryEventsData, ThrowOnError>): RequestResult<ListBoundaryEventsResponses, ListBoundaryEventsErrors, ThrowOnError> => (options.client ?? client).get<ListBoundaryEventsResponses, ListBoundaryEventsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}/revisions',
+    url: '/api/v1/portfolios/{portfolioId}/boundary-events',
     ...options
 });
 
 /**
- * Portfolio overview cards, series, exposure, and issues
+ * List platform asset listings and their asset mapping
  */
-export const getOverview = <ThrowOnError extends boolean = false>(options: Options<GetOverviewData, ThrowOnError>): RequestResult<GetOverviewResponses, GetOverviewErrors, ThrowOnError> => (options.client ?? client).get<GetOverviewResponses, GetOverviewErrors, ThrowOnError>({
+export const listAssetListings = <ThrowOnError extends boolean = false>(options: Options<ListAssetListingsData, ThrowOnError>): RequestResult<ListAssetListingsResponses, ListAssetListingsErrors, ThrowOnError> => (options.client ?? client).get<ListAssetListingsResponses, ListAssetListingsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/overview',
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings',
     ...options
 });
 
 /**
- * Latest balances with grouping and offset pagination
+ * Override the asset symbol of a listing and recalculate affected points
  */
-export const listBalances = <ThrowOnError extends boolean = false>(options: Options<ListBalancesData, ThrowOnError>): RequestResult<ListBalancesResponses, ListBalancesErrors, ThrowOnError> => (options.client ?? client).get<ListBalancesResponses, ListBalancesErrors, ThrowOnError>({
+export const putAssetListingMapping = <ThrowOnError extends boolean = false>(options: Options<PutAssetListingMappingData, ThrowOnError>): RequestResult<PutAssetListingMappingResponses, PutAssetListingMappingErrors, ThrowOnError> => (options.client ?? client).put<PutAssetListingMappingResponses, PutAssetListingMappingErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/balances',
-    ...options
-});
-
-/**
- * Latest positions with grouping and offset pagination
- */
-export const listPositions = <ThrowOnError extends boolean = false>(options: Options<ListPositionsData, ThrowOnError>): RequestResult<ListPositionsResponses, ListPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListPositionsResponses, ListPositionsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/positions',
-    ...options
-});
-
-/**
- * Long, short, and net exposure with grouping
- */
-export const listExposures = <ThrowOnError extends boolean = false>(options: Options<ListExposuresData, ThrowOnError>): RequestResult<ListExposuresResponses, ListExposuresErrors, ThrowOnError> => (options.client ?? client).get<ListExposuresResponses, ListExposuresErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/exposures',
-    ...options
-});
-
-/**
- * Portfolio valuation history
- */
-export const listValuations = <ThrowOnError extends boolean = false>(options: Options<ListValuationsData, ThrowOnError>): RequestResult<ListValuationsResponses, ListValuationsErrors, ThrowOnError> => (options.client ?? client).get<ListValuationsResponses, ListValuationsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/valuations',
-    ...options
-});
-
-/**
- * Calendar value-change history
- */
-export const listValueChanges = <ThrowOnError extends boolean = false>(options: Options<ListValueChangesData, ThrowOnError>): RequestResult<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError> => (options.client ?? client).get<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/value-changes',
-    ...options
-});
-
-/**
- * Period summary history
- */
-export const listPeriodSummaries = <ThrowOnError extends boolean = false>(options: Options<ListPeriodSummariesData, ThrowOnError>): RequestResult<ListPeriodSummariesResponses, ListPeriodSummariesErrors, ThrowOnError> => (options.client ?? client).get<ListPeriodSummariesResponses, ListPeriodSummariesErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/period-summaries',
-    ...options
-});
-
-/**
- * Enqueue a full projection rebuild
- */
-export const createProjectionRebuild = <ThrowOnError extends boolean = false>(options: Options<CreateProjectionRebuildData, ThrowOnError>): RequestResult<CreateProjectionRebuildResponses, CreateProjectionRebuildErrors, ThrowOnError> => (options.client ?? client).post<CreateProjectionRebuildResponses, CreateProjectionRebuildErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/projection-rebuilds',
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping',
     ...options,
     headers: {
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * List platform instruments
+ */
+export const listInstruments = <ThrowOnError extends boolean = false>(options: Options<ListInstrumentsData, ThrowOnError>): RequestResult<ListInstrumentsResponses, ListInstrumentsErrors, ThrowOnError> => (options.client ?? client).get<ListInstrumentsResponses, ListInstrumentsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments',
+    ...options
+});
+
+/**
+ * List durable jobs
+ */
+export const listJobs = <ThrowOnError extends boolean = false>(options: Options<ListJobsData, ThrowOnError>): RequestResult<ListJobsResponses, ListJobsErrors, ThrowOnError> => (options.client ?? client).get<ListJobsResponses, ListJobsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/jobs',
+    ...options
+});
+
+/**
+ * Get a job
+ */
+export const getJob = <ThrowOnError extends boolean = false>(options: Options<GetJobData, ThrowOnError>): RequestResult<GetJobResponses, GetJobErrors, ThrowOnError> => (options.client ?? client).get<GetJobResponses, GetJobErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}',
+    ...options
 });
 
 /**

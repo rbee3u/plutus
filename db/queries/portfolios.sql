@@ -1,43 +1,32 @@
 -- name: InsertPortfolio :exec
 INSERT INTO portfolios (
-    id, user_id, name, timezone, display_asset_id, status, undeletable, version, created_at, updated_at, archived_at
+    id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(timezone), sqlc.arg(display_asset_id),
-    sqlc.arg(status), sqlc.arg(undeletable), sqlc.arg(version), sqlc.arg(created_at), sqlc.arg(updated_at), sqlc.arg(archived_at)
+    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.arg(timezone), sqlc.arg(collection_interval_seconds),
+    sqlc.arg(undeletable), sqlc.arg(version), sqlc.arg(created_at), sqlc.arg(updated_at)
 );
 
 -- name: ListPortfoliosByUser :many
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.user_id = sqlc.arg(user_id)
-  AND p.status = 'active'
-ORDER BY p.created_at ASC, p.id ASC;
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE user_id = sqlc.arg(user_id)
+ORDER BY created_at ASC, id ASC;
 
 -- name: GetPortfolioByUserAndID :one
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.user_id = sqlc.arg(user_id) AND p.id = sqlc.arg(id);
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE user_id = sqlc.arg(user_id) AND id = sqlc.arg(id);
 
 -- name: GetPortfolioByID :one
-SELECT
-    p.id, p.user_id, p.name, p.timezone, p.display_asset_id, p.status, p.undeletable, p.version,
-    p.created_at, p.updated_at, p.archived_at, a.code AS display_asset_code,
-    p.active_projection_generation_id
-FROM portfolios p
-JOIN assets a ON a.id = p.display_asset_id
-WHERE p.id = sqlc.arg(id);
+SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+FROM portfolios
+WHERE id = sqlc.arg(id);
 
 -- name: UpdatePortfolio :execrows
 UPDATE portfolios
 SET name = sqlc.arg(name),
     timezone = sqlc.arg(timezone),
-    display_asset_id = sqlc.arg(display_asset_id),
+    collection_interval_seconds = sqlc.arg(collection_interval_seconds),
     version = version + 1,
     updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND version = sqlc.arg(version);
@@ -45,3 +34,13 @@ WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND version = sqlc.arg(v
 -- name: DeletePortfolio :execrows
 DELETE FROM portfolios
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND version = sqlc.arg(version);
+
+-- name: ListPortfoliosForScheduling :many
+SELECT p.id, p.collection_interval_seconds,
+       (SELECT MAX(j.created_at) FROM jobs j WHERE j.portfolio_id = p.id AND j.kind = 'collection_cycle') AS last_cycle_at
+FROM portfolios p
+WHERE EXISTS (
+    SELECT 1 FROM identities i
+    WHERE i.portfolio_id = p.id AND i.status = 'enabled' AND i.connection_status = 'enabled'
+)
+ORDER BY p.created_at ASC, p.id ASC;

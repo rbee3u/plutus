@@ -1,26 +1,88 @@
+import { Fragment, type MouseEvent, type ReactNode } from "react";
 import styles from "@/features/pages.module.css";
 
 export interface DataColumn {
   key: string;
   header: string;
   numeric?: boolean;
+  /** Keeps timestamps and short codes on one line; the wrapper scrolls instead. */
+  nowrap?: boolean;
 }
 
-interface DataTableProps {
+function cellClass(column: DataColumn): string | undefined {
+  const classes = [column.numeric ? styles.numeric : "", column.nowrap ? styles.nowrap : ""].filter(
+    Boolean,
+  );
+  return classes.length > 0 ? classes.join(" ") : undefined;
+}
+
+/** One row; `id` or `key` (when a string) becomes the React key. */
+export type DataRow = Record<string, ReactNode>;
+
+export interface DataTableProps {
+  /** Accessible name of the table; read by screen readers, not drawn. */
   caption: string;
   columns: DataColumn[];
-  rows: Record<string, string>[];
+  rows: DataRow[];
+  /** Sentence shown when there are no rows, saying what would make rows appear. */
+  empty?: string;
+  rowClassName?: (row: DataRow) => string | undefined;
+  /** Key of the row whose detail is open; `renderDetail` fills a full-width row beneath it. */
+  openKey?: string;
+  /** Element id of the open detail row, for the toggle's `aria-controls`. */
+  detailId?: string;
+  renderDetail?: (row: DataRow) => ReactNode;
+  /** Makes the whole row a target for opening its detail, called with the row key; controls inside the row keep their own click. */
+  onRowClick?: (key: string) => void;
 }
 
-export function DataTable({ caption, columns, rows }: DataTableProps) {
+/** True when a click landed on a control that handles itself, so a row handler should stay quiet. */
+export function isOwnControl(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest("button, a, input, select, textarea, label") !== null
+  );
+}
+
+function rowKey(row: DataRow, index: number): string {
+  const candidate = row.id ?? row.key;
+  return typeof candidate === "string" || typeof candidate === "number"
+    ? String(candidate)
+    : String(index);
+}
+
+export function DataTable({
+  caption,
+  columns,
+  rows,
+  empty = "No rows.",
+  rowClassName,
+  openKey,
+  detailId,
+  renderDetail,
+  onRowClick,
+}: DataTableProps) {
+  function rowClick(key: string) {
+    return onRowClick
+      ? (event: MouseEvent<HTMLTableRowElement>) => {
+          if (!isOwnControl(event.target)) {
+            onRowClick(key);
+          }
+        }
+      : undefined;
+  }
+  function rowClasses(row: DataRow): string | undefined {
+    const classes = [onRowClick ? styles.clickRow : "", rowClassName?.(row) ?? ""].filter(Boolean);
+    return classes.length > 0 ? classes.join(" ") : undefined;
+  }
   return (
     <div className={styles.tableWrap}>
       <table>
-        <caption>{caption}</caption>
+        <caption className={styles.srOnly}>{caption}</caption>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col">
+              <th key={column.key} scope="col" className={cellClass(column)}>
                 {column.header}
               </th>
             ))}
@@ -29,18 +91,32 @@ export function DataTable({ caption, columns, rows }: DataTableProps) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length}>No rows.</td>
+              <td colSpan={columns.length} className={styles.cellMeta}>
+                {empty}
+              </td>
             </tr>
           ) : (
-            rows.map((row, index) => (
-              <tr key={`${row.id ?? row.key ?? index}`}>
-                {columns.map((column) => (
-                  <td key={column.key} className={column.numeric ? styles.numeric : undefined}>
-                    {row[column.key] ?? "—"}
-                  </td>
-                ))}
-              </tr>
-            ))
+            rows.map((row, index) => {
+              const key = rowKey(row, index);
+              return (
+                <Fragment key={key}>
+                  <tr className={rowClasses(row)} onClick={rowClick(key)}>
+                    {columns.map((column) => (
+                      <td key={column.key} className={cellClass(column)}>
+                        {row[column.key] ?? "—"}
+                      </td>
+                    ))}
+                  </tr>
+                  {renderDetail && openKey === key ? (
+                    <tr className={styles.detailRow} id={detailId}>
+                      <td colSpan={columns.length}>
+                        <div className={styles.detail}>{renderDetail(row)}</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })
           )}
         </tbody>
       </table>

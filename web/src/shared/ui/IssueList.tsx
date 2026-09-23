@@ -1,26 +1,56 @@
-import type { ProjectionIssue } from "@/api/generated/types.gen";
+import type { Issue } from "@/api/generated/types.gen";
 import styles from "@/features/pages.module.css";
 
-export function IssueList({ issues }: { issues: ProjectionIssue[] }) {
-  if (issues.length === 0) {
-    return <p className={styles.muted}>No projection issues for this view.</p>;
-  }
+/** Machine codes (issue codes, reason codes, error classes) in one mono style. */
+export function Codes({ values }: { values: string[] }) {
   return (
-    <ul className={styles.issues}>
-      {issues.map((issue) => (
-        <li key={issue.id ?? `${issue.code}-${issue.projectionKind}-${issue.projectionKey ?? ""}`}>
-          <strong className={severityClass(issue.severity)}>{issue.severity}</strong>
-          <span>
-            {issue.code}: {issue.summary}
-          </span>
-        </li>
+    <>
+      {values.map((value, index) => (
+        <span key={value}>
+          {index > 0 ? " " : ""}
+          <code className={styles.issueCode}>{value}</code>
+        </span>
       ))}
-    </ul>
+    </>
   );
 }
 
-function severityClass(severity: ProjectionIssue["severity"]): string {
-  if (severity === "error") return styles.issueError;
-  if (severity === "warning") return styles.issueWarning;
-  return styles.issueInfo;
+/** A page section for issues: a heading and list when there are any, one quiet line otherwise. */
+export function IssuesPanel({ issues, empty }: { issues: Issue[]; empty: string }) {
+  if (issues.length === 0) {
+    return <p className={styles.muted}>{empty}</p>;
+  }
+  return (
+    <section className={styles.panel}>
+      <h2>Issues</h2>
+      <IssueList issues={issues} />
+    </section>
+  );
+}
+
+export function IssueList({
+  issues,
+  empty = "No issues for this view.",
+}: {
+  issues: Issue[];
+  empty?: string;
+}) {
+  if (issues.length === 0) {
+    return <p className={styles.muted}>{empty}</p>;
+  }
+  return (
+    <ul className={styles.issues}>
+      {issues.map((issue, index) => {
+        const scope = [issue.accountName, issue.symbol].filter(Boolean).join(" · ");
+        return (
+          <li key={`${issue.code}-${issue.accountId ?? ""}-${issue.symbol ?? ""}-${String(index)}`}>
+            <span>
+              <Codes values={[issue.code]} /> {issue.detail}
+            </span>
+            {scope ? <span className={styles.issueMeta}>{scope}</span> : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }

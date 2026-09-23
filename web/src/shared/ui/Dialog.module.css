@@ -3,15 +3,21 @@
   max-height: calc(100vh - 32px);
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--line-structural);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   color: var(--ink);
   box-shadow: var(--shadow-lg);
 }
 
+/* Only the open dialog lays out as a column; a closed one keeps the browser's display: none. */
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
 .dialog::backdrop {
-  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  background: rgb(10 15 24 / 0.45);
 }
 
 .header {
@@ -19,23 +25,24 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--line-content);
-  background: var(--surface-inset);
+  padding: var(--space-lg) var(--space-lg) var(--space-lg) var(--space-2xl);
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.header h3 {
+.header h2 {
   margin: 0;
-  font-size: var(--text-panel-title);
-  font-weight: var(--weight-panel-title);
-  line-height: var(--line-height-panel-title);
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-height-md);
 }
 
+/* The body takes whatever height the viewport leaves and scrolls only past that. */
 .body {
   display: grid;
+  flex: 1 1 auto;
   gap: var(--space-lg);
-  max-height: min(70vh, 640px);
-  padding: var(--space-lg);
+  min-height: 0;
+  padding: var(--space-2xl);
   overflow: auto;
 }
 
@@ -49,12 +56,5 @@
 
   .dialog button {
     min-width: 44px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dialog,
-  .dialog::backdrop {
-    transition: none;
   }
 }

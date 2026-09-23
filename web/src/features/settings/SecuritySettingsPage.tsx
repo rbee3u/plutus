@@ -1,7 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { deleteAuthSession, getAuthSessions, putAuthPassword } from "@/api/generated/sdk.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import { problemError, problemMessage, refreshCsrf } from "@/api/http";
+import { formatInstant } from "@/shared/lib/datetime";
+import { clientSummary } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
@@ -54,7 +56,11 @@ export function SecuritySettingsPage() {
     try {
       await refreshCsrf();
       const result = await putAuthPassword({ body: { currentPassword, newPassword } });
-      if (result.response?.status === 401) {
+      // A wrong current password is also a 401; only a lost session goes back to the login page.
+      if (
+        result.response?.status === 401 &&
+        problemError(result.error, "").code !== "invalid_credentials"
+      ) {
         void navigate("/login", { replace: true });
         return;
       }
@@ -98,15 +104,22 @@ export function SecuritySettingsPage() {
 
   return (
     <section className={styles.page}>
-      <h2>Account & Security</h2>
+      <p className={styles.lead}>
+        Changing the password signs every other session out. Sessions are the browsers signed in as
+        this account.
+      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
         </p>
       ) : null}
-      {notice ? <p className={styles.notice}>{notice}</p> : null}
+      {notice ? (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
+      ) : null}
       <form className={styles.form} onSubmit={(event) => void onChangePassword(event)}>
-        <h3>Change password</h3>
+        <h2>Change password</h2>
         <label className={styles.field}>
           <span>Current password</span>
           <TextInput
@@ -134,16 +147,20 @@ export function SecuritySettingsPage() {
           </ActionButton>
         </div>
       </form>
-      <div>
-        <h3>Sessions</h3>
+      <section className={styles.panel}>
+        <h2>Sessions</h2>
         <ul className={styles.sessions}>
           {sessions.map((session) => (
             <li key={session.id}>
               <div>
                 <strong>
-                  {session.current ? "This session" : (session.clientLabel ?? "Session")}
+                  {session.clientLabel ? clientSummary(session.clientLabel) : "Unknown client"}
+                  {session.current ? " · this session" : ""}
                 </strong>
-                <p className={styles.muted}>Last seen {session.lastSeenAt}</p>
+                <p className={styles.muted} title={session.clientLabel ?? undefined}>
+                  Signed in {formatInstant(session.createdAt)} · last seen{" "}
+                  {formatInstant(session.lastSeenAt)}
+                </p>
               </div>
               {!session.current ? (
                 <ActionButton tone="dangerQuiet" onClick={() => void revoke(session.id)}>
@@ -153,7 +170,7 @@ export function SecuritySettingsPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     </section>
   );
 }

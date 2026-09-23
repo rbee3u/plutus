@@ -13,7 +13,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/portfolio"
 )
@@ -32,6 +31,8 @@ type Service struct {
 	absolute time.Duration
 	now      func() time.Time
 	limiter  *limiter
+	// defaultInterval is the Collection Cycle interval of the portfolio created with a user.
+	defaultInterval time.Duration
 }
 
 // NewService constructs an authentication service.
@@ -43,12 +44,13 @@ func NewService(db *sql.DB, idle, absolute time.Duration) *Service {
 		absolute = 30 * 24 * time.Hour
 	}
 	return &Service{
-		q:        sqlcgen.New(db),
-		db:       db,
-		idle:     idle,
-		absolute: absolute,
-		now:      time.Now,
-		limiter:  newLimiter(),
+		q:               sqlcgen.New(db),
+		db:              db,
+		idle:            idle,
+		absolute:        absolute,
+		now:             time.Now,
+		defaultInterval: 15 * time.Minute,
+		limiter:         newLimiter(),
 	}
 }
 
@@ -71,6 +73,13 @@ type Session struct {
 	AbsoluteExpiresAt time.Time
 	ClientLabel       *string
 	Current           bool
+}
+
+// SetDefaultCollectionInterval sets the Collection Cycle interval given to the birth Portfolio.
+func (s *Service) SetDefaultCollectionInterval(d time.Duration) {
+	if d > 0 {
+		s.defaultInterval = d
+	}
 }
 
 // CreateUser inserts a user and default undeletable portfolio.
@@ -100,10 +109,6 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 	if err != nil {
 		return User{}, err
 	}
-	assetBytes, err := catalog.AssetUSD.MarshalBinary()
-	if err != nil {
-		return User{}, err
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return User{}, err
@@ -125,16 +130,15 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 		return User{}, err
 	}
 	if err := q.InsertPortfolio(ctx, sqlcgen.InsertPortfolioParams{
-		ID:             portfolioBytes,
-		UserID:         userBytes,
-		Name:           portfolio.DefaultName,
-		Timezone:       "Asia/Shanghai",
-		DisplayAssetID: assetBytes,
-		Status:         "active",
-		Undeletable:    true,
-		Version:        1,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:                        portfolioBytes,
+		UserID:                    userBytes,
+		Name:                      portfolio.DefaultName,
+		Timezone:                  portfolio.DefaultTimezone,
+		CollectionIntervalSeconds: uint32(s.defaultInterval / time.Second),
+		Undeletable:               true,
+		Version:                   1,
+		CreatedAt:                 now,
+		UpdatedAt:                 now,
 	}); err != nil {
 		return User{}, err
 	}

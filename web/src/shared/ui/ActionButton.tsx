@@ -2,8 +2,12 @@ import type { ButtonHTMLAttributes } from "react";
 import { forwardRef } from "react";
 import styles from "@/shared/ui/ActionButton.module.css";
 
-export type ActionButtonTone =
-  "primary" | "primarySoft" | "secondary" | "ghost" | "dangerQuiet" | "danger" | "dangerPrimary";
+/**
+ * primary: the one main action of a screen. secondary: a bordered action.
+ * ghost: a quiet action in a row or toolbar. danger: a destructive confirm.
+ * dangerQuiet: a quiet action that turns red when hovered.
+ */
+export type ActionButtonTone = "primary" | "secondary" | "ghost" | "danger" | "dangerQuiet";
 
 export interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: ActionButtonTone;

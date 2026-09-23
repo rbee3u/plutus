@@ -1,7 +1,9 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 
@@ -11,7 +13,7 @@ import (
 )
 
 // ExpectedSchemaVersion is the latest Goose migration this build requires.
-const ExpectedSchemaVersion int64 = 20260920120000
+const ExpectedSchemaVersion int64 = 20260922120000
 
 func prepareGoose() error {
 	if err := goose.SetDialect("mysql"); err != nil {
@@ -21,11 +23,29 @@ func prepareGoose() error {
 	return nil
 }
 
-// Up applies all pending migrations.
+// migrationLockName is the MySQL advisory lock that serializes concurrent Up callers.
+const migrationLockName = "plutus_migrate"
+
+// Up applies all pending migrations. Concurrent callers sharing one database (for example
+// test packages) serialize on a MySQL advisory lock so the Goose version table is created once.
 func Up(db *sql.DB) error {
 	if err := prepareGoose(); err != nil {
 		return err
 	}
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("migrate up: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+	var locked sql.NullInt64
+	if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(?, 120)", migrationLockName).Scan(&locked); err != nil {
+		return fmt.Errorf("migrate up: acquire lock: %w", err)
+	}
+	if !locked.Valid || locked.Int64 != 1 {
+		return errors.New("migrate up: the migration lock is held by another process")
+	}
+	defer func() { _, _ = conn.ExecContext(ctx, "SELECT RELEASE_LOCK(?)", migrationLockName) }()
 	if err := goose.Up(db, "."); err != nil {
 		return fmt.Errorf("migrate up: %w", err)
 	}

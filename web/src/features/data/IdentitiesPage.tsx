@@ -1,353 +1,230 @@
-import { Fragment, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { MoreHorizontal } from "lucide-react";
+import { useRef, useState } from "react";
+import { useParams } from "react-router";
 import {
   archiveIdentity,
-  deleteConnection,
-  getConnection,
-  getIdentity,
-  listConnections,
-  listIdentities,
-  listObservations,
+  disableIdentityConnection,
+  enableIdentityConnection,
+  validateIdentityConnection,
 } from "@/api/generated/sdk.gen";
-import type { Connection, Identity } from "@/api/generated/types.gen";
+import type { Identity, ValidationOutcome } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import {
-  ConnectionFormDialog,
-  type ConnectionDialogRequest,
-} from "@/features/data/ConnectionFormDialog";
-import { IdentityFormDialog, type IdentityDialogRequest } from "@/features/data/IdentityFormDialog";
-import { platformLabel } from "@/features/data/platforms";
+  IdentityDialog,
+  type IdentityDialogInput,
+  type IdentityDialogRequest,
+} from "@/features/data/IdentityDialogs";
+import { identityEtag, useIdentities } from "@/features/data/useIdentities";
+import { accountModeLabel, platformLabel, usePlatforms } from "@/features/data/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { readEtag, unwrapOrRedirect, useCurrentUser } from "@/shared/lib/session";
+import { usePortfolio } from "@/shared/lib/portfolio";
+import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { StatusBadge } from "@/shared/ui/Badge";
+import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
+import { Toggle } from "@/shared/ui/FormControls";
 import { IconButton } from "@/shared/ui/IconButton";
+import { Codes } from "@/shared/ui/IssueList";
+import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { Select } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
-const identityColumnCount = 9;
+const CONFLICT = "The identity changed in another session. The list was reloaded; retry.";
 
-function connectionSummary(rows: Connection[]): string {
-  if (rows.length === 0) {
-    return "None";
-  }
-  const enabled = rows.filter((row) => row.status === "enabled").length;
-  const invalid = rows.filter((row) => row.status === "invalid").length;
-  const base = `${String(enabled)}/${String(rows.length)} enabled`;
-  if (invalid === 0) {
-    return base;
-  }
-  return `${base} · ${String(invalid)} invalid`;
+function isOutcome(value: unknown): value is ValidationOutcome {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ok" in value &&
+    "identity" in value &&
+    "validatedAt" in value
+  );
 }
 
-function secondsLabel(value: number | undefined): string {
-  return value != null ? `${String(value)}s` : "—";
+function sentence(text: string): string {
+  return /[.!?]$/.test(text) ? text : `${text}.`;
 }
 
-function compareIdentities(left: Identity, right: Identity, direction: "asc" | "desc"): number {
-  const platform = platformLabel(left.platformId).localeCompare(platformLabel(right.platformId));
-  if (platform !== 0) {
-    return direction === "asc" ? platform : -platform;
+function outcomeText(outcome: ValidationOutcome): string {
+  if (outcome.ok) {
+    return `ok${outcome.externalRef ? ` (account ${outcome.externalRef})` : ""}`;
   }
-  return left.displayName.localeCompare(right.displayName);
+  return `${outcome.errorClass ?? "failed"}${outcome.errorDetail ? `: ${outcome.errorDetail}` : ""}`;
 }
 
 export function IdentitiesPage() {
   const { portfolioId = "" } = useParams();
-  const navigate = useNavigate();
+  const { userId, redirect } = useSessionScope();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const identities = useIdentities(portfolioId);
+  const platforms = usePlatforms();
+  const portfolio = usePortfolio(portfolioId);
+  const timezone = portfolio.data?.item.timezone;
   const nonce = useRef(0);
-  const [platformFilter, setPlatformFilter] = useState("all");
-  const [platformSort, setPlatformSort] = useState<"asc" | "desc">("asc");
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [identityRequest, setIdentityRequest] = useState<IdentityDialogRequest | null>(null);
-  const [connectionRequest, setConnectionRequest] = useState<ConnectionDialogRequest | null>(null);
-  const [archiveId, setArchiveId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [dialog, setDialog] = useState<IdentityDialogRequest | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Identity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const redirect = () => {
-    void navigate("/login", { replace: true });
-  };
-  const identities = useQuery({
-    queryKey: ["identities", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(await listIdentities({ path: { portfolioId } }), redirect),
-  });
-  const connections = useQuery({
-    queryKey: ["connections", user.data?.id, portfolioId],
-    enabled: Boolean(user.data?.id && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(await listConnections({ path: { portfolioId } }), redirect),
-  });
-  const identityItems = identities.data?.items;
-  const connectionItems = connections.data?.items;
-  const connectionsByIdentity = useMemo(() => {
-    const grouped = new Map<string, Connection[]>();
-    for (const item of connectionItems ?? []) {
-      const current = grouped.get(item.identityId);
-      if (current) {
-        current.push(item);
-      } else {
-        grouped.set(item.identityId, [item]);
-      }
-    }
-    return grouped;
-  }, [connectionItems]);
-  const platformChoices = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const item of identityItems ?? []) {
-      if (!seen.has(item.platformId)) {
-        seen.set(item.platformId, platformLabel(item.platformId));
-      }
-    }
-    return [...seen.entries()]
-      .map(([id, label]) => ({ id, label }))
-      .sort((left, right) => left.label.localeCompare(right.label));
-  }, [identityItems]);
-  const visibleIdentities = useMemo(() => {
-    return (identityItems ?? [])
-      .filter((item) => platformFilter === "all" || item.platformId === platformFilter)
-      .slice()
-      .sort((left, right) => compareIdentities(left, right, platformSort));
-  }, [identityItems, platformFilter, platformSort]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const items = identities.data?.items ?? [];
+  const archivedCount = items.filter((item) => item.status === "archived").length;
+  const visible = items.filter((item) => showArchived || item.status !== "archived");
 
-  function nextNonce() {
+  async function invalidate() {
+    await queryClient.invalidateQueries({ queryKey: ["identities", userId, portfolioId] });
+  }
+
+  function open(input: IdentityDialogInput) {
+    setError(null);
+    setNotice(null);
     nonce.current += 1;
-    return nonce.current;
+    setDialog({ ...input, nonce: nonce.current });
   }
 
-  function identityName(identityId: string) {
-    return identityItems?.find((item) => item.id === identityId)?.displayName ?? identityId;
+  async function runAction(
+    item: Identity,
+    action: () => Promise<{ status: number | undefined; message: string | null; error?: unknown }>,
+    fallback: string,
+  ) {
+    setBusyId(item.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await refreshCsrf();
+      const outcome = await action();
+      if (outcome.status === 401) {
+        redirect();
+        return;
+      }
+      if (outcome.status === 412) {
+        setError(CONFLICT);
+        await invalidate();
+        return;
+      }
+      if (outcome.message === null) {
+        setError(problemMessage(outcome.error, fallback));
+        return;
+      }
+      setNotice(outcome.message);
+      await invalidate();
+    } catch (cause) {
+      setError(problemMessage(cause, fallback));
+    } finally {
+      setBusyId(null);
+    }
   }
 
-  async function invalidateIdentities() {
-    await queryClient.invalidateQueries({ queryKey: ["identities", user.data?.id, portfolioId] });
-  }
-
-  async function invalidateConnections() {
-    await queryClient.invalidateQueries({ queryKey: ["connections", user.data?.id, portfolioId] });
-  }
-
-  function changePlatform(next: string) {
-    setPlatformFilter(next);
-    const allowed = new Set(
-      (identityItems ?? [])
-        .filter((item) => next === "all" || item.platformId === next)
-        .map((item) => item.id),
+  function validate(item: Identity) {
+    return runAction(
+      item,
+      async () => {
+        const result = await validateIdentityConnection({
+          path: { portfolioId, identityId: item.id },
+        });
+        if (!result.data) {
+          return { status: result.response?.status, message: null, error: result.error };
+        }
+        return {
+          status: result.response?.status,
+          message: `Validation of ${item.displayName}: ${sentence(outcomeText(result.data))} Connection is ${result.data.identity.connection.status}.`,
+        };
+      },
+      "Validation could not run.",
     );
-    setExpanded((current) => {
-      const nextSet = new Set([...current].filter((id) => allowed.has(id)));
-      return nextSet.size === current.size ? current : nextSet;
-    });
   }
 
-  function toggleExpanded(identityId: string) {
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (next.has(identityId)) {
-        next.delete(identityId);
-      } else {
-        next.add(identityId);
-      }
-      return next;
-    });
+  function enable(item: Identity) {
+    return runAction(
+      item,
+      async () => {
+        const result = await enableIdentityConnection({
+          path: { portfolioId, identityId: item.id },
+          headers: { "If-Match": identityEtag(item) },
+        });
+        if (result.response?.status === 422 && isOutcome(result.error)) {
+          await invalidate();
+          return {
+            status: 422,
+            message: null,
+            error: new Error(
+              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} Connection is now ${result.error.identity.connection.status}.`,
+            ),
+          };
+        }
+        if (!result.data) {
+          return { status: result.response?.status, message: null, error: result.error };
+        }
+        return {
+          status: result.response?.status,
+          message: `Connection enabled for ${item.displayName}: ${sentence(outcomeText(result.data))} It joins the next Collection Cycle.`,
+        };
+      },
+      "The connection could not be enabled.",
+    );
   }
 
-  function openIdentityCreate() {
-    setError(null);
-    setNotice(null);
-    setConnectionRequest(null);
-    setIdentityRequest({ nonce: nextNonce(), mode: "create" });
-  }
-
-  async function openIdentityEdit(identityId: string) {
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const result = await getIdentity({ path: { portfolioId, identityId } });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      const item = unwrapOrRedirect(result, redirect);
-      const observed = await listObservations({
-        path: { portfolioId },
-        query: { identityId, limit: 1 },
-      });
-      if (observed.response?.status === 401) {
-        redirect();
-        return;
-      }
-      setConnectionRequest(null);
-      setIdentityRequest({
-        nonce: nextNonce(),
-        mode: "edit",
-        item,
-        etag: readEtag(result.response, `"identity:${String(item.version)}"`),
-        frozen: (observed.data?.items.length ?? 0) > 0,
-      });
-    } catch (cause) {
-      setError(problemMessage(cause, "The identity could not be loaded."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function openConnectionEdit(connectionId: string, name: string) {
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const result = await getConnection({ path: { portfolioId, connectionId } });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      const item = unwrapOrRedirect(result, redirect);
-      setIdentityRequest(null);
-      setConnectionRequest({
-        nonce: nextNonce(),
-        mode: "edit",
-        item,
-        etag: readEtag(result.response, `"connection:${String(item.version)}"`),
-        identityName: name,
-      });
-    } catch (cause) {
-      setError(problemMessage(cause, "The connection could not be loaded."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function openConnectionCreate(identityId: string) {
-    setError(null);
-    setNotice(null);
-    setIdentityRequest(null);
-    setConnectionRequest({
-      nonce: nextNonce(),
-      mode: "create",
-      identityId,
-      identityName: identityName(identityId),
-    });
+  function disable(item: Identity) {
+    return runAction(
+      item,
+      async () => {
+        const result = await disableIdentityConnection({
+          path: { portfolioId, identityId: item.id },
+          headers: { "If-Match": identityEtag(item) },
+        });
+        if (!result.data) {
+          return { status: result.response?.status, message: null, error: result.error };
+        }
+        return {
+          status: result.response?.status,
+          message: `Connection disabled for ${item.displayName}. Its accounts leave the boundary at the next Collection Cycle.`,
+        };
+      },
+      "The connection could not be disabled.",
+    );
   }
 
   async function confirmArchive() {
-    if (!archiveId) {
+    const item = archiveTarget;
+    if (!item) {
       return;
     }
-    const identityId = archiveId;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const current = await getIdentity({ path: { portfolioId, identityId } });
-      if (current.response?.status === 401) {
-        redirect();
-        return;
-      }
-      const item = unwrapOrRedirect(current, redirect);
-      const match = readEtag(current.response, `"identity:${String(item.version)}"`);
-      await refreshCsrf();
-      const result = await archiveIdentity({
-        path: { portfolioId, identityId },
-        headers: { "If-Match": match },
-      });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      if (result.response?.status === 412) {
-        setArchiveId(null);
-        setError("The identity changed in another session. Reload before archiving.");
-        await invalidateIdentities();
-        return;
-      }
-      if (result.error) {
-        setError(problemMessage(result.error, "The identity could not be archived."));
-        return;
-      }
-      if (identityRequest?.mode === "edit" && identityRequest.item.id === identityId) {
-        setIdentityRequest(null);
-      }
-      setArchiveId(null);
-      setNotice("Identity archived.");
-      await invalidateIdentities();
-    } catch (cause) {
-      setError(problemMessage(cause, "The identity could not be archived."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmDelete() {
-    if (!deleteId) {
-      return;
-    }
-    const connectionId = deleteId;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const current = await getConnection({ path: { portfolioId, connectionId } });
-      if (current.response?.status === 401) {
-        redirect();
-        return;
-      }
-      const item = unwrapOrRedirect(current, redirect);
-      const match = readEtag(current.response, `"connection:${String(item.version)}"`);
-      await refreshCsrf();
-      const result = await deleteConnection({
-        path: { portfolioId, connectionId },
-        headers: { "If-Match": match },
-      });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
-      if (result.response?.status === 412) {
-        setDeleteId(null);
-        setError("The connection changed in another session. Reload before deleting.");
-        await invalidateConnections();
-        return;
-      }
-      if (result.error) {
-        setError(problemMessage(result.error, "The connection could not be deleted."));
-        return;
-      }
-      if (connectionRequest?.mode === "edit" && connectionRequest.item.id === connectionId) {
-        setConnectionRequest(null);
-      }
-      setDeleteId(null);
-      setNotice("Connection deleted.");
-      await invalidateConnections();
-    } catch (cause) {
-      setError(problemMessage(cause, "The connection could not be deleted."));
-    } finally {
-      setBusy(false);
-    }
+    await runAction(
+      item,
+      async () => {
+        const result = await archiveIdentity({
+          path: { portfolioId, identityId: item.id },
+          headers: { "If-Match": identityEtag(item) },
+        });
+        if (!result.data) {
+          return { status: result.response?.status, message: null, error: result.error };
+        }
+        setArchiveTarget(null);
+        return {
+          status: result.response?.status,
+          message: `Identity ${item.displayName} archived.`,
+        };
+      },
+      "The identity could not be archived.",
+    );
   }
 
   return (
     <section className={styles.wide}>
       <div className={styles.headingRow}>
-        <div className={styles.headingCopy}>
-          <h2>Identities</h2>
-          <p className={styles.lead}>
-            Platform login subjects stay in this Portfolio. Expand an identity to see its
-            Connections. After the first Observation, identity fields other than name and status
-            freeze.
-          </p>
-        </div>
-        <ActionButton type="button" tone="primary" disabled={busy} onClick={openIdentityCreate}>
+        <p className={styles.lead}>
+          One Identity per Platform login: store read-only credentials, validate them, then enable
+          the connection so its selected accounts join every Collection Cycle.
+        </p>
+        <ActionButton
+          type="button"
+          tone="primary"
+          disabled={busyId !== null}
+          onClick={() => open({ kind: "create" })}
+        >
           New identity
         </ActionButton>
       </div>
@@ -356,7 +233,11 @@ export function IdentitiesPage() {
           {error}
         </p>
       ) : null}
-      {notice ? <p className={styles.notice}>{notice}</p> : null}
+      {notice ? (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
+      ) : null}
       <QueryRecovery
         error={identities.error}
         hasData={Boolean(identities.data)}
@@ -366,276 +247,227 @@ export function IdentitiesPage() {
           void identities.refetch();
         }}
       />
-      <QueryRecovery
-        error={connections.error}
-        hasData={Boolean(connections.data)}
-        busy={connections.isFetching}
-        fallback="Connections could not be loaded."
-        onRetry={() => {
-          void connections.refetch();
+      <div className={styles.toolbar}>
+        <Toggle checked={showArchived} onCheckedChange={setShowArchived}>
+          Show archived ({String(archivedCount)})
+        </Toggle>
+      </div>
+      <DataTable
+        caption="Identities of this Portfolio"
+        columns={[
+          { key: "name", header: "Identity", nowrap: true },
+          { key: "platform", header: "Platform" },
+          { key: "connection", header: "Connection", nowrap: true },
+          { key: "accounts", header: "Accounts", nowrap: true },
+          { key: "lastValidatedAt", header: "Last validated", nowrap: true },
+          { key: "lastCollectedAt", header: "Last collected", nowrap: true },
+          { key: "lastError", header: "Last error" },
+          { key: "actions", header: "" },
+        ]}
+        rowClassName={(row) => (row.archived ? styles.archivedRow : undefined)}
+        rows={visible.map((item) => {
+          const archived = item.status === "archived";
+          const connection = item.connection;
+          const busy = busyId !== null;
+          const selectedCount = item.accounts.filter((account) => account.selected).length;
+          return {
+            id: item.id,
+            archived,
+            name: (
+              <span className={styles.cellStack}>
+                <strong>{item.displayName}</strong>
+                <span className={styles.cellMeta}>
+                  {archived
+                    ? `archived ${formatInstant(item.archivedAt, timezone)}`
+                    : (item.externalRef ?? "not validated yet")}
+                </span>
+              </span>
+            ),
+            platform: (
+              <span className={styles.cellStack}>
+                <span>{platformLabel(platforms.data?.items, item.platform)}</span>
+                <span className={styles.cellMeta}>
+                  {accountModeLabel(platforms.data?.items, item.platform, item.accountMode)}
+                </span>
+              </span>
+            ),
+            connection: (
+              <span className={styles.cellStack}>
+                <span>
+                  <StatusBadge value={connection.status} />
+                </span>
+                <span className={styles.cellMeta}>
+                  {connection.credentialsConfigured ? "credentials stored" : "no credentials"}
+                </span>
+              </span>
+            ),
+            accounts: `${String(selectedCount)}/${String(item.accounts.length)} selected`,
+            lastValidatedAt: formatInstant(connection.lastValidatedAt, timezone),
+            lastCollectedAt: formatInstant(connection.lastCollectedAt, timezone),
+            lastError: connection.lastErrorClass ? (
+              <span className={styles.cellStack}>
+                <Codes values={[connection.lastErrorClass]} />
+                {connection.lastErrorDetail ? (
+                  <span className={styles.cellMeta}>{connection.lastErrorDetail}</span>
+                ) : null}
+              </span>
+            ) : (
+              "—"
+            ),
+            actions: archived ? (
+              <span className={styles.cellMeta}>archived</span>
+            ) : (
+              <IdentityActions
+                item={item}
+                busy={busy}
+                onEdit={() => open({ kind: "edit", item })}
+                onCredentials={() => open({ kind: "credentials", item })}
+                onValidate={() => void validate(item)}
+                onEnable={() => void enable(item)}
+                onDisable={() => void disable(item)}
+                onArchive={() => {
+                  setError(null);
+                  setNotice(null);
+                  setArchiveTarget(item);
+                }}
+              />
+            ),
+          };
+        })}
+        empty={
+          identities.isPending
+            ? "Loading identities."
+            : items.length > 0
+              ? "Every identity is archived. Turn on “Show archived” to see them."
+              : "No identities yet. Create one for a Platform login, store its credentials, and enable the connection."
+        }
+      />
+      <IdentityDialog
+        portfolioId={portfolioId}
+        request={dialog}
+        platforms={platforms.data?.items ?? []}
+        onClose={() => setDialog(null)}
+        onSaved={async (message) => {
+          setDialog(null);
+          setNotice(message);
+          await invalidate();
         }}
       />
-      <div className={styles.toolbar}>
-        <label className={`${styles.field} ${styles.toolbarField}`}>
-          <span>Platform</span>
-          <Select value={platformFilter} onChange={(event) => changePlatform(event.target.value)}>
-            <option value="all">All</option>
-            {platformChoices.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </div>
-      <div className={styles.tableWrap}>
-        <table>
-          <caption>Portfolio identities</caption>
-          <thead>
-            <tr>
-              <th scope="col">
-                <span className={styles.srOnly}>Expand</span>
-              </th>
-              <th scope="col">Name</th>
-              <th scope="col" aria-sort={platformSort === "asc" ? "ascending" : "descending"}>
-                <ActionButton
-                  type="button"
-                  tone="ghost"
-                  className={styles.sortButton}
-                  onClick={() => setPlatformSort((current) => (current === "asc" ? "desc" : "asc"))}
-                >
-                  Platform
-                  {platformSort === "asc" ? (
-                    <ChevronUp size={iconSize.xs} aria-hidden="true" />
-                  ) : (
-                    <ChevronDown size={iconSize.xs} aria-hidden="true" />
-                  )}
-                </ActionButton>
-              </th>
-              <th scope="col">Kind</th>
-              <th scope="col">Account mode</th>
-              <th scope="col">Status</th>
-              <th scope="col">External ref</th>
-              <th scope="col">Connections</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleIdentities.length === 0 ? (
-              <tr>
-                <td colSpan={identityColumnCount}>No rows.</td>
-              </tr>
-            ) : (
-              visibleIdentities.map((item) => {
-                const open = expanded.has(item.id);
-                const rows = connectionItems ? (connectionsByIdentity.get(item.id) ?? []) : null;
-                const detailId = `identity-connections-${item.id}`;
-                return (
-                  <Fragment key={item.id}>
-                    <tr
-                      className={open ? styles.openRow : styles.clickRow}
-                      onClick={(event) => {
-                        if (event.target instanceof Element && event.target.closest("button")) {
-                          return;
-                        }
-                        toggleExpanded(item.id);
-                      }}
-                    >
-                      <td>
-                        <IconButton
-                          label={
-                            open
-                              ? `Collapse connections for ${item.displayName}`
-                              : `Expand connections for ${item.displayName}`
-                          }
-                          aria-expanded={open}
-                          aria-controls={open ? detailId : undefined}
-                          onClick={() => toggleExpanded(item.id)}
-                        >
-                          <ChevronRight
-                            size={iconSize.sm}
-                            aria-hidden="true"
-                            className={open ? styles.chevronOpen : styles.chevron}
-                          />
-                        </IconButton>
-                      </td>
-                      <td>{item.displayName}</td>
-                      <td>{platformLabel(item.platformId)}</td>
-                      <td>{item.kind}</td>
-                      <td>{item.accountMode}</td>
-                      <td>{item.status}</td>
-                      <td>{item.externalRef}</td>
-                      <td>{rows === null ? "—" : connectionSummary(rows)}</td>
-                      <td>
-                        <span className={styles.rowActions}>
-                          <ActionButton
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void openIdentityEdit(item.id)}
-                          >
-                            Edit
-                          </ActionButton>
-                          {item.status !== "archived" ? (
-                            <ActionButton
-                              type="button"
-                              tone="dangerQuiet"
-                              disabled={busy}
-                              onClick={() => setArchiveId(item.id)}
-                            >
-                              Archive
-                            </ActionButton>
-                          ) : null}
-                        </span>
-                      </td>
-                    </tr>
-                    {open ? (
-                      <tr className={styles.detailRow} id={detailId}>
-                        <td colSpan={identityColumnCount}>
-                          <div className={styles.detail}>
-                            {rows === null ? (
-                              <p className={styles.muted}>
-                                {connections.error
-                                  ? "Connections could not be loaded."
-                                  : "Loading connections."}
-                              </p>
-                            ) : rows.length === 0 ? (
-                              <p className={styles.muted}>No connections.</p>
-                            ) : (
-                              <div className={styles.tableWrap}>
-                                <table>
-                                  <caption>{`Connections for ${item.displayName}`}</caption>
-                                  <thead>
-                                    <tr>
-                                      <th scope="col">Label</th>
-                                      <th scope="col">Status</th>
-                                      <th scope="col">Credentials</th>
-                                      <th scope="col">Interval</th>
-                                      <th scope="col">Freshness</th>
-                                      <th scope="col">Secrets updated</th>
-                                      <th scope="col">Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {rows.map((connection) => (
-                                      <tr key={connection.id}>
-                                        <td>{connection.label}</td>
-                                        <td>{connection.status}</td>
-                                        <td>
-                                          {connection.credentialsConfigured
-                                            ? "configured"
-                                            : "missing"}
-                                        </td>
-                                        <td>
-                                          {secondsLabel(connection.collectionIntervalSeconds)}
-                                        </td>
-                                        <td>{secondsLabel(connection.freshnessAfterSeconds)}</td>
-                                        <td>{formatInstant(connection.credentialsUpdatedAt)}</td>
-                                        <td>
-                                          <span className={styles.rowActions}>
-                                            <ActionButton
-                                              type="button"
-                                              disabled={busy}
-                                              onClick={() =>
-                                                void openConnectionEdit(
-                                                  connection.id,
-                                                  item.displayName,
-                                                )
-                                              }
-                                            >
-                                              Edit
-                                            </ActionButton>
-                                            <ActionButton
-                                              type="button"
-                                              tone="dangerQuiet"
-                                              disabled={busy}
-                                              onClick={() => setDeleteId(connection.id)}
-                                            >
-                                              Delete
-                                            </ActionButton>
-                                          </span>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                            {item.status === "archived" ? null : (
-                              <div className={styles.actions}>
-                                <ActionButton
-                                  type="button"
-                                  tone="primary"
-                                  disabled={busy}
-                                  onClick={() => openConnectionCreate(item.id)}
-                                >
-                                  Add connection
-                                </ActionButton>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-      <IdentityFormDialog
-        portfolioId={portfolioId}
-        request={identityRequest}
-        identities={identityItems ?? []}
-        onClose={() => setIdentityRequest(null)}
-        onSaved={invalidateIdentities}
-      />
-      <ConnectionFormDialog
-        portfolioId={portfolioId}
-        request={connectionRequest}
-        onClose={() => setConnectionRequest(null)}
-        onSaved={invalidateConnections}
-      />
-      <Dialog open={Boolean(archiveId)} title="Archive identity" onClose={() => setArchiveId(null)}>
+      <Dialog
+        open={archiveTarget !== null}
+        title="Archive identity"
+        onClose={() => {
+          if (busyId === null) setArchiveTarget(null);
+        }}
+      >
         <p className={styles.lead}>
-          Archiving removes this identity from the current portfolio totals and from this list.
-          History before the archive time stays on this identity. Disable every enabled connection
-          first, and archive subordinate identities first. The same platform identity can be created
-          again afterward.
+          Archiving removes {archiveTarget?.displayName ?? "this identity"} from the boundary; its
+          history stays. The server refuses while the connection is enabled, so disable it first.
         </p>
         <div className={styles.actions}>
           <ActionButton
             type="button"
             tone="danger"
-            disabled={busy}
+            disabled={busyId !== null}
             onClick={() => void confirmArchive()}
           >
             Archive
           </ActionButton>
-          <ActionButton type="button" onClick={() => setArchiveId(null)}>
-            Cancel
-          </ActionButton>
-        </div>
-      </Dialog>
-      <Dialog open={Boolean(deleteId)} title="Delete connection" onClose={() => setDeleteId(null)}>
-        <p className={styles.lead}>
-          This removes the Connection and its ciphertext. Collection history on the Identity is
-          kept.
-        </p>
-        <div className={styles.actions}>
           <ActionButton
             type="button"
-            tone="danger"
-            disabled={busy}
-            onClick={() => void confirmDelete()}
+            tone="ghost"
+            disabled={busyId !== null}
+            onClick={() => setArchiveTarget(null)}
           >
-            Delete
-          </ActionButton>
-          <ActionButton type="button" onClick={() => setDeleteId(null)}>
             Cancel
           </ActionButton>
         </div>
       </Dialog>
     </section>
+  );
+}
+
+interface IdentityActionsProps {
+  item: Identity;
+  busy: boolean;
+  onEdit: () => void;
+  onCredentials: () => void;
+  onValidate: () => void;
+  onEnable: () => void;
+  onDisable: () => void;
+  onArchive: () => void;
+}
+
+/**
+ * The next step for the connection sits in the row; everything else waits in
+ * a menu. An enabled connection needs nothing, so its row shows only the menu.
+ */
+function IdentityActions({
+  item,
+  busy,
+  onEdit,
+  onCredentials,
+  onValidate,
+  onEnable,
+  onDisable,
+  onArchive,
+}: IdentityActionsProps) {
+  const menu = useMenu();
+  const connection = item.connection;
+  const next = !connection.credentialsConfigured
+    ? { label: "Add credentials", run: onCredentials }
+    : connection.status === "invalid"
+      ? { label: "Validate", run: onValidate }
+      : connection.status === "enabled"
+        ? null
+        : { label: "Enable", run: onEnable };
+
+  function pick(action: () => void, restoreFocus: boolean) {
+    menu.close(restoreFocus);
+    action();
+  }
+
+  return (
+    <span className={styles.rowActions}>
+      {next ? (
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={next.run}>
+          {next.label}
+        </ActionButton>
+      ) : null}
+      <IconButton
+        ref={(node) => menu.setAnchor(node)}
+        label={`More actions for ${item.displayName}`}
+        aria-haspopup="menu"
+        aria-expanded={menu.open}
+        disabled={busy}
+        onClick={() => menu.setOpen((open) => !open)}
+      >
+        <MoreHorizontal size={iconSize.sm} aria-hidden="true" />
+      </IconButton>
+      <Menu menu={menu} label={`Actions for ${item.displayName}`}>
+        <MenuItem onClick={() => pick(onEdit, false)}>Edit</MenuItem>
+        <MenuItem onClick={() => pick(onCredentials, false)}>Credentials</MenuItem>
+        <MenuItem
+          disabled={!connection.credentialsConfigured}
+          onClick={() => pick(onValidate, true)}
+        >
+          Validate
+        </MenuItem>
+        {connection.status === "enabled" ? (
+          <MenuItem onClick={() => pick(onDisable, true)}>Disable</MenuItem>
+        ) : (
+          <MenuItem
+            disabled={!connection.credentialsConfigured}
+            onClick={() => pick(onEnable, true)}
+          >
+            Enable
+          </MenuItem>
+        )}
+        <MenuSeparator />
+        <MenuItem danger onClick={() => pick(onArchive, false)}>
+          Archive
+        </MenuItem>
+      </Menu>
+    </span>
   );
 }

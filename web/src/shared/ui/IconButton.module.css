@@ -1,10 +1,11 @@
+/* --icon-button-size lets a dense context (table row actions) ask for the compact size. */
 .button {
   display: inline-grid;
-  width: var(--control-md);
-  height: var(--control-md);
-  min-width: var(--control-md);
-  min-height: var(--control-md);
-  flex: 0 0 var(--control-md);
+  width: var(--icon-button-size, var(--control-md));
+  height: var(--icon-button-size, var(--control-md));
+  min-width: var(--icon-button-size, var(--control-md));
+  min-height: var(--icon-button-size, var(--control-md));
+  flex: 0 0 var(--icon-button-size, var(--control-md));
   place-items: center;
   padding: 0;
   box-shadow: none;

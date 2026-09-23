@@ -6,175 +6,105 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
-	CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error)
-	CountActiveCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error)
-	CountActiveSubordinates(ctx context.Context, arg CountActiveSubordinatesParams) (int64, error)
-	CountConnectionsWithCiphertext(ctx context.Context) (int64, error)
-	CountEnabledConnectionsByIdentity(ctx context.Context, arg CountEnabledConnectionsByIdentityParams) (int64, error)
-	CountIdentityObservations(ctx context.Context, arg CountIdentityObservationsParams) (int64, error)
-	CountSearchAssetListings(ctx context.Context, arg CountSearchAssetListingsParams) (int64, error)
-	CountSearchAssets(ctx context.Context, arg CountSearchAssetsParams) (int64, error)
-	CountSearchInstruments(ctx context.Context, arg CountSearchInstrumentsParams) (int64, error)
-	DeleteConnection(ctx context.Context, arg DeleteConnectionParams) (int64, error)
+	ClearIdentityCredentials(ctx context.Context, arg ClearIdentityCredentialsParams) (int64, error)
+	CountAssetListings(ctx context.Context, arg CountAssetListingsParams) (int64, error)
+	CountIdentitiesWithCiphertext(ctx context.Context) (int64, error)
+	CountInstruments(ctx context.Context, arg CountInstrumentsParams) (int64, error)
+	CountReportsForIdentity(ctx context.Context, arg CountReportsForIdentityParams) (int64, error)
+	CountValuationPoints(ctx context.Context, portfolioID []byte) (int64, error)
+	DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowParams) (int64, error)
+	DeleteFinishedJobsBefore(ctx context.Context, before sql.NullTime) (int64, error)
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
-	GetAccount(ctx context.Context, arg GetAccountParams) (Account, error)
-	GetAccountMetricObservation(ctx context.Context, arg GetAccountMetricObservationParams) (AccountMetricObservation, error)
+	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
-	GetAssetByCode(ctx context.Context, code string) (Asset, error)
-	GetAssetByID(ctx context.Context, id []byte) (Asset, error)
 	GetAssetListing(ctx context.Context, id []byte) (AssetListing, error)
-	GetAssetListingMapping(ctx context.Context, arg GetAssetListingMappingParams) (AssetListingMapping, error)
-	GetAssetListingMappingRevision(ctx context.Context, arg GetAssetListingMappingRevisionParams) (AssetListingMappingRevision, error)
-	GetBalanceObservation(ctx context.Context, arg GetBalanceObservationParams) (BalanceObservation, error)
-	GetCapitalBaselineByPortfolio(ctx context.Context, portfolioID []byte) (CapitalBaseline, error)
-	GetCapitalBaselineRevision(ctx context.Context, arg GetCapitalBaselineRevisionParams) (CapitalBaselineRevision, error)
+	GetAssetListingByPlatformSymbol(ctx context.Context, arg GetAssetListingByPlatformSymbolParams) (AssetListing, error)
 	GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error)
-	GetCapitalFlowRevision(ctx context.Context, arg GetCapitalFlowRevisionParams) (CapitalFlowRevision, error)
-	GetCatalogPinByInstrument(ctx context.Context, arg GetCatalogPinByInstrumentParams) (GetCatalogPinByInstrumentRow, error)
-	GetCatalogPinByListing(ctx context.Context, arg GetCatalogPinByListingParams) (GetCatalogPinByListingRow, error)
-	GetCatalogPinRevision(ctx context.Context, arg GetCatalogPinRevisionParams) (CatalogPinRevision, error)
-	GetConfirmedMappingAsset(ctx context.Context, arg GetConfirmedMappingAssetParams) ([]byte, error)
-	GetConnection(ctx context.Context, arg GetConnectionParams) (GetConnectionRow, error)
-	GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error)
-	GetIdentitySnapshot(ctx context.Context, arg GetIdentitySnapshotParams) (IdentitySnapshot, error)
-	GetInstrument(ctx context.Context, id []byte) (Instrument, error)
+	GetFirstValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
+	GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error)
+	GetIdentityCredentials(ctx context.Context, arg GetIdentityCredentialsParams) (GetIdentityCredentialsRow, error)
+	GetInstrumentByPlatformSymbol(ctx context.Context, arg GetInstrumentByPlatformSymbolParams) (Instrument, error)
 	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
-	GetObservation(ctx context.Context, arg GetObservationParams) (Observation, error)
-	GetPlatformByCode(ctx context.Context, code string) (Platform, error)
-	GetPlatformByID(ctx context.Context, id []byte) (Platform, error)
-	GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error)
-	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error)
-	GetPortfolioGenerationPointer(ctx context.Context, id []byte) ([]byte, error)
-	GetPositionObservation(ctx context.Context, arg GetPositionObservationParams) (PositionObservation, error)
-	GetPriceObservation(ctx context.Context, arg GetPriceObservationParams) (PriceObservation, error)
-	GetProjectionGeneration(ctx context.Context, arg GetProjectionGenerationParams) (ProjectionGeneration, error)
-	GetReportedEquityObservation(ctx context.Context, arg GetReportedEquityObservationParams) (ReportedEquityObservation, error)
+	GetLatestOkReportForAccount(ctx context.Context, arg GetLatestOkReportForAccountParams) (GetLatestOkReportForAccountRow, error)
+	GetLatestValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
+	GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtParams) (Price, error)
+	GetPortfolioByID(ctx context.Context, id []byte) (Portfolio, error)
+	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (Portfolio, error)
+	GetReport(ctx context.Context, arg GetReportParams) (GetReportRow, error)
+	GetReportForAccountInJob(ctx context.Context, arg GetReportForAccountInJobParams) ([]byte, error)
 	GetSessionByID(ctx context.Context, id []byte) (Session, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error)
 	GetUserByID(ctx context.Context, id []byte) (User, error)
 	GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error)
+	GetValuationPoint(ctx context.Context, arg GetValuationPointParams) (ValuationPoint, error)
+	GetValuationPointAtOrBefore(ctx context.Context, arg GetValuationPointAtOrBeforeParams) (ValuationPoint, error)
+	GetValuationPointBefore(ctx context.Context, arg GetValuationPointBeforeParams) (ValuationPoint, error)
+	GetValuationPointByJob(ctx context.Context, arg GetValuationPointByJobParams) (ValuationPoint, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) error
-	InsertAccountMetricObservation(ctx context.Context, arg InsertAccountMetricObservationParams) error
-	InsertAssetListingMapping(ctx context.Context, arg InsertAssetListingMappingParams) error
-	InsertAssetListingMappingRevision(ctx context.Context, arg InsertAssetListingMappingRevisionParams) error
+	InsertAccountReport(ctx context.Context, arg InsertAccountReportParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
-	InsertBalanceObservation(ctx context.Context, arg InsertBalanceObservationParams) error
-	InsertCapitalBaseline(ctx context.Context, arg InsertCapitalBaselineParams) error
-	InsertCapitalBaselineRevision(ctx context.Context, arg InsertCapitalBaselineRevisionParams) error
+	InsertBalance(ctx context.Context, arg InsertBalanceParams) error
 	InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error
-	InsertCapitalFlowRevision(ctx context.Context, arg InsertCapitalFlowRevisionParams) error
-	InsertCatalogPin(ctx context.Context, arg InsertCatalogPinParams) error
-	InsertCatalogPinRevision(ctx context.Context, arg InsertCatalogPinRevisionParams) error
-	InsertCollectionFailure(ctx context.Context, arg InsertCollectionFailureParams) error
-	InsertCollectionJobDetail(ctx context.Context, arg InsertCollectionJobDetailParams) error
-	InsertCollectionRun(ctx context.Context, arg InsertCollectionRunParams) error
-	InsertConnection(ctx context.Context, arg InsertConnectionParams) error
-	InsertContributedCapitalProjection(ctx context.Context, arg InsertContributedCapitalProjectionParams) error
-	InsertExposureProjection(ctx context.Context, arg InsertExposureProjectionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
-	InsertIdentitySnapshot(ctx context.Context, arg InsertIdentitySnapshotParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
-	InsertJobAttempt(ctx context.Context, arg InsertJobAttemptParams) error
-	InsertLatestBalanceProjection(ctx context.Context, arg InsertLatestBalanceProjectionParams) error
-	InsertLatestPositionProjection(ctx context.Context, arg InsertLatestPositionProjectionParams) error
-	InsertObservation(ctx context.Context, arg InsertObservationParams) error
-	InsertPeriodSummaryProjection(ctx context.Context, arg InsertPeriodSummaryProjectionParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
-	InsertPortfolioValuationProjection(ctx context.Context, arg InsertPortfolioValuationProjectionParams) error
-	InsertPositionObservation(ctx context.Context, arg InsertPositionObservationParams) error
-	InsertPriceObservation(ctx context.Context, arg InsertPriceObservationParams) error
-	InsertProjectionGeneration(ctx context.Context, arg InsertProjectionGenerationParams) error
-	InsertProjectionIssue(ctx context.Context, arg InsertProjectionIssueParams) error
-	InsertProjectionJobDetail(ctx context.Context, arg InsertProjectionJobDetailParams) error
-	InsertProjectionJobKind(ctx context.Context, arg InsertProjectionJobKindParams) error
-	InsertReportedEquityCoveredAccount(ctx context.Context, arg InsertReportedEquityCoveredAccountParams) error
-	InsertReportedEquityCoveredIdentity(ctx context.Context, arg InsertReportedEquityCoveredIdentityParams) error
-	InsertReportedEquityObservation(ctx context.Context, arg InsertReportedEquityObservationParams) error
+	InsertPosition(ctx context.Context, arg InsertPositionParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
-	InsertValuationContributionProjection(ctx context.Context, arg InsertValuationContributionProjectionParams) error
-	InsertValuationContributionSource(ctx context.Context, arg InsertValuationContributionSourceParams) error
-	InsertValueChangeProjection(ctx context.Context, arg InsertValueChangeProjectionParams) error
-	ListAccountsByPortfolio(ctx context.Context, arg ListAccountsByPortfolioParams) ([]Account, error)
-	ListActiveAssets(ctx context.Context) ([]Asset, error)
-	ListActiveCapitalFlows(ctx context.Context, arg ListActiveCapitalFlowsParams) ([]ListActiveCapitalFlowsRow, error)
-	ListAllAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]Account, error)
-	ListAssetListings(ctx context.Context) ([]AssetListing, error)
+	ListAccountsByIdentity(ctx context.Context, arg ListAccountsByIdentityParams) ([]Account, error)
+	ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error)
+	ListAssetListings(ctx context.Context, arg ListAssetListingsParams) ([]AssetListing, error)
 	ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditEventsByPortfolioParams) ([]AuditEvent, error)
-	ListBalanceFacts(ctx context.Context, portfolioID []byte) ([]ListBalanceFactsRow, error)
-	ListCapitalBaselineRevisions(ctx context.Context, arg ListCapitalBaselineRevisionsParams) ([]CapitalBaselineRevision, error)
-	ListCapitalFlowFacts(ctx context.Context, portfolioID []byte) ([]ListCapitalFlowFactsRow, error)
-	ListCapitalFlowRevisions(ctx context.Context, arg ListCapitalFlowRevisionsParams) ([]CapitalFlowRevision, error)
-	ListCollectionFailureFacts(ctx context.Context, portfolioID []byte) ([]ListCollectionFailureFactsRow, error)
-	ListConnectionsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListConnectionsByPortfolioRow, error)
-	ListContributedCapitalProjections(ctx context.Context, generationID []byte) ([]ContributedCapitalProjection, error)
-	ListCurrentAssetMappings(ctx context.Context, portfolioID []byte) ([]ListCurrentAssetMappingsRow, error)
-	ListExposureProjections(ctx context.Context, generationID []byte) ([]ExposureProjection, error)
-	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error)
-	ListIdentitySnapshotFacts(ctx context.Context, portfolioID []byte) ([]ListIdentitySnapshotFactsRow, error)
-	ListInstruments(ctx context.Context) ([]Instrument, error)
-	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
+	ListBalancesByJob(ctx context.Context, arg ListBalancesByJobParams) ([]ListBalancesByJobRow, error)
+	ListBalancesByReport(ctx context.Context, reportID []byte) ([]ListBalancesByReportRow, error)
+	ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error)
+	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
+	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
+	ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error)
+	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]ListIdentitiesByPortfolioRow, error)
+	ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error)
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
-	ListLatestBalanceProjections(ctx context.Context, generationID []byte) ([]LatestBalanceProjection, error)
-	ListLatestPositionProjections(ctx context.Context, generationID []byte) ([]LatestPositionProjection, error)
-	ListObservations(ctx context.Context, arg ListObservationsParams) ([]Observation, error)
-	ListPeriodSummaryProjections(ctx context.Context, generationID []byte) ([]PeriodSummaryProjection, error)
-	ListPlatforms(ctx context.Context) ([]Platform, error)
-	ListPortfolioValuationProjections(ctx context.Context, generationID []byte) ([]PortfolioValuationProjection, error)
-	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]ListPortfoliosByUserRow, error)
-	ListPositionFacts(ctx context.Context, portfolioID []byte) ([]ListPositionFactsRow, error)
-	ListPriceFacts(ctx context.Context, portfolioID []byte) ([]ListPriceFactsRow, error)
-	ListProjectionIssues(ctx context.Context, generationID []byte) ([]ProjectionIssue, error)
-	ListReportedEquityCoverageAccounts(ctx context.Context, portfolioID []byte) ([]ListReportedEquityCoverageAccountsRow, error)
-	ListReportedEquityCoverageIdentities(ctx context.Context, portfolioID []byte) ([]ListReportedEquityCoverageIdentitiesRow, error)
-	ListReportedEquityCoveredAccounts(ctx context.Context, arg ListReportedEquityCoveredAccountsParams) ([][]byte, error)
-	ListReportedEquityCoveredIdentities(ctx context.Context, arg ListReportedEquityCoveredIdentitiesParams) ([][]byte, error)
-	ListReportedEquityFacts(ctx context.Context, portfolioID []byte) ([]ListReportedEquityFactsRow, error)
+	ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]Price, error)
+	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error)
+	ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfoliosForSchedulingRow, error)
+	ListPortfoliosHoldingListing(ctx context.Context, listingID []byte) ([][]byte, error)
+	ListPositionsByJob(ctx context.Context, arg ListPositionsByJobParams) ([]ListPositionsByJobRow, error)
+	ListPositionsByReport(ctx context.Context, reportID []byte) ([]ListPositionsByReportRow, error)
+	ListPricesForAssetBetween(ctx context.Context, arg ListPricesForAssetBetweenParams) ([]Price, error)
+	ListReportsByJob(ctx context.Context, arg ListReportsByJobParams) ([]ListReportsByJobRow, error)
 	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
-	ListValueChangeProjections(ctx context.Context, generationID []byte) ([]ValueChangeProjection, error)
+	ListSucceededCycleJobs(ctx context.Context, portfolioID []byte) ([]ListSucceededCycleJobsRow, error)
+	ListValuationPointsBetween(ctx context.Context, arg ListValuationPointsBetweenParams) ([]ValuationPoint, error)
 	LockClaimableJob(ctx context.Context, arg LockClaimableJobParams) (LockClaimableJobRow, error)
-	LockPortfolioActivation(ctx context.Context, id []byte) (LockPortfolioActivationRow, error)
-	LockProjectionGeneration(ctx context.Context, arg LockProjectionGenerationParams) (ProjectionGeneration, error)
 	MarkJobFailed(ctx context.Context, arg MarkJobFailedParams) (int64, error)
 	MarkJobRunning(ctx context.Context, arg MarkJobRunningParams) (int64, error)
 	MarkJobSucceeded(ctx context.Context, arg MarkJobSucceededParams) (int64, error)
-	MarkProjectionGenerationActive(ctx context.Context, arg MarkProjectionGenerationActiveParams) (int64, error)
-	MarkProjectionGenerationFailed(ctx context.Context, arg MarkProjectionGenerationFailedParams) (int64, error)
-	MarkProjectionGenerationReady(ctx context.Context, arg MarkProjectionGenerationReadyParams) (int64, error)
+	RecordIdentityCollection(ctx context.Context, arg RecordIdentityCollectionParams) error
 	RenewJobLease(ctx context.Context, arg RenewJobLeaseParams) (int64, error)
 	RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error)
-	RetireActiveProjectionGeneration(ctx context.Context, arg RetireActiveProjectionGenerationParams) error
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
-	SearchAssetListings(ctx context.Context, arg SearchAssetListingsParams) ([]SearchAssetListingsRow, error)
-	SearchAssets(ctx context.Context, arg SearchAssetsParams) ([]Asset, error)
-	SearchInstruments(ctx context.Context, arg SearchInstrumentsParams) ([]SearchInstrumentsRow, error)
-	SetActiveProjectionGeneration(ctx context.Context, arg SetActiveProjectionGenerationParams) (int64, error)
-	SetAssetListingMappingRevision(ctx context.Context, arg SetAssetListingMappingRevisionParams) error
-	SetCapitalBaselineRevision(ctx context.Context, arg SetCapitalBaselineRevisionParams) error
-	SetCapitalFlowRevision(ctx context.Context, arg SetCapitalFlowRevisionParams) error
-	SetCatalogPinRevision(ctx context.Context, arg SetCatalogPinRevisionParams) error
+	SetIdentityConnectionStatus(ctx context.Context, arg SetIdentityConnectionStatusParams) (int64, error)
+	SetIdentityCredentials(ctx context.Context, arg SetIdentityCredentialsParams) (int64, error)
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
-	UpdateAccountMetricObservation(ctx context.Context, arg UpdateAccountMetricObservationParams) error
-	UpdateAssetListingMappingPointer(ctx context.Context, arg UpdateAssetListingMappingPointerParams) (int64, error)
-	UpdateBalanceObservation(ctx context.Context, arg UpdateBalanceObservationParams) error
-	UpdateCapitalBaselinePointer(ctx context.Context, arg UpdateCapitalBaselinePointerParams) (int64, error)
-	UpdateCapitalFlowPointer(ctx context.Context, arg UpdateCapitalFlowPointerParams) (int64, error)
-	UpdateCatalogPinPointer(ctx context.Context, arg UpdateCatalogPinPointerParams) (int64, error)
-	UpdateConnection(ctx context.Context, arg UpdateConnectionParams) (int64, error)
+	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error)
+	UpdateAccountReportValuation(ctx context.Context, arg UpdateAccountReportValuationParams) error
+	UpdateAssetListingMapping(ctx context.Context, arg UpdateAssetListingMappingParams) (int64, error)
+	UpdateCapitalFlow(ctx context.Context, arg UpdateCapitalFlowParams) (int64, error)
 	UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error)
-	UpdateObservationHeader(ctx context.Context, arg UpdateObservationHeaderParams) (int64, error)
 	UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error)
-	UpdatePositionObservation(ctx context.Context, arg UpdatePositionObservationParams) error
-	UpdatePriceObservation(ctx context.Context, arg UpdatePriceObservationParams) error
-	UpdateReportedEquityObservation(ctx context.Context, arg UpdateReportedEquityObservationParams) error
 	UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error
+	UpsertAssetListing(ctx context.Context, arg UpsertAssetListingParams) error
+	UpsertInstrument(ctx context.Context, arg UpsertInstrumentParams) error
+	UpsertPrice(ctx context.Context, arg UpsertPriceParams) error
+	UpsertValuationPoint(ctx context.Context, arg UpsertValuationPointParams) error
 }
 
 var _ Querier = (*Queries)(nil)

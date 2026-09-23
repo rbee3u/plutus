@@ -77,7 +77,7 @@ The Observation of one open directional contract holding in one Account Report, 
 _Avoid_: Balance, margin, exposure (as synonyms for a position)
 
 **Price Observation**:
-A market or mark price for one Asset Listing or Instrument on one Platform at an observation time, quoted in a stated Asset.
+A market price for one Asset on one Platform at an observation time, quoted in a stated Asset. Only prices quoted in the Valuation Asset or its stablecoin equivalents are used for valuation.
 
 **Complete Set**:
 The rule that the Balances and Positions in a successful Account Report are everything the Account holds; anything absent is no longer held.

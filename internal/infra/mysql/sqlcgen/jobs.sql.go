@@ -9,13 +9,30 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
+const deleteFinishedJobsBefore = `-- name: DeleteFinishedJobsBefore :execrows
+DELETE j FROM jobs j
+WHERE j.status IN ('succeeded', 'failed', 'cancelled')
+  AND j.finished_at IS NOT NULL AND j.finished_at < ?
+  AND NOT EXISTS (SELECT 1 FROM account_reports r WHERE r.portfolio_id = j.portfolio_id AND r.job_id = j.id)
+  AND NOT EXISTS (SELECT 1 FROM valuation_points p WHERE p.portfolio_id = j.portfolio_id AND p.job_id = j.id)
+`
+
+func (q *Queries) DeleteFinishedJobsBefore(ctx context.Context, before sql.NullTime) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteFinishedJobsBefore, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getActiveJobByDedupe = `-- name: GetActiveJobByDedupe :one
-SELECT
-    id, portfolio_id, kind, status, priority, dedupe_key, requested_by_user_id,
-    available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
-    last_error_code, last_error_detail, created_at, updated_at, started_at, finished_at
+SELECT id, portfolio_id, kind, status, ` + "`" + `trigger` + "`" + `, dedupe_key, payload_json, requested_by_user_id,
+       available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
+       last_error_class, last_detail, created_at, updated_at, started_at, finished_at
 FROM jobs
 WHERE portfolio_id = ? AND active_dedupe_key = ?
 `
@@ -30,16 +47,17 @@ type GetActiveJobByDedupeRow struct {
 	PortfolioID       []byte
 	Kind              string
 	Status            string
-	Priority          int16
+	Trigger           string
 	DedupeKey         string
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
 	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
+	LastErrorClass    sql.NullString
+	LastDetail        sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	StartedAt         sql.NullTime
@@ -54,16 +72,17 @@ func (q *Queries) GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDe
 		&i.PortfolioID,
 		&i.Kind,
 		&i.Status,
-		&i.Priority,
+		&i.Trigger,
 		&i.DedupeKey,
+		&i.PayloadJson,
 		&i.RequestedByUserID,
 		&i.AvailableAt,
 		&i.LeaseOwner,
 		&i.LeaseExpiresAt,
 		&i.AttemptCount,
 		&i.MaxAttempts,
-		&i.LastErrorCode,
-		&i.LastErrorDetail,
+		&i.LastErrorClass,
+		&i.LastDetail,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -73,10 +92,9 @@ func (q *Queries) GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDe
 }
 
 const getJob = `-- name: GetJob :one
-SELECT
-    id, portfolio_id, kind, status, priority, dedupe_key, requested_by_user_id,
-    available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
-    last_error_code, last_error_detail, created_at, updated_at, started_at, finished_at
+SELECT id, portfolio_id, kind, status, ` + "`" + `trigger` + "`" + `, dedupe_key, payload_json, requested_by_user_id,
+       available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
+       last_error_class, last_detail, created_at, updated_at, started_at, finished_at
 FROM jobs
 WHERE portfolio_id = ? AND id = ?
 `
@@ -91,16 +109,17 @@ type GetJobRow struct {
 	PortfolioID       []byte
 	Kind              string
 	Status            string
-	Priority          int16
+	Trigger           string
 	DedupeKey         string
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
 	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
+	LastErrorClass    sql.NullString
+	LastDetail        sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	StartedAt         sql.NullTime
@@ -115,16 +134,17 @@ func (q *Queries) GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, erro
 		&i.PortfolioID,
 		&i.Kind,
 		&i.Status,
-		&i.Priority,
+		&i.Trigger,
 		&i.DedupeKey,
+		&i.PayloadJson,
 		&i.RequestedByUserID,
 		&i.AvailableAt,
 		&i.LeaseOwner,
 		&i.LeaseExpiresAt,
 		&i.AttemptCount,
 		&i.MaxAttempts,
-		&i.LastErrorCode,
-		&i.LastErrorDetail,
+		&i.LastErrorClass,
+		&i.LastDetail,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -133,30 +153,14 @@ func (q *Queries) GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, erro
 	return i, err
 }
 
-const getPortfolioGenerationPointer = `-- name: GetPortfolioGenerationPointer :one
-SELECT active_projection_generation_id
-FROM portfolios
-WHERE id = ?
-`
-
-func (q *Queries) GetPortfolioGenerationPointer(ctx context.Context, id []byte) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getPortfolioGenerationPointer, id)
-	var active_projection_generation_id []byte
-	err := row.Scan(&active_projection_generation_id)
-	return active_projection_generation_id, err
-}
-
 const insertJob = `-- name: InsertJob :exec
 INSERT INTO jobs (
-    id, portfolio_id, kind, status, priority, dedupe_key, requested_by_user_id,
-    available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
-    last_error_code, last_error_detail, created_at, updated_at, started_at, finished_at
+    id, portfolio_id, kind, status, ` + "`" + `trigger` + "`" + `, dedupe_key, payload_json, requested_by_user_id,
+    available_at, attempt_count, max_attempts, created_at, updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?,
-    ?, ?, ?,
-    ?, ?, ?,
-    ?, ?, ?,
-    ?, ?, ?, ?
+    ?, ?, ?, 'queued', ?, ?,
+    ?, ?, ?, 0, ?,
+    ?, ?
 )
 `
 
@@ -164,21 +168,14 @@ type InsertJobParams struct {
 	ID                []byte
 	PortfolioID       []byte
 	Kind              string
-	Status            string
-	Priority          int16
+	TriggerKind       string
 	DedupeKey         string
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
-	LeaseOwner        sql.NullString
-	LeaseExpiresAt    sql.NullTime
-	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	StartedAt         sql.NullTime
-	FinishedAt        sql.NullTime
 }
 
 func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) error {
@@ -186,151 +183,103 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) error {
 		arg.ID,
 		arg.PortfolioID,
 		arg.Kind,
-		arg.Status,
-		arg.Priority,
+		arg.TriggerKind,
 		arg.DedupeKey,
+		arg.PayloadJson,
 		arg.RequestedByUserID,
 		arg.AvailableAt,
-		arg.LeaseOwner,
-		arg.LeaseExpiresAt,
-		arg.AttemptCount,
 		arg.MaxAttempts,
-		arg.LastErrorCode,
-		arg.LastErrorDetail,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.StartedAt,
-		arg.FinishedAt,
 	)
 	return err
 }
 
-const insertJobAttempt = `-- name: InsertJobAttempt :exec
-INSERT INTO job_attempts (
-    id, portfolio_id, job_id, attempt_number, worker_id, started_at, finished_at,
-    outcome, error_class, error_code, safe_detail, retry_at
-) VALUES (
-    ?, ?, ?, ?,
-    ?, ?, ?, ?,
-    ?, ?, ?, ?
-)
+const listCycleJobsWithPoints = `-- name: ListCycleJobsWithPoints :many
+SELECT j.id, j.portfolio_id, j.status, j.` + "`" + `trigger` + "`" + `, j.attempt_count, j.max_attempts, j.last_error_class, j.last_detail,
+       j.created_at, j.started_at, j.finished_at,
+       p.id AS point_id, p.evaluated_at, p.total_usd, p.account_count, p.stale_account_count, p.incomplete_account_count,
+       p.boundary_contribution_usd, p.boundary_withdrawal_usd, p.recalculated_at
+FROM jobs j
+LEFT JOIN valuation_points p ON p.portfolio_id = j.portfolio_id AND p.job_id = j.id
+WHERE j.portfolio_id = ? AND j.kind = 'collection_cycle'
+  AND (
+      ? = 0
+      OR j.created_at < ?
+      OR (j.created_at = ? AND j.id < ?)
+  )
+ORDER BY j.created_at DESC, j.id DESC
+LIMIT ?
 `
 
-type InsertJobAttemptParams struct {
-	ID            []byte
-	PortfolioID   []byte
-	JobID         []byte
-	AttemptNumber uint32
-	WorkerID      string
-	StartedAt     time.Time
-	FinishedAt    sql.NullTime
-	Outcome       string
-	ErrorClass    sql.NullString
-	ErrorCode     sql.NullString
-	SafeDetail    sql.NullString
-	RetryAt       sql.NullTime
+type ListCycleJobsWithPointsParams struct {
+	PortfolioID     []byte
+	HasCursor       interface{}
+	CursorCreatedAt time.Time
+	CursorID        []byte
+	Limit           int32
 }
 
-func (q *Queries) InsertJobAttempt(ctx context.Context, arg InsertJobAttemptParams) error {
-	_, err := q.db.ExecContext(ctx, insertJobAttempt,
-		arg.ID,
+type ListCycleJobsWithPointsRow struct {
+	ID                      []byte
+	PortfolioID             []byte
+	Status                  string
+	Trigger                 string
+	AttemptCount            uint32
+	MaxAttempts             uint32
+	LastErrorClass          sql.NullString
+	LastDetail              sql.NullString
+	CreatedAt               time.Time
+	StartedAt               sql.NullTime
+	FinishedAt              sql.NullTime
+	PointID                 []byte
+	EvaluatedAt             sql.NullTime
+	TotalUsd                sql.NullString
+	AccountCount            sql.NullInt32
+	StaleAccountCount       sql.NullInt32
+	IncompleteAccountCount  sql.NullInt32
+	BoundaryContributionUsd sql.NullString
+	BoundaryWithdrawalUsd   sql.NullString
+	RecalculatedAt          sql.NullTime
+}
+
+func (q *Queries) ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCycleJobsWithPoints,
 		arg.PortfolioID,
-		arg.JobID,
-		arg.AttemptNumber,
-		arg.WorkerID,
-		arg.StartedAt,
-		arg.FinishedAt,
-		arg.Outcome,
-		arg.ErrorClass,
-		arg.ErrorCode,
-		arg.SafeDetail,
-		arg.RetryAt,
+		arg.HasCursor,
+		arg.CursorCreatedAt,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.Limit,
 	)
-	return err
-}
-
-const insertProjectionJobDetail = `-- name: InsertProjectionJobDetail :exec
-INSERT INTO projection_job_details (
-    portfolio_id, job_id, invalid_from, invalid_through, reason
-) VALUES (
-    ?, ?, ?, ?, ?
-)
-`
-
-type InsertProjectionJobDetailParams struct {
-	PortfolioID    []byte
-	JobID          []byte
-	InvalidFrom    sql.NullTime
-	InvalidThrough sql.NullTime
-	Reason         string
-}
-
-func (q *Queries) InsertProjectionJobDetail(ctx context.Context, arg InsertProjectionJobDetailParams) error {
-	_, err := q.db.ExecContext(ctx, insertProjectionJobDetail,
-		arg.PortfolioID,
-		arg.JobID,
-		arg.InvalidFrom,
-		arg.InvalidThrough,
-		arg.Reason,
-	)
-	return err
-}
-
-const insertProjectionJobKind = `-- name: InsertProjectionJobKind :exec
-INSERT INTO projection_job_kinds (
-    portfolio_id, job_id, projection_kind
-) VALUES (
-    ?, ?, ?
-)
-`
-
-type InsertProjectionJobKindParams struct {
-	PortfolioID    []byte
-	JobID          []byte
-	ProjectionKind string
-}
-
-func (q *Queries) InsertProjectionJobKind(ctx context.Context, arg InsertProjectionJobKindParams) error {
-	_, err := q.db.ExecContext(ctx, insertProjectionJobKind, arg.PortfolioID, arg.JobID, arg.ProjectionKind)
-	return err
-}
-
-const listJobAttempts = `-- name: ListJobAttempts :many
-SELECT
-    id, portfolio_id, job_id, attempt_number, worker_id, started_at, finished_at,
-    outcome, error_class, error_code, safe_detail, retry_at
-FROM job_attempts
-WHERE portfolio_id = ? AND job_id = ?
-ORDER BY attempt_number ASC
-`
-
-type ListJobAttemptsParams struct {
-	PortfolioID []byte
-	JobID       []byte
-}
-
-func (q *Queries) ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error) {
-	rows, err := q.db.QueryContext(ctx, listJobAttempts, arg.PortfolioID, arg.JobID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []JobAttempt{}
+	items := []ListCycleJobsWithPointsRow{}
 	for rows.Next() {
-		var i JobAttempt
+		var i ListCycleJobsWithPointsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PortfolioID,
-			&i.JobID,
-			&i.AttemptNumber,
-			&i.WorkerID,
+			&i.Status,
+			&i.Trigger,
+			&i.AttemptCount,
+			&i.MaxAttempts,
+			&i.LastErrorClass,
+			&i.LastDetail,
+			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
-			&i.Outcome,
-			&i.ErrorClass,
-			&i.ErrorCode,
-			&i.SafeDetail,
-			&i.RetryAt,
+			&i.PointID,
+			&i.EvaluatedAt,
+			&i.TotalUsd,
+			&i.AccountCount,
+			&i.StaleAccountCount,
+			&i.IncompleteAccountCount,
+			&i.BoundaryContributionUsd,
+			&i.BoundaryWithdrawalUsd,
+			&i.RecalculatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -346,12 +295,12 @@ func (q *Queries) ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams
 }
 
 const listJobsByPortfolio = `-- name: ListJobsByPortfolio :many
-SELECT
-    id, portfolio_id, kind, status, priority, dedupe_key, requested_by_user_id,
-    available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
-    last_error_code, last_error_detail, created_at, updated_at, started_at, finished_at
+SELECT id, portfolio_id, kind, status, ` + "`" + `trigger` + "`" + `, dedupe_key, payload_json, requested_by_user_id,
+       available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
+       last_error_class, last_detail, created_at, updated_at, started_at, finished_at
 FROM jobs
 WHERE portfolio_id = ?
+  AND (? = 0 OR kind = ?)
   AND (
       ? = 0
       OR created_at < ?
@@ -363,6 +312,8 @@ LIMIT ?
 
 type ListJobsByPortfolioParams struct {
 	PortfolioID     []byte
+	FilterKind      interface{}
+	Kind            string
 	HasCursor       interface{}
 	CursorCreatedAt time.Time
 	CursorID        []byte
@@ -374,16 +325,17 @@ type ListJobsByPortfolioRow struct {
 	PortfolioID       []byte
 	Kind              string
 	Status            string
-	Priority          int16
+	Trigger           string
 	DedupeKey         string
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
 	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
+	LastErrorClass    sql.NullString
+	LastDetail        sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	StartedAt         sql.NullTime
@@ -393,6 +345,8 @@ type ListJobsByPortfolioRow struct {
 func (q *Queries) ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error) {
 	rows, err := q.db.QueryContext(ctx, listJobsByPortfolio,
 		arg.PortfolioID,
+		arg.FilterKind,
+		arg.Kind,
 		arg.HasCursor,
 		arg.CursorCreatedAt,
 		arg.CursorCreatedAt,
@@ -411,16 +365,17 @@ func (q *Queries) ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfol
 			&i.PortfolioID,
 			&i.Kind,
 			&i.Status,
-			&i.Priority,
+			&i.Trigger,
 			&i.DedupeKey,
+			&i.PayloadJson,
 			&i.RequestedByUserID,
 			&i.AvailableAt,
 			&i.LeaseOwner,
 			&i.LeaseExpiresAt,
 			&i.AttemptCount,
 			&i.MaxAttempts,
-			&i.LastErrorCode,
-			&i.LastErrorDetail,
+			&i.LastErrorClass,
+			&i.LastDetail,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StartedAt,
@@ -439,15 +394,56 @@ func (q *Queries) ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfol
 	return items, nil
 }
 
+const listSucceededCycleJobs = `-- name: ListSucceededCycleJobs :many
+SELECT id, portfolio_id, created_at, finished_at
+FROM jobs
+WHERE portfolio_id = ? AND kind = 'collection_cycle' AND status = 'succeeded'
+ORDER BY created_at ASC, id ASC
+`
+
+type ListSucceededCycleJobsRow struct {
+	ID          []byte
+	PortfolioID []byte
+	CreatedAt   time.Time
+	FinishedAt  sql.NullTime
+}
+
+func (q *Queries) ListSucceededCycleJobs(ctx context.Context, portfolioID []byte) ([]ListSucceededCycleJobsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSucceededCycleJobs, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSucceededCycleJobsRow{}
+	for rows.Next() {
+		var i ListSucceededCycleJobsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.CreatedAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockClaimableJob = `-- name: LockClaimableJob :one
-SELECT
-    id, portfolio_id, kind, status, priority, dedupe_key, requested_by_user_id,
-    available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
-    last_error_code, last_error_detail, created_at, updated_at, started_at, finished_at
+SELECT id, portfolio_id, kind, status, ` + "`" + `trigger` + "`" + `, dedupe_key, payload_json, requested_by_user_id,
+       available_at, lease_owner, lease_expires_at, attempt_count, max_attempts,
+       last_error_class, last_detail, created_at, updated_at, started_at, finished_at
 FROM jobs
 WHERE (status = 'queued' AND available_at <= ?)
    OR (status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at < ?)
-ORDER BY priority DESC, available_at ASC, id ASC
+ORDER BY available_at ASC, id ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED
 `
@@ -462,16 +458,17 @@ type LockClaimableJobRow struct {
 	PortfolioID       []byte
 	Kind              string
 	Status            string
-	Priority          int16
+	Trigger           string
 	DedupeKey         string
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
 	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
+	LastErrorClass    sql.NullString
+	LastDetail        sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	StartedAt         sql.NullTime
@@ -486,16 +483,17 @@ func (q *Queries) LockClaimableJob(ctx context.Context, arg LockClaimableJobPara
 		&i.PortfolioID,
 		&i.Kind,
 		&i.Status,
-		&i.Priority,
+		&i.Trigger,
 		&i.DedupeKey,
+		&i.PayloadJson,
 		&i.RequestedByUserID,
 		&i.AvailableAt,
 		&i.LeaseOwner,
 		&i.LeaseExpiresAt,
 		&i.AttemptCount,
 		&i.MaxAttempts,
-		&i.LastErrorCode,
-		&i.LastErrorDetail,
+		&i.LastErrorClass,
+		&i.LastDetail,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -509,27 +507,27 @@ UPDATE jobs
 SET status = 'failed',
     lease_owner = NULL,
     lease_expires_at = NULL,
-    last_error_code = ?,
-    last_error_detail = ?,
+    last_error_class = ?,
+    last_detail = ?,
     finished_at = ?,
     updated_at = ?
 WHERE id = ? AND portfolio_id = ? AND lease_owner <=> ?
 `
 
 type MarkJobFailedParams struct {
-	LastErrorCode   sql.NullString
-	LastErrorDetail sql.NullString
-	FinishedAt      sql.NullTime
-	UpdatedAt       time.Time
-	ID              []byte
-	PortfolioID     []byte
-	LeaseOwner      sql.NullString
+	LastErrorClass sql.NullString
+	LastDetail     sql.NullString
+	FinishedAt     sql.NullTime
+	UpdatedAt      time.Time
+	ID             []byte
+	PortfolioID    []byte
+	LeaseOwner     sql.NullString
 }
 
 func (q *Queries) MarkJobFailed(ctx context.Context, arg MarkJobFailedParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, markJobFailed,
-		arg.LastErrorCode,
-		arg.LastErrorDetail,
+		arg.LastErrorClass,
+		arg.LastDetail,
 		arg.FinishedAt,
 		arg.UpdatedAt,
 		arg.ID,
@@ -585,14 +583,15 @@ UPDATE jobs
 SET status = 'succeeded',
     lease_owner = NULL,
     lease_expires_at = NULL,
-    last_error_code = NULL,
-    last_error_detail = NULL,
+    last_error_class = NULL,
+    last_detail = ?,
     finished_at = ?,
     updated_at = ?
 WHERE id = ? AND portfolio_id = ? AND lease_owner <=> ?
 `
 
 type MarkJobSucceededParams struct {
+	LastDetail  sql.NullString
 	FinishedAt  sql.NullTime
 	UpdatedAt   time.Time
 	ID          []byte
@@ -602,6 +601,7 @@ type MarkJobSucceededParams struct {
 
 func (q *Queries) MarkJobSucceeded(ctx context.Context, arg MarkJobSucceededParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, markJobSucceeded,
+		arg.LastDetail,
 		arg.FinishedAt,
 		arg.UpdatedAt,
 		arg.ID,
@@ -618,10 +618,7 @@ const renewJobLease = `-- name: RenewJobLease :execrows
 UPDATE jobs
 SET lease_expires_at = ?,
     updated_at = ?
-WHERE id = ?
-  AND portfolio_id = ?
-  AND lease_owner = ?
-  AND status = 'running'
+WHERE id = ? AND portfolio_id = ? AND lease_owner = ? AND status = 'running'
 `
 
 type RenewJobLeaseParams struct {
@@ -652,27 +649,27 @@ SET status = 'queued',
     lease_owner = NULL,
     lease_expires_at = NULL,
     available_at = ?,
-    last_error_code = ?,
-    last_error_detail = ?,
+    last_error_class = ?,
+    last_detail = ?,
     updated_at = ?
 WHERE id = ? AND portfolio_id = ? AND lease_owner <=> ?
 `
 
 type RequeueJobParams struct {
-	AvailableAt     time.Time
-	LastErrorCode   sql.NullString
-	LastErrorDetail sql.NullString
-	UpdatedAt       time.Time
-	ID              []byte
-	PortfolioID     []byte
-	LeaseOwner      sql.NullString
+	AvailableAt    time.Time
+	LastErrorClass sql.NullString
+	LastDetail     sql.NullString
+	UpdatedAt      time.Time
+	ID             []byte
+	PortfolioID    []byte
+	LeaseOwner     sql.NullString
 }
 
 func (q *Queries) RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, requeueJob,
 		arg.AvailableAt,
-		arg.LastErrorCode,
-		arg.LastErrorDetail,
+		arg.LastErrorClass,
+		arg.LastDetail,
 		arg.UpdatedAt,
 		arg.ID,
 		arg.PortfolioID,

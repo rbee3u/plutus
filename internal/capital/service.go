@@ -1,31 +1,34 @@
+// Package capital owns manual Capital Flows (ADR 0020).
 package capital
 
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/audit"
+	"github.com/rbee3u/plutus/internal/catalog"
+	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
 const (
-	minLimit     = 1
-	maxLimit     = 200
-	defaultLimit = 50
+	// DirectionContribution moves money into the boundary.
+	DirectionContribution = "contribution"
+	// DirectionWithdrawal moves money out of the boundary.
+	DirectionWithdrawal = "withdrawal"
+
+	maxNote = 500
+	// maxPriceAge bounds how far back a price may be to value a flow.
+	maxPriceAge = 24 * time.Hour
 )
 
-var decimalPattern = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
-
-// Service owns Capital Baseline and Capital Flow revisions.
+// Service owns Capital Flow use cases.
 type Service struct {
 	db  *sql.DB
 	q   *sqlcgen.Queries
@@ -37,113 +40,21 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
-// Baseline is the current logical capital baseline.
-type Baseline struct {
-	ID                uuid.UUID `json:"id"`
-	PortfolioID       uuid.UUID `json:"portfolioId"`
-	CurrentRevisionID uuid.UUID `json:"currentRevisionId"`
-	Version           uint64    `json:"version"`
-	EffectiveAt       time.Time `json:"effectiveAt"`
-	AssetID           uuid.UUID `json:"assetId"`
-	Quantity          string    `json:"quantity"`
-	Note              *string   `json:"note,omitempty"`
-}
-
-// BaselineRevision is an append-only baseline revision.
-type BaselineRevision struct {
-	ID              uuid.UUID
-	EffectiveAt     time.Time
-	AssetID         uuid.UUID
-	Quantity        string
-	Note            *string
-	CreatedByUserID uuid.UUID
-	CreatedAt       time.Time
-}
-
-// Flow is the current capital flow head plus current revision.
+// Flow is one manual Capital Flow.
 type Flow struct {
-	ID                uuid.UUID  `json:"id"`
-	PortfolioID       uuid.UUID  `json:"portfolioId"`
-	CurrentRevisionID uuid.UUID  `json:"currentRevisionId"`
-	Version           uint64     `json:"version"`
-	Direction         string     `json:"direction"`
-	Quantity          string     `json:"quantity"`
-	AssetID           uuid.UUID  `json:"assetId"`
-	EffectiveAt       time.Time  `json:"effectiveAt"`
-	AccountID         *uuid.UUID `json:"accountId,omitempty"`
-	Note              *string    `json:"note,omitempty"`
-	State             string     `json:"state"`
-}
-
-// FlowRevision is an append-only flow revision.
-type FlowRevision struct {
-	ID              uuid.UUID
-	Direction       string
-	Quantity        string
-	AssetID         uuid.UUID
-	EffectiveAt     time.Time
-	AccountID       *uuid.UUID
-	Note            *string
-	State           string
-	CreatedByUserID uuid.UUID
-	CreatedAt       time.Time
-}
-
-// RevisionPage is a cursor page of revisions.
-type RevisionPage[T any] struct {
-	Items      []T
-	Limit      int
-	NextCursor *string
-	HasMore    bool
-}
-
-// FlowPage is an offset page of current flows.
-type FlowPage struct {
-	Items  []Flow
-	Offset int
-	Limit  int
-	Total  int
-}
-
-// PutBaselineInput creates or corrects the logical baseline.
-type PutBaselineInput struct {
-	ActorUserID uuid.UUID
-	RequestID   string
-	EffectiveAt time.Time
-	AssetID     uuid.UUID
-	Quantity    string
-	Note        *string
-	IfMatch     string
-}
-
-// CreateFlowInput creates a capital flow.
-type CreateFlowInput struct {
-	ActorUserID uuid.UUID
-	RequestID   string
+	ID          uuid.UUID
+	PortfolioID uuid.UUID
 	Direction   string
+	AssetSymbol string
 	Quantity    string
-	AssetID     uuid.UUID
+	ValueUSD    *string
 	EffectiveAt time.Time
 	AccountID   *uuid.UUID
+	AccountName *string
 	Note        *string
-}
-
-// PatchFlowInput appends an edited revision.
-type PatchFlowInput struct {
-	ActorUserID  uuid.UUID
-	RequestID    string
-	Direction    *string
-	Quantity     *string
-	AssetID      *uuid.UUID
-	EffectiveAt  *time.Time
-	AccountID    *uuid.UUID
-	ClearAccount bool
-	Note         *string
-}
-
-// ETag returns the baseline validator.
-func (b *Baseline) ETag() string {
-	return fmt.Sprintf(`"capital-baseline:%d"`, b.Version)
+	Version     uint64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // ETag returns the flow validator.
@@ -151,20 +62,8 @@ func (f *Flow) ETag() string {
 	return fmt.Sprintf(`"capital-flow:%d"`, f.Version)
 }
 
-// ParseBaselineETag extracts the version or a create wildcard.
-func ParseBaselineETag(value string) (uint64, bool, bool) {
-	if value == "*" {
-		return 0, true, true
-	}
-	var version uint64
-	if _, err := fmt.Sscanf(value, `"capital-baseline:%d"`, &version); err != nil {
-		return 0, false, false
-	}
-	return version, false, true
-}
-
-// ParseFlowETag extracts the flow version.
-func ParseFlowETag(value string) (uint64, bool) {
+// ParseETag extracts the version from a flow ETag.
+func ParseETag(value string) (uint64, bool) {
 	var version uint64
 	if _, err := fmt.Sscanf(value, `"capital-flow:%d"`, &version); err != nil {
 		return 0, false
@@ -172,449 +71,67 @@ func ParseFlowETag(value string) (uint64, bool) {
 	return version, true
 }
 
-// GetBaseline returns the current baseline.
-func (s *Service) GetBaseline(ctx context.Context, portfolioID uuid.UUID) (Baseline, error) {
-	return s.getBaseline(ctx, s.q, portfolioID)
-}
-
-// PutBaseline creates the logical baseline or appends a correction.
-func (s *Service) PutBaseline(ctx context.Context, portfolioID uuid.UUID, in *PutBaselineInput) (Baseline, bool, error) {
-	if in == nil {
-		return Baseline{}, false, ErrInvalid
-	}
-	quantity, err := normalizeDecimal(in.Quantity)
-	if err != nil {
-		return Baseline{}, false, err
-	}
-	if in.EffectiveAt.IsZero() {
-		return Baseline{}, false, ErrInvalid
-	}
-	if _, err := s.q.GetAssetByID(ctx, mustBin(in.AssetID)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Baseline{}, false, ErrInvalid
-		}
-		return Baseline{}, false, err
-	}
-	version, star, ok := ParseBaselineETag(in.IfMatch)
-	if !ok {
-		return Baseline{}, false, ErrPrecondition
-	}
-	current, err := s.GetBaseline(ctx, portfolioID)
-	if err != nil && !errors.Is(err, ErrNotFound) {
-		return Baseline{}, false, err
-	}
-	exists := err == nil
-	if star && exists {
-		return current, false, ErrExists
-	}
-	if !star && !exists {
-		return Baseline{}, false, ErrNotFound
-	}
-	if exists && current.Version != version {
-		return current, false, ErrPrecondition
-	}
-
-	revisionID, err := uuid.NewV7()
-	if err != nil {
-		return Baseline{}, false, err
-	}
-	now := s.now().UTC()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Baseline{}, false, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
-	created := !exists
-	var baselineID uuid.UUID
-	if created {
-		baselineID, err = uuid.NewV7()
-		if err != nil {
-			return Baseline{}, false, err
-		}
-		if err := q.InsertCapitalBaseline(ctx, sqlcgen.InsertCapitalBaselineParams{
-			ID:          mustBin(baselineID),
-			PortfolioID: mustBin(portfolioID),
-			Version:     1,
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		}); err != nil {
-			if mysql.IsDuplicate(err) {
-				return Baseline{}, false, ErrExists
-			}
-			return Baseline{}, false, err
-		}
-	} else {
-		baselineID = current.ID
-	}
-	if err := q.InsertCapitalBaselineRevision(ctx, sqlcgen.InsertCapitalBaselineRevisionParams{
-		ID:                mustBin(revisionID),
-		PortfolioID:       mustBin(portfolioID),
-		CapitalBaselineID: mustBin(baselineID),
-		EffectiveAt:       in.EffectiveAt.UTC(),
-		AssetID:           mustBin(in.AssetID),
-		Quantity:          quantity,
-		Note:              nullNote(in.Note),
-		CreatedByUserID:   mustBin(in.ActorUserID),
-		CreatedAt:         now,
-	}); err != nil {
-		return Baseline{}, false, err
-	}
-	if created {
-		if err := q.SetCapitalBaselineRevision(ctx, sqlcgen.SetCapitalBaselineRevisionParams{
-			CurrentRevisionID: mustBin(revisionID),
-			UpdatedAt:         now,
-			PortfolioID:       mustBin(portfolioID),
-			ID:                mustBin(baselineID),
-		}); err != nil {
-			return Baseline{}, false, err
-		}
-	} else {
-		n, err := q.UpdateCapitalBaselinePointer(ctx, sqlcgen.UpdateCapitalBaselinePointerParams{
-			CurrentRevisionID: mustBin(revisionID),
-			UpdatedAt:         now,
-			PortfolioID:       mustBin(portfolioID),
-			ID:                mustBin(baselineID),
-			Version:           version,
-		})
-		if err != nil {
-			return Baseline{}, false, err
-		}
-		if n == 0 {
-			latest, getErr := s.GetBaseline(ctx, portfolioID)
-			if getErr != nil {
-				return Baseline{}, false, getErr
-			}
-			return latest, false, ErrPrecondition
-		}
-	}
-	after, err := s.getBaseline(ctx, q, portfolioID)
-	if err != nil {
-		return Baseline{}, false, err
-	}
-	action := "capital_baseline.correct"
-	if created {
-		action = "capital_baseline.create"
-	}
-	if err := insertAudit(ctx, q, portfolioID, in.ActorUserID, in.RequestID, action, "capital_baseline", baselineID, currentOrNil(exists, &current), after, now); err != nil {
-		return Baseline{}, false, err
-	}
-	if err := tx.Commit(); err != nil {
-		return Baseline{}, false, err
-	}
-	return after, created, nil
-}
-
-// ListBaselineRevisions returns cursor-paged baseline history.
-func (s *Service) ListBaselineRevisions(ctx context.Context, portfolioID uuid.UUID, limit int, cursor string) (RevisionPage[BaselineRevision], error) {
-	head, err := s.GetBaseline(ctx, portfolioID)
-	if err != nil {
-		return RevisionPage[BaselineRevision]{}, err
-	}
-	limit, err = normalizeLimit(limit)
-	if err != nil {
-		return RevisionPage[BaselineRevision]{}, err
-	}
-	params := sqlcgen.ListCapitalBaselineRevisionsParams{
-		PortfolioID:       mustBin(portfolioID),
-		CapitalBaselineID: mustBin(head.ID),
-		HasCursor:         0,
-		CursorID:          make([]byte, 16),
-		Limit:             int32(limit + 1),
-	}
-	if cursor != "" {
-		decoded, err := decodeCursor(cursor, portfolioID)
-		if err != nil {
-			return RevisionPage[BaselineRevision]{}, err
-		}
-		params.HasCursor = 1
-		params.CursorCreatedAt = time.UnixMicro(decoded.CreatedAt).UTC()
-		params.CursorID = mustBin(decoded.ID)
-	}
-	rows, err := s.q.ListCapitalBaselineRevisions(ctx, params)
-	if err != nil {
-		return RevisionPage[BaselineRevision]{}, err
-	}
-	hasMore := len(rows) > limit
-	if hasMore {
-		rows = rows[:limit]
-	}
-	items := make([]BaselineRevision, 0, len(rows))
-	for i := range rows {
-		item, err := baselineRevisionFromRow(&rows[i])
-		if err != nil {
-			return RevisionPage[BaselineRevision]{}, err
-		}
-		items = append(items, item)
-	}
-	page := RevisionPage[BaselineRevision]{Items: items, Limit: limit, HasMore: hasMore}
-	if hasMore && len(items) > 0 {
-		last := items[len(items)-1]
-		encoded, err := encodeCursor(listCursor{PortfolioID: portfolioID, CreatedAt: last.CreatedAt.UTC().UnixMicro(), ID: last.ID})
-		if err != nil {
-			return RevisionPage[BaselineRevision]{}, err
-		}
-		page.NextCursor = &encoded
-	}
-	return page, nil
-}
-
-func (s *Service) getBaseline(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID) (Baseline, error) {
-	head, err := q.GetCapitalBaselineByPortfolio(ctx, mustBin(portfolioID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return Baseline{}, ErrNotFound
-	}
-	if err != nil {
-		return Baseline{}, err
-	}
-	if len(head.CurrentRevisionID) != 16 {
-		return Baseline{}, ErrNotFound
-	}
-	rev, err := q.GetCapitalBaselineRevision(ctx, sqlcgen.GetCapitalBaselineRevisionParams{
-		PortfolioID: mustBin(portfolioID),
-		ID:          head.CurrentRevisionID,
-	})
-	if err != nil {
-		return Baseline{}, err
-	}
-	return baselineFrom(&head, &rev)
-}
-
-// ListFlows returns current active flows.
-func (s *Service) ListFlows(ctx context.Context, portfolioID uuid.UUID, offset, limit int) (FlowPage, error) {
-	offset, limit, err := normalizePage(offset, limit)
-	if err != nil {
-		return FlowPage{}, err
-	}
-	total, err := s.q.CountActiveCapitalFlows(ctx, mustBin(portfolioID))
-	if err != nil {
-		return FlowPage{}, err
-	}
-	rows, err := s.q.ListActiveCapitalFlows(ctx, sqlcgen.ListActiveCapitalFlowsParams{
-		PortfolioID: mustBin(portfolioID),
-		Limit:       int32(limit),
-		Offset:      int32(offset),
-	})
-	if err != nil {
-		return FlowPage{}, err
-	}
-	items := make([]Flow, 0, len(rows))
-	for i := range rows {
-		item, err := flowFromListRow(&rows[i])
-		if err != nil {
-			return FlowPage{}, err
-		}
-		items = append(items, item)
-	}
-	return FlowPage{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
-}
-
-// GetFlow returns one flow including a deleted current revision.
-func (s *Service) GetFlow(ctx context.Context, portfolioID, flowID uuid.UUID) (Flow, error) {
-	return s.getFlow(ctx, s.q, portfolioID, flowID)
-}
-
-// CreateFlow inserts a flow head and first active revision.
-func (s *Service) CreateFlow(ctx context.Context, portfolioID uuid.UUID, in *CreateFlowInput) (Flow, error) {
-	if in == nil {
-		return Flow{}, ErrInvalid
-	}
-	draft, err := s.validateNewRevision(ctx, portfolioID, in.Direction, in.Quantity, in.AssetID, in.EffectiveAt, in.AccountID)
-	if err != nil {
-		return Flow{}, err
-	}
-	flowID, err := uuid.NewV7()
-	if err != nil {
-		return Flow{}, err
-	}
-	revisionID, err := uuid.NewV7()
-	if err != nil {
-		return Flow{}, err
-	}
-	now := s.now().UTC()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Flow{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
-	if err := q.InsertCapitalFlow(ctx, sqlcgen.InsertCapitalFlowParams{
-		ID:          mustBin(flowID),
-		PortfolioID: mustBin(portfolioID),
-		Version:     1,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}); err != nil {
-		return Flow{}, err
-	}
-	if err := q.InsertCapitalFlowRevision(ctx, flowRevisionParams(portfolioID, flowID, revisionID, &draft, in.Note, "active", in.ActorUserID, now)); err != nil {
-		return Flow{}, err
-	}
-	if err := q.SetCapitalFlowRevision(ctx, sqlcgen.SetCapitalFlowRevisionParams{
-		CurrentRevisionID: mustBin(revisionID),
-		UpdatedAt:         now,
-		PortfolioID:       mustBin(portfolioID),
-		ID:                mustBin(flowID),
-	}); err != nil {
-		return Flow{}, err
-	}
-	item, err := s.getFlow(ctx, q, portfolioID, flowID)
-	if err != nil {
-		return Flow{}, err
-	}
-	if err := insertAudit(ctx, q, portfolioID, in.ActorUserID, in.RequestID, "capital_flow.create", "capital_flow", flowID, nil, item, now); err != nil {
-		return Flow{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return Flow{}, err
-	}
-	return item, nil
-}
-
-// PatchFlow appends an edited active revision.
-func (s *Service) PatchFlow(ctx context.Context, portfolioID, flowID uuid.UUID, version uint64, in *PatchFlowInput) (Flow, error) {
-	if in == nil || in.empty() {
-		return Flow{}, ErrInvalid
-	}
-	current, err := s.GetFlow(ctx, portfolioID, flowID)
-	if err != nil {
-		return Flow{}, err
-	}
-	if current.Version != version {
-		return current, ErrPrecondition
-	}
-	next := current
-	if in.Direction != nil {
-		next.Direction = *in.Direction
-	}
-	if in.Quantity != nil {
-		next.Quantity = *in.Quantity
-	}
-	if in.AssetID != nil {
-		next.AssetID = *in.AssetID
-	}
-	if in.EffectiveAt != nil {
-		next.EffectiveAt = *in.EffectiveAt
-	}
-	if in.ClearAccount {
-		next.AccountID = nil
-	} else if in.AccountID != nil {
-		next.AccountID = in.AccountID
-	}
-	if in.Note != nil {
-		next.Note = in.Note
-	}
-	draft, err := s.validateNewRevision(ctx, portfolioID, next.Direction, next.Quantity, next.AssetID, next.EffectiveAt, next.AccountID)
-	if err != nil {
-		return Flow{}, err
-	}
-	return s.appendFlowRevision(ctx, &current, &draft, in.Note, "active", "capital_flow.correct", in.ActorUserID, in.RequestID, version)
-}
-
-// DeleteFlow appends a deleted revision while preserving history.
-func (s *Service) DeleteFlow(ctx context.Context, portfolioID, flowID uuid.UUID, version uint64, actor uuid.UUID, requestID string) (Flow, error) {
-	current, err := s.GetFlow(ctx, portfolioID, flowID)
-	if err != nil {
-		return Flow{}, err
-	}
-	if current.Version != version {
-		return current, ErrPrecondition
-	}
-	draft := revisionDraft{Direction: current.Direction, Quantity: current.Quantity, AssetID: current.AssetID, EffectiveAt: current.EffectiveAt, AccountID: current.AccountID}
-	return s.appendFlowRevision(ctx, &current, &draft, current.Note, "deleted", "capital_flow.delete", actor, requestID, version)
-}
-
-// ListFlowRevisions returns cursor-paged flow history.
-func (s *Service) ListFlowRevisions(ctx context.Context, portfolioID, flowID uuid.UUID, limit int, cursor string) (RevisionPage[FlowRevision], error) {
-	if _, err := s.GetFlow(ctx, portfolioID, flowID); err != nil {
-		return RevisionPage[FlowRevision]{}, err
-	}
-	limit, err := normalizeLimit(limit)
-	if err != nil {
-		return RevisionPage[FlowRevision]{}, err
-	}
-	params := sqlcgen.ListCapitalFlowRevisionsParams{
-		PortfolioID:   mustBin(portfolioID),
-		CapitalFlowID: mustBin(flowID),
-		HasCursor:     0,
-		CursorID:      make([]byte, 16),
-		Limit:         int32(limit + 1),
-	}
-	if cursor != "" {
-		decoded, err := decodeCursor(cursor, portfolioID)
-		if err != nil {
-			return RevisionPage[FlowRevision]{}, err
-		}
-		params.HasCursor = 1
-		params.CursorCreatedAt = time.UnixMicro(decoded.CreatedAt).UTC()
-		params.CursorID = mustBin(decoded.ID)
-	}
-	rows, err := s.q.ListCapitalFlowRevisions(ctx, params)
-	if err != nil {
-		return RevisionPage[FlowRevision]{}, err
-	}
-	hasMore := len(rows) > limit
-	if hasMore {
-		rows = rows[:limit]
-	}
-	items := make([]FlowRevision, 0, len(rows))
-	for i := range rows {
-		item, err := flowRevisionFromRow(&rows[i])
-		if err != nil {
-			return RevisionPage[FlowRevision]{}, err
-		}
-		items = append(items, item)
-	}
-	page := RevisionPage[FlowRevision]{Items: items, Limit: limit, HasMore: hasMore}
-	if hasMore && len(items) > 0 {
-		last := items[len(items)-1]
-		encoded, err := encodeCursor(listCursor{PortfolioID: portfolioID, CreatedAt: last.CreatedAt.UTC().UnixMicro(), ID: last.ID})
-		if err != nil {
-			return RevisionPage[FlowRevision]{}, err
-		}
-		page.NextCursor = &encoded
-	}
-	return page, nil
-}
-
-type revisionDraft struct {
-	Direction   string
-	Quantity    string
-	AssetID     uuid.UUID
-	EffectiveAt time.Time
+// Input is the accepted create or patch payload.
+type Input struct {
+	ActorUserID uuid.UUID
+	RequestID   string
+	Direction   *string
+	AssetSymbol *string
+	Quantity    *string
+	ValueUSD    *string
+	EffectiveAt *time.Time
 	AccountID   *uuid.UUID
+	Note        *string
+	// ClearAccount detaches the flow from its Account; ClearValue drops a manual USD value.
+	ClearAccount bool
+	ClearValue   bool
 }
 
-func (s *Service) validateNewRevision(ctx context.Context, portfolioID uuid.UUID, direction, quantity string, assetID uuid.UUID, effectiveAt time.Time, accountID *uuid.UUID) (revisionDraft, error) {
-	if direction != "contribution" && direction != "withdrawal" {
-		return revisionDraft{}, ErrInvalid
+// List returns flows effective within [from, to), newest first.
+func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, from, to time.Time) ([]Flow, error) {
+	if from.IsZero() {
+		from = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	}
-	qty, err := positiveDecimal(quantity)
+	if to.IsZero() {
+		to = time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	rows, err := s.q.ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 	if err != nil {
-		return revisionDraft{}, err
+		return nil, err
 	}
-	if effectiveAt.IsZero() {
-		return revisionDraft{}, ErrInvalid
-	}
-	if _, err := s.q.GetAssetByID(ctx, mustBin(assetID)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return revisionDraft{}, ErrInvalid
+	out := make([]Flow, 0, len(rows))
+	for i := range rows {
+		item, err := s.fromRow(ctx, &rows[i])
+		if err != nil {
+			return nil, err
 		}
-		return revisionDraft{}, err
+		out = append(out, item)
 	}
-	if accountID != nil {
-		if _, err := s.q.GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: mustBin(portfolioID), ID: mustBin(*accountID)}); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return revisionDraft{}, ErrInvalid
-			}
-			return revisionDraft{}, err
-		}
-	}
-	return revisionDraft{Direction: direction, Quantity: qty, AssetID: assetID, EffectiveAt: effectiveAt.UTC(), AccountID: accountID}, nil
+	return out, nil
 }
 
-func (s *Service) appendFlowRevision(ctx context.Context, current *Flow, draft *revisionDraft, note *string, state, action string, actor uuid.UUID, requestID string, version uint64) (Flow, error) {
-	revisionID, err := uuid.NewV7()
+// Get returns one flow.
+func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Flow, error) {
+	row, err := s.q.GetCapitalFlow(ctx, sqlcgen.GetCapitalFlowParams{PortfolioID: portfolioID[:], ID: id[:]})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Flow{}, ErrNotFound
+	}
+	if err != nil {
+		return Flow{}, err
+	}
+	return s.fromRow(ctx, &row)
+}
+
+// Create inserts a flow, valuing it in USD from the nearest Platform price when no value is given.
+func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *Input) (Flow, error) {
+	if in.Direction == nil || in.AssetSymbol == nil || in.Quantity == nil || in.EffectiveAt == nil {
+		return Flow{}, ErrInvalid
+	}
+	draft := Flow{PortfolioID: portfolioID}
+	if err := s.apply(ctx, &draft, in); err != nil {
+		return Flow{}, err
+	}
+	id, err := uuid.NewV7()
 	if err != nil {
 		return Flow{}, err
 	}
@@ -625,206 +142,223 @@ func (s *Service) appendFlowRevision(ctx context.Context, current *Flow, draft *
 	}
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
-	if err := q.InsertCapitalFlowRevision(ctx, flowRevisionParams(current.PortfolioID, current.ID, revisionID, draft, note, state, actor, now)); err != nil {
+	params := sqlcgen.InsertCapitalFlowParams{
+		ID: id[:], PortfolioID: portfolioID[:], Direction: draft.Direction, AssetSymbol: draft.AssetSymbol, Quantity: draft.Quantity,
+		EffectiveAt: draft.EffectiveAt, CreatedByUserID: in.ActorUserID[:], Version: 1, CreatedAt: now, UpdatedAt: now,
+	}
+	if draft.ValueUSD != nil {
+		params.ValueUsd = sql.NullString{String: *draft.ValueUSD, Valid: true}
+	}
+	if draft.AccountID != nil {
+		params.AccountID = draft.AccountID[:]
+	}
+	if draft.Note != nil {
+		params.Note = sql.NullString{String: *draft.Note, Valid: true}
+	}
+	if err := q.InsertCapitalFlow(ctx, params); err != nil {
 		return Flow{}, err
 	}
-	n, err := q.UpdateCapitalFlowPointer(ctx, sqlcgen.UpdateCapitalFlowPointerParams{
-		CurrentRevisionID: mustBin(revisionID),
-		UpdatedAt:         now,
-		PortfolioID:       mustBin(current.PortfolioID),
-		ID:                mustBin(current.ID),
-		Version:           version,
-	})
+	draft.ID, draft.Version = id, 1
+	if err := audit.Record(ctx, q, now, &audit.Entry{
+		PortfolioID: portfolioID, ActorUserID: in.ActorUserID, Action: "capital_flow.create", ResourceType: "capital_flow", ResourceID: id,
+		RequestID: in.RequestID, After: auditView(&draft),
+	}); err != nil {
+		return Flow{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Flow{}, err
+	}
+	return s.Get(ctx, portfolioID, id)
+}
+
+// Patch updates a flow when the version matches.
+func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in *Input) (Flow, error) {
+	current, err := s.Get(ctx, portfolioID, id)
+	if err != nil {
+		return Flow{}, err
+	}
+	if current.Version != version {
+		return current, ErrPrecondition
+	}
+	draft := current
+	if err := s.apply(ctx, &draft, in); err != nil {
+		return Flow{}, err
+	}
+	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Flow{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	params := sqlcgen.UpdateCapitalFlowParams{
+		Direction: draft.Direction, AssetSymbol: draft.AssetSymbol, Quantity: draft.Quantity, EffectiveAt: draft.EffectiveAt,
+		UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version,
+	}
+	if draft.ValueUSD != nil {
+		params.ValueUsd = sql.NullString{String: *draft.ValueUSD, Valid: true}
+	}
+	if draft.AccountID != nil {
+		params.AccountID = draft.AccountID[:]
+	}
+	if draft.Note != nil {
+		params.Note = sql.NullString{String: *draft.Note, Valid: true}
+	}
+	n, err := q.UpdateCapitalFlow(ctx, params)
 	if err != nil {
 		return Flow{}, err
 	}
 	if n == 0 {
-		latest, getErr := s.GetFlow(ctx, current.PortfolioID, current.ID)
-		if getErr != nil {
-			return Flow{}, getErr
-		}
-		return latest, ErrPrecondition
+		return current, ErrPrecondition
 	}
-	item, err := s.getFlow(ctx, q, current.PortfolioID, current.ID)
-	if err != nil {
-		return Flow{}, err
-	}
-	if err := insertAudit(ctx, q, current.PortfolioID, actor, requestID, action, "capital_flow", current.ID, current, item, now); err != nil {
+	draft.Version++
+	if err := audit.Record(ctx, q, now, &audit.Entry{
+		PortfolioID: portfolioID, ActorUserID: in.ActorUserID, Action: "capital_flow.update", ResourceType: "capital_flow", ResourceID: id,
+		RequestID: in.RequestID, Before: auditView(&current), After: auditView(&draft),
+	}); err != nil {
 		return Flow{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return Flow{}, err
 	}
-	return item, nil
+	return s.Get(ctx, portfolioID, id)
 }
 
-func (s *Service) getFlow(ctx context.Context, q *sqlcgen.Queries, portfolioID, flowID uuid.UUID) (Flow, error) {
-	head, err := q.GetCapitalFlow(ctx, sqlcgen.GetCapitalFlowParams{PortfolioID: mustBin(portfolioID), ID: mustBin(flowID)})
-	if errors.Is(err, sql.ErrNoRows) {
-		return Flow{}, ErrNotFound
-	}
-	if err != nil {
-		return Flow{}, err
-	}
-	if len(head.CurrentRevisionID) != 16 {
-		return Flow{}, ErrNotFound
-	}
-	rev, err := q.GetCapitalFlowRevision(ctx, sqlcgen.GetCapitalFlowRevisionParams{PortfolioID: mustBin(portfolioID), ID: head.CurrentRevisionID})
-	if err != nil {
-		return Flow{}, err
-	}
-	return flowFromHead(&head, &rev)
-}
-
-func (in *PatchFlowInput) empty() bool {
-	return in.Direction == nil && in.Quantity == nil && in.AssetID == nil && in.EffectiveAt == nil && in.AccountID == nil && !in.ClearAccount && in.Note == nil
-}
-
-func flowRevisionParams(portfolioID, flowID, revisionID uuid.UUID, draft *revisionDraft, note *string, state string, actor uuid.UUID, now time.Time) sqlcgen.InsertCapitalFlowRevisionParams {
-	params := sqlcgen.InsertCapitalFlowRevisionParams{
-		ID:              mustBin(revisionID),
-		PortfolioID:     mustBin(portfolioID),
-		CapitalFlowID:   mustBin(flowID),
-		Direction:       draft.Direction,
-		Quantity:        draft.Quantity,
-		AssetID:         mustBin(draft.AssetID),
-		EffectiveAt:     draft.EffectiveAt,
-		Note:            nullNote(note),
-		State:           state,
-		CreatedByUserID: mustBin(actor),
-		CreatedAt:       now,
-	}
-	if draft.AccountID != nil {
-		params.AccountID = mustBin(*draft.AccountID)
-	}
-	return params
-}
-
-func insertAudit(ctx context.Context, q *sqlcgen.Queries, portfolioID, actor uuid.UUID, requestID, action, resourceType string, resourceID uuid.UUID, before, after any, now time.Time) error {
-	auditID, err := uuid.NewV7()
+// Delete removes a flow when the version matches.
+func (s *Service) Delete(ctx context.Context, portfolioID, id uuid.UUID, version uint64, actor uuid.UUID, requestID string) error {
+	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
 		return err
 	}
-	var beforeJSON, afterJSON json.RawMessage
-	if before != nil {
-		beforeJSON, err = json.Marshal(before)
-		if err != nil {
-			return err
-		}
+	if current.Version != version {
+		return ErrPrecondition
 	}
-	if after != nil {
-		afterJSON, err = json.Marshal(after)
-		if err != nil {
-			return err
-		}
+	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
-	return q.InsertAuditEvent(ctx, sqlcgen.InsertAuditEventParams{
-		ID:           mustBin(auditID),
-		PortfolioID:  mustBin(portfolioID),
-		ActorUserID:  mustBin(actor),
-		Action:       action,
-		ResourceType: resourceType,
-		ResourceID:   mustBin(resourceID),
-		RequestID:    defaultString(requestID, "unknown"),
-		BeforeJson:   sqljson.Column(beforeJSON),
-		AfterJson:    sqljson.Column(afterJSON),
-		OccurredAt:   now,
-	})
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	n, err := q.DeleteCapitalFlow(ctx, sqlcgen.DeleteCapitalFlowParams{PortfolioID: portfolioID[:], ID: id[:], Version: version})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrPrecondition
+	}
+	if err := audit.Record(ctx, q, now, &audit.Entry{
+		PortfolioID: portfolioID, ActorUserID: actor, Action: "capital_flow.delete", ResourceType: "capital_flow", ResourceID: id,
+		RequestID: requestID, Before: auditView(&current),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func currentOrNil(exists bool, current *Baseline) any {
-	if !exists {
+// apply validates the input onto draft and (re)values it in USD when needed.
+func (s *Service) apply(ctx context.Context, draft *Flow, in *Input) error {
+	revalue := draft.ID == uuid.Nil
+	if in.Direction != nil {
+		if *in.Direction != DirectionContribution && *in.Direction != DirectionWithdrawal {
+			return ErrInvalid
+		}
+		draft.Direction = *in.Direction
+	}
+	if in.AssetSymbol != nil {
+		symbol, err := catalog.NormalizeSymbol(*in.AssetSymbol)
+		if err != nil {
+			return ErrInvalid
+		}
+		if symbol != draft.AssetSymbol {
+			revalue = true
+		}
+		draft.AssetSymbol = symbol
+	}
+	if in.Quantity != nil {
+		quantity, ok := decimal.Parse(*in.Quantity)
+		if !ok || !decimal.Valid(*in.Quantity) || quantity.Sign() <= 0 {
+			return ErrInvalid
+		}
+		if *in.Quantity != draft.Quantity {
+			revalue = true
+		}
+		draft.Quantity = *in.Quantity
+	}
+	if in.EffectiveAt != nil {
+		at := in.EffectiveAt.UTC().Truncate(time.Microsecond)
+		if !at.Equal(draft.EffectiveAt) {
+			revalue = true
+		}
+		draft.EffectiveAt = at
+	}
+	if in.ClearAccount {
+		draft.AccountID = nil
+	} else if in.AccountID != nil {
+		if _, err := s.q.GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: draft.PortfolioID[:], ID: in.AccountID[:]}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrInvalid
+			}
+			return err
+		}
+		accountID := *in.AccountID
+		draft.AccountID = &accountID
+	}
+	if in.Note != nil {
+		note := strings.TrimSpace(*in.Note)
+		if len(note) > maxNote {
+			return ErrInvalid
+		}
+		if note == "" {
+			draft.Note = nil
+		} else {
+			draft.Note = &note
+		}
+	}
+	switch {
+	case in.ClearValue:
+		revalue = true
+	case in.ValueUSD != nil:
+		value, ok := decimal.Parse(*in.ValueUSD)
+		if !ok || !decimal.Valid(*in.ValueUSD) || value.Sign() < 0 {
+			return ErrInvalid
+		}
+		draft.ValueUSD = in.ValueUSD
+		revalue = false
+	}
+	if revalue {
+		draft.ValueUSD = s.valueInUSD(ctx, draft.AssetSymbol, draft.Quantity, draft.EffectiveAt)
+	}
+	return nil
+}
+
+// valueInUSD converts a quantity at the nearest Platform price at or before effectiveAt (ADR 0017).
+func (s *Service) valueInUSD(ctx context.Context, assetSymbol, quantity string, at time.Time) *string {
+	qty, ok := decimal.Parse(quantity)
+	if !ok {
 		return nil
 	}
-	return current
+	switch assetSymbol {
+	case "USD", "USDT", "USDC":
+		return decimal.FormatPtr(qty)
+	}
+	row, err := s.q.GetNearestPriceAt(ctx, sqlcgen.GetNearestPriceAtParams{AssetSymbol: assetSymbol, FilterPlatform: 0, At: at.UTC()})
+	if err != nil || at.Sub(row.ObservedAt) > maxPriceAge {
+		return nil
+	}
+	switch row.QuoteSymbol {
+	case "USD", "USDT", "USDC":
+	default:
+		return nil
+	}
+	price, ok := decimal.Parse(row.Price)
+	if !ok {
+		return nil
+	}
+	return decimal.FormatPtr(decimal.Mul(qty, price))
 }
 
-func baselineFrom(head *sqlcgen.CapitalBaseline, rev *sqlcgen.CapitalBaselineRevision) (Baseline, error) {
-	id, err := uuid.FromBytes(head.ID)
-	if err != nil {
-		return Baseline{}, err
-	}
-	portfolioID, err := uuid.FromBytes(head.PortfolioID)
-	if err != nil {
-		return Baseline{}, err
-	}
-	revisionID, err := uuid.FromBytes(rev.ID)
-	if err != nil {
-		return Baseline{}, err
-	}
-	assetID, err := uuid.FromBytes(rev.AssetID)
-	if err != nil {
-		return Baseline{}, err
-	}
-	return Baseline{
-		ID:                id,
-		PortfolioID:       portfolioID,
-		CurrentRevisionID: revisionID,
-		Version:           head.Version,
-		EffectiveAt:       rev.EffectiveAt,
-		AssetID:           assetID,
-		Quantity:          compactDecimal(rev.Quantity),
-		Note:              ptrNote(rev.Note),
-	}, nil
-}
-
-func baselineRevisionFromRow(row *sqlcgen.CapitalBaselineRevision) (BaselineRevision, error) {
-	id, err := uuid.FromBytes(row.ID)
-	if err != nil {
-		return BaselineRevision{}, err
-	}
-	assetID, err := uuid.FromBytes(row.AssetID)
-	if err != nil {
-		return BaselineRevision{}, err
-	}
-	actor, err := uuid.FromBytes(row.CreatedByUserID)
-	if err != nil {
-		return BaselineRevision{}, err
-	}
-	return BaselineRevision{
-		ID:              id,
-		EffectiveAt:     row.EffectiveAt,
-		AssetID:         assetID,
-		Quantity:        compactDecimal(row.Quantity),
-		Note:            ptrNote(row.Note),
-		CreatedByUserID: actor,
-		CreatedAt:       row.CreatedAt,
-	}, nil
-}
-
-func flowFromHead(head *sqlcgen.CapitalFlow, rev *sqlcgen.CapitalFlowRevision) (Flow, error) {
-	id, err := uuid.FromBytes(head.ID)
-	if err != nil {
-		return Flow{}, err
-	}
-	portfolioID, err := uuid.FromBytes(head.PortfolioID)
-	if err != nil {
-		return Flow{}, err
-	}
-	revisionID, err := uuid.FromBytes(rev.ID)
-	if err != nil {
-		return Flow{}, err
-	}
-	assetID, err := uuid.FromBytes(rev.AssetID)
-	if err != nil {
-		return Flow{}, err
-	}
-	return Flow{
-		ID:                id,
-		PortfolioID:       portfolioID,
-		CurrentRevisionID: revisionID,
-		Version:           head.Version,
-		Direction:         rev.Direction,
-		Quantity:          compactDecimal(rev.Quantity),
-		AssetID:           assetID,
-		EffectiveAt:       rev.EffectiveAt,
-		AccountID:         optionalID(rev.AccountID),
-		Note:              ptrNote(rev.Note),
-		State:             rev.State,
-	}, nil
-}
-
-func flowFromListRow(row *sqlcgen.ListActiveCapitalFlowsRow) (Flow, error) {
+func (s *Service) fromRow(ctx context.Context, row *sqlcgen.CapitalFlow) (Flow, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return Flow{}, err
@@ -833,150 +367,48 @@ func flowFromListRow(row *sqlcgen.ListActiveCapitalFlowsRow) (Flow, error) {
 	if err != nil {
 		return Flow{}, err
 	}
-	revisionID, err := uuid.FromBytes(row.RevisionID)
-	if err != nil {
-		return Flow{}, err
+	item := Flow{
+		ID: id, PortfolioID: portfolioID, Direction: row.Direction, AssetSymbol: row.AssetSymbol, Quantity: decimal.Compact(row.Quantity),
+		EffectiveAt: row.EffectiveAt, Version: row.Version, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
-	assetID, err := uuid.FromBytes(row.AssetID)
-	if err != nil {
-		return Flow{}, err
+	if row.ValueUsd.Valid {
+		value := decimal.Compact(row.ValueUsd.String)
+		item.ValueUSD = &value
 	}
-	return Flow{
-		ID:                id,
-		PortfolioID:       portfolioID,
-		CurrentRevisionID: revisionID,
-		Version:           row.Version,
-		Direction:         row.Direction,
-		Quantity:          compactDecimal(row.Quantity),
-		AssetID:           assetID,
-		EffectiveAt:       row.EffectiveAt,
-		AccountID:         optionalID(row.AccountID),
-		Note:              ptrNote(row.Note),
-		State:             row.State,
-	}, nil
+	if row.Note.Valid {
+		note := row.Note.String
+		item.Note = &note
+	}
+	if len(row.AccountID) == 16 {
+		accountID, err := uuid.FromBytes(row.AccountID)
+		if err != nil {
+			return Flow{}, err
+		}
+		item.AccountID = &accountID
+		if account, err := s.q.GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: row.PortfolioID, ID: row.AccountID}); err == nil {
+			name := account.IdentityName + " / " + account.DisplayName
+			item.AccountName = &name
+		}
+	}
+	return item, nil
 }
 
-func flowRevisionFromRow(row *sqlcgen.CapitalFlowRevision) (FlowRevision, error) {
-	id, err := uuid.FromBytes(row.ID)
-	if err != nil {
-		return FlowRevision{}, err
-	}
-	assetID, err := uuid.FromBytes(row.AssetID)
-	if err != nil {
-		return FlowRevision{}, err
-	}
-	actor, err := uuid.FromBytes(row.CreatedByUserID)
-	if err != nil {
-		return FlowRevision{}, err
-	}
-	return FlowRevision{
-		ID:              id,
-		Direction:       row.Direction,
-		Quantity:        compactDecimal(row.Quantity),
-		AssetID:         assetID,
-		EffectiveAt:     row.EffectiveAt,
-		AccountID:       optionalID(row.AccountID),
-		Note:            ptrNote(row.Note),
-		State:           row.State,
-		CreatedByUserID: actor,
-		CreatedAt:       row.CreatedAt,
-	}, nil
+type flowAudit struct {
+	Direction   string  `json:"direction"`
+	AssetSymbol string  `json:"assetSymbol"`
+	Quantity    string  `json:"quantity"`
+	ValueUSD    *string `json:"valueUsd"`
+	EffectiveAt string  `json:"effectiveAt"`
+	AccountID   *string `json:"accountId,omitempty"`
+	Note        *string `json:"note,omitempty"`
+	Version     uint64  `json:"version"`
 }
 
-func normalizeDecimal(value string) (string, error) {
-	value = strings.TrimSpace(value)
-	if !decimalPattern.MatchString(value) {
-		return "", ErrInvalid
+func auditView(f *Flow) flowAudit {
+	view := flowAudit{Direction: f.Direction, AssetSymbol: f.AssetSymbol, Quantity: f.Quantity, ValueUSD: f.ValueUSD, EffectiveAt: f.EffectiveAt.UTC().Format(time.RFC3339Nano), Note: f.Note, Version: f.Version}
+	if f.AccountID != nil {
+		id := f.AccountID.String()
+		view.AccountID = &id
 	}
-	return value, nil
-}
-
-func positiveDecimal(value string) (string, error) {
-	normalized, err := normalizeDecimal(value)
-	if err != nil {
-		return "", err
-	}
-	if strings.HasPrefix(normalized, "-") || compactDecimal(normalized) == "0" {
-		return "", ErrInvalid
-	}
-	return normalized, nil
-}
-
-func compactDecimal(value string) string {
-	if value == "" || !strings.Contains(value, ".") {
-		return value
-	}
-	trimmed := strings.TrimRight(value, "0")
-	trimmed = strings.TrimRight(trimmed, ".")
-	if trimmed == "" || trimmed == "-" {
-		return "0"
-	}
-	return trimmed
-}
-
-func normalizePage(offset, limit int) (int, int, error) {
-	if offset < 0 {
-		return 0, 0, ErrInvalidPage
-	}
-	limit, err := normalizeLimit(limit)
-	if err != nil {
-		return 0, 0, err
-	}
-	return offset, limit, nil
-}
-
-func normalizeLimit(limit int) (int, error) {
-	if limit == 0 {
-		limit = defaultLimit
-	}
-	if limit < minLimit || limit > maxLimit {
-		return 0, ErrInvalidPage
-	}
-	return limit, nil
-}
-
-func nullNote(note *string) sql.NullString {
-	if note == nil {
-		return sql.NullString{}
-	}
-	value := strings.TrimSpace(*note)
-	if value == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: value, Valid: true}
-}
-
-func ptrNote(note sql.NullString) *string {
-	if !note.Valid {
-		return nil
-	}
-	value := note.String
-	return &value
-}
-
-func optionalID(b []byte) *uuid.UUID {
-	if len(b) != 16 {
-		return nil
-	}
-	id, err := uuid.FromBytes(b)
-	if err != nil {
-		return nil
-	}
-	return &id
-}
-
-func mustBin(id uuid.UUID) []byte {
-	b, err := id.MarshalBinary()
-	if err != nil {
-		return id[:]
-	}
-	return b
-}
-
-func defaultString(value, fallback string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return fallback
-	}
-	return value
+	return view
 }

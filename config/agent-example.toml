@@ -24,8 +24,10 @@ lease_duration = "2m"
 completed_retention = "2160h"
 
 [collection]
-default_interval = "15m"
-default_freshness_multiplier = 2
+default_interval = "15m"      # Collection Cycle interval for new Portfolios; each Portfolio may override
+stagger = "3s"                # delay between Identities within one cycle
+validate_timeout = "15s"      # bound for one synchronous Connection validation
+fake_adapter = true           # deterministic offline adapter; no live Platform adapter exists yet
 
 [database]
 allow_reset = true

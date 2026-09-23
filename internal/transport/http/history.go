@@ -1,0 +1,196 @@
+package httpserver
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/rbee3u/plutus/internal/transport/http/api"
+	"github.com/rbee3u/plutus/internal/valuation"
+)
+
+// timeRange applies the default window when from or to is omitted.
+func timeRange(from, to *time.Time, defaultSpan time.Duration) (time.Time, time.Time) {
+	end := time.Now().UTC()
+	if to != nil {
+		end = to.UTC()
+	}
+	start := end.Add(-defaultSpan)
+	if from != nil {
+		start = from.UTC()
+	}
+	return start, end
+}
+
+// periodWindow is timeRange for period lists: an omitted from starts no earlier
+// than the Portfolio's first Valuation Point, so the list does not open with
+// periods from before there was anything to value. Without any point the
+// window is empty.
+func (a *API) periodWindow(ctx context.Context, portfolioID uuid.UUID, from, to *time.Time, kind string) (time.Time, time.Time, bool, error) {
+	start, end := timeRange(from, to, defaultSpanFor(kind))
+	if from != nil {
+		return start, end, true, nil
+	}
+	first, err := a.Valuation.First(ctx, portfolioID)
+	if errors.Is(err, valuation.ErrNoPoint) {
+		return start, end, false, nil
+	}
+	if err != nil {
+		return start, end, false, err
+	}
+	if first.EvaluatedAt.After(start) {
+		start = first.EvaluatedAt.UTC()
+	}
+	return start, end, start.Before(end), nil
+}
+
+func periodKind(v *api.PeriodKind) string {
+	if v == nil {
+		return valuation.PeriodDay
+	}
+	return string(*v)
+}
+
+func (a *API) ListValuationPoints(ctx context.Context, request api.ListValuationPointsRequestObject) (api.ListValuationPointsResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	from, to := timeRange(request.Params.From, request.Params.To, 7*24*time.Hour)
+	granularity := api.TimeGranularityRaw
+	if request.Params.Granularity != nil {
+		granularity = *request.Params.Granularity
+	}
+	points, err := a.Valuation.Points(ctx, sc.valuation(), from, to, string(granularity))
+	if err != nil {
+		return nil, err
+	}
+	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	return api.ListValuationPoints200JSONResponse{Context: toAPIContext(&c), Items: toAPIPoints(points), Granularity: granularity, From: from, To: to}, nil
+}
+
+func (a *API) GetValuationPoint(ctx context.Context, request api.GetValuationPointRequestObject) (api.GetValuationPointResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	detail, err := a.Valuation.Detail(ctx, sc.valuation(), request.PointId)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetValuationPoint200JSONResponse{
+		Point:          toAPIPoint(&detail.Point),
+		Accounts:       toAPIAccountValuations(detail.Accounts),
+		Issues:         toAPIIssues(detail.Point.Issues),
+		BoundaryEvents: toAPIBoundaryEvents(detail.Point.BoundaryEvents),
+	}, nil
+}
+
+func (a *API) ListPeriodCloses(ctx context.Context, request api.ListPeriodClosesRequestObject) (api.ListPeriodClosesResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	kind := periodKind(request.Params.PeriodKind)
+	from, to, ok, err := a.periodWindow(ctx, sc.portfolio.ID, request.Params.From, request.Params.To, kind)
+	if err != nil {
+		return nil, err
+	}
+	var closes []valuation.PeriodClose
+	if ok {
+		if closes, err = a.Valuation.PeriodCloses(ctx, sc.valuation(), kind, from, to); err != nil {
+			return nil, err
+		}
+	}
+	items := make([]api.PeriodClose, 0, len(closes))
+	for i := range closes {
+		items = append(items, toAPIPeriodClose(&closes[i]))
+	}
+	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	return api.ListPeriodCloses200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
+}
+
+func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChangesRequestObject) (api.ListValueChangesResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	kind := periodKind(request.Params.PeriodKind)
+	from, to, ok, err := a.periodWindow(ctx, sc.portfolio.ID, request.Params.From, request.Params.To, kind)
+	if err != nil {
+		return nil, err
+	}
+	var changes []valuation.ValueChange
+	if ok {
+		if changes, err = a.Valuation.ValueChanges(ctx, sc.valuation(), kind, from, to); err != nil {
+			return nil, err
+		}
+	}
+	items := make([]api.ValueChange, 0, len(changes))
+	for i := range changes {
+		items = append(items, toAPIValueChange(&changes[i]))
+	}
+	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	return api.ListValueChanges200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
+}
+
+func (a *API) GetCustomValueChange(ctx context.Context, request api.GetCustomValueChangeRequestObject) (api.GetCustomValueChangeResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	change, err := a.Valuation.CustomValueChange(ctx, sc.valuation(), request.Params.From.UTC(), request.Params.To.UTC())
+	if err != nil {
+		return nil, err
+	}
+	return api.GetCustomValueChange200JSONResponse(toAPIValueChange(&change)), nil
+}
+
+func (a *API) ListBoundaryEvents(ctx context.Context, request api.ListBoundaryEventsRequestObject) (api.ListBoundaryEventsResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	from, to := timeRange(request.Params.From, request.Params.To, 90*24*time.Hour)
+	events, err := a.Valuation.BoundaryEvents(ctx, sc.valuation(), from, to)
+	if err != nil {
+		return nil, err
+	}
+	return api.ListBoundaryEvents200JSONResponse{Items: toAPIBoundaryEvents(events)}, nil
+}
+
+// defaultSpanFor picks a window that shows a useful number of periods.
+func defaultSpanFor(kind string) time.Duration {
+	switch kind {
+	case valuation.PeriodWeek:
+		return 26 * 7 * 24 * time.Hour
+	case valuation.PeriodMonth:
+		return 366 * 24 * time.Hour
+	case valuation.PeriodQuarter:
+		return 3 * 366 * 24 * time.Hour
+	case valuation.PeriodYear:
+		return 5 * 366 * 24 * time.Hour
+	default:
+		return 30 * 24 * time.Hour
+	}
+}

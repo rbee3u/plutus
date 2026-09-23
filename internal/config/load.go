@@ -51,8 +51,10 @@ type fileConfig struct {
 		CompletedRetention string `toml:"completed_retention"`
 	} `toml:"jobs"`
 	Collection struct {
-		DefaultInterval            string `toml:"default_interval"`
-		DefaultFreshnessMultiplier int    `toml:"default_freshness_multiplier"`
+		DefaultInterval string `toml:"default_interval"`
+		Stagger         string `toml:"stagger"`
+		ValidateTimeout string `toml:"validate_timeout"`
+		FakeAdapter     bool   `toml:"fake_adapter"`
 	} `toml:"collection"`
 	Database struct {
 		DSN        string `toml:"dsn"`
@@ -113,8 +115,9 @@ func defaults() Config {
 			CompletedRetention: 90 * 24 * time.Hour,
 		},
 		Collection: Collection{
-			DefaultInterval:            15 * time.Minute,
-			DefaultFreshnessMultiplier: 2,
+			DefaultInterval: 15 * time.Minute,
+			Stagger:         3 * time.Second,
+			ValidateTimeout: 15 * time.Second,
 		},
 	}
 }
@@ -176,9 +179,13 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	if err := optionalDuration(&cfg.Collection.DefaultInterval, parsed.Collection.DefaultInterval, "collection.default_interval"); err != nil {
 		return err
 	}
-	if parsed.Collection.DefaultFreshnessMultiplier != 0 {
-		cfg.Collection.DefaultFreshnessMultiplier = parsed.Collection.DefaultFreshnessMultiplier
+	if err := optionalDuration(&cfg.Collection.Stagger, parsed.Collection.Stagger, "collection.stagger"); err != nil {
+		return err
 	}
+	if err := optionalDuration(&cfg.Collection.ValidateTimeout, parsed.Collection.ValidateTimeout, "collection.validate_timeout"); err != nil {
+		return err
+	}
+	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
 	if strings.TrimSpace(parsed.Database.DSN) != "" {
 		cfg.Database.DSN = strings.TrimSpace(parsed.Database.DSN)
 	}
@@ -230,12 +237,14 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 	if err := optionalDurationEnv(&cfg.Collection.DefaultInterval, lookup, "PLUTUS_COLLECTION_DEFAULT_INTERVAL"); err != nil {
 		return err
 	}
-	if v, ok := lookup("PLUTUS_COLLECTION_DEFAULT_FRESHNESS_MULTIPLIER"); ok {
-		n, err := strconv.Atoi(strings.TrimSpace(v))
-		if err != nil {
-			return fmt.Errorf("PLUTUS_COLLECTION_DEFAULT_FRESHNESS_MULTIPLIER: %w", err)
-		}
-		cfg.Collection.DefaultFreshnessMultiplier = n
+	if err := optionalDurationEnv(&cfg.Collection.Stagger, lookup, "PLUTUS_COLLECTION_STAGGER"); err != nil {
+		return err
+	}
+	if err := optionalDurationEnv(&cfg.Collection.ValidateTimeout, lookup, "PLUTUS_COLLECTION_VALIDATE_TIMEOUT"); err != nil {
+		return err
+	}
+	if err := optionalBool(&cfg.Collection.FakeAdapter, lookup, "PLUTUS_COLLECTION_FAKE_ADAPTER"); err != nil {
+		return err
 	}
 	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {
 		return err

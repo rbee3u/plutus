@@ -15,71 +15,48 @@ type Account struct {
 	ID          []byte
 	PortfolioID []byte
 	IdentityID  []byte
-	ExternalRef string
-	DisplayName string
 	AccountType string
-	Status      string
-	FirstSeenAt time.Time
-	LastSeenAt  time.Time
+	DisplayName string
+	Selected    bool
+	Version     uint64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
-type AccountMetricObservation struct {
-	PortfolioID      []byte
-	ObservationID    []byte
-	MetricCode       string
-	Unit             string
-	DecimalValue     sql.NullString
-	TextValue        sql.NullString
-	SemanticsVersion string
-}
-
-type Asset struct {
-	ID        []byte
-	Code      string
-	Name      string
-	Kind      string
-	Decimals  sql.NullInt16
-	Status    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+type AccountReport struct {
+	ID                     []byte
+	PortfolioID            []byte
+	JobID                  []byte
+	AccountID              []byte
+	Status                 string
+	ObservedAt             sql.NullTime
+	ErrorClass             sql.NullString
+	ErrorDetail            sql.NullString
+	Equity                 sql.NullString
+	AdjustedEquity         sql.NullString
+	AvailableEquity        sql.NullString
+	InitialMarginRatio     sql.NullString
+	MaintenanceMarginRatio sql.NullString
+	UnifiedMarginRatio     sql.NullString
+	ValueUsd               sql.NullString
+	Method                 string
+	SourceReportID         []byte
+	OmittedJson            sqljson.Column
+	CreatedAt              time.Time
 }
 
 type AssetListing struct {
-	ID          []byte
-	PlatformID  []byte
-	ExternalRef string
-	Symbol      string
-	Name        sql.NullString
-	Status      string
-	FirstSeenAt time.Time
-	LastSeenAt  time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-type AssetListingMapping struct {
-	ID                []byte
-	PortfolioID       []byte
-	AssetListingID    []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-type AssetListingMappingRevision struct {
-	ID                  []byte
-	PortfolioID         []byte
-	MappingID           []byte
-	AssetID             []byte
-	State               string
-	DisplayNameOverride sql.NullString
-	ClassificationJson  sqljson.Column
-	Reason              sql.NullString
-	CreatedByUserID     []byte
-	CreatedAt           time.Time
+	ID            []byte
+	Platform      string
+	Symbol        string
+	AssetSymbol   string
+	Name          sql.NullString
+	MappingSource string
+	FirstSeenAt   time.Time
+	LastSeenAt    time.Time
+	Version       uint64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type AuditEvent struct {
@@ -96,167 +73,32 @@ type AuditEvent struct {
 	OccurredAt   time.Time
 }
 
-type BalanceObservation struct {
-	PortfolioID       []byte
-	ObservationID     []byte
-	AssetListingID    []byte
-	TotalQuantity     sql.NullString
-	AvailableQuantity sql.NullString
-	LockedQuantity    sql.NullString
-}
-
-type CapitalBaseline struct {
-	ID                []byte
-	PortfolioID       []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-type CapitalBaselineRevision struct {
-	ID                []byte
-	PortfolioID       []byte
-	CapitalBaselineID []byte
-	EffectiveAt       time.Time
-	AssetID           []byte
-	Quantity          string
-	Note              sql.NullString
-	CreatedByUserID   []byte
-	CreatedAt         time.Time
+type Balance struct {
+	ReportID            []byte
+	PortfolioID         []byte
+	ListingID           []byte
+	Equity              string
+	AvailableToWithdraw sql.NullString
+	AvailableToTrade    sql.NullString
+	Liability           sql.NullString
+	Interest            sql.NullString
+	UnrealizedPnl       sql.NullString
 }
 
 type CapitalFlow struct {
-	ID                []byte
-	PortfolioID       []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-type CapitalFlowRevision struct {
 	ID              []byte
 	PortfolioID     []byte
-	CapitalFlowID   []byte
 	Direction       string
+	AssetSymbol     string
 	Quantity        string
-	AssetID         []byte
+	ValueUsd        sql.NullString
 	EffectiveAt     time.Time
 	AccountID       []byte
 	Note            sql.NullString
-	State           string
 	CreatedByUserID []byte
+	Version         uint64
 	CreatedAt       time.Time
-}
-
-type CatalogPin struct {
-	ID                   []byte
-	PortfolioID          []byte
-	AssetListingID       []byte
-	InstrumentID         []byte
-	CurrentRevisionID    []byte
-	Version              uint64
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
-	ListingSubjectKey    []byte
-	InstrumentSubjectKey []byte
-}
-
-type CatalogPinRevision struct {
-	ID              []byte
-	PortfolioID     []byte
-	CatalogPinID    []byte
-	Enabled         bool
-	Reason          sql.NullString
-	CreatedByUserID []byte
-	CreatedAt       time.Time
-}
-
-type CollectionFailure struct {
-	ID                 []byte
-	PortfolioID        []byte
-	CollectionRunID    []byte
-	IdentitySnapshotID []byte
-	AccountID          []byte
-	ScopeKind          string
-	ScopeRef           sql.NullString
-	Phase              string
-	ErrorClass         string
-	ErrorCode          string
-	SafeDetail         string
-	Retriable          bool
-	OccurredAt         time.Time
-}
-
-type CollectionJobDetail struct {
-	PortfolioID  []byte
-	JobID        []byte
-	ConnectionID []byte
-	Trigger      string
-	Scope        string
-}
-
-type CollectionRun struct {
-	ID                   []byte
-	PortfolioID          []byte
-	JobID                []byte
-	ConnectionID         []byte
-	IdentityID           []byte
-	AdapterName          string
-	AdapterVersion       string
-	StartedAt            time.Time
-	FinishedAt           sql.NullTime
-	Status               string
-	SuccessfulScopeCount uint32
-	FailedScopeCount     uint32
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
-}
-
-type Connection struct {
-	ID                        []byte
-	PortfolioID               []byte
-	IdentityID                []byte
-	Label                     string
-	Status                    string
-	CredentialsCiphertext     []byte
-	CredentialsNonce          []byte
-	CredentialKeyVersion      uint16
-	ConfigJson                sqljson.Column
-	CollectionIntervalSeconds uint32
-	FreshnessAfterSeconds     uint32
-	LastValidatedAt           sql.NullTime
-	Version                   uint64
-	CreatedAt                 time.Time
-	UpdatedAt                 time.Time
-	EnabledIdentityID         []byte
-}
-
-type ContributedCapitalProjection struct {
-	GenerationID            []byte
-	PortfolioID             []byte
-	EvaluatedAt             time.Time
-	DenominationAssetID     []byte
-	Amount                  sql.NullString
-	Completeness            string
-	SourceRevisionWatermark uint64
-}
-
-type ExposureProjection struct {
-	GenerationID        []byte
-	PortfolioID         []byte
-	EvaluatedAt         time.Time
-	AssetID             []byte
-	LongQuantity        string
-	ShortQuantity       string
-	NetQuantity         string
-	LongValue           sql.NullString
-	ShortValue          sql.NullString
-	NetValue            sql.NullString
-	DenominationAssetID []byte
-	Completeness        string
-	FreshnessState      string
+	UpdatedAt       time.Time
 }
 
 type IdempotencyRecord struct {
@@ -275,55 +117,43 @@ type IdempotencyRecord struct {
 }
 
 type Identity struct {
-	ID                []byte
-	PortfolioID       []byte
-	PlatformID        []byte
-	ParentIdentityID  []byte
-	ExternalRef       string
-	DisplayName       string
-	AccountMode       string
-	Kind              string
-	Status            string
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	ArchivedAt        sql.NullTime
-	ActiveExternalRef sql.NullString
-}
-
-type IdentitySnapshot struct {
-	ID                   []byte
-	PortfolioID          []byte
-	CollectionRunID      []byte
-	IdentityID           []byte
-	StartedAt            time.Time
-	CompletedAt          sql.NullTime
-	Status               string
-	Completeness         string
-	ExpectedScopeCount   uint32
-	SuccessfulScopeCount uint32
-	FailedScopeCount     uint32
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID                    []byte
+	PortfolioID           []byte
+	Platform              string
+	DisplayName           string
+	AccountMode           string
+	ExternalRef           sql.NullString
+	Status                string
+	ArchivedAt            sql.NullTime
+	ConnectionStatus      string
+	CredentialsCiphertext []byte
+	CredentialsNonce      []byte
+	CredentialKeyVersion  uint16
+	CredentialsUpdatedAt  sql.NullTime
+	LastValidatedAt       sql.NullTime
+	LastCollectedAt       sql.NullTime
+	LastErrorClass        sql.NullString
+	LastErrorDetail       sql.NullString
+	Version               uint64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ActiveDisplayName     sql.NullString
 }
 
 type Instrument struct {
-	ID                  []byte
-	PlatformID          []byte
-	ExternalRef         string
-	Symbol              string
-	Kind                string
-	BaseListingID       []byte
-	QuoteListingID      []byte
-	UnderlyingListingID []byte
-	SettlementListingID []byte
-	ExpiryAt            sql.NullTime
-	ContractSize        sql.NullString
-	Status              string
-	FirstSeenAt         time.Time
-	LastSeenAt          time.Time
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	ID               []byte
+	Platform         string
+	Symbol           string
+	Kind             string
+	BaseSymbol       sql.NullString
+	QuoteSymbol      sql.NullString
+	SettlementSymbol sql.NullString
+	ExpiryAt         sql.NullTime
+	ContractSize     sql.NullString
+	FirstSeenAt      time.Time
+	LastSeenAt       time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type Job struct {
@@ -331,230 +161,58 @@ type Job struct {
 	PortfolioID       []byte
 	Kind              string
 	Status            string
-	Priority          int16
+	Trigger           string
 	DedupeKey         string
-	ActiveDedupeKey   sql.NullString
+	PayloadJson       sqljson.Column
 	RequestedByUserID []byte
 	AvailableAt       time.Time
 	LeaseOwner        sql.NullString
 	LeaseExpiresAt    sql.NullTime
 	AttemptCount      uint32
 	MaxAttempts       uint32
-	LastErrorCode     sql.NullString
-	LastErrorDetail   sql.NullString
+	LastErrorClass    sql.NullString
+	LastDetail        sql.NullString
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	StartedAt         sql.NullTime
 	FinishedAt        sql.NullTime
-}
-
-type JobAttempt struct {
-	ID            []byte
-	PortfolioID   []byte
-	JobID         []byte
-	AttemptNumber uint32
-	WorkerID      string
-	StartedAt     time.Time
-	FinishedAt    sql.NullTime
-	Outcome       string
-	ErrorClass    sql.NullString
-	ErrorCode     sql.NullString
-	SafeDetail    sql.NullString
-	RetryAt       sql.NullTime
-}
-
-type LatestBalanceProjection struct {
-	GenerationID      []byte
-	PortfolioID       []byte
-	IdentityID        []byte
-	AccountID         []byte
-	AssetListingID    []byte
-	AssetID           []byte
-	ObservationID     []byte
-	TotalQuantity     sql.NullString
-	AvailableQuantity sql.NullString
-	LockedQuantity    sql.NullString
-	SourceObservedAt  time.Time
-	FreshnessState    string
-	Completeness      string
-}
-
-type LatestPositionProjection struct {
-	GenerationID            []byte
-	PortfolioID             []byte
-	IdentityID              []byte
-	AccountID               []byte
-	InstrumentID            []byte
-	PlatformPositionRef     string
-	Side                    string
-	Quantity                string
-	SelectedMarkPrice       sql.NullString
-	UnderlyingLongQuantity  string
-	UnderlyingShortQuantity string
-	ObservationID           []byte
-	SourceObservedAt        time.Time
-	FreshnessState          string
-	Completeness            string
-}
-
-type Observation struct {
-	ID                 []byte
-	PortfolioID        []byte
-	IdentitySnapshotID []byte
-	IdentityID         []byte
-	AccountID          []byte
-	Kind               string
-	SourceObservedAt   time.Time
-	CollectedAt        time.Time
-	Completeness       string
-	AdapterName        string
-	AdapterVersion     string
-	SchemaVersion      string
-	Version            uint64
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-}
-
-type PeriodSummaryProjection struct {
-	GenerationID            []byte
-	PortfolioID             []byte
-	PeriodKind              string
-	PeriodStartDate         time.Time
-	PeriodEndDate           time.Time
-	AsOfAt                  time.Time
-	ValuationOpen           sql.NullString
-	ValuationClose          sql.NullString
-	ValuationHigh           sql.NullString
-	ValuationLow            sql.NullString
-	ContributedCapitalClose sql.NullString
-	ValueChange             sql.NullString
-	FreshnessState          string
-	Completeness            string
-}
-
-type Platform struct {
-	ID        []byte
-	Code      string
-	Name      string
-	Status    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ActiveDedupeKey   sql.NullString
 }
 
 type Portfolio struct {
-	ID                           []byte
-	UserID                       []byte
-	Name                         string
-	Timezone                     string
-	DisplayAssetID               []byte
-	Status                       string
-	Undeletable                  bool
-	ActiveProjectionGenerationID []byte
-	Version                      uint64
-	CreatedAt                    time.Time
-	UpdatedAt                    time.Time
-	ArchivedAt                   sql.NullTime
+	ID                        []byte
+	UserID                    []byte
+	Name                      string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	Undeletable               bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
-type PortfolioValuationProjection struct {
-	ID                  []byte
-	GenerationID        []byte
+type Position struct {
+	ReportID            []byte
 	PortfolioID         []byte
-	EvaluatedAt         time.Time
-	DenominationAssetID []byte
-	Amount              sql.NullString
-	Completeness        string
-	CoverageFingerprint string
-	FreshnessState      string
-	SourceCutoffAt      time.Time
-}
-
-type PositionObservation struct {
-	PortfolioID         []byte
-	ObservationID       []byte
-	InstrumentID        []byte
 	PlatformPositionRef string
+	InstrumentID        []byte
 	Side                string
 	Quantity            string
+	QuantityUnit        string
 	EntryPrice          sql.NullString
 	MarkPrice           sql.NullString
-	UnrealizedValue     sql.NullString
+	LiquidationPrice    sql.NullString
+	UnrealizedPnl       sql.NullString
 	Leverage            sql.NullString
+	Margin              sql.NullString
 }
 
-type PriceObservation struct {
-	PortfolioID    []byte
-	ObservationID  []byte
-	InstrumentID   []byte
-	BaseListingID  []byte
-	QuoteListingID []byte
-	PriceType      string
-	Price          string
-}
-
-type ProjectionGeneration struct {
-	ID                []byte
-	PortfolioID       []byte
-	JobID             []byte
-	Status            string
-	Timezone          string
-	DisplayAssetID    []byte
-	SourceWatermarkAt time.Time
-	StartedAt         time.Time
-	CompletedAt       sql.NullTime
-	ActivatedAt       sql.NullTime
-	FailureCode       sql.NullString
-	FailureDetail     sql.NullString
-}
-
-type ProjectionIssue struct {
-	ID               []byte
-	GenerationID     []byte
-	PortfolioID      []byte
-	ProjectionKind   string
-	ProjectionKey    string
-	Severity         string
-	Code             string
-	Summary          string
-	DetailsJson      sqljson.Column
-	IdentityID       []byte
-	AccountID        []byte
-	ObservationID    []byte
-	FirstEffectiveAt time.Time
-	LastEffectiveAt  time.Time
-}
-
-type ProjectionJobDetail struct {
-	PortfolioID    []byte
-	JobID          []byte
-	InvalidFrom    sql.NullTime
-	InvalidThrough sql.NullTime
-	Reason         string
-}
-
-type ProjectionJobKind struct {
-	PortfolioID    []byte
-	JobID          []byte
-	ProjectionKind string
-}
-
-type ReportedEquityCoveredAccount struct {
-	PortfolioID   []byte
-	ObservationID []byte
-	AccountID     []byte
-}
-
-type ReportedEquityCoveredIdentity struct {
-	PortfolioID   []byte
-	ObservationID []byte
-	IdentityID    []byte
-}
-
-type ReportedEquityObservation struct {
-	PortfolioID           []byte
-	ObservationID         []byte
-	DenominationListingID []byte
-	Amount                string
+type Price struct {
+	Platform    string
+	AssetSymbol string
+	ObservedAt  time.Time
+	Price       string
+	QuoteSymbol string
 }
 
 type Session struct {
@@ -580,41 +238,19 @@ type User struct {
 	UpdatedAt          time.Time
 }
 
-type ValuationContributionProjection struct {
-	ID                   []byte
-	GenerationID         []byte
-	PortfolioID          []byte
-	PortfolioValuationID []byte
-	ContributionKind     string
-	IdentityID           []byte
-	AccountID            []byte
-	AssetID              []byte
-	Amount               sql.NullString
-	Completeness         string
-	CoverageFingerprint  string
-}
-
-type ValuationContributionSource struct {
-	GenerationID            []byte
+type ValuationPoint struct {
+	ID                      []byte
 	PortfolioID             []byte
-	ValuationContributionID []byte
-	ObservationID           []byte
-	SourceRole              string
-}
-
-type ValueChangeProjection struct {
-	ID                   []byte
-	GenerationID         []byte
-	PortfolioID          []byte
-	PeriodKind           string
-	PeriodStartDate      time.Time
-	PeriodEndDate        time.Time
-	AsOfAt               time.Time
-	BeginningValuationID []byte
-	EndingValuationID    []byte
-	ContributionAmount   sql.NullString
-	WithdrawalAmount     sql.NullString
-	Amount               sql.NullString
-	State                string
-	CoverageFingerprint  string
+	JobID                   []byte
+	EvaluatedAt             time.Time
+	TotalUsd                string
+	AccountCount            uint32
+	StaleAccountCount       uint32
+	IncompleteAccountCount  uint32
+	BoundaryContributionUsd string
+	BoundaryWithdrawalUsd   string
+	BoundaryJson            sqljson.Column
+	IssuesJson              sqljson.Column
+	RecalculatedAt          sql.NullTime
+	CreatedAt               time.Time
 }

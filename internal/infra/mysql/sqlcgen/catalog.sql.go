@@ -9,91 +9,55 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
-	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
-const countSearchAssetListings = `-- name: CountSearchAssetListings :one
+const countAssetListings = `-- name: CountAssetListings :one
 SELECT COUNT(*)
-FROM asset_listings l
-LEFT JOIN asset_listing_mappings m
-    ON m.portfolio_id = ? AND m.asset_listing_id = l.id
-LEFT JOIN asset_listing_mapping_revisions r
-    ON r.portfolio_id = m.portfolio_id AND r.id = m.current_revision_id
-WHERE (? = '' OR INSTR(LOWER(l.symbol), LOWER(?)) > 0
-    OR INSTR(LOWER(l.external_ref), LOWER(?)) > 0
-    OR INSTR(LOWER(COALESCE(l.name, '')), LOWER(?)) > 0)
-  AND (? = 0 OR l.platform_id = ?)
-  AND (
-      ? = ''
-      OR (? = 'unmapped' AND r.state IS NULL)
-      OR r.state = ?
-  )
+FROM asset_listings
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
 `
 
-type CountSearchAssetListingsParams struct {
-	PortfolioID    []byte
-	Query          string
+type CountAssetListingsParams struct {
 	FilterPlatform interface{}
-	PlatformID     []byte
-	MappingState   string
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
 }
 
-func (q *Queries) CountSearchAssetListings(ctx context.Context, arg CountSearchAssetListingsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSearchAssetListings,
-		arg.PortfolioID,
-		arg.Query,
-		arg.Query,
-		arg.Query,
-		arg.Query,
+func (q *Queries) CountAssetListings(ctx context.Context, arg CountAssetListingsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAssetListings,
 		arg.FilterPlatform,
-		arg.PlatformID,
-		arg.MappingState,
-		arg.MappingState,
-		arg.MappingState,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
 	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countSearchInstruments = `-- name: CountSearchInstruments :one
+const countInstruments = `-- name: CountInstruments :one
 SELECT COUNT(*)
-FROM instruments i
-LEFT JOIN catalog_pins pin
-    ON pin.portfolio_id = ? AND pin.instrument_id = i.id
-LEFT JOIN catalog_pin_revisions pr
-    ON pr.portfolio_id = pin.portfolio_id AND pr.id = pin.current_revision_id
-WHERE (? = '' OR INSTR(LOWER(i.symbol), LOWER(?)) > 0
-    OR INSTR(LOWER(i.external_ref), LOWER(?)) > 0)
-  AND (? = 0 OR i.platform_id = ?)
-  AND (
-      ? = 0
-      OR (? = 1 AND pr.enabled = 1)
-      OR (? = 0 AND (pr.enabled IS NULL OR pr.enabled = 0))
-  )
+FROM instruments
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ?)
 `
 
-type CountSearchInstrumentsParams struct {
-	PortfolioID    []byte
-	Query          string
+type CountInstrumentsParams struct {
 	FilterPlatform interface{}
-	PlatformID     []byte
-	FilterPinned   interface{}
-	Pinned         interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
 }
 
-func (q *Queries) CountSearchInstruments(ctx context.Context, arg CountSearchInstrumentsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSearchInstruments,
-		arg.PortfolioID,
-		arg.Query,
-		arg.Query,
-		arg.Query,
+func (q *Queries) CountInstruments(ctx context.Context, arg CountInstrumentsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countInstruments,
 		arg.FilterPlatform,
-		arg.PlatformID,
-		arg.FilterPinned,
-		arg.Pinned,
-		arg.Pinned,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -101,7 +65,7 @@ func (q *Queries) CountSearchInstruments(ctx context.Context, arg CountSearchIns
 }
 
 const getAssetListing = `-- name: GetAssetListing :one
-SELECT id, platform_id, external_ref, symbol, name, status, first_seen_at, last_seen_at, created_at, updated_at
+SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
 FROM asset_listings
 WHERE id = ?
 `
@@ -111,38 +75,13 @@ func (q *Queries) GetAssetListing(ctx context.Context, id []byte) (AssetListing,
 	var i AssetListing
 	err := row.Scan(
 		&i.ID,
-		&i.PlatformID,
-		&i.ExternalRef,
+		&i.Platform,
 		&i.Symbol,
+		&i.AssetSymbol,
 		&i.Name,
-		&i.Status,
+		&i.MappingSource,
 		&i.FirstSeenAt,
 		&i.LastSeenAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getAssetListingMapping = `-- name: GetAssetListingMapping :one
-SELECT id, portfolio_id, asset_listing_id, current_revision_id, version, created_at, updated_at
-FROM asset_listing_mappings
-WHERE portfolio_id = ? AND asset_listing_id = ?
-`
-
-type GetAssetListingMappingParams struct {
-	PortfolioID    []byte
-	AssetListingID []byte
-}
-
-func (q *Queries) GetAssetListingMapping(ctx context.Context, arg GetAssetListingMappingParams) (AssetListingMapping, error) {
-	row := q.db.QueryRowContext(ctx, getAssetListingMapping, arg.PortfolioID, arg.AssetListingID)
-	var i AssetListingMapping
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.AssetListingID,
-		&i.CurrentRevisionID,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -150,67 +89,29 @@ func (q *Queries) GetAssetListingMapping(ctx context.Context, arg GetAssetListin
 	return i, err
 }
 
-const getAssetListingMappingRevision = `-- name: GetAssetListingMappingRevision :one
-SELECT id, portfolio_id, mapping_id, asset_id, state, display_name_override, classification_json, reason,
-       created_by_user_id, created_at
-FROM asset_listing_mapping_revisions
-WHERE portfolio_id = ? AND id = ?
+const getAssetListingByPlatformSymbol = `-- name: GetAssetListingByPlatformSymbol :one
+SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+FROM asset_listings
+WHERE platform = ? AND symbol = ?
 `
 
-type GetAssetListingMappingRevisionParams struct {
-	PortfolioID []byte
-	ID          []byte
+type GetAssetListingByPlatformSymbolParams struct {
+	Platform string
+	Symbol   string
 }
 
-func (q *Queries) GetAssetListingMappingRevision(ctx context.Context, arg GetAssetListingMappingRevisionParams) (AssetListingMappingRevision, error) {
-	row := q.db.QueryRowContext(ctx, getAssetListingMappingRevision, arg.PortfolioID, arg.ID)
-	var i AssetListingMappingRevision
+func (q *Queries) GetAssetListingByPlatformSymbol(ctx context.Context, arg GetAssetListingByPlatformSymbolParams) (AssetListing, error) {
+	row := q.db.QueryRowContext(ctx, getAssetListingByPlatformSymbol, arg.Platform, arg.Symbol)
+	var i AssetListing
 	err := row.Scan(
 		&i.ID,
-		&i.PortfolioID,
-		&i.MappingID,
-		&i.AssetID,
-		&i.State,
-		&i.DisplayNameOverride,
-		&i.ClassificationJson,
-		&i.Reason,
-		&i.CreatedByUserID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getCatalogPinByInstrument = `-- name: GetCatalogPinByInstrument :one
-SELECT id, portfolio_id, asset_listing_id, instrument_id, current_revision_id, version, created_at, updated_at
-FROM catalog_pins
-WHERE portfolio_id = ? AND instrument_id = ?
-`
-
-type GetCatalogPinByInstrumentParams struct {
-	PortfolioID  []byte
-	InstrumentID []byte
-}
-
-type GetCatalogPinByInstrumentRow struct {
-	ID                []byte
-	PortfolioID       []byte
-	AssetListingID    []byte
-	InstrumentID      []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) GetCatalogPinByInstrument(ctx context.Context, arg GetCatalogPinByInstrumentParams) (GetCatalogPinByInstrumentRow, error) {
-	row := q.db.QueryRowContext(ctx, getCatalogPinByInstrument, arg.PortfolioID, arg.InstrumentID)
-	var i GetCatalogPinByInstrumentRow
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.AssetListingID,
-		&i.InstrumentID,
-		&i.CurrentRevisionID,
+		&i.Platform,
+		&i.Symbol,
+		&i.AssetSymbol,
+		&i.Name,
+		&i.MappingSource,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -218,115 +119,31 @@ func (q *Queries) GetCatalogPinByInstrument(ctx context.Context, arg GetCatalogP
 	return i, err
 }
 
-const getCatalogPinByListing = `-- name: GetCatalogPinByListing :one
-SELECT id, portfolio_id, asset_listing_id, instrument_id, current_revision_id, version, created_at, updated_at
-FROM catalog_pins
-WHERE portfolio_id = ? AND asset_listing_id = ?
-`
-
-type GetCatalogPinByListingParams struct {
-	PortfolioID    []byte
-	AssetListingID []byte
-}
-
-type GetCatalogPinByListingRow struct {
-	ID                []byte
-	PortfolioID       []byte
-	AssetListingID    []byte
-	InstrumentID      []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) GetCatalogPinByListing(ctx context.Context, arg GetCatalogPinByListingParams) (GetCatalogPinByListingRow, error) {
-	row := q.db.QueryRowContext(ctx, getCatalogPinByListing, arg.PortfolioID, arg.AssetListingID)
-	var i GetCatalogPinByListingRow
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.AssetListingID,
-		&i.InstrumentID,
-		&i.CurrentRevisionID,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getCatalogPinRevision = `-- name: GetCatalogPinRevision :one
-SELECT id, portfolio_id, catalog_pin_id, enabled, reason, created_by_user_id, created_at
-FROM catalog_pin_revisions
-WHERE portfolio_id = ? AND id = ?
-`
-
-type GetCatalogPinRevisionParams struct {
-	PortfolioID []byte
-	ID          []byte
-}
-
-func (q *Queries) GetCatalogPinRevision(ctx context.Context, arg GetCatalogPinRevisionParams) (CatalogPinRevision, error) {
-	row := q.db.QueryRowContext(ctx, getCatalogPinRevision, arg.PortfolioID, arg.ID)
-	var i CatalogPinRevision
-	err := row.Scan(
-		&i.ID,
-		&i.PortfolioID,
-		&i.CatalogPinID,
-		&i.Enabled,
-		&i.Reason,
-		&i.CreatedByUserID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getConfirmedMappingAsset = `-- name: GetConfirmedMappingAsset :one
-SELECT r.asset_id
-FROM asset_listing_mappings m
-INNER JOIN asset_listing_mapping_revisions r
-    ON r.portfolio_id = m.portfolio_id AND r.id = m.current_revision_id
-WHERE m.portfolio_id = ?
-  AND m.asset_listing_id = ?
-  AND r.state = 'confirmed'
-`
-
-type GetConfirmedMappingAssetParams struct {
-	PortfolioID    []byte
-	AssetListingID []byte
-}
-
-func (q *Queries) GetConfirmedMappingAsset(ctx context.Context, arg GetConfirmedMappingAssetParams) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getConfirmedMappingAsset, arg.PortfolioID, arg.AssetListingID)
-	var asset_id []byte
-	err := row.Scan(&asset_id)
-	return asset_id, err
-}
-
-const getInstrument = `-- name: GetInstrument :one
-SELECT id, platform_id, external_ref, symbol, kind, base_listing_id, quote_listing_id, underlying_listing_id,
-       settlement_listing_id, expiry_at, contract_size, status, first_seen_at, last_seen_at, created_at, updated_at
+const getInstrumentByPlatformSymbol = `-- name: GetInstrumentByPlatformSymbol :one
+SELECT id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size,
+       first_seen_at, last_seen_at, created_at, updated_at
 FROM instruments
-WHERE id = ?
+WHERE platform = ? AND symbol = ?
 `
 
-func (q *Queries) GetInstrument(ctx context.Context, id []byte) (Instrument, error) {
-	row := q.db.QueryRowContext(ctx, getInstrument, id)
+type GetInstrumentByPlatformSymbolParams struct {
+	Platform string
+	Symbol   string
+}
+
+func (q *Queries) GetInstrumentByPlatformSymbol(ctx context.Context, arg GetInstrumentByPlatformSymbolParams) (Instrument, error) {
+	row := q.db.QueryRowContext(ctx, getInstrumentByPlatformSymbol, arg.Platform, arg.Symbol)
 	var i Instrument
 	err := row.Scan(
 		&i.ID,
-		&i.PlatformID,
-		&i.ExternalRef,
+		&i.Platform,
 		&i.Symbol,
 		&i.Kind,
-		&i.BaseListingID,
-		&i.QuoteListingID,
-		&i.UnderlyingListingID,
-		&i.SettlementListingID,
+		&i.BaseSymbol,
+		&i.QuoteSymbol,
+		&i.SettlementSymbol,
 		&i.ExpiryAt,
 		&i.ContractSize,
-		&i.Status,
 		&i.FirstSeenAt,
 		&i.LastSeenAt,
 		&i.CreatedAt,
@@ -335,223 +152,31 @@ func (q *Queries) GetInstrument(ctx context.Context, id []byte) (Instrument, err
 	return i, err
 }
 
-const insertAssetListingMapping = `-- name: InsertAssetListingMapping :exec
-INSERT INTO asset_listing_mappings (
-    id, portfolio_id, asset_listing_id, current_revision_id, version, created_at, updated_at
-) VALUES (
-    ?, ?, ?, ?, ?,
-    ?, ?
-)
-`
-
-type InsertAssetListingMappingParams struct {
-	ID                []byte
-	PortfolioID       []byte
-	AssetListingID    []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) InsertAssetListingMapping(ctx context.Context, arg InsertAssetListingMappingParams) error {
-	_, err := q.db.ExecContext(ctx, insertAssetListingMapping,
-		arg.ID,
-		arg.PortfolioID,
-		arg.AssetListingID,
-		arg.CurrentRevisionID,
-		arg.Version,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertAssetListingMappingRevision = `-- name: InsertAssetListingMappingRevision :exec
-INSERT INTO asset_listing_mapping_revisions (
-    id, portfolio_id, mapping_id, asset_id, state, display_name_override, classification_json, reason,
-    created_by_user_id, created_at
-) VALUES (
-    ?, ?, ?, ?, ?,
-    ?, ?, ?,
-    ?, ?
-)
-`
-
-type InsertAssetListingMappingRevisionParams struct {
-	ID                  []byte
-	PortfolioID         []byte
-	MappingID           []byte
-	AssetID             []byte
-	State               string
-	DisplayNameOverride sql.NullString
-	ClassificationJson  sqljson.Column
-	Reason              sql.NullString
-	CreatedByUserID     []byte
-	CreatedAt           time.Time
-}
-
-func (q *Queries) InsertAssetListingMappingRevision(ctx context.Context, arg InsertAssetListingMappingRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, insertAssetListingMappingRevision,
-		arg.ID,
-		arg.PortfolioID,
-		arg.MappingID,
-		arg.AssetID,
-		arg.State,
-		arg.DisplayNameOverride,
-		arg.ClassificationJson,
-		arg.Reason,
-		arg.CreatedByUserID,
-		arg.CreatedAt,
-	)
-	return err
-}
-
-const insertCatalogPin = `-- name: InsertCatalogPin :exec
-INSERT INTO catalog_pins (
-    id, portfolio_id, asset_listing_id, instrument_id, current_revision_id, version, created_at, updated_at
-) VALUES (
-    ?, ?, ?, ?,
-    ?, ?, ?, ?
-)
-`
-
-type InsertCatalogPinParams struct {
-	ID                []byte
-	PortfolioID       []byte
-	AssetListingID    []byte
-	InstrumentID      []byte
-	CurrentRevisionID []byte
-	Version           uint64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-func (q *Queries) InsertCatalogPin(ctx context.Context, arg InsertCatalogPinParams) error {
-	_, err := q.db.ExecContext(ctx, insertCatalogPin,
-		arg.ID,
-		arg.PortfolioID,
-		arg.AssetListingID,
-		arg.InstrumentID,
-		arg.CurrentRevisionID,
-		arg.Version,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const insertCatalogPinRevision = `-- name: InsertCatalogPinRevision :exec
-INSERT INTO catalog_pin_revisions (
-    id, portfolio_id, catalog_pin_id, enabled, reason, created_by_user_id, created_at
-) VALUES (
-    ?, ?, ?, ?, ?,
-    ?, ?
-)
-`
-
-type InsertCatalogPinRevisionParams struct {
-	ID              []byte
-	PortfolioID     []byte
-	CatalogPinID    []byte
-	Enabled         bool
-	Reason          sql.NullString
-	CreatedByUserID []byte
-	CreatedAt       time.Time
-}
-
-func (q *Queries) InsertCatalogPinRevision(ctx context.Context, arg InsertCatalogPinRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, insertCatalogPinRevision,
-		arg.ID,
-		arg.PortfolioID,
-		arg.CatalogPinID,
-		arg.Enabled,
-		arg.Reason,
-		arg.CreatedByUserID,
-		arg.CreatedAt,
-	)
-	return err
-}
-
-const searchAssetListings = `-- name: SearchAssetListings :many
-SELECT
-    l.id,
-    l.platform_id,
-    p.code AS platform_code,
-    l.external_ref,
-    l.symbol,
-    l.name,
-    l.status,
-    r.asset_id AS mapped_asset_id,
-    a.code AS mapped_asset_code,
-    CASE
-        WHEN r.state IS NULL THEN 'unmapped'
-        ELSE r.state
-    END AS mapping_state,
-    COALESCE(m.version, 0) AS mapping_version,
-    CASE WHEN pr.enabled = 1 THEN 1 ELSE 0 END AS pinned
-FROM asset_listings l
-INNER JOIN platforms p ON p.id = l.platform_id
-LEFT JOIN asset_listing_mappings m
-    ON m.portfolio_id = ? AND m.asset_listing_id = l.id
-LEFT JOIN asset_listing_mapping_revisions r
-    ON r.portfolio_id = m.portfolio_id AND r.id = m.current_revision_id
-LEFT JOIN assets a ON a.id = r.asset_id
-LEFT JOIN catalog_pins pin
-    ON pin.portfolio_id = ? AND pin.asset_listing_id = l.id
-LEFT JOIN catalog_pin_revisions pr
-    ON pr.portfolio_id = pin.portfolio_id AND pr.id = pin.current_revision_id
-WHERE (? = '' OR INSTR(LOWER(l.symbol), LOWER(?)) > 0
-    OR INSTR(LOWER(l.external_ref), LOWER(?)) > 0
-    OR INSTR(LOWER(COALESCE(l.name, '')), LOWER(?)) > 0)
-  AND (? = 0 OR l.platform_id = ?)
-  AND (
-      ? = ''
-      OR (? = 'unmapped' AND r.state IS NULL)
-      OR r.state = ?
-  )
-ORDER BY l.symbol ASC, l.id ASC
+const listAssetListings = `-- name: ListAssetListings :many
+SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+FROM asset_listings
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
+ORDER BY platform ASC, symbol ASC
 LIMIT ? OFFSET ?
 `
 
-type SearchAssetListingsParams struct {
-	PortfolioID    []byte
-	Query          string
+type ListAssetListingsParams struct {
 	FilterPlatform interface{}
-	PlatformID     []byte
-	MappingState   string
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
 	Limit          int32
 	Offset         int32
 }
 
-type SearchAssetListingsRow struct {
-	ID              []byte
-	PlatformID      []byte
-	PlatformCode    string
-	ExternalRef     string
-	Symbol          string
-	Name            sql.NullString
-	Status          string
-	MappedAssetID   []byte
-	MappedAssetCode sql.NullString
-	MappingState    interface{}
-	MappingVersion  uint64
-	Pinned          int32
-}
-
-func (q *Queries) SearchAssetListings(ctx context.Context, arg SearchAssetListingsParams) ([]SearchAssetListingsRow, error) {
-	rows, err := q.db.QueryContext(ctx, searchAssetListings,
-		arg.PortfolioID,
-		arg.PortfolioID,
-		arg.Query,
-		arg.Query,
-		arg.Query,
-		arg.Query,
+func (q *Queries) ListAssetListings(ctx context.Context, arg ListAssetListingsParams) ([]AssetListing, error) {
+	rows, err := q.db.QueryContext(ctx, listAssetListings,
 		arg.FilterPlatform,
-		arg.PlatformID,
-		arg.MappingState,
-		arg.MappingState,
-		arg.MappingState,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -559,22 +184,21 @@ func (q *Queries) SearchAssetListings(ctx context.Context, arg SearchAssetListin
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SearchAssetListingsRow{}
+	items := []AssetListing{}
 	for rows.Next() {
-		var i SearchAssetListingsRow
+		var i AssetListing
 		if err := rows.Scan(
 			&i.ID,
-			&i.PlatformID,
-			&i.PlatformCode,
-			&i.ExternalRef,
+			&i.Platform,
 			&i.Symbol,
+			&i.AssetSymbol,
 			&i.Name,
-			&i.Status,
-			&i.MappedAssetID,
-			&i.MappedAssetCode,
-			&i.MappingState,
-			&i.MappingVersion,
-			&i.Pinned,
+			&i.MappingSource,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -589,69 +213,31 @@ func (q *Queries) SearchAssetListings(ctx context.Context, arg SearchAssetListin
 	return items, nil
 }
 
-const searchInstruments = `-- name: SearchInstruments :many
-SELECT
-    i.id,
-    i.platform_id,
-    p.code AS platform_code,
-    i.external_ref,
-    i.symbol,
-    i.kind,
-    i.status,
-    i.expiry_at,
-    CASE WHEN pr.enabled = 1 THEN 1 ELSE 0 END AS pinned
-FROM instruments i
-INNER JOIN platforms p ON p.id = i.platform_id
-LEFT JOIN catalog_pins pin
-    ON pin.portfolio_id = ? AND pin.instrument_id = i.id
-LEFT JOIN catalog_pin_revisions pr
-    ON pr.portfolio_id = pin.portfolio_id AND pr.id = pin.current_revision_id
-WHERE (? = '' OR INSTR(LOWER(i.symbol), LOWER(?)) > 0
-    OR INSTR(LOWER(i.external_ref), LOWER(?)) > 0)
-  AND (? = 0 OR i.platform_id = ?)
-  AND (
-      ? = 0
-      OR (? = 1 AND pr.enabled = 1)
-      OR (? = 0 AND (pr.enabled IS NULL OR pr.enabled = 0))
-  )
-ORDER BY i.symbol ASC, i.id ASC
+const listInstruments = `-- name: ListInstruments :many
+SELECT id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size,
+       first_seen_at, last_seen_at, created_at, updated_at
+FROM instruments
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ?)
+ORDER BY platform ASC, symbol ASC
 LIMIT ? OFFSET ?
 `
 
-type SearchInstrumentsParams struct {
-	PortfolioID    []byte
-	Query          string
+type ListInstrumentsParams struct {
 	FilterPlatform interface{}
-	PlatformID     []byte
-	FilterPinned   interface{}
-	Pinned         interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
 	Limit          int32
 	Offset         int32
 }
 
-type SearchInstrumentsRow struct {
-	ID           []byte
-	PlatformID   []byte
-	PlatformCode string
-	ExternalRef  string
-	Symbol       string
-	Kind         string
-	Status       string
-	ExpiryAt     sql.NullTime
-	Pinned       int32
-}
-
-func (q *Queries) SearchInstruments(ctx context.Context, arg SearchInstrumentsParams) ([]SearchInstrumentsRow, error) {
-	rows, err := q.db.QueryContext(ctx, searchInstruments,
-		arg.PortfolioID,
-		arg.Query,
-		arg.Query,
-		arg.Query,
+func (q *Queries) ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error) {
+	rows, err := q.db.QueryContext(ctx, listInstruments,
 		arg.FilterPlatform,
-		arg.PlatformID,
-		arg.FilterPinned,
-		arg.Pinned,
-		arg.Pinned,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -659,19 +245,23 @@ func (q *Queries) SearchInstruments(ctx context.Context, arg SearchInstrumentsPa
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SearchInstrumentsRow{}
+	items := []Instrument{}
 	for rows.Next() {
-		var i SearchInstrumentsRow
+		var i Instrument
 		if err := rows.Scan(
 			&i.ID,
-			&i.PlatformID,
-			&i.PlatformCode,
-			&i.ExternalRef,
+			&i.Platform,
 			&i.Symbol,
 			&i.Kind,
-			&i.Status,
+			&i.BaseSymbol,
+			&i.QuoteSymbol,
+			&i.SettlementSymbol,
 			&i.ExpiryAt,
-			&i.Pinned,
+			&i.ContractSize,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -686,75 +276,58 @@ func (q *Queries) SearchInstruments(ctx context.Context, arg SearchInstrumentsPa
 	return items, nil
 }
 
-const setAssetListingMappingRevision = `-- name: SetAssetListingMappingRevision :exec
-UPDATE asset_listing_mappings
-SET current_revision_id = ?,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ?
+const listPortfoliosHoldingListing = `-- name: ListPortfoliosHoldingListing :many
+SELECT DISTINCT r.portfolio_id
+FROM balances b
+INNER JOIN account_reports r ON r.portfolio_id = b.portfolio_id AND r.id = b.report_id
+WHERE b.listing_id = ?
 `
 
-type SetAssetListingMappingRevisionParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
+func (q *Queries) ListPortfoliosHoldingListing(ctx context.Context, listingID []byte) ([][]byte, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfoliosHoldingListing, listingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var portfolio_id []byte
+		if err := rows.Scan(&portfolio_id); err != nil {
+			return nil, err
+		}
+		items = append(items, portfolio_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) SetAssetListingMappingRevision(ctx context.Context, arg SetAssetListingMappingRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, setAssetListingMappingRevision,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-	)
-	return err
-}
-
-const setCatalogPinRevision = `-- name: SetCatalogPinRevision :exec
-UPDATE catalog_pins
-SET current_revision_id = ?,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ?
-`
-
-type SetCatalogPinRevisionParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-}
-
-func (q *Queries) SetCatalogPinRevision(ctx context.Context, arg SetCatalogPinRevisionParams) error {
-	_, err := q.db.ExecContext(ctx, setCatalogPinRevision,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-	)
-	return err
-}
-
-const updateAssetListingMappingPointer = `-- name: UpdateAssetListingMappingPointer :execrows
-UPDATE asset_listing_mappings
-SET current_revision_id = ?,
+const updateAssetListingMapping = `-- name: UpdateAssetListingMapping :execrows
+UPDATE asset_listings
+SET asset_symbol = ?,
+    mapping_source = ?,
     version = version + 1,
     updated_at = ?
-WHERE portfolio_id = ? AND id = ? AND version = ?
+WHERE id = ? AND version = ?
 `
 
-type UpdateAssetListingMappingPointerParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-	Version           uint64
+type UpdateAssetListingMappingParams struct {
+	AssetSymbol   string
+	MappingSource string
+	UpdatedAt     time.Time
+	ID            []byte
+	Version       uint64
 }
 
-func (q *Queries) UpdateAssetListingMappingPointer(ctx context.Context, arg UpdateAssetListingMappingPointerParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateAssetListingMappingPointer,
-		arg.CurrentRevisionID,
+func (q *Queries) UpdateAssetListingMapping(ctx context.Context, arg UpdateAssetListingMappingParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateAssetListingMapping,
+		arg.AssetSymbol,
+		arg.MappingSource,
 		arg.UpdatedAt,
-		arg.PortfolioID,
 		arg.ID,
 		arg.Version,
 	)
@@ -764,32 +337,85 @@ func (q *Queries) UpdateAssetListingMappingPointer(ctx context.Context, arg Upda
 	return result.RowsAffected()
 }
 
-const updateCatalogPinPointer = `-- name: UpdateCatalogPinPointer :execrows
-UPDATE catalog_pins
-SET current_revision_id = ?,
-    version = version + 1,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ? AND version = ?
+const upsertAssetListing = `-- name: UpsertAssetListing :exec
+INSERT INTO asset_listings (
+    id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, 'auto',
+    ?, ?, 1, ?, ?
+)
+ON DUPLICATE KEY UPDATE
+    last_seen_at = VALUES(last_seen_at),
+    name = COALESCE(VALUES(name), name),
+    updated_at = VALUES(updated_at)
 `
 
-type UpdateCatalogPinPointerParams struct {
-	CurrentRevisionID []byte
-	UpdatedAt         time.Time
-	PortfolioID       []byte
-	ID                []byte
-	Version           uint64
+type UpsertAssetListingParams struct {
+	ID          []byte
+	Platform    string
+	Symbol      string
+	AssetSymbol string
+	Name        sql.NullString
+	SeenAt      time.Time
 }
 
-func (q *Queries) UpdateCatalogPinPointer(ctx context.Context, arg UpdateCatalogPinPointerParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateCatalogPinPointer,
-		arg.CurrentRevisionID,
-		arg.UpdatedAt,
-		arg.PortfolioID,
+func (q *Queries) UpsertAssetListing(ctx context.Context, arg UpsertAssetListingParams) error {
+	_, err := q.db.ExecContext(ctx, upsertAssetListing,
 		arg.ID,
-		arg.Version,
+		arg.Platform,
+		arg.Symbol,
+		arg.AssetSymbol,
+		arg.Name,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	return err
+}
+
+const upsertInstrument = `-- name: UpsertInstrument :exec
+INSERT INTO instruments (
+    id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size,
+    first_seen_at, last_seen_at, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, ?,
+    ?, ?, ?,
+    ?, ?, ?, ?
+)
+ON DUPLICATE KEY UPDATE
+    last_seen_at = VALUES(last_seen_at),
+    updated_at = VALUES(updated_at)
+`
+
+type UpsertInstrumentParams struct {
+	ID               []byte
+	Platform         string
+	Symbol           string
+	Kind             string
+	BaseSymbol       sql.NullString
+	QuoteSymbol      sql.NullString
+	SettlementSymbol sql.NullString
+	ExpiryAt         sql.NullTime
+	ContractSize     sql.NullString
+	SeenAt           time.Time
+}
+
+func (q *Queries) UpsertInstrument(ctx context.Context, arg UpsertInstrumentParams) error {
+	_, err := q.db.ExecContext(ctx, upsertInstrument,
+		arg.ID,
+		arg.Platform,
+		arg.Symbol,
+		arg.Kind,
+		arg.BaseSymbol,
+		arg.QuoteSymbol,
+		arg.SettlementSymbol,
+		arg.ExpiryAt,
+		arg.ContractSize,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
+	)
+	return err
 }

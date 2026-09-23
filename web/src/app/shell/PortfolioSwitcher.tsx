@@ -1,15 +1,6 @@
-import { ChevronDown } from "lucide-react";
-import {
-  type CSSProperties,
-  type FormEvent,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { createPortal } from "react-dom";
-import { Link, useLocation, useNavigate } from "react-router";
+import { ChevronDown, Plus } from "lucide-react";
+import { type FormEvent, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { createPortfolio } from "@/api/generated/sdk.gen";
 import type { Portfolio } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
@@ -18,13 +9,13 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { storePreference } from "@/shared/lib/preferences";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import buttonStyles from "@/shared/ui/ActionButton.module.css";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
+import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import styles from "@/app/shell/Shell.module.css";
 import pageStyles from "@/features/pages.module.css";
 
-export type PortfolioOption = Pick<Portfolio, "id" | "name" | "undeletable">;
+export type PortfolioOption = Pick<Portfolio, "id" | "name">;
 
 export function PortfolioSwitcher({
   portfolioId,
@@ -37,71 +28,30 @@ export function PortfolioSwitcher({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const menu = useMenu();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const createKey = useRef(newIdempotencyKey());
-  const rootRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLUListElement>(null);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-  const labelId = useId();
   const current = portfolios.find((item) => item.id === portfolioId) ?? portfolios[0];
 
-  useLayoutEffect(() => {
-    if (!menuOpen || !buttonRef.current) {
-      return;
+  function pathFor(id: string): string {
+    if (isAccountPath(location.pathname)) {
+      return `/p/${id}/overview`;
     }
-    const update = () => {
-      const rect = buttonRef.current?.getBoundingClientRect();
-      if (!rect) {
-        return;
-      }
-      setMenuStyle({
-        top: rect.bottom + 4,
-        right: Math.max(8, window.innerWidth - rect.right),
-      });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-    const onPointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) {
-        return;
-      }
-      setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointer);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onPointer);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
+    const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
+    return `/p/${id}${suffix}`;
+  }
 
   function selectPortfolio(next: string) {
     storePreference(LAST_PORTFOLIO_KEY, next);
-    setMenuOpen(false);
+    menu.close(true);
     if (isAccountPath(location.pathname)) {
       onPortfolioRemembered?.(next);
       return;
     }
-    const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
-    void navigate(`/p/${next}${suffix}`);
+    void navigate(pathFor(next));
   }
 
   async function onCreate(event: FormEvent) {
@@ -126,12 +76,7 @@ export function PortfolioSwitcher({
       setName("");
       setCreateOpen(false);
       storePreference(LAST_PORTFOLIO_KEY, result.data.id);
-      if (isAccountPath(location.pathname)) {
-        void navigate(`/p/${result.data.id}/overview`);
-      } else {
-        const suffix = location.pathname.replace(/^\/p\/[^/]+/, "") || "/overview";
-        void navigate(`/p/${result.data.id}${suffix}`);
-      }
+      void navigate(pathFor(result.data.id));
     } catch (cause) {
       setError(
         problemMessage(cause, "The portfolio could not be created. Check the network and retry."),
@@ -142,74 +87,41 @@ export function PortfolioSwitcher({
   }
 
   return (
-    <div className={styles.switcher} ref={rootRef}>
-      <span id={labelId} className={styles.switcherLabel}>
-        Portfolio
-      </span>
-      <div className={styles.switcherControls}>
-        <button
-          ref={buttonRef}
-          type="button"
-          className={styles.switcherButton}
-          aria-labelledby={labelId}
-          aria-haspopup="listbox"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <span className={styles.switcherName}>{current?.name ?? "Portfolio"}</span>
-          {current?.undeletable ? (
-            <span className={styles.undeletableBadge}>undeletable</span>
-          ) : null}
-          <ChevronDown size={iconSize.xs} aria-hidden="true" />
-        </button>
-        {menuOpen
-          ? createPortal(
-              <ul
-                ref={menuRef}
-                className={styles.switcherMenu}
-                role="listbox"
-                aria-labelledby={labelId}
-                style={menuStyle}
-              >
-                {portfolios.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={item.id === portfolioId}
-                      className={styles.switcherOption}
-                      onClick={() => selectPortfolio(item.id)}
-                    >
-                      <span className={styles.switcherName}>{item.name}</span>
-                      {item.undeletable ? (
-                        <span className={styles.undeletableBadge}>undeletable</span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>,
-              document.body,
-            )
-          : null}
-        <ActionButton
-          type="button"
+    <>
+      <button
+        ref={(node) => menu.setAnchor(node)}
+        type="button"
+        className={styles.switcherButton}
+        title="Switch portfolio"
+        aria-haspopup="menu"
+        aria-expanded={menu.open}
+        onClick={() => menu.setOpen((open) => !open)}
+      >
+        <span className={styles.switcherName}>{current?.name ?? "Portfolio"}</span>
+        <ChevronDown size={iconSize.xs} aria-hidden="true" />
+      </button>
+      <Menu menu={menu} label="Portfolios">
+        {portfolios.map((item) => (
+          <MenuItem
+            key={item.id}
+            role="menuitemradio"
+            checked={item.id === current?.id}
+            onClick={() => selectPortfolio(item.id)}
+          >
+            {item.name}
+          </MenuItem>
+        ))}
+        <MenuSeparator />
+        <MenuItem
+          icon={<Plus size={iconSize.sm} />}
           onClick={() => {
-            setMenuOpen(false);
+            menu.close();
             setCreateOpen(true);
           }}
         >
-          New Portfolio
-        </ActionButton>
-        {portfolioId ? (
-          <Link
-            className={`${buttonStyles.button} ${buttonStyles.secondary} ${styles.settingsLink}`}
-            to={`/p/${portfolioId}/settings/portfolio`}
-            aria-current={location.pathname.endsWith("/settings/portfolio") ? "page" : undefined}
-          >
-            Portfolio Settings
-          </Link>
-        ) : null}
-      </div>
+          New portfolio
+        </MenuItem>
+      </Menu>
       <Dialog
         open={createOpen}
         title="New portfolio"
@@ -222,7 +134,8 @@ export function PortfolioSwitcher({
       >
         <form className={pageStyles.form} onSubmit={(event) => void onCreate(event)}>
           <p className={pageStyles.lead}>
-            Name the workspace. Timezone and display Asset start as Asia/Shanghai and USD.
+            Valuation is USD-only. The timezone and collection interval can be changed later in
+            Settings.
           </p>
           {error ? (
             <p className={pageStyles.alert} role="alert">
@@ -244,6 +157,7 @@ export function PortfolioSwitcher({
             </ActionButton>
             <ActionButton
               type="button"
+              tone="ghost"
               disabled={busy}
               onClick={() => {
                 setCreateOpen(false);
@@ -255,6 +169,6 @@ export function PortfolioSwitcher({
           </div>
         </form>
       </Dialog>
-    </div>
+    </>
   );
 }

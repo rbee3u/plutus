@@ -15,6 +15,7 @@ const archiveIdentity = `-- name: ArchiveIdentity :execrows
 UPDATE identities
 SET status = 'archived',
     archived_at = ?,
+    connection_status = IF(connection_status = 'enabled', 'disabled', connection_status),
     version = version + 1,
     updated_at = ?
 WHERE portfolio_id = ? AND id = ? AND version = ? AND status <> 'archived'
@@ -42,49 +43,74 @@ func (q *Queries) ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams
 	return result.RowsAffected()
 }
 
-const countActiveSubordinates = `-- name: CountActiveSubordinates :one
-SELECT COUNT(*)
-FROM identities
-WHERE portfolio_id = ?
-  AND parent_identity_id = ?
-  AND status <> 'archived'
+const clearIdentityCredentials = `-- name: ClearIdentityCredentials :execrows
+UPDATE identities
+SET credentials_ciphertext = NULL,
+    credentials_nonce = NULL,
+    credential_key_version = 0,
+    credentials_updated_at = NULL,
+    connection_status = 'unconfigured',
+    last_validated_at = NULL,
+    version = version + 1,
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ? AND version = ? AND status <> 'archived'
 `
 
-type CountActiveSubordinatesParams struct {
-	PortfolioID      []byte
-	ParentIdentityID []byte
+type ClearIdentityCredentialsParams struct {
+	UpdatedAt   time.Time
+	PortfolioID []byte
+	ID          []byte
+	Version     uint64
 }
 
-func (q *Queries) CountActiveSubordinates(ctx context.Context, arg CountActiveSubordinatesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveSubordinates, arg.PortfolioID, arg.ParentIdentityID)
+func (q *Queries) ClearIdentityCredentials(ctx context.Context, arg ClearIdentityCredentialsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearIdentityCredentials,
+		arg.UpdatedAt,
+		arg.PortfolioID,
+		arg.ID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const countIdentitiesWithCiphertext = `-- name: CountIdentitiesWithCiphertext :one
+SELECT COUNT(*) FROM identities WHERE credentials_ciphertext IS NOT NULL
+`
+
+func (q *Queries) CountIdentitiesWithCiphertext(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countIdentitiesWithCiphertext)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countEnabledConnectionsByIdentity = `-- name: CountEnabledConnectionsByIdentity :one
+const countReportsForIdentity = `-- name: CountReportsForIdentity :one
 SELECT COUNT(*)
-FROM connections
-WHERE portfolio_id = ?
-  AND identity_id = ?
-  AND status = 'enabled'
+FROM account_reports r
+INNER JOIN accounts a ON a.portfolio_id = r.portfolio_id AND a.id = r.account_id
+WHERE r.portfolio_id = ? AND a.identity_id = ?
 `
 
-type CountEnabledConnectionsByIdentityParams struct {
+type CountReportsForIdentityParams struct {
 	PortfolioID []byte
 	IdentityID  []byte
 }
 
-func (q *Queries) CountEnabledConnectionsByIdentity(ctx context.Context, arg CountEnabledConnectionsByIdentityParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countEnabledConnectionsByIdentity, arg.PortfolioID, arg.IdentityID)
+func (q *Queries) CountReportsForIdentity(ctx context.Context, arg CountReportsForIdentityParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countReportsForIdentity, arg.PortfolioID, arg.IdentityID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const getIdentity = `-- name: GetIdentity :one
-SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
+SELECT id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+       connection_status, credentials_ciphertext IS NOT NULL AS credentials_configured, credentials_updated_at,
+       last_validated_at, last_collected_at, last_error_class, last_error_detail,
+       version, created_at, updated_at
 FROM identities
 WHERE portfolio_id = ? AND id = ?
 `
@@ -94,106 +120,175 @@ type GetIdentityParams struct {
 	ID          []byte
 }
 
-func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (Identity, error) {
+type GetIdentityRow struct {
+	ID                    []byte
+	PortfolioID           []byte
+	Platform              string
+	DisplayName           string
+	AccountMode           string
+	ExternalRef           sql.NullString
+	Status                string
+	ArchivedAt            sql.NullTime
+	ConnectionStatus      string
+	CredentialsConfigured bool
+	CredentialsUpdatedAt  sql.NullTime
+	LastValidatedAt       sql.NullTime
+	LastCollectedAt       sql.NullTime
+	LastErrorClass        sql.NullString
+	LastErrorDetail       sql.NullString
+	Version               uint64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error) {
 	row := q.db.QueryRowContext(ctx, getIdentity, arg.PortfolioID, arg.ID)
-	var i Identity
+	var i GetIdentityRow
 	err := row.Scan(
 		&i.ID,
 		&i.PortfolioID,
-		&i.PlatformID,
-		&i.ParentIdentityID,
-		&i.ExternalRef,
+		&i.Platform,
 		&i.DisplayName,
 		&i.AccountMode,
-		&i.Kind,
+		&i.ExternalRef,
 		&i.Status,
+		&i.ArchivedAt,
+		&i.ConnectionStatus,
+		&i.CredentialsConfigured,
+		&i.CredentialsUpdatedAt,
+		&i.LastValidatedAt,
+		&i.LastCollectedAt,
+		&i.LastErrorClass,
+		&i.LastErrorDetail,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ArchivedAt,
-		&i.ActiveExternalRef,
+	)
+	return i, err
+}
+
+const getIdentityCredentials = `-- name: GetIdentityCredentials :one
+SELECT id, portfolio_id, platform, account_mode, connection_status,
+       credentials_ciphertext, credentials_nonce, credential_key_version
+FROM identities
+WHERE portfolio_id = ? AND id = ?
+`
+
+type GetIdentityCredentialsParams struct {
+	PortfolioID []byte
+	ID          []byte
+}
+
+type GetIdentityCredentialsRow struct {
+	ID                    []byte
+	PortfolioID           []byte
+	Platform              string
+	AccountMode           string
+	ConnectionStatus      string
+	CredentialsCiphertext []byte
+	CredentialsNonce      []byte
+	CredentialKeyVersion  uint16
+}
+
+func (q *Queries) GetIdentityCredentials(ctx context.Context, arg GetIdentityCredentialsParams) (GetIdentityCredentialsRow, error) {
+	row := q.db.QueryRowContext(ctx, getIdentityCredentials, arg.PortfolioID, arg.ID)
+	var i GetIdentityCredentialsRow
+	err := row.Scan(
+		&i.ID,
+		&i.PortfolioID,
+		&i.Platform,
+		&i.AccountMode,
+		&i.ConnectionStatus,
+		&i.CredentialsCiphertext,
+		&i.CredentialsNonce,
+		&i.CredentialKeyVersion,
 	)
 	return i, err
 }
 
 const insertIdentity = `-- name: InsertIdentity :exec
 INSERT INTO identities (
-    id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-    account_mode, kind, status, version, created_at, updated_at, archived_at
+    id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+    connection_status, credentials_ciphertext, credentials_nonce, credential_key_version,
+    credentials_updated_at, last_validated_at, last_collected_at, last_error_class, last_error_detail,
+    version, created_at, updated_at
 ) VALUES (
-    ?, ?, ?, ?,
-    ?, ?, ?, ?,
-    ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?,
+    ?, ?, NULL,
+    'unconfigured', NULL, NULL, 0,
+    NULL, NULL, NULL, NULL, NULL,
+    ?, ?, ?
 )
 `
 
 type InsertIdentityParams struct {
-	ID               []byte
-	PortfolioID      []byte
-	PlatformID       []byte
-	ParentIdentityID []byte
-	ExternalRef      string
-	DisplayName      string
-	AccountMode      string
-	Kind             string
-	Status           string
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	ArchivedAt       sql.NullTime
+	ID          []byte
+	PortfolioID []byte
+	Platform    string
+	DisplayName string
+	AccountMode string
+	ExternalRef sql.NullString
+	Status      string
+	Version     uint64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) error {
 	_, err := q.db.ExecContext(ctx, insertIdentity,
 		arg.ID,
 		arg.PortfolioID,
-		arg.PlatformID,
-		arg.ParentIdentityID,
-		arg.ExternalRef,
+		arg.Platform,
 		arg.DisplayName,
 		arg.AccountMode,
-		arg.Kind,
+		arg.ExternalRef,
 		arg.Status,
 		arg.Version,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.ArchivedAt,
 	)
 	return err
 }
 
-const listIdentitiesByPortfolio = `-- name: ListIdentitiesByPortfolio :many
-SELECT id, portfolio_id, platform_id, parent_identity_id, external_ref, display_name,
-       account_mode, kind, status, version, created_at, updated_at, archived_at, active_external_ref
+const listCollectableIdentities = `-- name: ListCollectableIdentities :many
+SELECT id, portfolio_id, platform, display_name, account_mode, external_ref,
+       credentials_ciphertext, credentials_nonce, credential_key_version
 FROM identities
-WHERE portfolio_id = ?
-ORDER BY created_at ASC, id ASC
+WHERE portfolio_id = ? AND status = 'enabled' AND connection_status = 'enabled'
+ORDER BY platform ASC, created_at ASC, id ASC
 `
 
-func (q *Queries) ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]Identity, error) {
-	rows, err := q.db.QueryContext(ctx, listIdentitiesByPortfolio, portfolioID)
+type ListCollectableIdentitiesRow struct {
+	ID                    []byte
+	PortfolioID           []byte
+	Platform              string
+	DisplayName           string
+	AccountMode           string
+	ExternalRef           sql.NullString
+	CredentialsCiphertext []byte
+	CredentialsNonce      []byte
+	CredentialKeyVersion  uint16
+}
+
+func (q *Queries) ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCollectableIdentities, portfolioID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Identity{}
+	items := []ListCollectableIdentitiesRow{}
 	for rows.Next() {
-		var i Identity
+		var i ListCollectableIdentitiesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PortfolioID,
-			&i.PlatformID,
-			&i.ParentIdentityID,
-			&i.ExternalRef,
+			&i.Platform,
 			&i.DisplayName,
 			&i.AccountMode,
-			&i.Kind,
-			&i.Status,
-			&i.Version,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ArchivedAt,
-			&i.ActiveExternalRef,
+			&i.ExternalRef,
+			&i.CredentialsCiphertext,
+			&i.CredentialsNonce,
+			&i.CredentialKeyVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -208,36 +303,218 @@ func (q *Queries) ListIdentitiesByPortfolio(ctx context.Context, portfolioID []b
 	return items, nil
 }
 
-const updateIdentity = `-- name: UpdateIdentity :execrows
-UPDATE identities
-SET display_name = ?,
-    status = ?,
-    parent_identity_id = ?,
-    external_ref = ?,
-    account_mode = ?,
-    version = version + 1,
-    updated_at = ?
-WHERE portfolio_id = ? AND id = ? AND version = ?
+const listIdentitiesByPortfolio = `-- name: ListIdentitiesByPortfolio :many
+SELECT id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+       connection_status, credentials_ciphertext IS NOT NULL AS credentials_configured, credentials_updated_at,
+       last_validated_at, last_collected_at, last_error_class, last_error_detail,
+       version, created_at, updated_at
+FROM identities
+WHERE portfolio_id = ?
+ORDER BY platform ASC, created_at ASC, id ASC
 `
 
-type UpdateIdentityParams struct {
-	DisplayName      string
-	Status           string
-	ParentIdentityID []byte
-	ExternalRef      string
-	AccountMode      string
+type ListIdentitiesByPortfolioRow struct {
+	ID                    []byte
+	PortfolioID           []byte
+	Platform              string
+	DisplayName           string
+	AccountMode           string
+	ExternalRef           sql.NullString
+	Status                string
+	ArchivedAt            sql.NullTime
+	ConnectionStatus      string
+	CredentialsConfigured bool
+	CredentialsUpdatedAt  sql.NullTime
+	LastValidatedAt       sql.NullTime
+	LastCollectedAt       sql.NullTime
+	LastErrorClass        sql.NullString
+	LastErrorDetail       sql.NullString
+	Version               uint64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+func (q *Queries) ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]ListIdentitiesByPortfolioRow, error) {
+	rows, err := q.db.QueryContext(ctx, listIdentitiesByPortfolio, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListIdentitiesByPortfolioRow{}
+	for rows.Next() {
+		var i ListIdentitiesByPortfolioRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.Platform,
+			&i.DisplayName,
+			&i.AccountMode,
+			&i.ExternalRef,
+			&i.Status,
+			&i.ArchivedAt,
+			&i.ConnectionStatus,
+			&i.CredentialsConfigured,
+			&i.CredentialsUpdatedAt,
+			&i.LastValidatedAt,
+			&i.LastCollectedAt,
+			&i.LastErrorClass,
+			&i.LastErrorDetail,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recordIdentityCollection = `-- name: RecordIdentityCollection :exec
+UPDATE identities
+SET last_collected_at = ?,
+    last_error_class = ?,
+    last_error_detail = ?,
+    connection_status = IF(? = 1, 'invalid', connection_status),
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ?
+`
+
+type RecordIdentityCollectionParams struct {
+	LastCollectedAt sql.NullTime
+	LastErrorClass  sql.NullString
+	LastErrorDetail sql.NullString
+	Invalidate      interface{}
+	UpdatedAt       time.Time
+	PortfolioID     []byte
+	ID              []byte
+}
+
+func (q *Queries) RecordIdentityCollection(ctx context.Context, arg RecordIdentityCollectionParams) error {
+	_, err := q.db.ExecContext(ctx, recordIdentityCollection,
+		arg.LastCollectedAt,
+		arg.LastErrorClass,
+		arg.LastErrorDetail,
+		arg.Invalidate,
+		arg.UpdatedAt,
+		arg.PortfolioID,
+		arg.ID,
+	)
+	return err
+}
+
+const setIdentityConnectionStatus = `-- name: SetIdentityConnectionStatus :execrows
+UPDATE identities
+SET connection_status = ?,
+    external_ref = COALESCE(?, external_ref),
+    last_validated_at = COALESCE(?, last_validated_at),
+    last_error_class = ?,
+    last_error_detail = ?,
+    version = version + 1,
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ? AND version = ? AND status <> 'archived'
+`
+
+type SetIdentityConnectionStatusParams struct {
+	ConnectionStatus string
+	ExternalRef      sql.NullString
+	LastValidatedAt  sql.NullTime
+	LastErrorClass   sql.NullString
+	LastErrorDetail  sql.NullString
 	UpdatedAt        time.Time
 	PortfolioID      []byte
 	ID               []byte
 	Version          uint64
 }
 
+func (q *Queries) SetIdentityConnectionStatus(ctx context.Context, arg SetIdentityConnectionStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setIdentityConnectionStatus,
+		arg.ConnectionStatus,
+		arg.ExternalRef,
+		arg.LastValidatedAt,
+		arg.LastErrorClass,
+		arg.LastErrorDetail,
+		arg.UpdatedAt,
+		arg.PortfolioID,
+		arg.ID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setIdentityCredentials = `-- name: SetIdentityCredentials :execrows
+UPDATE identities
+SET credentials_ciphertext = ?,
+    credentials_nonce = ?,
+    credential_key_version = ?,
+    credentials_updated_at = ?,
+    connection_status = 'disabled',
+    last_validated_at = NULL,
+    last_error_class = NULL,
+    last_error_detail = NULL,
+    version = version + 1,
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ? AND version = ? AND status <> 'archived'
+`
+
+type SetIdentityCredentialsParams struct {
+	CredentialsCiphertext []byte
+	CredentialsNonce      []byte
+	CredentialKeyVersion  uint16
+	CredentialsUpdatedAt  sql.NullTime
+	UpdatedAt             time.Time
+	PortfolioID           []byte
+	ID                    []byte
+	Version               uint64
+}
+
+func (q *Queries) SetIdentityCredentials(ctx context.Context, arg SetIdentityCredentialsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setIdentityCredentials,
+		arg.CredentialsCiphertext,
+		arg.CredentialsNonce,
+		arg.CredentialKeyVersion,
+		arg.CredentialsUpdatedAt,
+		arg.UpdatedAt,
+		arg.PortfolioID,
+		arg.ID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateIdentity = `-- name: UpdateIdentity :execrows
+UPDATE identities
+SET display_name = ?,
+    account_mode = ?,
+    version = version + 1,
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ? AND version = ? AND status <> 'archived'
+`
+
+type UpdateIdentityParams struct {
+	DisplayName string
+	AccountMode string
+	UpdatedAt   time.Time
+	PortfolioID []byte
+	ID          []byte
+	Version     uint64
+}
+
 func (q *Queries) UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateIdentity,
 		arg.DisplayName,
-		arg.Status,
-		arg.ParentIdentityID,
-		arg.ExternalRef,
 		arg.AccountMode,
 		arg.UpdatedAt,
 		arg.PortfolioID,

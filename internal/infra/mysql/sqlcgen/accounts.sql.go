@@ -10,26 +10,12 @@ import (
 	"time"
 )
 
-const countAccountsByPortfolio = `-- name: CountAccountsByPortfolio :one
-SELECT COUNT(*)
-FROM accounts a
-INNER JOIN identities i
-    ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE a.portfolio_id = ? AND i.status <> 'archived'
-`
-
-func (q *Queries) CountAccountsByPortfolio(ctx context.Context, portfolioID []byte) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAccountsByPortfolio, portfolioID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const getAccount = `-- name: GetAccount :one
-SELECT id, portfolio_id, identity_id, external_ref, display_name, account_type, status,
-       first_seen_at, last_seen_at, created_at, updated_at
-FROM accounts
-WHERE portfolio_id = ? AND id = ?
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+FROM accounts a
+INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ? AND a.id = ?
 `
 
 type GetAccountParams struct {
@@ -37,33 +23,47 @@ type GetAccountParams struct {
 	ID          []byte
 }
 
-func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (Account, error) {
+type GetAccountRow struct {
+	ID             []byte
+	PortfolioID    []byte
+	IdentityID     []byte
+	AccountType    string
+	DisplayName    string
+	Selected       bool
+	Version        uint64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Platform       string
+	IdentityName   string
+	IdentityStatus string
+}
+
+func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccount, arg.PortfolioID, arg.ID)
-	var i Account
+	var i GetAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.PortfolioID,
 		&i.IdentityID,
-		&i.ExternalRef,
-		&i.DisplayName,
 		&i.AccountType,
-		&i.Status,
-		&i.FirstSeenAt,
-		&i.LastSeenAt,
+		&i.DisplayName,
+		&i.Selected,
+		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Platform,
+		&i.IdentityName,
+		&i.IdentityStatus,
 	)
 	return i, err
 }
 
 const insertAccount = `-- name: InsertAccount :exec
 INSERT INTO accounts (
-    id, portfolio_id, identity_id, external_ref, display_name, account_type, status,
-    first_seen_at, last_seen_at, created_at, updated_at
+    id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at
 ) VALUES (
     ?, ?, ?, ?,
-    ?, ?, ?, ?,
-    ?, ?, ?
+    ?, ?, ?, ?, ?
 )
 `
 
@@ -71,12 +71,10 @@ type InsertAccountParams struct {
 	ID          []byte
 	PortfolioID []byte
 	IdentityID  []byte
-	ExternalRef string
-	DisplayName string
 	AccountType string
-	Status      string
-	FirstSeenAt time.Time
-	LastSeenAt  time.Time
+	DisplayName string
+	Selected    bool
+	Version     uint64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -86,37 +84,30 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) er
 		arg.ID,
 		arg.PortfolioID,
 		arg.IdentityID,
-		arg.ExternalRef,
-		arg.DisplayName,
 		arg.AccountType,
-		arg.Status,
-		arg.FirstSeenAt,
-		arg.LastSeenAt,
+		arg.DisplayName,
+		arg.Selected,
+		arg.Version,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
 	return err
 }
 
-const listAccountsByPortfolio = `-- name: ListAccountsByPortfolio :many
-SELECT a.id, a.portfolio_id, a.identity_id, a.external_ref, a.display_name, a.account_type, a.status,
-       a.first_seen_at, a.last_seen_at, a.created_at, a.updated_at
-FROM accounts a
-INNER JOIN identities i
-    ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE a.portfolio_id = ? AND i.status <> 'archived'
-ORDER BY a.display_name ASC, a.id ASC
-LIMIT ? OFFSET ?
+const listAccountsByIdentity = `-- name: ListAccountsByIdentity :many
+SELECT id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at
+FROM accounts
+WHERE portfolio_id = ? AND identity_id = ?
+ORDER BY account_type ASC
 `
 
-type ListAccountsByPortfolioParams struct {
+type ListAccountsByIdentityParams struct {
 	PortfolioID []byte
-	Limit       int32
-	Offset      int32
+	IdentityID  []byte
 }
 
-func (q *Queries) ListAccountsByPortfolio(ctx context.Context, arg ListAccountsByPortfolioParams) ([]Account, error) {
-	rows, err := q.db.QueryContext(ctx, listAccountsByPortfolio, arg.PortfolioID, arg.Limit, arg.Offset)
+func (q *Queries) ListAccountsByIdentity(ctx context.Context, arg ListAccountsByIdentityParams) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountsByIdentity, arg.PortfolioID, arg.IdentityID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +119,10 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, arg ListAccountsB
 			&i.ID,
 			&i.PortfolioID,
 			&i.IdentityID,
-			&i.ExternalRef,
-			&i.DisplayName,
 			&i.AccountType,
-			&i.Status,
-			&i.FirstSeenAt,
-			&i.LastSeenAt,
+			&i.DisplayName,
+			&i.Selected,
+			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -148,4 +137,147 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, arg ListAccountsB
 		return nil, err
 	}
 	return items, nil
+}
+
+const listAccountsByPortfolio = `-- name: ListAccountsByPortfolio :many
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+FROM accounts a
+INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ?
+ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC
+`
+
+type ListAccountsByPortfolioRow struct {
+	ID             []byte
+	PortfolioID    []byte
+	IdentityID     []byte
+	AccountType    string
+	DisplayName    string
+	Selected       bool
+	Version        uint64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Platform       string
+	IdentityName   string
+	IdentityStatus string
+}
+
+func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountsByPortfolio, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAccountsByPortfolioRow{}
+	for rows.Next() {
+		var i ListAccountsByPortfolioRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.IdentityID,
+			&i.AccountType,
+			&i.DisplayName,
+			&i.Selected,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Platform,
+			&i.IdentityName,
+			&i.IdentityStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBoundaryAccounts = `-- name: ListBoundaryAccounts :many
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, i.platform, i.display_name AS identity_name,
+       i.connection_status
+FROM accounts a
+INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ? AND a.selected = TRUE AND i.status = 'enabled'
+ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC
+`
+
+type ListBoundaryAccountsRow struct {
+	ID               []byte
+	PortfolioID      []byte
+	IdentityID       []byte
+	AccountType      string
+	DisplayName      string
+	Platform         string
+	IdentityName     string
+	ConnectionStatus string
+}
+
+func (q *Queries) ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBoundaryAccounts, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBoundaryAccountsRow{}
+	for rows.Next() {
+		var i ListBoundaryAccountsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.IdentityID,
+			&i.AccountType,
+			&i.DisplayName,
+			&i.Platform,
+			&i.IdentityName,
+			&i.ConnectionStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateAccount = `-- name: UpdateAccount :execrows
+UPDATE accounts
+SET display_name = ?,
+    selected = ?,
+    version = version + 1,
+    updated_at = ?
+WHERE portfolio_id = ? AND id = ?
+`
+
+type UpdateAccountParams struct {
+	DisplayName string
+	Selected    bool
+	UpdatedAt   time.Time
+	PortfolioID []byte
+	ID          []byte
+}
+
+func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateAccount,
+		arg.DisplayName,
+		arg.Selected,
+		arg.UpdatedAt,
+		arg.PortfolioID,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

@@ -1,8 +1,10 @@
+// Package jobs owns the durable job queue: Collection Cycles and valuation recalculations.
 package jobs
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -10,15 +12,32 @@ import (
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
+// Job kinds, statuses, and triggers.
 const (
-	minLimit     = 1
-	maxLimit     = 200
-	defaultLimit = 50
+	KindCollectionCycle = "collection_cycle"
+	KindValuationRecalc = "valuation_recalc"
+
+	StatusQueued    = "queued"
+	StatusRunning   = "running"
+	StatusSucceeded = "succeeded"
+	StatusFailed    = "failed"
+
+	TriggerSchedule = "schedule"
+	TriggerManual   = "manual"
+	TriggerSystem   = "system"
+
+	minLimit           = 1
+	maxLimit           = 200
+	defaultLimit       = 50
+	defaultMaxAttempts = uint32(3)
+	dedupeCycle        = "cycle"
+	dedupeRecalc       = "recalc"
 )
 
-// Service owns durable job enqueueing and reads.
+// Service owns durable job enqueueing, reads, and leases.
 type Service struct {
 	db  *sql.DB
 	q   *sqlcgen.Queries
@@ -32,30 +51,26 @@ func NewService(db *sql.DB) *Service {
 
 // Job is a durable unit of work.
 type Job struct {
-	ID              uuid.UUID
-	PortfolioID     uuid.UUID
-	Kind            string
-	Status          string
-	AttemptCount    uint32
-	MaxAttempts     uint32
-	LastErrorCode   *string
-	LastErrorDetail *string
-	CreatedAt       time.Time
-	StartedAt       *time.Time
-	FinishedAt      *time.Time
-	Attempts        []Attempt
+	ID             uuid.UUID
+	PortfolioID    uuid.UUID
+	Kind           string
+	Status         string
+	Trigger        string
+	Payload        json.RawMessage
+	AttemptCount   uint32
+	MaxAttempts    uint32
+	LastErrorClass *string
+	// LastDetail is the outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+	LastDetail  *string
+	CreatedAt   time.Time
+	AvailableAt time.Time
+	StartedAt   *time.Time
+	FinishedAt  *time.Time
 }
 
-// Attempt is a recorded execution of a job.
-type Attempt struct {
-	AttemptNumber uint32
-	WorkerID      string
-	StartedAt     time.Time
-	FinishedAt    *time.Time
-	Outcome       string
-	ErrorClass    *string
-	ErrorCode     *string
-	SafeDetail    *string
+// Active reports whether the job is queued or running.
+func (j *Job) Active() bool {
+	return j.Status == StatusQueued || j.Status == StatusRunning
 }
 
 // Page is a cursor page of jobs.
@@ -69,117 +84,102 @@ type Page struct {
 // ClaimedJob is a leased job ready for execution.
 type ClaimedJob struct {
 	Job
-	AttemptNumber uint32
-	WorkerID      string
-	StartedAt     time.Time
+	WorkerID string
 }
 
-// EnqueueRebuild inserts or returns the active full-projection job for a Portfolio.
-func (s *Service) EnqueueRebuild(ctx context.Context, portfolioID uuid.UUID, requestedBy *uuid.UUID, reason string) (Job, error) {
-	if _, err := s.q.GetPortfolioByID(ctx, mustBytes(portfolioID)); err != nil {
+// RecalcPayload is the payload of a valuation_recalc job.
+type RecalcPayload struct {
+	Reason    string `json:"reason"`
+	ListingID string `json:"listingId,omitempty"`
+}
+
+// EnqueueCycle inserts one Collection Cycle for a Portfolio or returns the active one.
+func (s *Service) EnqueueCycle(ctx context.Context, portfolioID uuid.UUID, trigger string, requestedBy *uuid.UUID) (Job, bool, error) {
+	return s.enqueue(ctx, portfolioID, KindCollectionCycle, trigger, dedupeCycle, nil, requestedBy)
+}
+
+// EnqueueRecalc inserts one valuation recalculation for a Portfolio or returns the active one.
+func (s *Service) EnqueueRecalc(ctx context.Context, portfolioID uuid.UUID, payload RecalcPayload, requestedBy *uuid.UUID) (Job, bool, error) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return Job{}, false, err
+	}
+	return s.enqueue(ctx, portfolioID, KindValuationRecalc, TriggerSystem, dedupeRecalc, raw, requestedBy)
+}
+
+func (s *Service) enqueue(ctx context.Context, portfolioID uuid.UUID, kind, trigger, dedupe string, payload []byte, requestedBy *uuid.UUID) (Job, bool, error) {
+	if _, err := s.q.GetPortfolioByID(ctx, portfolioID[:]); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Job{}, ErrNotFound
+			return Job{}, false, ErrNotFound
 		}
-		return Job{}, err
+		return Job{}, false, err
 	}
-	if existing, err := s.activeRebuild(ctx, portfolioID); err == nil {
-		return existing, nil
-	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return Job{}, err
+	if existing, ok, err := s.active(ctx, portfolioID, dedupe); err != nil {
+		return Job{}, false, err
+	} else if ok {
+		return existing, false, nil
 	}
-
 	now := s.now().UTC()
-	jobID, err := uuid.NewV7()
+	id, err := uuid.NewV7()
 	if err != nil {
-		return Job{}, err
+		return Job{}, false, err
 	}
-	if reason == "" {
-		reason = "projection rebuild"
-	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return Job{}, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
-
 	params := sqlcgen.InsertJobParams{
-		ID:           mustBytes(jobID),
-		PortfolioID:  mustBytes(portfolioID),
-		Kind:         KindProjection,
-		Status:       statusQueued,
-		Priority:     defaultPriority,
-		DedupeKey:    dedupeFullRebuild,
-		AvailableAt:  now,
-		AttemptCount: 0,
-		MaxAttempts:  defaultMaxAttempts,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:          id[:],
+		PortfolioID: portfolioID[:],
+		Kind:        kind,
+		TriggerKind: trigger,
+		DedupeKey:   dedupe,
+		AvailableAt: now,
+		MaxAttempts: defaultMaxAttempts,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if len(payload) > 0 {
+		params.PayloadJson = sqljson.Column(payload)
 	}
 	if requestedBy != nil {
-		params.RequestedByUserID = mustBytes(*requestedBy)
+		params.RequestedByUserID = requestedBy[:]
 	}
-	if err := q.InsertJob(ctx, params); err != nil {
+	if err := s.q.InsertJob(ctx, params); err != nil {
 		if mysql.IsDuplicate(err) {
-			if existing, getErr := s.activeRebuild(ctx, portfolioID); getErr == nil {
-				return existing, nil
-			} else if getErr != nil {
-				return Job{}, getErr
+			if existing, ok, getErr := s.active(ctx, portfolioID, dedupe); getErr == nil && ok {
+				return existing, false, nil
 			}
 		}
-		return Job{}, err
+		return Job{}, false, err
 	}
-	if err := q.InsertProjectionJobDetail(ctx, sqlcgen.InsertProjectionJobDetailParams{
-		PortfolioID: mustBytes(portfolioID),
-		JobID:       mustBytes(jobID),
-		Reason:      reason,
-	}); err != nil {
-		return Job{}, err
-	}
-	for _, kind := range FullProjectionKinds {
-		if err := q.InsertProjectionJobKind(ctx, sqlcgen.InsertProjectionJobKindParams{
-			PortfolioID:    mustBytes(portfolioID),
-			JobID:          mustBytes(jobID),
-			ProjectionKind: kind,
-		}); err != nil {
-			return Job{}, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return Job{}, err
-	}
-	return s.Get(ctx, portfolioID, jobID)
+	job, err := s.Get(ctx, portfolioID, id)
+	return job, true, err
 }
 
-func (s *Service) activeRebuild(ctx context.Context, portfolioID uuid.UUID) (Job, error) {
+func (s *Service) active(ctx context.Context, portfolioID uuid.UUID, dedupe string) (Job, bool, error) {
 	row, err := s.q.GetActiveJobByDedupe(ctx, sqlcgen.GetActiveJobByDedupeParams{
-		PortfolioID: mustBytes(portfolioID),
-		DedupeKey:   sql.NullString{String: dedupeFullRebuild, Valid: true},
+		PortfolioID: portfolioID[:],
+		DedupeKey:   sql.NullString{String: dedupe, Valid: true},
 	})
-	if err != nil {
-		return Job{}, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return Job{}, false, nil
 	}
-	return jobFromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.AttemptCount, row.MaxAttempts, row.LastErrorCode, row.LastErrorDetail, row.CreatedAt, row.StartedAt, row.FinishedAt)
+	if err != nil {
+		return Job{}, false, err
+	}
+	job, err := fromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.Trigger, row.PayloadJson, row.AttemptCount, row.MaxAttempts, row.LastErrorClass, row.LastDetail, row.CreatedAt, row.AvailableAt, row.StartedAt, row.FinishedAt)
+	return job, err == nil, err
 }
 
-// List returns jobs for a Portfolio using authenticated cursor pagination.
-func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, cursor string) (Page, error) {
-	if _, err := s.q.GetPortfolioByID(ctx, mustBytes(portfolioID)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return Page{}, ErrNotFound
-		}
-		return Page{}, err
-	}
+// List returns jobs for a Portfolio, newest first, using authenticated cursor pagination.
+func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, kind string, limit int, cursor string) (Page, error) {
 	if limit == 0 {
 		limit = defaultLimit
 	}
 	if limit < minLimit || limit > maxLimit {
 		return Page{}, ErrInvalidLimit
 	}
-
 	params := sqlcgen.ListJobsByPortfolioParams{
-		PortfolioID:     mustBytes(portfolioID),
+		PortfolioID:     portfolioID[:],
+		FilterKind:      flag(kind != ""),
+		Kind:            kind,
 		HasCursor:       0,
 		CursorCreatedAt: time.Time{},
 		CursorID:        make([]byte, 16),
@@ -192,9 +192,8 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, cu
 		}
 		params.HasCursor = 1
 		params.CursorCreatedAt = time.UnixMicro(decoded.CreatedAt).UTC()
-		params.CursorID = mustBytes(decoded.ID)
+		params.CursorID = decoded.ID[:]
 	}
-
 	rows, err := s.q.ListJobsByPortfolio(ctx, params)
 	if err != nil {
 		return Page{}, err
@@ -205,7 +204,8 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, cu
 	}
 	items := make([]Job, 0, len(rows))
 	for i := range rows {
-		item, err := jobFromFields(rows[i].ID, rows[i].PortfolioID, rows[i].Kind, rows[i].Status, rows[i].AttemptCount, rows[i].MaxAttempts, rows[i].LastErrorCode, rows[i].LastErrorDetail, rows[i].CreatedAt, rows[i].StartedAt, rows[i].FinishedAt)
+		r := &rows[i]
+		item, err := fromFields(r.ID, r.PortfolioID, r.Kind, r.Status, r.Trigger, r.PayloadJson, r.AttemptCount, r.MaxAttempts, r.LastErrorClass, r.LastDetail, r.CreatedAt, r.AvailableAt, r.StartedAt, r.FinishedAt)
 		if err != nil {
 			return Page{}, err
 		}
@@ -214,11 +214,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, cu
 	page := Page{Items: items, Limit: limit, HasMore: hasMore}
 	if hasMore && len(items) > 0 {
 		last := items[len(items)-1]
-		encoded, err := encodeCursor(listCursor{
-			PortfolioID: portfolioID,
-			CreatedAt:   last.CreatedAt.UTC().UnixMicro(),
-			ID:          last.ID,
-		})
+		encoded, err := encodeCursor(listCursor{PortfolioID: portfolioID, CreatedAt: last.CreatedAt.UTC().UnixMicro(), ID: last.ID})
 		if err != nil {
 			return Page{}, err
 		}
@@ -227,53 +223,16 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, cu
 	return page, nil
 }
 
-// Get returns one job and its attempts.
+// Get returns one job.
 func (s *Service) Get(ctx context.Context, portfolioID, jobID uuid.UUID) (Job, error) {
-	row, err := s.q.GetJob(ctx, sqlcgen.GetJobParams{
-		PortfolioID: mustBytes(portfolioID),
-		ID:          mustBytes(jobID),
-	})
+	row, err := s.q.GetJob(ctx, sqlcgen.GetJobParams{PortfolioID: portfolioID[:], ID: jobID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Job{}, ErrNotFound
 	}
 	if err != nil {
 		return Job{}, err
 	}
-	item, err := jobFromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.AttemptCount, row.MaxAttempts, row.LastErrorCode, row.LastErrorDetail, row.CreatedAt, row.StartedAt, row.FinishedAt)
-	if err != nil {
-		return Job{}, err
-	}
-	attempts, err := s.q.ListJobAttempts(ctx, sqlcgen.ListJobAttemptsParams{
-		PortfolioID: mustBytes(portfolioID),
-		JobID:       mustBytes(jobID),
-	})
-	if err != nil {
-		return Job{}, err
-	}
-	item.Attempts = make([]Attempt, 0, len(attempts))
-	for i := range attempts {
-		item.Attempts = append(item.Attempts, attemptFromRow(&attempts[i]))
-	}
-	return item, nil
-}
-
-// ActiveGenerationID returns the Portfolio's selected generation, or uuid.Nil when unset.
-func (s *Service) ActiveGenerationID(ctx context.Context, portfolioID uuid.UUID) (uuid.UUID, error) {
-	raw, err := s.q.GetPortfolioGenerationPointer(ctx, mustBytes(portfolioID))
-	if errors.Is(err, sql.ErrNoRows) {
-		return uuid.Nil, ErrNotFound
-	}
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if len(raw) == 0 {
-		return uuid.Nil, nil
-	}
-	id, err := uuid.FromBytes(raw)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return id, nil
+	return fromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.Trigger, row.PayloadJson, row.AttemptCount, row.MaxAttempts, row.LastErrorClass, row.LastDetail, row.CreatedAt, row.AvailableAt, row.StartedAt, row.FinishedAt)
 }
 
 // ClaimOne leases one available job for workerID. ok is false when the queue is idle.
@@ -286,58 +245,50 @@ func (s *Service) ClaimOne(ctx context.Context, workerID string, lease time.Dura
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
 
-	row, err := q.LockClaimableJob(ctx, sqlcgen.LockClaimableJobParams{
-		QueuedBefore:  now,
-		RunningBefore: sql.NullTime{Time: now, Valid: true},
-	})
+	row, err := q.LockClaimableJob(ctx, sqlcgen.LockClaimableJobParams{QueuedBefore: now, RunningBefore: sql.NullTime{Time: now, Valid: true}})
 	if errors.Is(err, sql.ErrNoRows) {
 		return ClaimedJob{}, false, nil
 	}
 	if err != nil {
 		return ClaimedJob{}, false, err
 	}
-	job, err := jobFromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.AttemptCount, row.MaxAttempts, row.LastErrorCode, row.LastErrorDetail, row.CreatedAt, row.StartedAt, row.FinishedAt)
+	job, err := fromFields(row.ID, row.PortfolioID, row.Kind, row.Status, row.Trigger, row.PayloadJson, row.AttemptCount, row.MaxAttempts, row.LastErrorClass, row.LastDetail, row.CreatedAt, row.AvailableAt, row.StartedAt, row.FinishedAt)
 	if err != nil {
 		return ClaimedJob{}, false, err
 	}
 	attempt := job.AttemptCount + 1
 	if attempt > job.MaxAttempts {
 		if _, err := q.MarkJobFailed(ctx, sqlcgen.MarkJobFailedParams{
-			LastErrorCode:   ptrToNull("max_attempts"),
-			LastErrorDetail: ptrToNull("The job exceeded its retry budget."),
-			FinishedAt:      sql.NullTime{Time: now, Valid: true},
-			UpdatedAt:       now,
-			ID:              mustBytes(job.ID),
-			PortfolioID:     mustBytes(job.PortfolioID),
-			LeaseOwner:      sql.NullString{String: stringFromNull(row.LeaseOwner), Valid: row.LeaseOwner.Valid},
+			LastErrorClass: sql.NullString{String: "max_attempts", Valid: true},
+			LastDetail:     sql.NullString{String: "The job exceeded its retry budget.", Valid: true},
+			FinishedAt:     sql.NullTime{Time: now, Valid: true},
+			UpdatedAt:      now,
+			ID:             job.ID[:],
+			PortfolioID:    job.PortfolioID[:],
+			LeaseOwner:     row.LeaseOwner,
 		}); err != nil {
 			return ClaimedJob{}, false, err
 		}
-		if err := tx.Commit(); err != nil {
-			return ClaimedJob{}, false, err
-		}
-		return ClaimedJob{}, false, nil
+		return ClaimedJob{}, false, tx.Commit()
 	}
-
-	started := now
 	if _, err := q.MarkJobRunning(ctx, sqlcgen.MarkJobRunningParams{
 		AttemptCount:   attempt,
 		LeaseOwner:     sql.NullString{String: workerID, Valid: true},
 		LeaseExpiresAt: sql.NullTime{Time: now.Add(lease), Valid: true},
-		StartedAt:      sql.NullTime{Time: started, Valid: true},
+		StartedAt:      sql.NullTime{Time: now, Valid: true},
 		UpdatedAt:      now,
-		ID:             mustBytes(job.ID),
-		PortfolioID:    mustBytes(job.PortfolioID),
+		ID:             job.ID[:],
+		PortfolioID:    job.PortfolioID[:],
 	}); err != nil {
 		return ClaimedJob{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
 		return ClaimedJob{}, false, err
 	}
-	job.Status = statusRunning
+	job.Status = StatusRunning
 	job.AttemptCount = attempt
-	job.StartedAt = &started
-	return ClaimedJob{Job: job, AttemptNumber: attempt, WorkerID: workerID, StartedAt: started}, true, nil
+	job.StartedAt = &now
+	return ClaimedJob{Job: job, WorkerID: workerID}, true, nil
 }
 
 // RenewLease extends a running job lease.
@@ -346,8 +297,8 @@ func (s *Service) RenewLease(ctx context.Context, job *ClaimedJob, lease time.Du
 	n, err := s.q.RenewJobLease(ctx, sqlcgen.RenewJobLeaseParams{
 		LeaseExpiresAt: sql.NullTime{Time: now.Add(lease), Valid: true},
 		UpdatedAt:      now,
-		ID:             mustBytes(job.ID),
-		PortfolioID:    mustBytes(job.PortfolioID),
+		ID:             job.ID[:],
+		PortfolioID:    job.PortfolioID[:],
 		LeaseOwner:     sql.NullString{String: job.WorkerID, Valid: true},
 	})
 	if err != nil {
@@ -359,97 +310,110 @@ func (s *Service) RenewLease(ctx context.Context, job *ClaimedJob, lease time.Du
 	return nil
 }
 
-// FinishAttempt records the attempt and terminal or retry state.
-func (s *Service) FinishAttempt(ctx context.Context, job *ClaimedJob, result Result) error {
-	now := s.now().UTC()
-	attemptID, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
-
-	started := job.StartedAt
-	if started.IsZero() {
-		started = now
-	}
-	attemptParams := sqlcgen.InsertJobAttemptParams{
-		ID:            mustBytes(attemptID),
-		PortfolioID:   mustBytes(job.PortfolioID),
-		JobID:         mustBytes(job.ID),
-		AttemptNumber: job.AttemptNumber,
-		WorkerID:      job.WorkerID,
-		StartedAt:     started,
-		FinishedAt:    sql.NullTime{Time: now, Valid: true},
-		Outcome:       outcomeSucceeded,
-		SafeDetail:    ptrToNull(result.SafeDetail),
-	}
-	if !result.OK {
-		attemptParams.Outcome = outcomeFailed
-		attemptParams.ErrorClass = ptrToNull(result.ErrorClass)
-		attemptParams.ErrorCode = ptrToNull(result.ErrorCode)
-		if result.RetryAt != nil {
-			attemptParams.RetryAt = sql.NullTime{Time: result.RetryAt.UTC(), Valid: true}
-		}
-	}
-	if err := q.InsertJobAttempt(ctx, attemptParams); err != nil {
-		return err
-	}
-
-	switch {
-	case result.OK:
-		if _, err := q.MarkJobSucceeded(ctx, sqlcgen.MarkJobSucceededParams{
-			FinishedAt:  sql.NullTime{Time: now, Valid: true},
-			UpdatedAt:   now,
-			ID:          mustBytes(job.ID),
-			PortfolioID: mustBytes(job.PortfolioID),
-			LeaseOwner:  sql.NullString{String: job.WorkerID, Valid: true},
-		}); err != nil {
-			return err
-		}
-	case result.Retry && job.AttemptNumber < job.MaxAttempts && result.RetryAt != nil:
-		if _, err := q.RequeueJob(ctx, sqlcgen.RequeueJobParams{
-			AvailableAt:     result.RetryAt.UTC(),
-			LastErrorCode:   ptrToNull(result.ErrorCode),
-			LastErrorDetail: ptrToNull(result.SafeDetail),
-			UpdatedAt:       now,
-			ID:              mustBytes(job.ID),
-			PortfolioID:     mustBytes(job.PortfolioID),
-			LeaseOwner:      sql.NullString{String: job.WorkerID, Valid: true},
-		}); err != nil {
-			return err
-		}
-	default:
-		if _, err := q.MarkJobFailed(ctx, sqlcgen.MarkJobFailedParams{
-			LastErrorCode:   ptrToNull(result.ErrorCode),
-			LastErrorDetail: ptrToNull(result.SafeDetail),
-			FinishedAt:      sql.NullTime{Time: now, Valid: true},
-			UpdatedAt:       now,
-			ID:              mustBytes(job.ID),
-			PortfolioID:     mustBytes(job.PortfolioID),
-			LeaseOwner:      sql.NullString{String: job.WorkerID, Valid: true},
-		}); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
 // Result is the handler outcome for one attempt.
 type Result struct {
 	OK         bool
 	Retry      bool
-	RetryAt    *time.Time
+	RetryAt    time.Time
 	ErrorClass string
-	ErrorCode  string
-	SafeDetail string
+	// Detail is stored as the job's LastDetail: a summary on success, the sanitized error otherwise.
+	Detail string
 }
 
-func jobFromFields(id, portfolioID []byte, kind, status string, attemptCount, maxAttempts uint32, lastCode, lastDetail sql.NullString, createdAt time.Time, startedAt, finishedAt sql.NullTime) (Job, error) {
+// Finish records the terminal or retry state of a claimed job.
+func (s *Service) Finish(ctx context.Context, job *ClaimedJob, result Result) error {
+	now := s.now().UTC()
+	owner := sql.NullString{String: job.WorkerID, Valid: true}
+	switch {
+	case result.OK:
+		_, err := s.q.MarkJobSucceeded(ctx, sqlcgen.MarkJobSucceededParams{
+			LastDetail:  nullable(result.Detail),
+			FinishedAt:  sql.NullTime{Time: now, Valid: true},
+			UpdatedAt:   now,
+			ID:          job.ID[:],
+			PortfolioID: job.PortfolioID[:],
+			LeaseOwner:  owner,
+		})
+		return err
+	case result.Retry && job.AttemptCount < job.MaxAttempts:
+		retryAt := result.RetryAt
+		if retryAt.IsZero() {
+			retryAt = now
+		}
+		_, err := s.q.RequeueJob(ctx, sqlcgen.RequeueJobParams{
+			AvailableAt:    retryAt.UTC(),
+			LastErrorClass: nullable(result.ErrorClass),
+			LastDetail:     nullable(result.Detail),
+			UpdatedAt:      now,
+			ID:             job.ID[:],
+			PortfolioID:    job.PortfolioID[:],
+			LeaseOwner:     owner,
+		})
+		return err
+	default:
+		_, err := s.q.MarkJobFailed(ctx, sqlcgen.MarkJobFailedParams{
+			LastErrorClass: nullable(result.ErrorClass),
+			LastDetail:     nullable(result.Detail),
+			FinishedAt:     sql.NullTime{Time: now, Valid: true},
+			UpdatedAt:      now,
+			ID:             job.ID[:],
+			PortfolioID:    job.PortfolioID[:],
+			LeaseOwner:     owner,
+		})
+		return err
+	}
+}
+
+// SchedulingRow is one Portfolio the scheduler may need to enqueue.
+type SchedulingRow struct {
+	PortfolioID uuid.UUID
+	Interval    time.Duration
+	LastCycleAt *time.Time
+}
+
+// ListForScheduling returns Portfolios with at least one enabled Connection.
+func (s *Service) ListForScheduling(ctx context.Context) ([]SchedulingRow, error) {
+	rows, err := s.q.ListPortfoliosForScheduling(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SchedulingRow, 0, len(rows))
+	for i := range rows {
+		id, err := uuid.FromBytes(rows[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		item := SchedulingRow{PortfolioID: id, Interval: time.Duration(rows[i].CollectionIntervalSeconds) * time.Second}
+		if t, ok := asTime(rows[i].LastCycleAt); ok {
+			item.LastCycleAt = &t
+		}
+		out = append(out, item)
+	}
+	return out, nil
+}
+
+func asTime(value any) (time.Time, bool) {
+	switch v := value.(type) {
+	case time.Time:
+		return v, true
+	case []byte:
+		t, err := time.Parse("2006-01-02 15:04:05.999999", string(v))
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t.UTC(), true
+	case string:
+		t, err := time.Parse("2006-01-02 15:04:05.999999", v)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t.UTC(), true
+	default:
+		return time.Time{}, false
+	}
+}
+
+func fromFields(id, portfolioID []byte, kind, status, trigger string, payload sqljson.Column, attemptCount, maxAttempts uint32, lastClass, lastDetail sql.NullString, createdAt, availableAt time.Time, startedAt, finishedAt sql.NullTime) (Job, error) {
 	parsedID, err := uuid.FromBytes(id)
 	if err != nil {
 		return Job{}, err
@@ -459,15 +423,20 @@ func jobFromFields(id, portfolioID []byte, kind, status string, attemptCount, ma
 		return Job{}, err
 	}
 	item := Job{
-		ID:              parsedID,
-		PortfolioID:     parsedPortfolio,
-		Kind:            kind,
-		Status:          status,
-		AttemptCount:    attemptCount,
-		MaxAttempts:     maxAttempts,
-		CreatedAt:       createdAt,
-		LastErrorCode:   nullStringPtr(lastCode),
-		LastErrorDetail: nullStringPtr(lastDetail),
+		ID:             parsedID,
+		PortfolioID:    parsedPortfolio,
+		Kind:           kind,
+		Status:         status,
+		Trigger:        trigger,
+		AttemptCount:   attemptCount,
+		MaxAttempts:    maxAttempts,
+		CreatedAt:      createdAt,
+		AvailableAt:    availableAt,
+		LastErrorClass: nullPtr(lastClass),
+		LastDetail:     nullPtr(lastDetail),
+	}
+	if len(payload) > 0 {
+		item.Payload = json.RawMessage(payload)
 	}
 	if startedAt.Valid {
 		t := startedAt.Time
@@ -480,39 +449,14 @@ func jobFromFields(id, portfolioID []byte, kind, status string, attemptCount, ma
 	return item, nil
 }
 
-func attemptFromRow(row *sqlcgen.JobAttempt) Attempt {
-	item := Attempt{
-		AttemptNumber: row.AttemptNumber,
-		WorkerID:      row.WorkerID,
-		StartedAt:     row.StartedAt,
-		Outcome:       row.Outcome,
-		ErrorClass:    nullStringPtr(row.ErrorClass),
-		ErrorCode:     nullStringPtr(row.ErrorCode),
-		SafeDetail:    nullStringPtr(row.SafeDetail),
-	}
-	if row.FinishedAt.Valid {
-		t := row.FinishedAt.Time
-		item.FinishedAt = &t
-	}
-	return item
-}
-
-func mustBytes(id uuid.UUID) []byte {
-	b, err := id.MarshalBinary()
-	if err != nil {
-		return id[:]
-	}
-	return b
-}
-
-func ptrToNull(v string) sql.NullString {
+func nullable(v string) sql.NullString {
 	if v == "" {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: v, Valid: true}
 }
 
-func nullStringPtr(v sql.NullString) *string {
+func nullPtr(v sql.NullString) *string {
 	if !v.Valid {
 		return nil
 	}
@@ -520,9 +464,15 @@ func nullStringPtr(v sql.NullString) *string {
 	return &s
 }
 
-func stringFromNull(v sql.NullString) string {
-	if !v.Valid {
-		return ""
+func flag(on bool) int {
+	if on {
+		return 1
 	}
-	return v.String
+	return 0
+}
+
+// PruneFinished deletes finished jobs older than before that no Account Report or Valuation Point
+// references. Collection Cycles that produced reports are kept indefinitely with their data.
+func (s *Service) PruneFinished(ctx context.Context, before time.Time) (int64, error) {
+	return s.q.DeleteFinishedJobsBefore(ctx, sql.NullTime{Time: before.UTC(), Valid: true})
 }

@@ -17,7 +17,7 @@ var (
 	ErrSchemaMismatch = errors.New("schema_mismatch")
 	// ErrMySQLIncompatible means version, sql_mode, charset, or timezone is wrong.
 	ErrMySQLIncompatible = errors.New("mysql_incompatible")
-	// ErrMasterKeyRequired means encrypted Connections exist without a configured master key.
+	// ErrMasterKeyRequired means encrypted Identity credentials exist without a configured master key.
 	ErrMasterKeyRequired = errors.New("master_key_required")
 )
 
@@ -82,15 +82,15 @@ func CheckEnvironment(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// CheckEncryptedConnections requires a master key when any Connection ciphertext exists.
-func CheckEncryptedConnections(ctx context.Context, db *sql.DB, hasMasterKey bool) error {
+// CheckEncryptedCredentials requires a master key when any Identity credential ciphertext exists.
+func CheckEncryptedCredentials(ctx context.Context, db *sql.DB, hasMasterKey bool) error {
 	if hasMasterKey {
 		return nil
 	}
 	if db == nil {
 		return ErrDatabaseUnavailable
 	}
-	n, err := sqlcgen.New(db).CountConnectionsWithCiphertext(ctx)
+	n, err := sqlcgen.New(db).CountIdentitiesWithCiphertext(ctx)
 	if err != nil {
 		return err
 	}
