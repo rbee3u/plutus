@@ -1,0 +1,26 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "POST /0/private/TradeBalance",
+    "accountStructure": "kraken_separate",
+    "scenario": "documented",
+    "documentation": "https://docs.kraken.com/api-reference/account-data/get-trade-balance",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "eb": "1101.3425",
+      "tb": "392.2264",
+      "m": "7.0354",
+      "n": "-10.0232",
+      "c": "21.1063",
+      "v": "31.1297",
+      "e": "382.2032",
+      "mf": "375.1678",
+      "ml": "5432.57"
+    }
+  }
+}

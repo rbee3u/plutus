@@ -74,7 +74,11 @@ type Identity struct {
 	PortfolioID uuid.UUID
 	Platform    adapters.Platform
 	DisplayName string
-	AccountMode adapters.AccountMode
+	// AccountStructure is declared at creation and never changes (ADR 0028).
+	AccountStructure adapters.AccountStructure
+	// MarginMode is the last Margin Mode the Platform reported; empty before the first successful
+	// validation and for structures that have none.
+	MarginMode  adapters.MarginMode
 	ExternalRef *string
 	Status      string
 	ArchivedAt  *time.Time
@@ -126,7 +130,7 @@ type CreateInput struct {
 	RequestID            string
 	Platform             adapters.Platform
 	DisplayName          string
-	AccountMode          adapters.AccountMode
+	AccountStructure     adapters.AccountStructure
 	SelectedAccountTypes []adapters.AccountType
 }
 
@@ -155,6 +159,7 @@ type ActionInput struct {
 type ValidationOutcome struct {
 	OK          bool
 	ExternalRef string
+	MarginMode  adapters.MarginMode
 	ErrorClass  string
 	ErrorDetail string
 	ValidatedAt time.Time
@@ -181,7 +186,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, 
 	out := make([]Identity, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		item, err := fromFields(r.ID, r.PortfolioID, r.Platform, r.DisplayName, r.AccountMode, r.ExternalRef, r.Status, r.ArchivedAt, r.ConnectionStatus, r.CredentialsConfigured, r.CredentialsUpdatedAt, r.LastValidatedAt, r.LastCollectedAt, r.LastErrorClass, r.LastErrorDetail, r.Version, r.CreatedAt, r.UpdatedAt)
+		item, err := fromFields(r.ID, r.PortfolioID, r.Platform, r.DisplayName, r.AccountStructure, r.MarginMode, r.ExternalRef, r.Status, r.ArchivedAt, r.ConnectionStatus, r.CredentialsConfigured, r.CredentialsUpdatedAt, r.LastValidatedAt, r.LastCollectedAt, r.LastErrorClass, r.LastErrorDetail, r.Version, r.CreatedAt, r.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +208,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity,
 	if err != nil {
 		return Identity{}, err
 	}
-	item, err := fromFields(r.ID, r.PortfolioID, r.Platform, r.DisplayName, r.AccountMode, r.ExternalRef, r.Status, r.ArchivedAt, r.ConnectionStatus, r.CredentialsConfigured, r.CredentialsUpdatedAt, r.LastValidatedAt, r.LastCollectedAt, r.LastErrorClass, r.LastErrorDetail, r.Version, r.CreatedAt, r.UpdatedAt)
+	item, err := fromFields(r.ID, r.PortfolioID, r.Platform, r.DisplayName, r.AccountStructure, r.MarginMode, r.ExternalRef, r.Status, r.ArchivedAt, r.ConnectionStatus, r.CredentialsConfigured, r.CredentialsUpdatedAt, r.LastValidatedAt, r.LastCollectedAt, r.LastErrorClass, r.LastErrorDetail, r.Version, r.CreatedAt, r.UpdatedAt)
 	if err != nil {
 		return Identity{}, err
 	}
@@ -222,18 +227,18 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity,
 	return item, nil
 }
 
-// Create inserts an Identity and one Account per Account Type of its mode.
+// Create inserts an Identity and one Account per Account Type of its Account Structure.
 func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateInput) (Identity, error) {
 	name, err := normalizeName(in.DisplayName)
 	if err != nil {
 		return Identity{}, err
 	}
-	if !adapters.ValidPlatform(in.Platform) || !adapters.ValidMode(in.Platform, in.AccountMode) {
+	if !adapters.ValidPlatform(in.Platform) || !adapters.ValidStructure(in.Platform, in.AccountStructure) {
 		return Identity{}, ErrInvalid
 	}
 	selected := map[adapters.AccountType]bool{}
 	for _, t := range in.SelectedAccountTypes {
-		if !adapters.ValidAccountType(in.AccountMode, t) {
+		if !adapters.ValidAccountType(in.AccountStructure, t) {
 			return Identity{}, ErrInvalid
 		}
 		selected[t] = true
@@ -250,22 +255,22 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
 	if err := q.InsertIdentity(ctx, sqlcgen.InsertIdentityParams{
-		ID:          id[:],
-		PortfolioID: portfolioID[:],
-		Platform:    string(in.Platform),
-		DisplayName: name,
-		AccountMode: string(in.AccountMode),
-		Status:      StatusEnabled,
-		Version:     1,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:               id[:],
+		PortfolioID:      portfolioID[:],
+		Platform:         string(in.Platform),
+		DisplayName:      name,
+		AccountStructure: string(in.AccountStructure),
+		Status:           StatusEnabled,
+		Version:          1,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}); err != nil {
 		if mysql.IsDuplicate(err) {
 			return Identity{}, ErrConflict
 		}
 		return Identity{}, err
 	}
-	for _, info := range adapters.AccountTypes(in.AccountMode) {
+	for _, info := range adapters.AccountTypes(in.AccountStructure) {
 		accountID, err := uuid.NewV7()
 		if err != nil {
 			return Identity{}, err
@@ -284,7 +289,7 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 			return Identity{}, err
 		}
 	}
-	created := Identity{ID: id, PortfolioID: portfolioID, Platform: in.Platform, DisplayName: name, AccountMode: in.AccountMode, Status: StatusEnabled, Version: 1}
+	created := Identity{ID: id, PortfolioID: portfolioID, Platform: in.Platform, DisplayName: name, AccountStructure: in.AccountStructure, Status: StatusEnabled, Version: 1}
 	if err := audit.Record(ctx, q, now, &audit.Entry{
 		PortfolioID: portfolioID, ActorUserID: in.ActorUserID, Action: "identity.create", ResourceType: "identity", ResourceID: id,
 		RequestID: in.RequestID, After: auditView(&created), Metadata: map[string]any{"selectedAccountTypes": in.SelectedAccountTypes},
@@ -330,6 +335,23 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 			}
 		}
 	}
+	if current.Platform == adapters.PlatformKraken && current.Connection.Status == ConnectionEnabled {
+		accounts := append([]Account(nil), current.Accounts...)
+		for i := range accounts {
+			for _, patch := range in.Accounts {
+				if patch.ID == accounts[i].ID && patch.Selected != nil {
+					accounts[i].Selected = *patch.Selected
+				}
+			}
+		}
+		creds, err := s.credentials(ctx, portfolioID, id)
+		if err != nil {
+			return Identity{}, err
+		}
+		if err := adapters.CheckCredentials(current.Platform, current.AccountStructure, selectedTypes(accounts), creds); err != nil {
+			return Identity{}, fmt.Errorf("%w: %w Disable the Connection to change Accounts before replacing credentials.", ErrInvalid, err)
+		}
+	}
 	now := s.now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -338,7 +360,7 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
 	n, err := q.UpdateIdentity(ctx, sqlcgen.UpdateIdentityParams{
-		DisplayName: name, AccountMode: string(current.AccountMode), UpdatedAt: now,
+		DisplayName: name, UpdatedAt: now,
 		PortfolioID: portfolioID[:], ID: id[:], Version: version,
 	})
 	if err != nil {
@@ -448,8 +470,11 @@ func (s *Service) PutCredentials(ctx context.Context, portfolioID, id uuid.UUID,
 	if current.Status == StatusArchived {
 		return current, ErrArchived
 	}
+	if err := adapters.CheckCredentials(current.Platform, current.AccountStructure, selectedTypes(current.Accounts), creds); err != nil {
+		return Identity{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
 	keyVersion := secret.CurrentKeyVersion()
-	ciphertext, nonce, err := s.box.Seal(id, portfolioID, keyVersion, secret.Credentials{APIKey: creds.APIKey, APISecret: creds.APISecret, Passphrase: creds.Passphrase})
+	ciphertext, nonce, err := s.box.Seal(id, portfolioID, keyVersion, secret.Credentials{APIKey: creds.APIKey, APISecret: creds.APISecret, Passphrase: creds.Passphrase, FuturesAPIKey: creds.FuturesKey(), FuturesAPISecret: creds.FuturesSecret()})
 	if errors.Is(err, secret.ErrInvalidCredentials) {
 		return Identity{}, ErrInvalid
 	}
@@ -533,7 +558,7 @@ func (s *Service) Validate(ctx context.Context, portfolioID, id uuid.UUID, in Ac
 	if current.Status == StatusArchived {
 		return current, ValidationOutcome{}, ErrArchived
 	}
-	outcome, err := s.probe(ctx, portfolioID, id, current.Platform, current.AccountMode)
+	outcome, err := s.probe(ctx, &current)
 	if err != nil {
 		return current, ValidationOutcome{}, err
 	}
@@ -544,7 +569,7 @@ func (s *Service) Validate(ctx context.Context, portfolioID, id uuid.UUID, in Ac
 	case !outcome.OK && adapters.StopsScheduling(outcome.ErrorClass):
 		next = ConnectionInvalid
 	}
-	updated, err := s.storeOutcome(ctx, portfolioID, id, current.Version, next, &outcome, in, "identity.connection.validate")
+	updated, err := s.storeOutcome(ctx, &current, current.Version, next, &outcome, in, "identity.connection.validate")
 	if err != nil {
 		return current, outcome, err
 	}
@@ -563,7 +588,7 @@ func (s *Service) Enable(ctx context.Context, portfolioID, id uuid.UUID, version
 	if current.Status == StatusArchived {
 		return current, ValidationOutcome{}, ErrArchived
 	}
-	outcome, err := s.probe(ctx, portfolioID, id, current.Platform, current.AccountMode)
+	outcome, err := s.probe(ctx, &current)
 	if err != nil {
 		return current, ValidationOutcome{}, err
 	}
@@ -574,7 +599,7 @@ func (s *Service) Enable(ctx context.Context, portfolioID, id uuid.UUID, version
 			next = ConnectionInvalid
 		}
 	}
-	updated, err := s.storeOutcome(ctx, portfolioID, id, version, next, &outcome, in, "identity.connection.enable")
+	updated, err := s.storeOutcome(ctx, &current, version, next, &outcome, in, "identity.connection.enable")
 	if err != nil {
 		return current, outcome, err
 	}
@@ -600,40 +625,66 @@ func (s *Service) Disable(ctx context.Context, portfolioID, id uuid.UUID, versio
 		return current, ErrCredentialsMissing
 	}
 	outcome := ValidationOutcome{OK: true, ValidatedAt: time.Time{}}
-	updated, err := s.storeOutcome(ctx, portfolioID, id, version, ConnectionDisabled, &outcome, in, "identity.connection.disable")
+	updated, err := s.storeOutcome(ctx, &current, version, ConnectionDisabled, &outcome, in, "identity.connection.disable")
 	if err != nil {
 		return current, err
 	}
 	return updated, nil
 }
 
-func (s *Service) probe(ctx context.Context, portfolioID, id uuid.UUID, platform adapters.Platform, mode adapters.AccountMode) (ValidationOutcome, error) {
-	creds, err := s.credentials(ctx, portfolioID, id)
+// probe runs one read-only validation of the stored credentials. Besides the adapter's own
+// checks it refuses a key that reaches another Platform account than the one the Identity is
+// bound to (its external reference), and a Margin Mode that does not belong to the structure.
+func (s *Service) probe(ctx context.Context, current *Identity) (ValidationOutcome, error) {
+	creds, err := s.credentials(ctx, current.PortfolioID, current.ID)
 	if err != nil {
 		return ValidationOutcome{}, err
 	}
-	adapter, ok := s.adapters.Lookup(platform)
+	adapter, ok := s.adapters.Lookup(current.Platform)
 	if !ok {
 		return ValidationOutcome{}, ErrAdapterUnavailable
 	}
 	callCtx, cancel := context.WithTimeout(ctx, s.validateTimeout)
 	defer cancel()
 	now := s.now().UTC()
-	result, err := adapter.Validate(callCtx, creds, mode)
-	if err != nil {
+	failed := func(err error) ValidationOutcome {
 		class, detail := adapters.Classify(err)
-		return ValidationOutcome{ErrorClass: class, ErrorDetail: detail, ValidatedAt: now}, nil
+		return ValidationOutcome{ErrorClass: class, ErrorDetail: detail, ValidatedAt: now}
 	}
-	return ValidationOutcome{OK: true, ExternalRef: result.ExternalRef, ValidatedAt: now}, nil
+	if err := adapters.CheckCredentials(current.Platform, current.AccountStructure, selectedTypes(current.Accounts), creds); err != nil {
+		return failed(err), nil
+	}
+	result, err := adapter.Validate(callCtx, creds, current.AccountStructure)
+	if err != nil {
+		return failed(err), nil
+	}
+	if bound := current.ExternalRef; bound != nil && result.ExternalRef != "" && result.ExternalRef != *bound {
+		return failed(adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
+			"This key belongs to %s account %s, but this Identity is account %s; create a new Identity for the other account.",
+			adapters.PlatformName(current.Platform), result.ExternalRef, *bound))), nil
+	}
+	if !adapters.ValidMarginMode(current.AccountStructure, result.MarginMode) {
+		return failed(adapters.UnknownMarginMode(current.Platform, string(result.MarginMode))), nil
+	}
+	return ValidationOutcome{OK: true, ExternalRef: result.ExternalRef, MarginMode: result.MarginMode, ValidatedAt: now}, nil
 }
 
-func (s *Service) storeOutcome(ctx context.Context, portfolioID, id uuid.UUID, version uint64, status string, outcome *ValidationOutcome, in ActionInput, action string) (Identity, error) {
+func (s *Service) storeOutcome(ctx context.Context, current *Identity, version uint64, status string, outcome *ValidationOutcome, in ActionInput, action string) (Identity, error) {
+	portfolioID, id := current.PortfolioID, current.ID
 	now := s.now().UTC()
 	params := sqlcgen.SetIdentityConnectionStatusParams{
 		ConnectionStatus: status, UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version,
 	}
 	if outcome.ExternalRef != "" {
 		params.ExternalRef = sql.NullString{String: outcome.ExternalRef, Valid: true}
+	}
+	metadata := map[string]any{"ok": outcome.OK, "status": status, "errorClass": outcome.ErrorClass}
+	if outcome.OK && outcome.MarginMode != "" {
+		params.MarginMode = sql.NullString{String: string(outcome.MarginMode), Valid: true}
+		metadata["marginMode"] = string(outcome.MarginMode)
+		if current.MarginMode != outcome.MarginMode {
+			metadata["previousMarginMode"] = nullableMode(current.MarginMode)
+		}
 	}
 	if outcome.OK && !outcome.ValidatedAt.IsZero() {
 		params.LastValidatedAt = sql.NullTime{Time: outcome.ValidatedAt, Valid: true}
@@ -657,7 +708,7 @@ func (s *Service) storeOutcome(ctx context.Context, portfolioID, id uuid.UUID, v
 	}
 	if err := audit.Record(ctx, q, now, &audit.Entry{
 		PortfolioID: portfolioID, ActorUserID: in.ActorUserID, Action: action, ResourceType: "identity", ResourceID: id, RequestID: in.RequestID,
-		Metadata: map[string]any{"ok": outcome.OK, "status": status, "errorClass": outcome.ErrorClass},
+		Metadata: metadata,
 	}); err != nil {
 		return Identity{}, err
 	}
@@ -689,7 +740,7 @@ func (s *Service) open(id, portfolioID uuid.UUID, keyVersion uint16, ciphertext,
 	if err != nil {
 		return adapters.Credentials{}, err
 	}
-	return adapters.Credentials{APIKey: creds.APIKey, APISecret: creds.APISecret, Passphrase: creds.Passphrase}, nil
+	return adapters.Credentials{APIKey: creds.APIKey, APISecret: creds.APISecret, Passphrase: creds.Passphrase, Futures: &adapters.KeyPair{APIKey: creds.FuturesAPIKey, APISecret: creds.FuturesAPISecret}}, nil
 }
 
 // Collectable is an enabled Identity with decrypted credentials and its selected Accounts.
@@ -713,7 +764,11 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 		if err != nil {
 			return nil, err
 		}
-		item := Collectable{Identity: Identity{ID: id, PortfolioID: portfolioID, Platform: adapters.Platform(rows[i].Platform), DisplayName: rows[i].DisplayName, AccountMode: adapters.AccountMode(rows[i].AccountMode)}}
+		item := Collectable{Identity: Identity{
+			ID: id, PortfolioID: portfolioID, Platform: adapters.Platform(rows[i].Platform), DisplayName: rows[i].DisplayName,
+			AccountStructure: adapters.AccountStructure(rows[i].AccountStructure), MarginMode: adapters.MarginMode(rows[i].MarginMode.String),
+			ExternalRef: nullStringPtr(rows[i].ExternalRef),
+		}}
 		accounts, err := s.q.ListAccountsByIdentity(ctx, sqlcgen.ListAccountsByIdentityParams{PortfolioID: portfolioID[:], IdentityID: id[:]})
 		if err != nil {
 			return nil, err
@@ -753,6 +808,52 @@ func (s *Service) RecordCollection(ctx context.Context, portfolioID, id uuid.UUI
 	return s.q.RecordIdentityCollection(ctx, params)
 }
 
+// RecordMarginMode stores the Margin Mode a Collection Run observed. A change is written to the
+// audit log with the system as the actor, because nobody changed it in Plutus: the owner switched
+// it on the Platform (ADR 0028). An empty mode, reported by structures without one, is ignored.
+func (s *Service) RecordMarginMode(ctx context.Context, portfolioID, id uuid.UUID, mode adapters.MarginMode) error {
+	if mode == "" {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	stored, err := q.GetIdentityMarginModeForUpdate(ctx, sqlcgen.GetIdentityMarginModeForUpdateParams{PortfolioID: portfolioID[:], ID: id[:]})
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	previous := adapters.MarginMode(stored.String)
+	if previous == mode {
+		return nil
+	}
+	now := s.now().UTC()
+	if err := q.SetIdentityMarginMode(ctx, sqlcgen.SetIdentityMarginModeParams{
+		MarginMode: sql.NullString{String: string(mode), Valid: true}, UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:],
+	}); err != nil {
+		return err
+	}
+	if err := audit.Record(ctx, q, now, &audit.Entry{
+		PortfolioID: portfolioID, System: true, Action: "identity.margin_mode.change", ResourceType: "identity", ResourceID: id,
+		Before: map[string]any{"marginMode": nullableMode(previous)}, After: map[string]any{"marginMode": string(mode)},
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func nullableMode(mode adapters.MarginMode) any {
+	if mode == "" {
+		return nil
+	}
+	return string(mode)
+}
+
 // BoundaryAccount is one selected Account of an enabled Identity.
 type BoundaryAccount struct {
 	Account
@@ -779,16 +880,20 @@ func (s *Service) ListBoundary(ctx context.Context, portfolioID uuid.UUID) ([]Bo
 }
 
 type auditIdentity struct {
-	Platform    string         `json:"platform"`
-	DisplayName string         `json:"displayName"`
-	AccountMode string         `json:"accountMode"`
-	Status      string         `json:"status"`
-	Version     uint64         `json:"version"`
-	Accounts    map[string]any `json:"accounts,omitempty"`
+	Platform         string         `json:"platform"`
+	DisplayName      string         `json:"displayName"`
+	AccountStructure string         `json:"accountStructure"`
+	MarginMode       string         `json:"marginMode,omitempty"`
+	Status           string         `json:"status"`
+	Version          uint64         `json:"version"`
+	Accounts         map[string]any `json:"accounts,omitempty"`
 }
 
 func auditView(i *Identity) auditIdentity {
-	view := auditIdentity{Platform: string(i.Platform), DisplayName: i.DisplayName, AccountMode: string(i.AccountMode), Status: i.Status, Version: i.Version}
+	view := auditIdentity{
+		Platform: string(i.Platform), DisplayName: i.DisplayName, AccountStructure: string(i.AccountStructure),
+		MarginMode: string(i.MarginMode), Status: i.Status, Version: i.Version,
+	}
 	if len(i.Accounts) > 0 {
 		view.Accounts = map[string]any{}
 		for _, a := range i.Accounts {
@@ -818,7 +923,7 @@ func accountFromFields(id, identityID []byte, accountType, displayName string, s
 	return Account{ID: parsedID, IdentityID: parsedIdentity, AccountType: adapters.AccountType(accountType), DisplayName: displayName, Selected: selected, Version: version}, nil
 }
 
-func fromFields(id, portfolioID []byte, platform, displayName, accountMode string, externalRef sql.NullString, status string, archivedAt sql.NullTime, connectionStatus string, credentialsConfigured bool, credentialsUpdatedAt, lastValidatedAt, lastCollectedAt sql.NullTime, lastErrorClass, lastErrorDetail sql.NullString, version uint64, createdAt, updatedAt time.Time) (Identity, error) {
+func fromFields(id, portfolioID []byte, platform, displayName, accountStructure string, marginMode, externalRef sql.NullString, status string, archivedAt sql.NullTime, connectionStatus string, credentialsConfigured bool, credentialsUpdatedAt, lastValidatedAt, lastCollectedAt sql.NullTime, lastErrorClass, lastErrorDetail sql.NullString, version uint64, createdAt, updatedAt time.Time) (Identity, error) {
 	parsedID, err := uuid.FromBytes(id)
 	if err != nil {
 		return Identity{}, err
@@ -828,14 +933,15 @@ func fromFields(id, portfolioID []byte, platform, displayName, accountMode strin
 		return Identity{}, err
 	}
 	item := Identity{
-		ID:          parsedID,
-		PortfolioID: parsedPortfolio,
-		Platform:    adapters.Platform(platform),
-		DisplayName: displayName,
-		AccountMode: adapters.AccountMode(accountMode),
-		ExternalRef: nullStringPtr(externalRef),
-		Status:      status,
-		ArchivedAt:  nullTimePtr(archivedAt),
+		ID:               parsedID,
+		PortfolioID:      parsedPortfolio,
+		Platform:         adapters.Platform(platform),
+		DisplayName:      displayName,
+		AccountStructure: adapters.AccountStructure(accountStructure),
+		MarginMode:       adapters.MarginMode(marginMode.String),
+		ExternalRef:      nullStringPtr(externalRef),
+		Status:           status,
+		ArchivedAt:       nullTimePtr(archivedAt),
 		Connection: Connection{
 			Status:                connectionStatus,
 			CredentialsConfigured: credentialsConfigured,
@@ -866,4 +972,14 @@ func nullTimePtr(v sql.NullTime) *time.Time {
 	}
 	t := v.Time
 	return &t
+}
+
+func selectedTypes(accounts []Account) []adapters.AccountType {
+	var types []adapters.AccountType
+	for _, account := range accounts {
+		if account.Selected {
+			types = append(types, account.AccountType)
+		}
+	}
+	return types
 }

@@ -1,4 +1,5 @@
-// Package adapters defines the read-only Platform port and the Platform capability catalog.
+// Package adapters defines the read-only Platform port, the Platform capability catalog, and the
+// helpers every live adapter shares.
 package adapters
 
 import (
@@ -6,16 +7,22 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
 // Platform is a supported exchange code.
 type Platform string
 
-// AccountMode is the Platform account structure an Identity uses.
-type AccountMode string
+// AccountStructure is how a Platform arranges an Identity's Accounts. It decides which Account
+// Types exist, is declared when the Identity is created, and never changes afterwards.
+type AccountStructure string
 
-// AccountType is one collectable account within an Account Mode.
+// MarginMode is the margin regime a Platform applies to a whole trading account within an Account
+// Structure. Plutus observes it from the Platform; only some Account Structures have one.
+type MarginMode string
+
+// AccountType is one collectable account within an Account Structure.
 type AccountType string
 
 // Supported Platforms.
@@ -23,14 +30,28 @@ const (
 	PlatformBinance Platform = "binance"
 	PlatformOKX     Platform = "okx"
 	PlatformBybit   Platform = "bybit"
+	PlatformKraken  Platform = "kraken"
 )
 
-// Supported Account Modes.
+// Supported Account Structures.
 const (
-	ModeBinancePM AccountMode = "binance_pm"
-	ModeOKXMCM    AccountMode = "okx_mcm"
-	ModeOKXPM     AccountMode = "okx_pm"
-	ModeBybitUTA2 AccountMode = "bybit_uta_2_0"
+	StructureBinanceClassic AccountStructure = "binance_classic"
+	StructureBinancePM      AccountStructure = "binance_pm"
+	StructureOKXUnified     AccountStructure = "okx_unified"
+	StructureBybitUTA2      AccountStructure = "bybit_uta_2_0"
+	StructureKrakenSeparate AccountStructure = "kraken_separate"
+	StructureKrakenUnified  AccountStructure = "kraken_unified"
+)
+
+// Supported Margin Modes. Binance and Kraken structures have none.
+const (
+	MarginOKXSpot       MarginMode = "okx_spot"
+	MarginOKXFutures    MarginMode = "okx_futures"
+	MarginOKXMCM        MarginMode = "okx_mcm"
+	MarginOKXPM         MarginMode = "okx_pm"
+	MarginBybitIsolated MarginMode = "bybit_isolated"
+	MarginBybitCross    MarginMode = "bybit_cross"
+	MarginBybitPM       MarginMode = "bybit_pm"
 )
 
 // Error classes returned by adapters.
@@ -114,16 +135,75 @@ type Credentials struct {
 	APIKey     string
 	APISecret  string
 	Passphrase string
+	Futures    *KeyPair
 }
 
-// ValidationResult is the outcome of one read-only validation call.
+// KeyPair is an optional additional API credential group.
+type KeyPair struct {
+	APIKey    string
+	APISecret string
+}
+
+// FuturesKey returns the configured Futures key, or empty when that group is absent.
+func (c Credentials) FuturesKey() string {
+	if c.Futures == nil {
+		return ""
+	}
+	return c.Futures.APIKey
+}
+
+// FuturesSecret returns the configured Futures secret, or empty when that group is absent.
+func (c Credentials) FuturesSecret() string {
+	if c.Futures == nil {
+		return ""
+	}
+	return c.Futures.APISecret
+}
+
+// CheckCredentials enforces complete key pairs and the selected Accounts' requirements.
+func CheckCredentials(platform Platform, structure AccountStructure, accounts []AccountType, creds Credentials) error {
+	spotKey, spotSecret := strings.TrimSpace(creds.APIKey), strings.TrimSpace(creds.APISecret)
+	futuresKey, futuresSecret := strings.TrimSpace(creds.FuturesKey()), strings.TrimSpace(creds.FuturesSecret())
+	if (spotKey == "") != (spotSecret == "") || (futuresKey == "") != (futuresSecret == "") {
+		return NewError(ClassAuthentication, "Supply both the API key and secret for each credential group.")
+	}
+	if platform != PlatformKraken {
+		if spotKey == "" || futuresKey != "" {
+			return NewError(ClassAuthentication, "This platform requires one API key and secret.")
+		}
+		return nil
+	}
+	if !ValidStructure(platform, structure) {
+		return NewError(ClassUnsupported, "The Kraken Account Structure is not supported.")
+	}
+	if spotKey == "" && futuresKey == "" {
+		return NewError(ClassAuthentication, "Supply at least one Kraken credential group.")
+	}
+	for _, account := range accounts {
+		if (account == "main" || account == "earn") && spotKey == "" {
+			return NewError(ClassAuthentication, "Selected Main and Earn Accounts require Kraken Spot credentials.")
+		}
+		if account != "earn" && futuresKey == "" {
+			return NewError(ClassAuthentication, "Selected Main and derivatives Accounts require Kraken Futures credentials; Main uses them to verify the wallet structure.")
+		}
+	}
+	return nil
+}
+
+// ValidationResult is the outcome of one read-only validation.
 type ValidationResult struct {
+	// ExternalRef is the Platform's own reference of the account the key reaches.
 	ExternalRef string
+	// MarginMode is the Margin Mode the Platform reports, empty for a structure that has none.
+	MarginMode MarginMode
 }
 
 // Batch is one normalized collection result for one Identity.
 type Batch struct {
 	ObservedAt time.Time
+	// MarginMode is the Margin Mode the Platform reported at the start of the run, empty for a
+	// structure that has none.
+	MarginMode MarginMode
 	Reports    []AccountReport
 	Prices     []Price
 }
@@ -147,7 +227,8 @@ type AccountReport struct {
 
 // Balance is one coin line within an Account Report.
 type Balance struct {
-	Symbol              string
+	Symbol string
+	// Name is the Asset's full name when the Platform reports one; empty otherwise.
 	Name                string
 	Equity              string
 	AvailableToWithdraw *string
@@ -191,14 +272,15 @@ type Price struct {
 	ObservedAt  time.Time
 }
 
-// Adapter collects normalized facts for one Identity through read-only endpoints.
+// Adapter collects normalized facts for one Identity through read-only endpoints. Both calls
+// first confirm that the account still has the Identity's Account Structure (ADR 0025) and read
+// its Margin Mode (ADR 0028); a different structure or an unknown Margin Mode fails with
+// ClassUnsupported.
 type Adapter interface {
-	// Capabilities lists the Account Types this adapter can collect per Account Mode.
-	Capabilities() map[AccountMode][]AccountType
-	// Validate performs one read-only call and returns the Platform's own identity ref.
-	Validate(ctx context.Context, creds Credentials, mode AccountMode) (ValidationResult, error)
+	// Validate checks the key and returns the Platform's own account reference and Margin Mode.
+	Validate(ctx context.Context, creds Credentials, structure AccountStructure) (ValidationResult, error)
 	// Collect returns one AccountReport per requested Account with balances, positions, and prices.
-	Collect(ctx context.Context, creds Credentials, mode AccountMode, accounts []AccountType) (Batch, error)
+	Collect(ctx context.Context, creds Credentials, structure AccountStructure, accounts []AccountType) (Batch, error)
 }
 
 // Registry maps Platform codes to adapters.
@@ -239,14 +321,16 @@ type PlatformInfo struct {
 	ID               Platform
 	Name             string
 	AdapterAvailable bool
-	Modes            []ModeInfo
+	Structures       []StructureInfo
 }
 
-// ModeInfo describes one Account Mode and the Account Types it can hold.
-type ModeInfo struct {
-	ID           AccountMode
+// StructureInfo describes one Account Structure, the Account Types it holds, and the Margin
+// Modes the Platform may report within it.
+type StructureInfo struct {
+	ID           AccountStructure
 	Name         string
 	AccountTypes []AccountTypeInfo
+	MarginModes  []MarginModeInfo
 }
 
 // AccountTypeInfo describes one Account Type.
@@ -255,60 +339,119 @@ type AccountTypeInfo struct {
 	Name string
 }
 
-type modeSpec struct {
-	name  string
-	types []AccountTypeInfo
+// MarginModeInfo describes one Margin Mode.
+type MarginModeInfo struct {
+	ID   MarginMode
+	Name string
+}
+
+type structureSpec struct {
+	name        string
+	types       []AccountTypeInfo
+	marginModes []MarginModeInfo
 }
 
 var platformNames = map[Platform]string{
 	PlatformBinance: "Binance",
 	PlatformOKX:     "OKX",
 	PlatformBybit:   "Bybit",
+	PlatformKraken:  "Kraken",
 }
 
-var platformModes = map[Platform][]AccountMode{
-	PlatformBinance: {ModeBinancePM},
-	PlatformOKX:     {ModeOKXMCM, ModeOKXPM},
-	PlatformBybit:   {ModeBybitUTA2},
+// platformStructures lists the Account Structures offered per Platform, in display order.
+var platformStructures = map[Platform][]AccountStructure{
+	PlatformBinance: {StructureBinanceClassic, StructureBinancePM},
+	PlatformOKX:     {StructureOKXUnified},
+	PlatformBybit:   {StructureBybitUTA2},
+	PlatformKraken:  {StructureKrakenSeparate, StructureKrakenUnified},
 }
 
-var modeSpecs = map[AccountMode]modeSpec{
-	ModeBinancePM: {name: "Portfolio Margin", types: []AccountTypeInfo{
+// OfferedPlatforms lists, in display order, every Platform that has at least one Account
+// Structure. These are the Platforms the API offers, the fake adapter covers, and the seeds use.
+func OfferedPlatforms() []Platform {
+	ids := make([]Platform, 0, len(platformNames))
+	for id := range platformNames {
+		if len(platformStructures[id]) > 0 {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return ids
+}
+
+var structureSpecs = map[AccountStructure]structureSpec{
+	StructureBinanceClassic: {name: "Classic Trading", types: []AccountTypeInfo{
+		{ID: "spot", Name: "Spot"},
+		{ID: "funding", Name: "Funding"},
+		{ID: "cross_margin", Name: "Cross Margin"},
+		{ID: "isolated_margin", Name: "Isolated Margin"},
+		{ID: "um_futures", Name: "USDⓈ-M Futures"},
+		{ID: "cm_futures", Name: "COIN-M Futures"},
+		{ID: "earn", Name: "Earn"},
+	}},
+	StructureBinancePM: {name: "Portfolio Margin", types: []AccountTypeInfo{
 		{ID: "portfolio_margin", Name: "Portfolio Margin"},
 		{ID: "spot", Name: "Spot"},
 		{ID: "funding", Name: "Funding"},
 		{ID: "earn", Name: "Earn"},
 	}},
-	ModeOKXMCM: {name: "Multi-currency margin", types: []AccountTypeInfo{
-		{ID: "trading", Name: "Trading"},
-		{ID: "funding", Name: "Funding"},
+	StructureOKXUnified: {
+		name: "Unified account",
+		types: []AccountTypeInfo{
+			{ID: "trading", Name: "Trading"},
+			{ID: "funding", Name: "Funding"},
+			{ID: "earn", Name: "Earn"},
+		},
+		marginModes: []MarginModeInfo{
+			{ID: MarginOKXSpot, Name: "Spot mode"},
+			{ID: MarginOKXFutures, Name: "Futures mode"},
+			{ID: MarginOKXMCM, Name: "Multi-currency margin"},
+			{ID: MarginOKXPM, Name: "Portfolio margin"},
+		},
+	},
+	StructureBybitUTA2: {
+		name: "Unified Trading Account 2.0",
+		types: []AccountTypeInfo{
+			{ID: "unified", Name: "Unified"},
+			{ID: "funding", Name: "Funding"},
+			{ID: "earn", Name: "Earn"},
+		},
+		marginModes: []MarginModeInfo{
+			{ID: MarginBybitIsolated, Name: "Isolated Margin"},
+			{ID: MarginBybitCross, Name: "Cross Margin"},
+			{ID: MarginBybitPM, Name: "Portfolio Margin"},
+		},
+	},
+	StructureKrakenSeparate: {name: "Separate wallets", types: []AccountTypeInfo{
+		{ID: "main", Name: "Main"},
 		{ID: "earn", Name: "Earn"},
+		{ID: "multi_m", Name: "Multi-M"},
+		{ID: "coin_m", Name: "Coin-M"},
+		{ID: "derivatives_holding", Name: "Derivatives Holding"},
 	}},
-	ModeOKXPM: {name: "Portfolio margin", types: []AccountTypeInfo{
-		{ID: "trading", Name: "Trading"},
-		{ID: "funding", Name: "Funding"},
+	StructureKrakenUnified: {name: "Unified Wallet", types: []AccountTypeInfo{
+		{ID: "main", Name: "Main"},
 		{ID: "earn", Name: "Earn"},
-	}},
-	ModeBybitUTA2: {name: "Unified Trading Account 2.0", types: []AccountTypeInfo{
-		{ID: "unified", Name: "Unified"},
-		{ID: "funding", Name: "Funding"},
-		{ID: "earn", Name: "Earn"},
+		{ID: "coin_m", Name: "Coin-M"},
+		{ID: "derivatives_holding", Name: "Derivatives Holding"},
 	}},
 }
 
-// Platforms lists every supported Platform with its Account Modes and Account Types.
+// Platforms lists every offered Platform with its Account Structures, Account Types, and Margin
+// Modes.
 func (r *Registry) Platforms() []PlatformInfo {
-	ids := make([]Platform, 0, len(platformNames))
-	for id := range platformNames {
-		ids = append(ids, id)
-	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	ids := OfferedPlatforms()
 	out := make([]PlatformInfo, 0, len(ids))
 	for _, id := range ids {
 		info := PlatformInfo{ID: id, Name: platformNames[id], AdapterAvailable: r.Available(id)}
-		for _, mode := range platformModes[id] {
-			spec := modeSpecs[mode]
-			info.Modes = append(info.Modes, ModeInfo{ID: mode, Name: spec.name, AccountTypes: append([]AccountTypeInfo(nil), spec.types...)})
+		for _, structure := range platformStructures[id] {
+			spec := structureSpecs[structure]
+			info.Structures = append(info.Structures, StructureInfo{
+				ID:           structure,
+				Name:         spec.name,
+				AccountTypes: append([]AccountTypeInfo(nil), spec.types...),
+				MarginModes:  append([]MarginModeInfo(nil), spec.marginModes...),
+			})
 		}
 		out = append(out, info)
 	}
@@ -321,28 +464,46 @@ func ValidPlatform(platform Platform) bool {
 	return ok
 }
 
-// ValidMode reports whether the Account Mode belongs to the Platform.
-func ValidMode(platform Platform, mode AccountMode) bool {
-	for _, m := range platformModes[platform] {
-		if m == mode {
+// ValidStructure reports whether the Account Structure belongs to the Platform.
+func ValidStructure(platform Platform, structure AccountStructure) bool {
+	for _, s := range platformStructures[platform] {
+		if s == structure {
 			return true
 		}
 	}
 	return false
 }
 
-// AccountTypes returns the Account Types of an Account Mode in display order.
-func AccountTypes(mode AccountMode) []AccountTypeInfo {
-	spec, ok := modeSpecs[mode]
+// StructureName returns the display name of an Account Structure.
+func StructureName(structure AccountStructure) string {
+	if spec, ok := structureSpecs[structure]; ok {
+		return spec.name
+	}
+	return string(structure)
+}
+
+// AccountTypes returns the Account Types of an Account Structure in display order.
+func AccountTypes(structure AccountStructure) []AccountTypeInfo {
+	spec, ok := structureSpecs[structure]
 	if !ok {
 		return nil
 	}
 	return append([]AccountTypeInfo(nil), spec.types...)
 }
 
-// ValidAccountType reports whether the Account Type belongs to the Account Mode.
-func ValidAccountType(mode AccountMode, accountType AccountType) bool {
-	for _, t := range AccountTypes(mode) {
+// AccountTypeIDs returns the Account Type codes of an Account Structure in display order.
+func AccountTypeIDs(structure AccountStructure) []AccountType {
+	types := AccountTypes(structure)
+	out := make([]AccountType, 0, len(types))
+	for _, t := range types {
+		out = append(out, t.ID)
+	}
+	return out
+}
+
+// ValidAccountType reports whether the Account Type belongs to the Account Structure.
+func ValidAccountType(structure AccountStructure, accountType AccountType) bool {
+	for _, t := range AccountTypes(structure) {
 		if t.ID == accountType {
 			return true
 		}
@@ -350,14 +511,50 @@ func ValidAccountType(mode AccountMode, accountType AccountType) bool {
 	return false
 }
 
-// AccountTypeName returns the display name of an Account Type within a mode.
-func AccountTypeName(mode AccountMode, accountType AccountType) string {
-	for _, t := range AccountTypes(mode) {
+// AccountTypeName returns the display name of an Account Type within an Account Structure.
+func AccountTypeName(structure AccountStructure, accountType AccountType) string {
+	for _, t := range AccountTypes(structure) {
 		if t.ID == accountType {
 			return t.Name
 		}
 	}
 	return string(accountType)
+}
+
+// MarginModes returns the Margin Modes the Platform may report within an Account Structure.
+func MarginModes(structure AccountStructure) []MarginModeInfo {
+	spec, ok := structureSpecs[structure]
+	if !ok {
+		return nil
+	}
+	return append([]MarginModeInfo(nil), spec.marginModes...)
+}
+
+// ValidMarginMode reports whether a Margin Mode belongs to the Account Structure. The empty
+// Margin Mode is valid exactly for structures that have none.
+func ValidMarginMode(structure AccountStructure, mode MarginMode) bool {
+	modes := MarginModes(structure)
+	if mode == "" {
+		return len(modes) == 0
+	}
+	for _, m := range modes {
+		if m.ID == mode {
+			return true
+		}
+	}
+	return false
+}
+
+// MarginModeName returns the display name of a Margin Mode.
+func MarginModeName(mode MarginMode) string {
+	for _, spec := range structureSpecs {
+		for _, m := range spec.marginModes {
+			if m.ID == mode {
+				return m.Name
+			}
+		}
+	}
+	return string(mode)
 }
 
 // PlatformName returns the display name of a Platform.

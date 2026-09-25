@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "POST /0/private/Earn/Allocations",
+    "accountStructure": "kraken_unified",
+    "scenario": "documented",
+    "documentation": "https://docs.kraken.com/exchange/guides/general/errors",
+    "trimmed": "The error envelope example of the guide with its documented EGeneral:Permission denied message. The documentation gives no HTTP status; 200 is assumed, because Spot reports errors in its error list.",
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "error": [
+      "EGeneral:Permission denied"
+    ],
+    "result": {}
+  }
+}

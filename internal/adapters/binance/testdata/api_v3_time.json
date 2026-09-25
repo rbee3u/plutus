@@ -1,0 +1,15 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /api/v3/time",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "serverTime": 1790364883684
+  }
+}

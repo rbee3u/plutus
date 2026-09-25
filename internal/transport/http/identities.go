@@ -68,7 +68,7 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 		RequestID:            requestTraceID(ctx),
 		Platform:             adapters.Platform(request.Body.Platform),
 		DisplayName:          request.Body.DisplayName,
-		AccountMode:          adapters.AccountMode(request.Body.AccountMode),
+		AccountStructure:     adapters.AccountStructure(request.Body.AccountStructure),
 		SelectedAccountTypes: types,
 	})
 	if err != nil {
@@ -157,7 +157,7 @@ func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentit
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	creds := adapters.Credentials{APIKey: request.Body.ApiKey, APISecret: request.Body.ApiSecret, Passphrase: stringValue(request.Body.Passphrase)}
+	creds := adapters.Credentials{APIKey: request.Body.ApiKey, APISecret: request.Body.ApiSecret, Passphrase: stringValue(request.Body.Passphrase), Futures: &adapters.KeyPair{APIKey: stringValue(request.Body.FuturesApiKey), APISecret: stringValue(request.Body.FuturesApiSecret)}}
 	item, err := a.Identities.PutCredentials(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)}, creds)
 	if err != nil {
 		return nil, err

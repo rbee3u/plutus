@@ -187,6 +187,9 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 		byType[a.AccountType] = a
 	}
 	batch, class, detail := s.collectWithRetry(ctx, item, types)
+	if class == "" && !adapters.ValidMarginMode(item.Identity.AccountStructure, batch.MarginMode) {
+		class, detail = adapters.Classify(adapters.UnknownMarginMode(item.Identity.Platform, string(batch.MarginMode)))
+	}
 	now := s.now().UTC()
 	if class != "" {
 		invalidate := adapters.StopsScheduling(class)
@@ -203,6 +206,9 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 			s.logger.Warn("connection set invalid", slog.String("identity_id", item.Identity.ID.String()), slog.String("error_class", class))
 		}
 		return written, len(item.Accounts), invalidate, nil
+	}
+	if err := s.identities.RecordMarginMode(ctx, portfolioID, item.Identity.ID, batch.MarginMode); err != nil {
+		return nil, 0, false, err
 	}
 	failed := 0
 	if err := s.storeBatch(ctx, portfolioID, jobID, item, &batch, byType, written, &failed, now); err != nil {
@@ -242,7 +248,7 @@ func (s *Service) collectWithRetry(ctx context.Context, item *identity.Collectab
 				return adapters.Batch{}, adapters.ClassTemporary, "The cycle was cancelled."
 			}
 		}
-		batch, err := adapter.Collect(ctx, item.Credentials, item.Identity.AccountMode, types)
+		batch, err := adapter.Collect(ctx, item.Credentials, item.Identity.AccountStructure, types)
 		if err == nil {
 			return batch, "", ""
 		}

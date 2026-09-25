@@ -16,7 +16,12 @@ import {
   type IdentityDialogRequest,
 } from "@/features/data/IdentityDialogs";
 import { identityEtag, useIdentities } from "@/features/data/useIdentities";
-import { accountModeLabel, platformLabel, usePlatforms } from "@/features/data/usePlatforms";
+import {
+  marginModeLabel,
+  platformLabel,
+  structureLabel,
+  usePlatforms,
+} from "@/features/data/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { usePortfolio } from "@/shared/lib/portfolio";
@@ -287,7 +292,17 @@ export function IdentitiesPage() {
               <span className={styles.cellStack}>
                 <span>{platformLabel(platforms.data?.items, item.platform)}</span>
                 <span className={styles.cellMeta}>
-                  {accountModeLabel(platforms.data?.items, item.platform, item.accountMode)}
+                  {[
+                    structureLabel(platforms.data?.items, item.platform, item.accountStructure),
+                    marginModeLabel(
+                      platforms.data?.items,
+                      item.platform,
+                      item.accountStructure,
+                      item.marginMode,
+                    ),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </span>
             ),

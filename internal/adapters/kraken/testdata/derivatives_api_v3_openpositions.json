@@ -1,0 +1,28 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "GET /derivatives/api/v3/openpositions",
+    "accountStructure": "kraken_unified",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "openPositions": [
+      {
+        "fillTime": "1970-01-01T00:00:00.000Z",
+        "pnlCurrency": "USD",
+        "price": 0.09275,
+        "side": "long",
+        "size": 10,
+        "symbol": "PF_DOGEUSD",
+        "unrealizedFunding": -4.336844474504564E-6,
+        "unrealizedPnl": 0.05631962130000001
+      }
+    ],
+    "result": "success",
+    "serverTime": "2026-09-25T20:10:25.894Z"
+  }
+}

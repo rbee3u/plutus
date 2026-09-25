@@ -20,7 +20,7 @@ type Options struct {
 	getwd func() (string, error)
 
 	// walkEnvFile, when EnvFile is empty, is the relative path walked from cwd to the module root.
-	// Empty means config/local.env. Lookup uses config/test.env.
+	// Empty means config/local.env. Lookup uses config/gotest.env.
 	walkEnvFile string
 
 	// EnvFile, when set, is the only env file loaded. The nearest walked env file is skipped.
@@ -66,7 +66,7 @@ type fileConfig struct {
 // When Options.EnvFile is set, only that file is read. Otherwise an optional `config/local.env`
 // in the working directory or Go module root is used. Existing process environment values win
 // over the env file. A missing default env file is ignored. The nearest `config/local.env` wins
-// when walking. Integration tests read `PLUTUS_TEST_DATABASE_DSN` from `config/test.env` instead.
+// when walking. `go test` reads `PLUTUS_GOTEST_*` from `config/gotest.env` through Lookup instead.
 func Load(opts Options) (Config, error) { //nolint:gocritic // Options is a process-boundary parameter object.
 	if opts.LookupEnv == nil {
 		opts.LookupEnv = os.LookupEnv

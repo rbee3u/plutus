@@ -1,0 +1,50 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /api/v3/account?omitZeroBalances=true",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": [
+      "uid"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "accountType": "SPOT",
+    "balances": [
+      {
+        "asset": "USDT",
+        "free": "0.40021917",
+        "locked": "0.00000000"
+      },
+      {
+        "asset": "LDUSDT",
+        "free": "1.75874279",
+        "locked": "0.00000000"
+      }
+    ],
+    "brokered": false,
+    "buyerCommission": 0,
+    "canDeposit": true,
+    "canTrade": true,
+    "canWithdraw": true,
+    "commissionRates": {
+      "maker": "0.00100000",
+      "taker": "0.00100000",
+      "buyer": "0.00000000",
+      "seller": "0.00000000"
+    },
+    "makerCommission": 10,
+    "permissions": [
+      "TRD_GRP_236"
+    ],
+    "preventSor": false,
+    "requireSelfTradePrevention": false,
+    "sellerCommission": 0,
+    "takerCommission": 10,
+    "uid": 123456789,
+    "updateTime": 1790317196354
+  }
+}

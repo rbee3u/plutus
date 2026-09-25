@@ -4,16 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": ">=24.19 <25"
+    "node": ">=24.19.0 <25"
   },
   "scripts": {
     "generate": "openapi-ts",
-    "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:chromium": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.2",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@hey-api/openapi-ts": "0.99.0",
+    "@playwright/test": "^1.62.1",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
@@ -35,6 +37,7 @@
     "prettier": "^3.6.2",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.43.0",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "vitest": "^4.1.11"
   }
 }

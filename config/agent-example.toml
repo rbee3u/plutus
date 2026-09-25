@@ -1,5 +1,5 @@
-# Agent self-check example. Copy to gitignored config/agent.toml.
-# Put the MySQL DSN and a unique master key in gitignored config/agent.env.
+# dev (agent) example: the AI agent's self-check instance, deterministic fake adapter, resettable.
+# Copy to gitignored config/agent.toml. Put the MySQL DSN and a unique master key in gitignored config/agent.env.
 
 [server]
 listen_address = "127.0.0.1"
@@ -27,7 +27,8 @@ completed_retention = "2160h"
 default_interval = "15m"      # Collection Cycle interval for new Portfolios; each Portfolio may override
 stagger = "3s"                # delay between Identities within one cycle
 validate_timeout = "15s"      # bound for one synchronous Connection validation
-fake_adapter = true           # deterministic offline adapter; no live Platform adapter exists yet
+fake_adapter = true           # dev environments use the deterministic offline adapter; never real keys
 
 [database]
+# `plutus db reset --profile …` drops, migrates, and reseeds plutus_agent; scripts/agent-wipe-and-serve.sh runs it.
 allow_reset = true

@@ -1,0 +1,35 @@
+# prod example: the remote server you actually use. Live read-only keys, never reset.
+# Copy next to the deployed binary as prod.toml and edit by hand. Put the MySQL DSN and a unique
+# master key in prod.env. Back up PLUTUS_MASTER_KEY separately: without it every stored credential is lost.
+
+[server]
+listen_address = "127.0.0.1"   # put a reverse proxy or SSH tunnel in front, or bind 0.0.0.0 with TLS below
+port = 8083
+
+[server.tls]
+https_enabled = false
+https_cert_path = ""
+https_key_path = ""
+mtls_enabled = false
+mtls_ca_path = ""
+
+[auth]
+session_idle_lifetime = "168h"
+session_absolute_lifetime = "720h"
+session_cookie_name = "plutus_session"
+csrf_cookie_name = "plutus_csrf"
+
+[jobs]
+worker_poll_interval = "1s"
+lease_duration = "2m"
+completed_retention = "2160h"
+
+[collection]
+default_interval = "15m"      # Collection Cycle interval for new Portfolios; each Portfolio may override
+stagger = "3s"                # delay between Identities within one cycle
+validate_timeout = "15s"      # bound for one synchronous Connection validation
+fake_adapter = false          # live adapters only
+
+[database]
+# Never enable on prod. `plutus db reset` also refuses any database whose name contains "prod".
+allow_reset = false

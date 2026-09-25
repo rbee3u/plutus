@@ -287,7 +287,7 @@ paths:
     get:
       operationId: listPlatforms
       tags: [identities]
-      summary: List supported platforms with account modes and account types
+      summary: List supported platforms with their Account Structures, Account Types, and Margin Modes
       responses:
         "200":
           description: Supported platforms.
@@ -1625,7 +1625,7 @@ components:
     Platform:
       type: object
       additionalProperties: false
-      required: [id, name, adapterAvailable, accountModes]
+      required: [id, name, adapterAvailable, accountStructures]
       properties:
         id:
           type: string
@@ -1633,14 +1633,17 @@ components:
           type: string
         adapterAvailable:
           type: boolean
-        accountModes:
+        accountStructures:
           type: array
           items:
-            $ref: "#/components/schemas/AccountMode"
-    AccountMode:
+            $ref: "#/components/schemas/AccountStructure"
+    AccountStructure:
       type: object
       additionalProperties: false
-      required: [id, name, accountTypes]
+      description: >-
+        How the Platform arranges an Identity's Accounts. It decides the Account Types, is chosen
+        when the Identity is created, and cannot be changed afterwards.
+      required: [id, name, accountTypes, marginModes]
       properties:
         id:
           type: string
@@ -1650,7 +1653,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AccountTypeInfo"
+        marginModes:
+          description: Margin Modes the Platform may report within this structure; empty when it has none.
+          type: array
+          items:
+            $ref: "#/components/schemas/MarginModeInfo"
     AccountTypeInfo:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    MarginModeInfo:
       type: object
       additionalProperties: false
       required: [id, name]
@@ -1711,7 +1728,7 @@ components:
     Identity:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, platform, displayName, accountMode, status, connection, accounts, version, createdAt, updatedAt]
+      required: [id, portfolioId, platform, displayName, accountStructure, status, connection, accounts, version, createdAt, updatedAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -1721,8 +1738,13 @@ components:
           type: string
         displayName:
           type: string
-        accountMode:
+        accountStructure:
           type: string
+        marginMode:
+          description: >-
+            The Margin Mode the Platform last reported. Null before the first successful validation
+            and for Account Structures that have none.
+          type: [string, "null"]
         externalRef:
           type: [string, "null"]
         status:
@@ -1757,7 +1779,7 @@ components:
     CreateIdentityRequest:
       type: object
       additionalProperties: false
-      required: [platform, displayName, accountMode, selectedAccountTypes]
+      required: [platform, displayName, accountStructure, selectedAccountTypes]
       properties:
         platform:
           type: string
@@ -1765,7 +1787,7 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        accountMode:
+        accountStructure:
           type: string
         selectedAccountTypes:
           type: array
@@ -1803,15 +1825,21 @@ components:
       properties:
         apiKey:
           type: string
-          minLength: 1
           maxLength: 512
         apiSecret:
           type: string
-          minLength: 1
           maxLength: 1024
         passphrase:
           type: string
           maxLength: 512
+        futuresApiKey:
+          type: string
+          maxLength: 512
+          description: Kraken Futures API key; required for Main and derivatives Accounts.
+        futuresApiSecret:
+          type: string
+          maxLength: 1024
+          description: Kraken Futures API secret, replaced together with the Spot credentials.
     ValidationOutcome:
       type: object
       additionalProperties: false

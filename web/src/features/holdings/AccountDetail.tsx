@@ -88,27 +88,56 @@ export function AccountDetail({
 }
 
 function AccountMetrics({ account }: { account: AccountValuation }) {
+  // Short labels keep the six figures on one line; <abbr> carries the full name for hover and
+  // assistive technology.
   const figures = [
-    { label: "Equity", value: account.equity, format: formatAmount },
-    { label: "Adjusted equity", value: account.adjustedEquity, format: formatAmount },
-    { label: "Available equity", value: account.availableEquity, format: formatAmount },
-    { label: "Initial margin ratio", value: account.initialMarginRatio, format: formatDecimal },
+    { label: "Equity", title: "Equity", value: account.equity, format: formatAmount },
     {
-      label: "Maintenance margin ratio",
+      label: "AdjEq",
+      title: "Adjusted equity",
+      value: account.adjustedEquity,
+      format: formatAmount,
+    },
+    {
+      label: "AvailEq",
+      title: "Available equity",
+      value: account.availableEquity,
+      format: formatAmount,
+    },
+    {
+      label: "IMR",
+      title: "Initial margin ratio",
+      value: account.initialMarginRatio,
+      format: formatDecimal,
+    },
+    {
+      label: "MMR",
+      title: "Maintenance margin ratio",
       value: account.maintenanceMarginRatio,
       format: formatDecimal,
     },
-    { label: "Unified margin ratio", value: account.unifiedMarginRatio, format: formatDecimal },
+    {
+      label: "UniMMR",
+      title: "Unified margin ratio",
+      value: account.unifiedMarginRatio,
+      format: formatDecimal,
+    },
   ];
   // A calculated account carries none of these; six dashes would say less than one sentence.
   const reported = figures.some((figure) => figure.value != null);
   return (
     <>
       {reported ? (
-        <dl className={styles.metaList}>
+        <dl className={`${styles.metaList} ${styles.metaListCased}`}>
           {figures.map((figure) => (
             <div key={figure.label}>
-              <dt>{figure.label}</dt>
+              <dt>
+                {figure.label === figure.title ? (
+                  figure.label
+                ) : (
+                  <abbr title={figure.title}>{figure.label}</abbr>
+                )}
+              </dt>
               <dd>{figure.format(figure.value)}</dd>
             </div>
           ))}

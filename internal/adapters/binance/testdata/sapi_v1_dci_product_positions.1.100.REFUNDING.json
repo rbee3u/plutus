@@ -1,0 +1,16 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /sapi/v1/dci/product/positions?pageIndex=1\u0026pageSize=100\u0026status=REFUNDING",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "total": 0,
+    "list": []
+  }
+}

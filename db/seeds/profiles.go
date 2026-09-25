@@ -60,12 +60,20 @@ func BuildAt(name string, now time.Time) (Profile, error) {
 }
 
 const (
-	keyAliceBinance = "seed-alice-binance"
-	keyAliceOKX     = "seed-alice-okx"
-	keyAliceBybit   = "seed-alice-bybit"
-	keyBobBinance   = "seed-bob-binance"
+	keyAliceBinance        = "seed-alice-binance"
+	keyAliceBinanceClassic = "seed-alice-binance-classic"
+	keyAliceOKX            = "seed-alice-okx"
+	keyAliceBybit          = "seed-alice-bybit"
+	keyBobBinance          = "seed-bob-binance"
 	// keyAliceOKXInvalid makes the fake adapter reject validation, leaving the Connection invalid.
 	keyAliceOKXInvalid = "invalid-alice-okx"
+)
+
+// The Margin Modes the fake adapter reports for the seeded OKX and Bybit keys, so that seeded
+// history, stored Identities, and later live cycles agree.
+var (
+	modeAliceOKX   = fake.MarginMode(adapters.StructureOKXUnified, keyAliceOKX, time.Time{})
+	modeAliceBybit = fake.MarginMode(adapters.StructureBybitUTA2, keyAliceBybit, time.Time{})
 )
 
 var shanghai = mustLocation("Asia/Shanghai")
@@ -94,12 +102,13 @@ func (b *builder) users(now time.Time) {
 	b.portfolio(&portfolioSpec{ID: PortfolioBobMain, User: UserBob, Name: "default", Timezone: "Europe/Berlin", Interval: 900, Undeletable: true, CreatedAt: created})
 }
 
-// fakeReports builds ok reports from the fake adapter scenario for the given Account Types.
-func fakeReports(apiKey string, platform adapters.Platform, at time.Time, accounts map[adapters.AccountType]uuid.UUID, types ...adapters.AccountType) []reportSpec {
+// fakeReports builds ok reports from the fake adapter scenario for the given Account Types under
+// the Identity's Margin Mode (empty for structures without one).
+func fakeReports(apiKey string, platform adapters.Platform, mode adapters.MarginMode, at time.Time, accounts map[adapters.AccountType]uuid.UUID, types ...adapters.AccountType) []reportSpec {
 	scenario := fake.Scenario(apiKey, at)
 	out := make([]reportSpec, 0, len(types))
 	for _, t := range types {
-		report := scenario.Report(t, at.Add(2*time.Second), false)
+		report := scenario.Report(mode, t, at.Add(2*time.Second), false)
 		out = append(out, reportSpec{Account: accounts[t], Platform: platform, Report: &report})
 	}
 	return out
@@ -140,6 +149,10 @@ const (
 	typeEarn            adapters.AccountType = "earn"
 	typeTrading         adapters.AccountType = "trading"
 	typeUnified         adapters.AccountType = "unified"
+	typeCrossMargin     adapters.AccountType = "cross_margin"
+	typeIsolatedMargin  adapters.AccountType = "isolated_margin"
+	typeUMFutures       adapters.AccountType = "um_futures"
+	typeCMFutures       adapters.AccountType = "cm_futures"
 )
 
 var (
@@ -148,20 +161,25 @@ var (
 	aliceBybitAccounts   = map[adapters.AccountType]uuid.UUID{typeUnified: AccountAliceBybitUnified, typeFunding: AccountAliceBybitFunding, typeEarn: AccountAliceBybitEarn}
 	aliceOldAccounts     = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountAliceOldPM, typeSpot: AccountAliceOldSpot, typeFunding: AccountAliceOldFunding, typeEarn: AccountAliceOldEarn}
 	bobBinanceAccounts   = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountBobBinancePM, typeSpot: AccountBobBinanceSpot, typeFunding: AccountBobBinanceFunding, typeEarn: AccountBobBinanceEarn}
+	aliceClassicAccounts = map[adapters.AccountType]uuid.UUID{
+		typeSpot: AccountAliceClassicSpot, typeFunding: AccountAliceClassicFunding, typeCrossMargin: AccountAliceClassicCrossMargin,
+		typeIsolatedMargin: AccountAliceClassicIsolatedMargin, typeUMFutures: AccountAliceClassicUMFutures,
+		typeCMFutures: AccountAliceClassicCMFutures, typeEarn: AccountAliceClassicEarn,
+	}
 )
 
 // minimal: alice's Binance Identity with two selected Accounts and three hours of 15-minute cycles.
 func minimal(b *builder, now time.Time) []uuid.UUID {
 	b.users(now)
 	created := now.AddDate(0, 0, -7)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-15 * time.Minute)})
+	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-15 * time.Minute)})
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance", CreatedAt: created})
+	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", CreatedAt: created})
 	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin), created)
 
 	for at := now.Add(-3 * time.Hour); !at.After(now.Add(-15 * time.Minute)); at = at.Add(15 * time.Minute) {
 		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
-		b.cycle(PortfolioAliceMain, at, fakeReports(keyAliceBinance, adapters.PlatformBinance, at, aliceBinanceAccounts, typePortfolioMargin, typeSpot))
+		b.cycle(PortfolioAliceMain, at, fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot))
 	}
 	b.flow(&flowSpec{ID: FlowAliceUSDT, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "USDT", Quantity: "1000", ValueUSD: "1000", At: now.AddDate(0, 0, -2), Note: "Initial funding"})
 	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.create", ResourceType: "identity", ResourceID: IdentityAliceBinance, After: map[string]any{"displayName": "Binance main", "platform": "binance"}, At: created})
@@ -172,13 +190,13 @@ func minimal(b *builder, now time.Time) []uuid.UUID {
 func edgeCases(b *builder, now time.Time) []uuid.UUID {
 	b.users(now)
 	created := now.AddDate(0, 0, -10)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Mode: adapters.ModeOKXPM, Name: "OKX revoked key", APIKey: keyAliceOKXInvalid, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassAuthentication, LastDetail: "The platform rejected the API key."})
+	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX revoked key", APIKey: keyAliceOKXInvalid, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassAuthentication, LastDetail: "The platform rejected the API key."})
 	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading), created)
-	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Mode: adapters.ModeBybitUTA2, Name: "Bybit never collected", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassTemporary, LastDetail: "The platform returned a temporary error."})
+	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit never collected", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassTemporary, LastDetail: "The platform returned a temporary error."})
 	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance", CreatedAt: created})
+	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", CreatedAt: created})
 	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin), created)
 
 	// Local-day phases: A = D-7..D-5, gap = D-4, B = D-3, C = D-2..now-2h.
@@ -196,14 +214,14 @@ func edgeCases(b *builder, now time.Time) []uuid.UUID {
 		var reports []reportSpec
 		switch {
 		case at.Before(phaseB):
-			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, at, aliceBinanceAccounts, typePortfolioMargin, typeSpot)
+			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot)
 			// A wrapped coin the catalog maps manually to BTC, and TOKENX with no price.
 			reports[1].Report.Balances = append(reports[1].Report.Balances, adapters.Balance{Symbol: "WBTC", Name: "Wrapped Bitcoin", Equity: "0.05"}, fake.UnpricedBalance(1))
 		default:
-			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, at, aliceBinanceAccounts, typePortfolioMargin, typeFunding)
+			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeFunding)
 		}
 		if at.Before(phaseC) {
-			reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, at, aliceOKXAccounts, typeTrading)...)
+			reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading)...)
 		} else {
 			reports = append(reports, failedReports(adapters.PlatformOKX, adapters.ClassAuthentication, "The platform rejected the API key.", aliceOKXAccounts, typeTrading)...)
 		}
@@ -227,16 +245,19 @@ func edgeCases(b *builder, now time.Time) []uuid.UUID {
 func walkthrough(b *builder, now time.Time) []uuid.UUID {
 	b.users(now)
 	created := now.AddDate(0, 0, -45)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Mode: adapters.ModeOKXPM, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
 	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Mode: adapters.ModeBybitUTA2, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
 	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
-	b.identity(&identitySpec{ID: IdentityAliceBinanceOld, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance old sub-account", Archived: true, ArchivedAt: now.AddDate(0, 0, -30), CreatedAt: created})
+	b.identity(&identitySpec{ID: IdentityAliceBinanceOld, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance old sub-account", Archived: true, ArchivedAt: now.AddDate(0, 0, -30), CreatedAt: created})
 	b.accounts(IdentityAliceBinanceOld, aliceOldAccounts, selectedSet(), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Mode: adapters.ModeBinancePM, Name: "Binance", APIKey: keyBobBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", APIKey: keyBobBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
 	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot), created)
+	classicCreated := now.AddDate(0, 0, -20)
+	b.identity(&identitySpec{ID: IdentityAliceBinanceClassic, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Name: "Binance classic", APIKey: keyAliceBinanceClassic, CreatedAt: classicCreated, CollectedAt: now.Add(-2 * time.Hour)})
+	b.accounts(IdentityAliceBinanceClassic, aliceClassicAccounts, selectedSet(typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures), classicCreated)
 
 	start := localMidnight(now, 40, shanghai)
 	staleDay := localMidnight(now, 10, shanghai)
@@ -245,19 +266,23 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
 		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
 		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
-		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
-		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, at, aliceOKXAccounts, typeTrading, typeFunding)...)
+		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
+		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding)...)
 		if !at.Before(staleDay) && at.Before(staleDay.AddDate(0, 0, 1)) {
 			reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceBybitAccounts, typeUnified)...)
 		} else {
-			reports = append(reports, fakeReports(keyAliceBybit, adapters.PlatformBybit, at, aliceBybitAccounts, typeUnified)...)
+			reports = append(reports, fakeReports(keyAliceBybit, adapters.PlatformBybit, modeAliceBybit, at, aliceBybitAccounts, typeUnified)...)
+		}
+		if !at.Before(classicCreated) {
+			b.fakePrices(keyAliceBinanceClassic, adapters.PlatformBinance, at)
+			reports = append(reports, fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures)...)
 		}
 		b.cycle(PortfolioAliceMain, at, reports)
 	}
 	bobStart := localMidnight(now, 3, mustLocation("Europe/Berlin"))
 	for at := bobStart; !at.After(end); at = at.Add(2 * time.Hour) {
 		b.fakePrices(keyBobBinance, adapters.PlatformBinance, at)
-		b.cycle(PortfolioBobMain, at, fakeReports(keyBobBinance, adapters.PlatformBinance, at, bobBinanceAccounts, typePortfolioMargin, typeSpot))
+		b.cycle(PortfolioBobMain, at, fakeReports(keyBobBinance, adapters.PlatformBinance, "", at, bobBinanceAccounts, typePortfolioMargin, typeSpot))
 	}
 
 	b.flow(&flowSpec{ID: FlowAliceUSDT, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "USDT", Quantity: "5000", ValueUSD: "5000", At: start.AddDate(0, 0, 2).Add(9 * time.Hour), Note: "Initial funding"})
@@ -267,8 +292,13 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 	ethAt := start.AddDate(0, 0, 35).Add(16 * time.Hour)
 	b.flow(&flowSpec{ID: FlowAliceETH, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "ETH", Quantity: "2", ValueUSD: scale(fakePrice(keyAliceBinance, "ETH", ethAt), 2), At: ethAt, Note: "Deposit"})
 	b.flow(&flowSpec{ID: FlowBobUSDT, Portfolio: PortfolioBobMain, User: UserBob, Direction: "contribution", Asset: "USDT", Quantity: "2500", ValueUSD: "2500", At: bobStart.Add(6 * time.Hour), Note: "Initial funding"})
-	for _, id := range []uuid.UUID{IdentityAliceBinance, IdentityAliceOKX, IdentityAliceBybit, IdentityAliceBinanceOld} {
-		b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.create", ResourceType: "identity", ResourceID: id, After: map[string]any{"displayName": b.identities[id].Name, "platform": string(b.identities[id].Platform)}, At: created})
+	for _, id := range []uuid.UUID{IdentityAliceBinance, IdentityAliceOKX, IdentityAliceBybit, IdentityAliceBinanceOld, IdentityAliceBinanceClassic} {
+		at := created
+		if id == IdentityAliceBinanceClassic {
+			at = classicCreated
+		}
+		spec := b.identities[id]
+		b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.create", ResourceType: "identity", ResourceID: id, After: map[string]any{"displayName": spec.Name, "platform": string(spec.Platform), "accountStructure": string(spec.Structure)}, At: at})
 	}
 	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.archive", ResourceType: "identity", ResourceID: IdentityAliceBinanceOld, After: map[string]any{"status": "archived"}, At: now.AddDate(0, 0, -30)})
 	b.audit(&auditSpec{Portfolio: PortfolioBobMain, Actor: UserBob, Action: "identity.create", ResourceType: "identity", ResourceID: IdentityBobBinance, After: map[string]any{"displayName": "Binance", "platform": "binance"}, At: created})

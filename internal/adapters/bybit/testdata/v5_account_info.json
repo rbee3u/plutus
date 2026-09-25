@@ -1,0 +1,29 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/info",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": [
+      "smpGroup"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "dcpStatus": "OFF",
+      "isMasterTrader": false,
+      "marginMode": "PORTFOLIO_MARGIN",
+      "smpGroup": 100001,
+      "spotHedgingStatus": "ON",
+      "timeWindow": 0,
+      "unifiedMarginStatus": 6,
+      "updatedTime": "1757720086000"
+    },
+    "retCode": 0,
+    "retMsg": "OK"
+  }
+}

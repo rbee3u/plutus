@@ -1,0 +1,66 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/earn/position?category=FlexibleSaving",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": [
+      "id",
+      "orderId"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "list": [
+        {
+          "amount": "20",
+          "autoReinvest": "",
+          "availableAmount": "20",
+          "claimableYield": "0.0031",
+          "coin": "USDT",
+          "effectiveAmount": "20",
+          "estimateInterestCalculationTime": "",
+          "estimateRedeemTime": "",
+          "estimateStakeTime": "",
+          "freezeDetails": [],
+          "id": "redacted",
+          "orderId": "redacted",
+          "productId": "1",
+          "settlementTime": "",
+          "status": "",
+          "totalPnl": "2.3239",
+          "yesterdayYield": "0.003622602739726017",
+          "yesterdayYieldDate": "2026-09-25"
+        },
+        {
+          "amount": "0",
+          "autoReinvest": "",
+          "availableAmount": "0",
+          "claimableYield": "0",
+          "coin": "HYPE",
+          "effectiveAmount": "0",
+          "estimateInterestCalculationTime": "",
+          "estimateRedeemTime": "",
+          "estimateStakeTime": "",
+          "freezeDetails": [],
+          "id": "redacted",
+          "orderId": "redacted",
+          "productId": "697",
+          "settlementTime": "",
+          "status": "",
+          "totalPnl": "0.09651726",
+          "yesterdayYield": "0",
+          "yesterdayYieldDate": "2026-09-25"
+        }
+      ]
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "",
+    "time": 1790366137410
+  }
+}

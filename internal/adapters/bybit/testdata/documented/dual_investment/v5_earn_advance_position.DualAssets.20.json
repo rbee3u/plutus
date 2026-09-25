@@ -1,0 +1,46 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/earn/advance/position?category=DualAssets&limit=20",
+    "accountStructure": "bybit_uta_2_0",
+    "scenario": "documented",
+    "documentation": "https://bybit-exchange.github.io/docs/v5/finance/advanced-earn/dual-asset/position",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "",
+    "result": {
+      "category": "DualAssets",
+      "list": [
+        {
+          "positionId": "19035",
+          "productId": "36320",
+          "category": "DualAssets",
+          "baseCoin": "ETH",
+          "quoteCoin": "USDT",
+          "investCoin": "USDT",
+          "amount": "20",
+          "apyE8": "902700000",
+          "direction": "BuyLow",
+          "targetPrice": "2325",
+          "settlementTime": "1774079999000",
+          "status": "Active",
+          "orderId": "ef9644c2-0c98-40e5-ae33-8aa5b6d85058",
+          "duration": "3d",
+          "expectReturnCoin": "USDT",
+          "expectReturnAmount": "21.4838",
+          "accountType": "UNIFIED",
+          "toAccountType": "FUND",
+          "yieldStartAt": "1773820799000",
+          "yieldEndAt": "1774079999000"
+        }
+      ],
+      "nextPageCursor": ""
+    },
+    "retExtInfo": {},
+    "time": 1773815399307
+  }
+}

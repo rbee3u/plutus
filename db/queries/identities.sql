@@ -1,19 +1,19 @@
 -- name: InsertIdentity :exec
 INSERT INTO identities (
-    id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+    id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref, status, archived_at,
     connection_status, credentials_ciphertext, credentials_nonce, credential_key_version,
     credentials_updated_at, last_validated_at, last_collected_at, last_error_class, last_error_detail,
     version, created_at, updated_at
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(platform), sqlc.arg(display_name), sqlc.arg(account_mode),
-    sqlc.narg(external_ref), sqlc.arg(status), NULL,
+    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(platform), sqlc.arg(display_name), sqlc.arg(account_structure),
+    NULL, sqlc.narg(external_ref), sqlc.arg(status), NULL,
     'unconfigured', NULL, NULL, 0,
     NULL, NULL, NULL, NULL, NULL,
     sqlc.arg(version), sqlc.arg(created_at), sqlc.arg(updated_at)
 );
 
 -- name: ListIdentitiesByPortfolio :many
-SELECT id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+SELECT id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref, status, archived_at,
        connection_status, credentials_ciphertext IS NOT NULL AS credentials_configured, credentials_updated_at,
        last_validated_at, last_collected_at, last_error_class, last_error_detail,
        version, created_at, updated_at
@@ -22,7 +22,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY platform ASC, created_at ASC, id ASC;
 
 -- name: GetIdentity :one
-SELECT id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at,
+SELECT id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref, status, archived_at,
        connection_status, credentials_ciphertext IS NOT NULL AS credentials_configured, credentials_updated_at,
        last_validated_at, last_collected_at, last_error_class, last_error_detail,
        version, created_at, updated_at
@@ -30,13 +30,13 @@ FROM identities
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
 -- name: GetIdentityCredentials :one
-SELECT id, portfolio_id, platform, account_mode, connection_status,
+SELECT id, portfolio_id, platform, account_structure, connection_status,
        credentials_ciphertext, credentials_nonce, credential_key_version
 FROM identities
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
 -- name: ListCollectableIdentities :many
-SELECT id, portfolio_id, platform, display_name, account_mode, external_ref,
+SELECT id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref,
        credentials_ciphertext, credentials_nonce, credential_key_version
 FROM identities
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND status = 'enabled' AND connection_status = 'enabled'
@@ -45,7 +45,6 @@ ORDER BY platform ASC, created_at ASC, id ASC;
 -- name: UpdateIdentity :execrows
 UPDATE identities
 SET display_name = sqlc.arg(display_name),
-    account_mode = sqlc.arg(account_mode),
     version = version + 1,
     updated_at = sqlc.arg(updated_at)
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version) AND status <> 'archived';
@@ -80,6 +79,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = 
 UPDATE identities
 SET connection_status = sqlc.arg(connection_status),
     external_ref = COALESCE(sqlc.narg(external_ref), external_ref),
+    margin_mode = COALESCE(sqlc.narg(margin_mode), margin_mode),
     last_validated_at = COALESCE(sqlc.narg(last_validated_at), last_validated_at),
     last_error_class = sqlc.narg(last_error_class),
     last_error_detail = sqlc.narg(last_error_detail),
@@ -93,6 +93,18 @@ SET last_collected_at = sqlc.arg(last_collected_at),
     last_error_class = sqlc.narg(last_error_class),
     last_error_detail = sqlc.narg(last_error_detail),
     connection_status = IF(sqlc.arg(invalidate) = 1, 'invalid', connection_status),
+    updated_at = sqlc.arg(updated_at)
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
+
+-- name: GetIdentityMarginModeForUpdate :one
+SELECT margin_mode
+FROM identities
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id)
+FOR UPDATE;
+
+-- name: SetIdentityMarginMode :exec
+UPDATE identities
+SET margin_mode = sqlc.arg(margin_mode),
     updated_at = sqlc.arg(updated_at)
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 

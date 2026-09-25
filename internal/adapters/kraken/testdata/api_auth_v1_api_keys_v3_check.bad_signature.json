@@ -1,0 +1,17 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "GET /api/auth/v1/api-keys/v3/check",
+    "accountStructure": "kraken_unified",
+    "scenario": "bad_signature",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 401,
+  "body": {
+    "error": "request_signature_invalid",
+    "message": "request_signature_invalid",
+    "suberror": null
+  }
+}

@@ -11,12 +11,14 @@ import (
 
 const goModFileName = "go.mod"
 
-// Lookup reports a process environment value, falling back to `config/test.env` in the working
+// Lookup reports a process environment value, falling back to `config/gotest.env` in the working
 // directory or, when tests run from a subdirectory, the Go module root.
-// Existing process environment values win. A missing `config/test.env` is ignored.
-// The nearest `config/test.env` wins. `config/local.env` is not read.
+// Existing process environment values win. A missing `config/gotest.env` is ignored.
+// The nearest `config/gotest.env` wins. `config/local.env` is not read.
+// It serves `go test` (PLUTUS_GOTEST_* variables) and `plutus adapter record`; serve, the worker,
+// and collect never call it.
 func Lookup(key string) (string, error) {
-	opts := Options{walkEnvFile: defaultTestEnvFileName}
+	opts := Options{walkEnvFile: defaultGotestEnvFileName}
 	return lookup(key, &opts)
 }
 

@@ -1,0 +1,71 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "GET /0/public/Assets",
+    "accountStructure": "kraken_unified",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": "Kept the assets of recorded balances plus BTC, ETH, USD, USDT, and USDC.",
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "USDC": {
+        "aclass": "currency",
+        "altname": "USDC",
+        "collateral_value": 0.995,
+        "decimals": 8,
+        "display_decimals": 4,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "USDT": {
+        "aclass": "currency",
+        "altname": "USDT",
+        "collateral_value": 0.995,
+        "decimals": 8,
+        "display_decimals": 4,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "XETH": {
+        "aclass": "currency",
+        "altname": "ETH",
+        "collateral_value": 0.99,
+        "decimals": 10,
+        "display_decimals": 5,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "XXBT": {
+        "aclass": "currency",
+        "altname": "XBT",
+        "collateral_value": 0.99,
+        "decimals": 10,
+        "display_decimals": 5,
+        "margin_rate": "0.01",
+        "status": "enabled"
+      },
+      "XXRP": {
+        "aclass": "currency",
+        "altname": "XRP",
+        "collateral_value": 0.95,
+        "decimals": 8,
+        "display_decimals": 5,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "ZUSD": {
+        "aclass": "currency",
+        "altname": "USD",
+        "collateral_value": 1.0,
+        "decimals": 4,
+        "display_decimals": 2,
+        "margin_rate": "0.036",
+        "status": "enabled"
+      }
+    }
+  }
+}

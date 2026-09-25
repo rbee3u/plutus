@@ -1,5 +1,5 @@
-# Local development example. Copy to gitignored config/local.toml.
-# Put the MySQL DSN and master key in gitignored config/local.env.
+# dev (local) example: your own machine, deterministic fake adapter, resettable.
+# Copy to gitignored config/local.toml. Put the MySQL DSN and master key in gitignored config/local.env.
 
 [server]
 listen_address = "0.0.0.0"
@@ -27,8 +27,8 @@ completed_retention = "2160h"
 default_interval = "15m"      # Collection Cycle interval for new Portfolios; each Portfolio may override
 stagger = "3s"                # delay between Identities within one cycle
 validate_timeout = "15s"      # bound for one synchronous Connection validation
-fake_adapter = true           # deterministic offline adapter; no live Platform adapter exists yet
+fake_adapter = true           # dev environments use the deterministic offline adapter; never real keys
 
 [database]
-# allow_reset enables the development-only `plutus db reset` command.
-allow_reset = false
+# `plutus db reset --profile …` drops, migrates, and reseeds plutus_local; scripts/local-wipe-and-serve.sh runs it.
+allow_reset = true

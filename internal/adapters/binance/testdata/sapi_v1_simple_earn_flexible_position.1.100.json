@@ -1,0 +1,33 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /sapi/v1/simple-earn/flexible/position?current=1\u0026size=100",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "total": 1,
+    "rows": [
+      {
+        "totalAmount": "2.00038891",
+        "tierAnnualPercentageRate": {
+          "0-1000USDT": "0.04000000"
+        },
+        "latestAnnualPercentageRate": "0.02664467",
+        "asset": "USDT",
+        "canRedeem": true,
+        "collateralAmount": "0",
+        "productId": "USDT001",
+        "yesterdayRealTimeRewards": "0.00016843",
+        "cumulativeBonusRewards": "6.89291167",
+        "cumulativeRealTimeRewards": "145.36890667",
+        "cumulativeTotalRewards": "153.19388738",
+        "autoSubscribe": false
+      }
+    ]
+  }
+}

@@ -17,14 +17,14 @@ func TestSplitSQL(t *testing.T) {
 func TestAllowDevReset(t *testing.T) {
 	t.Parallel()
 
-	allowed := []string{"plutus", "plutus_local", "plutus_agent", "plutus_walk", "plutus_test", "plutus_ci1"}
+	allowed := []string{"plutus", "plutus_local", "plutus_agent", "plutus_test", "plutus_ci1"}
 	for _, name := range allowed {
 		if err := AllowDevReset(name); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
 
-	refused := []string{"mysql", "sys", "prod", "plutus_prod", "other", "PLUTUS-TEST"}
+	refused := []string{"mysql", "sys", "prod", "plutus_prod", "plutus_production", "other", "PLUTUS-TEST"}
 	for _, name := range refused {
 		if err := AllowDevReset(name); err == nil {
 			t.Fatalf("expected refusal for %s", name)

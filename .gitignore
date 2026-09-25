@@ -1,21 +1,14 @@
 .DS_Store
 /.idea/
 /bin/
-/web/node_modules/
-
-# Local configuration, including the MySQL DSN. Never commit real credentials.
+/dist/
+/tmp/
 /config/local.toml
 /config/local.env
 /config/agent.toml
 /config/agent.env
-/config/walk.toml
-/config/walk.env
+/config/test.toml
 /config/test.env
-
-# Leftover root-level lane files from before config/.
-/plutus.toml
-/plutus-agent.toml
-/plutus-walk.toml
-.env
-/agent.env
-/walk.env
+/config/prod.toml
+/config/prod.env
+/config/gotest.env

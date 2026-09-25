@@ -13,8 +13,11 @@ import (
 
 // Entry is one audit document to append.
 type Entry struct {
-	PortfolioID  uuid.UUID
-	ActorUserID  uuid.UUID
+	PortfolioID uuid.UUID
+	ActorUserID uuid.UUID
+	// System records the event with no actor: a change Plutus observed on a Platform rather than
+	// one a user made, such as a Margin Mode switch.
+	System       bool
 	Action       string
 	ResourceType string
 	ResourceID   uuid.UUID
@@ -24,10 +27,10 @@ type Entry struct {
 	Metadata     any
 }
 
-// Record appends one audit event through q, which may be transactional.
-// Entries without an actor (system and CLI paths) are skipped.
+// Record appends one audit event through q, which may be transactional. Entries without an actor
+// (CLI paths) are skipped unless they are marked as System events.
 func Record(ctx context.Context, q *sqlcgen.Queries, now time.Time, entry *Entry) error {
-	if entry.ActorUserID == uuid.Nil {
+	if entry.ActorUserID == uuid.Nil && !entry.System {
 		return nil
 	}
 	id, err := uuid.NewV7()
@@ -48,7 +51,6 @@ func Record(ctx context.Context, q *sqlcgen.Queries, now time.Time, entry *Entry
 	}
 	params := sqlcgen.InsertAuditEventParams{
 		ID:           id[:],
-		ActorUserID:  entry.ActorUserID[:],
 		Action:       entry.Action,
 		ResourceType: entry.ResourceType,
 		ResourceID:   entry.ResourceID[:],
@@ -60,6 +62,9 @@ func Record(ctx context.Context, q *sqlcgen.Queries, now time.Time, entry *Entry
 	}
 	if entry.PortfolioID != uuid.Nil {
 		params.PortfolioID = entry.PortfolioID[:]
+	}
+	if entry.ActorUserID != uuid.Nil {
+		params.ActorUserID = entry.ActorUserID[:]
 	}
 	return q.InsertAuditEvent(ctx, params)
 }

@@ -28,6 +28,7 @@ type Querier interface {
 	GetFirstValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error)
 	GetIdentityCredentials(ctx context.Context, arg GetIdentityCredentialsParams) (GetIdentityCredentialsRow, error)
+	GetIdentityMarginModeForUpdate(ctx context.Context, arg GetIdentityMarginModeForUpdateParams) (sql.NullString, error)
 	GetInstrumentByPlatformSymbol(ctx context.Context, arg GetInstrumentByPlatformSymbolParams) (Instrument, error)
 	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
 	GetLatestOkReportForAccount(ctx context.Context, arg GetLatestOkReportForAccountParams) (GetLatestOkReportForAccountRow, error)
@@ -92,6 +93,7 @@ type Querier interface {
 	RevokeUserSessions(ctx context.Context, arg RevokeUserSessionsParams) error
 	SetIdentityConnectionStatus(ctx context.Context, arg SetIdentityConnectionStatusParams) (int64, error)
 	SetIdentityCredentials(ctx context.Context, arg SetIdentityCredentialsParams) (int64, error)
+	SetIdentityMarginMode(ctx context.Context, arg SetIdentityMarginModeParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error)

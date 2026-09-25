@@ -19,7 +19,7 @@ const (
 	defaultPort              = 8080
 	defaultConfigFileName    = "config/local.toml"
 	defaultEnvFileName       = "config/local.env"
-	defaultTestEnvFileName   = "config/test.env"
+	defaultGotestEnvFileName = "config/gotest.env"
 	defaultSessionCookieName = "plutus_session"
 	defaultCSRFCookieName    = "plutus_csrf"
 

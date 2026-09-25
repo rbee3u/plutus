@@ -1,0 +1,15 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /fapi/v1/multiAssetsMargin",
+    "accountStructure": "binance_classic",
+    "scenario": "documented",
+    "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#get-current-multi-assets-mode",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "multiAssetsMargin": true
+  }
+}

@@ -48,6 +48,8 @@ var (
 	IdentityAliceBybit      = SeedID(kindIdentity, 3)
 	IdentityAliceBinanceOld = SeedID(kindIdentity, 4)
 	IdentityBobBinance      = SeedID(kindIdentity, 5)
+	// IdentityAliceBinanceClassic is a Binance Classic Trading Identity next to the Portfolio Margin one.
+	IdentityAliceBinanceClassic = SeedID(kindIdentity, 6)
 
 	AccountAliceBinancePM      = SeedID(kindAccount, 1)
 	AccountAliceBinanceSpot    = SeedID(kindAccount, 2)
@@ -67,6 +69,14 @@ var (
 	AccountBobBinanceSpot      = SeedID(kindAccount, 16)
 	AccountBobBinanceFunding   = SeedID(kindAccount, 17)
 	AccountBobBinanceEarn      = SeedID(kindAccount, 18)
+
+	AccountAliceClassicSpot           = SeedID(kindAccount, 19)
+	AccountAliceClassicFunding        = SeedID(kindAccount, 20)
+	AccountAliceClassicCrossMargin    = SeedID(kindAccount, 21)
+	AccountAliceClassicIsolatedMargin = SeedID(kindAccount, 22)
+	AccountAliceClassicUMFutures      = SeedID(kindAccount, 23)
+	AccountAliceClassicCMFutures      = SeedID(kindAccount, 24)
+	AccountAliceClassicEarn           = SeedID(kindAccount, 25)
 
 	FlowAliceBTC     = SeedID(kindCapitalFlow, 1)
 	FlowAliceUSDT    = SeedID(kindCapitalFlow, 2)

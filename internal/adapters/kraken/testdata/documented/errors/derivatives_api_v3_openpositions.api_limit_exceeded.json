@@ -1,0 +1,17 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "GET /derivatives/api/v3/openpositions",
+    "accountStructure": "kraken_unified",
+    "scenario": "documented",
+    "documentation": "https://docs.kraken.com/exchange/guides/futures/ratelimits",
+    "trimmed": "The documented apiLimitExceeded example, which the guide shows for sendorder; every Futures endpoint shares the format. The documentation gives no HTTP status; 200 is assumed, because Futures reports errors in the body.",
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "result": "error",
+    "serverTime": "2016-02-25T09:45:53.818Z",
+    "error": "apiLimitExceeded"
+  }
+}

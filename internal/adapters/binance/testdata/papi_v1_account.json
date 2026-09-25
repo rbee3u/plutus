@@ -1,0 +1,24 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /papi/v1/account",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "uniMMR": "931.74279253",
+    "accountEquity": "5417.65757186",
+    "actualEquity": "5760.19146618",
+    "accountInitialMargin": "124.29266981",
+    "accountMaintMargin": "5.81454197",
+    "accountStatus": "NORMAL",
+    "virtualMaxWithdrawAmount": "5293.36473524",
+    "totalAvailableBalance": "5293.36473524",
+    "totalMarginOpenLoss": "0.0",
+    "updateTime": 1790364885454
+  }
+}

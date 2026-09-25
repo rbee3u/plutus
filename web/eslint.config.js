@@ -4,10 +4,8 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
+  { ignores: ["dist/**", "src/api/generated/**"] },
   eslint.configs.recommended,
-  {
-    ignores: ["dist/**", "src/api/generated/**"],
-  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: tseslint.configs.recommendedTypeChecked,

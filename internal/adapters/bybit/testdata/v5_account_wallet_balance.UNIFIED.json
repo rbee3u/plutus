@@ -1,0 +1,108 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/wallet-balance?accountType=UNIFIED",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "list": [
+        {
+          "accountIMRate": "0.0041",
+          "accountIMRateByMp": "0.0041",
+          "accountLTV": "0",
+          "accountMMRate": "0.0034",
+          "accountMMRateByMp": "0.0034",
+          "accountType": "UNIFIED",
+          "coin": [
+            {
+              "accruedInterest": "0",
+              "availableToBorrow": "",
+              "availableToWithdraw": "",
+              "bonus": "0",
+              "borrowAmount": "0.000000000000000000",
+              "coin": "BTC",
+              "colRes": "0",
+              "collateralSwitch": true,
+              "cumRealisedPnl": "-0.00000048",
+              "equity": "0",
+              "locked": "0",
+              "marginCollateral": true,
+              "spotBorrow": "0",
+              "spotHedgingQty": "0",
+              "totalOrderIM": "",
+              "totalPositionIM": "",
+              "totalPositionMM": "",
+              "unrealisedPnl": "0",
+              "usdValue": "0.00025201",
+              "walletBalance": "0"
+            },
+            {
+              "accruedInterest": "0",
+              "availableToBorrow": "",
+              "availableToWithdraw": "",
+              "bonus": "0",
+              "borrowAmount": "0.000000000000000000",
+              "coin": "XRP",
+              "colRes": "0",
+              "collateralSwitch": true,
+              "cumRealisedPnl": "0.18136938",
+              "equity": "0.00000014",
+              "locked": "0",
+              "marginCollateral": true,
+              "spotBorrow": "0",
+              "spotHedgingQty": "0",
+              "totalOrderIM": "",
+              "totalPositionIM": "",
+              "totalPositionMM": "",
+              "unrealisedPnl": "0",
+              "usdValue": "0.00000022",
+              "walletBalance": "0.00000014"
+            },
+            {
+              "accruedInterest": "0",
+              "availableToBorrow": "",
+              "availableToWithdraw": "",
+              "bonus": "0",
+              "borrowAmount": "0.000000000000000000",
+              "coin": "USDT",
+              "colRes": "-1",
+              "collateralSwitch": true,
+              "cumRealisedPnl": "-9.50660686",
+              "equity": "30.02055706",
+              "locked": "0",
+              "marginCollateral": true,
+              "spotBorrow": "0",
+              "spotHedgingQty": "0",
+              "totalOrderIM": "",
+              "totalPositionIM": "",
+              "totalPositionMM": "",
+              "unrealisedPnl": "0.0265",
+              "usdValue": "30.01428276",
+              "walletBalance": "29.99405706"
+            }
+          ],
+          "totalAvailableBalance": "29.89093717",
+          "totalEquity": "30.014535",
+          "totalInitialMargin": "0.12359277",
+          "totalInitialMarginByMp": "0.12359277",
+          "totalMaintenanceMargin": "0.10299397",
+          "totalMaintenanceMarginByMp": "0.10299397",
+          "totalMarginBalance": "30.01452995",
+          "totalPerpUPL": "0.02649446",
+          "totalWalletBalance": "29.98803549"
+        }
+      ]
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790366135653
+  }
+}

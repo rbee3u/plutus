@@ -7,8 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is the CLI release string shown by --version.
-const version = "dev"
+// version is the CLI release string shown by --version. `make build` and `make dist` set it
+// through -ldflags "-X main.version=..." from `git describe`; a plain `go run` reports "dev".
+var version = "dev"
 
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
@@ -31,6 +32,6 @@ func newRootCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().String("config", "", "path to a non-secret TOML config file")
 	cmd.PersistentFlags().String("env-file", "", "path to an env file used instead of walking config/local.env")
-	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand())
+	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand(), newAdapterCommand())
 	return cmd
 }

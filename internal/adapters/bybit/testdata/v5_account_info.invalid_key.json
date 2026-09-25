@@ -1,0 +1,20 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/info",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "invalid_key",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "result": {},
+    "retCode": 10003,
+    "retExtInfo": {},
+    "retMsg": "API key is invalid.",
+    "time": 1790366138680
+  }
+}

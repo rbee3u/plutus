@@ -31,16 +31,20 @@ var (
 
 // Credentials is the write-only secret document.
 type Credentials struct {
-	APIKey     string
-	APISecret  string
-	Passphrase string
+	APIKey           string
+	APISecret        string
+	Passphrase       string
+	FuturesAPIKey    string
+	FuturesAPISecret string
 }
 
 type document struct {
-	V          int    `json:"v"`
-	APIKey     string `json:"apiKey"`
-	APISecret  string `json:"apiSecret"`
-	Passphrase string `json:"passphrase,omitempty"`
+	V                int    `json:"v"`
+	APIKey           string `json:"apiKey"`
+	APISecret        string `json:"apiSecret"`
+	Passphrase       string `json:"passphrase,omitempty"`
+	FuturesAPIKey    string `json:"futuresApiKey,omitempty"`
+	FuturesAPISecret string `json:"futuresApiSecret,omitempty"`
 }
 
 // Box seals and opens Connection credentials.
@@ -73,20 +77,24 @@ func CurrentKeyVersion() uint16 {
 }
 
 // Seal encrypts credentials. AAD binds Connection ID, Portfolio ID, document version, and key version.
+//
+//nolint:gocritic // Credential bundles intentionally follow the existing value-based port.
 func (b *Box) Seal(connectionID, portfolioID [16]byte, keyVersion uint16, cred Credentials) (ciphertext, nonce []byte, err error) {
 	if b == nil {
 		return nil, nil, ErrInvalidKey
 	}
 	apiKey := strings.TrimSpace(cred.APIKey)
 	apiSecret := strings.TrimSpace(cred.APISecret)
-	if apiKey == "" || apiSecret == "" {
+	futuresKey, futuresSecret := strings.TrimSpace(cred.FuturesAPIKey), strings.TrimSpace(cred.FuturesAPISecret)
+	if !validPairs(apiKey, apiSecret, futuresKey, futuresSecret) {
 		return nil, nil, ErrInvalidCredentials
 	}
 	doc := document{
-		V:          documentVersion,
-		APIKey:     apiKey,
-		APISecret:  apiSecret,
-		Passphrase: strings.TrimSpace(cred.Passphrase),
+		V:             documentVersion,
+		APIKey:        apiKey,
+		APISecret:     apiSecret,
+		Passphrase:    strings.TrimSpace(cred.Passphrase),
+		FuturesAPIKey: futuresKey, FuturesAPISecret: futuresSecret,
 	}
 	plain, err := json.Marshal(doc) //nolint:gosec // G117: plaintext exists only until AES-GCM seal.
 	if err != nil {
@@ -113,10 +121,10 @@ func (b *Box) Open(connectionID, portfolioID [16]byte, keyVersion uint16, cipher
 		return Credentials{}, ErrOpenFailed
 	}
 	var doc document
-	if err := json.Unmarshal(plain, &doc); err != nil || doc.V != documentVersion || doc.APIKey == "" || doc.APISecret == "" {
+	if err := json.Unmarshal(plain, &doc); err != nil || doc.V != documentVersion || !validPairs(doc.APIKey, doc.APISecret, doc.FuturesAPIKey, doc.FuturesAPISecret) {
 		return Credentials{}, ErrOpenFailed
 	}
-	return Credentials{APIKey: doc.APIKey, APISecret: doc.APISecret, Passphrase: doc.Passphrase}, nil
+	return Credentials{APIKey: doc.APIKey, APISecret: doc.APISecret, Passphrase: doc.Passphrase, FuturesAPIKey: doc.FuturesAPIKey, FuturesAPISecret: doc.FuturesAPISecret}, nil
 }
 
 func additionalData(connectionID, portfolioID [16]byte, schemaVersion uint32, keyVersion uint16) []byte {
@@ -126,4 +134,8 @@ func additionalData(connectionID, portfolioID [16]byte, schemaVersion uint32, ke
 	binary.BigEndian.PutUint32(out[32:36], schemaVersion)
 	binary.BigEndian.PutUint16(out[36:38], keyVersion)
 	return out
+}
+
+func validPairs(key, secret, futuresKey, futuresSecret string) bool {
+	return (key != "" || futuresKey != "") && (key == "") == (secret == "") && (futuresKey == "") == (futuresSecret == "")
 }

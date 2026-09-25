@@ -121,7 +121,8 @@ type Identity struct {
 	PortfolioID           []byte
 	Platform              string
 	DisplayName           string
-	AccountMode           string
+	AccountStructure      string
+	MarginMode            sql.NullString
 	ExternalRef           sql.NullString
 	Status                string
 	ArchivedAt            sql.NullTime

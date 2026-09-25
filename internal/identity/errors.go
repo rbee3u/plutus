@@ -5,7 +5,7 @@ import "errors"
 var (
 	// ErrNotFound is returned when the identity or account is missing from the Portfolio.
 	ErrNotFound = errors.New("identity not found")
-	// ErrInvalid is returned when platform, mode, account types, or names are malformed.
+	// ErrInvalid is returned when the Platform, Account Structure, Account Types, or names are malformed.
 	ErrInvalid = errors.New("identity request is invalid")
 	// ErrConflict is returned when the display name is already used on the Platform.
 	ErrConflict = errors.New("identity display name already exists")

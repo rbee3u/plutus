@@ -1,0 +1,17 @@
+{
+  "fixture": {
+    "platform": "okx",
+    "endpoint": "GET /api/v5/account/config",
+    "accountStructure": "okx_unified",
+    "marginMode": "okx_pm",
+    "scenario": "stale_timestamp",
+    "recordedAt": "2026-09-25T18:18:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 401,
+  "body": {
+    "msg": "Timestamp request expired",
+    "code": "50102"
+  }
+}

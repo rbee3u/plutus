@@ -17,22 +17,27 @@ An exchange or other financial service that provides Accounts and market prices,
 One login identity recognized by a Platform, under which that Platform organizes Accounts. A main account and each of its sub-accounts are separate, unrelated Identities.
 _Avoid_: User, Account, API key, Connection, sub-account (as synonyms for platform identity)
 
-**Account Mode**:
-The Platform-defined margin or account regime an Identity runs in, such as Binance Portfolio Margin or Bybit Unified Trading Account 2.0. It determines which Account Types the Platform can offer.
+**Account Structure**:
+How a Platform arranges an Identity's Accounts, such as Binance Classic Trading or Portfolio Margin, or Kraken Separate wallets or Unified Wallet. It decides which Account Types exist. An Identity keeps one Account Structure for its whole life; a login that switches structure continues as a new Identity.
+_Avoid_: Account Mode, mode, account level (as synonyms for the structure)
+
+**Margin Mode**:
+The margin regime a Platform applies to a whole trading account within an Account Structure, such as OKX Futures mode or Bybit Portfolio Margin. It is observed from the Platform, never chosen in Plutus, may change between Collection Runs, and decides which measures an Account Report can contain. Only some Account Structures have one.
+_Avoid_: Account Mode (as a synonym); a Position's own isolated or cross setting (which is not a Margin Mode)
 
 **Account Type**:
-One kind of Platform wallet or trading account that an Adapter knows how to collect for a given Platform and Account Mode, such as a unified trading account, a funding account, or an earn account.
+One kind of Platform wallet or trading account within an Account Structure that an Adapter knows how to collect, such as a unified trading account, a funding account, or an earn account.
 
 **Account**:
 One Account Type selected by the User for one Identity. Only selected Accounts are collected and valued.
 _Avoid_: Identity, wallet, product type (as synonyms for Account)
 
 **Connection**:
-The read-only API credentials configured for one Identity. Replacing credentials does not change the Identity or its Accounts.
+The read-only API credentials configured for one Identity. Replacing credentials does not change the Identity or its Accounts; credentials that reach a different Platform account are refused.
 _Avoid_: Identity, Account, API key (as synonyms for configured access)
 
 **Adapter**:
-The Plutus component that talks to one Platform and translates its responses into Observations. It declares the Account Modes and Account Types it supports.
+The Plutus component that talks to one Platform and translates its responses into Observations. It declares the Account Structures and Account Types it supports and reports the Margin Mode it observes.
 
 ### Asset catalog
 

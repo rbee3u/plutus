@@ -201,7 +201,7 @@ export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Op
 });
 
 /**
- * List supported platforms with account modes and account types
+ * List supported platforms with their Account Structures, Account Types, and Margin Modes
  */
 export const listPlatforms = <ThrowOnError extends boolean = false>(options?: Options<ListPlatformsData, ThrowOnError>): RequestResult<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError> => (options?.client ?? client).get<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError>({
     security: [{

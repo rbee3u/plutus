@@ -292,6 +292,12 @@
   text-transform: uppercase;
 }
 
+/* Mixed-case abbreviations (AdjEq, UniMMR) lose their meaning when upper-cased. */
+.metaListCased dt {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .metaList dd {
   margin: 0;
   overflow-wrap: anywhere;

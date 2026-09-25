@@ -1,0 +1,17 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "POST /0/private/GetApiKeyInfo",
+    "accountStructure": "kraken_unified",
+    "scenario": "invalid_nonce",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "error": [
+      "EAPI:Invalid nonce"
+    ]
+  }
+}

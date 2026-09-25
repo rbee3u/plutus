@@ -1,16 +1,28 @@
 .DEFAULT_GOAL := all
 
+# Keep the format, build, test, and lint gates in order, even with make -j.
+.NOTPARALLEL:
+
 MODULE := $(shell go list -m)
 ARGS ?=
 
-.PHONY: help all deps style format generate web-build build test lint run
+# Version string baked into the binary (`plutus --version`). Falls back to "dev" outside git.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -X main.version=$(VERSION)
+
+# Cross-compilation target for `make dist` (the remote test and prod servers).
+DIST_GOOS ?= linux
+DIST_GOARCH ?= amd64
+DIST_BIN := dist/plutus-$(DIST_GOOS)-$(DIST_GOARCH)
+
+.PHONY: help all deps style format generate web-build build test test-live lint dist run dev
 
 help: ## Show available targets in Makefile order.
-	@awk 'BEGIN { FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n" } /^[a-zA-Z_-]+:.*## / { printf "  %-8s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n" } /^[a-zA-Z_-]+:.*## / { printf "  %-10s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 all: format build test lint ## Format, build, test, and lint.
 
-GO_PACKAGES := $(shell go list ./... | grep -v /node_modules/)
+GO_PACKAGES = $(shell go list ./... | grep -v /node_modules/)
 
 deps: ## Install pinned formatting, lint, sqlc, Goose, and frontend tools.
 	go install golang.org/x/tools/cmd/goimports@v0.50.0
@@ -43,15 +55,27 @@ generate: ## Generate sqlc and OpenAPI artifacts.
 web-build: ## Build the production SPA into web/dist for go:embed.
 	cd web && npm run build
 
-build: ## Build the CLI as bin/plutus.
-	mkdir -p ./bin && go build -o ./bin/plutus ./cmd/plutus
+build: web-build ## Build the SPA and CLI as bin/plutus with the git version baked in.
+	mkdir -p ./bin && go build -ldflags "$(LDFLAGS)" -o ./bin/plutus ./cmd/plutus
 
-test: ## Run unit tests without cached results.
+test: web-build ## Run Go and frontend unit tests offline (throwaway plutus_gotest_* databases; no network, no live keys).
 	go test -count 1 $(GO_PACKAGES)
+	cd web && npm run test
 
-lint: ## Run the configured Go linters and frontend checks.
+test-live: web-build ## Run live Platform smoke tests (build tag live; skips Platforms without PLUTUS_GOTEST_<PLATFORM>_* keys).
+	go test -count 1 -tags live -run 'Live' ./internal/adapters/...
+
+lint: web-build ## Run the configured Go linters and frontend checks.
 	golangci-lint run
+	golangci-lint run --build-tags live ./internal/adapters/...
 	cd web && npm run typecheck && npm run lint
 
-run: ## Run the CLI locally with go run; pass arguments with ARGS="...".
+dist: web-build ## Cross-compile a static binary for the remote test and prod servers into dist/.
+	mkdir -p ./dist && CGO_ENABLED=0 GOOS=$(DIST_GOOS) GOARCH=$(DIST_GOARCH) go build -trimpath -ldflags "-s -w $(LDFLAGS)" -o $(DIST_BIN) ./cmd/plutus
+	@echo "built $(DIST_BIN) ($(VERSION))"
+
+run: web-build ## Run the CLI locally with go run; pass arguments with ARGS="...".
 	go run ./cmd/plutus $(ARGS)
+
+dev: ## Build and serve the local development environment on :8080 without resetting its data.
+	./scripts/local-serve.sh

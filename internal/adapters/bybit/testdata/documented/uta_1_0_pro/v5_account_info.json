@@ -1,0 +1,26 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/info",
+    "accountStructure": "bybit_uta_2_0",
+    "scenario": "documented",
+    "documentation": "https://bybit-exchange.github.io/docs/v5/account/account-info",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "marginMode": "REGULAR_MARGIN",
+      "updatedTime": "1697078946000",
+      "unifiedMarginStatus": 4,
+      "dcpStatus": "OFF",
+      "timeWindow": 10,
+      "smpGroup": 0,
+      "isMasterTrader": false,
+      "spotHedgingStatus": "OFF"
+    }
+  }
+}

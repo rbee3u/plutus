@@ -1,0 +1,16 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /sapi/v1/dci/product/positions?pageIndex=1\u0026pageSize=100\u0026status=PENDING",
+    "accountStructure": "binance_pm",
+    "scenario": "documented",
+    "documentation": "https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/trade#get-dual-investment-positions",
+    "trimmed": "list emptied: the documentation example's one position is PURCHASE_SUCCESS.",
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "total": 0,
+    "list": []
+  }
+}

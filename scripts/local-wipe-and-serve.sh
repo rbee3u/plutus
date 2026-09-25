@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Local development: rebuild the embedded SPA, reset plutus_local with walkthrough,
-# then serve on :8080. Does not touch the agent or walkthrough databases.
+# dev (local): rebuild the embedded SPA, reset plutus_local with the walkthrough seed, then serve on :8080.
+# Use local-serve.sh to keep the existing data. Does not touch plutus_agent.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,7 +20,6 @@ echo "Resetting plutus_local with the walkthrough seed, then serving on 0.0.0.0:
 echo
 
 make web-build
-export PLUTUS_DATABASE_ALLOW_RESET=true
 go run ./cmd/plutus --config "$config" --env-file "$envfile" db reset --profile walkthrough
 
 echo
@@ -32,7 +31,7 @@ lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/nu
 if [[ -n "$lan_ip" ]]; then
   echo "LAN: http://${lan_ip}:8080"
 fi
-echo "The next run of this script will reset plutus_local again."
+echo "The next run of this script will reset plutus_local again; local-serve.sh keeps the data."
 echo
 
 exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve

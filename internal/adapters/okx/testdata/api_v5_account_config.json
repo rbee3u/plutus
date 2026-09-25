@@ -1,0 +1,58 @@
+{
+  "fixture": {
+    "platform": "okx",
+    "endpoint": "GET /api/v5/account/config",
+    "accountStructure": "okx_unified",
+    "marginMode": "okx_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T18:18:39Z",
+    "trimmed": null,
+    "redacted": [
+      "uid",
+      "mainUid",
+      "ip",
+      "label"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "acctLv": "4",
+        "acctStpMode": "cancel_both",
+        "autoLoan": true,
+        "ctIsoMode": "automatic",
+        "enableSpotBorrow": false,
+        "feeType": "0",
+        "greeksType": "BS",
+        "ip": "",
+        "kycLv": "3",
+        "label": "plutus-fixture",
+        "level": "Lv1",
+        "levelTmp": "",
+        "liquidationGear": "0",
+        "mainUid": "100000000000000001",
+        "mgnIsoMode": "auto_transfers_ccy",
+        "opAuth": "0",
+        "perm": "read_only",
+        "posMode": "net_mode",
+        "roleType": "0",
+        "settleCcy": "USDC",
+        "settleCcyList": [
+          "USDC",
+          "USDG"
+        ],
+        "spotBorrowAutoRepay": false,
+        "spotOffsetType": "",
+        "spotRoleType": "0",
+        "spotTraderInsts": [],
+        "stgyType": "0",
+        "traderInsts": [],
+        "type": "0",
+        "uid": "100000000000000001"
+      }
+    ],
+    "msg": ""
+  }
+}

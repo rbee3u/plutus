@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "platform": "okx",
+    "endpoint": "GET /api/v5/finance/sfp/dcd/order-history?limit=100",
+    "accountStructure": "okx_unified",
+    "marginMode": "okx_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T18:18:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "code": 0,
+    "data": [],
+    "msg": ""
+  }
+}

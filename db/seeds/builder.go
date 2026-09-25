@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/adapters"
+	"github.com/rbee3u/plutus/internal/adapters/fake"
 	"github.com/rbee3u/plutus/internal/catalog"
 )
 
@@ -37,7 +38,7 @@ var tableOrder = []string{
 var tableColumns = map[string]string{
 	"users":           "id, username, username_normalized, status, password_hash, created_at, updated_at",
 	"portfolios":      "id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at",
-	"identities":      "id, portfolio_id, platform, display_name, account_mode, external_ref, status, archived_at, connection_status, credential_key_version, credentials_updated_at, last_validated_at, last_collected_at, last_error_class, last_error_detail, version, created_at, updated_at",
+	"identities":      "id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref, status, archived_at, connection_status, credential_key_version, credentials_updated_at, last_validated_at, last_collected_at, last_error_class, last_error_detail, version, created_at, updated_at",
 	"accounts":        "id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at",
 	"asset_listings":  "id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at",
 	"instruments":     "id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size, first_seen_at, last_seen_at, created_at, updated_at",
@@ -247,15 +248,16 @@ func (b *builder) portfolio(p *portfolioSpec) {
 }
 
 type identitySpec struct {
-	ID          uuid.UUID
-	Portfolio   uuid.UUID
-	Platform    adapters.Platform
-	Mode        adapters.AccountMode
+	ID        uuid.UUID
+	Portfolio uuid.UUID
+	Platform  adapters.Platform
+	Structure adapters.AccountStructure
+	// MarginMode is the Margin Mode the Identity last observed; empty for structures without one.
+	MarginMode  adapters.MarginMode
 	Name        string
 	Archived    bool
 	ArchivedAt  time.Time
 	APIKey      string // non-empty: credentials are sealed and the Connection enabled after seeding
-	ExternalRef string
 	LastError   string
 	LastDetail  string
 	CollectedAt time.Time
@@ -275,7 +277,12 @@ func (b *builder) identity(i *identitySpec) {
 		at := i.CollectedAt
 		collectedAt = &at
 	}
-	b.add("identities", bin(i.ID), bin(i.Portfolio), q(string(i.Platform)), q(i.Name), q(string(i.Mode)), qn(i.ExternalRef), q(status), tsp(archivedAt),
+	// An Identity with credentials was validated once, which bound it to the account its key reaches.
+	externalRef := ""
+	if i.APIKey != "" {
+		externalRef = fake.ExternalRef(i.APIKey)
+	}
+	b.add("identities", bin(i.ID), bin(i.Portfolio), q(string(i.Platform)), q(i.Name), q(string(i.Structure)), qn(string(i.MarginMode)), qn(externalRef), q(status), tsp(archivedAt),
 		q("unconfigured"), "0", "NULL", "NULL", tsp(collectedAt), qn(i.LastError), qn(i.LastDetail), "1", ts(i.CreatedAt), ts(i.CreatedAt))
 	b.identities[i.ID] = *i
 	if i.APIKey != "" && !i.Archived {
@@ -283,10 +290,10 @@ func (b *builder) identity(i *identitySpec) {
 	}
 }
 
-// accounts inserts one Account per Account Type of the Identity's mode with the given selection.
+// accounts inserts one Account per Account Type of the Identity's structure with the given selection.
 func (b *builder) accounts(identityID uuid.UUID, ids map[adapters.AccountType]uuid.UUID, selected map[adapters.AccountType]bool, createdAt time.Time) {
 	spec := b.identities[identityID]
-	for _, t := range adapters.AccountTypes(spec.Mode) {
+	for _, t := range adapters.AccountTypes(spec.Structure) {
 		id, ok := ids[t.ID]
 		if !ok {
 			id = b.next(kindAccount)

@@ -93,16 +93,28 @@ export type Platform = {
     id: string;
     name: string;
     adapterAvailable: boolean;
-    accountModes: Array<AccountMode>;
+    accountStructures: Array<AccountStructure>;
 };
 
-export type AccountMode = {
+/**
+ * How the Platform arranges an Identity's Accounts. It decides the Account Types, is chosen when the Identity is created, and cannot be changed afterwards.
+ */
+export type AccountStructure = {
     id: string;
     name: string;
     accountTypes: Array<AccountTypeInfo>;
+    /**
+     * Margin Modes the Platform may report within this structure; empty when it has none.
+     */
+    marginModes: Array<MarginModeInfo>;
 };
 
 export type AccountTypeInfo = {
+    id: string;
+    name: string;
+};
+
+export type MarginModeInfo = {
     id: string;
     name: string;
 };
@@ -135,7 +147,11 @@ export type Identity = {
     portfolioId: Uuid;
     platform: string;
     displayName: string;
-    accountMode: string;
+    accountStructure: string;
+    /**
+     * The Margin Mode the Platform last reported. Null before the first successful validation and for Account Structures that have none.
+     */
+    marginMode?: string | null;
     externalRef?: string | null;
     status: 'enabled' | 'archived';
     archivedAt?: string | null;
@@ -153,7 +169,7 @@ export type IdentityList = {
 export type CreateIdentityRequest = {
     platform: string;
     displayName: string;
-    accountMode: string;
+    accountStructure: string;
     selectedAccountTypes: Array<string>;
 };
 
@@ -172,6 +188,14 @@ export type PutCredentialsRequest = {
     apiKey: string;
     apiSecret: string;
     passphrase?: string;
+    /**
+     * Kraken Futures API key; required for Main and derivatives Accounts.
+     */
+    futuresApiKey?: string;
+    /**
+     * Kraken Futures API secret, replaced together with the Spot credentials.
+     */
+    futuresApiSecret?: string;
 };
 
 export type ValidationOutcome = {

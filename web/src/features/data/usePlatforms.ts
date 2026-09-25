@@ -1,9 +1,9 @@
 import { listPlatforms } from "@/api/generated/sdk.gen";
-import type { Platform } from "@/api/generated/types.gen";
+import type { AccountStructure, Platform } from "@/api/generated/types.gen";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { useQuery } from "@tanstack/react-query";
 
-/** Supported Platforms with their Account Modes and Account Types. */
+/** Supported Platforms with their Account Structures, Account Types, and Margin Modes. */
 export function usePlatforms() {
   const { userId, redirect } = useSessionScope();
   return useQuery({
@@ -18,11 +18,39 @@ export function platformLabel(platforms: Platform[] | undefined, id: string): st
   return platforms?.find((item) => item.id === id)?.name ?? id;
 }
 
-export function accountModeLabel(
+function findStructure(
   platforms: Platform[] | undefined,
   platformId: string,
-  modeId: string,
-): string {
+  structureId: string,
+): AccountStructure | undefined {
   const platform = platforms?.find((item) => item.id === platformId);
-  return platform?.accountModes.find((mode) => mode.id === modeId)?.name ?? modeId;
+  return platform?.accountStructures.find((structure) => structure.id === structureId);
+}
+
+export function structureLabel(
+  platforms: Platform[] | undefined,
+  platformId: string,
+  structureId: string,
+): string {
+  return findStructure(platforms, platformId, structureId)?.name ?? structureId;
+}
+
+/**
+ * The Margin Mode line of an Identity: the mode the Platform last reported, a notice while a
+ * structure that has Margin Modes has not been validated yet, or null for structures without one.
+ */
+export function marginModeLabel(
+  platforms: Platform[] | undefined,
+  platformId: string,
+  structureId: string,
+  marginMode: string | null | undefined,
+): string | null {
+  const structure = findStructure(platforms, platformId, structureId);
+  if (marginMode) {
+    return structure?.marginModes.find((mode) => mode.id === marginMode)?.name ?? marginMode;
+  }
+  if (structure && structure.marginModes.length > 0) {
+    return "margin mode unknown until validated";
+  }
+  return null;
 }

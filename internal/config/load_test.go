@@ -311,8 +311,8 @@ func TestExampleTOMLLoads(t *testing.T) {
 	if cfg.Database.DSN != "" {
 		t.Fatal("local example must keep the DSN out of TOML")
 	}
-	if cfg.Database.AllowReset {
-		t.Fatal("example config must not enable db reset")
+	if !cfg.Database.AllowReset {
+		t.Fatal("local example must enable db reset")
 	}
 	if cfg.Auth.SessionCookieName != "plutus_session_local" {
 		t.Fatalf("session cookie %s", cfg.Auth.SessionCookieName)
@@ -323,12 +323,16 @@ func TestLaneExampleTOMLLoads(t *testing.T) {
 	t.Parallel()
 
 	agent := loadExampleTOML(t, "../../config/agent-example.toml")
-	if agent.Server.Port != 8081 || !agent.Database.AllowReset || agent.Auth.SessionCookieName != "plutus_session_agent" {
-		t.Fatalf("agent example %+v %+v", agent.Server, agent.Auth)
+	if agent.Server.Port != 8081 || !agent.Database.AllowReset || agent.Auth.SessionCookieName != "plutus_session_agent" || !agent.Collection.FakeAdapter {
+		t.Fatalf("agent example %+v %+v %+v", agent.Server, agent.Auth, agent.Collection)
 	}
-	walk := loadExampleTOML(t, "../../config/walk-example.toml")
-	if walk.Server.Port != 8082 || !walk.Database.AllowReset || walk.Auth.SessionCookieName != "plutus_session_walk" {
-		t.Fatalf("walk example %+v %+v", walk.Server, walk.Auth)
+	test := loadExampleTOML(t, "../../config/test-example.toml")
+	if test.Server.Port != 8082 || !test.Database.AllowReset || test.Auth.SessionCookieName != "plutus_session_test" || test.Collection.FakeAdapter {
+		t.Fatalf("test example %+v %+v %+v", test.Server, test.Auth, test.Collection)
+	}
+	prod := loadExampleTOML(t, "../../config/prod-example.toml")
+	if prod.Server.Port != 8083 || prod.Database.AllowReset || prod.Auth.SessionCookieName != "plutus_session" || prod.Collection.FakeAdapter {
+		t.Fatalf("prod example %+v %+v %+v", prod.Server, prod.Auth, prod.Collection)
 	}
 }
 

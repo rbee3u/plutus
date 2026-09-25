@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func withTestEnvWalk(opts *Options) *Options {
-	opts.walkEnvFile = defaultTestEnvFileName
+func withGotestEnvWalk(opts *Options) *Options {
+	opts.walkEnvFile = defaultGotestEnvFileName
 	return opts
 }
 
@@ -54,16 +54,16 @@ func TestLoadMasterKeyFromDotEnv(t *testing.T) {
 func TestLookupUsesDotEnvWhenProcessEnvMissing(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
+			defaultGotestEnvFileName: "PLUTUS_GOTEST_DSN=mysql://gotest\n",
 		}),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if value != "mysql://plutus_test" {
+	if value != "mysql://gotest" {
 		t.Fatalf("lookup %q", value)
 	}
 }
@@ -71,10 +71,10 @@ func TestLookupUsesDotEnvWhenProcessEnvMissing(t *testing.T) {
 func TestLookupPrefersProcessEnvOverDotEnv(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
-		LookupEnv: envMap(map[string]string{"PLUTUS_TEST_DATABASE_DSN": "from-env"}),
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
+		LookupEnv: envMap(map[string]string{"PLUTUS_GOTEST_DSN": "from-env"}),
 		ReadFile: filesMap(map[string]string{
-			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-file\n",
+			defaultGotestEnvFileName: "PLUTUS_GOTEST_DSN=from-file\n",
 		}),
 	}))
 	if err != nil {
@@ -88,7 +88,7 @@ func TestLookupPrefersProcessEnvOverDotEnv(t *testing.T) {
 func TestLookupMissingDotEnvAndProcessEnv(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile:  filesMap(nil),
 	}))
@@ -103,9 +103,9 @@ func TestLookupMissingDotEnvAndProcessEnv(t *testing.T) {
 func TestLookupInvalidDotEnv(t *testing.T) {
 	t.Parallel()
 
-	_, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	_, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
-		ReadFile:  filesMap(map[string]string{defaultTestEnvFileName: "not-a-assignment\n"}),
+		ReadFile:  filesMap(map[string]string{defaultGotestEnvFileName: "not-a-assignment\n"}),
 	}))
 	if err == nil {
 		t.Fatal("expected parse error")
@@ -117,18 +117,18 @@ func TestLookupUsesModuleRootDotEnvWhenCwdIsNested(t *testing.T) {
 
 	root := filepath.Join(string(filepath.Separator), "repo")
 	pkg := filepath.Join(root, "internal", "infra", "mysql")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			filepath.Join(root, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=mysql://plutus_test\n",
-			filepath.Join(root, goModFileName):          "module github.com/rbee3u/plutus\n",
+			filepath.Join(root, defaultGotestEnvFileName): "PLUTUS_GOTEST_DSN=mysql://gotest\n",
+			filepath.Join(root, goModFileName):            "module github.com/rbee3u/plutus\n",
 		}),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if value != "mysql://plutus_test" {
+	if value != "mysql://gotest" {
 		t.Fatalf("lookup %q", value)
 	}
 }
@@ -138,13 +138,13 @@ func TestLookupPrefersWorkingDirectoryDotEnvOverModuleRoot(t *testing.T) {
 
 	root := filepath.Join(string(filepath.Separator), "repo")
 	pkg := filepath.Join(root, "internal", "infra", "mysql")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			defaultTestEnvFileName:                      "PLUTUS_TEST_DATABASE_DSN=from-cwd\n",
-			filepath.Join(root, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=from-module\n",
-			filepath.Join(root, goModFileName):          "module github.com/rbee3u/plutus\n",
+			defaultGotestEnvFileName:                      "PLUTUS_GOTEST_DSN=from-cwd\n",
+			filepath.Join(root, defaultGotestEnvFileName): "PLUTUS_GOTEST_DSN=from-module\n",
+			filepath.Join(root, goModFileName):            "module github.com/rbee3u/plutus\n",
 		}),
 	}))
 	if err != nil {
@@ -160,11 +160,11 @@ func TestLookupIgnoresParentDotEnvWithoutGoMod(t *testing.T) {
 
 	home := filepath.Join(string(filepath.Separator), "home", "dev")
 	pkg := filepath.Join(home, "scratch")
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		getwd:     func() (string, error) { return pkg, nil },
 		ReadFile: filesMap(map[string]string{
-			filepath.Join(home, defaultTestEnvFileName): "PLUTUS_TEST_DATABASE_DSN=from-home\n",
+			filepath.Join(home, defaultGotestEnvFileName): "PLUTUS_GOTEST_DSN=from-home\n",
 		}),
 	}))
 	if err != nil {
@@ -175,34 +175,34 @@ func TestLookupIgnoresParentDotEnvWithoutGoMod(t *testing.T) {
 	}
 }
 
-func TestLookupTestDSNIgnoresLocalEnv(t *testing.T) {
+func TestLookupGotestDSNIgnoresLocalEnv(t *testing.T) {
 	t.Parallel()
 
-	value, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	value, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			defaultEnvFileName:     "PLUTUS_TEST_DATABASE_DSN=from-local\n",
-			defaultTestEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-test\n",
+			defaultEnvFileName:       "PLUTUS_GOTEST_DSN=from-local\n",
+			defaultGotestEnvFileName: "PLUTUS_GOTEST_DSN=from-gotest\n",
 		}),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if value != "from-test" {
+	if value != "from-gotest" {
 		t.Fatalf("lookup %q", value)
 	}
 
-	missing, err := lookup("PLUTUS_TEST_DATABASE_DSN", withTestEnvWalk(&Options{
+	missing, err := lookup("PLUTUS_GOTEST_DSN", withGotestEnvWalk(&Options{
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			defaultEnvFileName: "PLUTUS_TEST_DATABASE_DSN=from-local\n",
+			defaultEnvFileName: "PLUTUS_GOTEST_DSN=from-local\n",
 		}),
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if missing != "" {
-		t.Fatalf("test DSN leaked from config/local.env: %q", missing)
+		t.Fatalf("gotest DSN leaked from config/local.env: %q", missing)
 	}
 }
 

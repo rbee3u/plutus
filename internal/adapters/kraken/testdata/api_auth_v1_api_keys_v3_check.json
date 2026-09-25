@@ -1,0 +1,31 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "GET /api/auth/v1/api-keys/v3/check",
+    "accountStructure": "kraken_unified",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": null,
+    "redacted": [
+      "accountUid",
+      "allowedCidrBlock",
+      "allowedCidrBlocks",
+      "apiKey",
+      "createdAt",
+      "iiban"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "accountUid": "REDACTED",
+    "allowedCidrBlock": "REDACTED",
+    "allowedCidrBlocks": [],
+    "apiKey": "REDACTED",
+    "createdAt": "REDACTED",
+    "iiban": "REDACTED",
+    "permissions": {
+      "general": "READ_ONLY",
+      "transfer": "NO_ACCESS"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/earn/advance/position?category=DualAssets\u0026limit=20",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "",
+      "list": [],
+      "nextPageCursor": ""
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "",
+    "time": 1790366137783
+  }
+}

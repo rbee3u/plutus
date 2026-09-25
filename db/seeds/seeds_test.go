@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
@@ -55,34 +54,16 @@ func TestSeedIDIsStable(t *testing.T) {
 	}
 }
 
-const seedCheckDB = "plutus_seedcheck"
+// TestMain gives this package its own throwaway database; TestProfilesApplyAndRebuild is the only
+// database test here and drops every table between profiles, so it must not share a database.
+func TestMain(m *testing.M) {
+	mysql.RunTestMain(m)
+}
 
 func TestProfilesApplyAndRebuild(t *testing.T) {
-	dsn := mysql.TestDSN(t)
+	db := mysql.OpenTestDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-
-	admin, err := mysql.Open(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = admin.Close() }()
-	if _, err := admin.ExecContext(ctx, "CREATE DATABASE IF NOT EXISTS `"+seedCheckDB+"`"); err != nil {
-		t.Skipf("cannot create %s: %v", seedCheckDB, err)
-	}
-	t.Cleanup(func() {
-		_, _ = admin.ExecContext(context.Background(), "DROP DATABASE IF EXISTS `"+seedCheckDB+"`")
-	})
-	cfg, err := mysqldriver.ParseDSN(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.DBName = seedCheckDB
-	db, err := mysql.Open(cfg.FormatDSN())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
 
 	for _, name := range Profiles {
 		if err := mysql.DropAllTables(ctx, db); err != nil {

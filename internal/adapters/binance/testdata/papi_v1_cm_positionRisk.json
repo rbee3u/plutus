@@ -1,0 +1,28 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /papi/v1/cm/positionRisk",
+    "accountStructure": "binance_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": [
+    {
+      "symbol": "DOGEUSD_PERP",
+      "positionAmt": "1",
+      "entryPrice": "0.10174",
+      "markPrice": "0.09778163",
+      "unRealizedProfit": "-3.97893991",
+      "liquidationPrice": "0.00018275",
+      "leverage": "3",
+      "positionSide": "BOTH",
+      "updateTime": 1790144246362,
+      "maxQty": "20000000",
+      "notionalValue": "102.26869812",
+      "breakEvenPrice": "0.10179087"
+    }
+  ]
+}

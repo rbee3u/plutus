@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "platform": "okx",
+    "endpoint": "GET /api/v5/account/positions",
+    "accountStructure": "okx_unified",
+    "marginMode": "okx_spot",
+    "scenario": "documented",
+    "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-positions",
+    "trimmed": "An empty list: Spot mode trades no swaps or futures (only bought options, which Plutus refuses), and a Spot mode borrowing is reported in the balance details (liab), not as a position.",
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [],
+    "msg": ""
+  }
+}

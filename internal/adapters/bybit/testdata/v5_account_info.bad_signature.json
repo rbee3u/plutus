@@ -1,0 +1,22 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/info",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "bad_signature",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": [
+      "API key and secret echoes"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "result": {},
+    "retCode": 10004,
+    "retExtInfo": {},
+    "retMsg": "Error sign, please check your signature generation algorithm: origin_string[1790366138941redacted5000]",
+    "time": 1790366138870
+  }
+}

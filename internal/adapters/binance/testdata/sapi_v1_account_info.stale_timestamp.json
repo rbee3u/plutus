@@ -1,0 +1,16 @@
+{
+  "fixture": {
+    "platform": "binance",
+    "endpoint": "GET /sapi/v1/account/info",
+    "accountStructure": "binance_pm",
+    "scenario": "stale_timestamp",
+    "recordedAt": "2026-09-25T19:34:47Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 400,
+  "body": {
+    "code": -1021,
+    "msg": "Timestamp for this request is outside of the recvWindow."
+  }
+}

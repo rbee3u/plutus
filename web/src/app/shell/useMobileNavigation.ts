@@ -36,9 +36,18 @@ export function useMobileNavigation() {
       [...sidebar.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), select")].filter(
         (element) => !element.hidden && element.tabIndex >= 0,
       );
-    window.requestAnimationFrame(() =>
-      (sidebar.querySelector<HTMLElement>('[aria-current="page"]') ?? focusable()[0])?.focus(),
-    );
+    // Chromium may still inherit `visibility: hidden` for a frame after the drawer opens.
+    let focusFrame = 0;
+    const focusWhenVisible = () => {
+      const target = sidebar.querySelector<HTMLElement>('[aria-current="page"]') ?? focusable()[0];
+      if (!target) return;
+      if (getComputedStyle(target).visibility !== "visible") {
+        focusFrame = window.requestAnimationFrame(focusWhenVisible);
+        return;
+      }
+      target.focus();
+    };
+    focusFrame = window.requestAnimationFrame(focusWhenVisible);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (event.key === "Escape") {
@@ -60,7 +69,10 @@ export function useMobileNavigation() {
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [close, mobileLayout, open]);
 
   return { open, setOpen, close, mobileLayout, sidebarRef, menuButtonRef };

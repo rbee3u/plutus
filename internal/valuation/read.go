@@ -429,11 +429,16 @@ func positionRow(account *AccountValuation, instrumentID []byte, platform, symbo
 			}
 		}
 	case "contracts":
-		if mark.Valid && contractSize.Valid && quoteIsUSD {
-			price, okPrice := decimal.Parse(mark.String)
-			size, okSize := decimal.Parse(contractSize.String)
-			if okPrice && okSize {
-				row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(decimal.Mul(qty, size), price)))
+		// A linear contract's size is a quantity of the base Asset, converted with the mark price;
+		// an inverse contract's size is already a USD face value and needs no price.
+		if size, ok := decimal.Parse(contractSize.String); contractSize.Valid && ok {
+			switch {
+			case inverseKind(kind):
+				row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(qty, size)))
+			case mark.Valid && quoteIsUSD:
+				if price, okPrice := decimal.Parse(mark.String); okPrice {
+					row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(decimal.Mul(qty, size), price)))
+				}
 			}
 		}
 	}

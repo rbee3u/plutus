@@ -1,0 +1,101 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "WS /ws/v1/balances_snapshot",
+    "accountStructure": "kraken_separate",
+    "scenario": "documented",
+    "documentation": "https://docs.kraken.com/exchange/api-reference/futures-websocket/balances",
+    "trimmed": "Documented balances_snapshot example, with its multi-collateral wallet taken from the documented Multi-Collateral Delta and its F-XBT:USD wallet from the documented Single-Collateral Delta. Added three documented fields the example omits: unified_balances = false, and futures_cash_value and futures_upnl_cash_value, both invented as 0.1219368845 XBT at the documented PI_XBTUSD mark price. Values from different examples are not mutually consistent; the fixture proves the field mapping, not arithmetic across endpoints.",
+    "redacted": [
+      "account"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "feed": "balances_snapshot",
+    "account": "REDACTED",
+    "holding": {
+      "USDT": 4997.5012493753,
+      "XBT": 0.1285407184,
+      "ETH": 1.8714395862,
+      "LTC": 47.6462740614,
+      "GBP": 3733.488646461,
+      "USDC": 5001.00020004,
+      "USD": 5000.0,
+      "BCH": 16.8924625832,
+      "EUR": 4459.070194683,
+      "XRP": 7065.5399485629
+    },
+    "futures": {
+      "F-ETH:EUR": {
+        "name": "F-ETH:EUR",
+        "pair": "ETH/EUR",
+        "unit": "EUR",
+        "portfolio_value": 0.0,
+        "balance": 0.0,
+        "maintenance_margin": 0.0,
+        "initial_margin": 0.0,
+        "available": 0.0,
+        "unrealized_funding": 0.0,
+        "pnl": 0.0
+      },
+      "F-XBT:USD": {
+        "name": "F-XBT:USD",
+        "pair": "XBT/USD",
+        "unit": "XBT",
+        "portfolio_value": 0.1219368845,
+        "balance": 0.1219368845,
+        "maintenance_margin": 0.0,
+        "initial_margin": 0.0,
+        "available": 0.1219368845,
+        "unrealized_funding": 0.0,
+        "pnl": 0.0
+      }
+    },
+    "flex_futures": {
+      "currencies": {
+        "USD": {
+          "quantity": 5000.0,
+          "value": 5000.0,
+          "collateral_value": 5000.0,
+          "available": 5000.0,
+          "haircut": 0.0,
+          "conversion_spread": 0.0
+        }
+      },
+      "balance_value": 5000.0,
+      "portfolio_value": 5000.0,
+      "collateral_value": 5000.0,
+      "initial_margin": 0.0,
+      "initial_margin_without_orders": 0.0,
+      "maintenance_margin": 0.0,
+      "pnl": 0.0,
+      "unrealized_funding": 0.0,
+      "total_unrealized": 0.0,
+      "total_unrealized_as_margin": 0.0,
+      "margin_equity": 5000.0,
+      "available_margin": 5000.0,
+      "isolated": {},
+      "cross": {
+        "balance": 0.0,
+        "portfolio_value": 0.0,
+        "collateral_value": 0.0,
+        "initial_margin": 0.0,
+        "initial_margin_without_orders": 0.0,
+        "maintenance_margin": 0.0,
+        "pnl": 0.0,
+        "unrealized_funding": 0,
+        "total_unrealized": 0.0,
+        "total_unrealized_as_margin": 0.0,
+        "margin_equity": 0.0,
+        "available_margin": 0.0,
+        "effective_leverage": 0.0
+      },
+      "unified_balances": false
+    },
+    "timestamp": 1640995200000,
+    "seq": 0,
+    "futures_cash_value": 3683.7011,
+    "futures_upnl_cash_value": 3683.7011
+  }
+}

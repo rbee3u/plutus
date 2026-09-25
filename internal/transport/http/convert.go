@@ -32,14 +32,15 @@ func toAPIIdentity(item *identity.Identity) api.Identity {
 		accounts = append(accounts, toAPIAccount(&item.Accounts[i]))
 	}
 	return api.Identity{
-		Id:          item.ID,
-		PortfolioId: item.PortfolioID,
-		Platform:    string(item.Platform),
-		DisplayName: item.DisplayName,
-		AccountMode: string(item.AccountMode),
-		ExternalRef: item.ExternalRef,
-		Status:      api.IdentityStatus(item.Status),
-		ArchivedAt:  item.ArchivedAt,
+		Id:               item.ID,
+		PortfolioId:      item.PortfolioID,
+		Platform:         string(item.Platform),
+		DisplayName:      item.DisplayName,
+		AccountStructure: string(item.AccountStructure),
+		MarginMode:       strPtr(string(item.MarginMode)),
+		ExternalRef:      item.ExternalRef,
+		Status:           api.IdentityStatus(item.Status),
+		ArchivedAt:       item.ArchivedAt,
 		Connection: api.Connection{
 			Status:                api.ConnectionStatus(item.Connection.Status),
 			CredentialsConfigured: item.Connection.CredentialsConfigured,

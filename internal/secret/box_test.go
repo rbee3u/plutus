@@ -98,3 +98,36 @@ func testBox(t *testing.T) *Box {
 	}
 	return box
 }
+
+func TestCredentialGroupsAndOldDocumentCompatibility(t *testing.T) {
+	box := testBox(t)
+	id := uuid.Must(uuid.NewV7())
+	for _, creds := range []Credentials{
+		{APIKey: "spot", APISecret: "secret", FuturesAPIKey: "futures", FuturesAPISecret: "other"},
+		{FuturesAPIKey: "futures", FuturesAPISecret: "other"},
+	} {
+		ciphertext, nonce, err := box.Seal(id, id, CurrentKeyVersion(), creds)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opened, err := box.Open(id, id, CurrentKeyVersion(), ciphertext, nonce)
+		if err != nil || opened != creds {
+			t.Fatal("credential groups did not round-trip")
+		}
+	}
+	nonce := make([]byte, nonceSize)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		t.Fatal(err)
+	}
+	old := []byte(`{"v":1,"apiKey":"old-key","apiSecret":"old-secret","passphrase":"old-phrase"}`)
+	ciphertext := box.aead.Seal(nil, nonce, old, additionalData(id, id, 1, CurrentKeyVersion()))
+	opened, err := box.Open(id, id, CurrentKeyVersion(), ciphertext, nonce)
+	if err != nil || opened.APIKey != "old-key" || opened.FuturesAPIKey != "" {
+		t.Fatal("existing credential document no longer decrypts")
+	}
+	for _, creds := range []Credentials{{FuturesAPIKey: "half"}, {APIKey: "spot", APISecret: "secret", FuturesAPISecret: "half"}} {
+		if _, _, err := box.Seal(id, id, CurrentKeyVersion(), creds); err != ErrInvalidCredentials {
+			t.Fatal("accepted an incomplete key pair")
+		}
+	}
+}

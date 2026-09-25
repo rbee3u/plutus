@@ -7,17 +7,12 @@ import (
 )
 
 func TestMigrateUpAndSeeds(t *testing.T) {
-	dsn := TestDSN(t)
+	db := OpenTestDB(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	db, err := Open(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-
+	// Up is idempotent on an already migrated database.
 	if err := Up(db); err != nil {
 		t.Fatalf("up: %v", err)
 	}

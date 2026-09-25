@@ -1,0 +1,24 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/position/list?category=inverse\u0026limit=200",
+    "accountStructure": "bybit_uta_2_0",
+    "marginMode": "bybit_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T19:55:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "inverse",
+      "list": [],
+      "nextPageCursor": ""
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790366136403
+  }
+}

@@ -56,7 +56,8 @@ CREATE TABLE identities (
     portfolio_id BINARY(16) NOT NULL,
     platform VARCHAR(32) NOT NULL,
     display_name VARCHAR(120) NOT NULL,
-    account_mode VARCHAR(64) NOT NULL,
+    account_structure VARCHAR(64) NOT NULL,
+    margin_mode VARCHAR(64) NULL,
     external_ref VARCHAR(191) NULL,
     status VARCHAR(32) NOT NULL,
     archived_at DATETIME(6) NULL,
@@ -77,8 +78,18 @@ CREATE TABLE identities (
     UNIQUE KEY uq_identities_portfolio_id (portfolio_id, id),
     UNIQUE KEY uq_identities_active_name (portfolio_id, platform, active_display_name),
     KEY idx_identities_portfolio_status (portfolio_id, status),
-    CONSTRAINT chk_identities_platform CHECK (platform IN ('binance', 'okx', 'bybit')),
-    CONSTRAINT chk_identities_account_mode CHECK (account_mode IN ('binance_pm', 'okx_mcm', 'okx_pm', 'bybit_uta_2_0')),
+    CONSTRAINT chk_identities_platform CHECK (platform IN ('binance', 'okx', 'bybit', 'kraken')),
+    CONSTRAINT chk_identities_account_structure CHECK (
+        (platform = 'binance' AND account_structure IN ('binance_classic', 'binance_pm'))
+        OR (platform = 'okx' AND account_structure = 'okx_unified')
+        OR (platform = 'bybit' AND account_structure = 'bybit_uta_2_0')
+        OR (platform = 'kraken' AND account_structure IN ('kraken_separate', 'kraken_unified'))
+    ),
+    CONSTRAINT chk_identities_margin_mode CHECK (
+        margin_mode IS NULL
+        OR (account_structure = 'okx_unified' AND margin_mode IN ('okx_spot', 'okx_futures', 'okx_mcm', 'okx_pm'))
+        OR (account_structure = 'bybit_uta_2_0' AND margin_mode IN ('bybit_isolated', 'bybit_cross', 'bybit_pm'))
+    ),
     CONSTRAINT chk_identities_status CHECK (status IN ('enabled', 'archived')),
     CONSTRAINT chk_identities_connection_status CHECK (connection_status IN ('unconfigured', 'disabled', 'enabled', 'invalid')),
     CONSTRAINT chk_identities_credentials CHECK (
@@ -125,7 +136,7 @@ CREATE TABLE asset_listings (
     PRIMARY KEY (id),
     UNIQUE KEY uq_asset_listings_platform_symbol (platform, symbol),
     KEY idx_asset_listings_asset (asset_symbol),
-    CONSTRAINT chk_asset_listings_platform CHECK (platform IN ('binance', 'okx', 'bybit')),
+    CONSTRAINT chk_asset_listings_platform CHECK (platform IN ('binance', 'okx', 'bybit', 'kraken')),
     CONSTRAINT chk_asset_listings_source CHECK (mapping_source IN ('auto', 'manual'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -145,7 +156,7 @@ CREATE TABLE instruments (
     updated_at DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_instruments_platform_symbol (platform, symbol),
-    CONSTRAINT chk_instruments_platform CHECK (platform IN ('binance', 'okx', 'bybit')),
+    CONSTRAINT chk_instruments_platform CHECK (platform IN ('binance', 'okx', 'bybit', 'kraken')),
     CONSTRAINT chk_instruments_kind CHECK (kind IN ('spot', 'linear_perpetual', 'inverse_perpetual', 'linear_delivery', 'inverse_delivery')),
     CONSTRAINT chk_instruments_delivery_expiry CHECK (
         kind NOT IN ('linear_delivery', 'inverse_delivery') OR expiry_at IS NOT NULL
@@ -273,7 +284,7 @@ CREATE TABLE prices (
     price DECIMAL(65,30) NOT NULL,
     quote_symbol VARCHAR(64) NOT NULL,
     PRIMARY KEY (platform, asset_symbol, observed_at),
-    CONSTRAINT chk_prices_platform CHECK (platform IN ('binance', 'okx', 'bybit'))
+    CONSTRAINT chk_prices_platform CHECK (platform IN ('binance', 'okx', 'bybit', 'kraken'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE capital_flows (

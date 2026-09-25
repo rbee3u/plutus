@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
@@ -201,6 +202,12 @@ func usdQuote(symbol string) bool {
 		return true
 	}
 	return false
+}
+
+// inverseKind reports whether an Instrument settles in its base Asset, which makes its contract
+// size a USD face value rather than a quantity of the base Asset.
+func inverseKind(kind string) bool {
+	return kind == adapters.KindInversePerp || kind == adapters.KindInverseDlv
 }
 
 // valueJob computes the Account Valuation of every report in the job without writing.

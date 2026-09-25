@@ -3,6 +3,7 @@ package collection
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ type harness struct {
 	jobs        *jobs.Service
 	collection  *Service
 	fakes       map[adapters.Platform]*fake.Adapter
+	registry    *adapters.Registry
 }
 
 // newHarness creates a fresh User and Portfolio in the shared test database and wires the
@@ -43,7 +45,7 @@ func newHarness(t *testing.T) *harness {
 
 	registry := adapters.NewRegistry()
 	fakes := map[adapters.Platform]*fake.Adapter{}
-	for _, platform := range []adapters.Platform{adapters.PlatformBinance, adapters.PlatformOKX, adapters.PlatformBybit} {
+	for _, platform := range adapters.OfferedPlatforms() {
 		f := fake.New(platform)
 		fakes[platform] = f
 		registry.Register(platform, f)
@@ -66,7 +68,7 @@ func newHarness(t *testing.T) *harness {
 	valuationSvc := valuation.NewService(db)
 	h := &harness{
 		ctx: ctx, t: t, userID: user.ID, portfolioID: portfolios[0].ID,
-		identities: identities, catalog: catalogSvc, valuation: valuationSvc, jobs: jobs.NewService(db), fakes: fakes,
+		identities: identities, catalog: catalogSvc, valuation: valuationSvc, jobs: jobs.NewService(db), fakes: fakes, registry: registry,
 	}
 	h.collection = NewService(db, Options{
 		Adapters: registry, Identities: identities, Catalog: catalogSvc, Valuation: valuationSvc,
@@ -75,10 +77,10 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-func (h *harness) createIdentity(name string, platform adapters.Platform, mode adapters.AccountMode, types ...adapters.AccountType) identity.Identity {
+func (h *harness) createIdentity(name string, platform adapters.Platform, structure adapters.AccountStructure, types ...adapters.AccountType) identity.Identity {
 	h.t.Helper()
 	item, err := h.identities.Create(h.ctx, h.portfolioID, &identity.CreateInput{
-		ActorUserID: h.userID, RequestID: "test", Platform: platform, DisplayName: name, AccountMode: mode, SelectedAccountTypes: types,
+		ActorUserID: h.userID, RequestID: "test", Platform: platform, DisplayName: name, AccountStructure: structure, SelectedAccountTypes: types,
 	})
 	if err != nil {
 		h.t.Fatalf("create %s: %v", name, err)
@@ -133,7 +135,7 @@ func (h *harness) accountsByType(jobID uuid.UUID, identityID uuid.UUID) map[stri
 
 func TestEnableRequiresSuccessfulValidation(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("OKX bad key", adapters.PlatformOKX, adapters.ModeOKXPM, "trading")
+	item := h.createIdentity("OKX bad key", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
 	if item.Connection.Status != identity.ConnectionUnconfigured {
 		t.Fatalf("new identity connection %q, want unconfigured", item.Connection.Status)
 	}
@@ -164,13 +166,13 @@ func TestEnableRequiresSuccessfulValidation(t *testing.T) {
 
 func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	h := newHarness(t)
-	good := h.createIdentity("Binance good", adapters.PlatformBinance, adapters.ModeBinancePM, "portfolio_margin", "spot")
+	good := h.createIdentity("Binance good", adapters.PlatformBinance, adapters.StructureBinancePM, "portfolio_margin", "spot")
 	good = h.storeCredentials(good, "seed-good-key")
 	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, good.ID, good.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil || !outcome.OK || enabled.Connection.Status != identity.ConnectionEnabled {
 		t.Fatalf("enable good key: err=%v outcome=%+v status=%q", err, outcome, enabled.Connection.Status)
 	}
-	flaky := h.createIdentity("Bybit flaky", adapters.PlatformBybit, adapters.ModeBybitUTA2, "unified")
+	flaky := h.createIdentity("Bybit flaky", adapters.PlatformBybit, adapters.StructureBybitUTA2, "unified")
 	flaky = h.storeCredentials(flaky, "flaky-key")
 	// The flaky key fails once per minute with a temporary error and then succeeds; enabling may need one retry.
 	enabledFlaky, _, err := h.identities.Enable(h.ctx, h.portfolioID, flaky.ID, flaky.Version, identity.ActionInput{ActorUserID: h.userID})
@@ -198,7 +200,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("spot valuation: %+v", spot)
 	}
 	scenario := fake.Scenario("seed-good-key", *spot.ReportObservedAt)
-	report := scenario.Report("spot", *spot.ReportObservedAt, false)
+	report := scenario.Report("", "spot", *spot.ReportObservedAt, false)
 	expected := decimal.Zero()
 	for _, b := range report.Balances {
 		qty, _ := decimal.Parse(b.Equity)
@@ -305,7 +307,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 
 func TestRateLimitIsRetriedWithoutInvalidating(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("OKX rate limited", adapters.PlatformOKX, adapters.ModeOKXMCM, "trading", "funding")
+	item := h.createIdentity("OKX rate limited", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading", "funding")
 	item = h.storeCredentials(item, "ratelimit-key")
 	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled' WHERE id = ?", item.ID[:]); err != nil {
 		t.Fatal(err)
@@ -343,5 +345,121 @@ func TestOwnershipIsScopedByUser(t *testing.T) {
 	}
 	if _, err := portfolio.NewService(h.collection.db, 15*time.Minute).Get(h.ctx, other.ID, h.portfolioID); !errors.Is(err, portfolio.ErrNotFound) {
 		t.Fatalf("another user's portfolio must be not found, got %v", err)
+	}
+}
+
+func TestMarginModeIsStoredAtValidationAndAuditedWhenItChanges(t *testing.T) {
+	h := newHarness(t)
+	start := time.Now().UTC()
+	clock := start
+	h.fakes[adapters.PlatformOKX].WithClock(func() time.Time { return clock })
+	item := h.createIdentity("OKX switching", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+	if item.MarginMode != "" {
+		t.Fatalf("a new Identity has no Margin Mode before validation, got %q", item.MarginMode)
+	}
+	item = h.storeCredentials(item, "switch-okx")
+	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
+	first := fake.MarginMode(adapters.StructureOKXUnified, "switch-okx", start)
+	if err != nil || !outcome.OK || enabled.MarginMode != first {
+		t.Fatalf("enable: err=%v outcome=%+v mode=%q, want %q", err, outcome, enabled.MarginMode, first)
+	}
+	changes := func() int {
+		t.Helper()
+		var n int
+		if err := h.collection.db.QueryRowContext(h.ctx,
+			"SELECT COUNT(*) FROM audit_events WHERE resource_id = ? AND action = 'identity.margin_mode.change' AND actor_user_id IS NULL", item.ID[:]).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if changes() != 0 {
+		t.Fatal("validation observed the first Margin Mode; that is not a change")
+	}
+
+	// A cycle a minute later observes the next Margin Mode, as if the owner switched it on OKX.
+	clock = start.Add(time.Minute)
+	if summary, _ := h.runCycle(); summary.ReportFailed != 0 {
+		t.Fatalf("cycle summary: %+v", summary)
+	}
+	after, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := fake.MarginMode(adapters.StructureOKXUnified, "switch-okx", clock)
+	if second == first || after.MarginMode != second {
+		t.Fatalf("stored Margin Mode %q after the switch from %q, want %q", after.MarginMode, first, second)
+	}
+	if changes() != 1 {
+		t.Fatal("the switch must be audited once, with the system as the actor")
+	}
+	h.runCycle()
+	if changes() != 1 {
+		t.Fatal("an unchanged Margin Mode must not be audited again")
+	}
+}
+
+func TestValidationRefusesAKeyOfAnotherPlatformAccount(t *testing.T) {
+	h := newHarness(t)
+	item := h.createIdentity("Binance bound", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot", "um_futures")
+	item = h.storeCredentials(item, "key-first-account")
+	validated, outcome, err := h.identities.Validate(h.ctx, h.portfolioID, item.ID, identity.ActionInput{ActorUserID: h.userID})
+	if err != nil || !outcome.OK || validated.ExternalRef == nil || validated.MarginMode != "" {
+		t.Fatalf("validate: err=%v outcome=%+v identity=%+v", err, outcome, validated)
+	}
+	bound := *validated.ExternalRef
+
+	replaced := h.storeCredentials(validated, "key-other-account")
+	refused, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, replaced.ID, replaced.Version, identity.ActionInput{ActorUserID: h.userID})
+	if !errors.Is(err, identity.ErrValidationFailed) || outcome.ErrorClass != adapters.ClassUnsupported || !strings.Contains(outcome.ErrorDetail, bound) {
+		t.Fatalf("a key of another account must be refused: err=%v outcome=%+v", err, outcome)
+	}
+	if refused.Connection.Status != identity.ConnectionDisabled || refused.ExternalRef == nil || *refused.ExternalRef != bound {
+		t.Fatalf("the refused key must leave the Connection disabled and the binding unchanged: %+v", refused)
+	}
+
+	restored := h.storeCredentials(refused, "key-first-account")
+	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, restored.ID, restored.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
+		t.Fatalf("the original account's key must still validate: err=%v outcome=%+v", err, outcome)
+	}
+}
+
+// foreignModeAdapter validates with a proper OKX Margin Mode but reports mode in a Collection
+// Run, as a broken adapter would: another Platform's Margin Mode, or none.
+type foreignModeAdapter struct{ mode adapters.MarginMode }
+
+func (foreignModeAdapter) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
+	return adapters.ValidationResult{ExternalRef: "foreign", MarginMode: adapters.MarginOKXPM}, nil
+}
+
+func (a foreignModeAdapter) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+	batch := adapters.Batch{ObservedAt: time.Now().UTC(), MarginMode: a.mode}
+	for _, accountType := range accounts {
+		batch.Reports = append(batch.Reports, adapters.AccountReport{AccountType: accountType, Status: adapters.StatusOK, ObservedAt: batch.ObservedAt})
+	}
+	return batch, nil
+}
+
+func TestAForeignOrMissingMarginModeFailsTheRun(t *testing.T) {
+	for _, mode := range []adapters.MarginMode{adapters.MarginBybitCross, ""} {
+		t.Run("mode "+string(mode), func(t *testing.T) {
+			h := newHarness(t)
+			h.registry.Register(adapters.PlatformOKX, foreignModeAdapter{mode: mode})
+			item := h.createIdentity("OKX foreign mode", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+			item = h.storeCredentials(item, "k")
+			if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
+				t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
+			}
+			summary, jobID := h.runCycle()
+			if summary.ReportFailed != 1 || summary.Invalidated != 0 {
+				t.Fatalf("summary %+v", summary)
+			}
+			if got := h.accountsByType(jobID, item.ID)["trading"]; got.ErrorClass == nil || *got.ErrorClass != adapters.ClassUnsupported {
+				t.Fatalf("trading report: %+v", got)
+			}
+			after, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)
+			if err != nil || after.MarginMode != adapters.MarginOKXPM || after.Connection.Status != identity.ConnectionEnabled {
+				t.Fatalf("the stored Margin Mode and the Connection must be kept: err=%v identity=%+v", err, after)
+			}
+		})
 	}
 }

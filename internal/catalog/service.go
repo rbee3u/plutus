@@ -31,7 +31,9 @@ const (
 	MappingManual = "manual"
 )
 
-var symbolPattern = regexp.MustCompile(`^[A-Z0-9][A-Z0-9._-]{0,63}$`)
+// symbolPattern accepts letters of any script, so listings such as Binance's 牛来USDT contract are
+// kept; maxSymbol bounds the byte length, which keeps it within the VARCHAR(64) columns.
+var symbolPattern = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._-]*$`)
 
 // Service reads and writes the Platform catalog.
 type Service struct {

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Local development serve on :8080. Does not wipe the database or rebuild the SPA.
-# Use Vite (`npm run dev` in web/) against this process. Agent self-check and
-# human walkthrough use the other scripts.
+# dev (local): rebuild the SPA and serve the existing plutus_local data on :8080 without resetting it.
+# Use local-wipe-and-serve.sh for a fresh seed.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,7 +16,9 @@ if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   exit 1
 fi
 
-echo "Starting local serve on 0.0.0.0:8080 using $config and $envfile."
+make web-build
+
+echo "Serving the dev (local) environment on 0.0.0.0:8080 using $config and $envfile."
 echo "This script does not reset the database."
 echo "This machine: http://127.0.0.1:8080"
 lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"

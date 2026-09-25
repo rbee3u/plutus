@@ -19,7 +19,7 @@ import (
 func newDatabaseCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db",
-		Short: "Load a deterministic seed profile or reset a development database",
+		Short: "Load a deterministic seed profile or reset a database",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(newDBSeedCommand(), newDBResetCommand())
@@ -49,8 +49,12 @@ func newDBResetCommand() *cobra.Command {
 	var profile string
 	cmd := &cobra.Command{
 		Use:   "reset",
-		Short: "Drop development tables, migrate, seed, and rebuild Valuation Points",
-		Args:  cobra.NoArgs,
+		Short: "Drop every table, migrate, and optionally seed a profile and rebuild Valuation Points",
+		Long: "db reset drops every table in the configured database and reapplies the migrations.\n" +
+			"With --profile it then inserts that deterministic seed (dev environments). Without --profile\n" +
+			"the database is left empty and migrated, which is how the test environment is wiped before\n" +
+			"real read-only keys are configured through the UI. It refuses production-like database names.",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			db, cfg, err := openConfiguredDB(cmd)
 			if err != nil {
@@ -65,17 +69,21 @@ func newDBResetCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "resetting development database %q\n", name)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "resetting database %q\n", name)
 			if err := mysql.DropAllTables(ctx, db); err != nil {
 				return err
 			}
 			if err := mysql.Up(db); err != nil {
 				return err
 			}
+			if profile == "" {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "migrated an empty database; create a user with `plutus user create`")
+				return nil
+			}
 			return seedDatabase(ctx, db, &cfg, profile, cmd.OutOrStdout())
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
+	cmd.Flags().StringVar(&profile, "profile", "", "seed profile to load after migrating: minimal, edge-cases, or walkthrough (omit to leave the database empty)")
 	return cmd
 }
 

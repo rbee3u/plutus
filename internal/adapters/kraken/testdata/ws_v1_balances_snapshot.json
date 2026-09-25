@@ -1,0 +1,736 @@
+{
+  "fixture": {
+    "platform": "kraken",
+    "endpoint": "WS /ws/v1/balances_snapshot",
+    "accountStructure": "kraken_unified",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T20:10:30Z",
+    "trimmed": null,
+    "redacted": [
+      "account"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "account": "REDACTED",
+    "feed": "balances_snapshot",
+    "flex_futures": {
+      "available_margin": 217.6647,
+      "balance_value": 218.0434,
+      "collateral_value": 217.6273,
+      "cross": {
+        "available_margin": 217.6647,
+        "balance_value": 218.0434,
+        "collateral_value": 217.6273,
+        "effective_leverage": 0.0,
+        "initial_margin": 0.0186,
+        "initial_margin_without_orders": 0.0186,
+        "maintenance_margin": 0.0093,
+        "margin_equity": 217.6833,
+        "pnl": 0.056,
+        "portfolio_value": 218.0994,
+        "total_position_size": 0.0,
+        "total_unrealized": 0.056,
+        "total_unrealized_as_margin": 0.056,
+        "unrealized_funding": 0.0
+      },
+      "currencies": {
+        "AAPLX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "AAVE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ADA": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ALGO": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ARB": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ATOM": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "AUD": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "AVAX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "CAD": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "CHF": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "CRCLX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.3,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "CRV": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "DAI": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "DOGE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "DOT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ENA": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ETH": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "EUR": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "EURC": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "FARTCOIN": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "FEE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 1.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "FET": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "FIL": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "GBP": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "GLDX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "GOOGLX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "GRT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "HOODX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.3,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "HYPE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "INJ": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "KAS": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "KSM": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "LINK": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "LTC": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "MANA": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "MINA": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "MSTRX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.3,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "NEAR": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "NVDAX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ONDO": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "PAXG": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.03,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "PEPE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "QQQX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "RENDER": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "RUNE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SEI": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SHIB": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SOL": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SPX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SPYX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "STX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "SUI": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "TAO": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "TIA": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "TRX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "TSLAX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "UNI": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USD": {
+          "available": 134.89131528620885,
+          "collateral_value": 134.835,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 134.835,
+          "value": 134.835
+        },
+        "USD CREDIT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USDC": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.005,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USDG": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USDT": {
+          "available": 83.22669697,
+          "collateral_value": 82.79317326681812,
+          "conversion_spread": 0.0,
+          "haircut": 0.005,
+          "quantity": 83.22669697,
+          "value": 83.20921936363631
+        },
+        "WIF": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XAUT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.4,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XBT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XLM": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XMR": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XRP": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.05,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XTZ": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        }
+      },
+      "initial_margin": 0.0186,
+      "initial_margin_without_orders": 0.0186,
+      "isolated": {},
+      "isolated_list": [],
+      "maintenance_margin": 0.0093,
+      "margin_equity": 217.6833,
+      "pnl": 0.056,
+      "portfolio_value": 218.0994,
+      "total_position_size": 0.0,
+      "total_unrealized": 0.056,
+      "total_unrealized_as_margin": 0.056,
+      "unified_balances": true,
+      "unrealized_funding": 0.0
+    },
+    "futures": {
+      "F-ETH:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-ETH:USD",
+        "pair": "ETH/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "ETH",
+        "unrealized_funding": 0.0
+      },
+      "F-LTC:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-LTC:USD",
+        "pair": "LTC/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "LTC",
+        "unrealized_funding": 0.0
+      },
+      "F-XBT:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-XBT:USD",
+        "pair": "XBT/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "XBT",
+        "unrealized_funding": 0.0
+      },
+      "F-XRP:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-XRP:USD",
+        "pair": "XRP/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "XRP",
+        "unrealized_funding": 0.0
+      }
+    },
+    "futures_cash_value": 0.0,
+    "futures_upnl_cash_value": 0.0,
+    "holding": {
+      "AAPLX": 0.0,
+      "AAVE": 0.0,
+      "ADA": 0.0,
+      "ALGO": 0.0,
+      "ARB": 0.0,
+      "ATOM": 0.0,
+      "AUD": 0.0,
+      "AVAX": 0.0,
+      "BCH": 0.0,
+      "CAD": 0.0,
+      "CHF": 0.0,
+      "CRCLX": 0.0,
+      "CRV": 0.0,
+      "DAI": 0.0,
+      "DOGE": 0.0,
+      "DOT": 0.0,
+      "ENA": 0.0,
+      "ETH": 0.0,
+      "EUR": 0.0,
+      "EURC": 0.0,
+      "FARTCOIN": 0.0,
+      "FEE": 0.0,
+      "FET": 0.0,
+      "FIL": 0.0,
+      "GBP": 0.0,
+      "GLDX": 0.0,
+      "GOOGLX": 0.0,
+      "GRT": 0.0,
+      "HOODX": 0.0,
+      "HYPE": 0.0,
+      "INJ": 0.0,
+      "KAS": 0.0,
+      "KSM": 0.0,
+      "LINK": 0.0,
+      "LTC": 0.0,
+      "MANA": 0.0,
+      "MINA": 0.0,
+      "MSTRX": 0.0,
+      "NEAR": 0.0,
+      "NVDAX": 0.0,
+      "ONDO": 0.0,
+      "PAXG": 0.0,
+      "PEPE": 0.0,
+      "QQQX": 0.0,
+      "RENDER": 0.0,
+      "RUNE": 0.0,
+      "SEI": 0.0,
+      "SHIB": 0.0,
+      "SOL": 0.0,
+      "SPX": 0.0,
+      "SPYX": 0.0,
+      "STX": 0.0,
+      "SUI": 0.0,
+      "TAO": 0.0,
+      "TIA": 0.0,
+      "TRX": 0.0,
+      "TSLAX": 0.0,
+      "UNI": 0.0,
+      "USD": 0.0,
+      "USD CREDIT": 0.0,
+      "USDC": 0.0,
+      "USDG": 0.0,
+      "USDT": 0.02,
+      "WIF": 0.0,
+      "XAUT": 0.0,
+      "XBT": 0.0,
+      "XLM": 0.0,
+      "XMR": 0.0,
+      "XRP": 0.01,
+      "XTZ": 0.0
+    },
+    "seq": 0,
+    "timestamp": 1790367025545
+  }
+}

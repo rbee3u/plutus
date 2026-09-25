@@ -1,0 +1,13 @@
+{
+  "fixture": {
+    "platform": "bybit",
+    "endpoint": "GET /v5/account/info",
+    "accountStructure": "bybit_uta_2_0",
+    "scenario": "documented",
+    "documentation": "https://bybit-exchange.github.io/docs/v5/rate-limit",
+    "trimmed": "Bybit documents HTTP 403 with the error \"403, access too frequent\" for an IP over its request budget but shows no body: the body is that text as a JSON string.",
+    "redacted": []
+  },
+  "status": 403,
+  "body": "403, access too frequent"
+}

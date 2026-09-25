@@ -1,0 +1,37 @@
+{
+  "fixture": {
+    "platform": "okx",
+    "endpoint": "GET /api/v5/finance/savings/balance",
+    "accountStructure": "okx_unified",
+    "marginMode": "okx_pm",
+    "scenario": "recorded",
+    "recordedAt": "2026-09-25T18:18:39Z",
+    "trimmed": null,
+    "redacted": []
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "amt": "2006.02080891",
+        "ccy": "USDT",
+        "earnings": "97.27495921",
+        "loanAmt": "2006.01487218",
+        "pendingAmt": "0.00593673",
+        "rate": "0.01",
+        "redemptAmt": ""
+      },
+      {
+        "amt": "1036.90261034",
+        "ccy": "USDC",
+        "earnings": "36.90261035",
+        "loanAmt": "1036.89954167",
+        "pendingAmt": "0.00306866",
+        "rate": "0.01",
+        "redemptAmt": ""
+      }
+    ],
+    "msg": ""
+  }
+}

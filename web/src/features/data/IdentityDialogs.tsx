@@ -5,7 +5,7 @@ import {
   patchIdentity,
   putIdentityCredentials,
 } from "@/api/generated/sdk.gen";
-import type { Identity, Platform } from "@/api/generated/types.gen";
+import type { AccountStructure, Identity, Platform } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { identityEtag } from "@/features/data/useIdentities";
 import { newIdempotencyKey } from "@/shared/lib/id";
@@ -70,6 +70,11 @@ export function IdentityDialog({ portfolioId, request, platforms, onClose, onSav
   );
 }
 
+/** The Account Structure to preselect: a Platform with a single structure needs no choice. */
+function onlyStructure(platform: Platform | undefined): AccountStructure | undefined {
+  return platform?.accountStructures.length === 1 ? platform.accountStructures[0] : undefined;
+}
+
 function CreateForm({
   portfolioId,
   platforms,
@@ -85,27 +90,26 @@ function CreateForm({
   const createKey = useRef(newIdempotencyKey());
   const firstPlatform = platforms[0];
   const [platformId, setPlatformId] = useState(firstPlatform?.id ?? "");
-  const [modeId, setModeId] = useState(firstPlatform?.accountModes[0]?.id ?? "");
+  const [structureId, setStructureId] = useState(onlyStructure(firstPlatform)?.id ?? "");
   const [selectedTypes, setSelectedTypes] = useState<string[]>(
-    () => firstPlatform?.accountModes[0]?.accountTypes.map((type) => type.id) ?? [],
+    () => onlyStructure(firstPlatform)?.accountTypes.map((type) => type.id) ?? [],
   );
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const platform = platforms.find((item) => item.id === platformId);
-  const mode = platform?.accountModes.find((item) => item.id === modeId);
+  const structure = platform?.accountStructures.find((item) => item.id === structureId);
 
   function choosePlatform(nextId: string) {
-    const next = platforms.find((item) => item.id === nextId);
-    const firstMode = next?.accountModes[0];
+    const only = onlyStructure(platforms.find((item) => item.id === nextId));
     setPlatformId(nextId);
-    setModeId(firstMode?.id ?? "");
-    setSelectedTypes(firstMode?.accountTypes.map((type) => type.id) ?? []);
+    setStructureId(only?.id ?? "");
+    setSelectedTypes(only?.accountTypes.map((type) => type.id) ?? []);
   }
 
-  function chooseMode(nextId: string) {
-    const next = platform?.accountModes.find((item) => item.id === nextId);
-    setModeId(nextId);
+  function chooseStructure(nextId: string) {
+    const next = platform?.accountStructures.find((item) => item.id === nextId);
+    setStructureId(nextId);
     setSelectedTypes(next?.accountTypes.map((type) => type.id) ?? []);
   }
 
@@ -117,6 +121,10 @@ function CreateForm({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!structure) {
+      setError("Choose the account structure; it cannot be changed after creation.");
+      return;
+    }
     if (selectedTypes.length === 0) {
       setError("Select at least one account type; only selected accounts join the boundary.");
       return;
@@ -135,7 +143,7 @@ function CreateForm({
         body: {
           platform: platformId,
           displayName: displayName.trim(),
-          accountMode: modeId,
+          accountStructure: structureId,
           selectedAccountTypes: selectedTypes,
         },
       });
@@ -165,8 +173,8 @@ function CreateForm({
   return (
     <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={styles.lead}>
-        One Identity is one Platform login. Pick its Account Mode and the Account Types to include;
-        only selected accounts count toward the Portfolio.
+        One Identity is one Platform login. Pick its Account Structure and the Account Types to
+        include; only selected accounts count toward the Portfolio.
       </p>
       {error ? (
         <p className={styles.alert} role="alert">
@@ -195,21 +203,40 @@ function CreateForm({
         </p>
       ) : null}
       <label className={styles.field}>
-        <span>Account mode</span>
-        <Select value={modeId} onChange={(event) => chooseMode(event.target.value)} required>
-          {(platform?.accountModes ?? []).map((item) => (
+        <span>Account structure</span>
+        <Select
+          value={structureId}
+          onChange={(event) => chooseStructure(event.target.value)}
+          required
+        >
+          {(platform?.accountStructures.length ?? 0) > 1 ? (
+            <option value="" disabled>
+              Choose the structure of this login
+            </option>
+          ) : null}
+          {(platform?.accountStructures ?? []).map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
             </option>
           ))}
         </Select>
       </label>
+      {platform ? (
+        <p className={styles.muted}>
+          The structure decides the Account Types and cannot be changed later: after switching it on{" "}
+          {platform.name}, create a new Identity and archive this one.
+          {structure && structure.marginModes.length > 0
+            ? ` The margin mode (${structure.marginModes.map((item) => item.name).join(", ")}) is read from ${platform.name} at every validation and collection.`
+            : ""}
+        </p>
+      ) : null}
       <fieldset className={styles.field}>
         <legend>
           <span>Account types</span>
         </legend>
+        {structure ? null : <p className={styles.muted}>Choose the account structure first.</p>}
         <div className={styles.checkList}>
-          {(mode?.accountTypes ?? []).map((type) => (
+          {(structure?.accountTypes ?? []).map((type) => (
             <Toggle
               key={type.id}
               checked={selectedTypes.includes(type.id)}
@@ -366,12 +393,35 @@ function CredentialsForm({
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [passphrase, setPassphrase] = useState("");
+  const [futuresApiKey, setFuturesApiKey] = useState("");
+  const [futuresApiSecret, setFuturesApiSecret] = useState("");
+  const kraken = item.platform === "kraken";
+  const selectedTypes = item.accounts
+    .filter((account) => account.selected)
+    .map((account) => account.accountType);
+  const spotRequired = !kraken || selectedTypes.some((type) => type === "main" || type === "earn");
+  const futuresRequired = kraken && selectedTypes.some((type) => type !== "earn");
+  // OKX signs every request with the passphrase chosen when the key was created.
+  const passphraseRequired = item.platform === "okx";
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (passphraseRequired && passphrase.trim() === "") {
+      setError("Passphrase is required for OKX keys.");
+      return;
+    }
+    if (
+      kraken &&
+      (!apiKey.trim() !== !apiSecret.trim() ||
+        !futuresApiKey.trim() !== !futuresApiSecret.trim() ||
+        (!apiKey.trim() && !futuresApiKey.trim()))
+    ) {
+      setError("Provide a complete API key and secret for at least one credential group.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -383,6 +433,9 @@ function CredentialsForm({
           apiKey: apiKey.trim(),
           apiSecret: apiSecret.trim(),
           ...(passphrase.trim() ? { passphrase: passphrase.trim() } : {}),
+          ...(kraken
+            ? { futuresApiKey: futuresApiKey.trim(), futuresApiSecret: futuresApiSecret.trim() }
+            : {}),
         },
       });
       if (result.response?.status === 401) {
@@ -452,34 +505,68 @@ function CredentialsForm({
         </p>
       ) : null}
       <label className={styles.field}>
-        <span>API key</span>
+        <span>
+          {kraken ? `Spot API key (${spotRequired ? "required" : "optional"})` : "API key"}
+        </span>
         <TextInput
           type="password"
           autoComplete="off"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
-          required
+          required={spotRequired || apiSecret.trim() !== ""}
         />
       </label>
       <label className={styles.field}>
-        <span>API secret</span>
+        <span>
+          {kraken ? `Spot API secret (${spotRequired ? "required" : "optional"})` : "API secret"}
+        </span>
         <TextInput
           type="password"
           autoComplete="off"
           value={apiSecret}
           onChange={(event) => setApiSecret(event.target.value)}
-          required
+          required={spotRequired || apiKey.trim() !== ""}
         />
       </label>
-      <label className={styles.field}>
-        <span>Passphrase (optional)</span>
-        <TextInput
-          type="password"
-          autoComplete="off"
-          value={passphrase}
-          onChange={(event) => setPassphrase(event.target.value)}
-        />
-      </label>
+      {kraken ? (
+        <>
+          <p className={styles.muted}>
+            Main requires both key groups to verify the wallet structure. Earn uses Spot
+            credentials; independent derivatives accounts use Futures credentials.
+          </p>
+          <label className={styles.field}>
+            <span>Futures API key ({futuresRequired ? "required" : "optional"})</span>
+            <TextInput
+              type="password"
+              autoComplete="off"
+              value={futuresApiKey}
+              onChange={(event) => setFuturesApiKey(event.target.value)}
+              required={futuresRequired || futuresApiSecret.trim() !== ""}
+            />
+          </label>
+          <label className={styles.field}>
+            <span>Futures API secret ({futuresRequired ? "required" : "optional"})</span>
+            <TextInput
+              type="password"
+              autoComplete="off"
+              value={futuresApiSecret}
+              onChange={(event) => setFuturesApiSecret(event.target.value)}
+              required={futuresRequired || futuresApiKey.trim() !== ""}
+            />
+          </label>
+        </>
+      ) : (
+        <label className={styles.field}>
+          <span>{passphraseRequired ? "Passphrase" : "Passphrase (optional)"}</span>
+          <TextInput
+            type="password"
+            autoComplete="off"
+            value={passphrase}
+            onChange={(event) => setPassphrase(event.target.value)}
+            required={passphraseRequired}
+          />
+        </label>
+      )}
       <div className={styles.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
           Store credentials
