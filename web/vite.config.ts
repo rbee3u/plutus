@@ -15,13 +15,6 @@ export default defineConfig({
   build: {
     assetsInlineLimit: 0,
     cssCodeSplit: false,
-    rolldownOptions: {
-      output: {
-        entryFileNames: "assets/index.js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name][extname]",
-      },
-    },
   },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],

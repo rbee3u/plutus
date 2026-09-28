@@ -16,7 +16,10 @@ func mountWeb(engine *gin.Engine) {
 		panic(err)
 	}
 	fileServer := http.FileServer(http.FS(dist))
-	engine.GET("/assets/*filepath", gin.WrapH(fileServer))
+	engine.GET("/assets/*filepath", func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
 	engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/health") {
@@ -28,6 +31,9 @@ func mountWeb(engine *gin.Engine) {
 			writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal error", "The web shell could not be loaded.")
 			return
 		}
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", index)
 	})
 }

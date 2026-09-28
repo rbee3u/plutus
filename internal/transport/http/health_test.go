@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/worker"
+	"github.com/rbee3u/plutus/web"
 )
 
 func TestLiveAndReady(t *testing.T) {
@@ -121,6 +123,9 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	if !strings.Contains(strings.ToLower(login.Body.String()), "<!doctype html>") {
 		t.Fatalf("login spa body %s", login.Body.String())
 	}
+	if got := login.Header().Get("Cache-Control"); got != "no-cache, no-store, must-revalidate" {
+		t.Fatalf("login spa Cache-Control = %q, want %q", got, "no-cache, no-store, must-revalidate")
+	}
 
 	account := httptest.NewRecorder()
 	engine.ServeHTTP(account, httptest.NewRequest(http.MethodGet, "/account/security", nil))
@@ -129,6 +134,23 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(account.Body.String()), "<!doctype html>") {
 		t.Fatalf("account spa body %s", account.Body.String())
+	}
+	if got := account.Header().Get("Cache-Control"); got != "no-cache, no-store, must-revalidate" {
+		t.Fatalf("account spa Cache-Control = %q, want %q", got, "no-cache, no-store, must-revalidate")
+	}
+
+	entries, err := fs.ReadDir(web.Dist, "dist/assets")
+	if err != nil || len(entries) == 0 {
+		t.Fatalf("read dist/assets: %v (len %d)", err, len(entries))
+	}
+	assetPath := "/assets/" + entries[0].Name()
+	asset := httptest.NewRecorder()
+	engine.ServeHTTP(asset, httptest.NewRequest(http.MethodGet, assetPath, nil))
+	if asset.Code != http.StatusOK {
+		t.Fatalf("asset status %d, want 200", asset.Code)
+	}
+	if got := asset.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Fatalf("asset Cache-Control = %q, want %q", got, "public, max-age=31536000, immutable")
 	}
 
 	unknownAPI := httptest.NewRecorder()
