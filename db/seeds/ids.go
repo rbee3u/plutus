@@ -78,6 +78,13 @@ var (
 	AccountAliceClassicCMFutures      = SeedID(kindAccount, 24)
 	AccountAliceClassicEarn           = SeedID(kindAccount, 25)
 
+	AccountAliceBinanceDual = SeedID(kindAccount, 26)
+	AccountAliceOKXDual     = SeedID(kindAccount, 27)
+	AccountAliceBybitDual   = SeedID(kindAccount, 28)
+	AccountAliceOldDual     = SeedID(kindAccount, 29)
+	AccountBobBinanceDual   = SeedID(kindAccount, 30)
+	AccountAliceClassicDual = SeedID(kindAccount, 31)
+
 	FlowAliceBTC     = SeedID(kindCapitalFlow, 1)
 	FlowAliceUSDT    = SeedID(kindCapitalFlow, 2)
 	FlowAliceTOKENX  = SeedID(kindCapitalFlow, 3)

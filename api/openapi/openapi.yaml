@@ -744,6 +744,25 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions:
+    get:
+      operationId: listAccountDualPositions
+      tags: [holdings]
+      summary: Dual positions of an account's current report
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/AccountID"
+      responses:
+        "200":
+          description: Account positions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDualPositionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/balances:
     get:
       operationId: listBalances
@@ -845,6 +864,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PositionList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/dual-positions:
+    get:
+      operationId: listDualPositions
+      tags: [holdings]
+      summary: Flat dual position list across the boundary at the latest point
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: identityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: accountId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: symbol
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Positions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DualPositionList"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
@@ -2321,6 +2391,55 @@ components:
         reportObservedAt:
           type: [string, "null"]
           format: date-time
+    DualPositionRow:
+      type: object
+      additionalProperties: false
+      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, investSymbol, principal, status, freshness]
+      properties:
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        accountType:
+          type: string
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        identityName:
+          type: string
+        platform:
+          type: string
+        platformPositionRef:
+          type: string
+        productRef:
+          type: [string, "null"]
+        orderRef:
+          type: [string, "null"]
+        baseSymbol:
+          type: [string, "null"]
+        quoteSymbol:
+          type: [string, "null"]
+        investSymbol:
+          type: string
+        principal:
+          $ref: "#/components/schemas/Decimal"
+        direction:
+          type: [string, "null"]
+        targetPrice:
+          $ref: "#/components/schemas/NullableDecimal"
+        expiryAt:
+          type: [string, "null"]
+          format: date-time
+        annualizedRate:
+          $ref: "#/components/schemas/NullableDecimal"
+        rateKind:
+          type: [string, "null"]
+        status:
+          type: string
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        reportObservedAt:
+          type: [string, "null"]
+          format: date-time
     AccountBalanceList:
       type: object
       additionalProperties: false
@@ -2351,6 +2470,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PositionRow"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    AccountDualPositionList:
+      type: object
+      additionalProperties: false
+      required: [context, account, items, issues]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        account:
+          $ref: "#/components/schemas/AccountValuation"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DualPositionRow"
         issues:
           type: array
           items:
@@ -2395,6 +2531,25 @@ components:
           $ref: "#/components/schemas/OffsetPage"
         totalNotionalUsd:
           $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    DualPositionList:
+      type: object
+      additionalProperties: false
+      required: [context, items, page, completeness, issues]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DualPositionRow"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
         completeness:
           $ref: "#/components/schemas/Completeness"
         issues:

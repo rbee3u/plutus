@@ -22,9 +22,10 @@ import (
 
 // Account Types of the okx_unified Account Structure, the same in every Margin Mode.
 const (
-	TypeTrading adapters.AccountType = "trading"
-	TypeFunding adapters.AccountType = "funding"
-	TypeEarn    adapters.AccountType = "earn"
+	TypeDualInvestment                      = adapters.TypeDualInvestment
+	TypeTrading        adapters.AccountType = "trading"
+	TypeFunding        adapters.AccountType = "funding"
+	TypeEarn           adapters.AccountType = "earn"
 )
 
 // marginModes maps OKX's account level, the acctLv of account/config, to its Margin Mode. OKX
@@ -176,14 +177,17 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	// valuation's "latest price at or before the report" picks them.
 	lookup, pricedAt := a.tickers(ctx, c)
 	usdPrice := func(symbol string) (*big.Rat, bool) { return adapters.USDPrice(symbol, quotes, lookup) }
+	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+		return a.earn(ctx, c, usdPrice)
+	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		switch accountType {
 		case TypeTrading:
 			return a.trading(ctx, c)
 		case TypeFunding:
 			return a.funding(ctx, c)
-		case TypeEarn:
-			return a.earn(ctx, c, usdPrice)
+		case TypeEarn, TypeDualInvestment:
+			return earnPair(ctx, accountType)
 		default:
 			return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformOKX, structure, accountType)
 		}
@@ -393,53 +397,63 @@ type stakingOrder struct {
 // amount fails the Account. ETH and SOL staking are deliberately not collected: OKX reports those
 // balances account-wide, and the BETH and OKSOL coins they produce are already held in the trading
 // or funding account. Last, the Earn check compares the Balances with OKX's own valuation of Earn
-// (ADR 0029), so value in an Earn product Plutus cannot read fails the Account instead of vanishing.
-func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, error) {
+// (ADR 0033), so unitemized value fails selected Earn and Dual Accounts instead of vanishing.
+func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	var savings []savingsBalance
 	if err := c.call(ctx, epSavings, &savings); err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	for i := range savings {
 		amount, err := adapters.Decimal(epSavings.String(), "amt of "+savings[i].Ccy, savings[i].Amt)
 		if err != nil {
-			return adapters.AccountReport{}, err
+			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 		if err := totals.Add(epSavings.String(), savings[i].Ccy, amount); err != nil {
-			return adapters.AccountReport{}, err
+			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
 	var staking []stakingOrder
 	if err := c.call(ctx, epStaking, &staking); err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	for i := range staking {
 		for _, invested := range staking[i].InvestData {
 			amount, err := adapters.Decimal(epStaking.String(), "investData.amt of "+invested.Ccy, invested.Amt)
 			if err != nil {
-				return adapters.AccountReport{}, err
+				return adapters.AccountReport{}, adapters.AccountReport{}, err
 			}
 			if err := totals.Add(epStaking.String(), invested.Ccy, amount); err != nil {
-				return adapters.AccountReport{}, err
+				return adapters.AccountReport{}, adapters.AccountReport{}, err
 			}
 		}
 	}
 	orders, err := a.dualInvestmentOrders(ctx, c)
 	if err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	if err := addDualInvestment(totals, orders); err != nil {
-		return adapters.AccountReport{}, err
+	positions, err := dualPositions(orders)
+	if err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	balances := totals.Balances()
+	dualTotals := adapters.Totals{}
+	for i := range positions {
+		p := &positions[i]
+		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.MustParse(p.Principal)); err != nil {
+			return adapters.AccountReport{}, adapters.AccountReport{}, err
+		}
+	}
+	dualBalances := dualTotals.Balances()
+	combined := append(append([]adapters.Balance{}, balances...), dualBalances...)
 	valuation, err := a.earnValuation(ctx, c)
 	if err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	if err := adapters.CheckEarnComplete(adapters.PlatformOKX, valuation, balances, usdPrice); err != nil {
-		return adapters.AccountReport{}, err
+	if err := adapters.CheckEarnComplete(adapters.PlatformOKX, valuation, combined, usdPrice); err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // earnValuation reads OKX's own valuation of the Earn bucket in USDT, which Plutus counts as USD.

@@ -228,6 +228,7 @@ type AccountReport struct {
 	UnifiedMarginRatio     *string
 	Balances               []Balance
 	Positions              []Position
+	DualPositions          []DualPosition
 }
 
 // Balance is one coin line within an Account Report.
@@ -393,12 +394,14 @@ var structureSpecs = map[AccountStructure]structureSpec{
 		{ID: "um_futures", Name: "USDⓈ-M Futures"},
 		{ID: "cm_futures", Name: "COIN-M Futures"},
 		{ID: "earn", Name: "Earn"},
+		{ID: TypeDualInvestment, Name: "Dual Investment"},
 	}},
 	StructureBinancePM: {name: "Portfolio Margin", types: []AccountTypeInfo{
 		{ID: "portfolio_margin", Name: "Portfolio Margin"},
 		{ID: "spot", Name: "Spot"},
 		{ID: "funding", Name: "Funding"},
 		{ID: "earn", Name: "Earn"},
+		{ID: TypeDualInvestment, Name: "Dual Investment"},
 	}},
 	StructureOKXUnified: {
 		name: "Unified account",
@@ -406,6 +409,7 @@ var structureSpecs = map[AccountStructure]structureSpec{
 			{ID: "trading", Name: "Trading"},
 			{ID: "funding", Name: "Funding"},
 			{ID: "earn", Name: "Earn"},
+			{ID: TypeDualInvestment, Name: "Dual Investment"},
 		},
 		marginModes: []MarginModeInfo{
 			{ID: MarginOKXSpot, Name: "Spot mode"},
@@ -420,6 +424,7 @@ var structureSpecs = map[AccountStructure]structureSpec{
 			{ID: "unified", Name: "Unified"},
 			{ID: "funding", Name: "Funding"},
 			{ID: "earn", Name: "Earn"},
+			{ID: TypeDualInvestment, Name: "Dual Investment"},
 		},
 		marginModes: []MarginModeInfo{
 			{ID: MarginBybitIsolated, Name: "Isolated Margin"},

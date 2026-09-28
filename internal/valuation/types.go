@@ -88,6 +88,7 @@ func (p *Point) Completeness() string {
 
 // AccountValuation is one Account's report and value at a point.
 type AccountValuation struct {
+	ScopeVersion           uint16
 	ReportID               uuid.UUID
 	AccountID              uuid.UUID
 	AccountName            string
@@ -251,11 +252,12 @@ type PositionRow struct {
 
 // AccountView is one Account's current report with its Balances or Positions.
 type AccountView struct {
-	Context   Context
-	Account   AccountValuation
-	Balances  []BalanceRow
-	Positions []PositionRow
-	Issues    []Issue
+	Context       Context
+	Account       AccountValuation
+	Balances      []BalanceRow
+	Positions     []PositionRow
+	DualPositions []DualPositionRow
+	Issues        []Issue
 }
 
 // ListFilter selects flat Balance or Position rows.

@@ -26,7 +26,7 @@ The margin regime a Platform applies to a whole trading account within an Accoun
 _Avoid_: Account Mode (as a synonym); a Position's own isolated or cross setting (which is not a Margin Mode)
 
 **Account Type**:
-One kind of Platform wallet or trading account within an Account Structure that an Adapter knows how to collect, such as a unified trading account, a funding account, or an earn account.
+One kind of Platform wallet, trading account, or product account within an Account Structure that an Adapter knows how to collect, such as a unified trading account, a funding account, an earn account, or dual investment.
 
 **Account**:
 One Account Type selected by the User for one Identity. Only selected Accounts are collected and valued.
@@ -84,11 +84,18 @@ _Avoid_: Quantity, holding (as the equity measure)
 The Observation of one open directional contract holding in one Account Report, with its side, size, prices, and margin measures. Opposing long and short holdings are separate Positions.
 _Avoid_: Balance, margin, exposure (as synonyms for a position)
 
+**Dual Investment**:
+A product accepting principal in one Asset and settling in that Asset or its paired Asset according to a target price and expiry.
+
+**Dual Position**:
+The Observation of one outstanding Dual Investment subscription in an Account Report, with its invested principal and available product terms. Separate subscriptions remain separate holdings.
+_Avoid_: Balance, futures Position (as synonyms)
+
 **Price Observation**:
 A market price for one Asset on one Platform at an observation time, quoted in a stated Asset. Only prices quoted in the Valuation Asset or its stablecoin equivalents are used for valuation.
 
 **Complete Set**:
-The rule that the Balances and Positions in a successful Account Report are everything the Account holds; anything absent is no longer held.
+The rule that the Balances, Positions, and Dual Positions in a successful Account Report are everything the Account holds; anything absent is no longer held.
 
 **Stale**:
 The state of an Account whose latest Collection Run failed, so its most recent successful Account Report is still in use, labeled with that report's age.

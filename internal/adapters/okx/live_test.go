@@ -107,6 +107,16 @@ func TestLiveOKX(t *testing.T) {
 		}
 	}
 	t.Logf("dual investment: %d orders in the history, %d still invested", len(orders), invested)
+	dual := reportOf(t, batch, TypeDualInvestment)
+	for i := range dual.DualPositions {
+		position := &dual.DualPositions[i]
+		if _, err := adapters.NormalizeDualPosition("live", position); err != nil {
+			t.Error(err)
+		}
+	}
+	if len(dual.DualPositions) == 0 {
+		t.Log("Dual Investment: empty live coverage only")
+	}
 
 	if err := a.wait(ctx); err != nil {
 		t.Fatal(err)
@@ -162,9 +172,40 @@ func compareWithOKXValuation(ctx context.Context, t *testing.T, c *client, batch
 			}
 			sum.Add(sum, new(big.Rat).Mul(decimal.MustParse(b.Equity), price))
 		}
-		collected[string(report.AccountType)] = sum
+		key := string(report.AccountType)
+		if report.AccountType == TypeDualInvestment {
+			key = string(TypeEarn)
+		}
+		if collected[key] == nil {
+			collected[key] = new(big.Rat)
+		}
+		collected[key].Add(collected[key], sum)
 	}
 
+	// Compare the independent Dual principal against the aggregate's residual.
+	dualUSD := new(big.Rat)
+	for _, report := range batch.Reports {
+		if report.AccountType != TypeDualInvestment {
+			continue
+		}
+		for _, b := range report.Balances {
+			unit := big.NewRat(1, 1)
+			if !adapters.USDEquivalent(b.Symbol) {
+				unit = prices[b.Symbol]
+			}
+			if unit != nil {
+				dualUSD.Add(dualUSD, decimal.Mul(decimal.MustParse(b.Equity), unit))
+			}
+		}
+	}
+	if combined, ok := collected[string(TypeEarn)]; ok && buckets[string(TypeEarn)] != nil {
+		ordinary := decimal.Sub(combined, dualUSD)
+		residual := decimal.Sub(buckets[string(TypeEarn)], ordinary)
+		t.Logf("Dual principal %s USD; OKX Earn minus ordinary Earn %s USD; residual difference %s USD; %d normalized subscriptions", dualUSD.FloatString(2), residual.FloatString(2), decimal.Sub(residual, dualUSD).FloatString(2), len(reportOf(t, *batch, TypeDualInvestment).DualPositions))
+		if dualUSD.Sign() > 0 && !withinBucketTolerance(ordinary, buckets[string(TypeEarn)]) {
+			t.Log("The active Dual principal is material: ordinary Earn alone does not explain OKX's Earn bucket.")
+		}
+	}
 	names := make([]string, 0, len(buckets))
 	for name := range buckets {
 		names = append(names, name)
@@ -184,6 +225,9 @@ func compareWithOKXValuation(ctx context.Context, t *testing.T, c *client, batch
 		t.Logf("%s: collected value is off by %s", name, gap(ours, theirs))
 	}
 	for _, accountType := range allTypes {
+		if accountType == TypeDualInvestment {
+			continue
+		}
 		if _, ok := buckets[string(accountType)]; !ok {
 			t.Errorf("asset valuation has no %s bucket", accountType)
 		}

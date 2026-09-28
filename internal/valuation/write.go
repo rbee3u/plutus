@@ -251,7 +251,7 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 		metrics = [6]sql.NullString{row.Equity, row.AdjustedEquity, row.AvailableEquity, row.InitialMarginRatio, row.MaintenanceMarginRatio, row.UnifiedMarginRatio}
 		item.Freshness = FreshnessFresh
 	} else {
-		src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, Before: row.CreatedAt})
+		src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, ScopeVersion: row.ScopeVersion, Before: row.CreatedAt})
 		if errors.Is(err, sql.ErrNoRows) {
 			item.Method = MethodMissing
 			item.Freshness = FreshnessStale
@@ -329,6 +329,8 @@ func mappedSymbol(listingSymbol, assetSymbol string) string {
 }
 
 type previousAccount struct {
+	scopeVersion uint16
+	accountType  string
 	name         string
 	identityID   uuid.UUID
 	identityName string
@@ -367,7 +369,7 @@ func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, e
 		if err != nil {
 			return nil, err
 		}
-		entry := previousAccount{name: rows[i].AccountName, identityID: identityID, identityName: rows[i].IdentityName, platform: rows[i].Platform, method: rows[i].Method}
+		entry := previousAccount{scopeVersion: rows[i].ScopeVersion, accountType: rows[i].AccountType, name: rows[i].AccountName, identityID: identityID, identityName: rows[i].IdentityName, platform: rows[i].Platform, method: rows[i].Method}
 		if rows[i].ValueUsd.Valid {
 			if value, ok := decimal.Parse(rows[i].ValueUsd.String); ok {
 				entry.value = value
@@ -383,6 +385,8 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 	point := Point{PortfolioID: portfolioID, JobID: jobID, EvaluatedAt: evaluatedAt, AccountCount: len(accounts)}
 	total := decimal.Zero()
 	current := map[uuid.UUID]bool{}
+	transitions := scopeTransitions(accounts, previous)
+	markedTransitions := map[uuid.UUID]bool{}
 	contributions := decimal.Zero()
 	withdrawals := decimal.Zero()
 	for i := range accounts {
@@ -398,8 +402,14 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 			point.IncompleteAccountCount++
 		}
 		point.Issues = append(point.Issues, accountIssues(a)...)
+		if transitions[a.IdentityID] && (a.AccountType == "earn" || a.AccountType == "dual_investment") {
+			if !markedTransitions[a.IdentityID] {
+				markedTransitions[a.IdentityID] = true
+				point.Issues = append(point.Issues, Issue{Code: "account_scope_changed", AccountID: &a.AccountID, Detail: "Earn and Dual Investment were separated for " + a.IdentityName + "; value changes across this point use different account scopes."})
+			}
+		}
 		if previous != nil {
-			if _, existed := previous[a.AccountID]; !existed {
+			if _, existed := previous[a.AccountID]; !existed && !(transitions[a.IdentityID] && a.AccountType == "dual_investment") {
 				event := BoundaryEvent{AccountID: a.AccountID, AccountName: a.AccountName, IdentityID: a.IdentityID, IdentityName: a.IdentityName, Platform: a.Platform, Direction: DirectionContribution, Method: a.Method, ValueUSD: a.ValueUSD, valueRat: a.valueRat}
 				point.BoundaryEvents = append(point.BoundaryEvents, event)
 				if a.valueRat != nil {
@@ -421,6 +431,9 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 		sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
 		for _, id := range ids {
 			prev := previous[id]
+			if transitions[prev.identityID] && prev.accountType == "earn" {
+				continue
+			}
 			event := BoundaryEvent{AccountID: id, AccountName: prev.name, IdentityID: prev.identityID, IdentityName: prev.identityName, Platform: prev.platform, Direction: DirectionWithdrawal, Method: MethodMissing}
 			if prev.value != nil {
 				event.Method = prev.method
@@ -445,7 +458,10 @@ func accountIssues(a *AccountValuation) []Issue {
 	var out []Issue
 	switch {
 	case a.Method == MethodMissing:
-		detail := "The account has never been collected successfully; its value is unknown."
+		detail := "No successful report exists for the current account scope; its value is unknown."
+		if a.ScopeVersion == 2 && a.AccountType == "earn" {
+			detail += " Earlier combined Earn reports include Dual Investment and cannot be reused."
+		}
 		if a.ErrorDetail != nil {
 			detail += " Last error: " + *a.ErrorDetail
 		}
@@ -511,6 +527,7 @@ func accountFromRow(row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) 
 	}
 	item := AccountValuation{
 		ReportID:         reportID,
+		ScopeVersion:     row.ScopeVersion,
 		AccountID:        accountID,
 		AccountName:      row.AccountName,
 		AccountType:      row.AccountType,
@@ -566,4 +583,22 @@ func nullStr(v sql.NullString) *string {
 	}
 	s := v.String
 	return &s
+}
+
+// scopeTransitions identifies reclassification of an already observed combined Earn.
+func scopeTransitions(accounts []AccountValuation, previous map[uuid.UUID]previousAccount) map[uuid.UUID]bool {
+	legacy := map[uuid.UUID]bool{}
+	for _, old := range previous {
+		if old.accountType == "earn" && old.scopeVersion == 1 && (old.platform == "binance" || old.platform == "okx" || old.platform == "bybit") {
+			legacy[old.identityID] = true
+		}
+	}
+	out := map[uuid.UUID]bool{}
+	for i := range accounts {
+		a := &accounts[i]
+		if legacy[a.IdentityID] && a.ScopeVersion == 2 && (a.AccountType == "earn" || a.AccountType == "dual_investment") {
+			out[a.IdentityID] = true
+		}
+	}
+	return out
 }

@@ -1,5 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { listAccountBalances, listAccountPositions } from "@/api/generated/sdk.gen";
+import {
+  listAccountBalances,
+  listAccountPositions,
+  listAccountDualPositions,
+} from "@/api/generated/sdk.gen";
 import type { AccountValuation, BalanceRow, PositionRow } from "@/api/generated/types.gen";
 import { formatAmount, formatDecimal } from "@/shared/lib/amount";
 import { shortId } from "@/shared/lib/id";
@@ -8,6 +12,7 @@ import { FreshnessBadge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { DualPositionsTable } from "@/features/holdings/DualPositionsTable";
 import styles from "@/features/pages.module.css";
 
 /** One Account's current Account Report: valuation metrics, balances, and positions. */
@@ -26,13 +31,26 @@ export function AccountDetail({
     queryFn: async () =>
       unwrapOrRedirect(await listAccountBalances({ path: { portfolioId, accountId } }), redirect),
   });
+  const isDual = account.accountType === "dual_investment";
   const positions = useQuery({
     queryKey: ["account-positions", userId, portfolioId, accountId],
-    enabled: Boolean(userId && portfolioId && accountId),
+    enabled: Boolean(userId && portfolioId && accountId && !isDual),
     queryFn: async () =>
       unwrapOrRedirect(await listAccountPositions({ path: { portfolioId, accountId } }), redirect),
   });
-  const issues = [...(balances.data?.issues ?? []), ...(positions.data?.issues ?? [])];
+  const dualPositions = useQuery({
+    queryKey: ["account-dual-positions", userId, portfolioId, accountId],
+    enabled: Boolean(userId && portfolioId && isDual),
+    queryFn: async () =>
+      unwrapOrRedirect(
+        await listAccountDualPositions({ path: { portfolioId, accountId } }),
+        redirect,
+      ),
+  });
+  const issues = [
+    ...(balances.data?.issues ?? []),
+    ...(isDual ? (dualPositions.data?.issues ?? []) : (positions.data?.issues ?? [])),
+  ];
 
   return (
     <div className={styles.detail}>
@@ -57,26 +75,48 @@ export function AccountDetail({
             : "No balances in the current Account Report for this account."
         }
       />
-      <QueryRecovery
-        error={positions.error}
-        hasData={Boolean(positions.data)}
-        busy={positions.isFetching}
-        fallback="Account positions could not be loaded."
-        onRetry={() => {
-          void positions.refetch();
-        }}
-      />
-      <h3>Positions</h3>
-      <DataTable
-        caption={`Positions of ${account.accountName}`}
-        columns={POSITION_COLUMNS}
-        rows={(positions.data?.items ?? []).map(positionRow)}
-        empty={
-          positions.isPending
-            ? "Loading positions."
-            : "No open positions in the current Account Report for this account."
-        }
-      />
+      {isDual ? (
+        <>
+          <QueryRecovery
+            error={dualPositions.error}
+            hasData={Boolean(dualPositions.data)}
+            busy={dualPositions.isFetching}
+            fallback="Dual positions could not be loaded."
+            onRetry={() => {
+              void dualPositions.refetch();
+            }}
+          />
+          <h3>Dual Investment positions</h3>
+          <DualPositionsTable
+            items={dualPositions.data?.items ?? []}
+            timezone={dualPositions.data?.context.timezone}
+            loading={dualPositions.isPending}
+          />
+        </>
+      ) : (
+        <>
+          <QueryRecovery
+            error={positions.error}
+            hasData={Boolean(positions.data)}
+            busy={positions.isFetching}
+            fallback="Account positions could not be loaded."
+            onRetry={() => {
+              void positions.refetch();
+            }}
+          />
+          <h3>Positions</h3>
+          <DataTable
+            caption={`Positions of ${account.accountName}`}
+            columns={POSITION_COLUMNS}
+            rows={(positions.data?.items ?? []).map(positionRow)}
+            empty={
+              positions.isPending
+                ? "Loading positions."
+                : "No open positions in the current Account Report for this account."
+            }
+          />
+        </>
+      )}
       {issues.length > 0 ? (
         <>
           <h3>Issues</h3>

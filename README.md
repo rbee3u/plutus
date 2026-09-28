@@ -9,7 +9,7 @@ The domain hierarchy is `Platform -> Identity -> Account`: each exchange login (
 Phases 1–4 are implemented. The code runs the accepted model (ADRs [0014](./docs/adr/0014-store-one-valuation-point-per-collection-cycle.md)–[0021](./docs/adr/0021-report-each-account-with-one-aligned-account-report.md)) end to end against a deterministic **fake Adapter**. Phase 5 has live Binance, OKX, Bybit, and Kraken Adapters that still await validation against the exchange apps.
 
 - Configuration from TOML and `PLUTUS_*`, `--config` / `--env-file` lanes, the HTTP / HTTPS / mTLS startup matrix.
-- One explicit Goose baseline migration (16 tables) and sqlc access. `serve` never migrates automatically.
+- An immutable Goose baseline with appended migrations (19 tables in the current schema) and sqlc access. `serve` never migrates automatically.
 - Session authentication (Argon2id, CSRF, rate limits), Portfolio CRUD with a per-Portfolio collection interval and timezone.
 - Identities with User-selected Accounts, write-only credentials encrypted with AES-256-GCM, and a validate → enable → disable → archive Connection flow. Each Identity declares its Account Structure at creation, which fixes its Account Types; the Margin Mode is read from the Platform at validation and in every Collection Run, shown on the Identity, and audited when it changes ([ADR 0028](./docs/adr/0028-separate-account-structure-from-margin-mode.md)). Validation refuses a key that reaches a different Platform account than the one the Identity is bound to.
 - A scheduler and durable job worker that run one Collection Cycle per Portfolio at its interval (or on demand), write one aligned Account Report per selected Account, and store one Valuation Point per cycle with stale carry-forward, incomplete marking, and derived Boundary Events.
@@ -18,16 +18,20 @@ Phases 1–4 are implemented. The code runs the accepted model (ADRs [0014](./do
 - Overview, Holdings (tree, balances, positions), History, Capital, Identities, Catalog, Activity (cycles, jobs, audit), and settings pages in the embedded React app.
 - Development `plutus db seed` / `db reset` with deterministic `minimal`, `edge-cases`, and `walkthrough` profiles generated from the same fake scenario the runtime Adapter uses, and `plutus collect` to run one cycle from the CLI.
 
-Every live Adapter is registered when `[collection] fake_adapter = false` and tested in three layers: recorded-fixture replay, documentation-derived fixtures for configurations no test key reaches ([ADR 0027](./docs/adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)), and a `live` smoke test; `plutus adapter record` records the fixtures. Earn on Binance, OKX, and Bybit includes dual investment and fails as `unsupported` when the Platform values Earn above what Plutus can itemize ([ADR 0029](./docs/adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)). No Adapter has been validated against its exchange app on the test environment yet, so no integration is complete.
+Every live Adapter is registered when `[collection] fake_adapter = false` and tested in three layers: recorded-fixture replay, documentation-derived fixtures for configurations no test key reaches ([ADR 0027](./docs/adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)), and a `live` smoke test; `plutus adapter record` records the fixtures. Binance, OKX, and Bybit offer separate Earn and Dual Investment Accounts. Dual Balances aggregate principal; each subscription has its own Dual Position. Their combined completeness check fails selected dependent Accounts when the Platform values Earn above what Plutus can itemize ([ADR 0033](./docs/adr/0033-separate-dual-investment-accounts-and-positions.md)). No Adapter has been validated against its exchange app on the test environment yet, so no integration is complete.
 
 Live Adapters use IPv4 for outbound HTTP and Kraken WebSocket connections ([ADR 0030](./docs/adr/0030-use-ipv4-for-platform-connections.md)). The server's public IPv4 address must be allowed by each Platform API key. If an HTTP proxy is configured, the proxy controls which address family the Platform sees.
 
-- Binance: Classic Trading (spot, funding, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, earn) and Portfolio Margin (portfolio margin, spot, funding, earn). Connections accept HMAC secrets or unencrypted Ed25519 PKCS#8 private key PEMs ([ADR 0031](./docs/adr/0031-accept-binance-ed25519-private-keys.md)). Only Portfolio Margin with HMAC has run against a real account; Ed25519 has offline signing coverage but no live validation. See [Binance mappings and coverage](./docs/adapters/binance.md).
-- OKX: the unified account in Spot mode, Futures mode, Multi-currency margin, and Portfolio margin (trading, funding, earn), with a live check against OKX's own valuation of each Account. Only Portfolio margin has run against a real account. See [OKX mappings and coverage](./docs/adapters/okx.md).
-- Bybit: global UTA 2.0 in Isolated Margin, Cross Margin, and Portfolio Margin (unified, funding, earn). Only Portfolio Margin has run against a real account. See [Bybit mappings and coverage](./docs/adapters/bybit.md).
+- Binance: Classic Trading (spot, funding, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, earn, dual investment) and Portfolio Margin (portfolio margin, spot, funding, earn, dual investment). Connections accept HMAC secrets or unencrypted Ed25519 PKCS#8 private key PEMs ([ADR 0031](./docs/adr/0031-accept-binance-ed25519-private-keys.md)). Only Portfolio Margin with HMAC has run against a real account; Ed25519 has offline signing coverage but no live validation. See [Binance mappings and coverage](./docs/adapters/binance.md).
+- OKX: the unified account in Spot mode, Futures mode, Multi-currency margin, and Portfolio margin (trading, funding, earn, dual investment), with a live check against OKX's own valuation of each Account. Only Portfolio margin has run against a real account. See [OKX mappings and coverage](./docs/adapters/okx.md).
+- Bybit: global UTA 2.0 in Isolated Margin, Cross Margin, and Portfolio Margin (unified, funding, earn, dual investment). Only Portfolio Margin has run against a real account. See [Bybit mappings and coverage](./docs/adapters/bybit.md).
 - Kraken: Separate wallets and Unified Wallet with two credential groups and the structure read from a bounded WebSocket snapshot. Only Unified Wallet has run against a real account. See [Kraken mappings and coverage](./docs/adapters/kraken.md).
 
 Remaining: exchange-app validation on the test environment and the unexercised structures, Margin Modes, and products listed in each adapter's coverage notes. Progress is tracked in the [implementation checklist](./docs/implementation-checklist.md).
+
+## Upgrading the Dual Investment split
+
+Drain running or partially collected cycles with the previous release, stop all workers, run the usual `migrate up` with the environment's config and env file, then start only the new binary. The migration refuses unfinished cycles. Existing Earn selections are inherited by Dual Investment. History is preserved; Value Changes spanning the split are marked incomplete. Until ordinary Earn has a successful report in its new scope, an old combined report cannot be carried forward. No database reset is needed.
 
 ## Product scope
 
@@ -40,16 +44,16 @@ Integrations target these Account Structures and Margin Modes ([ADR 0028](./docs
 
 | Platform | Account Structure (declared) | Margin Modes (observed) | Account Types |
 | --- | --- | --- | --- |
-| Binance | Classic Trading | none | spot, funding, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, earn |
-| Binance | Portfolio Margin | none | portfolio margin, spot, funding, earn |
-| OKX | Unified account | Spot mode, Futures mode, Multi-currency margin, Portfolio margin | trading, funding, earn |
-| Bybit | Unified Trading Account 2.0 | Isolated Margin, Cross Margin, Portfolio Margin | unified, funding, earn |
+| Binance | Classic Trading | none | spot, funding, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, earn, dual investment |
+| Binance | Portfolio Margin | none | portfolio margin, spot, funding, earn, dual investment |
+| OKX | Unified account | Spot mode, Futures mode, Multi-currency margin, Portfolio margin | trading, funding, earn, dual investment |
+| Bybit | Unified Trading Account 2.0 | Isolated Margin, Cross Margin, Portfolio Margin | unified, funding, earn, dual investment |
 | Kraken | Separate wallets | none | main, earn, multi-m, coin-m, derivatives holding |
 | Kraken | Unified Wallet | none | main, earn, coin-m, derivatives holding |
 
 Rules that shape the product:
 
-- The User selects which Account Types to collect for each Identity; nothing is discovered or probed beyond that selection. The Account Structure cannot change: after switching it on the Platform, create a new Identity and archive the old one.
+- The User selects which Account Types to collect for each Identity; only selected Account Reports are stored and valued. Earn and Dual Investment share auxiliary reads for completeness, even when only one is selected. The Account Structure cannot change: after switching it on the Platform, create a new Identity and archive the old one.
 - An Account's value is the Platform's reported equity when it provides one, otherwise the sum of its Balances times the same Platform's prices. USD is the only valuation currency; USDT and USDC count as 1 USD.
 - A failed Account collection keeps its last successful report, labeled stale with its age. A successful report is the complete set: a coin not listed is no longer held. A Balance without a price is shown but left out of a calculated total, which is marked incomplete. A User can review and ignore an Asset Listing in one Portfolio; future calculated Accounts then omit its Balances without a price issue, while reported-equity Accounts stay unchanged. The rule and reason remain visible in Asset Listings and can be restored.
 - Adding or removing an Account from the Portfolio is a Boundary Event treated as an implicit Capital Flow, so Value Change does not jump. Capital Flows are recorded manually; Plutus only ever needs read-only API keys.

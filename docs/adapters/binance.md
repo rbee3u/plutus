@@ -20,7 +20,7 @@ Portfolio Margin Pro is for institutions only and is not offered. Every call is 
 | `spot` | `POST api /sapi/v3/asset/getUserAsset` | `USER_DATA` | 5 |
 | `funding` | `POST api /sapi/v1/asset/get-funding-asset` | `USER_DATA` | 1 |
 | `earn`: Simple Earn, paged by 100 | `GET api /sapi/v1/simple-earn/flexible/position`, `/sapi/v1/simple-earn/locked/position` | `USER_DATA` | 150 per page |
-| `earn`: dual investment, one query per running state, paged by 100 | `GET api /sapi/v1/dci/product/positions?status=…` | `USER_DATA` | 1 per page |
+| `dual_investment`: dual investment, one query per running state, paged by 100 | `GET api /sapi/v1/dci/product/positions?status=…` | `USER_DATA` | 1 per page |
 | `earn`: completeness check | `GET api /sapi/v1/asset/wallet/balance?quoteAsset=USDT` | `USER_DATA` | 60 |
 | `portfolio_margin` | `GET papi /papi/v1/account`, `/papi/v1/balance`, `/papi/v1/um/positionRisk`, `/papi/v1/cm/positionRisk` | `USER_DATA` | 20, 20, 5, 1 |
 | `cross_margin` | `GET api /sapi/v1/margin/account` | `USER_DATA` | 10 |
@@ -88,21 +88,37 @@ Binance reports no full coin names on these endpoints, so `name` stays empty. A 
 
 ## Earn
 
-The `earn` Account is the same in both structures. It has one Balance per coin: Simple Earn flexible `totalAmount`, plus locked `amount`, plus the `subscriptionAmount` of every running dual investment position in its `investCoin` ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)). A dual investment position holds its principal in the Earn wallet until Binance pays it out to Spot. The principal is counted whatever the settlement will pay, including in the other coin.
+The `earn` Account has one Balance per coin: Simple Earn flexible `totalAmount` plus locked `amount`. Dual principal is held in the separate `dual_investment` Account, summing `subscriptionAmount` in `investCoin` until the subscription ends. Expected yield is excluded.
 
 | `purchaseStatus` | Read |
 | --- | --- |
 | `PENDING`, `PURCHASE_SUCCESS`, `SETTLING`, `REFUNDING` (running) | queried one by one with `status=<state>`, every page, and counted |
 | `SETTLED`, `PURCHASE_FAIL`, `REFUND_SUCCESS` (finished) | never queried: the principal or payout is back in Spot, or was never taken |
-| an undocumented status, or any status other than the one queried | the Earn Account fails with `normalization`, naming the status |
+| an undocumented status, or any status other than the one queried | the selected Earn and Dual Accounts fail with `normalization`, naming the status |
 
 Querying each running state keeps the read bounded by the running positions, however long the account's history is. A position that moves between running states while they are read, such as from `PURCHASE_SUCCESS` to `SETTLING`, is counted once by `id`.
 
-**Completeness check.** Binance keeps adding Earn products, and one the adapter does not read would otherwise vanish from a successful report. So the adapter also reads Binance's own USDT valuation of its `Earn` wallet from `/sapi/v1/asset/wallet/balance` and compares it with the itemized Balances, valued with the batch's last prices. If Binance's value exceeds the itemized value by more than max(1%, 1 USD), the Earn Account fails with `unsupported`, naming both amounts, and goes Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). A missing `Earn` wallet is a `normalization` failure. A Balance without a price skips the check, because valuation already marks it `no_price`.
+**Completeness check.** Binance keeps adding Earn products, and one the adapter does not read would otherwise vanish from a successful report. So the adapter also reads Binance's own USDT valuation of its `Earn` wallet from `/sapi/v1/asset/wallet/balance` and compares it with the combined ordinary Earn and Dual Balances, valued with the batch's last prices. If Binance's value exceeds the itemized value by more than max(1%, 1 USD), the selected Earn and Dual Accounts fail with `unsupported`, naming both amounts, and go Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). A missing `Earn` wallet is a `normalization` failure. A Balance without a price skips the check, because valuation already marks it `no_price`.
 
 Any other product Binance values in its Earn wallet trips the check. Liquid staking tokens such as WBETH and BNSOL are ordinary spot coins.
 
-**Settlement window.** Dual investment settles at 08:00 UTC on the settlement date. Binance pays out to Spot within six hours, by 14:00 UTC, and the position is `SETTLING` in between. A Collection Run in that window can count the principal in `earn` and the payout in `spot` at once, a double count, or neither, a dip, depending on which side has updated. The next run after the payout is correct again. Both are expected and are not reconciled across Accounts.
+**Settlement window.** Dual investment settles at 08:00 UTC on the settlement date. Binance pays out to Spot within six hours, by 14:00 UTC, and the position is `SETTLING` in between. A Collection Run in that window can count the principal in `dual_investment` and the payout in `spot` at once, a double count, or neither, a dip, depending on which side has updated. The next run after the payout is correct again. Both are expected and are not reconciled across Accounts.
+
+## Dual Investment Account and positions
+
+`dual_investment` is a separately selected product Account, not an independently transferable cash wallet. Its Balances aggregate outstanding principal by invested currency; available and withdrawable values remain null. Each subscription is stored separately and never adds a second value to its Balance. The Positions page separates Futures and Dual Investment.
+
+Selecting either `earn` or `dual_investment` reads both product groups once for the combined Earn completeness check. Only selected reports leave the Adapter. Required auxiliary failures and unexplained aggregate shortfalls fail both selected dependent Accounts; unrelated Accounts retain their normal failure isolation. Neither product group is read when neither is selected. Missing optional terms are null with display issues; missing identity/principal or contradictory fields fail normalization. See [ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md).
+
+| Dual Position field | Source |
+| --- | --- |
+| Subscription identity | `id` (position ID); `orderId` retained separately |
+| Principal | `subscriptionAmount` of `investCoin` |
+| Pair and direction | PUT: `exercisedCoin` / `investCoin`, Buy Low; CALL: `investCoin` / `exercisedCoin`, Sell High |
+| Target, expiry | `strikePrice`, `settleDate` milliseconds |
+| Annualized rate | `apr`, tagged APR |
+
+The live test additionally reads `GET /sapi/v1/dci/product/accounts` (`USER_DATA`, weight 1). Its `totalAmountInUSDT` is diagnostic only: the valuation formula is undocumented and never overrides principal or creates a runtime dependency.
 
 ## Position
 
@@ -140,7 +156,7 @@ For every non-USD Balance symbol, the price is the spot last price of `<symbol>U
 | HTTP 5xx, timeouts, network errors, `-1001`, `-1021` after one resync | `temporary` | the Account; the batch when every Account failed |
 | any other 4xx | `temporary`, detail carries Binance's code and message | the Account |
 | a different Account Structure | `unsupported` | the whole call, before any Account is read |
-| Earn valued above its itemized Balances | `unsupported`, naming both amounts | the `earn` Account |
+| Earn valued above its itemized Balances | `unsupported`, naming both amounts | selected `earn` and `dual_investment` Accounts |
 | no `isPortfolioMarginRetailEnabled` | `normalization` | the whole call |
 | unparseable or non-decimal fields, an amount without a coin, an undocumented dual investment status, unknown contracts | `normalization` | the Account |
 
@@ -179,6 +195,8 @@ Run these on the test environment against the Binance app on the same account, w
 4. **Positions**: every open USDⓈ-M and COIN-M position appears with the same side, size (USDⓈ-M in coins, COIN-M in contracts), entry price, and leverage. Liquidation prices agree within rounding.
 5. **Classic margin**: each Cross Margin coin's equity equals its net asset and its liability equals its borrowed amount, and the margin level matches the app's. Isolated Margin shows each coin once, summed over its pairs. A User without margin sees both Accounts ok and empty.
 6. **Classic futures**: USDⓈ-M per-asset margin balances match the futures wallet. In Multi-Assets Mode, `AdjEq` equals the margin balance and the maintenance margin ratio equals the Margin Ratio of the futures page. In Single-Asset Mode, those figures are empty. COIN-M balances are per coin, and positions are in contracts.
-7. **Spot, funding, and Earn**: coin amounts match the Spot and Funding wallets, and flexible-earn receipts do not appear under spot. Simple Earn flexible and locked amounts match the Earn page. Each running dual investment position appears at its subscription amount in the deposit coin until it is paid out, and a settled one no longer appears. The Earn Account succeeds. Holding an Earn product Plutus does not read makes it Stale with both USD amounts.
+7. **Spot, funding, and Earn**: coin amounts match the Spot and Funding wallets, and flexible-earn receipts do not appear under spot. Simple Earn flexible and locked amounts match the Earn page. Each running dual investment position appears in the separate Dual Investment Account at its subscription amount in the deposit coin until it is paid out, and a settled one no longer appears. The Earn Account succeeds. Holding an Earn product Plutus does not read makes it Stale with both USD amounts.
 8. **Account values**: the calculated USD value of every Account without reported equity is within about 0.1% of the app's USD value of that wallet.
 9. **Failures**: removing the server IP from the key's whitelist sets the Connection `invalid` with a `-2015` detail at the next cycle. Restoring it and validating again resumes collection.
+
+On 2026-09-29 the split-account live test passed in Portfolio Margin. Dual positions were empty; the dedicated Dual aggregate and itemized principal were both 0.00 USD. Nonempty subscriptions remain documentation-derived coverage. No new raw payload was recorded.

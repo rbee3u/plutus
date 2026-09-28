@@ -43,6 +43,7 @@ type AccountReport struct {
 	SourceReportID         []byte
 	OmittedJson            sqljson.Column
 	CreatedAt              time.Time
+	ScopeVersion           uint16
 }
 
 type AssetListing struct {
@@ -99,6 +100,24 @@ type CapitalFlow struct {
 	Version         uint64
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type DualPosition struct {
+	ReportID            []byte
+	PortfolioID         []byte
+	PlatformPositionRef string
+	ProductRef          sql.NullString
+	OrderRef            sql.NullString
+	BaseSymbol          sql.NullString
+	QuoteSymbol         sql.NullString
+	InvestSymbol        string
+	Principal           string
+	Direction           sql.NullString
+	TargetPrice         sql.NullString
+	ExpiryAt            sql.NullTime
+	AnnualizedRate      sql.NullString
+	RateKind            sql.NullString
+	Status              string
 }
 
 type IdempotencyRecord struct {

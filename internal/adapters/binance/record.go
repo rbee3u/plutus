@@ -347,7 +347,8 @@ func recordedAssets(bodies map[endpoint][][]byte) (map[string]bool, error) {
 		return nil, err
 	}
 	for _, page := range dciPages {
-		for _, row := range page.List {
+		for i := range page.List {
+			row := &page.List[i]
 			assets[strings.ToUpper(row.InvestCoin)] = true
 		}
 	}

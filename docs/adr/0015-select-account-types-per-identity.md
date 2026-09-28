@@ -13,3 +13,5 @@ Platforms expose several wallets per Identity (unified trading, funding, spot, e
 - Sub-accounts are configured as their own Identities with their own Connections. There is no parent–child relationship and no collection of sub-account data through a main-account credential.
 - Deselecting an Account removes it from the Portfolio Boundary, which is a Boundary Event under [ADR 0016](./0016-treat-boundary-events-as-implicit-capital-flows.md).
 - This supersedes the discovery rules of [ADR 0006](./0006-configure-identity-access-and-discover-catalog-entries.md).
+
+[ADR 0033](./0033-separate-dual-investment-accounts-and-positions.md) adds one exception: selected Earn or Dual Investment may read the other product group as auxiliary data for a combined completeness check. Only selected Account Reports are emitted and valued.

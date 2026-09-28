@@ -113,7 +113,7 @@ func fakeReports(apiKey string, platform adapters.Platform, mode adapters.Margin
 	out := make([]reportSpec, 0, len(types))
 	for _, t := range types {
 		report := scenario.Report(mode, t, at.Add(2*time.Second), false)
-		out = append(out, reportSpec{Account: accounts[t], Platform: platform, Report: &report})
+		out = append(out, reportSpec{Account: accounts[t], AccountType: t, Platform: platform, Report: &report})
 	}
 	return out
 }
@@ -121,7 +121,7 @@ func fakeReports(apiKey string, platform adapters.Platform, mode adapters.Margin
 func failedReports(platform adapters.Platform, class, detail string, accounts map[adapters.AccountType]uuid.UUID, types ...adapters.AccountType) []reportSpec {
 	out := make([]reportSpec, 0, len(types))
 	for _, t := range types {
-		out = append(out, reportSpec{Account: accounts[t], Platform: platform, Class: class, Detail: detail})
+		out = append(out, reportSpec{Account: accounts[t], AccountType: t, Platform: platform, Class: class, Detail: detail})
 	}
 	return out
 }
@@ -151,6 +151,7 @@ const (
 	typeSpot            adapters.AccountType = "spot"
 	typeFunding         adapters.AccountType = "funding"
 	typeEarn            adapters.AccountType = "earn"
+	typeDual                                 = adapters.TypeDualInvestment
 	typeTrading         adapters.AccountType = "trading"
 	typeUnified         adapters.AccountType = "unified"
 	typeCrossMargin     adapters.AccountType = "cross_margin"
@@ -160,15 +161,15 @@ const (
 )
 
 var (
-	aliceBinanceAccounts = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountAliceBinancePM, typeSpot: AccountAliceBinanceSpot, typeFunding: AccountAliceBinanceFunding, typeEarn: AccountAliceBinanceEarn}
-	aliceOKXAccounts     = map[adapters.AccountType]uuid.UUID{typeTrading: AccountAliceOKXTrading, typeFunding: AccountAliceOKXFunding, typeEarn: AccountAliceOKXEarn}
-	aliceBybitAccounts   = map[adapters.AccountType]uuid.UUID{typeUnified: AccountAliceBybitUnified, typeFunding: AccountAliceBybitFunding, typeEarn: AccountAliceBybitEarn}
-	aliceOldAccounts     = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountAliceOldPM, typeSpot: AccountAliceOldSpot, typeFunding: AccountAliceOldFunding, typeEarn: AccountAliceOldEarn}
-	bobBinanceAccounts   = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountBobBinancePM, typeSpot: AccountBobBinanceSpot, typeFunding: AccountBobBinanceFunding, typeEarn: AccountBobBinanceEarn}
+	aliceBinanceAccounts = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountAliceBinancePM, typeSpot: AccountAliceBinanceSpot, typeFunding: AccountAliceBinanceFunding, typeDual: AccountAliceBinanceDual, typeEarn: AccountAliceBinanceEarn}
+	aliceOKXAccounts     = map[adapters.AccountType]uuid.UUID{typeTrading: AccountAliceOKXTrading, typeFunding: AccountAliceOKXFunding, typeDual: AccountAliceOKXDual, typeEarn: AccountAliceOKXEarn}
+	aliceBybitAccounts   = map[adapters.AccountType]uuid.UUID{typeUnified: AccountAliceBybitUnified, typeFunding: AccountAliceBybitFunding, typeDual: AccountAliceBybitDual, typeEarn: AccountAliceBybitEarn}
+	aliceOldAccounts     = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountAliceOldPM, typeSpot: AccountAliceOldSpot, typeFunding: AccountAliceOldFunding, typeDual: AccountAliceOldDual, typeEarn: AccountAliceOldEarn}
+	bobBinanceAccounts   = map[adapters.AccountType]uuid.UUID{typePortfolioMargin: AccountBobBinancePM, typeSpot: AccountBobBinanceSpot, typeFunding: AccountBobBinanceFunding, typeDual: AccountBobBinanceDual, typeEarn: AccountBobBinanceEarn}
 	aliceClassicAccounts = map[adapters.AccountType]uuid.UUID{
 		typeSpot: AccountAliceClassicSpot, typeFunding: AccountAliceClassicFunding, typeCrossMargin: AccountAliceClassicCrossMargin,
 		typeIsolatedMargin: AccountAliceClassicIsolatedMargin, typeUMFutures: AccountAliceClassicUMFutures,
-		typeCMFutures: AccountAliceClassicCMFutures, typeEarn: AccountAliceClassicEarn,
+		typeCMFutures: AccountAliceClassicCMFutures, typeDual: AccountAliceClassicDual, typeEarn: AccountAliceClassicEarn,
 	}
 )
 
@@ -253,7 +254,7 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot, typeFunding), created)
 	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: end})
-	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading, typeFunding), created)
+	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading, typeFunding, typeEarn, typeDual), created)
 	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: end, LastError: adapters.ClassRateLimited, LastDetail: "The platform rate limit was exceeded."})
 	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
 	b.identity(&identitySpec{ID: IdentityAliceBinanceOld, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance old sub-account", Archived: true, ArchivedAt: now.AddDate(0, 0, -30), CreatedAt: created})
@@ -271,7 +272,7 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
 		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
 		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
-		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding)...)
+		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding, typeEarn, typeDual)...)
 		if !at.Before(staleDay) && at.Before(staleDay.AddDate(0, 0, 1)) {
 			reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceBybitAccounts, typeUnified)...)
 		} else {
@@ -291,7 +292,7 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
 		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
 		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
-		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding)...)
+		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding, typeEarn, typeDual)...)
 		reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceBybitAccounts, typeUnified)...)
 		b.fakePrices(keyAliceBinanceClassic, adapters.PlatformBinance, at)
 		classicReports := fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures)

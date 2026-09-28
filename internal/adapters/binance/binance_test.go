@@ -870,7 +870,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 }
 
 // Inline pages exercise paging and every counted status; the Earn valuation matches them.
-func TestEarnMergesSimpleEarnAndDualInvestment(t *testing.T) {
+func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
@@ -896,13 +896,21 @@ func TestEarnMergesSimpleEarnAndDualInvestment(t *testing.T) {
 		}
 	}
 	r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"0","walletName":"Spot"},{"activate":true,"balance":"`+r.earnUSD(value)+`","walletName":"Earn"}]`))
-	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn)
+	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	earn := reportOf(t, batch, TypeEarn)
+	dual := reportOf(t, batch, TypeDualInvestment)
+	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 3 {
+		t.Fatalf("dual report %+v", dual)
+	}
+	if balanceOf(t, earn, "USDT").Equity != "11.5" || balanceOf(t, dual, "USDT").Equity != "100" {
+		t.Fatal("principal must be separated from savings")
+	}
 	if earn.Status != adapters.StatusOK {
 		t.Fatalf("earn report %+v", earn)
 	}
 	got := map[string]string{}
-	for _, b := range earn.Balances {
-		got[b.Symbol] = b.Equity
+	for _, b := range append(earn.Balances, dual.Balances...) {
+		got[b.Symbol] = decimal.Format(decimal.Add(decimalOrZero(got[b.Symbol]), rat(t, b.Equity)))
 	}
 	if len(got) != len(want) {
 		t.Fatalf("earn balances %v, want %v", got, want)
@@ -953,7 +961,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, "")
 			r.alwaysAt(epDualInvest, dualInvestmentQuery(state, 1), dualInvestmentAnswer(state))
-			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn)
+			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if earn.Status != adapters.StatusOK || balanceOf(t, earn, "ETH").Equity != "0.25" {
 				t.Fatalf("earn report %+v", earn)
 			}
@@ -988,7 +996,7 @@ func TestDocumentedDualInvestmentCountsThePrincipal(t *testing.T) {
 	t.Parallel()
 
 	_, a := newReplay(t, docDualInvestment)
-	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn)
+	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "0.5" {
 		t.Fatalf("earn report %+v: the example's running 0.5 USDT principal is counted", earn)
 	}
@@ -1593,4 +1601,11 @@ func TestRecorderRedactsTheUIDAndTrimsMarketLists(t *testing.T) {
 			}
 		}
 	}
+}
+
+func decimalOrZero(value string) *big.Rat {
+	if value == "" {
+		return new(big.Rat)
+	}
+	return decimal.MustParse(value)
 }

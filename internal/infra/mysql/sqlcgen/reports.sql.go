@@ -14,19 +14,20 @@ import (
 )
 
 const getLatestOkReportForAccount = `-- name: GetLatestOkReportForAccount :one
-SELECT id, portfolio_id, job_id, account_id, status, observed_at, equity, adjusted_equity, available_equity,
+SELECT id, portfolio_id, job_id, account_id, scope_version, status, observed_at, equity, adjusted_equity, available_equity,
        initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, created_at
 FROM account_reports
-WHERE portfolio_id = ? AND account_id = ? AND status = 'ok'
+WHERE portfolio_id = ? AND account_id = ? AND scope_version = ? AND status = 'ok'
   AND created_at < ?
 ORDER BY created_at DESC, id DESC
 LIMIT 1
 `
 
 type GetLatestOkReportForAccountParams struct {
-	PortfolioID []byte
-	AccountID   []byte
-	Before      time.Time
+	PortfolioID  []byte
+	AccountID    []byte
+	ScopeVersion uint16
+	Before       time.Time
 }
 
 type GetLatestOkReportForAccountRow struct {
@@ -34,6 +35,7 @@ type GetLatestOkReportForAccountRow struct {
 	PortfolioID            []byte
 	JobID                  []byte
 	AccountID              []byte
+	ScopeVersion           uint16
 	Status                 string
 	ObservedAt             sql.NullTime
 	Equity                 sql.NullString
@@ -46,13 +48,19 @@ type GetLatestOkReportForAccountRow struct {
 }
 
 func (q *Queries) GetLatestOkReportForAccount(ctx context.Context, arg GetLatestOkReportForAccountParams) (GetLatestOkReportForAccountRow, error) {
-	row := q.db.QueryRowContext(ctx, getLatestOkReportForAccount, arg.PortfolioID, arg.AccountID, arg.Before)
+	row := q.db.QueryRowContext(ctx, getLatestOkReportForAccount,
+		arg.PortfolioID,
+		arg.AccountID,
+		arg.ScopeVersion,
+		arg.Before,
+	)
 	var i GetLatestOkReportForAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.PortfolioID,
 		&i.JobID,
 		&i.AccountID,
+		&i.ScopeVersion,
 		&i.Status,
 		&i.ObservedAt,
 		&i.Equity,
@@ -67,7 +75,7 @@ func (q *Queries) GetLatestOkReportForAccount(ctx context.Context, arg GetLatest
 }
 
 const getReport = `-- name: GetReport :one
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
@@ -92,6 +100,7 @@ type GetReportRow struct {
 	PortfolioID                  []byte
 	JobID                        []byte
 	AccountID                    []byte
+	ScopeVersion                 uint16
 	Status                       string
 	ObservedAt                   sql.NullTime
 	ErrorClass                   sql.NullString
@@ -132,6 +141,7 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (GetReport
 		&i.PortfolioID,
 		&i.JobID,
 		&i.AccountID,
+		&i.ScopeVersion,
 		&i.Status,
 		&i.ObservedAt,
 		&i.ErrorClass,
@@ -186,11 +196,11 @@ func (q *Queries) GetReportForAccountInJob(ctx context.Context, arg GetReportFor
 
 const insertAccountReport = `-- name: InsertAccountReport :exec
 INSERT INTO account_reports (
-    id, portfolio_id, job_id, account_id, status, observed_at, error_class, error_detail,
+    id, portfolio_id, job_id, account_id, scope_version, status, observed_at, error_class, error_detail,
     equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio,
     value_usd, method, source_report_id, omitted_json, created_at
 ) VALUES (
-    ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?,
     ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?,
@@ -203,6 +213,7 @@ type InsertAccountReportParams struct {
 	PortfolioID            []byte
 	JobID                  []byte
 	AccountID              []byte
+	ScopeVersion           uint16
 	Status                 string
 	ObservedAt             sql.NullTime
 	ErrorClass             sql.NullString
@@ -222,6 +233,7 @@ func (q *Queries) InsertAccountReport(ctx context.Context, arg InsertAccountRepo
 		arg.PortfolioID,
 		arg.JobID,
 		arg.AccountID,
+		arg.ScopeVersion,
 		arg.Status,
 		arg.ObservedAt,
 		arg.ErrorClass,
@@ -638,7 +650,7 @@ func (q *Queries) ListPositionsByReport(ctx context.Context, reportID []byte) ([
 }
 
 const listReportsByJob = `-- name: ListReportsByJob :many
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
@@ -664,6 +676,7 @@ type ListReportsByJobRow struct {
 	PortfolioID                  []byte
 	JobID                        []byte
 	AccountID                    []byte
+	ScopeVersion                 uint16
 	Status                       string
 	ObservedAt                   sql.NullTime
 	ErrorClass                   sql.NullString
@@ -710,6 +723,7 @@ func (q *Queries) ListReportsByJob(ctx context.Context, arg ListReportsByJobPara
 			&i.PortfolioID,
 			&i.JobID,
 			&i.AccountID,
+			&i.ScopeVersion,
 			&i.Status,
 			&i.ObservedAt,
 			&i.ErrorClass,

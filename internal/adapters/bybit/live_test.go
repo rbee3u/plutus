@@ -64,6 +64,14 @@ func TestLiveBybit(t *testing.T) {
 		t.Errorf("dual assets: %v", err)
 	}
 	t.Logf("Dual Asset positions: %d", len(positions))
+	for _, report := range batch.Reports {
+		for i := range report.DualPositions {
+			position := &report.DualPositions[i]
+			if _, err := adapters.NormalizeDualPosition("live", position); err != nil {
+				t.Error(err)
+			}
+		}
+	}
 	compareOverview(ctx, t, c, &batch)
 }
 
@@ -113,7 +121,20 @@ func compareOverview(ctx context.Context, t *testing.T, c *client, batch *adapte
 	}
 	collected := map[string]*adapters.AccountReport{}
 	for i := range batch.Reports {
-		collected[overviewBuckets[batch.Reports[i].AccountType]] = &batch.Reports[i]
+		report := batch.Reports[i]
+		key := overviewBuckets[report.AccountType]
+		if report.AccountType == TypeDualInvestment {
+			key = earnBucket
+		}
+		if previous := collected[key]; previous != nil {
+			previous.Balances = append(previous.Balances, report.Balances...)
+			if report.Status != adapters.StatusOK {
+				previous.Status = report.Status
+			}
+		} else {
+			report.Balances = append([]adapters.Balance{}, report.Balances...)
+			collected[key] = &report
+		}
 	}
 	for _, bucket := range overview.List {
 		valued, ok := decimal.Parse(bucket.TotalEquity)

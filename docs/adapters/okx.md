@@ -1,6 +1,6 @@
 # OKX adapter
 
-Package `internal/adapters/okx`. OKX has one account, the Unified account, so it has one Account Structure, `okx_unified`, with the Account Types `trading`, `funding`, and `earn`. The Margin Mode is OKX's account mode (the `acctLv` level). Plutus supports all four levels: Spot mode, Futures mode, Multi-currency margin, and Portfolio margin. The adapter observes the level at validation and at the start of every Collection Run. It is never chosen in Plutus ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)).
+Package `internal/adapters/okx`. OKX has one account, the Unified account, so it has one Account Structure, `okx_unified`, with the Account Types `trading`, `funding`, `earn`, and `dual_investment`. The Margin Mode is OKX's account mode (the `acctLv` level). Plutus supports all four levels: Spot mode, Futures mode, Multi-currency margin, and Portfolio margin. The adapter observes the level at validation and at the start of every Collection Run. It is never chosen in Plutus ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)).
 
 Coverage differs by mode:
 
@@ -38,7 +38,9 @@ Validation returns the account's `uid` as the External Ref, plus the Margin Mode
 | `trading` | `GET /api/v5/account/balance`, `GET /api/v5/account/positions` | yes | 10 / 2 s each |
 | Instruments | `GET /api/v5/public/instruments?instType=SWAP` and `?instType=FUTURES`, fetched only for open positions and cached in process for one hour | no | 20 / 2 s per IP and type |
 | `funding` | `GET /api/v5/asset/balances` | yes | 6 / s |
-| `earn` | `GET /api/v5/finance/savings/balance` (6 / s), `GET /api/v5/finance/staking-defi/orders-active` (3 / s), `GET /api/v5/finance/sfp/dcd/order-history?limit=100` and its next pages `?endId=<ordId>&limit=100` (1 / s), `GET /api/v5/asset/asset-valuation?ccy=USDT` (1 / s) | yes | as listed, per User ID |
+| `earn` | `GET /api/v5/finance/savings/balance` (6 / s), `GET /api/v5/finance/staking-defi/orders-active` (3 / s) | yes | as listed, per User ID |
+| `dual_investment` | `GET /api/v5/finance/sfp/dcd/order-history?limit=100` and its next pages `?endId=<ordId>&limit=100` | yes | 1 / s per User ID |
+| Combined Earn/Dual completeness | `GET /api/v5/asset/asset-valuation?ccy=USDT` | yes | 1 / s per User ID |
 | Prices | `GET /api/v5/market/tickers?instType=SPOT` (every spot pair in one call, fetched before the Account calls so its time precedes every report) | no | 20 / 2 s per IP |
 
 Every signed endpoint needs only the key's Read permission. On 2026-09-25 the test environment's read-only key reached all of them, including the dual investment order history and the asset valuation.
@@ -52,7 +54,7 @@ Signed requests carry four headers:
 
 OKX rejects a timestamp more than 30 seconds from its clock. So the timestamp is corrected by the offset to OKX server time. The offset is measured before the first signed call, and again after a `50102` or `50112` answer, which is then retried once.
 
-With all three Accounts selected, a Collection Run makes eight signed calls, plus one for each further page of dual investment history. It also makes one to four public calls:
+With all four Accounts selected, a Collection Run makes eight signed calls, plus one for each further page of dual investment history. It also makes one to four public calls:
 
 - the tickers, always;
 - server time, before the first signed call and after a clock rejection;
@@ -76,7 +78,7 @@ In the tables below, "yes" marks the fields OKX documents for that mode. A field
 
 In Futures mode the account level carries only `totalEq` and `isoEq`. OKX assesses margin per coin (`details[].mgnRatio`, `imr`, `mmr`, `notionalLever`), and only while a cross position is open. Plutus has no per-coin margin column. This is an accepted display gap: the equity is still complete.
 
-`funding` and `earn` report no equity. Their value is `calculated` from Balances, and every other column is null.
+`funding`, `earn`, and `dual_investment` report no equity. Their value is `calculated` from Balances, and every other column is null.
 
 Not stored: `upl`, `isoEq`, `ordFroz`, `borrowFroz`, `notionalUsd` and its per-business variants, `delta`, `deltaLever`, `deltaNeutralStatus`, `uTime`, and portfolio margin's `account/risk-state`.
 
@@ -97,11 +99,12 @@ Not stored: `upl`, `isoEq`, `ordFroz`, `borrowFroz`, `notionalUsd` and its per-b
 
 `funding` reads `asset/balances`: `symbol` from `ccy`, `equity` from `bal`, and `available_to_withdraw` from `availBal`.
 
-`earn` has one row per coin, summing three sources:
+`earn` has one row per coin, summing two sources:
 
 - Simple Earn `amt`;
-- on-chain earn `investData[].amt`;
-- the principal of every dual investment order still invested (see [Dual investment](#dual-investment)).
+- on-chain earn `investData[].amt`.
+
+Dual principal is summed separately in `dual_investment` (see [Dual investment](#dual-investment)).
 
 The other `funding` and `earn` columns are null. OKX gives no full coin names, so `name` is never mapped.
 
@@ -118,24 +121,24 @@ Mapping rules:
 - **Not mapped:**
   - `trading`: `cashBal`, `disEq`, `eqUsd`, `isoEq`, `frozenBal`, `ordFrozen`, `uplLiab`, `crossLiab`, `isoLiab`, `spotBal`, `spotUpl`, `spotInUseAmt`, `accAvgPx`, `openAvgPx`, `maxLoan`, `rewardBal`, `fixedBal`, `autoLendAmt`, `twap`, `stgyEq`, and Futures mode's per-coin `mgnRatio`, `imr`, `mmr`, `notionalLever`;
   - Earn: `earnings`, `rate`, `loanAmt`, `pendingAmt`;
-  - dual investment: yields and settlement fields.
+  - dual investment: expected payout and settlement amounts; the annualized rate is descriptive only.
 
 ## Dual investment
 
-A dual investment order takes its principal out of Funding when it is bought (Funding bill type `160`). OKX pays the principal back to Funding at settlement or refund (`161`–`163`). While the order is open, the principal is in no other Account. `earn` counts it, in the coin that was put in ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)): `notionalSz` of `notionalCcy`, added to that coin's Earn Balance and priced like any other Earn coin. The yield (`yieldSz`) and a conversion into the other coin (`settleSz` of `settleCcy`) count only once OKX pays them into Funding.
+A dual investment order takes its principal out of Funding when it is bought (Funding bill type `160`). OKX pays the principal back to Funding at settlement or refund (`161`–`163`). While the order is open, the principal is in no other Account. `dual_investment` counts it in the coin invested ([ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md)): `notionalSz` of `notionalCcy`, added to that coin's Dual Balance and priced like any other Balance. The yield (`yieldSz`) and a conversion into the other coin (`settleSz` of `settleCcy`) count only once OKX pays them into Funding.
 
 | `state` | Counted |
 | --- | --- |
 | `initial`, `pending_book`, `live`, `pending_settle`, `pending_redeem_booking`, `pending_redeem`, `redeeming` | yes |
 | `settled`, `redeemed`, `rejected` | no. The payout or refund is back in Funding, or the order was never filled. |
-| any other | `earn` fails with `normalization`, naming the state |
+| any other | selected Earn and Dual Accounts fail with `normalization`, naming the state |
 
 The states come from all of OKX's dual investment endpoints. The order history's own `state` filter accepts only `initial`, `live`, `pending_settle`, `settled`, `pending_redeem`, `redeemed`, and `rejected`. So the history cannot be filtered to the invested states, and OKX documents no retention bound. The adapter therefore reads the whole history, newest first:
 
 1. It requests 100 orders, then the 100 before the oldest `ordId` seen (`endId`), 1.1 s apart to respect the one-request-per-second limit.
 2. It stops at the first page with fewer than 100 orders.
-3. Every page must list strictly decreasing order ids, below the previous page's oldest. Otherwise `earn` fails with `normalization`, because a page out of order could end the walk before an invested order.
-4. If ten full pages (1,000 orders) do not reach the end, `earn` fails with `unsupported` and goes Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). It never reads a partial history and drops an older order that is still invested.
+3. Every page must list strictly decreasing order ids, below the previous page's oldest. Otherwise selected Earn and Dual Accounts fail with `normalization`, because a page out of order could end the walk before an invested order.
+4. If ten full pages (1,000 orders) do not reach the end, selected Earn and Dual Accounts fail with `unsupported` and go Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). It never reads a partial history and drops an older order that is still invested.
 
 OKX documents `code` as a string, but this endpoint answers with a number (`"code": 0`, observed 2026-09-25). Both forms are accepted everywhere.
 
@@ -144,16 +147,32 @@ OKX documents `code` as a string, but this endpoint answers with a number (`"cod
 - The order has already left the counted states and the payout is not yet in Funding. The value dips.
 - The payout is in Funding and the order still shows `pending_settle`. The value is counted twice.
 
-The next run after both have updated is correct again. Telling the two apart would need Funding's bill history, which Plutus does not read ([ADR 0020](../adr/0020-record-capital-flows-manually-with-read-only-credentials.md)). Both are expected and are not reconciled across Accounts. The same window can fail one run's [Earn check](#earn-check) if OKX's valuation still holds an order the history already shows as settled. Earn then stays Stale for that run.
+The next run after both have updated is correct again. Telling the two apart would need Funding's bill history, which Plutus does not read ([ADR 0020](../adr/0020-record-capital-flows-manually-with-read-only-credentials.md)). Both are expected and are not reconciled across Accounts. The same window can fail one run's [Earn check](#earn-check) if OKX's valuation still holds an order the history already shows as settled. Selected Earn and Dual Accounts then stay Stale for that run.
 
 ## Earn check
 
-OKX keeps adding Earn products. One the adapter cannot read would otherwise vanish from a successful `earn` report. So after itemizing, the adapter reads `GET /api/v5/asset/asset-valuation?ccy=USDT`, OKX's own valuation split into `trading`, `funding`, `earn`, and the deprecated `classic` bucket. It compares `details.earn` with the Earn Balances valued at the batch's prices ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)). USDT counts as USD ([ADR 0017](../adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md)), the quote the Balances are priced in.
+OKX keeps adding Earn products. One the adapter cannot read would otherwise vanish from a successful `earn` report. So after itemizing, the adapter reads `GET /api/v5/asset/asset-valuation?ccy=USDT`, OKX's own valuation split into `trading`, `funding`, `earn`, and the deprecated `classic` bucket. It compares `details.earn` with the combined ordinary Earn and Dual Balances valued at the batch's prices ([ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md)). USDT counts as USD ([ADR 0017](../adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md)), the quote the Balances are priced in.
 
-- **Too high.** If OKX's figure exceeds the itemized value by more than max(1% of OKX's figure, 1 USD), `earn` fails with `unsupported`, naming both amounts, and goes Stale. The tolerance absorbs the difference between OKX's prices and the batch's.
-- **Missing.** A missing or empty `details.earn` fails `earn` with `normalization`.
-- **Skipped.** The check is skipped when an Earn Balance has no price. That happens for a coin without a USDT or USDC pair, and for every coin but USD, USDT, and USDC when the ticker call failed. Valuation already marks such a Balance `no_price`.
-- **One-sided.** An itemized value above OKX's never fails. So a product OKX leaves out of its `earn` bucket cannot trip the check. Whether the bucket includes dual investment principal is not verified yet: the test account holds no order.
+- **Too high.** If OKX's figure exceeds the itemized value by more than max(1% of OKX's figure, 1 USD), selected Earn and Dual Accounts fail with `unsupported`, naming both amounts, and go Stale. The tolerance absorbs the difference between OKX's prices and the batch's.
+- **Missing.** A missing or empty `details.earn` fails selected Earn and Dual Accounts with `normalization`.
+- **Skipped.** The check is skipped when an Earn or Dual Balance has no price. That happens for a coin without a USDT or USDC pair, and for every coin but USD, USDT, and USDC when the ticker call failed. Valuation already marks such a Balance `no_price`.
+- **One-sided.** An itemized value above OKX's never fails. So a product OKX leaves out of its `earn` bucket cannot trip the check. The previous recording has no Dual order. A later funded live comparison supports inclusion; the test now logs the separate Dual principal and the aggregate residual.
+
+## Dual Investment Account and positions
+
+`dual_investment` is a separately selected product Account, not an independently transferable cash wallet. Its Balances aggregate outstanding principal by invested currency; available and withdrawable values remain null. Each subscription is stored separately and never adds a second value to its Balance. The Positions page separates Futures and Dual Investment.
+
+Selecting either `earn` or `dual_investment` reads both product groups once for the combined Earn completeness check. Only selected reports leave the Adapter. Required auxiliary failures and unexplained aggregate shortfalls fail both selected dependent Accounts; unrelated Accounts retain their normal failure isolation. Neither product group is read when neither is selected. Missing optional terms are null with display issues; missing identity/principal or contradictory fields fail normalization. See [ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md).
+
+| Dual Position field | Source |
+| --- | --- |
+| Subscription identity | `ordId`; `productId` is separate |
+| Principal | `notionalSz` of `notionalCcy` |
+| Pair and direction | `baseCcy` / `quoteCcy`; investing base means Sell High, investing quote means Buy Low |
+| Target, expiry | `strike`, `expTime` milliseconds |
+| Annualized rate | `annualizedYield`, tagged Annualized Yield |
+
+The public API documents no separate structured-product cash balance endpoint. Funding bill types 160–163 describe subscription and payouts; bills are not read by this Adapter. The live comparison combines ordinary Earn and Dual against `details.earn`, and logs Dual principal separately against the residual after ordinary Earn.
 
 ## Position
 
@@ -209,24 +228,24 @@ Each non-USD Balance symbol is priced at the spot `last` of `<symbol>-USDT`, els
 | `50001`, `50004`, `50026`, `50046`, `51767`, HTTP 5xx, timeouts, network errors, `50102` or `50112` after one resync | `temporary` | the Account; the batch when every Account failed |
 | any other non-zero `code` or HTTP status | `temporary`, with OKX's code and message in the detail | the Account |
 | an `acctLv` other than `1`–`4`, or an Account Structure other than `okx_unified` | `unsupported` | the whole batch. Not retried; the Connection stays enabled while its Accounts turn stale. |
-| a dual investment history of 1,000 orders or more; an Earn valuation above the itemized Earn beyond tolerance | `unsupported` | `earn`, which turns stale |
-| an Account Type other than `trading`, `funding`, or `earn` | `unsupported` | that Account |
+| a dual investment history of 1,000 orders or more; an Earn valuation above the itemized Earn beyond tolerance | `unsupported` | selected `earn` and `dual_investment`, which turn stale |
+| an Account Type other than `trading`, `funding`, `earn`, or `dual_investment` | `unsupported` | that Account |
 | an empty `acctLv`, or `account/config` without rows | `normalization` | the whole batch |
 | unparseable or non-decimal fields, an empty `totalEq`, `eq`, `bal`, or `amt`, unknown contracts, `OPTION` or `EVENTS` positions, `code` `0` without `data` | `normalization` | the Account |
-| an undocumented dual investment state, an order history that is not newest first, an invested order without `notionalCcy` or `notionalSz`, a valuation without `details.earn` | `normalization` | `earn` |
+| an undocumented dual investment state, an order history that is not newest first, an invested order without `notionalCcy` or `notionalSz`, a valuation without `details.earn` | `normalization` | selected `earn` and `dual_investment` Accounts |
 
 OKX answers many failures with HTTP 200 and a non-zero `code`, so both the status and the code decide. `code` may be a string or a number. A compound code such as `51008_1000` is classified by its main code. Error details name the endpoint and OKX's code and message, cut to 200 characters, never a body or a key.
 
 ## Completeness check (live test)
 
-The runtime [Earn check](#earn-check) covers `earn` only. The live smoke test compares every bucket of `asset/asset-valuation?ccy=USDT`:
+The runtime [Earn check](#earn-check) covers the combined Earn and Dual holdings. The live smoke test compares every bucket of `asset/asset-valuation?ccy=USDT`:
 
 - the collected `trading` equity;
-- the priced `funding` and `earn` Balances.
+- the priced Funding Balances and combined Earn/Dual Balances.
 
 It fails when one differs by more than 1% (at least 1 USD), or when another bucket, such as `classic`, holds value. That is how a trading or funding bucket OKX adds later shows up before the Complete Set rule would drop it silently.
 
-The last run on 2026-09-25 matched every bucket within 0.03%:
+The recorded baseline run on 2026-09-25 matched every bucket within 0.03%:
 
 | Bucket | Difference |
 | --- | --- |
@@ -285,7 +304,7 @@ A test overlays one scenario on the recorded set, replacing the files for the sa
 Inline responses in the tests cover:
 
 - Margin Mode detection, including `acctLv` `3`, `5`, and empty;
-- every dual investment state in documented lowercase, uppercase, and mixed case; unknown states still fail Earn;
+- every dual investment state in documented lowercase, uppercase, and mixed case; unknown states still fail selected Earn and Dual Accounts;
 - paging, ordering, and the 1,000-order limit;
 - the pause between pages;
 - the Earn check's tolerance;
@@ -301,13 +320,12 @@ On 2026-09-25 the live smoke test ran on the test account:
 - **Earn check.** The asset valuation answered, and the Earn check passed.
 - **Assertions.** The test checks structure and success, never numbers.
 
+On 2026-09-29 the split-account live test passed with one outstanding Dual subscription. Its normalized principal was 12.00 USD; the platform Earn bucket minus ordinary Earn was 12.33 USD, leaving a 0.33 USD residual difference. The combined Earn/Dual value differed by −0.011%, Funding by +0.002%, and Trading by −0.037%; Classic was empty. This verifies a real order identifier and nonempty principal mapping. Since the Dual amount is below 1% of total Earn, the independent residual is also logged rather than relying only on aggregate tolerance. No raw payload was recorded during this run.
+
 Not covered live:
 
 - Spot mode, Futures mode, and Multi-currency margin;
-- a non-empty dual investment history, so three things are unverified:
-  - the newest-first page order the adapter relies on and enforces;
-  - the length of real order ids;
-  - whether OKX's `earn` bucket includes the principal;
+- multiple pages of nonempty dual investment history;
 - a settlement inside a Collection Run;
 - options;
 - the US, Australian, and European hosts.
@@ -323,7 +341,7 @@ Run on the test environment against the OKX app on the same account, within a fe
 3. **Trading balances**: each coin's equity matches the app's per-coin equity in the trading account, including unrealized PnL.
 4. **Positions**: every open swap and futures position appears with the same direction, size in contracts, entry price, and mark price.
 5. **Funding**: coin amounts match the Funding account.
-6. **Earn**: Simple Earn, on-chain earn, and open dual investment amounts per coin match the Earn page. Each open order counts its investment amount in the coin invested. BETH and OKSOL appear under `trading` or `funding`, not `earn`.
+6. **Earn and Dual Investment**: ordinary Earn contains Simple Earn and on-chain earn. Dual Investment contains each outstanding subscription at its invested principal, with a separate Position showing target, expiry, rate, and state. Their combined value matches the platform Earn aggregate. BETH and OKSOL appear under `trading` or `funding`, not `earn`.
 7. **Account values**: the calculated USD values of `funding` and `earn` are within about 0.1% of the app's USD valuation of each account.
 
 **Per Margin Mode:**

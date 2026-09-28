@@ -3,6 +3,7 @@ package bybit
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/decimal"
@@ -23,32 +24,49 @@ type savingsPosition struct {
 }
 
 type dualAssetPosition struct {
-	Category   string `json:"category"`
-	InvestCoin string `json:"investCoin"`
-	Amount     string `json:"amount"`
-	Status     string `json:"status"`
+	Category       string `json:"category"`
+	InvestCoin     string `json:"investCoin"`
+	Amount         string `json:"amount"`
+	Status         string `json:"status"`
+	PositionID     string `json:"positionId"`
+	ProductID      string `json:"productId"`
+	OrderID        string `json:"orderId"`
+	BaseCoin       string `json:"baseCoin"`
+	QuoteCoin      string `json:"quoteCoin"`
+	Direction      string `json:"direction"`
+	TargetPrice    string `json:"targetPrice"`
+	APYE8          string `json:"apyE8"`
+	SettlementTime string `json:"settlementTime"`
 }
 
-// earn maps the Earn account: the principal of Flexible Savings, Fixed-Term Savings, and Dual
-// Asset positions, one Balance per coin. The result is then checked against Bybit's own USD
-// valuation of Earn, so value held in a product Plutus does not read keeps the Account stale
-// instead of vanishing under the Complete Set rule.
-func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapters.AccountReport, error) {
+// earn returns separate savings and Dual reports. Their combined principal is checked
+// against Bybit's Earn valuation so unsupported holdings fail selected dependent Accounts.
+func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	if err := savings(ctx, c, epFlexible, "FlexibleSaving", totals); err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	if err := savings(ctx, c, epFixedTerm, "FixedTermSaving", totals); err != nil {
-		return adapters.AccountReport{}, err
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	if err := dualAssets(ctx, c, totals); err != nil {
-		return adapters.AccountReport{}, err
+	positions, err := dualAssets(ctx, c)
+	if err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	balances := totals.Balances()
-	if err := checkEarn(ctx, c, balances, prices); err != nil {
-		return adapters.AccountReport{}, err
+	dualTotals := adapters.Totals{}
+	for i := range positions {
+		p := &positions[i]
+		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.MustParse(p.Principal)); err != nil {
+			return adapters.AccountReport{}, adapters.AccountReport{}, err
+		}
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
+	dualBalances := dualTotals.Balances()
+	combined := append(append([]adapters.Balance{}, balances...), dualBalances...)
+	if err := checkEarn(ctx, c, combined, prices); err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
+	}
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // savings adds the principal of one savings category to totals. `amount` is the principal,
@@ -87,37 +105,66 @@ func savings(ctx context.Context, c *client, ep endpoint, category string, total
 	return nil
 }
 
-// dualAssets adds the principal of every open Dual Asset position to totals, in the coin invested:
+// dualAssets preserves each open Dual Asset position and its principal in the coin invested:
 // the quote coin of a BuyLow position and the base coin of a SellHigh one. A state Bybit does not
 // document fails the Account instead of guessing whether its principal is still held.
-func dualAssets(ctx context.Context, c *client, totals adapters.Totals) error {
+func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error) {
 	rows, err := pages[dualAssetPosition](ctx, c, epDualAssets, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	where := epDualAssets.String()
+	var out []adapters.DualPosition
+	seen := map[string]bool{}
 	for i := range rows {
 		row := &rows[i]
 		if row.Category != "" && row.Category != "DualAssets" {
-			return adapters.Malformed(where, "the category of a "+row.InvestCoin+" position")
+			return nil, adapters.Malformed(where, "dual category")
 		}
 		if !dualAssetStatuses[row.Status] {
-			return adapters.NewError(adapters.ClassNormalization,
-				fmt.Sprintf("%s: Bybit reports a Dual Asset position in state %q, which Plutus does not know.", where, row.Status))
+			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: undocumented Dual Asset status %q.", where, row.Status))
 		}
-		amount, err := adapters.Decimal(where, "amount of "+row.InvestCoin, row.Amount)
+		expiry, err := adapters.DualExpiry(where, row.SettlementTime)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := totals.Add(where, row.InvestCoin, amount); err != nil {
-			return err
+		var rate *string
+		if row.APYE8 != "" {
+			parsed, err := adapters.Decimal(where, "apyE8", row.APYE8)
+			if err != nil {
+				return nil, err
+			}
+			rate = decimal.FormatPtr(new(big.Rat).Quo(parsed, big.NewRat(100000000, 1)))
 		}
+		var direction *string
+		switch row.Direction {
+		case "BuyLow":
+			direction = adapters.DualText("buy_low")
+		case "SellHigh":
+			direction = adapters.DualText("sell_high")
+		case "":
+		default:
+			return nil, adapters.Malformed(where, "dual direction")
+		}
+		state := "active"
+		if row.Status == "Redeeming" {
+			state = "redeeming"
+		}
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.DualText(row.ProductID), OrderRef: adapters.DualText(row.OrderID), BaseSymbol: adapters.DualText(row.BaseCoin), QuoteSymbol: adapters.DualText(row.QuoteCoin), InvestSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.DualText(row.TargetPrice), ExpiryAt: expiry, AnnualizedRate: rate, RateKind: adapters.DualText("apy"), Status: state})
+		if err != nil {
+			return nil, err
+		}
+		if seen[p.PlatformPositionRef] {
+			return nil, adapters.Malformed(where, "duplicate dual position id")
+		}
+		seen[p.PlatformPositionRef] = true
+		out = append(out, p)
 	}
-	return nil
+	return out, nil
 }
 
-// checkEarn compares the Earn Balances with Bybit's own USD valuation of Earn in asset-overview
-// (ADR 0029). A list without an Earn entry counts as zero: the check only ever fails when Bybit
+// checkEarn compares combined Earn and Dual Balances with Bybit's own USD valuation of Earn in asset-overview
+// (ADR 0033). A list without an Earn entry counts as zero: the check only ever fails when Bybit
 // values Earn higher than the Balances.
 func checkEarn(ctx context.Context, c *client, balances []adapters.Balance, prices spotPrices) error {
 	var overview struct {

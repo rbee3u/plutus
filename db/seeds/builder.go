@@ -32,7 +32,7 @@ type LiveIdentity struct {
 
 var tableOrder = []string{
 	"users", "portfolios", "identities", "accounts", "asset_listings", "instruments", "jobs",
-	"account_reports", "balances", "positions", "prices", "capital_flows", "audit_events",
+	"account_reports", "balances", "positions", "dual_positions", "prices", "capital_flows", "audit_events",
 }
 
 var tableColumns = map[string]string{
@@ -43,9 +43,10 @@ var tableColumns = map[string]string{
 	"asset_listings":  "id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at",
 	"instruments":     "id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size, first_seen_at, last_seen_at, created_at, updated_at",
 	"jobs":            "id, portfolio_id, kind, status, `trigger`, dedupe_key, payload_json, requested_by_user_id, available_at, attempt_count, max_attempts, last_error_class, last_detail, created_at, updated_at, started_at, finished_at",
-	"account_reports": "id, portfolio_id, job_id, account_id, status, observed_at, error_class, error_detail, equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, value_usd, method, source_report_id, omitted_json, created_at",
+	"account_reports": "id, portfolio_id, job_id, account_id, scope_version, status, observed_at, error_class, error_detail, equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, value_usd, method, source_report_id, omitted_json, created_at",
 	"balances":        "report_id, portfolio_id, listing_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl",
 	"positions":       "report_id, portfolio_id, platform_position_ref, instrument_id, side, quantity, quantity_unit, entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin",
+	"dual_positions":  "report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status",
 	"prices":          "platform, asset_symbol, observed_at, price, quote_symbol",
 	"capital_flows":   "id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note, created_by_user_id, version, created_at, updated_at",
 	"audit_events":    "id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id, before_json, after_json, metadata_json, occurred_at",
@@ -362,11 +363,12 @@ func (b *builder) price(platform adapters.Platform, asset, price string, at time
 
 // reportSpec is one Account's outcome within a cycle.
 type reportSpec struct {
-	Account  uuid.UUID
-	Platform adapters.Platform
-	Report   *adapters.AccountReport // nil means a failed report
-	Class    string
-	Detail   string
+	AccountType adapters.AccountType
+	Account     uuid.UUID
+	Platform    adapters.Platform
+	Report      *adapters.AccountReport // nil means a failed report
+	Class       string
+	Detail      string
 }
 
 // cycle inserts one succeeded Collection Cycle job and its Account Reports.
@@ -384,7 +386,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 			if class == "" {
 				class = adapters.ClassTemporary
 			}
-			b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), q("failed"), "NULL", q(class), qn(r.Detail),
+			b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), q("failed"), "NULL", q(class), qn(r.Detail),
 				"NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", q("missing"), "NULL", "NULL", ts(finished))
 			continue
 		}
@@ -393,13 +395,17 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 		if observed.IsZero() {
 			observed = at.Add(2 * time.Second)
 		}
-		b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), q("ok"), ts(observed), "NULL", "NULL",
+		b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), q("ok"), ts(observed), "NULL", "NULL",
 			decp(rep.Equity), decp(rep.AdjustedEquity), decp(rep.AvailableEquity), decp(rep.InitialMarginRatio), decp(rep.MaintenanceMarginRatio), decp(rep.UnifiedMarginRatio),
 			"NULL", q("missing"), "NULL", "NULL", ts(finished))
 		for j := range rep.Balances {
 			bal := &rep.Balances[j]
 			listingID := b.listing(r.Platform, bal.Symbol, bal.Name, observed)
 			b.add("balances", bin(reportID), bin(portfolioID), bin(listingID), dec(bal.Equity), decp(bal.AvailableToWithdraw), decp(bal.AvailableToTrade), decp(bal.Liability), decp(bal.Interest), decp(bal.UnrealizedPnl))
+		}
+		for i := range rep.DualPositions {
+			pos := &rep.DualPositions[i]
+			b.add("dual_positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), qp(pos.ProductRef), qp(pos.OrderRef), qp(pos.BaseSymbol), qp(pos.QuoteSymbol), q(pos.InvestSymbol), pos.Principal, qp(pos.Direction), decp(pos.TargetPrice), tsp(pos.ExpiryAt), decp(pos.AnnualizedRate), qp(pos.RateKind), q(pos.Status))
 		}
 		for j := range rep.Positions {
 			pos := &rep.Positions[j]
@@ -439,4 +445,11 @@ type auditSpec struct {
 func (b *builder) audit(a *auditSpec) {
 	id := b.next(kindAudit)
 	b.add("audit_events", bin(id), bin(a.Portfolio), bin(a.Actor), q(a.Action), q(a.ResourceType), bin(a.ResourceID), q("seed-"+fmt.Sprintf("%04d", b.seq[kindAudit])), "NULL", jsonLiteral(a.After), "NULL", ts(a.At))
+}
+
+func qp(value *string) string {
+	if value == nil {
+		return "NULL"
+	}
+	return q(*value)
 }

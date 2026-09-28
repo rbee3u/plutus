@@ -13,3 +13,5 @@ The primary view is "how much is there now", so a transient timeout on one walle
 - Each Account Valuation records which Account Report it used, so history shows where a point relied on stale data.
 - A Portfolio with no Collection Cycle on a calendar day has no Period Close for that day; a Value Change spanning it is incomplete rather than borrowed from the previous day.
 - This supersedes [ADR 0013](./0013-select-identity-state-by-snapshot-batch-and-archive-time.md).
+
+[ADR 0033](./0033-separate-dual-investment-accounts-and-positions.md) limits stale carry-forward to reports of the same Account scope. Legacy combined Earn reports cannot fill a new ordinary Earn report; without compatible history the value is explicitly missing.

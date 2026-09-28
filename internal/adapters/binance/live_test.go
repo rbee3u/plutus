@@ -93,7 +93,34 @@ func TestLiveBinance(t *testing.T) {
 	t.Logf("%d prices", len(batch.Prices))
 
 	prices, _ := a.lastPrices(ctx, c)
-	logEarnSources(ctx, t, c, reportOf(t, batch, TypeEarn), prices)
+	earn := reportOf(t, batch, TypeEarn)
+	dual := reportOf(t, batch, TypeDualInvestment)
+	earn.Balances = append(append([]adapters.Balance{}, earn.Balances...), dual.Balances...)
+	logEarnSources(ctx, t, c, earn, prices)
+	t.Logf("Dual Investment: %d normalized subscriptions", len(dual.DualPositions))
+	for i := range dual.DualPositions {
+		position := &dual.DualPositions[i]
+		if _, err := adapters.NormalizeDualPosition("live", position); err != nil {
+			t.Error(err)
+		}
+	}
+	var summary struct {
+		TotalAmountInUSDT string `json:"totalAmountInUSDT"`
+	}
+	ep := endpoint{method: "GET", host: hostAPI, path: "/sapi/v1/dci/product/accounts", signed: true}
+	if err := c.call(ctx, ep, nil, &summary); err != nil {
+		t.Errorf("dual account aggregate: %v", err)
+	} else if total, err := adapters.Decimal(ep.String(), "totalAmountInUSDT", summary.TotalAmountInUSDT); err != nil {
+		t.Error(err)
+	} else {
+		principal := new(big.Rat)
+		for _, balance := range dual.Balances {
+			if unit, ok := prices.usd(balance.Symbol); ok {
+				principal.Add(principal, decimal.Mul(decimal.MustParse(balance.Equity), unit))
+			}
+		}
+		t.Logf("Dual aggregate %s USD; itemized principal %s USD (diagnostic; aggregate formula is undocumented)", total.FloatString(2), principal.FloatString(2))
+	}
 }
 
 // logEarnSources reports whether the dual investment and wallet valuation endpoints answer the

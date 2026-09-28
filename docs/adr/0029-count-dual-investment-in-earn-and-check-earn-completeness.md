@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded
 ---
 
 # Count dual investment in Earn and check Earn for unread products
+
+Superseded by [ADR 0033](./0033-separate-dual-investment-accounts-and-positions.md). This record describes the previous combined Account scope.
 
 Dual investment (Binance Dual Investment, OKX Dual Investment, Bybit Dual Asset) takes principal in one coin and settles it at expiry in that coin or the other one, depending on the settlement price. While a subscription runs, its principal is in none of the wallets Plutus reads, and each Platform shows it under Earn. More generally, Platforms keep adding Earn products, and a successful Earn report is a Complete Set: a product Plutus cannot read would vanish from the total without a trace.
 

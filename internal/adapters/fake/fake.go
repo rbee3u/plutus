@@ -331,6 +331,19 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			{Symbol: "USDT", Name: "Tether", Equity: fs(round(2, 1200*f)), AvailableToWithdraw: str(round(2, 1200*f)), AvailableToTrade: str(0)},
 			{Symbol: "BNB", Name: "BNB", Equity: fs(round(3, 3*f)), AvailableToWithdraw: str(round(3, 3*f)), AvailableToTrade: str(0)},
 		}
+	case adapters.TypeDualInvestment:
+		report.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "1000"}, {Symbol: "BTC", Equity: "0.02"}}
+		expiry := at.UTC().Truncate(24 * time.Hour).Add(56 * time.Hour)
+		for i, spec := range []struct{ base, invest, amount, direction, strike string }{
+			{"BTC", "USDT", "400", "buy_low", "62000"},
+			{"ETH", "USDT", "250", "buy_low", "3000"},
+			{"BTC", "USDT", "150", "buy_low", "62000"},
+			{"BTC", "USDT", "200", "buy_low", "64000"},
+			{"BTC", "BTC", "0.02", "sell_high", "72000"},
+		} {
+			maturity := expiry.Add(time.Duration([]int{0, 1, 0, 2, 1}[i]) * 24 * time.Hour)
+			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PlatformPositionRef: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.DualText(spec.base + "-" + spec.strike), OrderRef: adapters.DualText(fmt.Sprintf("order-%d", i+1)), BaseSymbol: adapters.DualText(spec.base), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: spec.invest, Principal: spec.amount, Direction: adapters.DualText(spec.direction), TargetPrice: adapters.DualText(spec.strike), ExpiryAt: &maturity, AnnualizedRate: adapters.DualText("0.18"), RateKind: adapters.DualText("apr"), Status: "active"})
+		}
 	case "earn":
 		report.Balances = []adapters.Balance{
 			{Symbol: "ETH", Name: "Ethereum", Equity: fs(round(4, 1.5*f)), AvailableToWithdraw: str(0), AvailableToTrade: str(0), Interest: str(round(6, 0.0031*f))},

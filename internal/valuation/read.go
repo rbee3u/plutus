@@ -360,7 +360,7 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 		Status: "failed", Method: MethodMissing, Freshness: FreshnessStale, Omitted: nil,
 	}
 	view.Issues = append(view.Issues, Issue{Code: "outside_boundary", AccountID: &accountID, AccountName: account.DisplayName, Detail: "The account is not part of the latest valuation point; the last successful report is shown without a value."})
-	src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: p.ID[:], AccountID: accountID[:], Before: s.now().UTC().Add(time.Hour)})
+	src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: p.ID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(adapters.Platform(account.Platform), adapters.AccountType(account.AccountType)), Before: s.now().UTC().Add(time.Hour)})
 	if errors.Is(err, sql.ErrNoRows) {
 		return view, nil, nil
 	}

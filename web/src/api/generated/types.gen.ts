@@ -410,6 +410,30 @@ export type PositionRow = {
     reportObservedAt?: string | null;
 };
 
+export type DualPositionRow = {
+    accountId: Uuid;
+    accountName: string;
+    accountType: string;
+    identityId: Uuid;
+    identityName: string;
+    platform: string;
+    platformPositionRef: string;
+    productRef?: string | null;
+    orderRef?: string | null;
+    baseSymbol?: string | null;
+    quoteSymbol?: string | null;
+    investSymbol: string;
+    principal: Decimal;
+    direction?: string | null;
+    targetPrice?: NullableDecimal;
+    expiryAt?: string | null;
+    annualizedRate?: NullableDecimal;
+    rateKind?: string | null;
+    status: string;
+    freshness: Freshness;
+    reportObservedAt?: string | null;
+};
+
 export type AccountBalanceList = {
     context: ReadContext;
     account: AccountValuation;
@@ -421,6 +445,13 @@ export type AccountPositionList = {
     context: ReadContext;
     account: AccountValuation;
     items: Array<PositionRow>;
+    issues: Array<Issue>;
+};
+
+export type AccountDualPositionList = {
+    context: ReadContext;
+    account: AccountValuation;
+    items: Array<DualPositionRow>;
     issues: Array<Issue>;
 };
 
@@ -439,6 +470,14 @@ export type PositionList = {
     items: Array<PositionRow>;
     page: OffsetPage;
     totalNotionalUsd: NullableDecimal;
+    completeness: Completeness;
+    issues: Array<Issue>;
+};
+
+export type DualPositionList = {
+    context: ReadContext;
+    items: Array<DualPositionRow>;
+    page: OffsetPage;
     completeness: Completeness;
     issues: Array<Issue>;
 };
@@ -1864,6 +1903,38 @@ export type ListAccountPositionsResponses = {
 
 export type ListAccountPositionsResponse = ListAccountPositionsResponses[keyof ListAccountPositionsResponses];
 
+export type ListAccountDualPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        accountId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions';
+};
+
+export type ListAccountDualPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAccountDualPositionsError = ListAccountDualPositionsErrors[keyof ListAccountDualPositionsErrors];
+
+export type ListAccountDualPositionsResponses = {
+    /**
+     * Account positions.
+     */
+    200: AccountDualPositionList;
+};
+
+export type ListAccountDualPositionsResponse = ListAccountDualPositionsResponses[keyof ListAccountDualPositionsResponses];
+
 export type ListBalancesData = {
     body?: never;
     path: {
@@ -1948,6 +2019,48 @@ export type ListPositionsResponses = {
 };
 
 export type ListPositionsResponse = ListPositionsResponses[keyof ListPositionsResponses];
+
+export type ListDualPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        platform?: string;
+        identityId?: string;
+        accountId?: string;
+        symbol?: string;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/dual-positions';
+};
+
+export type ListDualPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListDualPositionsError = ListDualPositionsErrors[keyof ListDualPositionsErrors];
+
+export type ListDualPositionsResponses = {
+    /**
+     * Positions.
+     */
+    200: DualPositionList;
+};
+
+export type ListDualPositionsResponse = ListDualPositionsResponses[keyof ListDualPositionsResponses];
 
 export type ListValuationPointsData = {
     body?: never;

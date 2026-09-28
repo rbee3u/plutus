@@ -284,7 +284,8 @@ func recordedAssets(bodies map[endpoint][]byte, orders []dcdOrder) (map[string]b
 			assets[strings.ToUpper(invested.Ccy)] = true
 		}
 	}
-	for _, order := range orders {
+	for i := range orders {
+		order := &orders[i]
 		assets[strings.ToUpper(strings.TrimSpace(order.NotionalCcy))] = true
 	}
 	delete(assets, "")

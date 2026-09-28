@@ -34,7 +34,7 @@ const (
 
 var testCreds = adapters.Credentials{APIKey: testKey, APISecret: testSecret, Passphrase: testPassphrase}
 
-var allTypes = []adapters.AccountType{TypeTrading, TypeFunding, TypeEarn}
+var allTypes = []adapters.AccountType{TypeTrading, TypeFunding, TypeEarn, TypeDualInvestment}
 
 // replay serves the committed fixtures: the recorded set, with the answers of the named
 // documentation-derived scenarios (testdata/documented/<name>/) in place of the recorded ones. It
@@ -1383,24 +1383,16 @@ func TestDualInvestmentCountsInvestedPrincipal(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "dual_investment")
-	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn})
+	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	earn := reportOf(t, batch, TypeEarn)
+	earn := reportOf(t, batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK {
 		t.Fatalf("earn report %+v", earn)
 	}
 	want := map[string]*big.Rat{}
 	add := func(ccy, amount string) { want[ccy] = decimal.Add(want[ccy], rat(t, amount)) }
-	for _, row := range rowsIn[savingsBalance](t, r.file(epSavings, "")) {
-		add(row.Ccy, row.Amt)
-	}
-	for _, order := range rowsIn[stakingOrder](t, r.file(epStaking, "")) {
-		for _, invested := range order.InvestData {
-			add(invested.Ccy, invested.Amt)
-		}
-	}
 	settled := 0
 	for _, order := range rowsIn[dcdOrder](t, r.file(epDCD, "")) {
 		if dcdInvested[order.State] {
@@ -1439,11 +1431,11 @@ func TestDualInvestmentStates(t *testing.T) {
 	r, a := newReplay(t)
 	r.earnWithout()
 	r.always(epDCD, ok("["+strings.Join(rows, ",")+"]"))
-	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn})
+	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	earn := reportOf(t, batch, TypeEarn)
+	earn := reportOf(t, batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK {
 		t.Fatalf("earn report %+v", earn)
 	}
@@ -1460,11 +1452,11 @@ func TestDualInvestmentStates(t *testing.T) {
 
 	r, a = newReplay(t)
 	r.always(epDCD, ok(dcdOrders("ExPiReD", "BTC", 7)))
-	batch, err = a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeFunding, TypeEarn})
+	batch, err = a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeFunding, TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"ExPiReD"`) {
+	if earn := reportOf(t, batch, TypeDualInvestment); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"ExPiReD"`) {
 		t.Fatalf("an undocumented state must fail Earn by name: %+v", earn)
 	}
 	if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
@@ -1479,11 +1471,11 @@ func TestDualInvestmentReadsEveryPage(t *testing.T) {
 	r.earnWithout()
 	r.always(epDCD, ok(dcdOrders("live", "USDT", descending(1000, dcdPageSize)...)))
 	r.always(dcdPage("901"), ok(dcdOrders("live", "USDT", descending(900, 3)...)))
-	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn})
+	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	earn := reportOf(t, batch, TypeEarn)
+	earn := reportOf(t, batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Equity != "103" {
 		t.Fatalf("earn report %+v; want every order of both pages", earn)
 	}

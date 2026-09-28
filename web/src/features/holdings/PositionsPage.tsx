@@ -9,17 +9,19 @@ import { formatUsd } from "@/shared/lib/amount";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
+import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { DualPositionsPage } from "@/features/holdings/DualPositionsPage";
 import styles from "@/features/pages.module.css";
 
 const PAGE_SIZE = 50;
 
-export function PositionsPage() {
+function FuturesPositionsPage() {
   const { portfolioId = "" } = useParams();
   const { userId, redirect } = useSessionScope();
   const { params, update } = useSearchState();
@@ -109,5 +111,31 @@ export function PositionsPage() {
         </>
       ) : null}
     </section>
+  );
+}
+
+export function PositionsPage() {
+  const { params, update } = useSearchState();
+  const dual = params.get("kind") === "dual_investment";
+  return (
+    <>
+      <div className={styles.actions} role="group" aria-label="Position type">
+        <ActionButton
+          tone={!dual ? "primary" : "secondary"}
+          aria-pressed={!dual}
+          onClick={() => update({ kind: "", offset: "" })}
+        >
+          Futures
+        </ActionButton>
+        <ActionButton
+          tone={dual ? "primary" : "secondary"}
+          aria-pressed={dual}
+          onClick={() => update({ kind: "dual_investment", offset: "" })}
+        >
+          Dual Investment
+        </ActionButton>
+      </div>
+      {dual ? <DualPositionsPage /> : <FuturesPositionsPage />}
+    </>
   );
 }

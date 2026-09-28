@@ -24,9 +24,10 @@ import (
 
 // Account Types of the bybit_uta_2_0 Account Structure.
 const (
-	TypeUnified adapters.AccountType = "unified"
-	TypeFunding adapters.AccountType = "funding"
-	TypeEarn    adapters.AccountType = "earn"
+	TypeDualInvestment                      = adapters.TypeDualInvestment
+	TypeUnified        adapters.AccountType = "unified"
+	TypeFunding        adapters.AccountType = "funding"
+	TypeEarn           adapters.AccountType = "earn"
 )
 
 // accountStatuses names every unifiedMarginStatus Bybit documents, so a refusal can say what the
@@ -164,14 +165,17 @@ func (a *Adapter) collect(ctx context.Context, c *client, structure adapters.Acc
 	// Prices come first so their observation time precedes every report of the batch, and the
 	// valuation's "latest price at or before the report" picks them.
 	prices, pricedAt := a.tickers(ctx, c)
+	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+		return a.earn(ctx, c, prices)
+	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		switch accountType {
 		case TypeUnified:
 			return a.unified(ctx, c, mode)
 		case TypeFunding:
 			return a.funding(ctx, c)
-		case TypeEarn:
-			return a.earn(ctx, c, prices)
+		case TypeEarn, TypeDualInvestment:
+			return earnPair(ctx, accountType)
 		default:
 			return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBybit, structure, accountType)
 		}

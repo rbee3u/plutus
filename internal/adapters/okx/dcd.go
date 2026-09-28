@@ -11,10 +11,16 @@ import (
 
 // dcdOrder is one order of the dual investment (DCD) order history.
 type dcdOrder struct {
-	OrdID       string `json:"ordId"`
-	State       string `json:"state"`
-	NotionalSz  string `json:"notionalSz"`
-	NotionalCcy string `json:"notionalCcy"`
+	OrdID           string `json:"ordId"`
+	State           string `json:"state"`
+	NotionalSz      string `json:"notionalSz"`
+	NotionalCcy     string `json:"notionalCcy"`
+	ProductID       string `json:"productId"`
+	BaseCcy         string `json:"baseCcy"`
+	QuoteCcy        string `json:"quoteCcy"`
+	Strike          string `json:"strike"`
+	AnnualizedYield string `json:"annualizedYield"`
+	ExpTime         string `json:"expTime"`
 }
 
 // dcdInvested says, for every order state OKX documents across its dual investment endpoints,
@@ -59,7 +65,7 @@ func dcdPage(before string) endpoint {
 // dualInvestmentOrders reads the whole dual investment order history, newest first, one page per
 // second as OKX allows. The history cannot be filtered to every state that still holds principal,
 // so no page is skipped: the walk ends at a short page, and a history longer than dcdMaxPages
-// pages fails the Earn Account instead of dropping an older order that is still invested.
+// pages fails the selected Earn and Dual Accounts instead of dropping an older order that is still invested.
 func (a *Adapter) dualInvestmentOrders(ctx context.Context, c *client) ([]dcdOrder, error) {
 	var orders []dcdOrder
 	before := ""
@@ -84,7 +90,7 @@ func (a *Adapter) dualInvestmentOrders(ctx context.Context, c *client) ([]dcdOrd
 		before = oldest
 	}
 	return nil, adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
-		"The OKX dual investment order history reaches the %d orders Plutus reads, so Earn is kept stale instead of missing an older order that is still invested.",
+		"The OKX dual investment order history reaches the %d orders Plutus reads, so selected Earn and Dual Accounts are kept stale instead of missing an older order that is still invested.",
 		dcdMaxPages*dcdPageSize))
 }
 
@@ -112,28 +118,31 @@ func dcdCursor(rows []dcdOrder, before string) (string, error) {
 	return oldest, nil
 }
 
-// addDualInvestment adds the principal of every order that is still invested: notionalSz of
+// dualPositions preserves every order that is still invested: notionalSz of
 // notionalCcy, the amount and coin the User put in. The yield is counted only once OKX pays it out
-// at settlement. A state OKX has not documented fails the Earn Account instead of being guessed.
-func addDualInvestment(totals adapters.Totals, orders []dcdOrder) error {
+// at settlement. A state OKX has not documented fails selected Earn and Dual Accounts instead of being guessed.
+func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
 	where := epDCD.String()
+	var out []adapters.DualPosition
 	for i := range orders {
-		order := &orders[i]
-		invested, known := dcdPrincipalInvested(order.State)
+		row := &orders[i]
+		invested, known := dcdPrincipalInvested(row.State)
 		if !known {
-			return adapters.NewError(adapters.ClassNormalization,
-				fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(strings.TrimSpace(order.State), 40)))
+			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(strings.TrimSpace(row.State), 40)))
 		}
 		if !invested {
 			continue
 		}
-		amount, err := adapters.Decimal(where, "notionalSz of "+order.NotionalCcy, order.NotionalSz)
+		expiry, err := adapters.DualExpiry(where, row.ExpTime)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := totals.Add(where, order.NotionalCcy, amount); err != nil {
-			return err
+		state := map[string]string{"initial": "pending", "pending_book": "pending", "live": "active", "pending_settle": "settling", "pending_redeem_booking": "redeeming", "pending_redeem": "redeeming", "redeeming": "redeeming"}[strings.ToLower(strings.TrimSpace(row.State))]
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.OrdID, OrderRef: adapters.DualText(row.OrdID), ProductRef: adapters.DualText(row.ProductID), BaseSymbol: adapters.DualText(row.BaseCcy), QuoteSymbol: adapters.DualText(row.QuoteCcy), InvestSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.DualText(row.Strike), ExpiryAt: expiry, AnnualizedRate: adapters.DualText(row.AnnualizedYield), RateKind: adapters.DualText("annualized_yield"), Status: state})
+		if err != nil {
+			return nil, err
 		}
+		out = append(out, p)
 	}
-	return nil
+	return out, nil
 }

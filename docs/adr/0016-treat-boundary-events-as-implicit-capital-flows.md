@@ -13,3 +13,5 @@ Value Change must not report a gain when the owner adds a funded exchange accoun
 - The `incomparable` state is removed. `incomplete` remains for missing data.
 - A transfer into an Account made before that Account was selected in Plutus is a real withdrawal from the boundary and must be recorded manually. The documented practice is to select an Account in Plutus before funding it.
 - A manual Capital Flow in a non-USD Asset is converted with the nearest Price Observation from the Account's Platform at its effective time; when none exists, the affected Value Change is incomplete and names the flow.
+
+[ADR 0033](./0033-separate-dual-investment-accounts-and-positions.md) treats splitting an observed combined Earn Account into Earn and Dual Investment as reclassification, not a new contribution. Cross-scope Value Changes are incomplete; ordinary later selections remain Boundary Events.

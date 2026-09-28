@@ -156,3 +156,47 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 		Issues:           toAPIIssues(list.Issues),
 	}, nil
 }
+
+func (a *API) ListAccountDualPositions(ctx context.Context, request api.ListAccountDualPositionsRequestObject) (api.ListAccountDualPositionsResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	view, err := a.Valuation.AccountDualPositions(ctx, sc.valuation(), request.AccountId)
+	if err != nil {
+		return nil, err
+	}
+	return api.ListAccountDualPositions200JSONResponse{Context: toAPIContext(&view.Context), Account: toAPIAccountValuation(&view.Account), Items: toAPIDualPositionRows(view.DualPositions), Issues: toAPIIssues(view.Issues)}, nil
+}
+
+func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositionsRequestObject) (api.ListDualPositionsResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	filter := valuation.ListFilter{
+		Platform:   stringValue(request.Params.Platform),
+		IdentityID: request.Params.IdentityId,
+		AccountID:  request.Params.AccountId,
+		Symbol:     stringValue(request.Params.Symbol),
+		Offset:     intValue(request.Params.Offset),
+		Limit:      intValue(request.Params.Limit),
+	}
+	list, err := a.Valuation.FlatDualPositions(ctx, sc.valuation(), &filter)
+	if err != nil {
+		return nil, err
+	}
+	return api.ListDualPositions200JSONResponse{
+		Context:      toAPIContext(&list.Context),
+		Items:        toAPIDualPositionRows(list.Items),
+		Page:         toOffsetPage(list.Offset, list.Limit, list.Total),
+		Completeness: api.Completeness(list.Completeness),
+		Issues:       toAPIIssues(list.Issues),
+	}, nil
+}

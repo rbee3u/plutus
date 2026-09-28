@@ -324,7 +324,7 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.MarginMode != adapters.MarginBybitPM || len(batch.Reports) != 3 {
+	if batch.MarginMode != adapters.MarginBybitPM || len(batch.Reports) != len(allTypes()) {
 		t.Fatalf("batch Margin Mode %q with %d reports", batch.MarginMode, len(batch.Reports))
 	}
 	for _, report := range batch.Reports {
@@ -551,13 +551,13 @@ func earnAnswers(flexible, fixedTerm, overviewUSD string) map[string]string {
 
 func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 	r := newReplay(t, "dual_investment", nil)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeEarn})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	earn := reportOf(t, &batch, TypeEarn)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "40" {
-		t.Fatalf("Earn = %+v: the recorded 20 USDT of savings plus the documented 20 USDT Dual Asset principal", earn)
+	earn := reportOf(t, &batch, TypeDualInvestment)
+	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "20" {
+		t.Fatalf("Earn = %+v: only the documented 20 USDT Dual Asset principal", earn)
 	}
 }
 
@@ -567,18 +567,18 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 	page := func(position, cursor string) string {
 		return `{"retCode":0,"result":{"category":"DualAssets","list":[` + position + `],"nextPageCursor":"` + cursor + `"}}`
 	}
-	buyLow := `{"category":"DualAssets","investCoin":"USDT","amount":"100","direction":"BuyLow","status":"Active"}`
-	redeeming := `{"category":"DualAssets","investCoin":"USDC","amount":"30","direction":"BuyLow","status":"Redeeming"}`
+	buyLow := `{"positionId":"1","category":"DualAssets","investCoin":"USDT","amount":"100","direction":"BuyLow","status":"Active"}`
+	redeeming := `{"positionId":"2","category":"DualAssets","investCoin":"USDC","amount":"30","direction":"BuyLow","status":"Redeeming"}`
 
 	answers := earnAnswers("", "", "130")
 	answers[first] = page(redeeming, "page2")
 	answers[second] = page(buyLow, "")
 	r := newReplay(t, "", answers)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeEarn})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	earn := reportOf(t, &batch, TypeEarn)
+	earn := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || earn.Balances[0].Symbol != "USDC" || earn.Balances[0].Equity != "30" ||
 		earn.Balances[1].Symbol != "USDT" || earn.Balances[1].Equity != "100" {
 		t.Fatalf("Earn = %+v: both pages, Active and Redeeming", earn)
@@ -593,11 +593,11 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 			answers := earnAnswers("", "", "0")
 			answers[first], answers[second] = pages[0], pages[1]
 			r := newReplay(t, "", answers)
-			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeFunding, TypeEarn})
+			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeFunding, TypeDualInvestment})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if reportOf(t, &batch, TypeEarn).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusOK {
+			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusOK {
 				t.Fatalf("only Earn fails with normalization: %+v", batch.Reports)
 			}
 		})
@@ -679,8 +679,12 @@ func TestMalformedAccountsFailOnlyThemselves(t *testing.T) {
 					}
 				}
 			}
-			if failed != 1 {
-				t.Fatalf("exactly the malformed Account fails: %+v", batch.Reports)
+			wantFailed := 1
+			if name == "savings with a cursor" {
+				wantFailed = 2
+			}
+			if failed != wantFailed {
+				t.Fatalf("the malformed Account and any dependent Earn/Dual report fail: %+v", batch.Reports)
 			}
 		})
 	}

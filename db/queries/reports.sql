@@ -1,10 +1,10 @@
 -- name: InsertAccountReport :exec
 INSERT INTO account_reports (
-    id, portfolio_id, job_id, account_id, status, observed_at, error_class, error_detail,
+    id, portfolio_id, job_id, account_id, scope_version, status, observed_at, error_class, error_detail,
     equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio,
     value_usd, method, source_report_id, omitted_json, created_at
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(status),
+    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(scope_version), sqlc.arg(status),
     sqlc.narg(observed_at), sqlc.narg(error_class), sqlc.narg(error_detail),
     sqlc.narg(equity), sqlc.narg(adjusted_equity), sqlc.narg(available_equity), sqlc.narg(initial_margin_ratio),
     sqlc.narg(maintenance_margin_ratio), sqlc.narg(unified_margin_ratio),
@@ -38,7 +38,7 @@ INSERT INTO positions (
 );
 
 -- name: ListReportsByJob :many
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
@@ -54,7 +54,7 @@ WHERE r.portfolio_id = sqlc.arg(portfolio_id) AND r.job_id = sqlc.arg(job_id)
 ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC;
 
 -- name: GetReport :one
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
@@ -73,10 +73,10 @@ SELECT id FROM account_reports
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND job_id = sqlc.arg(job_id) AND account_id = sqlc.arg(account_id);
 
 -- name: GetLatestOkReportForAccount :one
-SELECT id, portfolio_id, job_id, account_id, status, observed_at, equity, adjusted_equity, available_equity,
+SELECT id, portfolio_id, job_id, account_id, scope_version, status, observed_at, equity, adjusted_equity, available_equity,
        initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, created_at
 FROM account_reports
-WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND status = 'ok'
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND scope_version = sqlc.arg(scope_version) AND status = 'ok'
   AND created_at < sqlc.arg(before)
 ORDER BY created_at DESC, id DESC
 LIMIT 1;

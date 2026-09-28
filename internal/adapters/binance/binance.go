@@ -25,6 +25,7 @@ import (
 // Account Types. Spot, Funding, and Earn belong to both Account Structures; Portfolio Margin
 // replaces the four Classic margin and futures wallets with portfolio_margin.
 const (
+	TypeDualInvestment                       = adapters.TypeDualInvestment
 	TypeSpot            adapters.AccountType = "spot"
 	TypeFunding         adapters.AccountType = "funding"
 	TypeEarn            adapters.AccountType = "earn"
@@ -130,8 +131,14 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	// Prices come next so their observation time precedes every report of the batch, and the
 	// valuation's "latest price at or before the report" picks them.
 	prices, pricedAt := a.lastPrices(ctx, c)
+	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+		return a.earn(ctx, c, prices)
+	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
-		return a.collectAccount(ctx, c, structure, &info, prices, accountType)
+		if accountType == TypeEarn || accountType == TypeDualInvestment {
+			return earnPair(ctx, accountType)
+		}
+		return a.collectAccount(ctx, c, structure, &info, accountType)
 	})
 	if err != nil {
 		return adapters.Batch{}, err
@@ -139,7 +146,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	return adapters.Batch{ObservedAt: a.now(), Reports: reports, Prices: adapters.QuotePrices(reports, quotes, prices.quote, pricedAt)}, nil
 }
 
-func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapters.AccountStructure, info *accountInfo, prices lastPrices, accountType adapters.AccountType) (adapters.AccountReport, error) {
+func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapters.AccountStructure, info *accountInfo, accountType adapters.AccountType) (adapters.AccountReport, error) {
 	if !adapters.ValidAccountType(structure, accountType) {
 		return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBinance, structure, accountType)
 	}
@@ -148,8 +155,6 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 		return a.wallet(ctx, c, TypeSpot, epUserAsset)
 	case TypeFunding:
 		return a.wallet(ctx, c, TypeFunding, epFundingAsset)
-	case TypeEarn:
-		return a.earn(ctx, c, prices)
 	case TypePortfolioMargin:
 		return a.portfolioMargin(ctx, c)
 	case TypeCrossMargin, TypeIsolatedMargin:

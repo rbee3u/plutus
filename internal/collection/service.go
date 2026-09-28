@@ -315,8 +315,12 @@ func (s *Service) insertFailedReport(ctx context.Context, q *sqlcgen.Queries, po
 	if detail == "" {
 		detail = "The platform call failed."
 	}
+	account, err := q.GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: portfolioID[:], ID: accountID[:]})
+	if err != nil {
+		return err
+	}
 	return q.InsertAccountReport(ctx, sqlcgen.InsertAccountReportParams{
-		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], Status: adapters.StatusFailed,
+		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(adapters.Platform(account.Platform), adapters.AccountType(account.AccountType)), Status: adapters.StatusFailed,
 		ErrorClass: sql.NullString{String: class, Valid: true}, ErrorDetail: sql.NullString{String: truncate(detail, 500), Valid: true},
 		CreatedAt: now,
 	})
@@ -335,7 +339,7 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 		observed = now
 	}
 	if err := q.InsertAccountReport(ctx, sqlcgen.InsertAccountReportParams{
-		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], Status: adapters.StatusOK,
+		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(platform, report.AccountType), Status: adapters.StatusOK,
 		ObservedAt:             sql.NullTime{Time: observed.UTC(), Valid: true},
 		Equity:                 nullDecimal(report.Equity),
 		AdjustedEquity:         nullDecimal(report.AdjustedEquity),
@@ -381,6 +385,29 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 			return err
 		}
 	}
+	for i := range report.DualPositions {
+		position := &report.DualPositions[i]
+		if report.AccountType != adapters.TypeDualInvestment {
+			return fmt.Errorf("%w: dual positions outside Dual Investment", catalog.ErrInvalid)
+		}
+		p, err := adapters.NormalizeDualPosition("Account Report", position)
+		if err != nil {
+			return err
+		}
+		var expiry sql.NullTime
+		if p.ExpiryAt != nil {
+			expiry = sql.NullTime{Time: *p.ExpiryAt, Valid: true}
+		}
+		if err := q.InsertDualPosition(ctx, sqlcgen.InsertDualPositionParams{
+			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: p.PlatformPositionRef,
+			ProductRef: dualString(p.ProductRef), OrderRef: dualString(p.OrderRef), BaseSymbol: dualString(p.BaseSymbol), QuoteSymbol: dualString(p.QuoteSymbol),
+			InvestSymbol: p.InvestSymbol, Principal: p.Principal, Direction: dualString(p.Direction), TargetPrice: nullDecimal(p.TargetPrice), ExpiryAt: expiry,
+			AnnualizedRate: nullDecimal(p.AnnualizedRate), RateKind: dualString(p.RateKind), Status: p.Status,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -410,4 +437,11 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 	case <-timer.C:
 		return nil
 	}
+}
+
+func dualString(value *string) sql.NullString {
+	if value == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *value, Valid: true}
 }

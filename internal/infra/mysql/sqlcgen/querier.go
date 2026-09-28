@@ -51,6 +51,7 @@ type Querier interface {
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertBalance(ctx context.Context, arg InsertBalanceParams) error
 	InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error
+	InsertDualPosition(ctx context.Context, arg InsertDualPositionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
@@ -67,6 +68,8 @@ type Querier interface {
 	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
 	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
 	ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error)
+	ListDualPositionsByJob(ctx context.Context, arg ListDualPositionsByJobParams) ([]ListDualPositionsByJobRow, error)
+	ListDualPositionsByReport(ctx context.Context, reportID []byte) ([]DualPosition, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]ListIdentitiesByPortfolioRow, error)
 	ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error)
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)

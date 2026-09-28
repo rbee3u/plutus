@@ -1,6 +1,6 @@
 # Bybit adapter
 
-Package `internal/adapters/bybit`. Bybit has one Account Structure, `bybit_uta_2_0`: the global Unified Trading Account 2.0, including UTA 2.0 Pro (`unifiedMarginStatus` 5 and 6). Its Account Types are `unified`, `funding`, and `earn`. The account's Margin Mode is observed, never declared ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)). It is Isolated Margin (`bybit_isolated`), Cross Margin (`bybit_cross`), or Portfolio Margin (`bybit_pm`), and it decides which `unified` figures a report carries.
+Package `internal/adapters/bybit`. Bybit has one Account Structure, `bybit_uta_2_0`: the global Unified Trading Account 2.0, including UTA 2.0 Pro (`unifiedMarginStatus` 5 and 6). Its Account Types are `unified`, `funding`, `earn`, and `dual_investment`. The account's Margin Mode is observed, never declared ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)). It is Isolated Margin (`bybit_isolated`), Cross Margin (`bybit_cross`), or Portfolio Margin (`bybit_pm`), and it decides which `unified` figures a report carries.
 
 Classic accounts, UTA 1.0, UTA 1.0 Pro, and regional services such as Bybit EU, KZ, and GE are not supported. Options are out of scope: an open option position fails the `unified` report. Every call is a read-only GET of an account, balance, position, Earn position, or market-data endpoint on `https://api.bybit.com`. The test account is a UTA 2.0 Pro in Portfolio Margin, so Isolated and Cross Margin are implemented from Bybit's documentation and have no live coverage yet ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)).
 
@@ -18,14 +18,14 @@ Classic accounts, UTA 1.0, UTA 1.0 Pro, and regional services such as Bybit EU, 
 | `funding` | `GET /v5/asset/transfer/query-account-coins-balance?accountType=FUND` | yes | not documented | 5 / s |
 | `earn`: Flexible Savings | `GET /v5/earn/position?category=FlexibleSaving` | yes | Earn | not documented |
 | `earn`: Fixed-Term Savings | `GET /v5/earn/fixed-term/position?category=FixedTermSaving` | yes | Earn | 10 / s |
-| `earn`: Dual Asset, paged by 20 | `GET /v5/earn/advance/position?category=DualAssets` | yes | Earn | 10 / s |
+| `dual_investment`: Dual Asset, paged by 20 | `GET /v5/earn/advance/position?category=DualAssets` | yes | Earn | 10 / s |
 | `earn`: completeness check | `GET /v5/asset/asset-overview?valuationCurrency=USD` | yes | not documented | 50 / s |
 
 Signed limits are per UID. Every call also counts against Bybit's IP limit of 600 requests per 5 seconds, and an IP over it is refused with HTTP 403 for at least ten minutes.
 
-Bybit documents the Earn permission for the three Earn position reads and no permission for the other signed reads. The test key is read-only (`readOnly = 1`) and has, among others, the Contract, Spot, Wallet, Options, Derivatives, Exchange, and Earn permission groups. A narrower key has not been tried. Bybit refuses a read the key has no permission for with `10005`, an `authorization` failure that invalidates the Connection. So a key without the Earn permission, or without whatever permission `asset-overview` needs, invalidates the Connection whenever `earn` is selected. Such a key can still serve an Identity that does not select `earn`.
+Bybit documents the Earn permission for the three Earn position reads and no permission for the other signed reads. The test key is read-only (`readOnly = 1`) and has, among others, the Contract, Spot, Wallet, Options, Derivatives, Exchange, and Earn permission groups. A narrower key has not been tried. Bybit refuses a read the key has no permission for with `10005`, an `authorization` failure that invalidates the Connection. So a key without the Earn permission, or without whatever permission `asset-overview` needs, invalidates the Connection whenever `earn` or `dual_investment` is selected. Such a key can still serve an Identity that selects neither `earn` nor `dual_investment`.
 
-Signed requests carry `X-BAPI-API-KEY`, `X-BAPI-TIMESTAMP`, `X-BAPI-RECV-WINDOW` (5000 ms), and `X-BAPI-SIGN`, the hex HMAC-SHA256 of timestamp + key + receive window + query string. The timestamp is corrected by the offset to Bybit server time, taken at the midpoint of a `/v5/market/time` round trip. The offset is measured before the first signed call and again after a `10002` or `-1` answer, which is then retried once. With all three Accounts selected and no position open, a Collection Run makes eleven signed calls and one public one. Every further page, every category with an open position, and every clock sync adds one call.
+Signed requests carry `X-BAPI-API-KEY`, `X-BAPI-TIMESTAMP`, `X-BAPI-RECV-WINDOW` (5000 ms), and `X-BAPI-SIGN`, the hex HMAC-SHA256 of timestamp + key + receive window + query string. The timestamp is corrected by the offset to Bybit server time, taken at the midpoint of a `/v5/market/time` round trip. The offset is measured before the first signed call and again after a `10002` or `-1` answer, which is then retried once. With all four Accounts selected and no position open, a Collection Run makes eleven signed calls and one public one. Every further page, every category with an open position, and every clock sync adds one call.
 
 ## Account Structure and Margin Mode
 
@@ -81,24 +81,40 @@ A structure the adapter does not know, such as another Platform's, fails with `u
 
 ## Earn
 
-The `earn` Account has one Balance per coin: the summed principal of three products ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)).
+The `earn` Account has one Balance per coin: the summed principal of Flexible and Fixed-Term Savings ([ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md)).
 
 | Product | Counted |
 | --- | --- |
 | Flexible Savings | `amount` of every row. Bybit also lists fully redeemed positions, and a coin whose total is zero is dropped. `claimableYield` is not counted: on the recorded account Bybit's own Earn value matched the summed `amount`, not `amount` plus yield |
 | Fixed-Term Savings | `amount` of every row. Bybit lists only running positions, `Active` and `EarlyRedemptionProcessing`. `effectiveAmount` takes effect a day later and is not used |
-| Dual Asset | `amount` in `investCoin`: the quote coin of a `BuyLow` position, the base coin of a `SellHigh` one. Every page is read |
+| Dual Asset (separate `dual_investment` Account) | `amount` in `investCoin`: the quote coin of a `BuyLow` position, the base coin of a `SellHigh` one. Every page is read |
 
 | Dual Asset `status` | Counted |
 | --- | --- |
 | `Active`, `Redeeming` | yes, whatever the settlement will pay, including in the other coin. `expectReturnAmount` is not counted before Bybit pays it |
-| any other | the Earn Account fails with `normalization`, naming the status |
+| any other | the selected Earn and Dual Accounts fail with `normalization`, naming the status |
 
 Neither savings endpoint pages, so a `nextPageCursor` there fails the Account instead of cutting the list short. A row whose `category` differs from the one requested also fails it. The fixed-term read leaves out FundPool and FundPoolPremium. On-chain Earn, BYUSDT, Discount Buy, Double Win, Smart Leverage, Liquidity Mining, and any later product are not read either. The completeness check catches value held in them.
 
-**Completeness check.** The adapter also reads Bybit's own USD valuation of Earn, the `totalEquity` of the `Earn` entry of `/v5/asset/asset-overview`. It compares that figure with the itemized Balances valued at the batch's spot prices, with USDT and USDC at 1 USD. If Bybit's value exceeds the itemized value by more than max(1%, 1 USD), the Earn Account fails with `unsupported`, naming both amounts, and goes Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). A list without an `Earn` entry counts as zero. A Balance without a price skips the check, because valuation already marks it `no_price`. An `Earn` entry valued in another currency, or with a `totalEquity` that is not a decimal, fails with `normalization`. The check catches value Plutus does not read, not value it counts twice.
+**Completeness check.** The adapter also reads Bybit's own USD valuation of Earn, the `totalEquity` of the `Earn` entry of `/v5/asset/asset-overview`. It compares that figure with the combined ordinary Earn and Dual Balances valued at the batch's spot prices, with USDT and USDC at 1 USD. If Bybit's value exceeds the itemized value by more than max(1%, 1 USD), the selected Earn and Dual Accounts fail with `unsupported`, naming both amounts, and go Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). A list without an `Earn` entry counts as zero. A Balance without a price skips the check, because valuation already marks it `no_price`. An `Earn` entry valued in another currency, or with a `totalEquity` that is not a decimal, fails with `normalization`. The check catches value Plutus does not read, not value it counts twice.
 
-**Settlement window.** Dual Asset settles at 08:00 UTC on the settlement date, and Bybit pays out to Funding (`toAccountType`, currently always `FUND`) within 5 to 30 minutes. A Collection Run in that window can count the principal in `earn` and the payout in `funding` at once, a double count, or neither, a dip, depending on which side has updated. The next run after the payout is correct again. Both are expected and are not reconciled across Accounts. When Bybit's Earn valuation still includes a position that has already left the list, the completeness check fails and Earn is carried Stale for that run instead of dipping.
+**Settlement window.** Dual Asset settles at 08:00 UTC on the settlement date, and Bybit pays out to Funding (`toAccountType`, currently always `FUND`) within 5 to 30 minutes. A Collection Run in that window can count the principal in `dual_investment` and the payout in `funding` at once, a double count, or neither, a dip, depending on which side has updated. The next run after the payout is correct again. Both are expected and are not reconciled across Accounts. When Bybit's Earn valuation still includes a position that has already left the list, the completeness check fails and selected Earn and Dual Accounts are carried Stale for that run instead of dipping.
+
+## Dual Investment Account and positions
+
+`dual_investment` is a separately selected product Account, not an independently transferable cash wallet. Its Balances aggregate outstanding principal by invested currency; available and withdrawable values remain null. Each subscription is stored separately and never adds a second value to its Balance. The Positions page separates Futures and Dual Investment.
+
+Selecting either `earn` or `dual_investment` reads both product groups once for the combined Earn completeness check. Only selected reports leave the Adapter. Required auxiliary failures and unexplained aggregate shortfalls fail both selected dependent Accounts; unrelated Accounts retain their normal failure isolation. Neither product group is read when neither is selected. Missing optional terms are null with display issues; missing identity/principal or contradictory fields fail normalization. See [ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md).
+
+| Dual Position field | Source |
+| --- | --- |
+| Subscription identity | `positionId`; `productId` and `orderId` are separate |
+| Principal | `amount` of `investCoin` |
+| Pair and direction | `baseCoin` / `quoteCoin`; `BuyLow` or `SellHigh` |
+| Target, expiry | `targetPrice`, `settlementTime` milliseconds |
+| Annualized rate | `apyE8 / 100000000`, tagged APY |
+
+`accountType` identifies the subscription source (`FUND` or `UNIFIED`), and `toAccountType` the settlement destination (`FUND`). Neither establishes an unused Dual wallet balance. The overview exposes generic categories but does not define a reliable Dual category name, so runtime completeness compares the combined groups. Pending orders before a position exists and failed-order refunds are not added to principal without evidence of where their funds reside.
 
 ## Position
 
@@ -143,7 +159,7 @@ For every non-USD Balance symbol, the spot `lastPrice` of `<symbol>USDT`, else `
 | `10016`, HTTP 403 and 5xx, timeouts, network errors, a cut-off response, `10002` or `-1` after one resync, any other non-zero `retCode` | `temporary` | the Account; the batch when every Account failed |
 | `10009` (region not served), `10028`, `100028` (endpoint for another account type), `180004` (not the global site), `180024` (not for sub-accounts) | `unsupported` | the Account |
 | a structure other than UTA 2.0, or an unknown Margin Mode | `unsupported` | the whole batch; not retried, and the Connection stays enabled while its Accounts turn Stale |
-| Bybit values Earn above the itemized Balances by more than max(1%, 1 USD) | `unsupported` | the `earn` Account |
+| Bybit values Earn above the itemized Balances by more than max(1%, 1 USD) | `unsupported` | selected `earn` and `dual_investment` Accounts |
 | unparseable or non-decimal fields; an empty `equity`, `walletBalance`, `amount`, or `size`; a row without a coin; an undocumented Dual Asset status; an open option position; an unknown contract; a repeated page cursor or a list longer than 1000 pages; `retCode 0` without a `result` | `normalization` | the Account |
 
 Bybit answers most failures with HTTP 200 and a non-zero `retCode`, so both the status and the code decide. HTTP 403 means an IP over Bybit's request budget or a U.S. IP. A failure of `/v5/account/info` fails the whole batch whatever its class, because no Account is read before the structure check. Error details name the endpoint, the HTTP status, and Bybit's code, never Bybit's message, which can echo request parameters, and never a body or a key.
@@ -152,7 +168,7 @@ Bybit answers most failures with HTTP 200 and a non-zero `retCode`, so both the 
 
 Replay tests use two fixture sets, told apart by their headers:
 
-- **Recorded** (`testdata/*.json`): the test account's answers, a UTA 2.0 Pro in Portfolio Margin recorded on 2026-09-25, with `scenario: "recorded"`, `accountStructure: "bybit_uta_2_0"`, `marginMode: "bybit_pm"`, and the `recordedAt` time. The set holds every read of validation and of a Collection Run with all three Accounts: one linear USDT perpetual position, followed by an empty second position page that Bybit's cursor leads to; Flexible Savings; empty Fixed-Term Savings and Dual Asset lists; and the asset overview. The three refusals carry their scenario name instead of `recorded`.
+- **Recorded** (`testdata/*.json`): the test account's answers, a UTA 2.0 Pro in Portfolio Margin recorded on 2026-09-25, with `scenario: "recorded"`, `accountStructure: "bybit_uta_2_0"`, `marginMode: "bybit_pm"`, and the `recordedAt` time. The set holds every read of validation and of a Collection Run with all four Accounts: one linear USDT perpetual position, followed by an empty second position page that Bybit's cursor leads to; Flexible Savings; empty Fixed-Term Savings and Dual Asset lists; and the asset overview. The three refusals carry their scenario name instead of `recorded`.
 - **Documented** (`testdata/documented/<scenario>/*.json`, [ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)): built from Bybit's documentation examples, with `scenario: "documented"`, no `recordedAt`, the example's `documentation` URL, and the `marginMode` it describes. `trimmed` names every change from the example.
   - `bybit_isolated`: an Isolated Margin account with the documented wallet and an inverse position that reports its own liquidation price.
   - `bybit_cross`: a Cross Margin account with the documented wallet and inverse position, both verbatim.
@@ -165,7 +181,7 @@ Replay tests use two fixture sets, told apart by their headers:
 
 The replay lays at most one documented directory over the recorded set. It checks the header provenance of every file and the method of every request. Like Bybit, it answers a signed request with a wrong key, signature, receive window, or timestamp with the matching refusal, and the test fails unless it provoked that refusal on purpose. A documented scenario proves the mapping of the documented shape, not live access. The recorded refusals, replayed on the first call of a run and on an Account read, check the error classes, the code-only details, and the clock resynchronization. Error codes that neither a recording nor a documented answer shows are checked in a table. Paging, malformed answers, and unknown states are tested with synthetic answers written in the tests.
 
-`plutus adapter record --platform bybit` reads `PLUTUS_GOTEST_BYBIT_APIKEY` / `_SECRET` from the environment or `config/gotest.env`. It calls every endpoint that validation and a Collection Run with all three Accounts use, plus both instrument lists, and writes `tmp/fixtures/bybit/<endpoint>.json`, with query values in the file name (`v5_account_wallet_balance.UNIFIED.json`). The file name takes each value as the adapter passed it, so a page cursor appears as Bybit returned it, already percent-encoded (`v5_position_list.linear.DOGEUSDT%2C1790352000006%2C0.200.USDT.json`). The header's `endpoint` is the exact request, which escapes the cursor once more (`%252C`). The header carries `accountStructure: "bybit_uta_2_0"` and the detected `marginMode`. Amounts are kept as recorded. The recorder:
+`plutus adapter record --platform bybit` reads `PLUTUS_GOTEST_BYBIT_APIKEY` / `_SECRET` from the environment or `config/gotest.env`. It calls every endpoint that validation and a Collection Run with all four Accounts use, plus both instrument lists, and writes `tmp/fixtures/bybit/<endpoint>.json`, with query values in the file name (`v5_account_wallet_balance.UNIFIED.json`). The file name takes each value as the adapter passed it, so a page cursor appears as Bybit returned it, already percent-encoded (`v5_position_list.linear.DOGEUSDT%2C1790352000006%2C0.200.USDT.json`). The header's `endpoint` is the exact request, which escapes the cursor once more (`%252C`). The header carries `accountStructure: "bybit_uta_2_0"` and the detected `marginMode`. Amounts are kept as recorded. The recorder:
 
 - replaces the values of identifying fields (`id`, `note`, `apiKey`, `secret`, `ips`, `userID`, `inviterID`, `affiliateID`, `parentUid`, `rsaPublicKey`, `kycRegion`, `memberId`, `positionId`, `orderId`, `smpGroup`) with `100001`, `"redacted"`, or an empty list or object;
 - replaces every other value equal to one of those identifiers, when 8 characters or longer, in every file, every occurrence of the key or secret inside a string, and every IPv4 address with `203.0.113.1`. It writes nothing if the key, the secret, or the account UID survives;
@@ -199,3 +215,5 @@ Run these on the test environment against the Bybit app on the same account, wit
 8. **Funding and Earn**: Funding coin amounts and transferable amounts match the Funding account. Flexible and Fixed-Term principal per coin matches the Earn page, including an early redemption in progress. Each open Dual Asset position appears at its invested amount in the invested coin until Bybit pays it out. The Earn Account succeeds. Holding an Earn product Plutus does not read, such as On-chain Earn, makes it Stale with both USD amounts.
 9. **Account values**: the calculated USD values of Funding and Earn are within about 0.1% of the app's asset overview.
 10. **Failures**: removing the server IP from the key's whitelist sets the Connection `invalid` with a `10010` detail at the next cycle. Restoring it and validating again resumes collection.
+
+On 2026-09-29 the split-account live test passed in Portfolio Margin. Dual positions were empty; the combined Earn/Dual check and Unified/Funding overview comparisons passed. Nonempty Dual positions remain documentation-derived coverage. No new raw payload was recorded.

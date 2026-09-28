@@ -13,7 +13,7 @@ import (
 )
 
 // ExpectedSchemaVersion is the latest Goose migration this build requires.
-const ExpectedSchemaVersion int64 = 20260928120000
+const ExpectedSchemaVersion int64 = 20260929010100
 
 func prepareGoose() error {
 	if err := goose.SetDialect("mysql"); err != nil {
@@ -46,6 +46,9 @@ func Up(db *sql.DB) error {
 		return errors.New("migrate up: the migration lock is held by another process")
 	}
 	defer func() { _, _ = conn.ExecContext(ctx, "SELECT RELEASE_LOCK(?)", migrationLockName) }()
+	if err := guardDualMigration(ctx, db); err != nil {
+		return err
+	}
 	if err := goose.Up(db, "."); err != nil {
 		return fmt.Errorf("migrate up: %w", err)
 	}
@@ -86,4 +89,25 @@ func (l *writerLogger) Fatalf(format string, v ...any) {
 
 func (l *writerLogger) Printf(format string, v ...any) {
 	_, _ = fmt.Fprintf(l.w, format, v...)
+}
+
+// A stopped worker may leave a partially collected cycle. It must be drained
+// before the split so no cycle mixes legacy and split report scopes.
+func guardDualMigration(ctx context.Context, db *sql.DB) error {
+	version, err := goose.GetDBVersionContext(ctx, db)
+	if err != nil {
+		return err
+	}
+	if version < 20260922120000 || version >= 20260929010100 {
+		return nil
+	}
+	var active int
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs j WHERE j.status = 'running' OR (j.status = 'queued' AND EXISTS (SELECT 1 FROM account_reports r WHERE r.job_id=j.id))`).Scan(&active)
+	if err != nil {
+		return err
+	}
+	if active > 0 {
+		return errors.New("migrate up: drain running or partially collected cycles with the previous release, stop all workers, then retry the Dual Investment migration")
+	}
+	return nil
 }

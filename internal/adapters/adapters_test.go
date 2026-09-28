@@ -56,7 +56,7 @@ func TestCatalogOffersEachPlatformsStructures(t *testing.T) {
 			t.Fatalf("%s has %d Margin Modes, want %d", structure, modes[structure], want)
 		}
 	}
-	if got := AccountTypeIDs(StructureBinanceClassic); len(got) != 7 || got[0] != "spot" || got[6] != "earn" {
+	if got := AccountTypeIDs(StructureBinanceClassic); len(got) != 8 || got[0] != "spot" || got[6] != "earn" || got[7] != TypeDualInvestment {
 		t.Fatalf("Binance Classic Account Types = %v", got)
 	}
 }
