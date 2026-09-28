@@ -1431,8 +1431,10 @@ func TestDualInvestmentStates(t *testing.T) {
 
 	var rows []string
 	for state := range dcdInvested {
-		rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":"%s","notionalSz":"1","notionalCcy":"%s"}`,
-			1000-len(rows), state, strings.ToUpper(strings.ReplaceAll(state, "_", ""))))
+		for _, form := range []string{state, strings.ToUpper(state), strings.ToUpper(state[:1]) + state[1:]} {
+			rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":"%s","notionalSz":"1","notionalCcy":"%s"}`,
+				1000-len(rows), form, strings.ToUpper(strings.ReplaceAll(state, "_", ""))))
+		}
 	}
 	r, a := newReplay(t)
 	r.earnWithout()
@@ -1441,23 +1443,28 @@ func TestDualInvestmentStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]bool{}
-	for _, b := range reportOf(t, batch, TypeEarn).Balances {
-		got[b.Symbol] = true
+	earn := reportOf(t, batch, TypeEarn)
+	if earn.Status != adapters.StatusOK {
+		t.Fatalf("earn report %+v", earn)
+	}
+	got := map[string]string{}
+	for _, b := range earn.Balances {
+		got[b.Symbol] = b.Equity
 	}
 	for state, invested := range dcdInvested {
-		if coin := strings.ToUpper(strings.ReplaceAll(state, "_", "")); got[coin] != invested {
-			t.Errorf("state %s counted %v, want %v", state, got[coin], invested)
+		coin := strings.ToUpper(strings.ReplaceAll(state, "_", ""))
+		if invested && got[coin] != "3" || !invested && got[coin] != "" {
+			t.Errorf("state %s counted %q %s, invested %v", state, got[coin], coin, invested)
 		}
 	}
 
 	r, a = newReplay(t)
-	r.always(epDCD, ok(dcdOrders("expired", "BTC", 7)))
+	r.always(epDCD, ok(dcdOrders("ExPiReD", "BTC", 7)))
 	batch, err = a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeFunding, TypeEarn})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"expired"`) {
+	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"ExPiReD"`) {
 		t.Fatalf("an undocumented state must fail Earn by name: %+v", earn)
 	}
 	if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {

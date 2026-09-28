@@ -102,7 +102,7 @@ func TestLiveOKX(t *testing.T) {
 	}
 	invested := 0
 	for i := range orders {
-		if dcdInvested[orders[i].State] {
+		if holdsPrincipal, _ := dcdPrincipalInvested(orders[i].State); holdsPrincipal {
 			invested++
 		}
 	}

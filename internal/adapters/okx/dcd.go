@@ -33,6 +33,12 @@ var dcdInvested = map[string]bool{
 	"redeemed":               false,
 }
 
+// dcdPrincipalInvested accepts the documented states regardless of the casing OKX returns.
+func dcdPrincipalInvested(state string) (bool, bool) {
+	invested, known := dcdInvested[strings.ToLower(strings.TrimSpace(state))]
+	return invested, known
+}
+
 const (
 	// dcdPageSize is the largest page the order history serves.
 	dcdPageSize = 100
@@ -113,11 +119,10 @@ func addDualInvestment(totals adapters.Totals, orders []dcdOrder) error {
 	where := epDCD.String()
 	for i := range orders {
 		order := &orders[i]
-		state := strings.TrimSpace(order.State)
-		invested, known := dcdInvested[state]
+		invested, known := dcdPrincipalInvested(order.State)
 		if !known {
 			return adapters.NewError(adapters.ClassNormalization,
-				fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(state, 40)))
+				fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(strings.TrimSpace(order.State), 40)))
 		}
 		if !invested {
 			continue

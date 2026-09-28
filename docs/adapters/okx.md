@@ -285,7 +285,7 @@ A test overlays one scenario on the recorded set, replacing the files for the sa
 Inline responses in the tests cover:
 
 - Margin Mode detection, including `acctLv` `3`, `5`, and empty;
-- every dual investment state;
+- every dual investment state in documented lowercase, uppercase, and mixed case; unknown states still fail Earn;
 - paging, ordering, and the 1,000-order limit;
 - the pause between pages;
 - the Earn check's tolerance;
