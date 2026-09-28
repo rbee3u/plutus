@@ -399,7 +399,7 @@ List responses are typed: `items`, `page`, `context`, `issues`. Financial respon
 | `GET, POST /identities` | create with `platform`, `displayName`, `accountStructure`, and the initial `selectedAccountTypes` (`Idempotency-Key`); every Identity carries `accountStructure` and the nullable `marginMode` |
 | `GET, PATCH /identities/{identityId}` | rename; `accounts[]` patches toggle `selected` or rename an Account (`If-Match`) |
 | `POST /identities/{identityId}/archive` | refused (409) while the Connection is enabled |
-| `PUT /identities/{identityId}/credentials` | write-only `apiKey`, `apiSecret`, optional `passphrase`; the Connection becomes `disabled` |
+| `PUT /identities/{identityId}/credentials` | write-only `apiKey`, `apiSecret`, optional `passphrase`; Binance accepts an HMAC secret or an unencrypted Ed25519 PKCS#8 private key PEM in `apiSecret` ([ADR 0031](./adr/0031-accept-binance-ed25519-private-keys.md)); the Connection becomes `disabled` |
 | `DELETE /identities/{identityId}/credentials` | removes credentials; the Connection becomes `unconfigured` |
 | `POST /identities/{identityId}/validate` | one bounded read-only call; stores `externalRef` and `marginMode` or the error; a key that reaches another Platform account than the stored `externalRef` fails with `unsupported`; an authentication or authorization error sets `invalid`, a success clears `invalid` to `disabled` |
 | `POST /identities/{identityId}/enable` | validates first; on success the Connection is `enabled` (200), otherwise 422 with the `ValidationOutcome` and the unchanged or `invalid` Connection |

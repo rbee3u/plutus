@@ -1829,6 +1829,7 @@ components:
         apiSecret:
           type: string
           maxLength: 1024
+          description: For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other Platforms use their ordinary API secret.
         passphrase:
           type: string
           maxLength: 512

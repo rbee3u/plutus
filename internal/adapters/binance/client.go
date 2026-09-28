@@ -2,8 +2,10 @@ package binance
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -222,9 +224,11 @@ func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, 
 		query.Set("timestamp", timestamp)
 		query.Set("recvWindow", recvWindowMillis)
 		encoded = query.Encode()
-		mac := hmac.New(sha256.New, []byte(secret))
-		_, _ = mac.Write([]byte(encoded))
-		encoded += "&signature=" + hex.EncodeToString(mac.Sum(nil))
+		signature, err := sign(secret, encoded)
+		if err != nil {
+			return response{}, err
+		}
+		encoded += "&signature=" + signature
 	}
 	target := c.baseURL(ep.host) + ep.path
 	if encoded != "" {
@@ -252,6 +256,21 @@ func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, 
 		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: the Binance response was cut off.", ep))
 	}
 	return response{status: res.StatusCode, body: body}, nil
+}
+
+// sign signs the exact encoded query that will be sent. Binance expects Ed25519 signatures in
+// Base64, percent-encoded as a query parameter; the existing HMAC representation is hexadecimal.
+func sign(secret, payload string) (string, error) {
+	key, ed, err := adapters.BinancePrivateKey(secret)
+	if err != nil {
+		return "", err
+	}
+	if ed {
+		return url.QueryEscape(base64.StdEncoding.EncodeToString(ed25519.Sign(key, []byte(payload)))), nil
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(payload))
+	return hex.EncodeToString(mac.Sum(nil)), nil
 }
 
 // decode converts a raw exchange into out, or into a classified error.

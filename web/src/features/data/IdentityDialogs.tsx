@@ -12,7 +12,7 @@ import { newIdempotencyKey } from "@/shared/lib/id";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Dialog } from "@/shared/ui/Dialog";
-import { Select, TextInput, Toggle } from "@/shared/ui/FormControls";
+import { Select, TextArea, TextInput, Toggle } from "@/shared/ui/FormControls";
 import styles from "@/features/pages.module.css";
 
 const CONFLICT = "The identity changed in another session. The list was reloaded; open it again.";
@@ -396,6 +396,7 @@ function CredentialsForm({
   const [futuresApiKey, setFuturesApiKey] = useState("");
   const [futuresApiSecret, setFuturesApiSecret] = useState("");
   const kraken = item.platform === "kraken";
+  const binance = item.platform === "binance";
   const selectedTypes = item.accounts
     .filter((account) => account.selected)
     .map((account) => account.accountType);
@@ -450,6 +451,8 @@ function CredentialsForm({
         setError(problemMessage(result.error, "The credentials could not be stored."));
         return;
       }
+      setApiKey("");
+      setApiSecret("");
       await onSaved(
         `Credentials stored for ${result.data.displayName}. The connection is ${result.data.connection.status}; validate or enable it next.`,
       );
@@ -518,16 +521,39 @@ function CredentialsForm({
       </label>
       <label className={styles.field}>
         <span>
-          {kraken ? `Spot API secret (${spotRequired ? "required" : "optional"})` : "API secret"}
+          {kraken
+            ? `Spot API secret (${spotRequired ? "required" : "optional"})`
+            : binance
+              ? "API secret or Ed25519 private key"
+              : "API secret"}
         </span>
-        <TextInput
-          type="password"
-          autoComplete="off"
-          value={apiSecret}
-          onChange={(event) => setApiSecret(event.target.value)}
-          required={spotRequired || apiKey.trim() !== ""}
-        />
+        {binance ? (
+          <TextArea
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            rows={6}
+            value={apiSecret}
+            onChange={(event) => setApiSecret(event.target.value)}
+            required={spotRequired || apiKey.trim() !== ""}
+          />
+        ) : (
+          <TextInput
+            type="password"
+            autoComplete="off"
+            value={apiSecret}
+            onChange={(event) => setApiSecret(event.target.value)}
+            required={spotRequired || apiKey.trim() !== ""}
+          />
+        )}
       </label>
+      {binance ? (
+        <p className={styles.muted}>
+          Paste an unencrypted PKCS#8 Ed25519 private key PEM, including its BEGIN and END lines.
+          Plutus detects it automatically; other values use HMAC. The private key is visible while
+          you enter it and is encrypted when stored.
+        </p>
+      ) : null}
       {kraken ? (
         <>
           <p className={styles.muted}>
@@ -555,7 +581,7 @@ function CredentialsForm({
             />
           </label>
         </>
-      ) : (
+      ) : !binance ? (
         <label className={styles.field}>
           <span>{passphraseRequired ? "Passphrase" : "Passphrase (optional)"}</span>
           <TextInput
@@ -566,7 +592,7 @@ function CredentialsForm({
             required={passphraseRequired}
           />
         </label>
-      )}
+      ) : null}
       <div className={styles.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
           Store credentials

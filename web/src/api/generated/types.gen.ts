@@ -186,6 +186,9 @@ export type PatchIdentityRequest = {
 
 export type PutCredentialsRequest = {
     apiKey: string;
+    /**
+     * For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other Platforms use their ordinary API secret.
+     */
     apiSecret: string;
     passphrase?: string;
     /**

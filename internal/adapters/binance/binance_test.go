@@ -2,10 +2,14 @@ package binance
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io/fs"
 	"math/big"
@@ -32,6 +36,17 @@ const (
 )
 
 var testCreds = adapters.Credentials{APIKey: testKey, APISecret: testSecret}
+
+var testEdCreds = adapters.Credentials{APIKey: testKey, APISecret: testEdPEM()}
+
+func testEdPEM() string {
+	key := ed25519.NewKeyFromSeed([]byte("plutus-binance-ed25519-test-seed"))
+	encoded, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		panic(err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded}))
+}
 
 var (
 	pmTypes      = adapters.AccountTypeIDs(adapters.StructureBinancePM)
@@ -63,7 +78,7 @@ func knownEndpoint(name string) (endpoint, bool) {
 
 // replay serves the committed fixtures: the recorded Portfolio Margin account in testdata/, with
 // the documentation-derived files of one testdata/documented/<scenario>/ directory laid over it.
-// It verifies the API key header, the HMAC signature, and that timestamps follow the recorded
+// It verifies the API key header, the signature, and that timestamps follow the recorded
 // server time, so signing and clock sync are exercised.
 type replay struct {
 	t          *testing.T
@@ -79,6 +94,7 @@ type replay struct {
 	// lenient answers a request with a bad key, signature, or timestamp with the matching error
 	// fixture instead of failing the test; the recorder provokes exactly those.
 	lenient bool
+	secret  string
 }
 
 func newReplay(t *testing.T, overlay string) (*replay, *Adapter) {
@@ -86,6 +102,7 @@ func newReplay(t *testing.T, overlay string) (*replay, *Adapter) {
 	r := &replay{
 		t: t, answers: map[string]fixture.File{}, failures: map[string]fixture.File{}, started: time.Now(),
 		calls: map[string]int{}, queue: map[string][]func(http.ResponseWriter){}, fixed: map[string]func(http.ResponseWriter){},
+		secret: testSecret,
 	}
 	for _, path := range fixturePaths(t, "testdata") {
 		f := readFixture(t, path)
@@ -307,10 +324,22 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	if idx < 0 {
 		return "bad_signature", "signature is not the last parameter"
 	}
-	mac := hmac.New(sha256.New, []byte(testSecret))
-	_, _ = mac.Write([]byte(raw[:idx]))
-	if raw[idx+len("&signature="):] != hex.EncodeToString(mac.Sum(nil)) {
-		return "bad_signature", "signature does not match"
+	key, ed, err := adapters.BinancePrivateKey(r.secret)
+	if err != nil {
+		return "bad_signature", "test signing key is invalid"
+	}
+	if ed {
+		signature, err := base64.StdEncoding.DecodeString(req.URL.Query().Get("signature"))
+		if err != nil || !ed25519.Verify(key.Public().(ed25519.PublicKey), []byte(raw[:idx]), signature) ||
+			raw[idx+len("&signature="):] != url.QueryEscape(base64.StdEncoding.EncodeToString(signature)) {
+			return "bad_signature", "Ed25519 signature does not match"
+		}
+	} else {
+		mac := hmac.New(sha256.New, []byte(r.secret))
+		_, _ = mac.Write([]byte(raw[:idx]))
+		if raw[idx+len("&signature="):] != hex.EncodeToString(mac.Sum(nil)) {
+			return "bad_signature", "HMAC signature does not match"
+		}
 	}
 	if req.URL.Query().Get("recvWindow") != recvWindowMillis {
 		return "bad_signature", "recvWindow is not " + recvWindowMillis
@@ -490,6 +519,33 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 			}
 			if r.count(epServerTime) != 1 || r.count(epAccountInfo) != 1 {
 				t.Fatalf("clock synced %d times and structure read %d times, want 1 each", r.count(epServerTime), r.count(epAccountInfo))
+			}
+		})
+	}
+}
+
+// Synthetic Ed25519 credentials reuse the existing response fixtures. This exercises signing for
+// every signed endpoint in both structures; it does not establish live Ed25519 access.
+func TestEd25519ValidateAndCollectBothStructures(t *testing.T) {
+	for _, tc := range []struct {
+		structure adapters.AccountStructure
+		overlay   string
+	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
+		t.Run(string(tc.structure), func(t *testing.T) {
+			r, a := newReplay(t, tc.overlay)
+			r.secret = testEdCreds.APISecret
+			if _, err := a.Validate(context.Background(), testEdCreds, tc.structure); err != nil {
+				t.Fatal(err)
+			}
+			batch, err := a.Collect(context.Background(), testEdCreds, tc.structure, adapters.AccountTypeIDs(tc.structure))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(batch.Reports) != len(adapters.AccountTypeIDs(tc.structure)) {
+				t.Fatalf("got %d Account Reports", len(batch.Reports))
+			}
+			if r.count(epAccountInfo) != 2 || r.count(epSpotAccount) != 1 {
+				t.Fatalf("account info %d times, spot account %d times", r.count(epAccountInfo), r.count(epSpotAccount))
 			}
 		})
 	}
@@ -1490,6 +1546,27 @@ func TestRecordCapturesEveryEndpointTheStructureReads(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestEd25519RecorderErrorProbes(t *testing.T) {
+	r, a := newReplay(t, "")
+	r.secret = testEdCreds.APISecret
+	r.tolerateErrors()
+	recordings, err := a.Record(context.Background(), testEdCreds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failures := map[string]bool{}
+	for _, recording := range recordings {
+		if recording.Scenario != fixture.ScenarioRecorded {
+			failures[recording.Scenario] = true
+		}
+	}
+	for _, scenario := range []string{"invalid_key", "bad_signature", "stale_timestamp"} {
+		if !failures[scenario] {
+			t.Errorf("missing %s probe", scenario)
+		}
 	}
 }
 

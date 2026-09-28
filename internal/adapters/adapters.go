@@ -171,6 +171,11 @@ func CheckCredentials(platform Platform, structure AccountStructure, accounts []
 		if spotKey == "" || futuresKey != "" {
 			return NewError(ClassAuthentication, "This platform requires one API key and secret.")
 		}
+		if platform == PlatformBinance {
+			if _, _, err := BinancePrivateKey(spotSecret); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	if !ValidStructure(platform, structure) {

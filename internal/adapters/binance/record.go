@@ -2,7 +2,10 @@ package binance
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -149,11 +152,21 @@ func (a *Adapter) Record(ctx context.Context, creds adapters.Credentials) ([]fix
 
 	// Three error answers that are safe to provoke, on the call every run starts with: a key
 	// Binance does not know, a wrong signature, and a timestamp far outside recvWindow.
+	badSigningMaterial := strings.Repeat("invalid", 8)
+	if _, ed, err := adapters.BinancePrivateKey(creds.APISecret); err != nil {
+		return nil, err
+	} else if ed {
+		encoded, err := x509.MarshalPKCS8PrivateKey(ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize)))
+		if err != nil {
+			return nil, err
+		}
+		badSigningMaterial = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded}))
+	}
 	for _, scenario := range []struct {
 		name, key, secret, timestamp string
 	}{
 		{"invalid_key", strings.Repeat("0", 64), creds.APISecret, ""},
-		{"bad_signature", creds.APIKey, "plutus-fixture-wrong-secret", ""},
+		{"bad_signature", creds.APIKey, badSigningMaterial, ""},
 		{"stale_timestamp", creds.APIKey, creds.APISecret, strconv.FormatInt(a.clock.now().Add(-time.Minute).UnixMilli(), 10)},
 	} {
 		resp, err := r.c.send(ctx, epAccountInfo, nil, scenario.key, scenario.secret, scenario.timestamp)

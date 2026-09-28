@@ -2,8 +2,12 @@ package secret
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -25,6 +29,28 @@ func TestSealOpenRoundTrip(t *testing.T) {
 	}
 	if got != cred {
 		t.Fatalf("got %+v want %+v", got, cred)
+	}
+}
+
+func TestSealOpenEd25519PEM(t *testing.T) {
+	box := testBox(t)
+	id := uuid.Must(uuid.NewV7())
+	_, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := x509.MarshalPKCS8PrivateKey(private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	creds := Credentials{APIKey: "binance-key", APISecret: strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded})))}
+	ciphertext, nonce, err := box.Seal(id, id, CurrentKeyVersion(), creds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, err := box.Open(id, id, CurrentKeyVersion(), ciphertext, nonce)
+	if err != nil || opened != creds {
+		t.Fatal("Ed25519 PEM did not round-trip")
 	}
 }
 
