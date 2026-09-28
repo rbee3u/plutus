@@ -254,6 +254,7 @@ func toAPIListing(l *catalog.Listing) api.AssetListing {
 	return api.AssetListing{
 		Id: l.ID, Platform: l.Platform, Symbol: l.Symbol, AssetSymbol: l.AssetSymbol, Name: l.Name,
 		MappingSource: api.AssetListingMappingSource(l.MappingSource), FirstSeenAt: l.FirstSeenAt, LastSeenAt: l.LastSeenAt, Version: int(l.Version),
+		Ignored: l.Ignored, IgnoreReason: l.IgnoreReason, IgnoredAt: l.IgnoredAt, ExclusionVersion: int(l.ExclusionVersion),
 	}
 }
 

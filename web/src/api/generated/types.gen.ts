@@ -564,6 +564,10 @@ export type AssetListing = {
     firstSeenAt: string;
     lastSeenAt: string;
     version: number;
+    ignored: boolean;
+    ignoreReason?: string | null;
+    ignoredAt?: string | null;
+    exclusionVersion: number;
 };
 
 export type AssetListingList = {
@@ -573,6 +577,11 @@ export type AssetListingList = {
 
 export type PutAssetListingMappingRequest = {
     assetSymbol: string;
+};
+
+export type PutAssetListingExclusionRequest = {
+    ignored: boolean;
+    reason?: string;
 };
 
 export type Instrument = {
@@ -2385,6 +2394,7 @@ export type ListAssetListingsData = {
     query?: {
         platform?: string;
         q?: string;
+        ignoredOnly?: boolean;
         offset?: number;
         limit?: number;
     };
@@ -2460,6 +2470,50 @@ export type PutAssetListingMappingResponses = {
 };
 
 export type PutAssetListingMappingResponse = PutAssetListingMappingResponses[keyof PutAssetListingMappingResponses];
+
+export type PutAssetListingExclusionData = {
+    body: PutAssetListingExclusionRequest;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        listingId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/exclusion';
+};
+
+export type PutAssetListingExclusionErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type PutAssetListingExclusionError = PutAssetListingExclusionErrors[keyof PutAssetListingExclusionErrors];
+
+export type PutAssetListingExclusionResponses = {
+    /**
+     * Updated Portfolio listing rule.
+     */
+    200: AssetListing;
+};
+
+export type PutAssetListingExclusionResponse = PutAssetListingExclusionResponses[keyof PutAssetListingExclusionResponses];
 
 export type ListInstrumentsData = {
     body?: never;

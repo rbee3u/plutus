@@ -16,6 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
+	"github.com/rbee3u/plutus/internal/listingexclusion"
 )
 
 // Service computes and reads valuations.
@@ -212,6 +213,10 @@ func inverseKind(kind string) bool {
 
 // valueJob computes the Account Valuation of every report in the job without writing.
 func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([]AccountValuation, error) {
+	ignored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, jobID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.q.ListReportsByJob(ctx, sqlcgen.ListReportsByJobParams{PortfolioID: portfolioID[:], JobID: jobID[:]})
 	if err != nil {
 		return nil, err
@@ -219,7 +224,7 @@ func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 	book := &priceBook{s: s, cache: map[priceKey]map[string]pricePoint{}}
 	out := make([]AccountValuation, 0, len(rows))
 	for i := range rows {
-		item, err := s.valueReport(ctx, book, &rows[i])
+		item, err := s.valueReport(ctx, book, &rows[i], ignored)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +233,7 @@ func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 	return out, nil
 }
 
-func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) {
+func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen.ListReportsByJobRow, ignored map[uuid.UUID]bool) (AccountValuation, error) {
 	item, err := accountFromRow(row)
 	if err != nil {
 		return AccountValuation{}, err
@@ -284,6 +289,13 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 	}
 	total := decimal.Zero()
 	for i := range balances {
+		listingID, err := uuid.FromBytes(balances[i].ListingID)
+		if err != nil {
+			return AccountValuation{}, err
+		}
+		if ignored[listingID] {
+			continue
+		}
 		equity, ok := decimal.Parse(balances[i].Equity)
 		if !ok {
 			item.Omitted = append(item.Omitted, Omitted{Symbol: balances[i].Symbol, AssetSymbol: mappedSymbol(balances[i].Symbol, balances[i].AssetSymbol), Equity: balances[i].Equity, Reason: "invalid_equity"})

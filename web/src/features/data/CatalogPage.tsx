@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import {
   listAssetListings,
   listInstruments,
+  putAssetListingExclusion,
   putAssetListingMapping,
 } from "@/api/generated/sdk.gen";
 import type { AssetListing } from "@/api/generated/types.gen";
@@ -21,7 +22,7 @@ import { ActionButton } from "@/shared/ui/ActionButton";
 import { StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
-import { Select, TextInput } from "@/shared/ui/FormControls";
+import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/pages.module.css";
@@ -30,6 +31,10 @@ const PAGE_SIZE = 50;
 
 export function listingEtag(item: AssetListing): string {
   return `"listing:${String(item.version)}"`;
+}
+
+function exclusionEtag(item: AssetListing): string {
+  return `"listing-exclusion:${String(item.exclusionVersion)}"`;
 }
 
 interface MappingRequest {
@@ -43,6 +48,7 @@ export function CatalogPage() {
   const tab = catalogTabFromSearch(params.toString());
   const platform = params.get("platform") ?? "";
   const q = params.get("q") ?? "";
+  const ignoredOnly = params.get("ignoredOnly") === "true";
   const offset = readOffset(params);
   const platforms = usePlatforms();
   const portfolio = usePortfolio(portfolioId);
@@ -58,7 +64,7 @@ export function CatalogPage() {
     <section className={styles.wide}>
       <p className={styles.lead}>
         {tab === "listings"
-          ? "Every Platform symbol the collector has seen and the Asset symbol it merges into. Remap a listing when the Platform symbol does not name the canonical Asset."
+          ? "Every Platform symbol the collector has seen and the Asset symbol it merges into. Remap a listing when the Platform symbol does not name the canonical Asset. You can also review and ignore a Balance in this Portfolio for future calculated Account values."
           : "Instruments seen on the connected Platforms, with the symbols and contract terms used to value positions."}
       </p>
       <form className={styles.filters} onSubmit={submitSearch}>
@@ -81,6 +87,20 @@ export function CatalogPage() {
             placeholder="Symbol or name"
           />
         </label>
+        {tab === "listings" ? (
+          <label className={styles.field}>
+            <span>Treatment</span>
+            <Select
+              value={ignoredOnly ? "ignored" : "all"}
+              onChange={(event) =>
+                update({ ignoredOnly: event.target.value === "ignored" ? "true" : "" })
+              }
+            >
+              <option value="all">All listings</option>
+              <option value="ignored">Ignored listings</option>
+            </Select>
+          </label>
+        ) : null}
         <div className={styles.actions}>
           <ActionButton type="submit">Search</ActionButton>
           {q ? (
@@ -102,6 +122,7 @@ export function CatalogPage() {
           portfolioId={portfolioId}
           platform={platform}
           q={q}
+          ignoredOnly={ignoredOnly}
           offset={offset}
           timezone={timezone}
           onOffset={(next) => update({ offset: next > 0 ? String(next) : "" })}
@@ -124,20 +145,30 @@ interface TabProps {
   portfolioId: string;
   platform: string;
   q: string;
+  ignoredOnly?: boolean;
   offset: number;
   timezone?: string;
   onOffset: (offset: number) => void;
 }
 
-function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: TabProps) {
+function ListingsTab({
+  portfolioId,
+  platform,
+  q,
+  ignoredOnly,
+  offset,
+  timezone,
+  onOffset,
+}: TabProps) {
   const { userId, redirect } = useSessionScope();
   const queryClient = useQueryClient();
   const platforms = usePlatforms();
   const nonce = useRef(0);
   const [request, setRequest] = useState<MappingRequest | null>(null);
+  const [exclusionRequest, setExclusionRequest] = useState<MappingRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const query = useQuery({
-    queryKey: ["catalog-listings", userId, portfolioId, platform, q, offset],
+    queryKey: ["catalog-listings", userId, portfolioId, platform, q, ignoredOnly, offset],
     enabled: Boolean(userId && portfolioId),
     queryFn: async () =>
       unwrapOrRedirect(
@@ -146,6 +177,7 @@ function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: T
           query: {
             platform: platform || undefined,
             q: q || undefined,
+            ignoredOnly: ignoredOnly || undefined,
             offset,
             limit: PAGE_SIZE,
           },
@@ -181,6 +213,7 @@ function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: T
           { key: "symbol", header: "Platform symbol" },
           { key: "assetSymbol", header: "Asset symbol" },
           { key: "mappingSource", header: "Mapping" },
+          { key: "treatment", header: "Treatment" },
           { key: "name", header: "Name" },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
           { key: "actions", header: "" },
@@ -191,6 +224,24 @@ function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: T
           symbol: item.symbol,
           assetSymbol: <strong>{item.assetSymbol}</strong>,
           mappingSource: <StatusBadge value={item.mappingSource} />,
+          treatment: item.ignored ? (
+            <span className={styles.cellStack}>
+              <StatusBadge value="ignored" />
+              <span className={styles.cellMeta}>
+                {item.ignoredAt
+                  ? `Reviewed ${formatInstant(item.ignoredAt, timezone)}`
+                  : "Reviewed"}
+              </span>
+              {item.ignoreReason ? (
+                <details>
+                  <summary>Reason</summary>
+                  {item.ignoreReason}
+                </details>
+              ) : null}
+            </span>
+          ) : (
+            "Included"
+          ),
           name: item.name ?? "—",
           lastSeenAt: formatInstant(item.lastSeenAt, timezone),
           actions: (
@@ -206,13 +257,24 @@ function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: T
               >
                 Map
               </ActionButton>
+              <ActionButton
+                type="button"
+                tone="ghost"
+                onClick={() => {
+                  setNotice(null);
+                  nonce.current += 1;
+                  setExclusionRequest({ nonce: nonce.current, item });
+                }}
+              >
+                {item.ignored ? "Restore" : "Ignore"}
+              </ActionButton>
             </span>
           ),
         }))}
         empty={
           query.isPending
             ? "Loading asset listings."
-            : q || platform
+            : q || platform || ignoredOnly
               ? "No listing matches these filters."
               : "No asset listings yet. Listings appear after the first Collection Cycle reports balances."
         }
@@ -243,7 +305,125 @@ function ListingsTab({ portfolioId, platform, q, offset, timezone, onOffset }: T
           />
         ) : null}
       </Dialog>
+      <Dialog
+        open={exclusionRequest !== null}
+        title={
+          exclusionRequest
+            ? `${exclusionRequest.item.ignored ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
+            : "Listing treatment"
+        }
+        onClose={() => setExclusionRequest(null)}
+      >
+        {exclusionRequest ? (
+          <ExclusionForm
+            key={exclusionRequest.nonce}
+            portfolioId={portfolioId}
+            item={exclusionRequest.item}
+            onClose={() => setExclusionRequest(null)}
+            onDone={async (message) => {
+              setExclusionRequest(null);
+              setNotice(message);
+              await invalidateListings();
+              await invalidatePortfolioReads(queryClient, userId, portfolioId);
+            }}
+          />
+        ) : null}
+      </Dialog>
     </>
+  );
+}
+
+function ExclusionForm({
+  portfolioId,
+  item,
+  onClose,
+  onDone,
+}: {
+  portfolioId: string;
+  item: AssetListing;
+  onClose: () => void;
+  onDone: (message: string) => Promise<void>;
+}) {
+  const { redirect } = useSessionScope();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ignoring = !item.ignored;
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (ignoring && !reason.trim()) {
+      setError("Explain why this balance can be excluded.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await refreshCsrf();
+      const result = await putAssetListingExclusion({
+        path: { portfolioId, listingId: item.id },
+        headers: { "If-Match": exclusionEtag(item) },
+        body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
+      });
+      if (result.response?.status === 401) {
+        redirect();
+        return;
+      }
+      if (result.response?.status === 412) {
+        await onDone(
+          "The listing treatment changed in another session. The list was reloaded; open it again.",
+        );
+        return;
+      }
+      if (result.error || !result.data) {
+        setError(problemMessage(result.error, "The listing treatment could not be saved."));
+        return;
+      }
+      await onDone(
+        `${result.data.platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
+      );
+    } catch (cause) {
+      setError(problemMessage(cause, "The listing treatment could not be saved."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
+      <p className={styles.lead}>
+        {ignoring ? "Ignoring" : "Restoring"} {item.platform} {item.symbol} affects this Portfolio
+        from the next Collection Cycle. Only Accounts calculated from Balances change; Accounts
+        using Platform reported equity keep this Balance and their reported total. Earlier Valuation
+        Points remain unchanged.
+      </p>
+      {item.ignored && item.ignoreReason ? <p>Review reason: {item.ignoreReason}</p> : null}
+      {error ? (
+        <p className={styles.alert} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {ignoring ? (
+        <label className={styles.field}>
+          <span>Review reason</span>
+          <TextArea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+            autoFocus
+            required
+          />
+        </label>
+      ) : null}
+      <div className={styles.actions}>
+        <ActionButton type="submit" tone="primary" disabled={busy}>
+          {ignoring ? "Ignore listing" : "Restore listing"}
+        </ActionButton>
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+          Cancel
+        </ActionButton>
+      </div>
+    </form>
   );
 }
 

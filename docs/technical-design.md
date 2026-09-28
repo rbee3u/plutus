@@ -104,7 +104,7 @@ auth  portfolio  identity  catalog  capital  valuation  jobs  <----------  colle
 | `auth` | Users, Argon2id password hashes, Sessions, CSRF secrets, login throttling |
 | `portfolio` | Portfolios, the collection interval, the undeletable birth Portfolio, cascade delete |
 | `identity` | Identities, the Connection embedded in each Identity (credentials, status, last outcome), Accounts and their selection |
-| `catalog` | Asset Listings (symbol mapping), Instruments, Platform prices |
+| `catalog` | Asset Listings (symbol mapping and Portfolio Listing Exclusions), Instruments, Platform prices |
 | `collection` | one Collection Cycle: adapter calls with retry, Account Reports, Balances, Positions, prices, then the Valuation Point |
 | `valuation` | Account Valuation and Valuation Point writing and rebuilding; Overview, tree, flat lists, series, Period Closes, Value Changes, Boundary Events |
 | `capital` | manual Capital Flows and their USD valuation |
@@ -155,7 +155,7 @@ For each Account Report of the job:
 | `failed`, an earlier `ok` report exists | the latest earlier `ok` report of the Account | `stale` | as above, from the source report |
 | `failed`, never succeeded | none | `stale` | `missing`, `value_usd = NULL` |
 
-`calculated` is Σ `balances.equity × price` over the source report's Balances. USD, USDT, and USDC are 1 ([ADR 0017](./adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md)). Any other Asset uses the same Platform's latest price at or before the report's observation time, or, failing that, the nearest price on any Platform, provided the price is quoted in USD/USDT/USDC and at most 24 hours old. A Balance with no such price is listed in `omitted_json` with reason `no_price` and excluded from the value; the Account and the point are then `incomplete`. Zero-equity Balances are ignored.
+`calculated` is Σ `balances.equity × price` over the source report's Balances, excluding Listing Exclusions effective when the Collection Cycle began ([ADR 0032](./adr/0032-allow-reviewed-portfolio-listing-exclusions.md)). USD, USDT, and USDC are 1 ([ADR 0017](./adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md)). Any other Asset uses the same Platform's latest price at or before the report's observation time, or, failing that, the nearest price on any Platform, provided the price is quoted in USD/USDT/USDC and at most 24 hours old. A non-excluded Balance with no such price is listed in `omitted_json` with reason `no_price` and excluded from the value; the Account and the point are then `incomplete`. Zero-equity Balances are ignored.
 
 The Valuation Point total is the sum of every non-null `value_usd`. `stale_account_count` counts stale Accounts with a value; `incomplete_account_count` counts `missing` Accounts and Accounts with omitted Balances. Issues (`missing`, `stale`, `no_price`, `boundary_unvalued`) are stored on the point and returned with every read.
 
@@ -202,15 +202,15 @@ MySQL session timezone is UTC. Time points are UTC `DATETIME(6)` serialized as R
 
 ### 4.4 Versioning and retention
 
-Configuration rows (`portfolios`, `identities`, `accounts`, `asset_listings`, `capital_flows`) carry an integer `version` for ETags. Account Reports, Balances, Positions, prices, Valuation Points, and audit events are append-only and kept indefinitely. Finished jobs that produced no report or point (recalculations, failed cycles without reports) are pruned after `[jobs].completed_retention`; cycle jobs that own reports are kept with them. There is no retention or downsampling for Valuation Points in this release ([ADR 0014](./adr/0014-store-one-valuation-point-per-collection-cycle.md)).
+Configuration rows (`portfolios`, `identities`, `accounts`, `asset_listings`, `portfolio_listing_exclusions`, `capital_flows`) carry an integer `version` for ETags. Account Reports, Balances, Positions, prices, Valuation Points, Listing Exclusion events, and audit events are append-only and kept indefinitely. Finished jobs that produced no report or point (recalculations, failed cycles without reports) are pruned after `[jobs].completed_retention`; cycle jobs that own reports are kept with them. There is no retention or downsampling for Valuation Points in this release ([ADR 0014](./adr/0014-store-one-valuation-point-per-collection-cycle.md)).
 
 ## 5. MySQL schema catalog
 
-Normative logical schema, implemented by the baseline `db/migrations/20260922120000_schema.sql`, which is edited in place until prod's first `migrate up` and frozen afterwards ([ADR 0024](./adr/0024-freeze-the-baseline-migration-once-prod-has-migrated.md)). Sixteen tables.
+Normative logical schema, implemented by the baseline `db/migrations/20260922120000_schema.sql` and the appended Listing Exclusion migration ([ADR 0024](./adr/0024-freeze-the-baseline-migration-once-prod-has-migrated.md)). Eighteen tables.
 
 Conventions: `_id` fields are `BINARY(16)` and required unless marked nullable; `_at` fields are UTC `DATETIME(6)`; codes and states are `VARCHAR` with a `CHECK`; safe human-readable details are `VARCHAR(1024)`; financial values are `DECIMAL(65,30)`; versions are `BIGINT UNSIGNED`. `created_at` and `updated_at` are present on every configuration table and omitted below.
 
-### 5.0 Why sixteen tables
+### 5.0 Why the baseline has sixteen tables
 
 Each merge below removes a table that would have had exactly one row per row of its parent, or that stored a fact already expressed elsewhere:
 
@@ -279,7 +279,7 @@ One row per Account Type of the structure is created with the Identity; `selecte
 
 ### 5.3 Catalog and prices
 
-Shared reference tables, not Portfolio-scoped.
+The Asset Listing, Instrument, and price reference tables are shared. Listing Exclusions are Portfolio-scoped.
 
 #### `asset_listings`
 
@@ -292,6 +292,8 @@ Shared reference tables, not Portfolio-scoped.
 | `first_seen_at`, `last_seen_at`, `version` | |
 
 Listings are upserted when a Balance mentions them. A manual mapping writes an audit event and enqueues one `valuation_recalc` job for every Portfolio holding the listing; setting the Asset back to the automatic symbol restores `auto`.
+
+`portfolio_listing_exclusions` holds each Portfolio's current ignored state, review reason, independent version, actor, and update time. `portfolio_listing_exclusion_events` retains each transition and its effective time. A change applies only to cycles whose job was created afterwards; reads and mapping recalculations use that historical state. Restoring a Listing retains its event history. Neither table changes Observations or shared Asset mappings.
 
 #### `instruments`
 
@@ -443,7 +445,7 @@ Default windows when `from`/`to` are absent: 30 days for `day`, 26 weeks, 12 mon
 
 ### 6.9 Catalog, jobs, audit
 
-`GET /catalog/asset-listings` (`platform`, `q`, offset pagination) and `PUT /catalog/asset-listings/{listingId}/mapping` (`assetSymbol`, `If-Match`; enqueues recalculation for affected Portfolios); `GET /catalog/instruments`; `GET /jobs` (`kind` filter, cursor) and `GET /jobs/{jobId}`; `GET /audit-events` (cursor).
+`GET /catalog/asset-listings` (`platform`, `q`, `ignoredOnly`, offset pagination) and `PUT /catalog/asset-listings/{listingId}/mapping` (`assetSymbol`, `If-Match`; enqueues recalculation for affected Portfolios); `PUT /catalog/asset-listings/{listingId}/exclusion` (`ignored`, required review `reason` when ignoring, independent `If-Match`; future Collection Cycles only); `GET /catalog/instruments`; `GET /jobs` (`kind` filter, cursor) and `GET /jobs/{jobId}`; `GET /audit-events` (cursor).
 
 ### 6.10 Concurrency, idempotency, pagination, health
 
@@ -464,7 +466,7 @@ Sidebar: Overview; **PORTFOLIO** (Holdings, History, Capital); **MANAGE** (Ident
 /p/:portfolioId/history/value-changes    Value Change by period kind + custom range
 /p/:portfolioId/capital                  Capital Flows and Boundary Events in one list
 /p/:portfolioId/data/identities          Identities, Account checkboxes, credentials, validate/enable/disable/archive
-/p/:portfolioId/data/catalog             Asset Listing mappings (tab), Instruments (tab)
+/p/:portfolioId/data/catalog             Asset Listing mappings and exclusions (tab), Instruments (tab)
 /p/:portfolioId/data/activity            Collection Cycles, jobs, audit (tabs)
 /p/:portfolioId/settings/portfolio
 /account/security

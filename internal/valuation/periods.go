@@ -10,6 +10,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/listingexclusion"
 )
 
 // Period kinds.
@@ -218,6 +219,14 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 			change.Reasons = append(change.Reasons, "days_without_points: "+joinDays(missing))
 		}
 	}
+	policyReasons, err := s.exclusionChangeReasons(ctx, p.ID, startPoint.JobID, endPoint.JobID)
+	if err != nil {
+		return ValueChange{}, err
+	}
+	if len(policyReasons) > 0 {
+		change.Completeness = CompletenessIncomplete
+		change.Reasons = append(change.Reasons, policyReasons...)
+	}
 	contributions, withdrawals := decimal.Zero(), decimal.Zero()
 	flows, err := s.q.ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: p.ID[:], FromAt: startPoint.EvaluatedAt.Add(time.Microsecond), ToAt: endPoint.EvaluatedAt.Add(time.Microsecond)})
 	if err != nil {
@@ -269,6 +278,45 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	amount = decimal.Add(amount, decimal.Add(withdrawals, boundaryWithdrawals))
 	change.AmountUSD = decimal.FormatPtr(amount)
 	return change, nil
+}
+
+func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startJobID, endJobID uuid.UUID) ([]string, error) {
+	startIgnored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
+	if err != nil {
+		return nil, err
+	}
+	endIgnored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT l.id, l.platform, l.symbol
+		FROM account_reports r
+		JOIN balances b ON b.report_id = r.source_report_id
+		JOIN asset_listings l ON l.id = b.listing_id
+		WHERE r.portfolio_id = ? AND r.job_id IN (?, ?)
+		  AND r.method = 'calculated' AND b.equity <> 0
+		ORDER BY l.platform, l.symbol`, portfolioID[:], startJobID[:], endJobID[:])
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	reasons := []string{}
+	for rows.Next() {
+		var raw []byte
+		var platform, symbol string
+		if err := rows.Scan(&raw, &platform, &symbol); err != nil {
+			return nil, err
+		}
+		listingID, err := uuid.FromBytes(raw)
+		if err != nil {
+			return nil, err
+		}
+		if startIgnored[listingID] != endIgnored[listingID] {
+			reasons = append(reasons, "listing_exclusion_changed: "+platform+" "+symbol)
+		}
+	}
+	return reasons, rows.Err()
 }
 
 func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at time.Time, inclusive bool) (*Point, error) {

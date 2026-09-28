@@ -8,7 +8,7 @@ The first catalog refused to equate `BTC` on two Platforms until the User confir
 
 ## Consequences
 
-- A mapping override is the only catalog action. It recalculates the Valuation Points whose Accounts held that listing, as allowed by [ADR 0014](./0014-store-one-valuation-point-per-collection-cycle.md).
+- A mapping override recalculates the Valuation Points whose Accounts held that listing, as allowed by [ADR 0014](./0014-store-one-valuation-point-per-collection-cycle.md). [ADR 0032](./0032-allow-reviewed-portfolio-listing-exclusions.md) later adds a Portfolio-scoped exclusion action that affects only future Collection Cycles.
 - Prices are collected only for Asset Listings and Instruments currently held in selected Accounts. Catalog pins are removed.
 - `USD` and `USDT` remain distinct Assets; their valuation equivalence is [ADR 0017](./0017-value-in-usd-and-treat-major-stablecoins-as-usd.md), not a mapping.
 - This supersedes the catalog rules of [ADR 0006](./0006-configure-identity-access-and-discover-catalog-entries.md) and the pinning rule of [ADR 0004](./0004-preserve-platform-specific-price-observations.md).

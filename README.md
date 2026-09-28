@@ -14,7 +14,7 @@ Phases 1–4 are implemented. The code runs the accepted model (ADRs [0014](./do
 - Identities with User-selected Accounts, write-only credentials encrypted with AES-256-GCM, and a validate → enable → disable → archive Connection flow. Each Identity declares its Account Structure at creation, which fixes its Account Types; the Margin Mode is read from the Platform at validation and in every Collection Run, shown on the Identity, and audited when it changes ([ADR 0028](./docs/adr/0028-separate-account-structure-from-margin-mode.md)). Validation refuses a key that reaches a different Platform account than the one the Identity is bound to.
 - A scheduler and durable job worker that run one Collection Cycle per Portfolio at its interval (or on demand), write one aligned Account Report per selected Account, and store one Valuation Point per cycle with stale carry-forward, incomplete marking, and derived Boundary Events.
 - Read-only history: Valuation Point series, Period Closes, Value Changes by day / ISO week / month / quarter / year or a custom range, manual Capital Flows, Boundary Events.
-- Shared catalog of Asset Listings (symbol mapping with manual override and recalculation) and Instruments; Platform prices.
+- Shared catalog of Asset Listings (symbol mapping with manual override and recalculation, plus reviewed Portfolio-specific Balance exclusions for future calculated values) and Instruments; Platform prices.
 - Overview, Holdings (tree, balances, positions), History, Capital, Identities, Catalog, Activity (cycles, jobs, audit), and settings pages in the embedded React app.
 - Development `plutus db seed` / `db reset` with deterministic `minimal`, `edge-cases`, and `walkthrough` profiles generated from the same fake scenario the runtime Adapter uses, and `plutus collect` to run one cycle from the CLI.
 
@@ -51,7 +51,7 @@ Rules that shape the product:
 
 - The User selects which Account Types to collect for each Identity; nothing is discovered or probed beyond that selection. The Account Structure cannot change: after switching it on the Platform, create a new Identity and archive the old one.
 - An Account's value is the Platform's reported equity when it provides one, otherwise the sum of its Balances times the same Platform's prices. USD is the only valuation currency; USDT and USDC count as 1 USD.
-- A failed Account collection keeps its last successful report, labeled stale with its age. A successful report is the complete set: a coin not listed is no longer held. A Balance without a price is shown but left out of the total, which is marked incomplete.
+- A failed Account collection keeps its last successful report, labeled stale with its age. A successful report is the complete set: a coin not listed is no longer held. A Balance without a price is shown but left out of a calculated total, which is marked incomplete. A User can review and ignore an Asset Listing in one Portfolio; future calculated Accounts then omit its Balances without a price issue, while reported-equity Accounts stay unchanged. The rule and reason remain visible in Asset Listings and can be restored.
 - Adding or removing an Account from the Portfolio is a Boundary Event treated as an implicit Capital Flow, so Value Change does not jump. Capital Flows are recorded manually; Plutus only ever needs read-only API keys.
 - Value Change is not an investment return. Percentage returns, attribution, trade history, automatic deposit import, non-USD display, and Exposure aggregation are out of scope.
 

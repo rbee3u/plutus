@@ -49,6 +49,9 @@ _Avoid_: Ticker, coin (as synonyms for canonical asset identity)
 One Platform's symbol for an Asset. A listing maps to an Asset automatically by symbol unless the User overrides the mapping.
 _Avoid_: Asset (when the Platform-specific spelling matters)
 
+**Listing Exclusion**:
+A reviewed, reversible rule to omit one Asset Listing's Balances from future calculated Account Valuations in one Portfolio.
+
 **Instrument**:
 A specific tradable contract or market on one Platform, identified by its symbol, product kind, settlement Asset, and expiry where applicable. A perpetual and a delivery contract on the same Asset are distinct Instruments.
 _Avoid_: Asset, pair (when referring to a contract)
@@ -117,7 +120,7 @@ The USD total of every Account Valuation in a Portfolio at the end of one Collec
 _Avoid_: Snapshot, projection, generation
 
 **Incomplete**:
-The state of a Valuation Point or Account Valuation whose total omits value that could not be determined, such as a Balance without a price. The total remains a real number and names what it omits.
+The state of a Valuation Point or Account Valuation whose total omits non-excluded value that could not be determined, such as a Balance without a price. The total remains a real number and names what it omits.
 _Avoid_: Null, zero (as representations of unknown value)
 
 **Period Close**:

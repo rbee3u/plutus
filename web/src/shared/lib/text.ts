@@ -8,6 +8,7 @@ const REASON_TEXT: Record<string, string> = {
   no_end_point: "no point at end",
   no_point_in_period: "no point in period",
   point_incomplete: "point incomplete",
+  listing_exclusion_changed: "listing treatment changed",
   no_point: "no point",
 };
 

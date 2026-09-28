@@ -192,6 +192,26 @@ type Portfolio struct {
 	UpdatedAt                 time.Time
 }
 
+type PortfolioListingExclusion struct {
+	PortfolioID []byte
+	ListingID   []byte
+	Ignored     bool
+	Reason      sql.NullString
+	Version     uint64
+	ActorUserID []byte
+	UpdatedAt   time.Time
+}
+
+type PortfolioListingExclusionEvent struct {
+	PortfolioID []byte
+	ListingID   []byte
+	Version     uint64
+	Ignored     bool
+	Reason      sql.NullString
+	ActorUserID []byte
+	EffectiveAt time.Time
+}
+
 type Position struct {
 	ReportID            []byte
 	PortfolioID         []byte

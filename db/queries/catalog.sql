@@ -25,6 +25,10 @@ SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, 
 FROM asset_listings
 WHERE (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
   AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query) OR asset_symbol LIKE sqlc.arg(query))
+  AND (sqlc.arg(ignored_only) = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_listing_exclusions e
+      WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.listing_id = asset_listings.id AND e.ignored = TRUE
+  ))
 ORDER BY platform ASC, symbol ASC
 LIMIT ? OFFSET ?;
 
@@ -32,7 +36,11 @@ LIMIT ? OFFSET ?;
 SELECT COUNT(*)
 FROM asset_listings
 WHERE (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
-  AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query) OR asset_symbol LIKE sqlc.arg(query));
+  AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query) OR asset_symbol LIKE sqlc.arg(query))
+  AND (sqlc.arg(ignored_only) = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_listing_exclusions e
+      WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.listing_id = asset_listings.id AND e.ignored = TRUE
+  ));
 
 -- name: UpdateAssetListingMapping :execrows
 UPDATE asset_listings

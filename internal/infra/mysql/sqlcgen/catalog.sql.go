@@ -16,6 +16,10 @@ SELECT COUNT(*)
 FROM asset_listings
 WHERE (? = 0 OR platform = ?)
   AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
+  AND (? = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_listing_exclusions e
+      WHERE e.portfolio_id = ? AND e.listing_id = asset_listings.id AND e.ignored = TRUE
+  ))
 `
 
 type CountAssetListingsParams struct {
@@ -23,6 +27,8 @@ type CountAssetListingsParams struct {
 	Platform       string
 	FilterQuery    interface{}
 	Query          string
+	IgnoredOnly    interface{}
+	PortfolioID    []byte
 }
 
 func (q *Queries) CountAssetListings(ctx context.Context, arg CountAssetListingsParams) (int64, error) {
@@ -32,6 +38,8 @@ func (q *Queries) CountAssetListings(ctx context.Context, arg CountAssetListings
 		arg.FilterQuery,
 		arg.Query,
 		arg.Query,
+		arg.IgnoredOnly,
+		arg.PortfolioID,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -157,6 +165,10 @@ SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, 
 FROM asset_listings
 WHERE (? = 0 OR platform = ?)
   AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
+  AND (? = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_listing_exclusions e
+      WHERE e.portfolio_id = ? AND e.listing_id = asset_listings.id AND e.ignored = TRUE
+  ))
 ORDER BY platform ASC, symbol ASC
 LIMIT ? OFFSET ?
 `
@@ -166,6 +178,8 @@ type ListAssetListingsParams struct {
 	Platform       string
 	FilterQuery    interface{}
 	Query          string
+	IgnoredOnly    interface{}
+	PortfolioID    []byte
 	Limit          int32
 	Offset         int32
 }
@@ -177,6 +191,8 @@ func (q *Queries) ListAssetListings(ctx context.Context, arg ListAssetListingsPa
 		arg.FilterQuery,
 		arg.Query,
 		arg.Query,
+		arg.IgnoredOnly,
+		arg.PortfolioID,
 		arg.Limit,
 		arg.Offset,
 	)

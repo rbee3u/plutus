@@ -223,7 +223,7 @@ const VALUE_CHANGE_COLUMNS = [
   { key: "boundaryContributionsUsd", header: "Boundary in", numeric: true },
   { key: "boundaryWithdrawalsUsd", header: "Boundary out", numeric: true },
   { key: "completeness", header: "Completeness" },
-  { key: "reasons", header: "Missing" },
+  { key: "reasons", header: "Limitations" },
 ];
 
 function valueChangeRow(item: ValueChange, timezone?: string): DataRow {
@@ -300,7 +300,7 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
       </dl>
       {change.reasons.length > 0 ? (
-        <p className={styles.notice}>Missing: {change.reasons.map(reasonText).join(", ")}.</p>
+        <p className={styles.notice}>Limitations: {change.reasons.map(reasonText).join(", ")}.</p>
       ) : null}
       <DataTable
         caption="Boundary Events in the range"

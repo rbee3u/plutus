@@ -49,16 +49,20 @@ func NewService(db *sql.DB) *Service {
 
 // Listing is one Platform coin symbol and the Asset it maps to.
 type Listing struct {
-	ID            uuid.UUID
-	Platform      string
-	Symbol        string
-	AssetSymbol   string
-	Name          *string
-	MappingSource string
-	FirstSeenAt   time.Time
-	LastSeenAt    time.Time
-	Version       uint64
-	UpdatedAt     time.Time
+	ID               uuid.UUID
+	Platform         string
+	Symbol           string
+	AssetSymbol      string
+	Name             *string
+	MappingSource    string
+	FirstSeenAt      time.Time
+	LastSeenAt       time.Time
+	Version          uint64
+	UpdatedAt        time.Time
+	Ignored          bool
+	IgnoreReason     *string
+	IgnoredAt        *time.Time
+	ExclusionVersion uint64
 }
 
 // ETag returns the listing validator.
@@ -100,10 +104,12 @@ type Page[T any] struct {
 
 // ListFilter selects catalog rows.
 type ListFilter struct {
-	Platform string
-	Query    string
-	Offset   int
-	Limit    int
+	PortfolioID uuid.UUID
+	Platform    string
+	Query       string
+	IgnoredOnly bool
+	Offset      int
+	Limit       int
 }
 
 // NormalizeSymbol upper-cases and validates a Platform symbol.
@@ -229,6 +235,8 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 	}
 	query := likePattern(in.Query)
 	rows, err := s.q.ListAssetListings(ctx, sqlcgen.ListAssetListingsParams{
+		PortfolioID:    in.PortfolioID[:],
+		IgnoredOnly:    flag(in.IgnoredOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
@@ -240,6 +248,8 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 		return Page[Listing]{}, err
 	}
 	total, err := s.q.CountAssetListings(ctx, sqlcgen.CountAssetListingsParams{
+		PortfolioID:    in.PortfolioID[:],
+		IgnoredOnly:    flag(in.IgnoredOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
@@ -249,12 +259,17 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 		return Page[Listing]{}, err
 	}
 	items := make([]Listing, 0, len(rows))
+	states, err := s.currentExclusions(ctx, in.PortfolioID)
+	if err != nil {
+		return Page[Listing]{}, err
+	}
 	for i := range rows {
 		item, err := listingFromRow(&rows[i])
 		if err != nil {
 			return Page[Listing]{}, err
 		}
 		items = append(items, item)
+		applyExclusion(&items[len(items)-1], states[item.ID])
 	}
 	return Page[Listing]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
 }

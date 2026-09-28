@@ -15,6 +15,7 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/listingexclusion"
 )
 
 const (
@@ -265,6 +266,17 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 	if source == nil {
 		return view, nil
 	}
+	ignored := map[uuid.UUID]bool{}
+	if view.Account.Method == MethodCalculated {
+		point, err := s.Latest(ctx, p.ID)
+		if err != nil {
+			return AccountView{}, err
+		}
+		ignored, err = listingexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+		if err != nil {
+			return AccountView{}, err
+		}
+	}
 	rows, err := s.q.ListBalancesByReport(ctx, source[:])
 	if err != nil {
 		return AccountView{}, err
@@ -275,6 +287,13 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 		at = *view.Account.ReportObservedAt
 	}
 	for i := range rows {
+		listingID, err := uuid.FromBytes(rows[i].ListingID)
+		if err != nil {
+			return AccountView{}, err
+		}
+		if ignored[listingID] {
+			continue
+		}
 		row, err := balanceRow(ctx, book, &view.Account, at, rows[i].ListingID, rows[i].Platform, rows[i].Symbol, rows[i].AssetSymbol, rows[i].Equity, rows[i].AvailableToWithdraw, rows[i].AvailableToTrade, rows[i].Liability, rows[i].Interest, rows[i].UnrealizedPnl)
 		if err != nil {
 			return AccountView{}, err
@@ -463,6 +482,10 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		out.Issues = append(out.Issues, Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
 		return out, nil
 	}
+	ignored, err := listingexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+	if err != nil {
+		return FlatList[BalanceRow]{}, err
+	}
 	out.Completeness = point.Completeness()
 	out.Issues = point.Issues
 	byAccount := map[uuid.UUID]*AccountValuation{}
@@ -486,6 +509,13 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 			continue
 		}
 		if !matchesAccount(f, account) || (f.Symbol != "" && !strings.EqualFold(f.Symbol, rows[i].AssetSymbol) && !strings.EqualFold(f.Symbol, rows[i].Symbol)) {
+			continue
+		}
+		listingID, err := uuid.FromBytes(rows[i].ListingID)
+		if err != nil {
+			return FlatList[BalanceRow]{}, err
+		}
+		if account.Method == MethodCalculated && ignored[listingID] {
 			continue
 		}
 		at := time.Time{}

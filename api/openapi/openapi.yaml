@@ -1141,6 +1141,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: ignoredOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
         - name: offset
           in: query
           schema:
@@ -1186,6 +1191,41 @@ paths:
       responses:
         "200":
           description: Updated listing.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetListing"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/exclusion:
+    put:
+      operationId: putAssetListingExclusion
+      tags: [catalog]
+      summary: Ignore or restore a listing for future Collection Cycles in one Portfolio
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/ListingID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutAssetListingExclusionRequest"
+      responses:
+        "200":
+          description: Updated Portfolio listing rule.
           headers:
             ETag:
               schema:
@@ -2621,7 +2661,7 @@ components:
     AssetListing:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, assetSymbol, mappingSource, firstSeenAt, lastSeenAt, version]
+      required: [id, platform, symbol, assetSymbol, mappingSource, firstSeenAt, lastSeenAt, version, ignored, exclusionVersion]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -2644,6 +2684,15 @@ components:
           format: date-time
         version:
           type: integer
+        ignored:
+          type: boolean
+        ignoreReason:
+          type: [string, "null"]
+        ignoredAt:
+          type: [string, "null"]
+          format: date-time
+        exclusionVersion:
+          type: integer
     AssetListingList:
       type: object
       additionalProperties: false
@@ -2664,6 +2713,16 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+    PutAssetListingExclusionRequest:
+      type: object
+      additionalProperties: false
+      required: [ignored]
+      properties:
+        ignored:
+          type: boolean
+        reason:
+          type: string
+          maxLength: 500
     Instrument:
       type: object
       additionalProperties: false

@@ -305,6 +305,169 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	}
 }
 
+func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
+	h := newHarness(t)
+	assetIdentity := h.createIdentity("Binance reviewed", adapters.PlatformBinance, adapters.StructureBinancePM, "portfolio_margin", "spot")
+	assetIdentity = h.storeCredentials(assetIdentity, "unpriced-reviewed-key")
+	assetIdentity, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, assetIdentity.ID, assetIdentity.Version, identity.ActionInput{ActorUserID: h.userID})
+	if err != nil || !outcome.OK {
+		t.Fatalf("enable: %v %+v", err, outcome)
+	}
+	first, firstJob := h.runCycle()
+	firstAccounts := h.accountsByType(firstJob, assetIdentity.ID)
+	if first.Point.Completeness() != valuation.CompletenessIncomplete || firstAccounts["spot"].Method != valuation.MethodCalculated || len(firstAccounts["spot"].Omitted) != 1 {
+		t.Fatalf("expected TOKENX omission in calculated spot: %+v %+v", first.Point, firstAccounts["spot"])
+	}
+	if firstAccounts["portfolio_margin"].Method != valuation.MethodReported {
+		t.Fatalf("margin should use reported equity: %+v", firstAccounts["portfolio_margin"])
+	}
+
+	listings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Query: "TOKENX", Limit: 50})
+	if err != nil || len(listings.Items) != 1 {
+		t.Fatalf("TOKENX listing: %+v %v", listings, err)
+	}
+	token := listings.Items[0]
+	input := catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, RequestID: "test", Ignored: true, Reason: "Reviewed dust balance", Version: 0}
+	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true}); !errors.Is(err, catalog.ErrInvalid) {
+		t.Fatalf("missing review reason: %v", err)
+	}
+	ignored, err := h.catalog.PutExclusion(h.ctx, token.ID, &input)
+	if err != nil || !ignored.Ignored || ignored.ExclusionVersion != 1 {
+		t.Fatalf("ignore TOKENX: %+v %v", ignored, err)
+	}
+	var auditCount int
+	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.listing.exclude' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
+		t.Fatalf("review audit event count = %d: %v", auditCount, err)
+	}
+	ignoredPage, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, IgnoredOnly: true, Limit: 50})
+	if err != nil || ignoredPage.Total != 1 || ignoredPage.Items[0].ID != token.ID {
+		t.Fatalf("ignored-only catalog filter: %+v %v", ignoredPage, err)
+	}
+	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &input); !errors.Is(err, catalog.ErrPrecondition) {
+		t.Fatalf("stale exclusion version: %v", err)
+	}
+	other, err := portfolio.NewService(h.collection.db, 15*time.Minute).Create(h.ctx, h.userID, portfolio.CreateInput{Name: "separate", Timezone: "UTC"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherListings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: other.ID, Query: "TOKENX", Limit: 50})
+	if err != nil || len(otherListings.Items) != 1 || otherListings.Items[0].Ignored {
+		t.Fatalf("exclusion leaked to another Portfolio: %+v %v", otherListings, err)
+	}
+	oldPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
+		t.Fatalf("existing point changed before another cycle: %+v %v", oldPoint, err)
+	}
+
+	second, secondJob := h.runCycle()
+	spot := h.accountsByType(secondJob, assetIdentity.ID)["spot"]
+	if second.Point.Completeness() != valuation.CompletenessComplete || len(spot.Omitted) != 0 {
+		t.Fatalf("reviewed TOKENX must not cause an omission: %+v %+v", second.Point, spot)
+	}
+	pctx := valuation.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
+	flat, err := h.valuation.FlatBalances(h.ctx, pctx, &valuation.ListFilter{GroupBy: "asset"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range flat.Items {
+		if row.Symbol == "TOKENX" {
+			t.Fatal("ignored TOKENX appeared in ordinary Balances")
+		}
+	}
+	view, err := h.valuation.AccountBalances(h.ctx, pctx, spot.AccountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range view.Balances {
+		if row.Symbol == "TOKENX" {
+			t.Fatal("ignored TOKENX appeared in Account Balances")
+		}
+	}
+	if _, err := h.valuation.Rebuild(h.ctx, h.portfolioID); err != nil {
+		t.Fatal(err)
+	}
+	oldPoint, err = h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
+		t.Fatalf("historical rule lost during rebuild: %+v %v", oldPoint, err)
+	}
+	secondPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, secondJob)
+	if err != nil || secondPoint.Completeness() != valuation.CompletenessComplete {
+		t.Fatalf("ignored cycle lost during rebuild: %+v %v", secondPoint, err)
+	}
+
+	priced, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "USDC", Limit: 50})
+	if err != nil || len(priced.Items) != 1 {
+		t.Fatalf("USDC listing: %+v %v", priced, err)
+	}
+	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Reviewed priced balance", Version: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, thirdJob := h.runCycle()
+	thirdSpot := h.accountsByType(thirdJob, assetIdentity.ID)["spot"]
+	if thirdSpot.ValueUSD == nil || spot.ValueUSD == nil || *thirdSpot.ValueUSD == *spot.ValueUSD {
+		t.Fatalf("priced exclusion did not change calculated account: before=%+v after=%+v", spot, thirdSpot)
+	}
+	thirdPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, thirdJob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := h.valuation.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, thirdPoint.EvaluatedAt.Add(time.Microsecond))
+	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "listing_exclusion_changed") {
+		t.Fatalf("treatment change must limit Value Change: %+v %v", change, err)
+	}
+	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: false, Version: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, restoredPricedJob := h.runCycle()
+	restoredPricedPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, restoredPricedJob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err = h.valuation.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, restoredPricedPoint.EvaluatedAt.Add(time.Microsecond))
+	if err != nil || change.Completeness != valuation.CompletenessComplete {
+		t.Fatalf("matching endpoint rules should allow Value Change: %+v %v", change, err)
+	}
+
+	btc, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "BTC", Limit: 50})
+	if err != nil || len(btc.Items) != 1 {
+		t.Fatalf("BTC listing: %+v %v", btc, err)
+	}
+	_, err = h.catalog.PutExclusion(h.ctx, btc.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Test reported equity", Version: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, fourthJob := h.runCycle()
+	margin := h.accountsByType(fourthJob, assetIdentity.ID)["portfolio_margin"]
+	if margin.Method != valuation.MethodReported || margin.Equity == nil || margin.ValueUSD == nil || *margin.Equity != *margin.ValueUSD {
+		t.Fatalf("reported equity changed by exclusion: %+v", margin)
+	}
+	marginBalances, err := h.valuation.AccountBalances(h.ctx, pctx, margin.AccountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundBTC := false
+	for _, row := range marginBalances.Balances {
+		foundBTC = foundBTC || row.Symbol == "BTC"
+	}
+	if !foundBTC {
+		t.Fatal("reported-equity Account hid BTC")
+	}
+
+	_, err = h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: false, Version: ignored.ExclusionVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.listing.restore' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
+		t.Fatalf("restore audit event count = %d: %v", auditCount, err)
+	}
+	last, lastJob := h.runCycle()
+	if last.Point.Completeness() != valuation.CompletenessIncomplete || len(h.accountsByType(lastJob, assetIdentity.ID)["spot"].Omitted) != 1 {
+		t.Fatalf("restored TOKENX did not restore no_price: %+v", last.Point)
+	}
+}
+
 func TestRateLimitIsRetriedWithoutInvalidating(t *testing.T) {
 	h := newHarness(t)
 	item := h.createIdentity("OKX rate limited", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading", "funding")
