@@ -256,6 +256,9 @@ func (r *replay) refusal(req *http.Request) string {
 	case strings.HasPrefix(req.URL.Path, "/0/private/"):
 		body, _ := io.ReadAll(req.Body)
 		values, _ := url.ParseQuery(string(body))
+		if req.URL.Path == epEarnAllocations.path && values.Get("hide_zero_allocations") != "true" {
+			r.t.Error("Earn allocations must request only current holdings")
+		}
 		if req.Header.Get("Api-Key") != testCreds.APIKey {
 			return "invalid_key"
 		}
@@ -561,6 +564,9 @@ func TestEarnFailsOnUnclassifiedAllocations(t *testing.T) {
 		"paged allocations": {
 			epEarnAllocations.String(): `{"error":[],"result":{"items":[],"next_cursor":"2"}}`,
 		},
+		"missing amount in historical allocation": {
+			epEarnAllocations.String(): `{"error":[],"result":{"items":[{"strategy_id":"unknown","native_asset":"USD","amount_allocated":{"total":{}}}],"next_cursor":null}}`,
+		},
 	}
 	for name, overrides := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -571,6 +577,29 @@ func TestEarnFailsOnUnclassifiedAllocations(t *testing.T) {
 			}
 			if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassNormalization {
 				t.Fatalf("unclassified Earn holdings were accepted: %+v", batch.Reports[0])
+			}
+			if r.reached(epBalancesSnapshot.String()) {
+				t.Fatal("Earn alone read the balances feed")
+			}
+		})
+	}
+}
+
+func TestEarnIgnoresZeroHistoricalAllocations(t *testing.T) {
+	for _, structure := range []adapters.AccountStructure{adapters.StructureKrakenSeparate, adapters.StructureKrakenUnified} {
+		t.Run(string(structure), func(t *testing.T) {
+			r := newReplay(t, "", map[string]string{
+				epEarnStrategies.String():  `{"error":[],"result":{"items":[{"id":"S1","asset":"DOT","lock_type":{"type":"bonded"}}],"next_cursor":null}}`,
+				epEarnAllocations.String(): `{"error":[],"result":{"items":[{"strategy_id":"retired","native_asset":"USD","amount_allocated":{"total":{"native":"0"}}},{"strategy_id":"S1","native_asset":"DOT","amount_allocated":{"total":{"native":"1"}}}],"next_cursor":null}}`,
+			})
+			spotOnly := adapters.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
+			batch, err := r.adapter.Collect(context.Background(), spotOnly, structure, []adapters.AccountType{TypeEarn})
+			if err != nil {
+				t.Fatal(err)
+			}
+			report := batch.Reports[0]
+			if report.Status != adapters.StatusOK || len(report.Balances) != 1 || report.Balances[0].Symbol != "DOT" || report.Balances[0].Equity != "1" {
+				t.Fatalf("historical allocation changed current Earn holdings: %+v", report)
 			}
 			if r.reached(epBalancesSnapshot.String()) {
 				t.Fatal("Earn alone read the balances feed")

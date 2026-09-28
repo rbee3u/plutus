@@ -571,8 +571,8 @@ var earnInMain = map[string]bool{"flex": true, "instant": false, "bonded": false
 const maxStrategyPages = 1000
 
 // earn maps allocated Earn: every allocation of an instant, bonded, or timed strategy, one Balance
-// per coin. An allocation whose strategy is unknown or has an undocumented lock type fails Earn:
-// dropping it would erase real holdings under the Complete Set rule.
+// per coin. A nonzero allocation whose strategy is unknown or has an undocumented lock type fails
+// Earn: dropping it would erase real holdings under the Complete Set rule.
 func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 	strategies, err := r.earnStrategies(ctx)
 	if err != nil {
@@ -583,7 +583,7 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 		Items      []earnAllocation `json:"items"`
 		NextCursor *string          `json:"next_cursor"`
 	}
-	if err := r.c.call(ctx, epEarnAllocations, url.Values{"converted_asset": {"USD"}}, &allocations); err != nil {
+	if err := r.c.call(ctx, epEarnAllocations, url.Values{"converted_asset": {"USD"}, "hide_zero_allocations": {"true"}}, &allocations); err != nil {
 		return adapters.AccountReport{}, err
 	}
 	// Kraken documents that allocations are not paged; a cursor would mean a partial list.
@@ -593,13 +593,18 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	for i := range allocations.Items {
 		row := &allocations.Items[i]
-		lockType, ok := strategies[row.StrategyID]
-		if !ok {
-			return adapters.AccountReport{}, adapters.Malformed(where, "the strategy of an allocation")
-		}
 		amount, err := adapters.Decimal(where, "amount_allocated.total.native of "+row.NativeAsset, string(row.Allocated.Total.Native))
 		if err != nil {
 			return adapters.AccountReport{}, err
+		}
+		// Kraken can return past allocations after their strategies are no longer available.
+		// A zero total has no holdings to classify, even if the filter above is ignored.
+		if amount.Sign() == 0 {
+			continue
+		}
+		lockType, ok := strategies[row.StrategyID]
+		if !ok {
+			return adapters.AccountReport{}, adapters.Malformed(where, "the strategy of an allocation")
 		}
 		inMain, known := earnInMain[lockType]
 		if !known {

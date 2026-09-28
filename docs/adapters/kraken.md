@@ -23,7 +23,7 @@ One Connection holds a Spot key pair and a Futures key pair, replaced together. 
 | Main in Separate wallets | Spot `POST /0/private/BalanceEx`, `POST /0/private/TradeBalance` with `asset=ZUSD` | yes |
 | Positions, read once per run | Futures `GET /derivatives/api/v3/openpositions` | yes |
 | Instruments and mark prices, fetched once per run and only when a position is open | Futures `GET /derivatives/api/v3/instruments?contractType=all`, `GET /derivatives/api/v3/tickers` | no |
-| `earn` | Spot `POST /0/private/Earn/Strategies`, following `next_cursor`; `POST /0/private/Earn/Allocations` with `converted_asset=USD` | yes |
+| `earn` | Spot `POST /0/private/Earn/Strategies`, following `next_cursor`; `POST /0/private/Earn/Allocations` with `converted_asset=USD` and `hide_zero_allocations=true` | yes |
 | Asset names | Spot `GET /0/public/Assets` | no |
 | Prices | Spot `GET /0/public/AssetPairs`, `GET /0/public/Ticker` (every pair, one call each, fetched before the Account calls so their time precedes every report) | no |
 
@@ -66,7 +66,7 @@ Kraken reports the structure only as `flex_futures.unified_balances` on the bala
 - Zero totals are dropped. Every amount is required: a missing or non-decimal one fails its Account with `normalization`, naming the field; it is never read as zero.
 - The multi-collateral wallet's derivative profit is in its equity only; it is not split among currencies.
 - BalanceEx rows ending in `.B` (yield-bearing), `.S` (staked), and `.M` (opt-in rewards) are Earn allocations and are left to `earn`. `.F` rows are Kraken Rewards (Auto Earn), which earn on Main balances and stay in Main. `hold_trade` is part of `balance` and is not subtracted.
-- An Earn allocation's total already holds its bonding, unbonding, exit-queue, and timed amounts; paid rewards are not added again. `flex` strategies are Kraken Rewards, reported in Main and skipped here. An allocation whose strategy Earn/Strategies does not list, or whose lock type is none of `flex`, `instant`, `bonded`, and `timed`, fails Earn with `normalization`, and so does an allocation list with a `next_cursor`, which Kraken documents as unpaged. Skipping either would erase holdings under the Complete Set rule.
+- An Earn allocation's total already holds its bonding, unbonding, exit-queue, and timed amounts; paid rewards are not added again. `flex` strategies are Kraken Rewards, reported in Main and skipped here. Kraken can return historical zero-balance allocations whose strategies are no longer available, so Earn requests `hide_zero_allocations=true` and ignores any zero total still returned. Every total must still be a valid decimal. A nonzero allocation whose strategy Earn/Strategies does not list, or whose lock type is none of `flex`, `instant`, `bonded`, and `timed`, fails Earn with `normalization`, as does an allocation list with a `next_cursor`, which Kraken documents as unpaged. Skipping such a holding would violate the Complete Set rule.
 - `name` is never set: these endpoints report no full asset name.
 
 ## Position
@@ -102,7 +102,7 @@ For every Balance symbol other than USD, USDT, and USDC, the Spot last trade pri
 
 ## Earn completeness
 
-Kraken is not checked against an Earn valuation of its own ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)): the only USD figure it reports, `total_allocated` on Earn/Allocations, values the same allocation list Plutus itemizes, including Kraken Rewards that stay in Main. The list is documented as complete and unpaged, and an allocation that cannot be classified fails Earn instead of being skipped.
+Kraken is not checked against an Earn valuation of its own ([ADR 0029](../adr/0029-count-dual-investment-in-earn-and-check-earn-completeness.md)): the only USD figure it reports, `total_allocated` on Earn/Allocations, values the same allocation list Plutus itemizes, including Kraken Rewards that stay in Main. The list is documented as complete and unpaged, and a nonzero allocation that cannot be classified fails Earn instead of being skipped.
 
 ## Errors
 
