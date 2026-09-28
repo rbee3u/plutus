@@ -539,6 +539,20 @@
   background: var(--accent-soft);
 }
 
+.statusGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.nameHeader {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
 /* Issues */
 
 .issues {

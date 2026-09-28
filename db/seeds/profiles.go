@@ -94,12 +94,16 @@ func localMidnight(t time.Time, daysAgo int, loc *time.Location) time.Time {
 }
 
 func (b *builder) users(now time.Time) {
+	b.usersWithInterval(now, 900)
+}
+
+func (b *builder) usersWithInterval(now time.Time, interval int) {
 	created := now.AddDate(0, 0, -60)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
 	b.user(userSpec{ID: UserBob, Username: "bob", Hash: bobPasswordHash, CreatedAt: created})
-	b.portfolio(&portfolioSpec{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 900, Undeletable: true, CreatedAt: created})
-	b.portfolio(&portfolioSpec{ID: PortfolioAliceTrading, User: UserAlice, Name: "trading", Timezone: "Asia/Shanghai", Interval: 900, CreatedAt: created.Add(time.Hour)})
-	b.portfolio(&portfolioSpec{ID: PortfolioBobMain, User: UserBob, Name: "default", Timezone: "Europe/Berlin", Interval: 900, Undeletable: true, CreatedAt: created})
+	b.portfolio(&portfolioSpec{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: interval, Undeletable: true, CreatedAt: created})
+	b.portfolio(&portfolioSpec{ID: PortfolioAliceTrading, User: UserAlice, Name: "trading", Timezone: "Asia/Shanghai", Interval: interval, CreatedAt: created.Add(time.Hour)})
+	b.portfolio(&portfolioSpec{ID: PortfolioBobMain, User: UserBob, Name: "default", Timezone: "Europe/Berlin", Interval: interval, Undeletable: true, CreatedAt: created})
 }
 
 // fakeReports builds ok reports from the fake adapter scenario for the given Account Types under
@@ -243,26 +247,26 @@ func edgeCases(b *builder, now time.Time) []uuid.UUID {
 
 // walkthrough: forty days of two-hour cycles across three Platforms, one stale day, flows, and an archived Identity.
 func walkthrough(b *builder, now time.Time) []uuid.UUID {
-	b.users(now)
+	b.usersWithInterval(now, 7200)
 	created := now.AddDate(0, 0, -45)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	end := now
+	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: end, LastError: adapters.ClassRateLimited, LastDetail: "The platform rate limit was exceeded."})
 	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
 	b.identity(&identitySpec{ID: IdentityAliceBinanceOld, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance old sub-account", Archived: true, ArchivedAt: now.AddDate(0, 0, -30), CreatedAt: created})
 	b.accounts(IdentityAliceBinanceOld, aliceOldAccounts, selectedSet(), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", APIKey: keyBobBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", APIKey: keyBobBinance, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot), created)
 	classicCreated := now.AddDate(0, 0, -20)
-	b.identity(&identitySpec{ID: IdentityAliceBinanceClassic, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Name: "Binance classic", APIKey: keyAliceBinanceClassic, CreatedAt: classicCreated, CollectedAt: now.Add(-2 * time.Hour)})
+	b.identity(&identitySpec{ID: IdentityAliceBinanceClassic, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Name: "Binance classic", APIKey: keyAliceBinanceClassic, CreatedAt: classicCreated, CollectedAt: end})
 	b.accounts(IdentityAliceBinanceClassic, aliceClassicAccounts, selectedSet(typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures), classicCreated)
 
 	start := localMidnight(now, 40, shanghai)
 	staleDay := localMidnight(now, 10, shanghai)
-	end := now.Add(-2 * time.Hour)
-	for at := start; !at.After(end); at = at.Add(2 * time.Hour) {
+	for at := start; at.Before(end); at = at.Add(2 * time.Hour) {
 		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
 		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
 		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
@@ -277,6 +281,23 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 			b.fakePrices(keyAliceBinanceClassic, adapters.PlatformBinance, at)
 			reports = append(reports, fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures)...)
 		}
+		b.cycle(PortfolioAliceMain, at, reports)
+	}
+
+	// Latest cycle at end: contains injected anomalies for walkthrough and inspection.
+	{
+		at := end
+		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
+		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
+		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
+		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
+		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding)...)
+		reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceBybitAccounts, typeUnified)...)
+		b.fakePrices(keyAliceBinanceClassic, adapters.PlatformBinance, at)
+		classicReports := fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures)
+		last := len(classicReports) - 1
+		classicReports[last].Report.Balances = append(classicReports[last].Report.Balances, fake.UnpricedBalance(1))
+		reports = append(reports, classicReports...)
 		b.cycle(PortfolioAliceMain, at, reports)
 	}
 	bobStart := localMidnight(now, 3, mustLocation("Europe/Berlin"))

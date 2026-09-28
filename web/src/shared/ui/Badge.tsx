@@ -68,3 +68,48 @@ export function StatusBadge({ value }: { value: string | null | undefined }) {
   }
   return <Badge tone={STATUS_TONES[value] ?? "neutral"}>{value}</Badge>;
 }
+
+/** Renders warning/error badges only when an account has an anomaly (silent when healthy). */
+export function AccountHealthBadges({
+  status,
+  freshness,
+  completeness,
+  errorClass,
+  errorDetail,
+}: {
+  status?: string | null;
+  freshness?: Freshness | null;
+  completeness?: Completeness | null;
+  errorClass?: string | null;
+  errorDetail?: string | null;
+}) {
+  const isFailed = status === "failed";
+  const isStale = freshness === "stale";
+  const isIncomplete = completeness === "incomplete";
+
+  if (!isFailed && !isStale && !isIncomplete) {
+    return null;
+  }
+
+  const errorTitle = [errorClass, errorDetail].filter(Boolean).join(": ");
+
+  return (
+    <span className={styles.statusGroup}>
+      {isFailed ? (
+        <Badge tone="bad" title={errorTitle || "collection failed"}>
+          failed
+        </Badge>
+      ) : null}
+      {isStale ? (
+        <Badge tone="warn" title={errorTitle || "stale: report carried forward"}>
+          stale
+        </Badge>
+      ) : null}
+      {isIncomplete ? (
+        <Badge tone="warn" title="incomplete: some assets omitted or unpriced">
+          incomplete
+        </Badge>
+      ) : null}
+    </span>
+  );
+}

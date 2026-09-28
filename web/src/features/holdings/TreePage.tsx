@@ -10,7 +10,7 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
-import { CompletenessBadge, FreshnessBadge, StatusBadge } from "@/shared/ui/Badge";
+import { AccountHealthBadges, CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { IconButton } from "@/shared/ui/IconButton";
 import { isOwnControl } from "@/shared/ui/DataTable";
@@ -18,7 +18,7 @@ import { IssuesPanel } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/pages.module.css";
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 5;
 
 function count(n: number, singular: string, plural: string): string {
   return `${String(n)} ${n === 1 ? singular : plural}`;
@@ -72,7 +72,9 @@ export function TreePage() {
           <p className={styles.totalRow}>
             <span>Total</span>
             <span className={styles.totalValue}>{formatUsd(tree.totalUsd)}</span>
-            <CompletenessBadge value={tree.completeness} />
+            {tree.completeness === "incomplete" ? (
+              <CompletenessBadge value={tree.completeness} />
+            ) : null}
           </p>
           <div className={styles.tableWrap}>
             <table>
@@ -85,10 +87,7 @@ export function TreePage() {
                   <th scope="col" className={styles.numeric}>
                     Value (USD)
                   </th>
-                  <th scope="col">Completeness</th>
-                  <th scope="col">Freshness</th>
                   <th scope="col">Method</th>
-                  <th scope="col">Status</th>
                   <th scope="col">Report observed</th>
                   <th scope="col">
                     <span className={styles.srOnly}>Details</span>
@@ -108,39 +107,46 @@ export function TreePage() {
                   <Fragment key={platform.platform}>
                     <tr className={styles.treePlatform}>
                       <td>
-                        {platform.label}{" "}
-                        <span className={styles.cellMeta}>
-                          {count(platform.identities.length, "identity", "identities")}
+                        <span className={styles.nameHeader}>
+                          <span>{platform.label}</span>
+                          <span className={styles.cellMeta}>
+                            {count(platform.identities.length, "identity", "identities")}
+                          </span>
+                          {platform.completeness === "incomplete" ? (
+                            <CompletenessBadge value={platform.completeness} />
+                          ) : null}
                         </span>
                       </td>
                       <td className={styles.numeric}>{formatAmount(platform.valueUsd)}</td>
-                      <td>
-                        <CompletenessBadge value={platform.completeness} />
-                      </td>
-                      <td colSpan={COLUMN_COUNT - 3} />
+                      <td colSpan={COLUMN_COUNT - 2} />
                     </tr>
                     {platform.identities.map((identity) => (
                       <Fragment key={identity.id}>
                         <tr className={styles.treeIdentity}>
                           <td>
                             <span className={styles.cellStack}>
-                              <span>
+                              <span className={styles.nameHeader}>
                                 <strong>{identity.displayName}</strong>{" "}
                                 <span className={styles.cellMeta}>
                                   {count(identity.accounts.length, "account", "accounts")}
                                 </span>
+                                {identity.completeness === "incomplete" ? (
+                                  <CompletenessBadge value={identity.completeness} />
+                                ) : null}
                               </span>
                               <span className={styles.cellMeta}>
                                 {identity.status === "archived" ? "archived · " : ""}
-                                connection <StatusBadge value={identity.connectionStatus} />
+                                connection{" "}
+                                {identity.connectionStatus === "enabled" ? (
+                                  "enabled"
+                                ) : (
+                                  <StatusBadge value={identity.connectionStatus} />
+                                )}
                               </span>
                             </span>
                           </td>
                           <td className={styles.numeric}>{formatAmount(identity.valueUsd)}</td>
-                          <td>
-                            <CompletenessBadge value={identity.completeness} />
-                          </td>
-                          <td colSpan={COLUMN_COUNT - 3} />
+                          <td colSpan={COLUMN_COUNT - 2} />
                         </tr>
                         {identity.accounts.map((account) => (
                           <AccountRows
@@ -192,26 +198,21 @@ function AccountRows({
       >
         <td>
           <span className={styles.cellStack}>
-            <span>{account.accountName}</span>
+            <span className={styles.nameHeader}>
+              <span>{account.accountName}</span>
+              <AccountHealthBadges
+                status={account.status}
+                freshness={account.freshness}
+                completeness={account.completeness}
+                errorClass={account.errorClass}
+                errorDetail={account.errorDetail}
+              />
+            </span>
             {account.selected ? null : <span className={styles.cellMeta}>not selected</span>}
           </span>
         </td>
         <td className={styles.numeric}>{formatAmount(account.valueUsd)}</td>
-        <td>
-          <CompletenessBadge value={account.completeness} />
-        </td>
-        <td>
-          <FreshnessBadge value={account.freshness} />
-        </td>
         <td>{account.method}</td>
-        <td>
-          <span className={styles.cellStack}>
-            <StatusBadge value={account.status} />
-            {account.errorClass ? (
-              <span className={styles.cellMeta}>{account.errorClass}</span>
-            ) : null}
-          </span>
-        </td>
         <td>{formatInstant(account.reportObservedAt, timezone)}</td>
         <td>
           <IconButton
