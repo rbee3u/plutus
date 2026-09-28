@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/rbee3u/plutus/internal/adapters"
+	"github.com/rbee3u/plutus/internal/adapters/httpclient"
 	"github.com/rbee3u/plutus/internal/decimal"
 )
 
@@ -77,7 +78,7 @@ func New(in *Options) *Adapter {
 		opts.WebSocketURL = DefaultWebSocketURL
 	}
 	if opts.HTTP == nil {
-		opts.HTTP = &http.Client{Timeout: requestTimeout}
+		opts.HTTP = httpclient.NewIPv4(requestTimeout)
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
