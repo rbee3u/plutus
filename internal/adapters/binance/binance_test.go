@@ -848,13 +848,6 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, state := range runningDualInvestmentStates() {
-		for _, row := range body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery(state, 1)).List {
-			if err := want.Add("test", row.InvestCoin, rat(t, row.SubscriptionAmount)); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
 	wantBalances := want.Balances()
 	if len(earn.Balances) != len(wantBalances) {
 		t.Fatalf("earn balances %+v, want %+v", earn.Balances, wantBalances)
@@ -1554,6 +1547,27 @@ func TestRecordCapturesEveryEndpointTheStructureReads(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRecordSelectedDualFixture(t *testing.T) {
+	name := fixture.Name(target(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1)), "")
+	for _, overlay := range []string{"", docClassic} {
+		r, a := newReplay(t, overlay)
+		recordings, err := a.RecordSelected(context.Background(), testCreds, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Scenario != fixture.ScenarioRecorded ||
+			recordings[0].Endpoint != epDualInvest.String()+"?"+dualInvestmentQuery("PURCHASE_SUCCESS", 1).Encode() {
+			t.Fatalf("selected recording: %+v", recordings)
+		}
+		for request := range r.called() {
+			path, _, _ := strings.Cut(request, "?")
+			if path != epServerTime.String() && path != epAccountInfo.String() && path != epDualInvest.String() {
+				t.Fatalf("unrelated endpoint called: %s", request)
+			}
+		}
 	}
 }
 

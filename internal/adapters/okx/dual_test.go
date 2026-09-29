@@ -2,10 +2,56 @@ package okx
 
 import (
 	"context"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/rbee3u/plutus/internal/adapters"
 )
+
+func TestRecordedDualPositions(t *testing.T) {
+	t.Parallel()
+	r, a := newReplay(t)
+	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn, TypeDualInvestment})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dual := reportOf(t, batch, TypeDualInvestment)
+	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
+		t.Fatalf("recorded dual report: %+v", dual)
+	}
+	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK || r.count(epDCD) != 1 {
+		t.Fatal("the recorded Earn and Dual Accounts must share a successful order history read")
+	}
+	orders := rowsIn[dcdOrder](t, r.file(epDCD, ""))
+	if len(orders) != 3 || orders[0].State != "LIVE" || orders[1].State != "LIVE" || orders[2].State != "SETTLED" {
+		t.Fatal("the recorded fixture must retain two live orders and one settled order")
+	}
+	wantExpiry := time.Date(2026, time.October, 2, 8, 0, 0, 0, time.UTC)
+	for i, p := range dual.DualPositions {
+		order := orders[i]
+		if order.ExpTime != "" || order.SettleTime == "" || p.PlatformPositionRef != order.OrdID ||
+			p.InvestSymbol != order.NotionalCcy || rat(t, p.Principal).Cmp(rat(t, order.NotionalSz)) != 0 ||
+			p.ExpiryAt == nil || !p.ExpiryAt.Equal(wantExpiry) ||
+			p.TargetPrice == nil || rat(t, *p.TargetPrice).Cmp(rat(t, order.Strike)) != 0 ||
+			p.AnnualizedRate == nil || rat(t, *p.AnnualizedRate).Cmp(rat(t, order.AnnualizedYield)) != 0 ||
+			p.Status != "active" || len(p.MissingFields()) != 0 {
+			t.Fatalf("recorded order %d mapped incompletely: %+v", i, p)
+		}
+		wantDirection := "sell_high"
+		if order.NotionalCcy == order.QuoteCcy {
+			wantDirection = "buy_low"
+		}
+		if p.Direction == nil || *p.Direction != wantDirection {
+			t.Fatalf("recorded order %d direction: %+v", i, p)
+		}
+		ms, _ := strconv.ParseInt(order.CTime, 10, 64)
+		wantSubscribed := time.UnixMilli(ms).UTC()
+		if p.SubscribedAt == nil || !p.SubscribedAt.Equal(wantSubscribed) {
+			t.Fatalf("recorded order %d subscribedAt: %+v", i, p)
+		}
+	}
+}
 
 func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 	t.Parallel()

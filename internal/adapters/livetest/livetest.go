@@ -8,6 +8,7 @@
 package livetest
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -41,6 +42,9 @@ func Credentials(tb testing.TB, platform adapters.Platform, needPassphrase bool)
 		missing = append(missing, EnvPrefix+upper+"_PASSPHRASE")
 	}
 	if len(missing) > 0 {
+		if os.Getenv("PLUTUS_GOTEST_REQUIRE_LIVE_KEYS") == "1" {
+			tb.Fatalf("%s live smoke requires %s in the environment or config/gotest.env", platform, strings.Join(missing, ", "))
+		}
 		tb.Skipf("%s live smoke skipped: %s not set in the environment or config/gotest.env", platform, strings.Join(missing, ", "))
 	}
 	return creds
@@ -63,6 +67,9 @@ func KrakenCredentials(tb testing.TB) adapters.Credentials {
 		Futures: &adapters.KeyPair{APIKey: lookup(tb, EnvPrefix+"KRAKEN_FUTURES_APIKEY"), APISecret: lookup(tb, EnvPrefix+"KRAKEN_FUTURES_SECRET")},
 	}
 	if creds.APIKey == "" || creds.APISecret == "" || creds.FuturesKey() == "" || creds.FuturesSecret() == "" {
+		if os.Getenv("PLUTUS_GOTEST_REQUIRE_LIVE_KEYS") == "1" {
+			tb.Fatal("Kraken full live smoke requires both KRAKEN_SPOT and KRAKEN_FUTURES key groups in config/gotest.env")
+		}
 		tb.Skip("Kraken full live smoke requires both KRAKEN_SPOT and KRAKEN_FUTURES key groups in config/gotest.env")
 	}
 	return creds

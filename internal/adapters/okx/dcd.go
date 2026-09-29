@@ -20,7 +20,9 @@ type dcdOrder struct {
 	QuoteCcy        string `json:"quoteCcy"`
 	Strike          string `json:"strike"`
 	AnnualizedYield string `json:"annualizedYield"`
+	SettleTime      string `json:"settleTime"`
 	ExpTime         string `json:"expTime"`
+	CTime           string `json:"cTime"`
 }
 
 // dcdInvested says, for every order state OKX documents across its dual investment endpoints,
@@ -133,12 +135,22 @@ func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
 		if !invested {
 			continue
 		}
-		expiry, err := adapters.DualExpiry(where, row.ExpTime)
+		// Live order history supplies the scheduled settlement time; older documented
+		// examples use expTime instead.
+		expiryTime := row.SettleTime
+		if strings.TrimSpace(expiryTime) == "" {
+			expiryTime = row.ExpTime
+		}
+		expiry, err := adapters.DualExpiry(where, expiryTime)
+		if err != nil {
+			return nil, err
+		}
+		subscribed, err := adapters.DualTime(where, "dual subscription time", row.CTime)
 		if err != nil {
 			return nil, err
 		}
 		state := map[string]string{"initial": "pending", "pending_book": "pending", "live": "active", "pending_settle": "settling", "pending_redeem_booking": "redeeming", "pending_redeem": "redeeming", "redeeming": "redeeming"}[strings.ToLower(strings.TrimSpace(row.State))]
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.OrdID, OrderRef: adapters.DualText(row.OrdID), ProductRef: adapters.DualText(row.ProductID), BaseSymbol: adapters.DualText(row.BaseCcy), QuoteSymbol: adapters.DualText(row.QuoteCcy), InvestSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.DualText(row.Strike), ExpiryAt: expiry, AnnualizedRate: adapters.DualText(row.AnnualizedYield), RateKind: adapters.DualText("annualized_yield"), Status: state})
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.OrdID, OrderRef: adapters.DualText(row.OrdID), ProductRef: adapters.DualText(row.ProductID), BaseSymbol: adapters.DualText(row.BaseCcy), QuoteSymbol: adapters.DualText(row.QuoteCcy), InvestSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.DualText(row.Strike), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: adapters.DualText(row.AnnualizedYield), RateKind: adapters.DualText("annualized_yield"), Status: state})
 		if err != nil {
 			return nil, err
 		}

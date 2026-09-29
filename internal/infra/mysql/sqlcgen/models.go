@@ -118,6 +118,7 @@ type DualPosition struct {
 	AnnualizedRate      sql.NullString
 	RateKind            sql.NullString
 	Status              string
+	SubscribedAt        sql.NullTime
 }
 
 type IdempotencyRecord struct {

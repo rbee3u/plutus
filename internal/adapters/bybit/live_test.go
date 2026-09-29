@@ -56,7 +56,7 @@ func TestLiveBybit(t *testing.T) {
 		if report.AccountType == TypeUnified {
 			checkUnified(t, report, batch.MarginMode)
 		}
-		t.Logf("%s: %d balances, %d positions", report.AccountType, len(report.Balances), len(report.Positions))
+		t.Logf("%s: %d balances, %d futures positions, %d dual positions", report.AccountType, len(report.Balances), len(report.Positions), len(report.DualPositions))
 	}
 	c := a.client(creds)
 	positions, err := pages[dualAssetPosition](ctx, c, epDualAssets, nil)

@@ -62,8 +62,13 @@ test: web-build ## Run Go and frontend unit tests offline (throwaway plutus_gote
 	go test -count 1 $(GO_PACKAGES)
 	cd web && npm run test
 
-test-live: web-build ## Run live Platform smoke tests (build tag live; skips Platforms without PLUTUS_GOTEST_<PLATFORM>_* keys).
-	go test -count 1 -tags live -run 'Live' ./internal/adapters/...
+test-live: ## Run live smoke tests; set PLATFORM=binance|okx|bybit|kraken for one Platform.
+	@case "$$PLATFORM" in \
+		"") packages='./internal/adapters/...'; require_keys=0 ;; \
+		binance|okx|bybit|kraken) packages="./internal/adapters/$$PLATFORM"; require_keys=1 ;; \
+		*) echo 'PLATFORM must be binance, okx, bybit, or kraken' >&2; exit 2 ;; \
+	esac; \
+	PLUTUS_GOTEST_REQUIRE_LIVE_KEYS=$$require_keys go test -count 1 -tags live -run 'Live' $$packages
 
 lint: web-build ## Run the configured Go linters and frontend checks.
 	golangci-lint run

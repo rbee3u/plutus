@@ -432,6 +432,7 @@ export type DualPositionRow = {
     status: string;
     freshness: Freshness;
     reportObservedAt?: string | null;
+    subscribedAt?: string | null;
 };
 
 export type AccountBalanceList = {

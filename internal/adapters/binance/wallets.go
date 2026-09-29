@@ -129,6 +129,7 @@ type dualInvestmentPosition struct {
 	StrikePrice        string          `json:"strikePrice"`
 	APR                string          `json:"apr"`
 	SettleDate         json.RawMessage `json:"settleDate"`
+	SubscriptionTime   json.RawMessage `json:"subscriptionTime"`
 }
 
 // earn returns separate savings and Dual reports, then checks their combined principal
@@ -237,7 +238,7 @@ func dualInvestment(ctx context.Context, c *client) ([]adapters.DualPosition, er
 
 // Running states may overlap while reads are in progress, but subscription terms must agree.
 func sameDualTerms(a, b *adapters.DualPosition) bool {
-	if a.InvestSymbol != b.InvestSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) {
+	if a.InvestSymbol != b.InvestSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) || (a.SubscribedAt != nil && b.SubscribedAt != nil && !a.SubscribedAt.Equal(*b.SubscribedAt)) {
 		return false
 	}
 	for _, pair := range [][2]*string{{a.ProductRef, b.ProductRef}, {a.OrderRef, b.OrderRef}, {a.BaseSymbol, b.BaseSymbol}, {a.QuoteSymbol, b.QuoteSymbol}, {a.Direction, b.Direction}, {a.TargetPrice, b.TargetPrice}, {a.AnnualizedRate, b.AnnualizedRate}, {a.RateKind, b.RateKind}} {
@@ -265,7 +266,11 @@ func mapDualPosition(row *dualInvestmentPosition) (adapters.DualPosition, error)
 	if err != nil {
 		return adapters.DualPosition{}, err
 	}
-	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.DualText(dualID(row.OrderID)), InvestSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.DualText(row.StrikePrice), AnnualizedRate: adapters.DualText(row.APR), RateKind: adapters.DualText("apr"), ExpiryAt: expiry}
+	subscribed, err := adapters.DualTime(where, "dual subscription time", dualID(row.SubscriptionTime))
+	if err != nil {
+		return adapters.DualPosition{}, err
+	}
+	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.DualText(dualID(row.OrderID)), InvestSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.DualText(row.StrikePrice), AnnualizedRate: adapters.DualText(row.APR), RateKind: adapters.DualText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
 	switch row.OptionType {
 	case "PUT":
 		p.Direction = adapters.DualText("buy_low")

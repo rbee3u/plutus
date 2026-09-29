@@ -35,6 +35,7 @@ type DualPosition struct {
 	AnnualizedRate      *string
 	RateKind            *string
 	Status              string
+	SubscribedAt        *time.Time
 }
 
 // MissingFields names unavailable product terms without making known principal unknown.
@@ -132,6 +133,9 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 	if p.ExpiryAt != nil && (p.ExpiryAt.Year() < 1970 || p.ExpiryAt.Year() > 9999) {
 		return p, Malformed(where, "expiry")
 	}
+	if p.SubscribedAt != nil && (p.SubscribedAt.Year() < 1970 || p.SubscribedAt.Year() > 9999) {
+		return p, Malformed(where, "dual subscription time")
+	}
 	if p.Direction != nil && *p.Direction != "buy_low" && *p.Direction != "sell_high" {
 		return p, Malformed(where, "dual direction")
 	}
@@ -168,20 +172,25 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 	return p, nil
 }
 
-// DualExpiry reads milliseconds since epoch without treating missing terms as zero.
-func DualExpiry(where, value string) (*time.Time, error) {
+// DualTime reads milliseconds since epoch without treating missing terms as zero.
+func DualTime(where, name, value string) (*time.Time, error) {
 	if strings.TrimSpace(value) == "" {
 		return nil, nil //nolint:nilnil // An absent product term remains null without failing known principal.
 	}
 	ms, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || ms <= 0 {
-		return nil, Malformed(where, "dual expiry")
+		return nil, Malformed(where, name)
 	}
 	t := time.UnixMilli(ms).UTC()
 	if t.Year() > 9999 {
-		return nil, Malformed(where, "dual expiry")
+		return nil, Malformed(where, name)
 	}
 	return &t, nil
+}
+
+// DualExpiry reads milliseconds since epoch without treating missing terms as zero.
+func DualExpiry(where, value string) (*time.Time, error) {
+	return DualTime(where, "dual expiry", value)
 }
 
 // CollectEarnPair shares auxiliary reads and their failures within one Collection

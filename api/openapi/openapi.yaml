@@ -2440,6 +2440,9 @@ components:
         reportObservedAt:
           type: [string, "null"]
           format: date-time
+        subscribedAt:
+          type: [string, "null"]
+          format: date-time
     AccountBalanceList:
       type: object
       additionalProperties: false

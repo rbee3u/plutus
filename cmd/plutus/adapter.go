@@ -24,6 +24,7 @@ import (
 // this command uses it; serve, the worker, and collect never see a raw Platform body.
 type recorder interface {
 	Record(ctx context.Context, creds adapters.Credentials) ([]fixture.Recording, error)
+	RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error)
 }
 
 // recorders lists the Platforms whose adapter can record, and whether their keys carry a passphrase.
@@ -59,13 +60,15 @@ func newAdapterCommand() *cobra.Command {
 
 func newAdapterRecordCommand() *cobra.Command {
 	var platformFlag, outFlag string
+	var onlyFlags []string
 	cmd := &cobra.Command{
 		Use:   "record",
 		Short: "Record trimmed Platform responses as test fixtures into tmp/ (read-only keys from config/gotest.env)",
-		Long: "record calls every read-only endpoint the Platform adapter uses once with the test environment's\n" +
+		Long: "record calls the Platform adapter's read-only endpoints with the test environment's\n" +
 			"read-only key set (PLUTUS_GOTEST_<PLATFORM>_APIKEY / _SECRET, and _PASSPHRASE for OKX, from the\n" +
 			"process environment or config/gotest.env), trims large market-data lists, replaces the account UID,\n" +
-			"and writes one JSON fixture per endpoint into --out/<platform>/. Review every file before moving it\n" +
+			"and writes JSON fixtures into --out/<platform>/. Repeat --only with fixture file stems to\n" +
+			"record just that answer and its required clock/structure reads. Review each file before moving it\n" +
 			"into internal/adapters/<platform>/testdata/. It needs no --config, database, or master key.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -81,7 +84,7 @@ func newAdapterRecordCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			recordings, err := spec.adapter().Record(cmd.Context(), creds)
+			recordings, err := recordRequested(cmd.Context(), spec.adapter(), creds, onlyFlags)
 			if err != nil {
 				return fmt.Errorf("record %s: %w", platform, err)
 			}
@@ -107,9 +110,38 @@ func newAdapterRecordCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&platformFlag, "platform", "", "Platform to record ("+recordablePlatforms()+")")
+	cmd.Flags().StringArrayVar(&onlyFlags, "only", nil, "record one fixture by file stem; repeat for several, without .json")
 	cmd.Flags().StringVar(&outFlag, "out", filepath.Join("tmp", "fixtures"), "output directory; keep it under gitignored tmp/")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd
+}
+
+func recordRequested(ctx context.Context, adapter recorder, creds adapters.Credentials, names []string) ([]fixture.Recording, error) {
+	if len(names) == 0 {
+		return adapter.Record(ctx, creds)
+	}
+	seen := map[string]bool{}
+	normalized := make([]string, 0, len(names))
+	for _, value := range names {
+		name := strings.TrimSuffix(strings.TrimSpace(value), ".json")
+		if name == "" || seen[name] {
+			return nil, fmt.Errorf("--only must name a fixture once: %q", value)
+		}
+		seen[name] = true
+		normalized = append(normalized, name)
+	}
+	var recordings []fixture.Recording
+	for _, name := range normalized {
+		selected, err := adapter.RecordSelected(ctx, creds, name)
+		if err != nil {
+			return nil, err
+		}
+		if len(selected) != 1 || selected[0].Name != name {
+			return nil, fmt.Errorf("--only %q did not return exactly its named fixture", name)
+		}
+		recordings = append(recordings, selected[0])
+	}
+	return recordings, nil
 }
 
 // checkRecordingDirectory confines all raw fixture writes to the repository's real tmp tree.

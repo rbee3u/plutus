@@ -3,9 +3,47 @@ package binance
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/rbee3u/plutus/internal/adapters"
 )
+
+func TestRecordedDualInvestmentMapsSubscription(t *testing.T) {
+	t.Parallel()
+	r, a := newReplay(t, "")
+	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	dual := reportOf(t, batch, TypeDualInvestment)
+	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 1 || len(dual.Balances) != 1 {
+		t.Fatalf("recorded dual report: %+v", dual)
+	}
+	page := body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1))
+	if page.Total != 1 || len(page.List) != 1 || page.List[0].PurchaseStatus != "PURCHASE_SUCCESS" {
+		t.Fatal("the recorded fixture must contain one running subscription")
+	}
+	row, position := page.List[0], dual.DualPositions[0]
+	wantExpiry := time.Date(2026, time.October, 2, 8, 0, 0, 0, time.UTC)
+	wantSubscribed := time.UnixMilli(1790678854360).UTC()
+	if row.OptionType != "CALL" || position.PlatformPositionRef != dualID(row.ID) ||
+		position.OrderRef == nil || *position.OrderRef != dualID(row.OrderID) ||
+		position.InvestSymbol != row.InvestCoin || rat(t, position.Principal).Cmp(rat(t, row.SubscriptionAmount)) != 0 ||
+		position.BaseSymbol == nil || *position.BaseSymbol != row.InvestCoin ||
+		position.QuoteSymbol == nil || *position.QuoteSymbol != row.ExercisedCoin ||
+		position.Direction == nil || *position.Direction != "sell_high" ||
+		position.TargetPrice == nil || rat(t, *position.TargetPrice).Cmp(rat(t, row.StrikePrice)) != 0 ||
+		position.AnnualizedRate == nil || rat(t, *position.AnnualizedRate).Cmp(rat(t, row.APR)) != 0 ||
+		position.RateKind == nil || *position.RateKind != "apr" ||
+		position.ExpiryAt == nil || !position.ExpiryAt.Equal(wantExpiry) ||
+		position.SubscribedAt == nil || !position.SubscribedAt.Equal(wantSubscribed) ||
+		position.Status != "active" || len(position.MissingFields()) != 0 {
+		t.Fatalf("recorded subscription mapped incompletely: %+v", position)
+	}
+	if dual.Balances[0].Symbol != row.InvestCoin || rat(t, dual.Balances[0].Equity).Cmp(rat(t, row.SubscriptionAmount)) != 0 {
+		t.Fatalf("recorded principal balance: %+v", dual.Balances)
+	}
+	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK {
+		t.Fatal("ordinary Earn must remain successful beside the recorded Dual subscription")
+	}
+}
 
 func TestDualAccountSelectionAndTerms(t *testing.T) {
 	t.Parallel()

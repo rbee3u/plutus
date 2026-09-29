@@ -394,15 +394,19 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 		if err != nil {
 			return err
 		}
-		var expiry sql.NullTime
+		var expiry, subscribed sql.NullTime
 		if p.ExpiryAt != nil {
 			expiry = sql.NullTime{Time: *p.ExpiryAt, Valid: true}
+		}
+		if p.SubscribedAt != nil {
+			subscribed = sql.NullTime{Time: *p.SubscribedAt, Valid: true}
 		}
 		if err := q.InsertDualPosition(ctx, sqlcgen.InsertDualPositionParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: p.PlatformPositionRef,
 			ProductRef: dualString(p.ProductRef), OrderRef: dualString(p.OrderRef), BaseSymbol: dualString(p.BaseSymbol), QuoteSymbol: dualString(p.QuoteSymbol),
 			InvestSymbol: p.InvestSymbol, Principal: p.Principal, Direction: dualString(p.Direction), TargetPrice: nullDecimal(p.TargetPrice), ExpiryAt: expiry,
 			AnnualizedRate: nullDecimal(p.AnnualizedRate), RateKind: dualString(p.RateKind), Status: p.Status,
+			SubscribedAt: subscribed,
 		}); err != nil {
 			return err
 		}

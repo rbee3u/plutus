@@ -179,6 +179,103 @@ func (a *Adapter) Record(ctx context.Context, creds adapters.Credentials) ([]fix
 	return out, nil
 }
 
+// RecordSelected records one account or product answer. Config establishes the observed Margin
+// Mode; earlier Dual Investment pages are read only when needed to reach a selected later page.
+func (a *Adapter) RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error) {
+	c := a.client(creds)
+	take := func(ep endpoint) (response, error) {
+		resp, err := c.fetch(ctx, ep)
+		if err != nil {
+			return response{}, fmt.Errorf("%s: %w", ep, err)
+		}
+		if err := decode(ep, resp, &json.RawMessage{}); err != nil {
+			return response{}, err
+		}
+		return resp, nil
+	}
+	config, err := take(epConfig)
+	if err != nil {
+		return nil, err
+	}
+	uids, mode, err := redactConfig(&config)
+	if err != nil {
+		return nil, err
+	}
+	selected := epConfig
+	resp := config
+	redacted := []string{"uid", "mainUid", "ip", "label"}
+	if name != recordingName(epConfig, fixture.ScenarioRecorded) {
+		redacted = nil
+		found := false
+		for _, ep := range []endpoint{epTime, epBalance, epPositions, epFunding, epSavings, epStaking, epValuation} {
+			if name != recordingName(ep, fixture.ScenarioRecorded) {
+				continue
+			}
+			selected = ep
+			resp, err = take(ep)
+			if err != nil {
+				return nil, err
+			}
+			found = true
+			break
+		}
+		if !found {
+			for before, page := "", 0; page < dcdMaxPages; page++ {
+				if page > 0 {
+					if err := a.wait(ctx); err != nil {
+						return nil, err
+					}
+				}
+				ep := dcdPage(before)
+				if name == recordingName(ep, fixture.ScenarioRecorded) {
+					selected = ep
+					resp, err = take(ep)
+					if err != nil {
+						return nil, err
+					}
+					found = true
+					break
+				}
+				if page == 0 && name != recordingName(epDCD, fixture.ScenarioRecorded) && !strings.HasPrefix(name, "api_v5_finance_sfp_dcd_order_history.") {
+					break
+				}
+				previous, err := take(ep)
+				if err != nil {
+					return nil, err
+				}
+				rows, err := rowsOf[dcdOrder](ep, previous.body)
+				if err != nil {
+					return nil, err
+				}
+				if before, err = dcdCursor(rows, before); err != nil {
+					return nil, err
+				}
+				if len(rows) < dcdPageSize {
+					break
+				}
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("%q is not an account or product fixture; market-data and refusal fixtures need a full recording", name)
+		}
+	}
+	recording := fixture.Recording{
+		Name: recordingName(selected, fixture.ScenarioRecorded), Endpoint: selected.String(),
+		AccountStructure: string(adapters.StructureOKXUnified), MarginMode: string(mode),
+		Scenario: fixture.ScenarioRecorded, Status: resp.status, Redacted: redacted, Body: json.RawMessage(resp.body),
+	}
+	if ipv4.Match(recording.Body) {
+		recording.Body = ipv4.ReplaceAll(recording.Body, []byte(RedactedIP))
+		recording.Redacted = append(recording.Redacted, "ip addresses")
+	}
+	for _, secret := range append([]string{creds.APIKey, creds.APISecret, creds.Passphrase}, uids...) {
+		if secret != "" && bytes.Contains(recording.Body, []byte(secret)) {
+			return nil, fmt.Errorf("%s: a credential or account UID survived redaction; nothing was written", name)
+		}
+	}
+	return []fixture.Recording{recording}, nil
+}
+
 // recordingName is the file stem of a recording: the endpoint alone for a successful answer, and
 // with the scenario appended for an error answer, so both live side by side in testdata.
 func recordingName(ep endpoint, scenario string) string {

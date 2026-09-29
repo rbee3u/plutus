@@ -17,11 +17,13 @@ export function HoldingsFilters({
   values,
   onChange,
   children,
+  hideAccount = false,
 }: {
   portfolioId: string;
   values: HoldingsFilterValues;
   onChange: (next: Partial<HoldingsFilterValues>) => void;
   children?: ReactNode;
+  hideAccount?: boolean;
 }) {
   const platforms = usePlatforms();
   const identities = useIdentities(portfolioId);
@@ -66,20 +68,22 @@ export function HoldingsFilters({
           ))}
         </Select>
       </label>
-      <label className={styles.field}>
-        <span>Account</span>
-        <Select
-          value={values.accountId}
-          onChange={(event) => onChange({ accountId: event.target.value })}
-        >
-          <option value="">All</option>
-          {accounts.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
-      </label>
+      {!hideAccount ? (
+        <label className={styles.field}>
+          <span>Account</span>
+          <Select
+            value={values.accountId}
+            onChange={(event) => onChange({ accountId: event.target.value })}
+          >
+            <option value="">All</option>
+            {accounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+        </label>
+      ) : null}
       <label className={styles.field}>
         <span>Symbol</span>
         <TextInput

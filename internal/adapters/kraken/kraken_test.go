@@ -910,6 +910,21 @@ func TestRecordTrimsAndRedacts(t *testing.T) {
 	}
 }
 
+func TestRecordSelectedEarnFixture(t *testing.T) {
+	r := newReplay(t, "", nil)
+	name := fixture.Name(epEarnAllocations.path, "")
+	recordings, err := r.adapter.RecordSelected(context.Background(), testCreds, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epEarnAllocations.String() {
+		t.Fatalf("selected recording: %+v", recordings)
+	}
+	if !r.reached(epEarnAllocations.String()) || r.reached(epEarnStrategies.String()) || r.reached(epAssets.String()) || r.reached(epOpenPositions.String()) {
+		t.Fatal("selected recording reached unrelated product or market endpoints")
+	}
+}
+
 func TestRedactorReplacesIdentifiersAndEchoes(t *testing.T) {
 	filter := &recordingFilter{assets: assetNames{}, coins: map[string]bool{}, pairs: map[string]bool{}, contracts: map[string]bool{}, options: map[string]bool{}, strategies: map[string]bool{}}
 	raw := []byte(`{"allowedCidrBlock":"192.0.2.4/32","allowedCidrBlocks":["192.0.2.4/32"],"iiban":"customer-id","accountUid":7,"createdAt":"2026-09-24T04:26:59Z","message":"key spot-test-long-key"}`)

@@ -409,15 +409,6 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 			}
 		}
 	}
-	var dual struct {
-		List []dualAssetPosition `json:"list"`
-	}
-	recordedBody(t, "v5_earn_advance_position.DualAssets.20", &dual)
-	for _, position := range dual.List {
-		if err := principal.Add("test", position.InvestCoin, decimal.MustParse(position.Amount)); err != nil {
-			t.Fatal(err)
-		}
-	}
 	earn := reportOf(t, &batch, TypeEarn)
 	want := principal.Balances()
 	if len(earn.Balances) != len(want) {
@@ -540,11 +531,12 @@ func TestMarginModeMustBeKnown(t *testing.T) {
 	}
 }
 
-// earnAnswers are invented Earn answers for the savings lists, so a test controls every product.
+// earnAnswers are invented Earn answers, so a test controls every product.
 func earnAnswers(flexible, fixedTerm, overviewUSD string) map[string]string {
 	return map[string]string{
 		epFlexible.path:      `{"retCode":0,"result":{"list":[` + flexible + `]}}`,
 		epFixedTerm.path:     `{"retCode":0,"result":{"list":[` + fixedTerm + `]}}`,
+		epDualAssets.path:    `{"retCode":0,"result":{"list":[]}}`,
 		epAssetOverview.path: `{"retCode":0,"result":{"list":[{"accountType":"Earn","totalEquity":"` + overviewUSD + `","valuationCurrency":"USD"}]}}`,
 	}
 }
@@ -878,6 +870,21 @@ func TestRecordLabelsAndRedactsEveryExchange(t *testing.T) {
 			!reflect.DeepEqual(got, want) || recording.Status != served.Status {
 			t.Fatalf("the %s recording holds another answer: %s", scenario, recording.Body)
 		}
+	}
+}
+
+func TestRecordSelectedDualFixture(t *testing.T) {
+	r := newReplay(t, "", nil)
+	name := fixtureName(epDualAssets.request(nil), "")
+	recordings, err := r.adapter.RecordSelected(context.Background(), testCreds, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epDualAssets.String() {
+		t.Fatalf("selected recording: %+v", recordings)
+	}
+	if r.count(epDualAssets.path) != 1 || r.count(epFlexible.path) != 0 || r.count(epFixedTerm.path) != 0 || r.count(epFunding.path) != 0 || r.count(epTickers.path) != 0 {
+		t.Fatal("selected recording reached unrelated account or market endpoints")
 	}
 }
 

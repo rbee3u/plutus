@@ -35,6 +35,10 @@ func dualPositionRow(account *AccountValuation, p *sqlcgen.DualPosition) DualPos
 		expiry := p.ExpiryAt.Time
 		row.ExpiryAt = &expiry
 	}
+	if p.SubscribedAt.Valid {
+		subscribed := p.SubscribedAt.Time
+		row.SubscribedAt = &subscribed
+	}
 	return row
 }
 

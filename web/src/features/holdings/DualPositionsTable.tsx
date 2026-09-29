@@ -1,7 +1,8 @@
 import type { DualPositionRow } from "@/api/generated/types.gen";
+import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
 import { formatDecimal, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { FreshnessBadge } from "@/shared/ui/Badge";
+import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import styles from "@/features/pages.module.css";
 
@@ -16,63 +17,58 @@ export function DualPositionsTable({
   showAccount?: boolean;
   loading?: boolean;
 }) {
+  const platforms = usePlatforms();
   return (
     <DataTable
       caption="Dual Investment positions"
       columns={[
-        ...(showAccount ? [{ key: "account", header: "Account" }] : []),
-        { key: "pair", header: "Pair" },
-        { key: "direction", header: "Direction", nowrap: true },
-        { key: "principal", header: "Principal", numeric: true, nowrap: true },
-        { key: "target", header: "Target price", numeric: true, nowrap: true },
+        ...(showAccount
+          ? [
+              { key: "platform", header: "Platform", nowrap: true },
+              { key: "identity", header: "Identity", nowrap: true },
+            ]
+          : []),
+        { key: "pair", header: "Pair", nowrap: true },
         { key: "expiry", header: "Expiry", nowrap: true },
-        { key: "rate", header: "Annualized rate", numeric: true, nowrap: true },
+        { key: "strike", header: "Strike", numeric: true, nowrap: true },
+        { key: "direction", header: "Direction", nowrap: true },
+        { key: "apy", header: "APY", numeric: true, nowrap: true },
+        { key: "principal", header: "Principal", numeric: true, nowrap: true },
+        { key: "subscribed", header: "Subscribed", nowrap: true },
         { key: "status", header: "Status" },
-        { key: "freshness", header: "Freshness" },
       ]}
       rows={items.map((item) => ({
         id: `${item.accountId}-${item.platformPositionRef}`,
-        account: (
-          <span className={styles.cellStack}>
-            <span>{item.accountName}</span>
-            <span className={styles.cellMeta}>
-              {item.platform} · {item.identityName}
-            </span>
-          </span>
-        ),
-        pair: (
-          <details>
-            <summary>
-              {item.baseSymbol ?? "—"} / {item.quoteSymbol ?? "—"}
-            </summary>
-            <dl>
-              <dt>Position</dt>
-              <dd>{item.platformPositionRef}</dd>
-              <dt>Product</dt>
-              <dd>{item.productRef ?? "—"}</dd>
-              <dt>Order</dt>
-              <dd>{item.orderRef ?? "—"}</dd>
-            </dl>
-          </details>
-        ),
+        platform: platformLabel(platforms.data?.items, item.platform),
+        identity: item.identityName,
+        pair: `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`,
+        expiry: formatInstant(item.expiryAt, timezone),
+        strike:
+          item.targetPrice == null
+            ? "—"
+            : `${formatDecimal(item.targetPrice)} ${item.quoteSymbol ?? ""}`.trim(),
         direction:
           item.direction === "buy_low"
             ? "Buy Low"
             : item.direction === "sell_high"
               ? "Sell High"
               : "—",
-        principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
-        target:
-          item.targetPrice == null
-            ? "—"
-            : `${formatDecimal(item.targetPrice)} ${item.quoteSymbol ?? ""}`,
-        expiry: formatInstant(item.expiryAt, timezone),
-        rate:
+        apy:
           item.annualizedRate == null
             ? "—"
-            : `${formatDecimal(parseDecimal(item.annualizedRate)?.times(100).toString())}% ${item.rateKind === "annualized_yield" ? "Annualized Yield" : (item.rateKind?.toUpperCase() ?? "")}`,
-        status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
-        freshness: <FreshnessBadge value={item.freshness} />,
+            : `${formatDecimal(parseDecimal(item.annualizedRate)?.times(100).toString())}%`,
+        principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
+        subscribed: formatInstant(item.subscribedAt, timezone),
+        status: (
+          <span className={styles.statusGroup}>
+            <span>{item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span>
+            {item.freshness === "stale" ? (
+              <Badge tone="warn" title="Report carried forward (stale)">
+                stale
+              </Badge>
+            ) : null}
+          </span>
+        ),
       }))}
       empty={
         loading

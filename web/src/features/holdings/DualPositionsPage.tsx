@@ -17,20 +17,10 @@ export function DualPositionsPage() {
   const { params, update } = useSearchState();
   const platform = params.get("platform") ?? "";
   const identityId = params.get("identityId") ?? "";
-  const accountId = params.get("accountId") ?? "";
   const symbol = params.get("symbol") ?? "";
   const offset = readOffset(params);
   const query = useQuery({
-    queryKey: [
-      "dual-positions",
-      userId,
-      portfolioId,
-      platform,
-      identityId,
-      accountId,
-      symbol,
-      offset,
-    ],
+    queryKey: ["dual-positions", userId, portfolioId, platform, identityId, symbol, offset],
     enabled: Boolean(userId && portfolioId),
     queryFn: async () =>
       unwrapOrRedirect(
@@ -39,7 +29,6 @@ export function DualPositionsPage() {
           query: {
             platform: platform || undefined,
             identityId: identityId || undefined,
-            accountId: accountId || undefined,
             symbol: symbol || undefined,
             offset,
             limit: 50,
@@ -66,8 +55,9 @@ export function DualPositionsPage() {
       />
       <HoldingsFilters
         portfolioId={portfolioId}
-        values={{ platform, identityId, accountId, symbol }}
+        values={{ platform, identityId, accountId: "", symbol }}
         onChange={(next) => update(next)}
+        hideAccount
       />
       {data ? <ContextSummary context={data.context} /> : null}
       {data || query.isPending ? (

@@ -186,6 +186,56 @@ func (a *Adapter) Record(ctx context.Context, creds adapters.Credentials) ([]fix
 	return r.out, nil
 }
 
+// RecordSelected records one account or product answer. The clock and Account Structure reads
+// establish the correct signature and fixture header, but are not returned unless selected.
+func (a *Adapter) RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error) {
+	r := &recorder{c: a.client(creds), bodies: map[endpoint][][]byte{}}
+	serverTime, err := r.fetch(ctx, epServerTime, nil)
+	if err != nil {
+		return nil, err
+	}
+	infoResp, err := r.fetch(ctx, epAccountInfo, nil)
+	if err != nil {
+		return nil, err
+	}
+	var info accountInfo
+	if err := json.Unmarshal(infoResp.body, &info); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", epAccountInfo, err)
+	}
+	if r.structure, err = info.structure(); err != nil {
+		return nil, err
+	}
+	for _, prerequisite := range []struct {
+		ep   endpoint
+		resp response
+	}{{epServerTime, serverTime}, {epAccountInfo, infoResp}} {
+		if name == fixture.Name(prerequisite.ep.path, "") {
+			r.add(prerequisite.ep, nil, fixture.ScenarioRecorded, prerequisite.resp, nil, nil)
+			return r.out, nil
+		}
+	}
+	calls := append(recordCalls(r.structure, &info), recordCall{epSpotAccount, spotAccountQuery()})
+	for _, call := range calls {
+		if fixture.Name(target(call.ep, call.params), "") != name {
+			continue
+		}
+		resp, err := r.fetch(ctx, call.ep, call.params)
+		if err != nil {
+			return nil, err
+		}
+		var redacted []string
+		if call.ep == epSpotAccount {
+			if resp.body, err = redactUID(resp.body); err != nil {
+				return nil, err
+			}
+			redacted = []string{"uid"}
+		}
+		r.add(call.ep, call.params, fixture.ScenarioRecorded, resp, nil, redacted)
+		return r.out, nil
+	}
+	return nil, fmt.Errorf("%q is not an account or product fixture for the current %s Account Structure; market-data and refusal fixtures need a full recording", name, r.structure)
+}
+
 // recordMarkets records the market data the recorded account needs: tickers, the exchangeInfo of
 // both futures markets, and, in Classic Trading, the USDⓈ-M symbol configuration.
 func (r *recorder) recordMarkets(ctx context.Context) error {

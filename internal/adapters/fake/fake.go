@@ -342,7 +342,8 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			{"BTC", "BTC", "0.02", "sell_high", "72000"},
 		} {
 			maturity := expiry.Add(time.Duration([]int{0, 1, 0, 2, 1}[i]) * 24 * time.Hour)
-			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PlatformPositionRef: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.DualText(spec.base + "-" + spec.strike), OrderRef: adapters.DualText(fmt.Sprintf("order-%d", i+1)), BaseSymbol: adapters.DualText(spec.base), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: spec.invest, Principal: spec.amount, Direction: adapters.DualText(spec.direction), TargetPrice: adapters.DualText(spec.strike), ExpiryAt: &maturity, AnnualizedRate: adapters.DualText("0.18"), RateKind: adapters.DualText("apr"), Status: "active"})
+			subscribed := maturity.Add(-72 * time.Hour)
+			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PlatformPositionRef: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.DualText(spec.base + "-" + spec.strike), OrderRef: adapters.DualText(fmt.Sprintf("order-%d", i+1)), BaseSymbol: adapters.DualText(spec.base), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: spec.invest, Principal: spec.amount, Direction: adapters.DualText(spec.direction), TargetPrice: adapters.DualText(spec.strike), ExpiryAt: &maturity, SubscribedAt: &subscribed, AnnualizedRate: adapters.DualText("0.18"), RateKind: adapters.DualText("apr"), Status: "active"})
 		}
 	case "earn":
 		report.Balances = []adapters.Balance{

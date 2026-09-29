@@ -163,6 +163,21 @@ func (r *replay) count(ep endpoint) int {
 	return r.calls[ep.String()]
 }
 
+func TestRecordSelectedDualFixture(t *testing.T) {
+	r, a := newReplay(t)
+	name := recordingName(epDCD, fixture.ScenarioRecorded)
+	recordings, err := a.RecordSelected(context.Background(), testCreds, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epDCD.String() {
+		t.Fatalf("selected recording: %+v", recordings)
+	}
+	if r.count(epConfig) != 1 || r.count(epDCD) != 1 || r.count(epBalance) != 0 || r.count(epSavings) != 0 || r.count(epTickers) != 0 {
+		t.Fatal("selected recording must read only config, clock, and Dual Investment")
+	}
+}
+
 // configAt answers account/config as recorded but at another account level.
 func (r *replay) configAt(level string) func(w http.ResponseWriter) {
 	r.t.Helper()
@@ -892,7 +907,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	}
 	// A successful Earn report has also passed the Earn check against the recorded valuation.
 	earn := reportOf(t, batch, TypeEarn)
-	want := recordedEarn(t, r)
+	want := recordedOrdinaryEarn(t, r)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != len(want) || earn.Equity != nil {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
@@ -904,9 +919,8 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	}
 }
 
-// recordedEarn sums the recorded Earn sources per coin: Simple Earn, on-chain earn, and the
-// principal of the dual investment orders still invested.
-func recordedEarn(t *testing.T, r *replay) map[string]*big.Rat {
+// recordedOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
+func recordedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
 	t.Helper()
 	sums := map[string]*big.Rat{}
 	add := func(ccy, amount string) {
@@ -921,11 +935,6 @@ func recordedEarn(t *testing.T, r *replay) map[string]*big.Rat {
 	for _, order := range rowsIn[stakingOrder](t, r.file(epStaking, "")) {
 		for _, invested := range order.InvestData {
 			add(invested.Ccy, invested.Amt)
-		}
-	}
-	for _, order := range rowsIn[dcdOrder](t, r.file(epDCD, "")) {
-		if dcdInvested[order.State] {
-			add(order.NotionalCcy, order.NotionalSz)
 		}
 	}
 	for ccy, amount := range sums {
@@ -952,6 +961,7 @@ func TestRecordedValuationCatchesUnreadEarn(t *testing.T) {
 	}
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
+	r.always(epDCD, ok(`[]`))
 	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn})
 	if err != nil {
 		t.Fatal(err)
@@ -1582,6 +1592,7 @@ func TestEarnCheckComparesWithOKXValuation(t *testing.T) {
 			r, a := newReplay(t)
 			r.always(epSavings, ok(`[{"ccy":"USDT","amt":"60"},{"ccy":"USDC","amt":"40"}]`))
 			r.always(epStaking, ok(`[]`))
+			r.always(epDCD, ok(`[]`))
 			r.always(epValuation, valuation(tc.earn))
 			batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeFunding, TypeEarn})
 			if err != nil {

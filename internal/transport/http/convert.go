@@ -322,7 +322,7 @@ func toAPIDualPositionRows(rows []valuation.DualPositionRow) []api.DualPositionR
 	out := make([]api.DualPositionRow, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		out = append(out, api.DualPositionRow{AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType, IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform, PlatformPositionRef: r.PlatformPositionRef, ProductRef: r.ProductRef, OrderRef: r.OrderRef, BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, InvestSymbol: r.InvestSymbol, Principal: r.Principal, Direction: r.Direction, TargetPrice: r.TargetPrice, ExpiryAt: r.ExpiryAt, AnnualizedRate: r.AnnualizedRate, RateKind: r.RateKind, Status: r.Status, Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt})
+		out = append(out, api.DualPositionRow{AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType, IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform, PlatformPositionRef: r.PlatformPositionRef, ProductRef: r.ProductRef, OrderRef: r.OrderRef, BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, InvestSymbol: r.InvestSymbol, Principal: r.Principal, Direction: r.Direction, TargetPrice: r.TargetPrice, ExpiryAt: r.ExpiryAt, AnnualizedRate: r.AnnualizedRate, RateKind: r.RateKind, Status: r.Status, Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt, SubscribedAt: r.SubscribedAt})
 	}
 	return out
 }

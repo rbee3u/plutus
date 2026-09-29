@@ -421,6 +421,19 @@
   font-size: var(--text-xs);
 }
 
+.staleTimestamp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--warning);
+  cursor: help;
+}
+
+.staleDot {
+  font-size: 8px;
+  line-height: 1;
+}
+
 .rowActions {
   --icon-button-size: var(--control-sm);
   display: flex;

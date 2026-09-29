@@ -1,6 +1,6 @@
 -- name: InsertDualPosition :exec
-INSERT INTO dual_positions (report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status)
-VALUES (sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(platform_position_ref), sqlc.narg(product_ref), sqlc.narg(order_ref), sqlc.narg(base_symbol), sqlc.narg(quote_symbol), sqlc.arg(invest_symbol), sqlc.arg(principal), sqlc.narg(direction), sqlc.narg(target_price), sqlc.narg(expiry_at), sqlc.narg(annualized_rate), sqlc.narg(rate_kind), sqlc.arg(status));
+INSERT INTO dual_positions (report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at)
+VALUES (sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(platform_position_ref), sqlc.narg(product_ref), sqlc.narg(order_ref), sqlc.narg(base_symbol), sqlc.narg(quote_symbol), sqlc.arg(invest_symbol), sqlc.arg(principal), sqlc.narg(direction), sqlc.narg(target_price), sqlc.narg(expiry_at), sqlc.narg(annualized_rate), sqlc.narg(rate_kind), sqlc.arg(status), sqlc.narg(subscribed_at));
 
 -- name: ListDualPositionsByReport :many
 SELECT * FROM dual_positions WHERE report_id = sqlc.arg(report_id)

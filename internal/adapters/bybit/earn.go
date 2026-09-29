@@ -37,6 +37,7 @@ type dualAssetPosition struct {
 	TargetPrice    string `json:"targetPrice"`
 	APYE8          string `json:"apyE8"`
 	SettlementTime string `json:"settlementTime"`
+	YieldStartAt   string `json:"yieldStartAt"`
 }
 
 // earn returns separate savings and Dual reports. Their combined principal is checked
@@ -128,6 +129,10 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		if err != nil {
 			return nil, err
 		}
+		subscribed, err := adapters.DualTime(where, "dual subscription time", row.YieldStartAt)
+		if err != nil {
+			return nil, err
+		}
 		var rate *string
 		if row.APYE8 != "" {
 			parsed, err := adapters.Decimal(where, "apyE8", row.APYE8)
@@ -150,7 +155,7 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		if row.Status == "Redeeming" {
 			state = "redeeming"
 		}
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.DualText(row.ProductID), OrderRef: adapters.DualText(row.OrderID), BaseSymbol: adapters.DualText(row.BaseCoin), QuoteSymbol: adapters.DualText(row.QuoteCoin), InvestSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.DualText(row.TargetPrice), ExpiryAt: expiry, AnnualizedRate: rate, RateKind: adapters.DualText("apy"), Status: state})
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.DualText(row.ProductID), OrderRef: adapters.DualText(row.OrderID), BaseSymbol: adapters.DualText(row.BaseCoin), QuoteSymbol: adapters.DualText(row.QuoteCoin), InvestSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.DualText(row.TargetPrice), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: rate, RateKind: adapters.DualText("apy"), Status: state})
 		if err != nil {
 			return nil, err
 		}

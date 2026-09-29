@@ -129,6 +129,103 @@ func (a *Adapter) Record(ctx context.Context, creds adapters.Credentials) ([]fix
 	return r.out, nil
 }
 
+// RecordSelected records one private account or product answer. Structure and key checks provide
+// provenance and identifiers for redaction; their answers are not returned unless selected.
+func (a *Adapter) RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error) {
+	if creds.FuturesKey() == "" || creds.APIKey == "" {
+		return nil, adapters.NewError(adapters.ClassAuthentication, "Recording Kraken needs both key groups: the Account Structure is read from the Futures balances feed.")
+	}
+	var captured []exchange
+	c := a.client(creds)
+	c.record = func(ep endpoint, resp response) error {
+		captured = append(captured, exchange{ep: ep, resp: resp})
+		return nil
+	}
+	s, err := c.balancesSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	structure, err := structureOf(&s)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := a.validate(ctx, c, structure); err != nil {
+		return nil, err
+	}
+	selected := endpoint{}
+	for _, ep := range []endpoint{epBalancesSnapshot, epAPIKeyInfo, epFuturesKey} {
+		if name == fixture.Name(ep.path, "") {
+			selected = ep
+			break
+		}
+	}
+	if selected.path == "" {
+		for _, call := range []struct {
+			ep     endpoint
+			params url.Values
+		}{
+			{epBalanceEx, nil},
+			{epTradeBalance, url.Values{"asset": {"ZUSD"}}},
+			{epEarnAllocations, url.Values{"converted_asset": {"USD"}, "hide_zero_allocations": {"true"}}},
+			{epEarnStrategies, nil},
+			{epOpenPositions, nil},
+		} {
+			if name != fixture.Name(call.ep.path, "") {
+				continue
+			}
+			if call.ep == epEarnStrategies {
+				var allocations json.RawMessage
+				if err := c.call(ctx, epEarnAllocations, url.Values{"converted_asset": {"USD"}, "hide_zero_allocations": {"true"}}, &allocations); err != nil {
+					return nil, err
+				}
+			}
+			var answer json.RawMessage
+			if err := c.call(ctx, call.ep, call.params, &answer); err != nil {
+				return nil, err
+			}
+			selected = call.ep
+			break
+		}
+	}
+	if selected.path == "" {
+		return nil, fmt.Errorf("%q is not a private account or product fixture; market-data and refusal fixtures need a full recording", name)
+	}
+	latest := latestExchanges(captured)
+	if selected == epEarnStrategies {
+		for _, ex := range latest {
+			if ex.ep != epEarnStrategies {
+				continue
+			}
+			var page struct {
+				Result struct {
+					NextCursor *string `json:"next_cursor"`
+				} `json:"result"`
+			}
+			if err := json.Unmarshal(ex.resp.body, &page); err != nil {
+				return nil, err
+			}
+			if page.Result.NextCursor != nil && *page.Result.NextCursor != "" {
+				return nil, fmt.Errorf("record %s: a paged strategy list needs a full recording", epEarnStrategies)
+			}
+		}
+	}
+	filter, err := newRecordingFilter(latest, &adapters.Batch{})
+	if err != nil {
+		return nil, err
+	}
+	r := &recorder{structure: structure, filter: filter, secrets: secretsOf(creds, latest)}
+	for _, ex := range latest {
+		if ex.ep != selected {
+			continue
+		}
+		if err := r.add(ex.ep, fixture.ScenarioRecorded, ex.resp); err != nil {
+			return nil, err
+		}
+		return r.out, nil
+	}
+	return nil, fmt.Errorf("%q was not captured", name)
+}
+
 // recorder turns captured answers into Recordings of one account.
 type recorder struct {
 	structure adapters.AccountStructure

@@ -156,6 +156,85 @@ func (a *Adapter) Record(ctx context.Context, creds adapters.Credentials) ([]fix
 	return recordings, nil
 }
 
+// RecordSelected reads only one account or product request after the clock, structure, and key
+// checks needed for its provenance. Prerequisite answers are used for redaction but not returned.
+func (a *Adapter) RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error) {
+	c := a.client(creds)
+	var captured []exchange
+	c.capture = func(request string, resp response) {
+		captured = append(captured, exchange{request: request, scenario: fixture.ScenarioRecorded, resp: resp})
+	}
+	validation, err := a.validate(ctx, c, adapters.StructureBybitUTA2)
+	if err != nil {
+		return nil, err
+	}
+	selected := -1
+	for i := range captured {
+		if fixtureName(captured[i].request, "") == name {
+			selected = i
+			break
+		}
+	}
+	if selected < 0 {
+		for _, call := range []struct {
+			ep     endpoint
+			params url.Values
+		}{
+			{epWallet, nil},
+			{epFunding, nil},
+			{epFlexible, nil},
+			{epFixedTerm, nil},
+			{epDualAssets, nil},
+			{epAssetOverview, nil},
+			{epPositions, url.Values{"category": {"linear"}, "settleCoin": {"USDT"}}},
+			{epPositions, url.Values{"category": {"linear"}, "settleCoin": {"USDC"}}},
+			{epPositions, url.Values{"category": {"inverse"}}},
+			{epPositions, url.Values{"category": {"option"}}},
+		} {
+			if fixtureName(call.ep.request(call.params), "") != name {
+				continue
+			}
+			var result json.RawMessage
+			if err := c.call(ctx, call.ep, call.params, &result); err != nil {
+				return nil, err
+			}
+			selected = len(captured) - 1
+			break
+		}
+	}
+	if selected < 0 {
+		return nil, fmt.Errorf("%q is not a first-page account or product fixture; market-data, later pages, and refusal fixtures need a full recording", name)
+	}
+	identifiers := map[string]bool{}
+	for i := range captured {
+		value, err := decodeRaw(captured[i].resp.body)
+		if err != nil {
+			return nil, err
+		}
+		collectIdentifiers(value, false, identifiers)
+	}
+	ex := captured[selected]
+	value, err := decodeRaw(ex.resp.body)
+	if err != nil {
+		return nil, err
+	}
+	r := redactor{identifiers: identifiers, secrets: []string{creds.APIKey, creds.APISecret}, fields: map[string]bool{}}
+	body, err := json.Marshal(r.clean(value))
+	if err != nil {
+		return nil, err
+	}
+	for _, secret := range []string{validation.ExternalRef, creds.APIKey, creds.APISecret} {
+		if len(secret) >= minEchoLength && bytes.Contains(body, []byte(secret)) {
+			return nil, fmt.Errorf("GET %s: a credential or the account UID survived redaction; nothing was written", ex.request)
+		}
+	}
+	return []fixture.Recording{{
+		Name: name, Endpoint: "GET " + ex.request, AccountStructure: string(adapters.StructureBybitUTA2),
+		MarginMode: string(validation.MarginMode), Scenario: fixture.ScenarioRecorded,
+		Status: ex.resp.status, Redacted: r.redacted(), Body: body,
+	}}, nil
+}
+
 // fixtureName is the file stem of a recorded request. fixture.Name appends each query value as
 // sent, but Bybit returns a page cursor percent-encoded and the request escapes it once more, so
 // the stem takes each value unescaped once, as the adapter passed it. A value that would then
