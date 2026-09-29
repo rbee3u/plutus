@@ -49,6 +49,12 @@
   flex: 1 1 320px;
 }
 
+.viewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
 /* Forms */
 
 .form {

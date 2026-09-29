@@ -50,7 +50,7 @@ export function DualPositionsPage() {
   });
   const data = query.data;
   return (
-    <section className={styles.wide}>
+    <>
       <p className={styles.lead}>
         Outstanding Dual Investment subscriptions at the latest Valuation Point. Their principal is
         already included in Balances; expected yield is not included.
@@ -89,6 +89,6 @@ export function DualPositionsPage() {
           <IssuesPanel issues={data.issues} empty="No issues for these dual positions." />
         </>
       ) : null}
-    </section>
+    </>
   );
 }

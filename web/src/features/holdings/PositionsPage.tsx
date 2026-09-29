@@ -9,7 +9,7 @@ import { formatUsd } from "@/shared/lib/amount";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
-import { ActionButton } from "@/shared/ui/ActionButton";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -53,7 +53,7 @@ function FuturesPositionsPage() {
   const data = query.data;
 
   return (
-    <section className={styles.wide}>
+    <>
       <p className={styles.lead}>
         Open positions inside the boundary at the latest Valuation Point. A position without a mark
         price stays unvalued, never zero.
@@ -110,32 +110,36 @@ function FuturesPositionsPage() {
           <IssuesPanel issues={data.issues} empty="No issues for these positions." />
         </>
       ) : null}
-    </section>
+    </>
   );
 }
+
+const POSITION_TYPES = [
+  { value: "futures", label: "Futures" },
+  { value: "dual_investment", label: "Dual Investment" },
+] as const;
 
 export function PositionsPage() {
   const { params, update } = useSearchState();
   const dual = params.get("kind") === "dual_investment";
+  const activeTab = dual ? "dual_investment" : "futures";
+
   return (
-    <>
-      <div className={styles.actions} role="group" aria-label="Position type">
-        <ActionButton
-          tone={!dual ? "primary" : "secondary"}
-          aria-pressed={!dual}
-          onClick={() => update({ kind: "", offset: "" })}
-        >
-          Futures
-        </ActionButton>
-        <ActionButton
-          tone={dual ? "primary" : "secondary"}
-          aria-pressed={dual}
-          onClick={() => update({ kind: "dual_investment", offset: "" })}
-        >
-          Dual Investment
-        </ActionButton>
+    <section className={styles.wide}>
+      <div className={styles.viewHeader}>
+        <SegmentedControl
+          label="Position type"
+          value={activeTab}
+          onChange={(next) =>
+            update({
+              kind: next === "dual_investment" ? "dual_investment" : "",
+              offset: "",
+            })
+          }
+          options={POSITION_TYPES}
+        />
       </div>
       {dual ? <DualPositionsPage /> : <FuturesPositionsPage />}
-    </>
+    </section>
   );
 }
