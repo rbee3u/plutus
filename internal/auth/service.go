@@ -316,8 +316,8 @@ func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 	})
 }
 
-// ChangePassword replaces the hash and revokes other sessions.
-func (s *Service) ChangePassword(ctx context.Context, userID, sessionID uuid.UUID, current, next string) error {
+// ChangePassword replaces the hash and revokes all user sessions.
+func (s *Service) ChangePassword(ctx context.Context, userID, _ uuid.UUID, current, next string) error {
 	userBytes, err := userID.MarshalBinary()
 	if err != nil {
 		return err
@@ -329,6 +329,13 @@ func (s *Service) ChangePassword(ctx context.Context, userID, sessionID uuid.UUI
 	ok, _, err := VerifyPassword(current, row.PasswordHash)
 	if err != nil || !ok {
 		return ErrInvalidCredentials
+	}
+	if current == next {
+		return ErrSamePassword
+	}
+	same, _, err := VerifyPassword(next, row.PasswordHash)
+	if err == nil && same {
+		return ErrSamePassword
 	}
 	hash, err := HashPassword(next)
 	if err != nil {
@@ -342,14 +349,9 @@ func (s *Service) ChangePassword(ctx context.Context, userID, sessionID uuid.UUI
 	}); err != nil {
 		return err
 	}
-	keep, err := sessionID.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	return s.q.RevokeOtherUserSessions(ctx, sqlcgen.RevokeOtherUserSessionsParams{
+	return s.q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
 		RevokedAt: sql.NullTime{Time: now, Valid: true},
 		UserID:    userBytes,
-		KeepID:    keep,
 	})
 }
 

@@ -5,11 +5,11 @@ import "testing"
 func TestHashAndVerifyPassword(t *testing.T) {
 	t.Parallel()
 
-	hash, err := HashPassword("correct horse battery staple")
+	hash, err := HashPassword("Correct=123456")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, rehash, err := VerifyPassword("correct horse battery staple", hash)
+	ok, rehash, err := VerifyPassword("Correct=123456", hash)
 	if err != nil || !ok || rehash {
 		t.Fatalf("verify got ok=%v rehash=%v err=%v", ok, rehash, err)
 	}
@@ -25,8 +25,20 @@ func TestPasswordPolicy(t *testing.T) {
 	if err := ValidatePassword("1234567"); err == nil {
 		t.Fatal("expected policy error for 7 characters")
 	}
-	if err := ValidatePassword("12345678"); err != nil {
-		t.Fatal(err)
+	if err := ValidatePassword("abcdefg1!"); err == nil {
+		t.Fatal("expected policy error for missing uppercase")
+	}
+	if err := ValidatePassword("ABCDEFG1!"); err == nil {
+		t.Fatal("expected policy error for missing lowercase")
+	}
+	if err := ValidatePassword("Abcdefgh"); err == nil {
+		t.Fatal("expected policy error for missing number or symbol")
+	}
+	if err := ValidatePassword("Abcdefg1"); err != nil {
+		t.Fatalf("expected valid with number, got: %v", err)
+	}
+	if err := ValidatePassword("Abcdefg!"); err != nil {
+		t.Fatalf("expected valid with symbol, got: %v", err)
 	}
 }
 

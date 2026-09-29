@@ -1,0 +1,111 @@
+.strengthMeter {
+  display: grid;
+  gap: var(--space-xs);
+  margin-top: var(--space-2xs);
+}
+
+.strengthHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
+.strengthScore {
+  font-weight: var(--weight-medium);
+}
+
+.scoreWeak {
+  color: var(--danger);
+}
+
+.scoreFair {
+  color: var(--warning);
+}
+
+.scoreGood {
+  color: var(--accent);
+}
+
+.scoreStrong {
+  color: var(--success);
+}
+
+.strengthBars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-xs);
+  height: 4px;
+}
+
+.strengthBar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  transition: background-color var(--transition-fast);
+}
+
+.strengthBarWeak {
+  background: var(--danger);
+}
+
+.strengthBarFair {
+  background: var(--warning);
+}
+
+.strengthBarGood {
+  background: var(--accent);
+}
+
+.strengthBarStrong {
+  background: var(--success);
+}
+
+.rulesList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 520px) {
+  .rulesList {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ruleItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  transition: color var(--transition-fast);
+}
+
+.rulePassed {
+  color: var(--success);
+}
+
+.ruleFailed {
+  color: var(--danger);
+}
+
+.fieldHint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2xs);
+}
+
+.fieldHintSuccess {
+  color: var(--success);
+}
+
+.fieldHintError {
+  color: var(--danger);
+}

@@ -140,11 +140,12 @@ func (a *API) PutAuthPassword(ctx context.Context, request api.PutAuthPasswordRe
 		return api.PutAuthPassword400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", "A request body is required."))}, nil
 	}
 	if err := a.Auth.ChangePassword(ctx, user.ID, session.ID, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
-		if errors.Is(err, auth.ErrPasswordPolicy) {
+		if errors.Is(err, auth.ErrPasswordPolicy) || errors.Is(err, auth.ErrSamePassword) {
 			return api.PutAuthPassword400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 		}
 		return api.PutAuthPassword401ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusUnauthorized, "invalid_credentials", "Invalid credentials", "The current password is incorrect.")), nil
 	}
+	a.clearSessionCookies(ctx)
 	return api.PutAuthPassword204Response{}, nil
 }
 

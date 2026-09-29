@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { getAuthMe, postAuthLogin } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
@@ -12,8 +12,11 @@ import styles from "@/features/pages.module.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const stateNotice = (location.state as { notice?: string } | null)?.notice ?? null;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [notice, setNotice] = useState<string | null>(stateNotice);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -36,6 +39,7 @@ export function LoginPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await refreshCsrf();
       const result = await postAuthLogin({ body: { username, password } });
@@ -60,6 +64,11 @@ export function LoginPage() {
           <span>Plutus</span>
         </div>
         <h1>Sign in</h1>
+        {notice ? (
+          <p className={styles.notice} role="status">
+            {notice}
+          </p>
+        ) : null}
         {error ? (
           <p className={styles.alert} role="alert">
             {error}

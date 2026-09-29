@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
@@ -23,8 +24,11 @@ const (
 	argonSaltLen     = 16
 )
 
-// ErrPasswordPolicy is returned when a password is outside the accepted length.
-var ErrPasswordPolicy = errors.New("password must be 8 to 128 characters")
+// ErrPasswordPolicy is returned when a password does not satisfy length or complexity requirements.
+var ErrPasswordPolicy = errors.New("password must be 8 to 128 characters and include uppercase, lowercase, and a number or symbol")
+
+// ErrSamePassword is returned when the new password is the same as the current password.
+var ErrSamePassword = errors.New("new password must differ from current password")
 
 // HashPassword returns a PHC-encoded Argon2id hash.
 func HashPassword(password string) (string, error) {
@@ -39,10 +43,24 @@ func HashPassword(password string) (string, error) {
 	return encodePHC(salt, hash, argonTime, argonMemoryKiB, argonThreads), nil
 }
 
-// ValidatePassword enforces the documented password length.
+// ValidatePassword enforces the documented password length and complexity.
 func ValidatePassword(password string) error {
 	n := utf8.RuneCountInString(password)
 	if n < passwordMinRunes || n > passwordMaxRunes {
+		return ErrPasswordPolicy
+	}
+	var hasUpper, hasLower, hasNumberOrSymbol bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsDigit(r) || unicode.IsPunct(r) || unicode.IsSymbol(r) || !unicode.IsLetter(r):
+			hasNumberOrSymbol = true
+		}
+	}
+	if !hasUpper || !hasLower || !hasNumberOrSymbol {
 		return ErrPasswordPolicy
 	}
 	return nil
