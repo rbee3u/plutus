@@ -131,7 +131,7 @@ Public registration is not offered. Create Users with `plutus user create`. Pass
 Local Go development follows four validation gates in order. `make format` also runs Prettier and `make lint` also runs the frontend typecheck and ESLint:
 
 1. `make format`: rewrite imports and formatting before validating the code.
-2. `make build`: build the SPA, confirm the formatted code compiles, and build `bin/plutus` with the git version baked in (`plutus --version`).
+2. `make build`: build the SPA, confirm the formatted code compiles, and build `dist/plutus` for the current platform with the git version baked in (`plutus --version`).
 3. `make test`: run Go and frontend Vitest unit tests without cached results after the build passes. This gate is offline: no live keys, no network.
 4. `make lint`: run the configured linters after tests pass.
 

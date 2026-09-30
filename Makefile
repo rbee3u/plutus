@@ -55,8 +55,8 @@ generate: ## Generate sqlc and OpenAPI artifacts.
 web-build: ## Build the production SPA into web/dist for go:embed.
 	cd web && npm run build
 
-build: web-build ## Build the SPA and CLI as bin/plutus with the git version baked in.
-	mkdir -p ./bin && go build -ldflags "$(LDFLAGS)" -o ./bin/plutus ./cmd/plutus
+build: web-build ## Build the SPA and CLI as dist/plutus with the git version baked in.
+	mkdir -p ./dist && go build -ldflags "$(LDFLAGS)" -o ./dist/plutus ./cmd/plutus
 
 test: web-build ## Run Go and frontend unit tests offline (throwaway plutus_gotest_* databases; no network, no live keys).
 	go test -count 1 $(GO_PACKAGES)
