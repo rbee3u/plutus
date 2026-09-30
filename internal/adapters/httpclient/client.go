@@ -18,8 +18,12 @@ func NewIPv4(timeout time.Duration) *http.Client {
 	}
 	transport := base.Clone()
 	dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+	dial := transport.DialContext
+	if dial == nil {
+		dial = dialer.DialContext
+	}
 	transport.DialContext = func(ctx context.Context, _ string, address string) (net.Conn, error) {
-		return dialer.DialContext(ctx, "tcp4", address)
+		return dial(ctx, "tcp4", address)
 	}
 	return &http.Client{Timeout: timeout, Transport: transport}
 }

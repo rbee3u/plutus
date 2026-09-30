@@ -1,0 +1,32 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#order-book-trading-market-data-get-tickers",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/market/tickers",
+    "query": {
+      "instType": "SPOT"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "instId": "BTC-USDT",
+        "last": "50000"
+      },
+      {
+        "instId": "ETH-USDT",
+        "last": "2000"
+      },
+      {
+        "instId": "LTC-USDT",
+        "last": "70"
+      }
+    ]
+  }
+}

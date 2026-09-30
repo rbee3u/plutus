@@ -1,0 +1,54 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/account/balance"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "totalEq": "10000",
+        "adjEq": "9500",
+        "availEq": "8000",
+        "imr": "1000",
+        "mmr": "100",
+        "mgnRatio": "95",
+        "isoEq": "0",
+        "details": [
+          {
+            "ccy": "USDT",
+            "eq": "5000",
+            "cashBal": "5000",
+            "availBal": "4000",
+            "availEq": "4000",
+            "liab": "0",
+            "interest": "0",
+            "upl": "0",
+            "eqUsd": "5000",
+            "disEq": "5000"
+          },
+          {
+            "ccy": "BTC",
+            "eq": "0.1",
+            "cashBal": "0.1",
+            "availBal": "0.08",
+            "availEq": "0.08",
+            "liab": "0",
+            "interest": "0",
+            "upl": "0",
+            "eqUsd": "5000",
+            "disEq": "4500"
+          }
+        ],
+        "delta": "0.1",
+        "deltaLever": "1.2"
+      }
+    ]
+  }
+}

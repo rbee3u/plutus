@@ -1,0 +1,34 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/account-data/get-extended-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/BalanceEx"
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "ZUSD": {
+        "balance": "500",
+        "credit": "0",
+        "credit_used": "0",
+        "hold_trade": "0"
+      },
+      "XXBT": {
+        "balance": "0.01",
+        "credit": "0",
+        "credit_used": "0",
+        "hold_trade": "0"
+      },
+      "USDT.B": {
+        "balance": "20",
+        "credit": "0",
+        "credit_used": "0",
+        "hold_trade": "0"
+      }
+    }
+  }
+}

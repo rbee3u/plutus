@@ -1,12 +1,13 @@
 package collection
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters/bybit"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
 	"github.com/rbee3u/plutus/internal/adapters/kraken"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
+	"github.com/rbee3u/plutus/internal/adapters/recording"
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
@@ -26,21 +29,11 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 	for _, platform := range []adapters.Platform{adapters.PlatformBybit, adapters.PlatformKraken} {
 		t.Run(string(platform), func(t *testing.T) {
 			h := newHarness(t)
+			var err error
 			answers := map[string]fixture.File{}
-			paths, err := filepath.Glob(filepath.Join("..", "adapters", string(platform), "testdata", "*.json"))
-			if err != nil || len(paths) == 0 {
-				t.Fatal("missing fixture corpus")
-			}
-			for _, path := range paths {
-				f, err := fixture.Read(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if f.Fixture.Scenario != fixture.ScenarioRecorded {
-					continue
-				}
-				_, name, _ := strings.Cut(f.Fixture.Endpoint, " ")
-				answers[name] = f
+			files := loadAdapterSamples(t, platform, "")
+			for _, f := range files {
+				answers[f.Request.Key()] = f
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/ws/v1" {
@@ -59,14 +52,24 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 					if _, _, err := conn.Read(ctx); err != nil {
 						return
 					}
-					_ = conn.Write(ctx, websocket.MessageText, answers["/ws/v1/balances_snapshot"].Body)
+					_ = conn.Write(ctx, websocket.MessageText, answers[(fixture.Request{Service: "futures-ws", Method: "WS", Path: "/ws/v1/balances_snapshot"}).Key()].Body)
 					return
 				}
-				name := r.URL.RequestURI()
-				if platform == adapters.PlatformKraken {
-					name = r.URL.Path
+
+				raw, decodeErr := io.ReadAll(r.Body)
+				if decodeErr != nil {
+					t.Error(decodeErr)
+					w.WriteHeader(500)
+					return
 				}
-				f, ok := answers[name]
+				r.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(raw)), nil }
+				request, decodeErr := recording.HTTPRequest(platform, r)
+				if decodeErr != nil {
+					t.Error(decodeErr)
+					w.WriteHeader(500)
+					return
+				}
+				f, ok := answers[request.Key()]
 				if !ok {
 					t.Errorf("unexpected fixture route %s", r.URL.Path)
 					w.WriteHeader(500)
@@ -80,7 +83,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 			types := []adapters.AccountType{bybit.TypeUnified, bybit.TypeFunding, bybit.TypeEarn}
 			creds := adapters.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
 			if platform == adapters.PlatformBybit {
-				h.registry.Register(platform, bybit.New(&bybit.Options{Host: server.URL, HTTP: server.Client()}))
+				h.registry.Register(platform, bybit.New(&bybit.Options{Host: server.URL, HTTP: offline.Client(t, server)}))
 			} else {
 				structure = adapters.StructureKrakenUnified
 				types = []adapters.AccountType{kraken.TypeMain, kraken.TypeEarn, kraken.TypeCoinM, kraken.TypeDerivativesHolding}
@@ -88,12 +91,12 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 				var snap struct {
 					Timestamp int64 `json:"timestamp"`
 				}
-				if json.Unmarshal(answers["/ws/v1/balances_snapshot"].Body, &snap) != nil {
+				if json.Unmarshal(answers[(fixture.Request{Service: "futures-ws", Method: "WS", Path: "/ws/v1/balances_snapshot"}).Key()].Body, &snap) != nil {
 					t.Fatal("invalid snapshot fixture")
 				}
-				h.registry.Register(platform, kraken.New(&kraken.Options{SpotHost: server.URL, FuturesHost: server.URL, WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1", HTTP: server.Client(), Now: func() time.Time { return time.UnixMilli(snap.Timestamp).Add(-time.Second) }}))
+				h.registry.Register(platform, kraken.New(&kraken.Options{SpotHost: server.URL, FuturesHost: server.URL, WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1", HTTP: offline.Client(t, server), Now: func() time.Time { return time.UnixMilli(snap.Timestamp).Add(-time.Second) }}))
 			}
-			item := h.createIdentity("recorded "+string(platform), platform, structure, types...)
+			item := h.createIdentity("documented "+string(platform), platform, structure, types...)
 			item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, creds)
 			if err != nil {
 				t.Fatal(err)
@@ -107,7 +110,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 			}
 			for _, v := range h.accountsByType(jobID, item.ID) {
 				if len(v.Omitted) != 0 || v.ValueUSD == nil {
-					t.Fatalf("%s omitted values despite recorded prices", v.AccountType)
+					t.Fatalf("%s omitted values despite documented prices", v.AccountType)
 				}
 			}
 		})

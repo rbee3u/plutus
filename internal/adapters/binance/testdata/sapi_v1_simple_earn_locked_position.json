@@ -1,0 +1,29 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-locked-product-position",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/simple-earn/locked/position",
+    "query": {
+      "current": "1",
+      "size": "100"
+    }
+  },
+  "status": 200,
+  "body": {
+    "total": 1,
+    "rows": [
+      {
+        "asset": "ETH",
+        "amount": "0.5",
+        "projectId": "ETH001",
+        "positionId": 1,
+        "status": "HOLDING",
+        "duration": 30,
+        "apy": "0.05"
+      }
+    ]
+  }
+}

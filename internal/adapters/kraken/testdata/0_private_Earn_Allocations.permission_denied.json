@@ -1,0 +1,21 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/exchange/guides/general/errors",
+  "notes": "The error envelope example of the guide with its documented EGeneral:Permission denied message. The documentation gives no HTTP status; 200 is assumed, because Spot reports errors in its error list.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/Earn/Allocations",
+    "form": {
+      "converted_asset": "USD",
+      "hide_zero_allocations": "true"
+    }
+  },
+  "status": 200,
+  "body": {
+    "error": [
+      "EGeneral:Permission denied"
+    ],
+    "result": {}
+  }
+}

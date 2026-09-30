@@ -1,0 +1,29 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#funding-account-rest-api-get-account-asset-valuation",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/asset/asset-valuation",
+    "query": {
+      "ccy": "USDT"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "totalBal": "10920",
+        "details": {
+          "classic": "10000",
+          "funding": "100",
+          "earn": "820",
+          "trading": "10000"
+        }
+      }
+    ]
+  }
+}

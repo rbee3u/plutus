@@ -1,15 +1,14 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "GET /api/v3/time",
-    "accountStructure": "binance_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#check-server-time",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/api/v3/time"
   },
   "status": 200,
   "body": {
-    "serverTime": 1790364883684
+    "serverTime": 1700000000000
   }
 }

@@ -1,220 +1,43 @@
 {
-  "fixture": {
-    "platform": "kraken",
-    "endpoint": "POST /0/private/Earn/Allocations",
-    "accountStructure": "kraken_unified",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T20:10:30Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/earn/list-earn-allocations",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/Earn/Allocations",
+    "form": {
+      "converted_asset": "USD",
+      "hide_zero_allocations": "true"
+    }
   },
   "status": 200,
   "body": {
     "error": [],
     "result": {
-      "converted_asset": "USD",
-      "converted_asset_class": "currency",
       "items": [
         {
+          "strategy_id": "ES1",
+          "native_asset": "USDT",
           "amount_allocated": {
             "total": {
-              "converted": "0.0000",
-              "native": "0"
+              "native": "20",
+              "converted": "20"
             }
-          },
-          "asset_class": "currency",
-          "is_utilized": false,
-          "native_asset": "USD",
-          "strategy_id": "ESQEFMZ-JPPIY-3KXFJ2",
-          "total_rewarded": {
-            "converted": "1.9373",
-            "native": "1.9373"
           }
         },
         {
+          "strategy_id": "ES2",
+          "native_asset": "ZUSD",
           "amount_allocated": {
             "total": {
-              "converted": "0.0000",
-              "native": "0"
+              "native": "5",
+              "converted": "5"
             }
-          },
-          "asset_class": "currency",
-          "is_utilized": false,
-          "native_asset": "USDT",
-          "strategy_id": "ESWS7VM-7CJ27-MMO4YN",
-          "total_rewarded": {
-            "converted": "212.3168",
-            "native": "212.36779822"
           }
-        },
-        {
-          "amount_allocated": {
-            "total": {
-              "converted": "0.0000",
-              "native": "0"
-            }
-          },
-          "asset_class": "currency",
-          "is_utilized": false,
-          "native_asset": "USDT",
-          "strategy_id": "ESHKB6L-7FF7H-ANPNOK",
-          "total_rewarded": {
-            "converted": "0.0012",
-            "native": "0.00115168"
-          }
-        },
-        {
-          "amount_allocated": {
-            "total": {
-              "converted": "0.0000",
-              "native": "0"
-            }
-          },
-          "asset_class": "currency",
-          "is_utilized": false,
-          "native_asset": "TAO",
-          "strategy_id": "ESEPILC-SKXTN-KTUVFP",
-          "total_rewarded": {
-            "converted": "0.0062",
-            "native": "0.00002009"
-          }
-        },
-        {
-          "amount_allocated": {
-            "total": {
-              "converted": "25278.4298",
-              "native": "25284.49808823"
-            },
-            "unbonding": {
-              "allocation_count": 2,
-              "allocations": [
-                {
-                  "converted": "263.8567",
-                  "created_at": "2026-08-20T23:21:02Z",
-                  "expires": "2026-10-19T23:21:02Z",
-                  "native": "263.92000000"
-                },
-                {
-                  "converted": "25014.5731",
-                  "created_at": "2026-08-23T00:55:26Z",
-                  "expires": "2026-10-22T00:55:26Z",
-                  "native": "25020.57808823"
-                }
-              ],
-              "converted": "25278.4298",
-              "native": "25284.49808823"
-            }
-          },
-          "asset_class": "currency",
-          "is_utilized": false,
-          "native_asset": "USDT",
-          "payout": {
-            "accumulated_reward": {
-              "converted": "18.2599",
-              "native": "18.26432767"
-            },
-            "estimated_reward": {
-              "converted": "2.3296",
-              "native": "2.33016423"
-            },
-            "period_end": "2026-09-26T15:01:15Z",
-            "period_start": "2026-09-19T15:01:15Z"
-          },
-          "strategy_id": "ESMHXFW-RQWXH-CHF6OD",
-          "total_rewarded": {
-            "converted": "366.7880",
-            "native": "366.87605557"
-          },
-          "utilized_pct": "100.0000"
-        },
-        {
-          "amount_allocated": {
-            "timed": {
-              "allocation_count": 1,
-              "allocations": [
-                {
-                  "converted": "20276.7747",
-                  "created_at": "2026-08-23T00:59:00Z",
-                  "expires": "2027-02-23T00:59:00Z",
-                  "native": "20281.64225879"
-                }
-              ],
-              "converted": "20276.7747",
-              "native": "20281.64225879"
-            },
-            "total": {
-              "converted": "20276.7747",
-              "native": "20281.64225879"
-            }
-          },
-          "asset_class": "currency",
-          "is_utilized": true,
-          "native_asset": "USDT",
-          "payout": {
-            "accumulated_reward": {
-              "converted": "16.8871",
-              "native": "16.89116565"
-            },
-            "estimated_reward": {
-              "converted": "2.1545",
-              "native": "2.15497612"
-            },
-            "period_end": "2026-09-26T15:01:15Z",
-            "period_start": "2026-09-19T15:01:15Z"
-          },
-          "strategy_id": "ESZS6E6-N3UCO-C5LGDQ",
-          "total_rewarded": {
-            "converted": "72.5772",
-            "native": "72.59464915"
-          },
-          "utilized_pct": "100.0000"
-        },
-        {
-          "amount_allocated": {
-            "timed": {
-              "allocation_count": 1,
-              "allocations": [
-                {
-                  "converted": "15042.5721",
-                  "created_at": "2026-08-29T01:36:40Z",
-                  "expires": "2028-02-29T01:36:40Z",
-                  "native": "15046.18314576"
-                }
-              ],
-              "converted": "15042.5721",
-              "native": "15046.18314576"
-            },
-            "total": {
-              "converted": "15042.5721",
-              "native": "15046.18314576"
-            }
-          },
-          "asset_class": "currency",
-          "is_utilized": true,
-          "native_asset": "USDT",
-          "payout": {
-            "accumulated_reward": {
-              "converted": "14.3176",
-              "native": "14.32104778"
-            },
-            "estimated_reward": {
-              "converted": "1.8266",
-              "native": "1.82708030"
-            },
-            "period_end": "2026-09-26T15:01:15Z",
-            "period_start": "2026-09-19T15:01:15Z"
-          },
-          "strategy_id": "ESQCUQA-XC4W3-4LN3JW",
-          "total_rewarded": {
-            "converted": "49.1713",
-            "native": "49.18314576"
-          },
-          "utilized_pct": "100.0000"
         }
       ],
-      "next_cursor": null,
-      "total_allocated": "60597.7766",
-      "total_rewarded": "702.7980"
+      "next_cursor": null
     }
   }
 }

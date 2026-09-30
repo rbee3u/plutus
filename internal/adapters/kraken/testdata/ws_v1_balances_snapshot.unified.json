@@ -1,0 +1,44 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/exchange/api-reference/futures-websocket/balances",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "futures-ws",
+    "method": "WS",
+    "path": "/ws/v1/balances_snapshot"
+  },
+  "body": {
+    "feed": "balances_snapshot",
+    "account": "REDACTED_ACCOUNT_1",
+    "timestamp": 1700000000000,
+    "seq": 1,
+    "holding": {
+      "XBT": 0.01
+    },
+    "futures": {
+      "F-XBT:USD": {
+        "unit": "XBT",
+        "portfolio_value": 0.02
+      }
+    },
+    "flex_futures": {
+      "unified_balances": true,
+      "portfolio_value": 1000,
+      "margin_equity": 950,
+      "available_margin": 800,
+      "initial_margin": 100,
+      "maintenance_margin": 10,
+      "currencies": {
+        "USD": {
+          "quantity": 500,
+          "available": 400
+        },
+        "XBT": {
+          "quantity": 0.01,
+          "available": 0.008
+        }
+      }
+    },
+    "futures_upnl_cash_value": 10
+  }
+}

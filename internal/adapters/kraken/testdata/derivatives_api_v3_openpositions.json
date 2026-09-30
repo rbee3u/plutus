@@ -1,28 +1,43 @@
 {
-  "fixture": {
-    "platform": "kraken",
-    "endpoint": "GET /derivatives/api/v3/openpositions",
-    "accountStructure": "kraken_unified",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T20:10:30Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/account-information/get-open-positions",
+  "notes": "Documented example; FI_XBTUSD_201225 renamed FI_XBTUSD_220930 and PF_DEFIUSD renamed PF_XBTUSD so every position resolves against the documented instrument example.",
+  "request": {
+    "service": "futures",
+    "method": "GET",
+    "path": "/derivatives/api/v3/openpositions"
   },
   "status": 200,
   "body": {
+    "result": "success",
     "openPositions": [
       {
-        "fillTime": "1970-01-01T00:00:00.000Z",
-        "pnlCurrency": "USD",
-        "price": 0.09275,
+        "side": "short",
+        "symbol": "PI_XBTUSD",
+        "price": 9392.749993345933,
+        "size": 10000,
+        "unrealizedPnl": -607250.006654067,
+        "unrealizedFunding": 1.045432180096817e-05
+      },
+      {
         "side": "long",
-        "size": 10,
-        "symbol": "PF_DOGEUSD",
-        "unrealizedFunding": -4.336844474504564E-6,
-        "unrealizedPnl": 0.05631962130000001
+        "symbol": "FI_XBTUSD_220930",
+        "price": 9399.749966754434,
+        "size": 20000,
+        "unrealizedPnl": 1199500.664911316,
+        "unrealizedFunding": null
+      },
+      {
+        "side": "long",
+        "symbol": "PF_XBTUSD",
+        "price": 570,
+        "size": 1,
+        "unrealizedPnl": 12.34,
+        "unrealizedFunding": -0.0073428045972263895,
+        "pnlCurrency": "BTC",
+        "maxFixedLeverage": 5
       }
     ],
-    "result": "success",
-    "serverTime": "2026-09-25T20:10:25.894Z"
+    "serverTime": "2020-07-22T14:39:12.376Z"
   }
 }

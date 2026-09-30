@@ -1,31 +1,16 @@
 {
-  "fixture": {
-    "platform": "kraken",
-    "endpoint": "GET /api/auth/v1/api-keys/v3/check",
-    "accountStructure": "kraken_unified",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T20:10:30Z",
-    "trimmed": null,
-    "redacted": [
-      "accountUid",
-      "allowedCidrBlock",
-      "allowedCidrBlocks",
-      "apiKey",
-      "createdAt",
-      "iiban"
-    ]
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api/docs/futures-api/auth/check-v-3-api-key",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "futures-auth",
+    "method": "GET",
+    "path": "/api/auth/v1/api-keys/v3/check"
   },
   "status": 200,
   "body": {
-    "accountUid": "REDACTED",
-    "allowedCidrBlock": "REDACTED",
-    "allowedCidrBlocks": [],
-    "apiKey": "REDACTED",
-    "createdAt": "REDACTED",
-    "iiban": "REDACTED",
-    "permissions": {
-      "general": "READ_ONLY",
-      "transfer": "NO_ACCESS"
-    }
+    "result": "success",
+    "iiban": "REDACTED_ACCOUNT_1",
+    "accountUid": "REDACTED_ACCOUNT_1"
   }
 }

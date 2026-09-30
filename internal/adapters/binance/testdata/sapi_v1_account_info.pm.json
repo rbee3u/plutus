@@ -1,0 +1,16 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/account",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/account/info"
+  },
+  "status": 200,
+  "body": {
+    "isMarginEnabled": true,
+    "isFutureEnabled": true,
+    "isPortfolioMarginRetailEnabled": true
+  }
+}

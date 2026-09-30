@@ -5,7 +5,7 @@ Package `internal/adapters/binance`. Binance has two Account Structures ([ADR 00
 - **Classic Trading** (`binance_classic`): Spot, Funding, Cross Margin, Isolated Margin, USDⓈ-M Futures, COIN-M Futures, and Earn are separate wallets, each its own Account Type.
 - **Portfolio Margin** (`binance_pm`): Cross Margin, USDⓈ-M Futures, and COIN-M Futures merge into one `portfolio_margin` Account that Binance values itself. Spot, Funding, and Earn stay separate.
 
-Portfolio Margin Pro is for institutions only and is not offered. Every call is a read-only account, balance, position, Earn position, or market-data endpoint. The test account is Portfolio Margin, so Classic Trading is implemented from Binance's documentation and has no live coverage yet ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)).
+Portfolio Margin Pro is for institutions only and is not offered. Every call is a read-only account, balance, position, Earn position, or market-data endpoint. Both supported structures currently use documented interface samples; new-standard real coverage is pending ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)).
 
 ## Endpoints
 
@@ -118,7 +118,7 @@ Selecting either `earn` or `dual_investment` reads both product groups once for 
 | Target, expiry | `strikePrice`, `settleDate` milliseconds |
 | Annualized rate | `apr`, tagged APR |
 
-The live test additionally reads `GET /sapi/v1/dci/product/accounts` (`USER_DATA`, weight 1). Its `totalAmountInUSDT` is diagnostic only: the valuation formula is undocumented and never overrides principal or creates a runtime dependency.
+The single-interface recorder can explicitly read `GET /sapi/v1/dci/product/accounts` (`USER_DATA`, weight 1). Its `totalAmountInUSDT` is diagnostic only: the valuation formula is undocumented and never overrides principal or creates a runtime dependency.
 
 ## Position
 
@@ -166,32 +166,13 @@ Error details name the endpoint and Binance's code and message, never a body or 
 
 - `/sapi/v1/asset/wallet/balance` also lists Options, Trading Bots, and Copy Trading wallets. No Account Type collects them, and the Earn check covers only the Earn wallet, so value held there is not reported and nothing flags it.
 
-## Fixtures
+## Fixtures and evidence
 
-Replay tests use two fixture sets, told apart by their headers:
-
-- **Recorded** (`testdata/*.json`): answers from the Portfolio Margin test account, with `scenario: "recorded"` (error answers carry their scenario name), `accountStructure: "binance_pm"`, and each file's `recordedAt` date. The baseline was recorded on 2026-09-25. Only `PURCHASE_SUCCESS` was refreshed on 2026-09-29; it now contains one running CALL subscription invested in SOL. The other three running-state responses remain empty. The real response has a string `id` and numeric `orderId` and `settleDate`.
-- **Documented** (`testdata/documented/<scenario>/*.json`, [ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)): built from Binance's documentation examples, with `scenario: "documented"`, no `recordedAt`, the example's `documentation` URL, and the `accountStructure` it describes. `trimmed` names every change from the example. `binance_classic` holds the Classic Trading account: the structure flag, Cross and Isolated Margin, Multi-Assets USDⓈ-M with symbol configuration, and COIN-M. `dual_investment` holds the example's running `PURCHASE_SUCCESS` position, empty answers for the other running states, and a matching Earn valuation.
-
-The replay lays at most one documented directory over the recorded set. It checks the key header, HMAC or synthetic Ed25519 signature, `recvWindow`, and clock-corrected timestamp of every signed request, and the header provenance of every file. Ed25519 tests reuse the existing response fixtures with a locally generated test key; those fixtures were not recorded with Ed25519. A documented scenario proves the mapping of the documented shape, not live access.
-
-The refreshed Dual response and baseline Earn wallet valuation were recorded at different times. Their replay verifies subscription mapping and Account separation; the read-only live test checks completeness against a contemporaneous wallet valuation.
-
-`plutus adapter record --platform binance` reads `PLUTUS_GOTEST_BINANCE_APIKEY` / `_SECRET` from the environment or `config/gotest.env`. For Ed25519, `_SECRET` contains the private key PEM; use a quoted value with `\n` escapes in `gotest.env`. The recorder uses the matching signature type, including for the wrong-signature probe. It reads the account's Account Structure and calls every endpoint that structure's Collection Run and validation use once. A Classic wallet that is not opened is skipped, as in collection. It records the first page of every paged query: Simple Earn flexible and locked, and dual investment once per running state. It writes one `tmp/fixtures/binance/<request>.json` per call with the detected `accountStructure`. The header `endpoint` carries the query as sent, keys sorted and without the signing parameters, and the file name appends the query values in that order: `GET /sapi/v1/dci/product/positions?pageIndex=1&pageSize=100&status=PENDING` is recorded as `sapi_v1_dci_product_positions.1.100.PENDING.json`. Amounts are kept as recorded. The recorder:
-
-For a focused product or account refresh, add `--only sapi_v1_dci_product_positions.1.100.PURCHASE_SUCCESS` (repeat `--only` for more fixtures). This reads the clock and current Account Structure plus the requested answer, and writes only the requested file. A fixture unavailable in the current Classic or Portfolio Margin structure is refused. Use separate `--out` directories while switching the same account between structures. Market-data and refusal fixtures still use a full recording.
-
-- replaces `uid` with `123456789`, and any IP address in an error message, such as the request IP Binance echoes in `-2015`, with `203.0.113.1`;
-- trims `ticker/price` to the USDT and USDC pairs of recorded coins, including Earn and dual investment coins, plus BTCUSDT, ETHUSDT, FDUSDUSDT, and one USDC-only coin;
-- trims USDⓈ-M `exchangeInfo` to held contracts plus BTCUSDT, one `CURRENT_QUARTER`, and one `TRADIFI_PERPETUAL` contract, and COIN-M `exchangeInfo` to held contracts plus BTCUSD_PERP and one `CURRENT_QUARTER` contract;
-- in Classic Trading, trims `/fapi/v1/symbolConfig` to held USDⓈ-M contracts plus BTCUSDT;
-- records three error answers on `/sapi/v1/account/info`, the first call of every run in both structures: an unknown key (`invalid_key`, `-2008`), a wrong signature (`bad_signature`, `-1022`), and a stale timestamp (`stale_timestamp`, `-1021`), each with HTTP 400. Rate-limit and server errors are not provoked; tests simulate them.
-
-After review the files replace the recorded set in `internal/adapters/binance/testdata/`.
+The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The Binance inventory](./binance-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
 
 ## Comparison checklist (test environment)
 
-Run these on the test environment against the Binance app on the same account, within a few minutes of a collection. Items 5 and 6 need a Classic Trading account and still have only documented coverage. Item 7 has API coverage for one running CALL subscription, but still needs comparison with the app.
+Run these on the test environment against the Binance app on the same account, within a few minutes of a collection. Items 5 and 6 need a Classic Trading account and still have only documented coverage. Item 7 has documented coverage for a running CALL subscription, but still needs comparison with the app.
 
 1. **Identity and structure**: validation stores the UID shown under the app's profile. Validating the account as the other structure fails with `unsupported`, naming both. After switching structure in the app, the next Collection Run fails the same way without reading any Account.
 2. **Portfolio Margin equity**: `Equity` equals the app's Portfolio Margin "Total equity" (actual equity) in USD. `AdjEq` equals the adjusted, collateral-rate equity. `UniMMR` equals the uniMMR on the Portfolio Margin page.
@@ -202,5 +183,3 @@ Run these on the test environment against the Binance app on the same account, w
 7. **Spot, funding, and Earn**: coin amounts match the Spot and Funding wallets, and flexible-earn receipts do not appear under spot. Simple Earn flexible and locked amounts match the Earn page. Each running dual investment position appears in the separate Dual Investment Account at its subscription amount in the deposit coin until it is paid out, and a settled one no longer appears. The Earn Account succeeds. Holding an Earn product Plutus does not read makes it Stale with both USD amounts.
 8. **Account values**: the calculated USD value of every Account without reported equity is within about 0.1% of the app's USD value of that wallet.
 9. **Failures**: removing the server IP from the key's whitelist sets the Connection `invalid` with a `-2015` detail at the next cycle. Restoring it and validating again resumes collection.
-
-Earlier on 2026-09-29, the split-account live test passed in Portfolio Margin with no Dual positions. Later that day, one `PURCHASE_SUCCESS` CALL subscription was recorded and replayed. A subsequent read-only live test normalized one Dual Position, passed the combined Earn completeness check, and matched the dedicated Dual aggregate to the itemized principal. Other running states remain empty in the live recordings; a PUT subscription and the Classic Trading Account Structure remain documentation-derived coverage.

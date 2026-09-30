@@ -1,0 +1,40 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#public-data-rest-api-get-instruments",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/public/instruments",
+    "query": {
+      "instType": "FUTURES"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "instId": "BTC-USDT-240628",
+        "instType": "FUTURES",
+        "ctType": "linear",
+        "ctVal": "0.01",
+        "ctValCcy": "BTC",
+        "settleCcy": "USDT",
+        "uly": "BTC-USDT",
+        "expTime": "1719532800000"
+      },
+      {
+        "instId": "BTC-USD-240628",
+        "instType": "FUTURES",
+        "ctType": "inverse",
+        "ctVal": "100",
+        "ctValCcy": "USD",
+        "settleCcy": "BTC",
+        "uly": "BTC-USD",
+        "expTime": "1719532800000"
+      }
+    ]
+  }
+}

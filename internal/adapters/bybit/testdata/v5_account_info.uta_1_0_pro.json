@@ -1,0 +1,25 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/account/account-info",
+  "notes": "Documentation-derived response contract sample with illustrative business values; not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "marginMode": "REGULAR_MARGIN",
+      "updatedTime": "1697078946000",
+      "unifiedMarginStatus": 4,
+      "dcpStatus": "OFF",
+      "timeWindow": 10,
+      "smpGroup": 0,
+      "isMasterTrader": false,
+      "spotHedgingStatus": "OFF"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/asset/balance/asset-overview",
+  "notes": "Documentation example reduced to an Earn bucket of 301 USD: the recorded 20 USDT of Flexible Savings plus this scenario's 281 USDT of fixed-term principal.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/asset/asset-overview",
+    "query": {
+      "valuationCurrency": "USD"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "Success",
+    "result": {
+      "totalEquity": "301",
+      "list": [
+        {
+          "totalEquity": "301",
+          "valuationCurrency": "USD",
+          "accountType": "Earn",
+          "snapshotTime": "1772449024908"
+        }
+      ]
+    },
+    "retExtInfo": {},
+    "time": 1772449024908
+  }
+}

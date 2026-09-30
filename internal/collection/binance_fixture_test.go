@@ -3,7 +3,6 @@ package collection
 import (
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -11,6 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/binance"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/identity"
@@ -18,7 +18,7 @@ import (
 )
 
 // TestBinanceFixturesStoreAndValue runs one cycle through the live Binance adapter replaying the
-// committed fixtures, so every recorded balance, position, instrument, and price must be
+// committed fixtures, so every documented balance, position, instrument, and price must be
 // accepted by the catalog and the database and valued without omissions.
 func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
@@ -57,7 +57,7 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 }
 
 // TestBinanceClassicScenarioStoresAndValues runs one cycle of a Classic Trading Identity with all
-// seven Account Types: the documented Classic answers laid over the recorded set (ADR 0027). Every
+// seven Account Types: the documented Classic answers selected explicitly from the flat library (ADR 0027). Every
 // Classic Account is valued from its Balances, and the COIN-M position keeps its inverse notional.
 func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 	h := newHarness(t)
@@ -91,37 +91,13 @@ func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 }
 
 // registerBinanceReplay registers the live Binance adapter against a server that replays the
-// committed recorded fixtures, overlaid with the documented scenario in testdata/documented/overlay
-// when overlay is not empty.
-func registerBinanceReplay(t *testing.T, h *harness, overlay string) {
+// committed documented fixtures, chosen explicitly by the test selection.
+func registerBinanceReplay(t *testing.T, h *harness, selection string) {
 	t.Helper()
-	testdata := filepath.Join("..", "adapters", "binance", "testdata")
-	paths, err := filepath.Glob(filepath.Join(testdata, "*.json"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no binance fixtures: %v", err)
-	}
+	files := loadAdapterSamples(t, adapters.PlatformBinance, selection)
 	answers := map[string]fixture.File{}
-	for _, path := range paths {
-		f, err := fixture.Read(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if f.Fixture.Scenario == fixture.ScenarioRecorded {
-			answers[f.Fixture.Endpoint] = f
-		}
-	}
-	if overlay != "" {
-		documented, err := filepath.Glob(filepath.Join(testdata, "documented", overlay, "*.json"))
-		if err != nil || len(documented) == 0 {
-			t.Fatalf("no documented %s fixtures: %v", overlay, err)
-		}
-		for _, path := range documented {
-			f, err := fixture.Read(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			answers[f.Fixture.Endpoint] = f
-		}
+	for _, f := range files {
+		answers[f.Request.Endpoint()] = f
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Headers name a call by its method, path, and query without the signing parameters.
@@ -143,7 +119,7 @@ func registerBinanceReplay(t *testing.T, h *harness, overlay string) {
 		_, _ = w.Write(f.Body)
 	}))
 	t.Cleanup(server.Close)
-	live := binance.New(&binance.Options{Hosts: binance.Hosts{API: server.URL, PAPI: server.URL, FAPI: server.URL, DAPI: server.URL}, HTTP: server.Client()})
+	live := binance.New(&binance.Options{Hosts: binance.Hosts{API: server.URL, PAPI: server.URL, FAPI: server.URL, DAPI: server.URL}, HTTP: offline.Client(t, server)})
 	// The harness registry is shared by the identity and collection services.
 	h.registry.Register(adapters.PlatformBinance, live)
 }

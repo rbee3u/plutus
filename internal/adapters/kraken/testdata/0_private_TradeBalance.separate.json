@@ -1,0 +1,28 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/account-data/get-trade-balance",
+  "notes": "Documentation-derived response contract sample with illustrative business values; not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/TradeBalance",
+    "form": {
+      "asset": "ZUSD"
+    }
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "eb": "1101.3425",
+      "tb": "392.2264",
+      "m": "7.0354",
+      "n": "-10.0232",
+      "c": "21.1063",
+      "v": "31.1297",
+      "e": "382.2032",
+      "mf": "375.1678",
+      "ml": "5432.57"
+    }
+  }
+}

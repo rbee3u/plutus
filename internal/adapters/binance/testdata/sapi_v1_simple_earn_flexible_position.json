@@ -1,0 +1,27 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-flexible-product-position",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/simple-earn/flexible/position",
+    "query": {
+      "current": "1",
+      "size": "100"
+    }
+  },
+  "status": 200,
+  "body": {
+    "total": 1,
+    "rows": [
+      {
+        "asset": "USDT",
+        "totalAmount": "20",
+        "productId": "USDT001",
+        "canRedeem": true,
+        "collateralAmount": "0"
+      }
+    ]
+  }
+}

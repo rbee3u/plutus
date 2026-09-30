@@ -1,23 +1,20 @@
 {
-  "fixture": {
-    "platform": "bybit",
-    "endpoint": "GET /v5/market/time",
-    "accountStructure": "bybit_uta_2_0",
-    "marginMode": "bybit_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:55:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/market/time",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/time"
   },
   "status": 200,
   "body": {
-    "result": {
-      "timeNano": "1790366134309525613",
-      "timeSecond": "1790366134"
-    },
     "retCode": 0,
-    "retExtInfo": {},
     "retMsg": "OK",
-    "time": 1790366134309
+    "result": {
+      "timeSecond": "1700000000",
+      "timeNano": "1700000000000000000"
+    },
+    "time": 1700000000000
   }
 }

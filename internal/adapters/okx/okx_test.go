@@ -23,6 +23,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/decimal"
 )
 
@@ -36,10 +37,7 @@ var testCreds = adapters.Credentials{APIKey: testKey, APISecret: testSecret, Pas
 
 var allTypes = []adapters.AccountType{TypeTrading, TypeFunding, TypeEarn, TypeDualInvestment}
 
-// replay serves the committed fixtures: the recorded set, with the answers of the named
-// documentation-derived scenarios (testdata/documented/<name>/) in place of the recorded ones. It
-// verifies the key, passphrase, and signature headers and that timestamps follow the recorded
-// server time, so signing and clock sync are exercised.
+// replay serves explicitly selected flat interface samples and verifies native authentication.
 type replay struct {
 	t          *testing.T
 	files      map[string]fixture.File
@@ -64,9 +62,26 @@ var signedPaths = func() map[string]bool {
 func newReplay(t *testing.T, scenarios ...string) (*replay, *Adapter) {
 	t.Helper()
 	r := &replay{t: t, files: map[string]fixture.File{}, calls: map[string]int{}, queue: map[string][]func(http.ResponseWriter){}, fixed: map[string]func(http.ResponseWriter){}, started: time.Now()}
-	r.load(filepath.Join("testdata", "*.json"), false)
-	for _, scenario := range scenarios {
-		r.load(filepath.Join("testdata", "documented", scenario, "*.json"), true)
+	scenario := ""
+	if len(scenarios) > 1 {
+		t.Fatal("select one explicit scenario")
+	}
+	if len(scenarios) == 1 {
+		scenario = scenarios[0]
+	}
+	files, err := fixture.Load("testdata", sampleNames(scenario)...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		r.files[key(f.Request.Endpoint(), "")] = f
+	}
+	for _, variant := range []string{"invalid_key", "bad_signature", "stale_timestamp", "wrong_passphrase"} {
+		f, err := fixture.Read("testdata/api_v5_account_config." + variant + ".json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.files[key(f.Request.Endpoint(), variant)] = f
 	}
 	times := rowsIn[struct {
 		TS string `json:"ts"`
@@ -74,64 +89,28 @@ func newReplay(t *testing.T, scenarios ...string) (*replay, *Adapter) {
 	if len(times) != 1 {
 		t.Fatalf("public/time fixture rows %d", len(times))
 	}
-	var err error
 	r.serverTime, err = strconv.ParseInt(times[0].TS, 10, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)
-	a := New(&Options{Host: server.URL, HTTP: server.Client()})
+	t.Cleanup(func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		for request, steps := range r.queue {
+			if len(steps) != 0 {
+				t.Errorf("%s: %d expected response steps not consumed", request, len(steps))
+			}
+		}
+	})
+	a := New(&Options{Host: server.URL, HTTP: offline.Client(t, server)})
 	a.pace = 0
 	return r, a
 }
 
-// load adds the fixtures matching pattern, replacing earlier answers of the same endpoint.
-func (r *replay) load(pattern string, documented bool) {
-	r.t.Helper()
-	paths, err := filepath.Glob(pattern)
-	if err != nil || len(paths) == 0 {
-		r.t.Fatalf("no fixtures match %s: %v", pattern, err)
-	}
-	for _, path := range paths {
-		f, err := fixture.Read(path)
-		if err != nil {
-			r.t.Fatal(err)
-		}
-		if problem := headerProblem(&f.Fixture, documented); problem != "" {
-			r.t.Fatalf("%s: %s: %+v", path, problem, f.Fixture)
-		}
-		r.files[key(f.Fixture.Endpoint, answerScenario(f.Fixture.Scenario))] = f
-	}
-}
-
-// answerScenario is the replay key of a fixture's scenario: a recorded or documented success is
+// answerScenario is the replay key of a fixture's scenario: a documented or documented success is
 // the endpoint's default answer "", and an error answer keeps the name of its failure.
-func answerScenario(scenario string) string {
-	if scenario == fixture.ScenarioRecorded || scenario == fixture.ScenarioDocumented {
-		return ""
-	}
-	return scenario
-}
-
-// headerProblem checks a fixture header against the provenance rules of ADR 0023 and ADR 0027: a
-// recorded fixture carries its recording date, a documentation-derived one the documentation it
-// follows and no date.
-func headerProblem(h *fixture.Header, documented bool) string {
-	switch {
-	case h.Platform != "okx" || h.Endpoint == "":
-		return "the header names no platform or endpoint"
-	case h.AccountStructure != string(adapters.StructureOKXUnified) || h.MarginMode == "" ||
-		!adapters.ValidMarginMode(adapters.StructureOKXUnified, adapters.MarginMode(h.MarginMode)):
-		return "the header names no okx_unified Account Structure and Margin Mode"
-	case documented && (!h.Documented() || h.RecordedAt != nil || !strings.HasPrefix(h.Documentation, "https://www.okx.com/docs-v5/")):
-		return "a documentation-derived fixture needs scenario documented, the documentation it follows, and no recording date"
-	case !documented && (h.Documented() || h.Scenario == "" || h.RecordedAt == nil || h.RecordedAt.IsZero() || h.Documentation != ""):
-		return "a recorded fixture needs a scenario and its recording date, and no documentation"
-	}
-	return ""
-}
-
 func key(endpoint, scenario string) string { return endpoint + "#" + scenario }
 
 func (r *replay) file(ep endpoint, scenario string) fixture.File {
@@ -163,22 +142,6 @@ func (r *replay) count(ep endpoint) int {
 	return r.calls[ep.String()]
 }
 
-func TestRecordSelectedDualFixture(t *testing.T) {
-	r, a := newReplay(t)
-	name := recordingName(epDCD, fixture.ScenarioRecorded)
-	recordings, err := a.RecordSelected(context.Background(), testCreds, name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epDCD.String() {
-		t.Fatalf("selected recording: %+v", recordings)
-	}
-	if r.count(epConfig) != 1 || r.count(epDCD) != 1 || r.count(epBalance) != 0 || r.count(epSavings) != 0 || r.count(epTickers) != 0 {
-		t.Fatal("selected recording must read only config, clock, and Dual Investment")
-	}
-}
-
-// configAt answers account/config as recorded but at another account level.
 func (r *replay) configAt(level string) func(w http.ResponseWriter) {
 	r.t.Helper()
 	var top map[string]json.RawMessage
@@ -268,7 +231,7 @@ func (r *replay) checkSigned(req *http.Request) string {
 	}
 	expected := r.serverTime + time.Since(r.started).Milliseconds()
 	if diff := at.UnixMilli() - expected; diff > 5000 || diff < -5000 {
-		return fmt.Sprintf("timestamp is not aligned with the recorded server time: off by %d ms", diff)
+		return fmt.Sprintf("timestamp is not aligned with the documented server time: off by %d ms", diff)
 	}
 	return ""
 }
@@ -369,90 +332,18 @@ func TestFixturesHaveNoCredentialOrIdentityEcho(t *testing.T) {
 		t.Fatalf("account/config rows %d", len(configs))
 	}
 	cfg := configs[0]
-	if cfg["uid"] != RedactedUID || (cfg["mainUid"] != RedactedUID && cfg["mainUid"] != RedactedMainUID) || cfg["ip"] != "" || cfg["label"] != RedactedLabel {
+	if cfg["uid"] != RedactedUID || (cfg["mainUid"] != RedactedUID && cfg["mainUid"] != RedactedMainUID) || cfg["ip"] != RedactedIP || cfg["label"] != RedactedLabel {
 		t.Fatalf("account/config is not redacted: uid %v, mainUid %v, ip %v, label %v", cfg["uid"], cfg["mainUid"], cfg["ip"], cfg["label"])
 	}
 }
 
-// TestRecordedFixturesAreNamedAsTheRecorderNamesThem keeps the committed recording and the
+// TestDocumentedFixturesAreNamedAsTheRecorderNamesThem keeps the committed recording and the
 // recorder in step: a successful answer is stored under its endpoint alone, an error answer under
 // its endpoint and scenario.
-func TestRecordedFixturesAreNamedAsTheRecorderNamesThem(t *testing.T) {
-	t.Parallel()
-
-	if got := recordingName(dcdPage("987654321"), fixture.ScenarioRecorded); got != "api_v5_finance_sfp_dcd_order_history.987654321.100" {
-		t.Fatalf("recorded dual investment page named %q", got)
-	}
-	if got := recordingName(epConfig, "invalid_key"); got != "api_v5_account_config.invalid_key" {
-		t.Fatalf("error answer named %q", got)
-	}
-	paths, err := filepath.Glob(filepath.Join("testdata", "*.json"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no recorded fixtures: %v", err)
-	}
-	for _, path := range paths {
-		f, err := fixture.Read(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, request, _ := strings.Cut(f.Fixture.Endpoint, " ")
-		scenario := f.Fixture.Scenario
-		if scenario == fixture.ScenarioRecorded {
-			scenario = ""
-		}
-		if want := fixture.Name(request, scenario) + ".json"; filepath.Base(path) != want {
-			t.Errorf("%s holds %s (%s), which the recorder writes as %s", path, f.Fixture.Endpoint, f.Fixture.Scenario, want)
-		}
-	}
-}
-
-// TestEveryRecordedAnswerIsRequested replays one validation and one collection of every Account
-// Type and checks that each recorded success answers a request the adapter sends, so a header
-// whose endpoint differs from the request URI cannot go unnoticed. The FUTURES list is requested
-// only for a futures position, which TestPositionSidesAndSkippedRows replays.
-func TestEveryRecordedAnswerIsRequested(t *testing.T) {
-	t.Parallel()
-
-	r, a := newReplay(t)
-	ctx := context.Background()
-	if _, err := a.Validate(ctx, testCreds, adapters.StructureOKXUnified); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := a.Collect(ctx, testCreds, adapters.StructureOKXUnified, allTypes); err != nil {
-		t.Fatal(err)
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, f := range r.files {
-		if answerScenario(f.Fixture.Scenario) != "" || f.Fixture.Endpoint == epFutures.String() {
-			continue
-		}
-		if r.calls[f.Fixture.Endpoint] == 0 {
-			t.Errorf("the recorded answer of %s was never requested", f.Fixture.Endpoint)
-		}
-	}
-}
-
-func fixtureFile(t *testing.T, ep endpoint, scenario string) fixture.File {
+func fixtureFile(t *testing.T, ep endpoint, variant string) fixture.File {
 	t.Helper()
-	f, err := fixture.Read(filepath.Join("testdata", fixture.Name(ep.request(), scenario)+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return f
-}
-
-func TestDocumentedScenariosDeclareTheirProvenance(t *testing.T) {
-	t.Parallel()
-
-	scenarios, err := os.ReadDir(filepath.Join("testdata", "documented"))
-	if err != nil || len(scenarios) == 0 {
-		t.Fatalf("no documented scenarios: %v", err)
-	}
-	for _, scenario := range scenarios {
-		// newReplay fails on a header that breaks the provenance rules.
-		newReplay(t, scenario.Name())
-	}
+	r, _ := newReplay(t)
+	return r.file(ep, variant)
 }
 
 func TestValidateReportsTheMarginMode(t *testing.T) {
@@ -461,7 +352,7 @@ func TestValidateReportsTheMarginMode(t *testing.T) {
 	r, a := newReplay(t)
 	result, err := a.Validate(context.Background(), testCreds, adapters.StructureOKXUnified)
 	if err != nil || result.ExternalRef != RedactedUID || result.MarginMode != adapters.MarginOKXPM {
-		t.Fatalf("validate the recorded portfolio margin account: %v %+v", err, result)
+		t.Fatalf("validate the documented portfolio margin account: %v %+v", err, result)
 	}
 	if r.count(epTime) != 1 || r.count(epConfig) != 1 {
 		t.Fatalf("server time %d, config %d calls; want one clock sync and one config read", r.count(epTime), r.count(epConfig))
@@ -724,7 +615,7 @@ func TestCollectMapsPositionsAndInstruments(t *testing.T) {
 	report := reportOf(t, batch, TypeTrading)
 	rows := rowsIn[openPosition](t, r.file(epPositions, ""))
 	if len(report.Positions) != len(rows) || len(rows) == 0 {
-		t.Fatalf("%d positions for %d recorded rows", len(report.Positions), len(rows))
+		t.Fatalf("%d positions for %d documented rows", len(report.Positions), len(rows))
 	}
 	for i := range rows {
 		row := &rows[i]
@@ -743,15 +634,15 @@ func TestCollectMapsPositionsAndInstruments(t *testing.T) {
 		if !sameDecimal(t, p.EntryPrice, row.AvgPx) || !sameDecimal(t, p.MarkPrice, row.MarkPx) || !sameDecimal(t, p.UnrealizedPnl, row.Upl) {
 			t.Errorf("%s prices %+v", row.InstID, p)
 		}
-		// Recorded in portfolio margin cross: lever "0", liqPx and margin empty.
+		// Documented portfolio margin cross: lever "0", liqPx and margin empty.
 		if p.Leverage != nil || p.LiquidationPrice != nil || p.Margin != nil {
 			t.Errorf("%s leverage %s, liquidation %s, margin %s must be nil", row.InstID, deref(p.Leverage), deref(p.LiquidationPrice), deref(p.Margin))
 		}
 	}
-	doge := report.Positions[0].Instrument
-	if doge.Symbol != "DOGE-USDT-SWAP" || doge.Kind != adapters.KindLinearPerp || doge.BaseSymbol != "DOGE" || doge.QuoteSymbol != "USDT" ||
-		doge.SettlementSymbol != "USDT" || deref(doge.ContractSize) != "1000" || doge.ExpiryAt != nil {
-		t.Fatalf("DOGE-USDT-SWAP instrument %+v", doge)
+	instrument := report.Positions[0].Instrument
+	if instrument.Symbol != "BTC-USDT-SWAP" || instrument.Kind != adapters.KindLinearPerp || instrument.BaseSymbol != "BTC" || instrument.QuoteSymbol != "USDT" ||
+		instrument.SettlementSymbol != "USDT" || deref(instrument.ContractSize) != "0.01" || instrument.ExpiryAt != nil {
+		t.Fatalf("DOGE-USDT-SWAP instrument %+v", instrument)
 	}
 	if r.count(epSwaps) != 1 || r.count(epFutures) != 0 {
 		t.Fatalf("instrument lists fetched: SWAP %d, FUTURES %d; want only the list a position needs", r.count(epSwaps), r.count(epFutures))
@@ -774,12 +665,12 @@ func TestInstrumentKinds(t *testing.T) {
 	}{
 		{"BTC-USDT-SWAP", adapters.KindLinearPerp, "BTC", "USDT", "USDT", "0.01", marketSwap, false},
 		{"BTC-USD-SWAP", adapters.KindInversePerp, "BTC", "USD", "BTC", "100", marketSwap, false},
-		{recordedFuture(t, "linear"), adapters.KindLinearDeliv, "BTC", "USD", "USD", "0.01", marketFutures, true},
-		{recordedFuture(t, "inverse"), adapters.KindInverseDlv, "BTC", "USD", "BTC", "100", marketFutures, true},
+		{sampleFuture(t, "linear"), adapters.KindLinearDeliv, "BTC", "USDT", "USDT", "0.01", marketFutures, true},
+		{sampleFuture(t, "inverse"), adapters.KindInverseDlv, "BTC", "USD", "BTC", "100", marketFutures, true},
 	} {
 		row, ok := listed[tc.instID]
 		if !ok {
-			t.Fatalf("%s is not in the recorded instruments", tc.instID)
+			t.Fatalf("%s is not in the documented instruments", tc.instID)
 		}
 		got, ok := mapInstrument(tc.m, &row)
 		if !ok || got.Kind != tc.kind || got.BaseSymbol != tc.base || got.QuoteSymbol != tc.quote || got.SettlementSymbol != tc.settle || deref(got.ContractSize) != tc.size {
@@ -813,16 +704,16 @@ func TestInstrumentKinds(t *testing.T) {
 	}
 }
 
-// recordedFuture is the BTC delivery contract of a contract type that the recording's FUTURES
+// sampleFuture is the BTC delivery contract of a contract type that the recording's FUTURES
 // sample holds. Futures expire, so every recording samples different ones.
-func recordedFuture(t *testing.T, ctType string) string {
+func sampleFuture(t *testing.T, ctType string) string {
 	t.Helper()
 	for _, row := range rowsIn[instrumentRow](t, fixtureFile(t, epFutures, "")) {
 		if row.CtType == ctType && strings.HasPrefix(row.InstID, "BTC-") {
 			return row.InstID
 		}
 	}
-	t.Fatalf("the recorded FUTURES sample has no %s BTC contract", ctType)
+	t.Fatalf("the documented FUTURES sample has no %s BTC contract", ctType)
 	return ""
 }
 
@@ -839,7 +730,7 @@ func TestPositionSidesAndSkippedRows(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t)
-	linear := recordedFuture(t, "linear")
+	linear := sampleFuture(t, "linear")
 	r.always(epPositions, ok(`[
 		{"instType":"MARGIN","instId":"BTC-USDT","posSide":"net","pos":"0.5","mgnMode":"cross","posCcy":"BTC"},
 		{"instType":"SWAP","instId":"BTC-USDT-SWAP","posSide":"net","pos":"0","mgnMode":"isolated"},
@@ -905,9 +796,9 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 			t.Errorf("funding balance %+v for row %+v", b, rows[i])
 		}
 	}
-	// A successful Earn report has also passed the Earn check against the recorded valuation.
+	// A successful Earn report has also passed the Earn check against the documented valuation.
 	earn := reportOf(t, batch, TypeEarn)
-	want := recordedOrdinaryEarn(t, r)
+	want := documentedOrdinaryEarn(t, r)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != len(want) || earn.Equity != nil {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
@@ -919,8 +810,8 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	}
 }
 
-// recordedOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
-func recordedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
+// documentedOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
+func documentedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
 	t.Helper()
 	sums := map[string]*big.Rat{}
 	add := func(ccy, amount string) {
@@ -945,19 +836,19 @@ func recordedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
 	return sums
 }
 
-// TestRecordedValuationCatchesUnreadEarn replays OKX's real valuation answer without the Earn
-// Balances it values, so the check must read the recorded earn bucket to fail.
-func TestRecordedValuationCatchesUnreadEarn(t *testing.T) {
+// TestDocumentedValuationCatchesUnreadEarn replays OKX's real valuation answer without the Earn
+// Balances it values, so the check must read the documented earn bucket to fail.
+func TestDocumentedValuationCatchesUnreadEarn(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t)
-	recorded := rat(t, rowsIn[struct {
+	documented := rat(t, rowsIn[struct {
 		Details struct {
 			Earn string `json:"earn"`
 		} `json:"details"`
 	}](t, r.file(epValuation, ""))[0].Details.Earn)
-	if recorded.Cmp(big.NewRat(1, 1)) <= 0 {
-		t.Skip("the recorded account holds no Earn value to leave out")
+	if documented.Cmp(big.NewRat(1, 1)) <= 0 {
+		t.Skip("the documented account holds no Earn value to leave out")
 	}
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
@@ -967,8 +858,8 @@ func TestRecordedValuationCatchesUnreadEarn(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, recorded.FloatString(2)+" USD") {
-		t.Fatalf("earn report %+v; want unsupported naming the recorded %s USD", earn, recorded.FloatString(2))
+	if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, documented.FloatString(2)+" USD") {
+		t.Fatalf("earn report %+v; want unsupported naming the documented %s USD", earn, documented.FloatString(2))
 	}
 }
 
@@ -1104,7 +995,7 @@ func TestErrorDetailNamesOKXCodeOnly(t *testing.T) {
 	r.always(epConfig, serve(r.file(epConfig, "invalid_key")))
 	_, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, allTypes)
 	_, detail := adapters.Classify(err)
-	if !strings.Contains(detail, "GET /api/v5/account/config") || !strings.Contains(detail, "50119") {
+	if !strings.Contains(detail, "GET /api/v5/account/config") || !strings.Contains(detail, "50111") {
 		t.Fatalf("detail %q", detail)
 	}
 	if strings.Contains(detail, testKey) || strings.Contains(detail, testPassphrase) || strings.Contains(detail, "{") {

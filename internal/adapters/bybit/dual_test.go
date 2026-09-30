@@ -46,13 +46,13 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 	}
 }
 
-func TestRecordedDualPosition(t *testing.T) {
-	var recorded struct {
+func TestDocumentedDualPosition(t *testing.T) {
+	var documented struct {
 		List []dualAssetPosition `json:"list"`
 	}
-	recordedBody(t, "v5_earn_advance_position.DualAssets.20", &recorded)
-	if len(recorded.List) != 1 || recorded.List[0].Status != "Active" || recorded.List[0].Direction != "BuyLow" {
-		t.Fatal("the recorded Dual Asset answer must contain one active BuyLow subscription")
+	sampleBody(t, "v5_earn_advance_position.sell_high", &documented)
+	if len(documented.List) != 1 || documented.List[0].Status != "Active" || documented.List[0].Direction != "SellHigh" {
+		t.Fatal("the documented Dual Asset answer must contain one active SellHigh subscription")
 	}
 
 	r := newReplay(t, "", nil)
@@ -63,20 +63,20 @@ func TestRecordedDualPosition(t *testing.T) {
 	earn := reportOf(t, &batch, TypeEarn)
 	dual := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || dual.Status != adapters.StatusOK || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
-		t.Fatalf("recorded Earn and Dual reports: %+v", batch.Reports)
+		t.Fatalf("documented Earn and Dual reports: %+v", batch.Reports)
 	}
-	row := recorded.List[0]
+	row := documented.List[0]
 	p := dual.DualPositions[0]
 	if p.PlatformPositionRef != row.PositionID || p.ProductRef == nil || *p.ProductRef != row.ProductID || p.OrderRef == nil || *p.OrderRef != row.OrderID ||
 		p.BaseSymbol == nil || *p.BaseSymbol != row.BaseCoin || p.QuoteSymbol == nil || *p.QuoteSymbol != row.QuoteCoin ||
-		p.InvestSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "buy_low" ||
-		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1791014399000 ||
-		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1790755199000 ||
-		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.05880566" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
-		t.Fatalf("recorded Dual Asset terms: %+v", p)
+		p.InvestSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "sell_high" ||
+		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1700600000000 ||
+		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1700000000000 ||
+		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
+		t.Fatalf("documented Dual Asset terms: %+v", p)
 	}
 	if dual.Balances[0].Symbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
-		t.Fatalf("recorded Dual Asset principal: %+v", dual.Balances)
+		t.Fatalf("documented Dual Asset principal: %+v", dual.Balances)
 	}
 	if len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("ordinary Earn must exclude Dual Asset principal: %+v", earn.Balances)

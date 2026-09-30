@@ -1,16 +1,15 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "GET /sapi/v1/account/info",
-    "accountStructure": "binance_pm",
-    "scenario": "invalid_key",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://developers.binance.com/docs/binance-spot-api-docs/errors",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/account/info"
   },
   "status": 400,
   "body": {
-    "code": -2008,
-    "msg": "Invalid Api-Key ID."
+    "code": -2015,
+    "msg": "Invalid API-key, IP, or permissions for action."
   }
 }

@@ -1,0 +1,34 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/market-data",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/dci/product/positions",
+    "query": {
+      "pageIndex": "1",
+      "pageSize": "100",
+      "status": "PURCHASE_SUCCESS"
+    }
+  },
+  "status": 200,
+  "body": {
+    "total": 1,
+    "list": [
+      {
+        "id": 1001,
+        "orderId": 2001,
+        "investCoin": "ETH",
+        "exercisedCoin": "USDT",
+        "subscriptionAmount": "0.1",
+        "optionType": "CALL",
+        "strikePrice": "2100",
+        "apr": "0.12",
+        "purchaseStatus": "PURCHASE_SUCCESS",
+        "settleDate": 1700600000000,
+        "subscriptionTime": 1700000000000
+      }
+    ]
+  }
+}

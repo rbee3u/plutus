@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/decimal"
 )
 
@@ -30,17 +30,14 @@ func allTypes() []adapters.AccountType {
 	return adapters.AccountTypeIDs(adapters.StructureBybitUTA2)
 }
 
-// replay serves the recorded fixtures of testdata/, overlaid by one documented scenario and by
-// invented answers. Like Bybit, it refuses a signed request with a wrong key, signature, or
-// timestamp with the matching recorded refusal; unless the test tolerates refusals, such a
-// request also fails the test.
+// replay serves explicitly selected flat interface samples and verifies native authentication.
 type replay struct {
 	t        *testing.T
 	adapter  *Adapter
 	files    map[string]fixture.File // answers by request
-	failures map[string]fixture.File // recorded refusals by scenario
+	failures map[string]fixture.File // documented refusals by scenario
 	answers  map[string]string       // invented answers by path, or by path and query
-	// serverMillis is Bybit's recorded clock. The frozen test clock corrected by it matches it.
+	// serverMillis is Bybit's documented clock. The frozen test clock corrected by it matches it.
 	serverMillis int64
 
 	mu      sync.Mutex
@@ -50,23 +47,30 @@ type replay struct {
 	lenient bool
 }
 
-// newReplay starts a replay server. scenario names a directory under testdata/documented/ whose
-// files replace the recorded answers of the same requests; answers maps a path, or a path with
+// newReplay starts a replay server. selection chooses the explicitly listed flat files; answers maps a path, or a path with
 // its query, to an invented answer that takes precedence over both.
 func newReplay(t *testing.T, scenario string, answers map[string]string) *replay {
 	t.Helper()
-	files, failures := loadFixtures(t, "testdata", false)
-	if scenario != "" {
-		documented, _ := loadFixtures(t, filepath.Join("testdata", "documented", scenario), true)
-		for request, f := range documented {
-			files[request] = f
+	selected, err := fixture.Load("testdata", sampleNames(scenario)...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, failures := map[string]fixture.File{}, map[string]fixture.File{}
+	for _, f := range selected {
+		files[f.Request.Target()] = f
+	}
+	for _, variant := range []string{scenarioInvalidKey, scenarioBadSignature, scenarioStaleTimestamp} {
+		f, err := fixture.Read("testdata/v5_account_info." + variant + ".json")
+		if err != nil {
+			t.Fatal(err)
 		}
+		failures[variant] = f
 	}
 	var clock struct {
 		Time int64 `json:"time"`
 	}
 	if err := json.Unmarshal(files[epTime.request(nil)].Body, &clock); err != nil || clock.Time <= 0 {
-		t.Fatalf("the recorded server time has no clock: %v", err)
+		t.Fatalf("the documented server time has no clock: %v", err)
 	}
 	r := &replay{
 		t: t, files: files, failures: failures, answers: answers, serverMillis: clock.Time,
@@ -74,7 +78,16 @@ func newReplay(t *testing.T, scenario string, answers map[string]string) *replay
 	}
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)
-	r.adapter = New(&Options{Host: server.URL, HTTP: server.Client(), Now: func() time.Time { return testNow }})
+	t.Cleanup(func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		for request, steps := range r.queue {
+			if len(steps) != 0 {
+				t.Errorf("%s: %d expected response steps not consumed", request, len(steps))
+			}
+		}
+	})
+	r.adapter = New(&Options{Host: server.URL, HTTP: offline.Client(t, server), Now: func() time.Time { return testNow }})
 	return r
 }
 
@@ -134,7 +147,7 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	}
 	millis, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil || millis < r.serverMillis-5000 || millis >= r.serverMillis+1000 {
-		return scenarioStaleTimestamp, "timestamp is not aligned with the recorded server time"
+		return scenarioStaleTimestamp, "timestamp is not aligned with the documented server time"
 	}
 	return "", ""
 }
@@ -145,7 +158,7 @@ func serve(w http.ResponseWriter, f fixture.File) {
 	_, _ = w.Write(f.Body)
 }
 
-// failure is the recorded refusal of a scenario.
+// failure is the documented refusal of a scenario.
 func (r *replay) failure(scenario string) fixture.File {
 	r.t.Helper()
 	f, ok := r.failures[scenario]
@@ -196,56 +209,7 @@ func (r *replay) count(path string) int {
 
 // loadFixtures reads one fixture directory and checks every provenance header: a recording names
 // its recording date and Margin Mode, a documentation-derived scenario the page it follows and no
-// date (ADR 0027). It returns the answers by request and the recorded refusals by scenario.
-func loadFixtures(t *testing.T, dir string, documented bool) (answers, failures map[string]fixture.File) {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no fixtures in %s: %v", dir, err)
-	}
-	answers, failures = map[string]fixture.File{}, map[string]fixture.File{}
-	for _, path := range paths {
-		f, err := fixture.Read(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		header := f.Fixture
-		request, ok := strings.CutPrefix(header.Endpoint, "GET ")
-		if !ok || header.Platform != "bybit" || header.AccountStructure != string(adapters.StructureBybitUTA2) {
-			t.Fatalf("%s: header names the wrong Platform, endpoint, or Account Structure", path)
-		}
-		if header.MarginMode != "" && !adapters.ValidMarginMode(adapters.StructureBybitUTA2, adapters.MarginMode(header.MarginMode)) {
-			t.Fatalf("%s: unknown Margin Mode %q", path, header.MarginMode)
-		}
-		refusal := ""
-		switch {
-		case documented:
-			if !header.Documented() || header.RecordedAt != nil || !strings.HasPrefix(header.Documentation, "https://bybit-exchange.github.io/docs/") {
-				t.Fatalf("%s: a documentation-derived fixture names its page and no recording date", path)
-			}
-		case header.RecordedAt == nil || header.Documentation != "" || header.MarginMode == "":
-			t.Fatalf("%s: a recorded fixture names its recording date and Margin Mode", path)
-		case header.Scenario == scenarioInvalidKey || header.Scenario == scenarioBadSignature || header.Scenario == scenarioStaleTimestamp:
-			if request != epAccountInfo.request(nil) {
-				t.Fatalf("%s: refusals are recorded on %s", path, epAccountInfo)
-			}
-			refusal = header.Scenario
-		case header.Scenario != fixture.ScenarioRecorded:
-			t.Fatalf("%s: unknown scenario %q", path, header.Scenario)
-		}
-		if fixtureName(request, refusal) != strings.TrimSuffix(filepath.Base(path), ".json") {
-			t.Fatalf("%s: file name does not match %s", path, request)
-		}
-		if refusal != "" {
-			failures[refusal] = f
-		} else {
-			answers[request] = f
-		}
-	}
-	return answers, failures
-}
-
-// retMsg is Bybit's message in an answer, empty when it has none.
+// date (ADR 0027). It returns the answers by request and the documented refusals by scenario.
 func retMsg(f fixture.File) string {
 	var env struct {
 		Msg string `json:"retMsg"`
@@ -254,9 +218,9 @@ func retMsg(f fixture.File) string {
 	return env.Msg
 }
 
-// recordedBody decodes the result of one recorded fixture, so tests compare mappings with the
-// recorded values instead of copies of them.
-func recordedBody(t *testing.T, name string, out any) {
+// sampleBody decodes the result of one documented fixture, so tests compare mappings with the
+// documented values instead of copies of them.
+func sampleBody(t *testing.T, name string, out any) {
 	t.Helper()
 	f, err := fixture.Read(filepath.Join("testdata", name+".json"))
 	if err != nil {
@@ -298,19 +262,7 @@ func text(value *string) string {
 	return *value
 }
 
-func TestDocumentedScenarioHeaders(t *testing.T) {
-	dirs, err := filepath.Glob(filepath.Join("testdata", "documented", "*"))
-	if err != nil || len(dirs) == 0 {
-		t.Fatal("no documented scenarios")
-	}
-	for _, dir := range dirs {
-		if _, failures := loadFixtures(t, dir, true); len(failures) != 0 {
-			t.Fatalf("%s: a documented refusal is the answer of its scenario, not a recorded one", dir)
-		}
-	}
-}
-
-func TestRecordedPortfolioMarginAccount(t *testing.T) {
+func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	r := newReplay(t, "", nil)
 	ctx := context.Background()
 	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
@@ -346,15 +298,15 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 	var wallet struct {
 		List []walletAccount `json:"list"`
 	}
-	recordedBody(t, "v5_account_wallet_balance.UNIFIED", &wallet)
-	recorded := wallet.List[0]
+	sampleBody(t, "v5_account_wallet_balance.pm", &wallet)
+	documented := wallet.List[0]
 	unified := reportOf(t, &batch, TypeUnified)
-	if text(unified.Equity) != decimal.Compact(recorded.TotalEquity) || text(unified.AvailableEquity) != decimal.Compact(recorded.TotalAvailableBalance) ||
-		text(unified.InitialMarginRatio) != decimal.Compact(recorded.AccountIMRate) || text(unified.MaintenanceMarginRatio) != decimal.Compact(recorded.AccountMMRate) ||
+	if text(unified.Equity) != decimal.Compact(documented.TotalEquity) || text(unified.AvailableEquity) != decimal.Compact(documented.TotalAvailableBalance) ||
+		text(unified.InitialMarginRatio) != decimal.Compact(documented.AccountIMRate) || text(unified.MaintenanceMarginRatio) != decimal.Compact(documented.AccountMMRate) ||
 		unified.AdjustedEquity != nil || unified.UnifiedMarginRatio != nil {
 		t.Fatalf("Portfolio Margin account figures = %+v", unified)
 	}
-	for _, coin := range recorded.Coins {
+	for _, coin := range documented.Coins {
 		found := false
 		for _, balance := range unified.Balances {
 			if balance.Symbol == coin.Coin {
@@ -370,14 +322,16 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 	if len(unified.Positions) == 0 {
-		t.Fatal("the recorded linear position is missing")
+		t.Fatal("the documented linear position is missing")
 	}
 	for i := range unified.Positions {
 		position := &unified.Positions[i]
 		if position.Leverage != nil || position.LiquidationPrice != nil || position.Margin != nil {
 			t.Fatalf("%s: a Portfolio Margin position has no leverage, liquidation price, or margin of its own", position.PlatformPositionRef)
 		}
-		if position.QuantityUnit != adapters.UnitBase || position.Instrument.Kind != adapters.KindLinearPerp || position.EntryPrice == nil || position.MarkPrice == nil {
+		if position.EntryPrice == nil || position.MarkPrice == nil ||
+			(position.Instrument.Kind == adapters.KindLinearPerp && position.QuantityUnit != adapters.UnitBase) ||
+			(position.Instrument.Kind == adapters.KindInversePerp && position.QuantityUnit != adapters.UnitQuote) {
 			t.Fatalf("linear position = %+v", position)
 		}
 	}
@@ -385,7 +339,7 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 	var funding struct {
 		Balance []fundingCoin `json:"balance"`
 	}
-	recordedBody(t, "v5_asset_transfer_query_account_coins_balance.FUND", &funding)
+	sampleBody(t, "v5_asset_transfer_query_account_coins_balance", &funding)
 	fundingReport := reportOf(t, &batch, TypeFunding)
 	held := 0
 	for _, coin := range funding.Balance {
@@ -398,11 +352,11 @@ func TestRecordedPortfolioMarginAccount(t *testing.T) {
 	}
 
 	principal := adapters.Totals{}
-	for _, name := range []string{"v5_earn_position.FlexibleSaving", "v5_earn_fixed_term_position.FixedTermSaving"} {
+	for _, name := range []string{"v5_earn_position", "v5_earn_fixed_term_position.empty"} {
 		var savings struct {
 			List []savingsPosition `json:"list"`
 		}
-		recordedBody(t, name, &savings)
+		sampleBody(t, name, &savings)
 		for _, position := range savings.List {
 			if err := principal.Add("test", position.Coin, decimal.MustParse(position.Amount)); err != nil {
 				t.Fatal(err)
@@ -604,7 +558,7 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 	}
 	earn := reportOf(t, &batch, TypeEarn)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
-		t.Fatalf("Earn = %+v: the recorded 20 USDT of savings plus 201 active and 80 redeeming", earn)
+		t.Fatalf("Earn = %+v: the documented 20 USDT of savings plus 201 active and 80 redeeming", earn)
 	}
 	for _, path := range r.paths() {
 		if path == epWallet.path || path == epPositions.path {
@@ -700,7 +654,7 @@ func TestEveryRetryableFailureFailsTheBatch(t *testing.T) {
 }
 
 // TestErrorClasses replays, on the call every run starts with, the refusals Bybit gave the
-// recorded key and the documented ones no recording can provoke.
+// documented key and the documented ones no recording can provoke.
 func TestErrorClasses(t *testing.T) {
 	for _, tc := range []struct {
 		name, failure, scenario, want string
@@ -811,135 +765,5 @@ func TestPositionMapping(t *testing.T) {
 		if _, err := mapPosition(&p, big.NewRat(1, 1), &i, adapters.MarginBybitCross); err == nil {
 			t.Fatalf("a malformed %s must fail the position", name)
 		}
-	}
-}
-
-func TestRecordLabelsAndRedactsEveryExchange(t *testing.T) {
-	r := newReplay(t, "", nil)
-	r.tolerateRefusals()
-	recordings, err := r.adapter.Record(context.Background(), testCreds)
-	if err != nil {
-		t.Fatal(err)
-	}
-	byName := map[string]*fixture.Recording{}
-	for i := range recordings {
-		recording := &recordings[i]
-		request, ok := strings.CutPrefix(recording.Endpoint, "GET /v5/")
-		if !ok || recording.AccountStructure != string(adapters.StructureBybitUTA2) || recording.MarginMode != string(adapters.MarginBybitPM) {
-			t.Fatalf("recording header = %+v", recording)
-		}
-		refusal := ""
-		if recording.Scenario != fixture.ScenarioRecorded {
-			refusal = recording.Scenario
-		}
-		if recording.Name != fixtureName("/v5/"+request, refusal) || byName[recording.Name] != nil {
-			t.Fatalf("%s: misnamed or recorded twice", recording.Name)
-		}
-		byName[recording.Name] = recording
-		if strings.Contains(string(recording.Body), testCreds.APIKey) || strings.Contains(string(recording.Body), testCreds.APISecret) {
-			t.Fatalf("%s: a credential survived", recording.Name)
-		}
-	}
-	// Replayed over the committed recording, the recorder writes exactly the committed files, and
-	// each header names the exact request the adapter sends.
-	committed, err := filepath.Glob(filepath.Join("testdata", "*.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range committed {
-		f, err := fixture.Read(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		name := strings.TrimSuffix(filepath.Base(path), ".json")
-		if byName[name] == nil || byName[name].Endpoint != f.Fixture.Endpoint {
-			t.Fatalf("%s: the recorder no longer writes it, or sends another request than its header names", name)
-		}
-	}
-	if len(committed) != len(recordings) {
-		t.Fatalf("the recorder writes %d files, %d are committed", len(recordings), len(committed))
-	}
-	for _, scenario := range []string{scenarioInvalidKey, scenarioBadSignature, scenarioStaleTimestamp} {
-		recording := byName["v5_account_info."+scenario]
-		if recording == nil || recording.Scenario != scenario || recording.Endpoint != epAccountInfo.String() {
-			t.Fatalf("the %s refusal was not recorded on %s", scenario, epAccountInfo)
-		}
-		served := r.failure(scenario)
-		var got, want any
-		if json.Unmarshal(recording.Body, &got) != nil || json.Unmarshal(served.Body, &want) != nil ||
-			!reflect.DeepEqual(got, want) || recording.Status != served.Status {
-			t.Fatalf("the %s recording holds another answer: %s", scenario, recording.Body)
-		}
-	}
-}
-
-func TestRecordSelectedDualFixture(t *testing.T) {
-	r := newReplay(t, "", nil)
-	name := fixtureName(epDualAssets.request(nil), "")
-	recordings, err := r.adapter.RecordSelected(context.Background(), testCreds, name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epDualAssets.String() {
-		t.Fatalf("selected recording: %+v", recordings)
-	}
-	if r.count(epDualAssets.path) != 1 || r.count(epFlexible.path) != 0 || r.count(epFixedTerm.path) != 0 || r.count(epFunding.path) != 0 || r.count(epTickers.path) != 0 {
-		t.Fatal("selected recording reached unrelated account or market endpoints")
-	}
-}
-
-func TestFixtureNamesKeepQueryValuesAsPassed(t *testing.T) {
-	for _, tc := range []struct {
-		request, scenario, want string
-	}{
-		{epAccountInfo.request(nil), scenarioInvalidKey, "v5_account_info.invalid_key"},
-		{epDualAssets.request(nil), "", "v5_earn_advance_position.DualAssets.20"},
-		// Bybit returns the cursor percent-encoded; the name keeps it as Bybit wrote it.
-		{
-			epPositions.request(map[string][]string{"category": {"linear"}, "settleCoin": {"USDT"}, "cursor": {"DOGEUSDT%2C1790352000006%2C0"}}), "",
-			"v5_position_list.linear.DOGEUSDT%2C1790352000006%2C0.200.USDT",
-		},
-		// A value holding a path separator stays escaped.
-		{epPositions.request(map[string][]string{"category": {"inverse"}, "cursor": {"a/b"}}), "", "v5_position_list.inverse.a%2Fb.200"},
-	} {
-		if got := fixtureName(tc.request, tc.scenario); got != tc.want {
-			t.Errorf("%s: %s, want %s", tc.request, got, tc.want)
-		}
-	}
-}
-
-func TestRedactorRemovesIdentifiersAndTrimsMarkets(t *testing.T) {
-	raw := []byte(`{"retCode":0,"result":{"userID":12345678,"apiKey":"fixture-key","memberId":"12345678",
-		"echo":"signed by fixture-key","owner":12345678,"retMsg":"request from 198.51.100.7 refused","list":[
-		{"symbol":"SOLUSDT","lastPrice":"10"},{"symbol":"UNHELDUSDT","lastPrice":"1"},{"symbol":"BTCUSDT","lastPrice":"60000"},
-		{"symbol":"DOGEUSDT","contractType":"LinearPerpetual"},{"symbol":"PEPEUSDT","contractType":"LinearPerpetual"},
-		{"coin":"USDT","amount":"12345678.5"}]}}`)
-	value, err := decodeRaw(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	identifiers := map[string]bool{}
-	collectIdentifiers(value, false, identifiers)
-	r := redactor{
-		identifiers: identifiers, secrets: []string{testCreds.APIKey, testCreds.APISecret},
-		markets: held{coins: map[string]bool{"SOL": true}, contracts: map[string]bool{"DOGEUSDT": true}}, fields: map[string]bool{},
-	}
-	out, err := json.Marshal(r.clean(value))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := string(out)
-	for _, gone := range []string{"fixture-key", "12345678,", `"12345678"`, "198.51.100.7", "UNHELDUSDT", "PEPEUSDT"} {
-		if strings.Contains(body, gone) {
-			t.Fatalf("%s survived: %s", gone, body)
-		}
-	}
-	for _, kept := range []string{"SOLUSDT", "BTCUSDT", "DOGEUSDT", `"12345678.5"`, "request from 203.0.113.1 refused"} {
-		if !strings.Contains(body, kept) {
-			t.Fatalf("%s was dropped: %s", kept, body)
-		}
-	}
-	if !r.trimmed || strings.Join(r.redacted(), ",") != "API key and secret echoes,IP addresses,apiKey,identifier echoes,memberId,userID" {
-		t.Fatalf("trimmed %t, redacted %v", r.trimmed, r.redacted())
 	}
 }

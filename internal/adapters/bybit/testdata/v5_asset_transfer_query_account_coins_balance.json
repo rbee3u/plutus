@@ -1,0 +1,29 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/asset/balance/all-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/asset/transfer/query-account-coins-balance",
+    "query": {
+      "accountType": "FUND"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "accountType": "FUND",
+      "balance": [
+        {
+          "coin": "USDT",
+          "walletBalance": "100",
+          "transferBalance": "90"
+        }
+      ]
+    },
+    "time": 1700000000000
+  }
+}

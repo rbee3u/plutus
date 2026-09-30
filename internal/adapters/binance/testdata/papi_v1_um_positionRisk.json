@@ -1,42 +1,23 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "GET /papi/v1/um/positionRisk",
-    "accountStructure": "binance_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-um-position-information-user_data",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/um/positionRisk"
   },
   "status": 200,
   "body": [
     {
-      "symbol": "ZECUSDT",
-      "positionAmt": "-0.2",
-      "entryPrice": "1511.9859499999995",
-      "markPrice": "1556.47818797",
-      "unRealizedProfit": "-8.89844759",
-      "liquidationPrice": "28338.9404089",
-      "leverage": "3",
+      "symbol": "BTCUSDT",
+      "positionAmt": "0.01",
       "positionSide": "BOTH",
-      "updateTime": 1789709489699,
-      "maxNotionalValue": "10000000",
-      "notional": "-311.29563759",
-      "breakEvenPrice": "1511.2299570249997"
-    },
-    {
-      "symbol": "牛来USDT",
-      "positionAmt": "-500.0",
-      "entryPrice": "0.11284999999999999",
-      "markPrice": "0.10331",
-      "unRealizedProfit": "4.77",
-      "liquidationPrice": "10.38879335",
-      "leverage": "3",
-      "positionSide": "BOTH",
-      "updateTime": 1788091034184,
-      "maxNotionalValue": "250000.0",
-      "notional": "-51.655",
-      "breakEvenPrice": "0.112793575"
+      "entryPrice": "29000",
+      "markPrice": "30000",
+      "liquidationPrice": "15000",
+      "unRealizedProfit": "10",
+      "leverage": "5"
     }
   ]
 }

@@ -1,0 +1,36 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/market/tickers",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/tickers",
+    "query": {
+      "category": "spot"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "category": "spot",
+      "list": [
+        {
+          "symbol": "BTCUSDT",
+          "lastPrice": "30000"
+        },
+        {
+          "symbol": "ETHUSDT",
+          "lastPrice": "2000"
+        },
+        {
+          "symbol": "USDTUSDC",
+          "lastPrice": "1"
+        }
+      ]
+    },
+    "time": 1700000000000
+  }
+}

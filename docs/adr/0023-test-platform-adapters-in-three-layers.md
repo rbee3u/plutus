@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded by ADR-0036
 ---
 
 # Test Platform adapters in three layers and record fixtures offline
+
+Adapter verification, recording and delivery gates below are historical. [ADR 0036](./0036-use-flat-interface-samples-and-single-request-recording.md) supersedes them; fake-adapter and temporary-database rules remain in force.
 
 Live Platform adapters cannot be verified by the deterministic fake, and real exchange calls cannot run inside `make test`: they need keys, network, and produce different numbers every minute. Adapter verification is therefore split into three layers, each answering one question.
 

@@ -1,0 +1,25 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/account/account-info",
+  "notes": "Documentation example with unifiedMarginStatus 5 instead of 4.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "marginMode": "REGULAR_MARGIN",
+      "updatedTime": "1697078946000",
+      "unifiedMarginStatus": 5,
+      "dcpStatus": "OFF",
+      "timeWindow": 10,
+      "smpGroup": 0,
+      "isMasterTrader": false,
+      "spotHedgingStatus": "OFF"
+    }
+  }
+}

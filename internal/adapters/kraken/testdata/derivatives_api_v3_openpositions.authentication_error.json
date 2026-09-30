@@ -1,0 +1,16 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/account-information/get-open-positions",
+  "notes": "The endpoint documents authenticationError among its errors; the envelope is the apiLimitExceeded example of the Futures rate-limit guide with that error name. The documentation gives no HTTP status; 200 is assumed, because Futures reports errors in the body.",
+  "request": {
+    "service": "futures",
+    "method": "GET",
+    "path": "/derivatives/api/v3/openpositions"
+  },
+  "status": 200,
+  "body": {
+    "result": "error",
+    "serverTime": "2016-02-25T09:45:53.818Z",
+    "error": "authenticationError"
+  }
+}

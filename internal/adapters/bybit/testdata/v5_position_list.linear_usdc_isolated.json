@@ -1,0 +1,27 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/position",
+  "notes": "Documentation example with an empty list: this documented account holds only the documented inverse position.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/position/list",
+    "query": {
+      "category": "linear",
+      "limit": "200",
+      "settleCoin": "USDC"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "list": [],
+      "nextPageCursor": "",
+      "category": "linear"
+    },
+    "retExtInfo": {},
+    "time": 1697684980172
+  }
+}

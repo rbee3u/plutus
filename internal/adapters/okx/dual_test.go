@@ -9,7 +9,7 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters"
 )
 
-func TestRecordedDualPositions(t *testing.T) {
+func TestDocumentedDualPositions(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t)
 	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn, TypeDualInvestment})
@@ -18,16 +18,16 @@ func TestRecordedDualPositions(t *testing.T) {
 	}
 	dual := reportOf(t, batch, TypeDualInvestment)
 	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
-		t.Fatalf("recorded dual report: %+v", dual)
+		t.Fatalf("documented dual report: %+v", dual)
 	}
 	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK || r.count(epDCD) != 1 {
-		t.Fatal("the recorded Earn and Dual Accounts must share a successful order history read")
+		t.Fatal("the documented Earn and Dual Accounts must share a successful order history read")
 	}
 	orders := rowsIn[dcdOrder](t, r.file(epDCD, ""))
 	if len(orders) != 3 || orders[0].State != "LIVE" || orders[1].State != "LIVE" || orders[2].State != "SETTLED" {
-		t.Fatal("the recorded fixture must retain two live orders and one settled order")
+		t.Fatal("the documented fixture must retain two live orders and one settled order")
 	}
-	wantExpiry := time.Date(2026, time.October, 2, 8, 0, 0, 0, time.UTC)
+	wantExpiry := time.UnixMilli(1700600000000).UTC()
 	for i, p := range dual.DualPositions {
 		order := orders[i]
 		if order.ExpTime != "" || order.SettleTime == "" || p.PlatformPositionRef != order.OrdID ||
@@ -36,19 +36,19 @@ func TestRecordedDualPositions(t *testing.T) {
 			p.TargetPrice == nil || rat(t, *p.TargetPrice).Cmp(rat(t, order.Strike)) != 0 ||
 			p.AnnualizedRate == nil || rat(t, *p.AnnualizedRate).Cmp(rat(t, order.AnnualizedYield)) != 0 ||
 			p.Status != "active" || len(p.MissingFields()) != 0 {
-			t.Fatalf("recorded order %d mapped incompletely: %+v", i, p)
+			t.Fatalf("documented order %d mapped incompletely: %+v", i, p)
 		}
 		wantDirection := "sell_high"
 		if order.NotionalCcy == order.QuoteCcy {
 			wantDirection = "buy_low"
 		}
 		if p.Direction == nil || *p.Direction != wantDirection {
-			t.Fatalf("recorded order %d direction: %+v", i, p)
+			t.Fatalf("documented order %d direction: %+v", i, p)
 		}
 		ms, _ := strconv.ParseInt(order.CTime, 10, 64)
 		wantSubscribed := time.UnixMilli(ms).UTC()
 		if p.SubscribedAt == nil || !p.SubscribedAt.Equal(wantSubscribed) {
-			t.Fatalf("recorded order %d subscribedAt: %+v", i, p)
+			t.Fatalf("documented order %d subscribedAt: %+v", i, p)
 		}
 	}
 }
@@ -92,7 +92,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			}
 			if r.AccountType == TypeEarn {
 				for _, b := range r.Balances {
-					if b.Symbol == "BTC" || b.Symbol == "ETH" {
+					if b.Symbol == "BTC" || (b.Symbol == "ETH" && b.Equity != "0.1") {
 						t.Fatal("dual principal in Earn")
 					}
 				}

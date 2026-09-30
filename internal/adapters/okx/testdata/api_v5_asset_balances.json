@@ -1,43 +1,23 @@
 {
-  "fixture": {
-    "platform": "okx",
-    "endpoint": "GET /api/v5/asset/balances",
-    "accountStructure": "okx_unified",
-    "marginMode": "okx_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T18:18:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#funding-account-rest-api-get-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/asset/balances"
   },
   "status": 200,
   "body": {
     "code": "0",
+    "msg": "",
     "data": [
       {
-        "availBal": "88.6411588962334172",
-        "bal": "88.6411588962334172",
         "ccy": "USDT",
-        "frozenBal": "0"
-      },
-      {
-        "availBal": "0.00000001",
-        "bal": "0.00000001",
-        "ccy": "USDC",
-        "frozenBal": "0"
-      },
-      {
-        "availBal": "0.0000000045502193",
-        "bal": "0.0000000045502193",
-        "ccy": "ENS",
-        "frozenBal": "0"
-      },
-      {
-        "availBal": "0.0000000042335077",
-        "bal": "0.0000000042335077",
-        "ccy": "NIGHT",
-        "frozenBal": "0"
+        "bal": "100",
+        "availBal": "90",
+        "frozenBal": "10"
       }
-    ],
-    "msg": ""
+    ]
   }
 }

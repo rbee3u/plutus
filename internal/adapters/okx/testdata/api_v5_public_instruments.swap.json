@@ -1,0 +1,50 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#public-data-rest-api-get-instruments",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/public/instruments",
+    "query": {
+      "instType": "SWAP"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "instId": "BTC-USDT-SWAP",
+        "instType": "SWAP",
+        "ctType": "linear",
+        "ctVal": "0.01",
+        "ctValCcy": "BTC",
+        "settleCcy": "USDT",
+        "uly": "BTC-USDT",
+        "expTime": ""
+      },
+      {
+        "instId": "BTC-USD-SWAP",
+        "instType": "SWAP",
+        "ctType": "inverse",
+        "ctVal": "100",
+        "ctValCcy": "USD",
+        "settleCcy": "BTC",
+        "uly": "BTC-USD",
+        "expTime": ""
+      },
+      {
+        "instId": "ETH-USDT-SWAP",
+        "instType": "SWAP",
+        "ctType": "linear",
+        "ctVal": "0.1",
+        "ctValCcy": "ETH",
+        "settleCcy": "USDT",
+        "uly": "ETH-USDT",
+        "expTime": ""
+      }
+    ]
+  }
+}

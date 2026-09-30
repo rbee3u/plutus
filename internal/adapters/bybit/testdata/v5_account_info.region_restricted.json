@@ -1,0 +1,17 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/error",
+  "notes": "Bybit lists code 10009 with this message but shows no answer: the envelope keeps the retCode, retMsg, result, and retExtInfo of Bybit's response examples, with HTTP 200 like its other retCode refusals.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 200,
+  "body": {
+    "retCode": 10009,
+    "retMsg": "Service Restricted: Access is currently unavailable for your region. Please contact our support team for further assistance",
+    "result": {},
+    "retExtInfo": {}
+  }
+}

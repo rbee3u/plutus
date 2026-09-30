@@ -1,0 +1,51 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-cross-margin-account-details",
+  "notes": "userAssets extends the example's BTC row with a borrowed USDT row, whose netAsset is free + locked - borrowed - interest, and an all-zero ETH row, as Binance also lists coins that hold nothing.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/margin/account"
+  },
+  "status": 200,
+  "body": {
+    "created": true,
+    "borrowEnabled": true,
+    "marginLevel": "11.64405625",
+    "collateralMarginLevel": "3.2",
+    "totalAssetOfBtc": "6.82728457",
+    "totalLiabilityOfBtc": "0.58633215",
+    "totalNetAssetOfBtc": "6.24095242",
+    "TotalCollateralValueInUSDT": "5.82728457",
+    "tradeEnabled": true,
+    "transferInEnabled": true,
+    "transferOutEnabled": true,
+    "accountType": "MARGIN_1",
+    "userAssets": [
+      {
+        "asset": "BTC",
+        "borrowed": "0.00000000",
+        "free": "0.00499500",
+        "interest": "0.00000000",
+        "locked": "0.00000000",
+        "netAsset": "0.00499500"
+      },
+      {
+        "asset": "USDT",
+        "borrowed": "100.00000000",
+        "free": "50.00000000",
+        "interest": "0.00416667",
+        "locked": "0.00000000",
+        "netAsset": "-50.00416667"
+      },
+      {
+        "asset": "ETH",
+        "borrowed": "0.00000000",
+        "free": "0.00000000",
+        "interest": "0.00000000",
+        "locked": "0.00000000",
+        "netAsset": "0.00000000"
+      }
+    ]
+  }
+}

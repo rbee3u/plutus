@@ -1,0 +1,52 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-account-configuration",
+  "notes": "The documentation's example with acctLv 1 (Spot mode) instead of 2, enableSpotBorrow true, and posMode net_mode.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/account/config"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "acctLv": "1",
+        "acctStpMode": "cancel_maker",
+        "autoLoan": false,
+        "ctIsoMode": "automatic",
+        "enableSpotBorrow": true,
+        "greeksType": "PA",
+        "feeType": "0",
+        "ip": "",
+        "type": "0",
+        "kycLv": "3",
+        "label": "plutus-fixture",
+        "level": "Lv1",
+        "levelTmp": "",
+        "liquidationGear": "-1",
+        "mainUid": "100000000000000001",
+        "mgnIsoMode": "automatic",
+        "opAuth": "1",
+        "perm": "read_only,withdraw,trade",
+        "posMode": "net_mode",
+        "roleType": "0",
+        "spotBorrowAutoRepay": false,
+        "spotOffsetType": "",
+        "spotRoleType": "0",
+        "spotTraderInsts": [],
+        "stgyType": "0",
+        "traderInsts": [],
+        "uid": "100000000000000001",
+        "settleCcy": "USDC",
+        "settleCcyList": [
+          "USD",
+          "USDC",
+          "USDG"
+        ]
+      }
+    ],
+    "msg": ""
+  }
+}

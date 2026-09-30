@@ -1,6 +1,5 @@
 .DS_Store
 /.idea/
-/bin/
 /dist/
 /tmp/
 /config/local.toml

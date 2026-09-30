@@ -1,0 +1,14 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#get-current-multi-assets-mode",
+  "notes": "Documentation-derived response contract sample with illustrative business values; not recorded evidence.",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v1/multiAssetsMargin"
+  },
+  "status": 200,
+  "body": {
+    "multiAssetsMargin": true
+  }
+}

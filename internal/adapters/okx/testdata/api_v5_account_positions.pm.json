@@ -1,0 +1,32 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-positions",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/account/positions"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "instId": "BTC-USDT-SWAP",
+        "instType": "SWAP",
+        "posId": "1",
+        "posSide": "net",
+        "pos": "1",
+        "mgnMode": "cross",
+        "ccy": "USDT",
+        "avgPx": "49000",
+        "markPx": "50000",
+        "liqPx": "",
+        "upl": "100",
+        "lever": "0",
+        "margin": ""
+      }
+    ]
+  }
+}

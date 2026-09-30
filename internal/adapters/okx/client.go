@@ -153,7 +153,7 @@ func (c *client) fetch(ctx context.Context, ep endpoint) (response, error) {
 			return response{}, err
 		}
 	}
-	resp, err := c.send(ctx, ep, c.creds, "")
+	resp, err := c.send(ctx, ep, c.creds)
 	if err != nil {
 		return response{}, err
 	}
@@ -161,14 +161,14 @@ func (c *client) fetch(ctx context.Context, ep endpoint) (response, error) {
 		if err := c.syncClock(ctx); err != nil {
 			return response{}, err
 		}
-		return c.send(ctx, ep, c.creds, "")
+		return c.send(ctx, ep, c.creds)
 	}
 	return resp, nil
 }
 
 func (c *client) syncClock(ctx context.Context) error {
 	sent := c.clock.now()
-	resp, err := c.send(ctx, epTime, adapters.Credentials{}, "")
+	resp, err := c.send(ctx, epTime, adapters.Credentials{})
 	if err != nil {
 		return err
 	}
@@ -189,9 +189,8 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs, and performs one request. timestamp overrides the synchronized clock (the
-// recorder uses it to capture an expired-timestamp answer); an empty value uses the clock.
-func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentials, timestamp string) (response, error) {
+// send builds, signs and performs one request using the client clock.
+func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, ep.method, c.host+ep.request(), http.NoBody)
@@ -200,9 +199,7 @@ func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentia
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if ep.signed {
-		if timestamp == "" {
-			timestamp = c.clock.timestamp()
-		}
+		timestamp := c.clock.timestamp()
 		mac := hmac.New(sha256.New, []byte(creds.APISecret))
 		_, _ = mac.Write([]byte(timestamp + ep.method + ep.request()))
 		// OKX documents these as OK-ACCESS-*; header names are case-insensitive.

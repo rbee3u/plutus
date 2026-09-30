@@ -1,0 +1,25 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/position",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/position/list",
+    "query": {
+      "category": "option",
+      "limit": "200"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "category": "option",
+      "list": [],
+      "nextPageCursor": ""
+    },
+    "time": 1700000000000
+  }
+}

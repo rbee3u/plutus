@@ -1,70 +1,65 @@
 {
-  "fixture": {
-    "platform": "kraken",
-    "endpoint": "GET /0/public/Assets",
-    "accountStructure": "kraken_unified",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T20:10:30Z",
-    "trimmed": "Kept the assets of recorded balances plus BTC, ETH, USD, USDT, and USDC.",
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/market-data/get-asset-info",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/0/public/Assets"
   },
   "status": 200,
   "body": {
     "error": [],
     "result": {
-      "USDC": {
-        "aclass": "currency",
-        "altname": "USDC",
-        "collateral_value": 0.995,
+      "XXBT": {
+        "altname": "XBT",
         "decimals": 8,
-        "display_decimals": 4,
-        "margin_rate": "0.02",
-        "status": "enabled"
-      },
-      "USDT": {
-        "aclass": "currency",
-        "altname": "USDT",
-        "collateral_value": 0.995,
-        "decimals": 8,
-        "display_decimals": 4,
-        "margin_rate": "0.02",
-        "status": "enabled"
+        "display_decimals": 5
       },
       "XETH": {
-        "aclass": "currency",
         "altname": "ETH",
-        "collateral_value": 0.99,
-        "decimals": 10,
-        "display_decimals": 5,
-        "margin_rate": "0.02",
-        "status": "enabled"
-      },
-      "XXBT": {
-        "aclass": "currency",
-        "altname": "XBT",
-        "collateral_value": 0.99,
-        "decimals": 10,
-        "display_decimals": 5,
-        "margin_rate": "0.01",
-        "status": "enabled"
-      },
-      "XXRP": {
-        "aclass": "currency",
-        "altname": "XRP",
-        "collateral_value": 0.95,
         "decimals": 8,
-        "display_decimals": 5,
-        "margin_rate": "0.02",
-        "status": "enabled"
+        "display_decimals": 5
       },
       "ZUSD": {
-        "aclass": "currency",
         "altname": "USD",
-        "collateral_value": 1.0,
-        "decimals": 4,
-        "display_decimals": 2,
-        "margin_rate": "0.036",
-        "status": "enabled"
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "USDT": {
+        "altname": "USDT",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "USDC": {
+        "altname": "USDC",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "XLTC": {
+        "altname": "LTC",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "XRP": {
+        "altname": "XRP",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "BCH": {
+        "altname": "BCH",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "ZEUR": {
+        "altname": "EUR",
+        "decimals": 8,
+        "display_decimals": 5
+      },
+      "ZGBP": {
+        "altname": "GBP",
+        "decimals": 8,
+        "display_decimals": 5
       }
     }
   }

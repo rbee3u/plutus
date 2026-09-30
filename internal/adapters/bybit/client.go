@@ -147,7 +147,7 @@ func (c *client) call(ctx context.Context, ep endpoint, params url.Values, out a
 		}
 	}
 	request := ep.request(params)
-	resp, err := c.send(ctx, ep, request, c.creds, "")
+	resp, err := c.send(ctx, ep, request, c.creds)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (c *client) call(ctx context.Context, ep endpoint, params url.Values, out a
 		if err := c.syncClock(ctx); err != nil {
 			return err
 		}
-		if resp, err = c.send(ctx, ep, request, c.creds, ""); err != nil {
+		if resp, err = c.send(ctx, ep, request, c.creds); err != nil {
 			return err
 		}
 	}
@@ -166,7 +166,7 @@ func (c *client) call(ctx context.Context, ep endpoint, params url.Values, out a
 // the moment the server read its clock.
 func (c *client) syncClock(ctx context.Context) error {
 	sent := c.clock.now()
-	resp, err := c.send(ctx, epTime, epTime.request(nil), c.creds, "")
+	resp, err := c.send(ctx, epTime, epTime.request(nil), c.creds)
 	if err != nil {
 		return err
 	}
@@ -190,11 +190,8 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs, and performs one request. Bybit signs a GET over the timestamp, the API
-// key, the receive window, and the query string exactly as sent. Every call signs with the
-// client's credentials and an empty timestamp, which selects the corrected clock; only the
-// recorder passes others, to provoke refusals.
-func (c *client) send(ctx context.Context, ep endpoint, request string, creds adapters.Credentials, timestamp string) (response, error) {
+// send builds, signs and performs one request using the client clock.
+func (c *client) send(ctx context.Context, ep endpoint, request string, creds adapters.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, c.host+request, http.NoBody)
@@ -202,9 +199,7 @@ func (c *client) send(ctx context.Context, ep endpoint, request string, creds ad
 		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
 	}
 	if ep.signed {
-		if timestamp == "" {
-			timestamp = c.clock.timestamp()
-		}
+		timestamp := c.clock.timestamp()
 		_, query, _ := strings.Cut(request, "?")
 		mac := hmac.New(sha256.New, []byte(creds.APISecret))
 		_, _ = mac.Write([]byte(timestamp + creds.APIKey + recvWindowMillis + query))

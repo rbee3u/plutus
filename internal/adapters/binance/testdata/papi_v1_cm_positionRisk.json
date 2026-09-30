@@ -1,28 +1,23 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "GET /papi/v1/cm/positionRisk",
-    "accountStructure": "binance_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-cm-position-information-user_data",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/cm/positionRisk"
   },
   "status": 200,
   "body": [
     {
-      "symbol": "DOGEUSD_PERP",
-      "positionAmt": "1",
-      "entryPrice": "0.10174",
-      "markPrice": "0.09778163",
-      "unRealizedProfit": "-3.97893991",
-      "liquidationPrice": "0.00018275",
-      "leverage": "3",
+      "symbol": "BTCUSD_PERP",
+      "positionAmt": "-2",
       "positionSide": "BOTH",
-      "updateTime": 1790144246362,
-      "maxQty": "20000000",
-      "notionalValue": "102.26869812",
-      "breakEvenPrice": "0.10179087"
+      "entryPrice": "29000",
+      "markPrice": "30000",
+      "liquidationPrice": "45000",
+      "unRealizedProfit": "-0.0002",
+      "leverage": "3"
     }
   ]
 }

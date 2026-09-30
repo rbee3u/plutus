@@ -22,8 +22,8 @@ The adapter calls `https://openapi.okx.com`. OKX requires accounts registered on
 | --- | --- | --- | --- | --- |
 | `1` | `okx_spot` | Spot mode | Spot, spot borrowing once enabled, bought options. No swaps or futures. | documented |
 | `2` | `okx_futures` | Futures mode | Spot, margin, swaps, futures, options. Margin is assessed per coin, and spot margin borrowings are `MARGIN` positions. | documented |
-| `3` | `okx_mcm` | Multi-currency margin | Every product, cross-collateralized in USD | recorded Portfolio margin set replayed as level 3 |
-| `4` | `okx_pm` | Portfolio margin | As Multi-currency margin, margined by portfolio risk | recorded and live 2026-09-25 |
+| `3` | `okx_mcm` | Multi-currency margin | Every product, cross-collateralized in USD | documented mode-specific response |
+| `4` | `okx_pm` | Portfolio margin | As Multi-currency margin, margined by portfolio risk | documented mode-specific response |
 | empty | none | | `normalization` | tested |
 | any other | none | | `unsupported`, naming the level. The run fails before any Account is read. | tested with `5` |
 
@@ -42,8 +42,6 @@ Validation returns the account's `uid` as the External Ref, plus the Margin Mode
 | `dual_investment` | `GET /api/v5/finance/sfp/dcd/order-history?limit=100` and its next pages `?endId=<ordId>&limit=100` | yes | 1 / s per User ID |
 | Combined Earn/Dual completeness | `GET /api/v5/asset/asset-valuation?ccy=USDT` | yes | 1 / s per User ID |
 | Prices | `GET /api/v5/market/tickers?instType=SPOT` (every spot pair in one call, fetched before the Account calls so its time precedes every report) | no | 20 / 2 s per IP |
-
-Every signed endpoint needs only the key's Read permission. On 2026-09-25 the test environment's read-only key reached all of them, including the dual investment order history and the asset valuation.
 
 Signed requests carry four headers:
 
@@ -110,7 +108,7 @@ The other `funding` and `earn` columns are null. OKX gives no full coin names, s
 
 Mapping rules:
 
-- **Equity.** `eq` is taken as reported, never rebuilt. OKX does not document its composition, and on the recorded account it differs from `cashBal + upl`. But the per-coin USD equities `eqUsd` add up to `totalEq` exactly, so `eq` is the figure consistent with the account equity. It already includes isolated margin, unrealized PnL, and option value.
+- **Equity.** `eq` is taken as reported, never rebuilt. OKX does not document its composition, and it must not be replaced by `cashBal + upl`. The per-coin field remains distinct from the account-wide `totalEq`. It already includes isolated margin, unrealized PnL, and option value.
 - **Spot mode borrowings.** `liab` already includes the accrued interest, according to OKX's help article on Spot mode borrowing. `interest` is shown beside it and never added again.
 - **Futures mode borrowings.** They exist only on `MARGIN` position rows, which are skipped (see [Position](#position)), so no Balance shows them.
 - **Required amounts.** `eq`, `bal`, each `amt`, and each invested order's `notionalSz` are required. An empty one fails its Account with `normalization`, naming the coin. Read as zero, it would drop the coin under the Complete Set rule. The other fields may be empty and then stay null.
@@ -140,8 +138,6 @@ The states come from all of OKX's dual investment endpoints. The order history's
 3. Every page must list strictly decreasing order ids, below the previous page's oldest. Otherwise selected Earn and Dual Accounts fail with `normalization`, because a page out of order could end the walk before an invested order.
 4. If ten full pages (1,000 orders) do not reach the end, selected Earn and Dual Accounts fail with `unsupported` and go Stale ([ADR 0019](../adr/0019-carry-a-failed-account-as-stale-and-treat-success-as-complete.md)). It never reads a partial history and drops an older order that is still invested.
 
-OKX documents `code` as a string, but this endpoint answers with a number (`"code": 0`, observed 2026-09-25 and 2026-09-29). The recorded orders use uppercase states (`LIVE`, `SETTLED`); state matching ignores case. Both forms of `code` are accepted everywhere.
-
 **Settlement window.** An order settles at its product's expiry, and OKX pays out to Funding. OKX does not document how long the payout takes. A run inside that window can go either way:
 
 - The order has already left the counted states and the payout is not yet in Funding. The value dips.
@@ -152,11 +148,6 @@ The next run after both have updated is correct again. Telling the two apart wou
 ## Earn check
 
 OKX keeps adding Earn products. One the adapter cannot read would otherwise vanish from a successful `earn` report. So after itemizing, the adapter reads `GET /api/v5/asset/asset-valuation?ccy=USDT`, OKX's own valuation split into `trading`, `funding`, `earn`, and the deprecated `classic` bucket. It compares `details.earn` with the combined ordinary Earn and Dual Balances valued at the batch's prices ([ADR 0033](../adr/0033-separate-dual-investment-accounts-and-positions.md)). USDT counts as USD ([ADR 0017](../adr/0017-value-in-usd-and-treat-major-stablecoins-as-usd.md)), the quote the Balances are priced in.
-
-- **Too high.** If OKX's figure exceeds the itemized value by more than max(1% of OKX's figure, 1 USD), selected Earn and Dual Accounts fail with `unsupported`, naming both amounts, and go Stale. The tolerance absorbs the difference between OKX's prices and the batch's.
-- **Missing.** A missing or empty `details.earn` fails selected Earn and Dual Accounts with `normalization`.
-- **Skipped.** The check is skipped when an Earn or Dual Balance has no price. That happens for a coin without a USDT or USDC pair, and for every coin but USD, USDT, and USDC when the ticker call failed. Valuation already marks such a Balance `no_price`.
-- **One-sided.** An itemized value above OKX's never fails. So a product OKX leaves out of its `earn` bucket cannot trip the check. The 2026-09-25 recording had no Dual order; the 2026-09-29 recording and live comparison cover funded Dual principal. The live test logs that principal and the aggregate residual separately.
 
 ## Dual Investment Account and positions
 
@@ -172,7 +163,7 @@ Selecting either `earn` or `dual_investment` reads both product groups once for 
 | Target, expiry | `strike`, scheduled `settleTime` milliseconds. The older documentation example has `expTime` instead, which is used when `settleTime` is empty. `settledTime` is the actual payout time, not the scheduled expiry. |
 | Annualized rate | `annualizedYield`, tagged Annualized Yield |
 
-The public API documents no separate structured-product cash balance endpoint. Funding bill types 160–163 describe subscription and payouts; bills are not read by this Adapter. The live comparison combines ordinary Earn and Dual against `details.earn`, and logs Dual principal separately against the residual after ordinary Earn.
+The public API documents no separate structured-product cash balance endpoint. Funding bill types 160–163 describe subscription and payouts; bills are not read by this Adapter. Capture acceptance combines ordinary Earn and Dual against `details.earn`, and logs Dual principal separately against the residual after ordinary Earn.
 
 ## Position
 
@@ -191,7 +182,7 @@ The public API documents no separate structured-product cash balance endpoint. F
 
 - **Zero rows.** Rows with `pos = 0` are dropped: OKX leaves them behind after an isolated-margin transfer.
 - **`MARGIN` rows** are skipped in every Margin Mode. They are borrow-backed spot exposure whose value is already in the `trading` Balances' `eq`. In Futures mode they are also the only place OKX reports the borrowing (`liab`, `liabCcy`, `interest`), which Plutus therefore does not show.
-- **`OPTION` and `EVENTS` rows** fail the `trading` report with `normalization`, naming the instrument, because Plutus has no Instrument kind for them. This includes the options a Spot mode account may buy. The recorded account cannot trade options (`opAuth = 0`).
+- **`OPTION` and `EVENTS` rows** fail the `trading` report with `normalization`, naming the instrument, because Plutus has no Instrument kind for them. This includes the options a Spot mode account may buy.
 - **Spot mode** holds no swaps or futures, so its positions list is empty unless it holds options.
 
 | Instrument column | Source (`public/instruments`) |
@@ -236,106 +227,9 @@ Each non-USD Balance symbol is priced at the spot `last` of `<symbol>-USDT`, els
 
 OKX answers many failures with HTTP 200 and a non-zero `code`, so both the status and the code decide. `code` may be a string or a number. A compound code such as `51008_1000` is classified by its main code. Error details name the endpoint and OKX's code and message, cut to 200 characters, never a body or a key.
 
-## Completeness check (live test)
+## Fixtures and evidence
 
-The runtime [Earn check](#earn-check) covers the combined Earn and Dual holdings. The live smoke test compares every bucket of `asset/asset-valuation?ccy=USDT`:
-
-- the collected `trading` equity;
-- the priced Funding Balances and combined Earn/Dual Balances.
-
-It fails when one differs by more than 1% (at least 1 USD), or when another bucket, such as `classic`, holds value. That is how a trading or funding bucket OKX adds later shows up before the Complete Set rule would drop it silently.
-
-The recorded baseline run on 2026-09-25 matched every bucket within 0.03%:
-
-| Bucket | Difference |
-| --- | --- |
-| `trading` | −0.026% |
-| `funding` | +0.001% |
-| `earn` | −0.005% |
-| `classic` | empty |
-
-## Fixtures
-
-Replay tests serve two kinds of fixture through `httptest`. Both are checked for the key, passphrase, signature, and clock-corrected timestamp of every signed request.
-
-**Recorded** (`testdata/*.json`, [ADR 0023](../adr/0023-test-platform-adapters-in-three-layers.md)). `plutus adapter record --platform okx` reads `PLUTUS_GOTEST_OKX_APIKEY` / `_SECRET` / `_PASSPHRASE` from the environment or `config/gotest.env`. It calls each endpoint above once, and every page of dual investment history the adapter would read. It writes `tmp/fixtures/okx/<endpoint>.json`, with query values in the file name: `api_v5_public_instruments.SWAP.json`, or `api_v5_finance_sfp_dcd_order_history.100.json` for the first dual investment page and `.<endId>.100.json` for the next ones. Each header carries:
-
-For a focused refresh, use `--only api_v5_finance_sfp_dcd_order_history.100` (repeat `--only` for more files). Only the requested fixture is written; the recorder still reads config and clock for provenance and signing. A later Dual Investment page also reads its preceding pages to reach the requested cursor. Market-data and refusal fixtures still use a full recording.
-
-- `accountStructure` `okx_unified`;
-- the `marginMode` read from the account's level;
-- `scenario` `recorded`, or the error name for the error answers below;
-- the recording time.
-
-Amounts are kept as recorded, so identities such as Σ `eqUsd` = `totalEq` still hold in the tests. The recorder:
-
-- **Redacts `account/config`.** It replaces `uid` and `mainUid` with `100000000000000001` (a sub-account's `mainUid` with `100000000000000002`), empties `ip`, and sets `label` to `plutus-fixture`. It replaces any IPv4 address with `203.0.113.1`, and writes nothing if the key, secret, passphrase, or a real UID survives.
-- **Trims `market/tickers`** to the `-USDT` and `-USDC` pairs of recorded coins, dual investment coins included, plus `BTC-USDT`, `ETH-USDT`, and the first USDC-only coin.
-- **Trims the instrument lists.** `SWAP` keeps held contracts plus `BTC-USDT-SWAP` (linear) and `BTC-USD-SWAP` (inverse). `FUTURES` keeps held contracts plus the first linear and the first inverse BTC contract.
-- **Records four error answers** on `account/config`, all HTTP 401. Rate-limit and server errors are not provoked; tests simulate them.
-  - an unknown key: `invalid_key`, `50119`;
-  - a wrong signature: `bad_signature`, `50113`;
-  - a wrong passphrase: `wrong_passphrase`, `50105`;
-  - a timestamp five minutes old: `stale_timestamp`, `50102`.
-
-Position, trade, order, and quote ids (`posId`, `tradeId`, `ordId`, `quoteId`) are kept as recorded. After review, the files move to `internal/adapters/okx/testdata/`.
-
-The baseline set comes from a Portfolio margin main account recorded on 2026-09-25: 12 successful answers and four error answers. Only the dual investment order-history fixture was refreshed on 2026-09-29. The fixtures cover:
-
-- `trading`: USDT and HYPE, and one cross `DOGE-USDT-SWAP` position in net mode;
-- `funding`: USDT, USDC, ENS, and NIGHT;
-- `earn`: Simple Earn in USDT and USDC and no on-chain earn in the baseline recording;
-- `dual_investment`: one page with two `LIVE` HYPE/USDT subscriptions, one invested in each currency, and one earlier `SETTLED` BTC/USDT subscription excluded from Balances and Dual Positions;
-- an asset valuation whose `earn` bucket the Earn check compares.
-
-Tests read amounts and prices from these files rather than repeating them. They also take the futures sample from the recording, since it changes as contracts expire. One test checks that every recorded success answers a request the adapter sends. Another replays the recorded valuation without the Earn Balances it values, so the Earn check must fail on the recorded bucket.
-
-The refreshed order history and the baseline valuation were recorded at different times. Their joint replay checks order mapping and report behavior; the read-only live test checks Earn completeness against a contemporaneous valuation.
-
-**Documented** (`testdata/documented/<scenario>/`, [ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)). These files cover paths the test account cannot exercise. Each header has:
-
-- `scenario` `documented` and no `recordedAt`;
-- a `documentation` link to the OKX page the body comes from;
-- a `trimmed` note naming every change made to OKX's example.
-
-A test overlays one scenario on the recorded set, replacing the files for the same endpoints. Tests refuse a recorded header without a recording time, and a documented header without a documentation link or with a recording time.
-
-| Scenario | Endpoints | Covers |
-| --- | --- | --- |
-| `okx_spot` | `account/config` (`acctLv 1`), `account/balance`, `account/positions` | 0.8 BTC and a 100 USDT borrowing with 0.0125 USDT interest. It checks the Spot mode margin figures, per-coin `liab` and `interest`, the absent `availEq` and `upl`, and no positions. |
-| `okx_futures` | `account/config` (`acctLv 2`), `account/balance`, `account/positions` | Only `totalEq` at account level, per-coin `availEq` and `upl`, no liabilities. An isolated `MARGIN` row is skipped, and a cross `BTC-USDT-SWAP` long is mapped. |
-| `dual_investment` | `finance/sfp/dcd/order-history` | `live` 1.5 BTC, `pending_redeem` 2000 USDT, and `redeeming` 3 ETH are counted. The documentation's `settled` order is not. |
-
-Inline responses in the tests cover:
-
-- Margin Mode detection, including `acctLv` `3`, `5`, and empty;
-- every dual investment state in documented lowercase, uppercase, and mixed case; unknown states still fail selected Earn and Dual Accounts;
-- paging, ordering, and the 1,000-order limit;
-- the pause between pages;
-- the Earn check's tolerance;
-- a numeric `code`.
-
-## Coverage
-
-On 2026-09-25 the live smoke test ran on the test account:
-
-- **Margin Mode.** It read `okx_pm` from the account and confirmed that another Platform's Account Structure is refused.
-- **Accounts.** It collected all three Accounts: `trading` had two coins, one position, and reported equity; `funding` had four coins; `earn` had two coins.
-- **Dual investment.** The history answered with an empty list and a numeric `code`.
-- **Earn check.** The asset valuation answered, and the Earn check passed.
-- **Assertions.** The test checks structure and success, never numbers.
-
-On 2026-09-29 the split-account live test passed with one outstanding Dual subscription. Its normalized principal was 12.00 USD; the platform Earn bucket minus ordinary Earn was 12.33 USD, leaving a 0.33 USD residual difference. The combined Earn/Dual value differed by −0.011%, Funding by +0.002%, and Trading by −0.037%; Classic was empty. This verifies a real order identifier and nonempty principal mapping. Since the Dual amount is below 1% of total Earn, the independent residual is also logged rather than relying only on aggregate tolerance. No raw payload was recorded during this run.
-
-Later on 2026-09-29, the refreshed dual order-history fixture captured two `LIVE` subscriptions and one `SETTLED` order. Both active orders expose `settleTime` and omit `expTime`; the recorded replay verifies their distinct invested currencies, directions, principal, target, annualized rate, and scheduled expiry. A subsequent read-only live test normalized two subscriptions, excluded the settled order, passed the combined Earn check, and matched OKX's Earn, Funding, and Trading valuation buckets within the live test's tolerance. This covers the nonempty order-history shape but not pagination or a settlement during collection.
-
-Not covered live:
-
-- Spot mode, Futures mode, and Multi-currency margin;
-- multiple pages of nonempty dual investment history;
-- a settlement inside a Collection Run;
-- options;
-- the US, Australian, and European hosts.
+The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The OKX inventory](./okx-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
 
 ## Comparison checklist (test environment)
 

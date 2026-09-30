@@ -294,7 +294,8 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 - [x] dev / test / prod environments: `walk` lane removed, `test-example` and `prod-example` config pairs added, `scripts/agent-serve.sh` added, lane scripts renamed in their messages
 - [x] `go test` reads `PLUTUS_GOTEST_*` from `config/gotest.env`; `mysql.RunTestMain` creates and drops one `plutus_gotest_<unix>_<hex>` database per package and sweeps stale ones; `db/seeds` no longer needs `plutus_seedcheck`
-- [x] `make test-live` with the `live` build tag and `internal/adapters/livetest` credential lookup that skips per Platform; `make lint` also lints the `live` tag
+- [x] Flat interface samples and single-request recording, replacing scenario/batch acceptance and `make test-live` (ADR 0036). Ordinary replay installs the exchange-network guard.
+- [ ] Owner-prepared complete capture batches, review and freeze in Binance → OKX → Bybit → Kraken order; historical mixed-date samples remain interface evidence.
 - [x] `make dist` cross-compiles a static Linux binary; `make build` and `make dist` inject `git describe` into `plutus --version`
 - [x] `db reset` without `--profile` drops and migrates only
 - [x] `kraken` accepted by the four `platform` CHECK constraints and the Platform constants, without any Account Structure; `OfferedPlatforms` hides it from the API and the fake
@@ -303,14 +304,14 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 ### Stage 1 — Binance
 
 - [x] `plutus adapter record` subcommand writing trimmed, redacted fixtures to `tmp/`
-- [x] Binance Portfolio Margin Adapter with its declared Account Types, `httptest` fixture tests, a `//go:build live` smoke test, and `docs/adapters/binance.md` mapping table with the exchange-app comparison checklist
+- [x] Binance Portfolio Margin Adapter with its declared Account Types, `httptest` fixture tests, offline failure and completeness tests, and `docs/adapters/binance.md` mapping table with the exchange-app comparison checklist
 - [x] Register live Adapters when `[collection] fake_adapter = false`; keep the fake for tests and dev
 
 ### Stage 2 — OKX
 
-- [x] OKX Adapter for `okx_mcm` and `okx_pm` on one code path, with the account level checked at validation and at the start of every Collection Run (ADR 0025), `httptest` fixture tests, a collection fixture test, a `//go:build live` smoke test that compares each Account with OKX's own per-bucket valuation, and `docs/adapters/okx.md`
-- [x] `plutus adapter record --platform okx`; the recorders share `fixture.Recording`, and fixture names carry query values
-- [x] Inverse contracts: the USD notional of a Position is contracts × contract size, without the mark price. Covered by a valuation unit test and the recorded Binance COIN-M position; the fake Adapter and seeds hold no inverse contract, so the dev environments never show this path
+- [x] OKX Adapter for `okx_mcm` and `okx_pm` on one code path, with the account level checked at validation and at the start of every Collection Run (ADR 0025), `httptest` fixture tests, a collection fixture test, offline per-Account completeness assertions, and `docs/adapters/okx.md`
+- [x] `plutus adapter record --platform okx`; the recorders share the flat `fixture.File` contract, one request per command, with semantic filename variants
+- [x] Inverse contracts: the USD notional of a Position is contracts × contract size, without the mark price. Covered by a valuation unit test and the documented Binance COIN-M position; the fake Adapter and seeds hold no inverse contract, so the dev environments never show this path
 - [x] The credentials form requires the passphrase for OKX
 - [ ] Validate the `okx_mcm` Margin Mode on the test environment with the MCM sub-account entered as its own Identity with its own read-only key
 - [x] Futures mode (`acctLv = 2`) and Spot mode (`acctLv = 1`) as observed Margin Modes (ADR 0028; see Stage 5)
@@ -318,9 +319,9 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 ### Stages 3–4 — Bybit, Kraken
 
-- [x] Bybit global UTA 2.0 Adapter, flexible/fixed savings scope, recorded replay, live smoke, and `docs/adapters/bybit.md`
+- [x] Bybit global UTA 2.0 Adapter, flexible/fixed savings scope, documented interface replay, single-request recording (ADR 0036), and `docs/adapters/bybit.md`
 - [x] Retain adapter-local signing, clock, and bounded transport logic: Bybit REST and Kraken REST/WebSocket protocols have different normalization and failure boundaries
-- [x] Kraken ADR 0026, Separate wallets / Unified Wallet, dual credentials, appended migration (folded back into the baseline in Stage 5), recorded replay, live smoke, and `docs/adapters/kraken.md`
+- [x] Kraken ADR 0026, Separate wallets / Unified Wallet, dual credentials, appended migration (folded back into the baseline in Stage 5), documented interface replay, single-request recording (ADR 0036), and `docs/adapters/kraken.md`
 - [ ] Owner review of the Bybit/Kraken recordings before committing fixtures
 - [ ] Live nonempty Bybit fixed savings and Kraken Separate / Coin-M scenarios (documentation-derived tests cover these paths)
 - [ ] Live validation of stale, complete-set, boundary, and no-price rules against real read-only keys on the test environment

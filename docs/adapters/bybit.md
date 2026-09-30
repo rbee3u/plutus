@@ -85,7 +85,7 @@ The `earn` Account has one Balance per coin: the summed principal of Flexible an
 
 | Product | Counted |
 | --- | --- |
-| Flexible Savings | `amount` of every row. Bybit also lists fully redeemed positions, and a coin whose total is zero is dropped. `claimableYield` is not counted: on the recorded account Bybit's own Earn value matched the summed `amount`, not `amount` plus yield |
+| Flexible Savings | `amount` of every row. Bybit also lists fully redeemed positions, and a coin whose total is zero is dropped. `claimableYield` is not counted: the principal is the documented `amount`; claimable yield is a separate field |
 | Fixed-Term Savings | `amount` of every row. Bybit lists only running positions, `Active` and `EarlyRedemptionProcessing`. `effectiveAmount` takes effect a day later and is not used |
 | Dual Asset (separate `dual_investment` Account) | `amount` in `investCoin`: the quote coin of a `BuyLow` position, the base coin of a `SellHigh` one. Every page is read |
 
@@ -164,49 +164,13 @@ For every non-USD Balance symbol, the spot `lastPrice` of `<symbol>USDT`, else `
 
 Bybit answers most failures with HTTP 200 and a non-zero `retCode`, so both the status and the code decide. HTTP 403 means an IP over Bybit's request budget or a U.S. IP. A failure of `/v5/account/info` fails the whole batch whatever its class, because no Account is read before the structure check. Error details name the endpoint, the HTTP status, and Bybit's code, never Bybit's message, which can echo request parameters, and never a body or a key.
 
-## Fixtures
+## Fixtures and evidence
 
-Replay tests use two fixture sets, told apart by their headers:
-
-- **Recorded** (`testdata/*.json`): the test account's answers, a UTA 2.0 Pro in Portfolio Margin, with `scenario: "recorded"`, `accountStructure: "bybit_uta_2_0"`, `marginMode: "bybit_pm"`, and a per-file `recordedAt` time. The baseline was recorded on 2026-09-25 and holds every read of validation and of a Collection Run with all four Accounts: one linear USDT perpetual position, followed by an empty second position page that Bybit's cursor leads to; Flexible Savings; empty Fixed-Term Savings; and the asset overview. Only the Dual Asset position answer was refreshed on 2026-09-29; it contains one active BuyLow subscription funded in USDT. The replay therefore combines answers recorded on different dates and is a field-mapping test, not a contemporaneous valuation snapshot. The three refusals carry their scenario name instead of `recorded`.
-- **Documented** (`testdata/documented/<scenario>/*.json`, [ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)): built from Bybit's documentation examples, with `scenario: "documented"`, no `recordedAt`, the example's `documentation` URL, and the `marginMode` it describes. `trimmed` names every change from the example.
-  - `bybit_isolated`: an Isolated Margin account with the documented wallet and an inverse position that reports its own liquidation price.
-  - `bybit_cross`: a Cross Margin account with the documented wallet and inverse position, both verbatim.
-  - `uta_1_0_pro`: the documented `/v5/account/info` example, a UTA 1.0 Pro account, which is refused.
-  - `dual_investment`: the documented Dual Asset position with a matching Earn valuation.
-  - `fixed_saving`: the documented Fixed-Term position plus one in early redemption, with a matching Earn valuation.
-  - `region_restricted`: code `10009` on `/v5/account/info`, from the documented code and message.
-  - `ip_rate_limited`: HTTP 403 on `/v5/account/info`, from the documented status and error text.
-  - `rate_limited`: code `10006` on the `unified` and `funding` reads, from the documented rate-limit answer.
-
-The replay lays at most one documented directory over the recorded set. It checks the header provenance of every file and the method of every request. Like Bybit, it answers a signed request with a wrong key, signature, receive window, or timestamp with the matching refusal, and the test fails unless it provoked that refusal on purpose. A documented scenario proves the mapping of the documented shape, not live access. The recorded refusals, replayed on the first call of a run and on an Account read, check the error classes, the code-only details, and the clock resynchronization. Error codes that neither a recording nor a documented answer shows are checked in a table. Paging, malformed answers, and unknown states are tested with synthetic answers written in the tests.
-
-`plutus adapter record --platform bybit` reads `PLUTUS_GOTEST_BYBIT_APIKEY` / `_SECRET` from the environment or `config/gotest.env`. It calls every endpoint that validation and a Collection Run with all four Accounts use, plus both instrument lists, and writes `tmp/fixtures/bybit/<endpoint>.json`, with query values in the file name (`v5_account_wallet_balance.UNIFIED.json`). The file name takes each value as the adapter passed it, so a page cursor appears as Bybit returned it, already percent-encoded (`v5_position_list.linear.DOGEUSDT%2C1790352000006%2C0.200.USDT.json`). The header's `endpoint` is the exact request, which escapes the cursor once more (`%252C`). The header carries `accountStructure: "bybit_uta_2_0"` and the detected `marginMode`. Amounts are kept as recorded. The recorder:
-
-For a focused refresh, use `--only v5_earn_advance_position.DualAssets.20` (repeat `--only` for more files). The recorder reads clock, structure, and key checks first, then only the requested account or product endpoint; it writes only that fixture. This supports first pages. Later pages, market-data lists, and refusal fixtures still use a full recording.
-
-- replaces the values of identifying fields (`id`, `note`, `apiKey`, `secret`, `ips`, `userID`, `inviterID`, `affiliateID`, `parentUid`, `rsaPublicKey`, `kycRegion`, `memberId`, `positionId`, `orderId`, `smpGroup`) with `100001`, `"redacted"`, or an empty list or object;
-- replaces every other value equal to one of those identifiers, when 8 characters or longer, in every file, every occurrence of the key or secret inside a string, and every IPv4 address with `203.0.113.1`. It writes nothing if the key, the secret, or the account UID survives;
-- names in `redacted` the fields it replaced, plus `identifier echoes`, `API key and secret echoes`, and `IP addresses` when it replaced those;
-- trims `market/tickers` and both instrument lists to the rows whose symbol is a held contract, a recorded coin's USDT or USDC pair, or starts with BTC or ETH. `trimmed` is set only on a list it shortened;
-- records three refusals of `/v5/account/info`, the first call of every validation and Collection Run: a key Bybit does not know (`invalid_key`), a wrong signature (`bad_signature`), and a timestamp a minute old (`stale_timestamp`), as `v5_account_info.<scenario>.json`. It fails if Bybit accepts one. Bybit's `10004` message repeats the signed string, key included, so the key is replaced there. A refusal without a JSON body is kept as a JSON string. Rate-limit, region, and server errors are not provoked; the documented scenarios above stand in for them.
-
-After owner review, a targeted refresh replaces only the selected endpoint fixture in `internal/adapters/bybit/testdata/`. A full-set refresh also removes files the recorder no longer writes. A replay test runs the recorder over the committed set and fails unless it writes exactly the committed files, each for the request its header names.
-
-## Coverage
-
-`make test-live` validates the key and checks that the Margin Mode is one of the three. It collects every Account and checks each report against its Margin Mode: no account-wide figures in Isolated Margin, equity in Cross and Portfolio Margin, and no leverage, margin, or liquidation price on Portfolio Margin positions. It reads the Dual Asset list. It compares every Account with its asset-overview entry within max(1%, 1 USD), and fails on a populated entry that no Account Type collects, such as copy trading or trading bots.
-
-- **Live, 2026-09-25**: UTA 2.0 Pro in Portfolio Margin, with `unified` Balances and a linear USDT perpetual position, `funding` Balances, and Flexible Savings. Fixed-Term Savings and Dual Asset answered empty. Each Account matched Bybit's asset overview within 0.1%, so the Earn completeness check passed.
-- **Recorded and live, 2026-09-29**: one active BuyLow Dual Asset position, with invested principal, pair, direction, target, maturity, and APY. The recorder redacted its position and order identifiers. Only this endpoint's fixture was refreshed. The live smoke passed with one Dual Balance and one Dual Asset position; the combined Earn valuation and the Unified and Funding overview comparisons passed.
-- **Documented only**: Isolated Margin, Cross Margin, an inverse position, a UTA 1.0 Pro refusal, and nonempty Fixed-Term Savings. A documented Dual Asset scenario remains for comparison with the recorded shape.
-- **Refusals**: an unknown key (`10003`), a wrong signature (`10004`), and a stale timestamp (`10002`) are recorded, each as an HTTP 200 answer. A region Bybit does not serve, an IP over the request budget, and a rate-limited UID are documented only.
-- **Synthetic only**: an unknown Margin Mode, classic and undocumented account statuses, delivery contracts, hedge-mode references, an open option position, Dual Asset paging and undocumented states, and a failing completeness check.
-- **Not covered**: UTA 2.0 without Pro (`unifiedMarginStatus` 5), sub-accounts, regional services, and a key with fewer permission groups.
+The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The Bybit inventory](./bybit-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
 
 ## Comparison checklist (test environment)
 
-Run these on the test environment against the Bybit app on the same account, within a few minutes of a collection. Items 5 and 6 need an Isolated or Cross Margin account. Item 8 still needs app comparison for the recorded Dual Asset position; Fixed-Term has only documented nonempty coverage.
+Run these on the test environment against the Bybit app on the same account, within a few minutes of a collection. Items 5 and 6 need an Isolated or Cross Margin account. Item 8 still needs app comparison for the documented Dual Asset mapping; Fixed-Term has only documented nonempty coverage.
 
 1. **Identity and structure**: validation stores the UID shown under the app's profile. The Identity's Margin Mode matches the margin mode shown for the Unified Trading Account.
 2. **Margin Mode change**: after switching the margin mode in the app, the next Collection Run succeeds and the Identity shows the new Margin Mode.
@@ -218,5 +182,3 @@ Run these on the test environment against the Bybit app on the same account, wit
 8. **Funding and Earn**: Funding coin amounts and transferable amounts match the Funding account. Flexible and Fixed-Term principal per coin matches the Earn page, including an early redemption in progress. Each open Dual Asset position appears at its invested amount in the invested coin until Bybit pays it out. The Earn Account succeeds. Holding an Earn product Plutus does not read, such as On-chain Earn, makes it Stale with both USD amounts.
 9. **Account values**: the calculated USD values of Funding and Earn are within about 0.1% of the app's asset overview.
 10. **Failures**: removing the server IP from the key's whitelist sets the Connection `invalid` with a `10010` detail at the next cycle. Restoring it and validating again resumes collection.
-
-On 2026-09-29, the Dual Asset position endpoint returned one active BuyLow subscription for the test account. Its recorded fixture now covers a nonempty Dual list; the other recorded endpoint answers retain their earlier dates. The live smoke checked the current combined Earn/Dual valuation against Bybit's Earn overview within tolerance. Direct comparison with the Bybit app remains to be done.

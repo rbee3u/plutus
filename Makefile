@@ -15,7 +15,7 @@ DIST_GOOS ?= linux
 DIST_GOARCH ?= amd64
 DIST_BIN := dist/plutus-$(DIST_GOOS)-$(DIST_GOARCH)
 
-.PHONY: help all deps style format generate web-build build test test-live lint dist run dev
+.PHONY: help all deps style format generate web-build build test lint dist run dev
 
 help: ## Show available targets in Makefile order.
 	@awk 'BEGIN { FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n" } /^[a-zA-Z_-]+:.*## / { printf "  %-10s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -62,17 +62,8 @@ test: web-build ## Run Go and frontend unit tests offline (throwaway plutus_gote
 	go test -count 1 $(GO_PACKAGES)
 	cd web && npm run test
 
-test-live: ## Run live smoke tests; set PLATFORM=binance|okx|bybit|kraken for one Platform.
-	@case "$$PLATFORM" in \
-		"") packages='./internal/adapters/...'; require_keys=0 ;; \
-		binance|okx|bybit|kraken) packages="./internal/adapters/$$PLATFORM"; require_keys=1 ;; \
-		*) echo 'PLATFORM must be binance, okx, bybit, or kraken' >&2; exit 2 ;; \
-	esac; \
-	PLUTUS_GOTEST_REQUIRE_LIVE_KEYS=$$require_keys go test -count 1 -tags live -run 'Live' $$packages
-
 lint: web-build ## Run the configured Go linters and frontend checks.
 	golangci-lint run
-	golangci-lint run --build-tags live ./internal/adapters/...
 	cd web && npm run typecheck && npm run lint
 
 dist: web-build ## Cross-compile a static binary for the remote test and prod servers into dist/.

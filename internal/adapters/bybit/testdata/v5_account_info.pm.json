@@ -1,0 +1,22 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/account/account-info",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "unifiedMarginStatus": 6,
+      "marginMode": "PORTFOLIO_MARGIN",
+      "spotHedgingStatus": "OFF",
+      "updatedTime": "1700000000000"
+    },
+    "time": 1700000000000
+  }
+}

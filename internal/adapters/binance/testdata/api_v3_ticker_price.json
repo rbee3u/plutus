@@ -1,50 +1,41 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "GET /api/v3/ticker/price",
-    "accountStructure": "binance_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": "9 of 3716 symbols: USDT/USDC pairs of recorded assets plus BTCUSDT, ETHUSDT, FDUSDUSDT, and USDC-only BCPTUSDC; kept BTCUSDT, ETHUSDT, ETHUSDC, BCPTUSDC, DOGEUSDT, DOGEUSDC, SOLUSDT, SOLUSDC, FDUSDUSDT",
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#symbol-price-ticker",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/api/v3/ticker/price"
   },
   "status": 200,
   "body": [
     {
       "symbol": "BTCUSDT",
-      "price": "84022.01000000"
+      "price": "30000"
     },
     {
       "symbol": "ETHUSDT",
-      "price": "2692.22000000"
+      "price": "2000"
     },
     {
-      "symbol": "ETHUSDC",
-      "price": "2691.92000000"
-    },
-    {
-      "symbol": "BCPTUSDC",
-      "price": "0.00000000"
+      "symbol": "BNBUSDT",
+      "price": "300"
     },
     {
       "symbol": "DOGEUSDT",
-      "price": "0.09788000"
+      "price": "0.1"
     },
     {
-      "symbol": "DOGEUSDC",
-      "price": "0.09785000"
+      "symbol": "LTCUSDT",
+      "price": "70"
+    },
+    {
+      "symbol": "USDTUSDC",
+      "price": "1"
     },
     {
       "symbol": "SOLUSDT",
-      "price": "121.74000000"
-    },
-    {
-      "symbol": "SOLUSDC",
-      "price": "121.71000000"
-    },
-    {
-      "symbol": "FDUSDUSDT",
-      "price": "0.99930000"
+      "price": "20"
     }
   ]
 }

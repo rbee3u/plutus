@@ -177,7 +177,7 @@ func (c *client) fetch(ctx context.Context, ep endpoint, params url.Values) (res
 			return response{}, err
 		}
 	}
-	resp, err := c.send(ctx, ep, params, c.creds.APIKey, c.creds.APISecret, "")
+	resp, err := c.send(ctx, ep, params, c.creds.APIKey, c.creds.APISecret)
 	if err != nil {
 		return response{}, err
 	}
@@ -185,14 +185,14 @@ func (c *client) fetch(ctx context.Context, ep endpoint, params url.Values) (res
 		if err := c.syncClock(ctx); err != nil {
 			return response{}, err
 		}
-		return c.send(ctx, ep, params, c.creds.APIKey, c.creds.APISecret, "")
+		return c.send(ctx, ep, params, c.creds.APIKey, c.creds.APISecret)
 	}
 	return resp, nil
 }
 
 func (c *client) syncClock(ctx context.Context) error {
 	sent := c.clock.now()
-	resp, err := c.send(ctx, epServerTime, nil, "", "", "")
+	resp, err := c.send(ctx, epServerTime, nil, "", "")
 	if err != nil {
 		return err
 	}
@@ -209,18 +209,15 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs, and performs one request. timestamp overrides the synchronized clock (the
-// recorder uses it to capture a -1021 answer); an empty value uses the clock.
-func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, secret, timestamp string) (response, error) {
+// send builds, signs and performs one request using the client clock.
+func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, secret string) (response, error) {
 	query := url.Values{}
 	for k, v := range params {
 		query[k] = append([]string(nil), v...)
 	}
 	encoded := query.Encode()
 	if ep.signed {
-		if timestamp == "" {
-			timestamp = c.clock.timestamp()
-		}
+		timestamp := c.clock.timestamp()
 		query.Set("timestamp", timestamp)
 		query.Set("recvWindow", recvWindowMillis)
 		encoded = query.Encode()

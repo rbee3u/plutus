@@ -8,21 +8,21 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters"
 )
 
-func TestRecordedDualInvestmentMapsSubscription(t *testing.T) {
+func TestDocumentedDualInvestmentMapsSubscription(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	dual := reportOf(t, batch, TypeDualInvestment)
 	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 1 || len(dual.Balances) != 1 {
-		t.Fatalf("recorded dual report: %+v", dual)
+		t.Fatalf("documented dual report: %+v", dual)
 	}
 	page := body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1))
 	if page.Total != 1 || len(page.List) != 1 || page.List[0].PurchaseStatus != "PURCHASE_SUCCESS" {
-		t.Fatal("the recorded fixture must contain one running subscription")
+		t.Fatal("the documented fixture must contain one running subscription")
 	}
 	row, position := page.List[0], dual.DualPositions[0]
-	wantExpiry := time.Date(2026, time.October, 2, 8, 0, 0, 0, time.UTC)
-	wantSubscribed := time.UnixMilli(1790678854360).UTC()
+	wantExpiry := time.UnixMilli(1700600000000).UTC()
+	wantSubscribed := time.UnixMilli(1700000000000).UTC()
 	if row.OptionType != "CALL" || position.PlatformPositionRef != dualID(row.ID) ||
 		position.OrderRef == nil || *position.OrderRef != dualID(row.OrderID) ||
 		position.InvestSymbol != row.InvestCoin || rat(t, position.Principal).Cmp(rat(t, row.SubscriptionAmount)) != 0 ||
@@ -35,13 +35,13 @@ func TestRecordedDualInvestmentMapsSubscription(t *testing.T) {
 		position.ExpiryAt == nil || !position.ExpiryAt.Equal(wantExpiry) ||
 		position.SubscribedAt == nil || !position.SubscribedAt.Equal(wantSubscribed) ||
 		position.Status != "active" || len(position.MissingFields()) != 0 {
-		t.Fatalf("recorded subscription mapped incompletely: %+v", position)
+		t.Fatalf("documented subscription mapped incompletely: %+v", position)
 	}
 	if dual.Balances[0].Symbol != row.InvestCoin || rat(t, dual.Balances[0].Equity).Cmp(rat(t, row.SubscriptionAmount)) != 0 {
-		t.Fatalf("recorded principal balance: %+v", dual.Balances)
+		t.Fatalf("documented principal balance: %+v", dual.Balances)
 	}
 	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK {
-		t.Fatal("ordinary Earn must remain successful beside the recorded Dual subscription")
+		t.Fatal("ordinary Earn must remain successful beside the documented Dual subscription")
 	}
 }
 
@@ -111,6 +111,7 @@ func TestRepeatedDualSubscriptionCannotChangePrincipal(t *testing.T) {
 			r, a := newReplay(t, "")
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"0.5","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("SETTLING", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"`+amount+`","purchaseStatus":"SETTLING"}]}`))
+			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"1020.5","walletName":"Earn"}]`))
 			report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if amount == "0.5" {
 				if report.Status != adapters.StatusOK || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {

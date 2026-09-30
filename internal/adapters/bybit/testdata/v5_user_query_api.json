@@ -1,101 +1,26 @@
 {
-  "fixture": {
-    "platform": "bybit",
-    "endpoint": "GET /v5/user/query-api",
-    "accountStructure": "bybit_uta_2_0",
-    "marginMode": "bybit_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:55:39Z",
-    "trimmed": null,
-    "redacted": [
-      "affiliateID",
-      "apiKey",
-      "id",
-      "inviterID",
-      "ips",
-      "kycRegion",
-      "note",
-      "parentUid",
-      "rsaPublicKey",
-      "secret",
-      "userID"
-    ]
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/user/apikey-info",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/user/query-api"
   },
   "status": 200,
   "body": {
-    "result": {
-      "affiliateID": 100001,
-      "apiKey": "redacted",
-      "createdAt": "2026-09-24T04:20:10Z",
-      "deadlineDay": -2,
-      "expiredAt": "1970-01-01T00:00:00Z",
-      "id": "redacted",
-      "inviterID": 100001,
-      "ips": [],
-      "isFixApi": false,
-      "isMaster": true,
-      "kycLevel": "LEVEL_2",
-      "kycRegion": "redacted",
-      "mktMakerLevel": "0",
-      "note": "redacted",
-      "parentUid": "redacted",
-      "permissions": {
-        "Affiliate": [],
-        "BitCard": [
-          "BitCard"
-        ],
-        "BlockTrade": [],
-        "ByXPost": [
-          "ByXPost"
-        ],
-        "ContractTrade": [
-          "Order",
-          "Position"
-        ],
-        "CopyTrading": [],
-        "Derivatives": [
-          "DerivativesTrade"
-        ],
-        "Earn": [
-          "Earn"
-        ],
-        "Exchange": [
-          "ExchangeHistory"
-        ],
-        "FiatBitPay": [
-          "FaitPayOrder"
-        ],
-        "FiatConvertBroker": [
-          "FiatConvertBrokerOrder"
-        ],
-        "FiatP2P": [
-          "FiatP2POrder",
-          "Advertising"
-        ],
-        "NFT": [],
-        "Options": [
-          "OptionsTrade"
-        ],
-        "Spot": [
-          "SpotTrade"
-        ],
-        "Wallet": [
-          "AccountTransfer",
-          "SubMemberTransfer"
-        ]
-      },
-      "readOnly": 1,
-      "rsaPublicKey": "redacted",
-      "secret": "redacted",
-      "type": 1,
-      "unified": 0,
-      "userID": 100001,
-      "uta": 1,
-      "vipLevel": "No VIP"
-    },
     "retCode": 0,
-    "retExtInfo": {},
-    "retMsg": "",
-    "time": 1790366134906
+    "retMsg": "OK",
+    "result": {
+      "userID": 100001,
+      "isMaster": true,
+      "readOnly": 1,
+      "permissions": {
+        "Wallet": [
+          "AccountTransfer"
+        ]
+      }
+    },
+    "time": 1700000000000
   }
 }

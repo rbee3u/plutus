@@ -1,0 +1,20 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/rate-limit",
+  "notes": "Bybit documents \"retCode\": 10006 with \"retMsg\": \"Too many visits!\" in the JSON answer: the rest of the envelope follows Bybit's response examples, with HTTP 200.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/asset/transfer/query-account-coins-balance",
+    "query": {
+      "accountType": "FUND"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 10006,
+    "retMsg": "Too many visits!",
+    "result": {},
+    "retExtInfo": {}
+  }
+}

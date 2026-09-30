@@ -1,37 +1,24 @@
 {
-  "fixture": {
-    "platform": "okx",
-    "endpoint": "GET /api/v5/finance/savings/balance",
-    "accountStructure": "okx_unified",
-    "marginMode": "okx_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T18:18:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#financial-product-simple-earn-flexible-get-saving-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/finance/savings/balance"
   },
   "status": 200,
   "body": {
     "code": "0",
+    "msg": "",
     "data": [
       {
-        "amt": "2006.02080891",
         "ccy": "USDT",
-        "earnings": "97.27495921",
-        "loanAmt": "2006.01487218",
-        "pendingAmt": "0.00593673",
-        "rate": "0.01",
-        "redemptAmt": ""
-      },
-      {
-        "amt": "1036.90261034",
-        "ccy": "USDC",
-        "earnings": "36.90261035",
-        "loanAmt": "1036.89954167",
-        "pendingAmt": "0.00306866",
-        "rate": "0.01",
-        "redemptAmt": ""
+        "amt": "20",
+        "loanAmt": "0",
+        "earnings": "0",
+        "rate": "0.01"
       }
-    ],
-    "msg": ""
+    ]
   }
 }

@@ -1,0 +1,25 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-account-configuration",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/account/config"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "uid": "100000000000000001",
+        "mainUid": "100000000000000002",
+        "acctLv": "4",
+        "posMode": "net_mode",
+        "ip": "203.0.113.1",
+        "label": "plutus-fixture"
+      }
+    ]
+  }
+}

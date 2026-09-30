@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,29 +18,28 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
 	"github.com/rbee3u/plutus/internal/adapters/kraken"
 	"github.com/rbee3u/plutus/internal/adapters/okx"
+	"github.com/rbee3u/plutus/internal/adapters/recording"
 	"github.com/rbee3u/plutus/internal/config"
 )
 
-// recorder is implemented by the live adapters that can record test fixtures (ADR 0023). Only
-// this command uses it; serve, the worker, and collect never see a raw Platform body.
+// Raw responses are available only to this explicit developer command.
 type recorder interface {
-	Record(ctx context.Context, creds adapters.Credentials) ([]fixture.Recording, error)
-	RecordSelected(ctx context.Context, creds adapters.Credentials, name string) ([]fixture.Recording, error)
+	RecordRequest(context.Context, adapters.Credentials, fixture.Request) (*fixture.File, error)
 }
 
-// recorders lists the Platforms whose adapter can record, and whether their keys carry a passphrase.
 var recorders = map[adapters.Platform]struct {
 	adapter        func() recorder
 	needPassphrase bool
+	requests       func() recording.Catalogue
 }{
-	adapters.PlatformKraken:  {adapter: func() recorder { return kraken.New(nil) }},
-	adapters.PlatformBybit:   {adapter: func() recorder { return bybit.New(nil) }},
-	adapters.PlatformBinance: {adapter: func() recorder { return binance.New(nil) }},
-	adapters.PlatformOKX:     {adapter: func() recorder { return okx.New(nil) }, needPassphrase: true},
+	adapters.PlatformBinance: {adapter: func() recorder { return binance.New(nil) }, requests: binance.RecordingRequests},
+	adapters.PlatformOKX:     {adapter: func() recorder { return okx.New(nil) }, needPassphrase: true, requests: okx.RecordingRequests},
+	adapters.PlatformBybit:   {adapter: func() recorder { return bybit.New(nil) }, requests: bybit.RecordingRequests},
+	adapters.PlatformKraken:  {adapter: func() recorder { return kraken.New(nil) }, requests: kraken.RecordingRequests},
 }
 
 func recordablePlatforms() string {
-	names := make([]string, 0, len(recorders))
+	var names []string
 	for _, platform := range adapters.OfferedPlatforms() {
 		if _, ok := recorders[platform]; ok {
 			names = append(names, string(platform))
@@ -49,99 +49,95 @@ func recordablePlatforms() string {
 }
 
 func newAdapterCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "adapter",
-		Short: "Developer tools for Platform adapters",
-		Args:  cobra.NoArgs,
-	}
+	cmd := &cobra.Command{Use: "adapter", Short: "Developer tools for Platform adapters", Args: cobra.NoArgs}
 	cmd.AddCommand(newAdapterRecordCommand())
 	return cmd
 }
 
 func newAdapterRecordCommand() *cobra.Command {
-	var platformFlag, outFlag string
-	var onlyFlags []string
-	cmd := &cobra.Command{
-		Use:   "record",
-		Short: "Record trimmed Platform responses as test fixtures into tmp/ (read-only keys from config/gotest.env)",
-		Long: "record calls the Platform adapter's read-only endpoints with the test environment's\n" +
-			"read-only key set (PLUTUS_GOTEST_<PLATFORM>_APIKEY / _SECRET, and _PASSPHRASE for OKX, from the\n" +
-			"process environment or config/gotest.env), trims large market-data lists, replaces the account UID,\n" +
-			"and writes JSON fixtures into --out/<platform>/. Repeat --only with fixture file stems to\n" +
-			"record just that answer and its required clock/structure reads. Review each file before moving it\n" +
-			"into internal/adapters/<platform>/testdata/. It needs no --config, database, or master key.",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := checkRecordingDirectory(outFlag); err != nil {
-				return err
+	var platformFlag, outFlag, variant string
+	var only, query, form []string
+	var list, dryRun bool
+	cmd := &cobra.Command{Use: "record", Short: "Record one explicit read-only interface response into tmp", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		platform := adapters.Platform(strings.ToLower(platformFlag))
+		spec, ok := recorders[platform]
+		if !ok {
+			return fmt.Errorf("unsupported recording Platform %q; choose %s", platformFlag, recordablePlatforms())
+		}
+		catalogue := spec.requests()
+		if list {
+			var names []string
+			for name := range catalogue {
+				names = append(names, name)
 			}
-			platform := adapters.Platform(strings.ToLower(platformFlag))
-			spec, ok := recorders[platform]
-			if !ok {
-				return fmt.Errorf("--platform %q has no live adapter to record; supported: %s", platformFlag, recordablePlatforms())
+			sort.Strings(names)
+			for _, name := range names {
+				ep := catalogue[name]
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s; required parameters: %s\n", name, ep.Request.Key(), strings.Join(ep.Required, ", "))
 			}
-			creds, err := recorderCredentials(platform, spec.needPassphrase)
-			if err != nil {
-				return err
-			}
-			recordings, err := recordRequested(cmd.Context(), spec.adapter(), creds, onlyFlags)
-			if err != nil {
-				return fmt.Errorf("record %s: %w", platform, err)
-			}
-			dir := filepath.Join(outFlag, string(platform))
-			recordedAt := time.Now().UTC().Truncate(time.Second)
-			for i := range recordings {
-				r := &recordings[i]
-				path, err := fixture.Write(dir, r.Name, &fixture.File{
-					Fixture: fixture.Header{
-						Platform: string(platform), Endpoint: r.Endpoint, AccountStructure: r.AccountStructure, MarginMode: r.MarginMode,
-						Scenario: r.Scenario, RecordedAt: &recordedAt, Trimmed: r.Trimmed, Redacted: r.Redacted,
-					},
-					Status: r.Status,
-					Body:   r.Body,
-				})
-				if err != nil {
-					return err
-				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "wrote %s (HTTP %d)\n", path, r.Status)
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Review every file for IDs and key echoes before moving it into internal/adapters/%s/testdata/.\n", platform)
 			return nil
-		},
-	}
-	cmd.Flags().StringVar(&platformFlag, "platform", "", "Platform to record ("+recordablePlatforms()+")")
-	cmd.Flags().StringArrayVar(&onlyFlags, "only", nil, "record one fixture by file stem; repeat for several, without .json")
-	cmd.Flags().StringVar(&outFlag, "out", filepath.Join("tmp", "fixtures"), "output directory; keep it under gitignored tmp/")
+		}
+		if len(only) != 1 {
+			return errors.New("--only must select exactly one interface; use --list-requests")
+		}
+		if !fixture.ValidVariant(variant) {
+			return errors.New("--variant must contain only lowercase letters, digits and underscores")
+		}
+		name := strings.TrimSuffix(only[0], ".json")
+		request, err := recording.SelectRequest(catalogue, name, query, form)
+		if err != nil {
+			return err
+		}
+		filename := fixture.Name(request.Path, variant) + ".json"
+		if dryRun {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\nOutput: %s\nOne explicit request; no keys read, preflight, retry, redirect or additional page.\n", request.Key(), filename)
+			return nil
+		}
+		if err := checkRecordingDirectory(outFlag); err != nil {
+			return err
+		}
+		creds, err := recorderCredentials(platform, spec.needPassphrase, catalogue, request)
+		if err != nil {
+			return err
+		}
+		file, captureErr := spec.adapter().RecordRequest(cmd.Context(), creds, request)
+		if file != nil {
+			parent := filepath.Join(outFlag, string(platform))
+			if err := os.MkdirAll(parent, 0o750); err != nil {
+				return err
+			}
+			dir, err := os.MkdirTemp(parent, time.Now().UTC().Format("20060102T150405Z")+"-")
+			if err != nil {
+				return err
+			}
+			path, err := fixture.Write(dir, strings.TrimSuffix(filename, ".json"), file)
+			if err != nil {
+				return fmt.Errorf("save response: %w", err)
+			}
+			status := "WebSocket snapshot"
+			if file.Request.Method != "WS" {
+				status = fmt.Sprintf("HTTP %d", file.Status)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Saved: %s\nResponse: %s; platform success: %t; empty: %t\nReview before promotion; business mapping has not been accepted.\n", path, status, captureErr == nil, recording.Empty(file))
+		}
+		if captureErr != nil {
+			return captureErr
+		}
+		if file == nil {
+			return errors.New("request produced no safe response")
+		}
+		return nil
+	}}
+	cmd.Flags().StringVar(&platformFlag, "platform", "", "Platform to record")
+	cmd.Flags().StringSliceVar(&only, "only", nil, "one read-only interface identifier")
+	cmd.Flags().StringVar(&variant, "variant", "", "semantic filename suffix; does not change account configuration")
+	cmd.Flags().StringArrayVar(&query, "query", nil, "business query key=value; repeat for multiple values")
+	cmd.Flags().StringArrayVar(&form, "form", nil, "business form key=value; repeat for multiple values")
+	cmd.Flags().BoolVar(&list, "list-requests", false, "list read-only interfaces and required parameters without keys or network")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the exact request and filename without keys or network")
+	cmd.Flags().StringVar(&outFlag, "out", "tmp/fixtures", "output parent inside gitignored tmp")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd
-}
-
-func recordRequested(ctx context.Context, adapter recorder, creds adapters.Credentials, names []string) ([]fixture.Recording, error) {
-	if len(names) == 0 {
-		return adapter.Record(ctx, creds)
-	}
-	seen := map[string]bool{}
-	normalized := make([]string, 0, len(names))
-	for _, value := range names {
-		name := strings.TrimSuffix(strings.TrimSpace(value), ".json")
-		if name == "" || seen[name] {
-			return nil, fmt.Errorf("--only must name a fixture once: %q", value)
-		}
-		seen[name] = true
-		normalized = append(normalized, name)
-	}
-	var recordings []fixture.Recording
-	for _, name := range normalized {
-		selected, err := adapter.RecordSelected(ctx, creds, name)
-		if err != nil {
-			return nil, err
-		}
-		if len(selected) != 1 || selected[0].Name != name {
-			return nil, fmt.Errorf("--only %q did not return exactly its named fixture", name)
-		}
-		recordings = append(recordings, selected[0])
-	}
-	return recordings, nil
 }
 
 // checkRecordingDirectory confines all raw fixture writes to the repository's real tmp tree.
@@ -181,18 +177,42 @@ func checkRecordingDirectory(path string) error {
 
 // recorderCredentials reads the test environment's read-only key set. The recorder is the only
 // part of the binary that reads config/gotest.env; serve, the worker, and collect never do.
-func recorderCredentials(platform adapters.Platform, needPassphrase bool) (adapters.Credentials, error) {
+func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalogue recording.Catalogue, request fixture.Request) (adapters.Credentials, error) {
 	prefix := "PLUTUS_GOTEST_" + strings.ToUpper(string(platform)) + "_"
 	var creds adapters.Credentials
+	spot, futures := false, false
+	for _, request := range []fixture.Request{request} {
+		ep, ok := catalogue.Find(request)
+		if !ok || !ep.Signed {
+			continue
+		}
+		if platform == adapters.PlatformKraken && request.Service != "spot" {
+			futures = true
+		} else {
+			spot = true
+		}
+	}
+	if !spot && !futures {
+		return creds, nil
+	}
 	var missing []string
 	type variable struct {
 		suffix string
 		dst    *string
 	}
-	fields := []variable{{"APIKEY", &creds.APIKey}, {"SECRET", &creds.APISecret}}
+	var fields []variable
+	if spot {
+		fields = []variable{{"APIKEY", &creds.APIKey}, {"SECRET", &creds.APISecret}}
+	}
 	if platform == adapters.PlatformKraken {
-		creds.Futures = &adapters.KeyPair{}
-		fields = []variable{{"SPOT_APIKEY", &creds.APIKey}, {"SPOT_SECRET", &creds.APISecret}, {"FUTURES_APIKEY", &creds.Futures.APIKey}, {"FUTURES_SECRET", &creds.Futures.APISecret}}
+		fields = nil
+		if spot {
+			fields = append(fields, variable{"SPOT_APIKEY", &creds.APIKey}, variable{"SPOT_SECRET", &creds.APISecret})
+		}
+		if futures {
+			creds.Futures = &adapters.KeyPair{}
+			fields = append(fields, variable{"FUTURES_APIKEY", &creds.Futures.APIKey}, variable{"FUTURES_SECRET", &creds.Futures.APISecret})
+		}
 	}
 	if needPassphrase {
 		fields = append(fields, variable{"PASSPHRASE", &creds.Passphrase})

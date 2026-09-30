@@ -54,12 +54,13 @@ type Options struct {
 
 // Adapter is the Kraken adapter. It is safe for concurrent use.
 type Adapter struct {
-	spotHost    string
-	futuresHost string
-	wsURL       string
-	http        *http.Client
-	clock       func() time.Time
-	nonces      *nonces
+	spotHost        string
+	futuresHost     string
+	wsURL           string
+	http            *http.Client
+	clock           func() time.Time
+	nonces          *nonces
+	captureSnapshot func([]byte)
 }
 
 // New constructs a Kraken adapter; nil options select production defaults.

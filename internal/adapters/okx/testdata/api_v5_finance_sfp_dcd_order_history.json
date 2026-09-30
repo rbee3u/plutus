@@ -1,0 +1,62 @@
+{
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#financial-product-dual-investment-get-order-history",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/finance/sfp/dcd/order-history",
+    "query": {
+      "limit": "100"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "msg": "",
+    "data": [
+      {
+        "ordId": "3",
+        "baseCcy": "BTC",
+        "quoteCcy": "USDT",
+        "notionalCcy": "BTC",
+        "notionalSz": "0.01",
+        "strike": "51000",
+        "annualizedYield": "0.1",
+        "state": "LIVE",
+        "settleTime": "1700600000000",
+        "settledTime": "",
+        "expTime": "",
+        "cTime": "1700000000003"
+      },
+      {
+        "ordId": "2",
+        "baseCcy": "BTC",
+        "quoteCcy": "USDT",
+        "notionalCcy": "USDT",
+        "notionalSz": "100",
+        "strike": "51000",
+        "annualizedYield": "0.1",
+        "state": "LIVE",
+        "settleTime": "1700600000000",
+        "settledTime": "",
+        "expTime": "",
+        "cTime": "1700000000002"
+      },
+      {
+        "ordId": "1",
+        "baseCcy": "BTC",
+        "quoteCcy": "USDT",
+        "notionalCcy": "USDT",
+        "notionalSz": "10",
+        "strike": "51000",
+        "annualizedYield": "0.1",
+        "state": "SETTLED",
+        "settleTime": "1700600000000",
+        "settledTime": "",
+        "expTime": "",
+        "cTime": "1700000000001"
+      }
+    ]
+  }
+}

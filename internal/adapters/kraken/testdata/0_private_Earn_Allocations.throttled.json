@@ -1,0 +1,21 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/exchange/guides/rest/ratelimits",
+  "notes": "The documented \"EService: Throttled: [UNIX timestamp]\" message with an invented timestamp, in the error envelope of the error guide. The documentation gives no HTTP status; 200 is assumed, because Spot reports errors in its error list.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/Earn/Allocations",
+    "form": {
+      "converted_asset": "USD",
+      "hide_zero_allocations": "true"
+    }
+  },
+  "status": 200,
+  "body": {
+    "error": [
+      "EService: Throttled: 1790274800"
+    ],
+    "result": {}
+  }
+}

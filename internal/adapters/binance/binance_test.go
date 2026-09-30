@@ -27,6 +27,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/decimal"
 )
 
@@ -53,7 +54,7 @@ var (
 	classicTypes = adapters.AccountTypeIDs(adapters.StructureBinanceClassic)
 )
 
-// Documentation-derived scenarios under testdata/documented/ (ADR 0027).
+// Explicit documentation-derived test selections (ADR 0027).
 const (
 	docClassic        = "binance_classic"
 	docDualInvestment = "dual_investment"
@@ -76,14 +77,11 @@ func knownEndpoint(name string) (endpoint, bool) {
 	return endpoint{}, false
 }
 
-// replay serves the committed fixtures: the recorded Portfolio Margin account in testdata/, with
-// the documentation-derived files of one testdata/documented/<scenario>/ directory laid over it.
-// It verifies the API key header, the signature, and that timestamps follow the recorded
-// server time, so signing and clock sync are exercised.
+// replay serves explicitly selected flat interface samples and verifies native authentication.
 type replay struct {
 	t          *testing.T
 	answers    map[string]fixture.File // successful answers by request, as fixture headers name it
-	failures   map[string]fixture.File // recorded error answers by scenario
+	failures   map[string]fixture.File // documented error answers by scenario
 	serverTime int64
 	started    time.Time
 
@@ -92,31 +90,27 @@ type replay struct {
 	queue map[string][]func(w http.ResponseWriter) // by endpoint
 	fixed map[string]func(w http.ResponseWriter)   // by request, or by endpoint for every query
 	// lenient answers a request with a bad key, signature, or timestamp with the matching error
-	// fixture instead of failing the test; the recorder provokes exactly those.
+	// fixture instead of failing the test; selected authentication tests provoke those.
 	lenient bool
 	secret  string
 }
 
-func newReplay(t *testing.T, overlay string) (*replay, *Adapter) {
+func newReplay(t *testing.T, selection string) (*replay, *Adapter) {
 	t.Helper()
 	r := &replay{
 		t: t, answers: map[string]fixture.File{}, failures: map[string]fixture.File{}, started: time.Now(),
 		calls: map[string]int{}, queue: map[string][]func(http.ResponseWriter){}, fixed: map[string]func(http.ResponseWriter){},
 		secret: testSecret,
 	}
-	for _, path := range fixturePaths(t, "testdata") {
-		f := readFixture(t, path)
-		if f.Fixture.Scenario == fixture.ScenarioRecorded {
-			r.answers[f.Fixture.Endpoint] = f
-		} else {
-			r.failures[f.Fixture.Scenario] = f
-		}
+	files, err := fixture.Load("testdata", sampleNames(selection)...)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if overlay != "" {
-		for _, path := range fixturePaths(t, filepath.Join("testdata", "documented", overlay)) {
-			f := readFixture(t, path)
-			r.answers[f.Fixture.Endpoint] = f
-		}
+	for _, f := range files {
+		r.answers[f.Request.Endpoint()] = f
+	}
+	for _, variant := range []string{"invalid_key", "bad_signature", "stale_timestamp"} {
+		r.failures[variant] = readFixture(t, "testdata/sapi_v1_account_info."+variant+".json")
 	}
 	var st struct {
 		ServerTime int64 `json:"serverTime"`
@@ -127,11 +121,20 @@ func newReplay(t *testing.T, overlay string) (*replay, *Adapter) {
 	r.serverTime = st.ServerTime
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)
+	t.Cleanup(func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		for request, steps := range r.queue {
+			if len(steps) != 0 {
+				t.Errorf("%s: %d expected response steps not consumed", request, len(steps))
+			}
+		}
+	})
 	hosts := Hosts{API: server.URL, PAPI: server.URL, FAPI: server.URL, DAPI: server.URL}
-	return r, New(&Options{Hosts: hosts, HTTP: server.Client()})
+	return r, New(&Options{Hosts: hosts, HTTP: offline.Client(t, server)})
 }
 
-// earnUSD values coin amounts with the recorded tickers, as Binance values its Earn wallet.
+// earnUSD values coin amounts with the documented tickers, as Binance values its Earn wallet.
 func (r *replay) earnUSD(amounts adapters.Totals) string {
 	r.t.Helper()
 	var rows []struct {
@@ -149,7 +152,7 @@ func (r *replay) earnUSD(amounts adapters.Totals) string {
 	for symbol, amount := range amounts {
 		unit, ok := prices.usd(symbol)
 		if !ok {
-			r.t.Fatalf("no recorded price for %s", symbol)
+			r.t.Fatalf("no documented price for %s", symbol)
 		}
 		sum.Add(sum, new(big.Rat).Mul(amount, unit))
 	}
@@ -159,6 +162,7 @@ func (r *replay) earnUSD(amounts adapters.Totals) string {
 func fixturePaths(t *testing.T, dir string) []string {
 	t.Helper()
 	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
+
 	if err != nil || len(paths) == 0 {
 		t.Fatalf("no fixtures in %s: %v", dir, err)
 	}
@@ -198,7 +202,7 @@ func (r *replay) failure(scenario string) fixture.File {
 	return f
 }
 
-// tolerateErrors makes the replay answer badly signed requests with the recorded error fixtures.
+// tolerateErrors makes the replay answer badly signed requests with the documented error fixtures.
 func (r *replay) tolerateErrors() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -209,7 +213,14 @@ func (r *replay) tolerateErrors() {
 func (r *replay) then(ep endpoint, answers ...func(w http.ResponseWriter)) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.queue[ep.String()] = append(r.queue[ep.String()], answers...)
+	for i, answer := range answers {
+		params := url.Values{}
+		if ep == epFlexibleEarn || ep == epLockedEarn {
+			params = simpleEarnQuery(i + 1)
+		}
+		name := requestOf(ep, params)
+		r.queue[name] = append(r.queue[name], answer)
+	}
 }
 
 // always replaces an endpoint's default answer for every query.
@@ -275,8 +286,8 @@ func (r *replay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if answer == nil {
 		answer = r.fixed[name]
 	}
-	if queue := r.queue[name]; len(queue) > 0 {
-		answer, r.queue[name] = queue[0], queue[1:]
+	if queue := r.queue[request]; len(queue) > 0 {
+		answer, r.queue[request] = queue[0], queue[1:]
 	}
 	r.mu.Unlock()
 	if ep, ok := knownEndpoint(name); ok && ep.signed {
@@ -350,7 +361,7 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	}
 	expected := r.serverTime + time.Since(r.started).Milliseconds()
 	if diff := ts - expected; diff > 5000 || diff < -5000 {
-		return "stale_timestamp", "timestamp is not aligned with the recorded server time: off by " + strconv.FormatInt(diff, 10) + " ms"
+		return "stale_timestamp", "timestamp is not aligned with the documented server time: off by " + strconv.FormatInt(diff, 10) + " ms"
 	}
 	return "", ""
 }
@@ -420,52 +431,6 @@ func collect(t *testing.T, a *Adapter, structure adapters.AccountStructure, acco
 	return batch
 }
 
-func TestFixtureHeaders(t *testing.T) {
-	t.Parallel()
-
-	err := filepath.WalkDir("testdata", func(file string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || filepath.Ext(file) != ".json" {
-			return err
-		}
-		f := readFixture(t, file)
-		h := &f.Fixture
-		if h.Platform != "binance" || h.Endpoint == "" {
-			t.Errorf("%s: incomplete header %+v", file, h)
-		}
-		method, request, _ := strings.Cut(h.Endpoint, " ")
-		path, _, _ := strings.Cut(request, "?")
-		if _, ok := knownEndpoint(method + " " + path); !ok {
-			t.Errorf("%s: the adapter never calls %s", file, h.Endpoint)
-		}
-		suffix := h.Scenario
-		if suffix == fixture.ScenarioRecorded || h.Documented() {
-			suffix = ""
-		}
-		if want := fixture.Name(request, suffix) + ".json"; filepath.Base(file) != want {
-			t.Errorf("%s: the fixture of %s is named %s", file, h.Endpoint, want)
-		}
-		if h.MarginMode != "" {
-			t.Errorf("%s: Binance has no Margin Mode", file)
-		}
-		documented := filepath.Base(filepath.Dir(filepath.Dir(file))) == "documented"
-		switch {
-		case documented:
-			if !h.Documented() || h.RecordedAt != nil || !strings.HasPrefix(h.Documentation, "https://developers.binance.com/") ||
-				!adapters.ValidStructure(adapters.PlatformBinance, adapters.AccountStructure(h.AccountStructure)) {
-				t.Errorf("%s: a documentation-derived fixture names its documentation and no recording date: %+v", file, h)
-			}
-		default:
-			if h.Documented() || h.RecordedAt == nil || h.Documentation != "" || h.AccountStructure != string(adapters.StructureBinancePM) {
-				t.Errorf("%s: a recorded fixture names its recording date and the recorded structure: %+v", file, h)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestFixturesHaveNoCredentialOrIdentityEcho(t *testing.T) {
 	t.Parallel()
 
@@ -505,11 +470,11 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 
 	for _, tc := range []struct {
 		structure adapters.AccountStructure
-		overlay   string
+		selection string
 	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
 			t.Parallel()
-			r, a := newReplay(t, tc.overlay)
+			r, a := newReplay(t, tc.selection)
 			result, err := a.Validate(context.Background(), testCreds, tc.structure)
 			if err != nil {
 				t.Fatal(err)
@@ -529,10 +494,10 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 func TestEd25519ValidateAndCollectBothStructures(t *testing.T) {
 	for _, tc := range []struct {
 		structure adapters.AccountStructure
-		overlay   string
+		selection string
 	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
-			r, a := newReplay(t, tc.overlay)
+			r, a := newReplay(t, tc.selection)
 			r.secret = testEdCreds.APISecret
 			if _, err := a.Validate(context.Background(), testEdCreds, tc.structure); err != nil {
 				t.Fatal(err)
@@ -555,7 +520,7 @@ func TestStructureMismatchStopsBeforeAnyAccountRead(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		overlay    string
+		selection  string
 		configured adapters.AccountStructure
 		reported   string
 	}{
@@ -564,7 +529,7 @@ func TestStructureMismatchStopsBeforeAnyAccountRead(t *testing.T) {
 	} {
 		t.Run(string(tc.configured), func(t *testing.T) {
 			t.Parallel()
-			r, a := newReplay(t, tc.overlay)
+			r, a := newReplay(t, tc.selection)
 			_, validateErr := a.Validate(context.Background(), testCreds, tc.configured)
 			_, collectErr := a.Collect(context.Background(), testCreds, tc.configured, adapters.AccountTypeIDs(tc.configured))
 			for _, err := range []error{validateErr, collectErr} {
@@ -872,7 +837,7 @@ func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 		status(http.StatusOK, `{"total":3,"rows":[{"asset":"ETH","totalAmount":"0.01"}]}`))
 	r.then(epLockedEarn, status(http.StatusOK, `{"total":1,"rows":[{"asset":"USDT","amount":"10","positionId":1}]}`))
 	// PURCHASE_SUCCESS spans two pages, and its ETH position starts settling between that read and
-	// the SETTLING one, so both list it. REFUNDING keeps the recorded account's empty answer.
+	// the SETTLING one, so both list it. REFUNDING keeps the documented account's empty answer.
 	r.alwaysAt(epDualInvest, dualInvestmentQuery("PENDING", 1), status(http.StatusOK,
 		`{"total":1,"list":[{"id":4,"investCoin":"USDC","subscriptionAmount":"20","purchaseStatus":"PENDING"}]}`))
 	r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK,
@@ -953,7 +918,11 @@ func TestDualInvestmentStatuses(t *testing.T) {
 		t.Run(state+" is counted", func(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, "")
+			for _, other := range runningDualInvestmentStates() {
+				r.alwaysAt(epDualInvest, dualInvestmentQuery(other, 1), status(http.StatusOK, `{"total":0,"list":[]}`))
+			}
 			r.alwaysAt(epDualInvest, dualInvestmentQuery(state, 1), dualInvestmentAnswer(state))
+			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"1520","walletName":"Earn"}]`))
 			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if earn.Status != adapters.StatusOK || balanceOf(t, earn, "ETH").Equity != "0.25" {
 				t.Fatalf("earn report %+v", earn)
@@ -1287,15 +1256,15 @@ func TestPricesFallBackToUSDC(t *testing.T) {
 	}
 }
 
-// Binance keeps delisted pairs in the ticker at price 0, such as the recorded BCPTUSDC; such a
+// Binance keeps delisted pairs in the ticker at price 0, such as the documented BCPTUSDC; such a
 // pair must not value a coin at zero.
 func TestDelistedPairIsNotAPrice(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	recorded, _ := a.lastPrices(context.Background(), a.client(testCreds))
-	if _, ok := recorded.quote("BCPT", "USDC"); ok {
-		t.Fatal("the recorded BCPTUSDC pair is listed at price 0 and must not price BCPT")
+	documented, _ := a.lastPrices(context.Background(), a.client(testCreds))
+	if _, ok := documented.quote("BCPT", "USDC"); ok {
+		t.Fatal("the documented BCPTUSDC pair is listed at price 0 and must not price BCPT")
 	}
 	r.always(epTickerPrice, status(http.StatusOK, `[{"symbol":"AAAUSDT","price":"0.00000000"},{"symbol":"AAAUSDC","price":"2.5"}]`))
 	prices, _ := a.lastPrices(context.Background(), a.client(testCreds))
@@ -1350,7 +1319,7 @@ func TestErrorDetailNamesBinanceCodeOnly(t *testing.T) {
 	r.always(epAccountInfo, serve(r.failure("invalid_key")))
 	_, err := a.Collect(context.Background(), testCreds, adapters.StructureBinancePM, []adapters.AccountType{TypePortfolioMargin})
 	_, detail := adapters.Classify(err)
-	if !strings.Contains(detail, "GET /sapi/v1/account/info") || !strings.Contains(detail, "-2008") {
+	if !strings.Contains(detail, "GET /sapi/v1/account/info") || !strings.Contains(detail, "-2015") {
 		t.Fatalf("detail %q", detail)
 	}
 	if strings.Contains(detail, testKey) || strings.Contains(detail, "{") {
@@ -1491,129 +1460,6 @@ func TestShortPositionAndZeroLiquidation(t *testing.T) {
 	hedged := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "0.5", PositionSide: "SHORT", EntryPrice: "1", MarkPrice: "1", LiquidationPrice: "1", UnRealizedProfit: "0", Leverage: "1"}
 	if p, _ := mapPosition(marketUM, epPMUMPositionRisk, hedged, rat(t, hedged.PositionAmt), &in); p.Side != adapters.SideShort {
 		t.Fatalf("hedge-mode SHORT mapped to %s", p.Side)
-	}
-}
-
-// The recorder must capture every endpoint a Collection Run of the recorded structure reads, so the
-// replayed fixtures stay complete.
-func TestRecordCapturesEveryEndpointTheStructureReads(t *testing.T) {
-	t.Parallel()
-
-	for _, tc := range []struct {
-		structure adapters.AccountStructure
-		overlay   string
-	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
-		t.Run(string(tc.structure), func(t *testing.T) {
-			t.Parallel()
-			r, a := newReplay(t, tc.overlay)
-			if _, err := a.Validate(context.Background(), testCreds, tc.structure); err != nil {
-				t.Fatal(err)
-			}
-			collect(t, a, tc.structure, adapters.AccountTypeIDs(tc.structure)...)
-			read := r.called()
-
-			r, a = newReplay(t, tc.overlay)
-			r.tolerateErrors()
-			recordings, err := a.Record(context.Background(), testCreds)
-			if err != nil {
-				t.Fatal(err)
-			}
-			recorded := map[string]bool{}
-			failures := map[string]bool{}
-			for _, rec := range recordings {
-				if rec.AccountStructure != string(tc.structure) || rec.MarginMode != "" {
-					t.Fatalf("%s recorded as %q/%q", rec.Endpoint, rec.AccountStructure, rec.MarginMode)
-				}
-				if rec.Scenario == fixture.ScenarioRecorded {
-					if rec.Status != http.StatusOK || rec.Name != fixture.Name(strings.SplitN(rec.Endpoint, " ", 2)[1], "") {
-						t.Fatalf("recording %s: status %d name %s", rec.Endpoint, rec.Status, rec.Name)
-					}
-					recorded[rec.Endpoint] = true
-					continue
-				}
-				if rec.Endpoint != epAccountInfo.String() || rec.Status == http.StatusOK {
-					t.Fatalf("error scenario %s on %s with status %d", rec.Scenario, rec.Endpoint, rec.Status)
-				}
-				failures[rec.Scenario] = true
-			}
-			for name := range read {
-				if !recorded[name] {
-					t.Errorf("a Collection Run reads %s, which the recorder does not capture", name)
-				}
-			}
-			for _, scenario := range []string{"invalid_key", "bad_signature", "stale_timestamp"} {
-				if !failures[scenario] {
-					t.Errorf("no %s recording", scenario)
-				}
-			}
-		})
-	}
-}
-
-func TestRecordSelectedDualFixture(t *testing.T) {
-	name := fixture.Name(target(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1)), "")
-	for _, overlay := range []string{"", docClassic} {
-		r, a := newReplay(t, overlay)
-		recordings, err := a.RecordSelected(context.Background(), testCreds, name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Scenario != fixture.ScenarioRecorded ||
-			recordings[0].Endpoint != epDualInvest.String()+"?"+dualInvestmentQuery("PURCHASE_SUCCESS", 1).Encode() {
-			t.Fatalf("selected recording: %+v", recordings)
-		}
-		for request := range r.called() {
-			path, _, _ := strings.Cut(request, "?")
-			if path != epServerTime.String() && path != epAccountInfo.String() && path != epDualInvest.String() {
-				t.Fatalf("unrelated endpoint called: %s", request)
-			}
-		}
-	}
-}
-
-func TestEd25519RecorderErrorProbes(t *testing.T) {
-	r, a := newReplay(t, "")
-	r.secret = testEdCreds.APISecret
-	r.tolerateErrors()
-	recordings, err := a.Record(context.Background(), testEdCreds)
-	if err != nil {
-		t.Fatal(err)
-	}
-	failures := map[string]bool{}
-	for _, recording := range recordings {
-		if recording.Scenario != fixture.ScenarioRecorded {
-			failures[recording.Scenario] = true
-		}
-	}
-	for _, scenario := range []string{"invalid_key", "bad_signature", "stale_timestamp"} {
-		if !failures[scenario] {
-			t.Errorf("missing %s probe", scenario)
-		}
-	}
-}
-
-func TestRecorderRedactsTheUIDAndTrimsMarketLists(t *testing.T) {
-	t.Parallel()
-
-	r, a := newReplay(t, docClassic)
-	r.tolerateErrors()
-	r.always(epUMSymbolConfig, status(http.StatusOK, `[{"symbol":"BTCUSDT","leverage":21},{"symbol":"ETHUSDT","leverage":5},{"symbol":"XRPUSDT","leverage":2}]`))
-	r.always(epSpotAccount, status(http.StatusOK, `{"uid":987654321,"balances":[]}`))
-	recordings, err := a.Record(context.Background(), testCreds)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, rec := range recordings {
-		switch rec.Endpoint {
-		case epSpotAccount.String():
-			if strings.Contains(string(rec.Body), "987654321") || !strings.Contains(string(rec.Body), strconv.Itoa(RedactedUID)) {
-				t.Fatalf("uid not redacted: %s", rec.Body)
-			}
-		case epUMSymbolConfig.String():
-			if strings.Contains(string(rec.Body), "ETHUSDT") || !strings.Contains(string(rec.Body), "BTCUSDT") || rec.Trimmed == nil {
-				t.Fatalf("symbol configuration not trimmed to held contracts: %s", rec.Body)
-			}
-		}
 	}
 }
 

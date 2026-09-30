@@ -1,18 +1,27 @@
 {
-  "fixture": {
-    "platform": "okx",
-    "endpoint": "GET /api/v5/finance/staking-defi/orders-active",
-    "accountStructure": "okx_unified",
-    "marginMode": "okx_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T18:18:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#financial-product-on-chain-earn-get-active-orders",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/finance/staking-defi/orders-active"
   },
   "status": 200,
   "body": {
     "code": "0",
-    "data": [],
-    "msg": ""
+    "msg": "",
+    "data": [
+      {
+        "ordId": "1",
+        "state": "1",
+        "investData": [
+          {
+            "ccy": "ETH",
+            "amt": "0.1"
+          }
+        ]
+      }
+    ]
   }
 }

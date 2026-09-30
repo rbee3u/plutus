@@ -1,15 +1,16 @@
 package collection
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/adapters/okx"
 	"github.com/rbee3u/plutus/internal/catalog"
 	"github.com/rbee3u/plutus/internal/decimal"
@@ -18,24 +19,22 @@ import (
 )
 
 // TestOKXFixturesStoreAndValue runs one cycle through the live OKX adapter replaying the committed
-// fixtures, so every recorded balance, position, instrument, and price must be accepted by the
+// fixtures, so every documented balance, position, instrument, and price must be accepted by the
 // catalog and the database and valued without omissions.
 func TestOKXFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
-	paths, err := filepath.Glob(filepath.Join("..", "adapters", "okx", "testdata", "*.json"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no okx fixtures: %v", err)
-	}
-	// OKX tells some endpoints apart by query alone, so answers are keyed by the full request.
+	files := loadAdapterSamples(t, adapters.PlatformOKX, "")
 	answers := map[string]fixture.File{}
-	for _, path := range paths {
-		f, err := fixture.Read(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if f.Fixture.Scenario == fixture.ScenarioRecorded {
-			answers[f.Fixture.Endpoint] = f
-		}
+	for _, f := range files {
+		answers[f.Request.Endpoint()] = f
+	}
+	var source struct {
+		Data []struct {
+			UID string `json:"uid"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(answers["GET /api/v5/account/config"].Body, &source); err != nil || len(source.Data) == 0 || source.Data[0].UID == "" {
+		t.Fatalf("fixture lacks its customer reference: %v", err)
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f, ok := answers[r.Method+" "+r.URL.RequestURI()]
@@ -49,12 +48,12 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	// The harness registry is shared by the identity and collection services.
-	h.registry.Register(adapters.PlatformOKX, okx.New(&okx.Options{Host: server.URL, HTTP: server.Client()}))
+	h.registry.Register(adapters.PlatformOKX, okx.New(&okx.Options{Host: server.URL, HTTP: offline.Client(t, server)}))
 
 	item := h.createIdentity("OKX fixtures", adapters.PlatformOKX, adapters.StructureOKXUnified, okx.TypeTrading, okx.TypeFunding, okx.TypeEarn)
 	item = h.storeCredentials(item, "fixture-key")
 	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
-	if err != nil || !outcome.OK || enabled.ExternalRef == nil || *enabled.ExternalRef != okx.RedactedUID {
+	if err != nil || !outcome.OK || enabled.ExternalRef == nil || *enabled.ExternalRef != source.Data[0].UID {
 		t.Fatalf("enable: err=%v outcome=%+v ref=%v", err, outcome, enabled.ExternalRef)
 	}
 
@@ -82,7 +81,7 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	assertLinearContractNotional(t, h, accounts[string(okx.TypeTrading)].AccountID)
 }
 
-// assertLinearContractNotional checks the recorded swap position, which OKX counts in contracts of
+// assertLinearContractNotional checks the documented swap position, which OKX counts in contracts of
 // ctVal base coins each: its USD notional is contracts × contract size × mark price.
 func assertLinearContractNotional(t *testing.T, h *harness, accountID uuid.UUID) {
 	t.Helper()
@@ -91,12 +90,12 @@ func assertLinearContractNotional(t *testing.T, h *harness, accountID uuid.UUID)
 		t.Fatal(err)
 	}
 	if len(view.Positions) == 0 {
-		t.Fatal("no position in the recorded trading account")
+		t.Fatal("no position in the documented trading account")
 	}
 	for _, position := range view.Positions {
 		if position.Kind != adapters.KindLinearPerp || position.QuantityUnit != adapters.UnitContracts ||
 			position.ContractSize == nil || position.MarkPrice == nil || position.NotionalUSD == nil {
-			t.Fatalf("recorded position %+v", position)
+			t.Fatalf("documented position %+v", position)
 		}
 		want := decimal.Format(decimal.Abs(decimal.Mul(decimal.Mul(decimal.MustParse(position.Quantity),
 			decimal.MustParse(*position.ContractSize)), decimal.MustParse(*position.MarkPrice))))

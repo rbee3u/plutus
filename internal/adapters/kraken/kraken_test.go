@@ -1,6 +1,7 @@
 package kraken
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -22,12 +23,14 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
+	"github.com/rbee3u/plutus/internal/adapters/recording"
 )
 
 // testCreds carry the base64 secret "secret" for both key groups, which the replay verifies.
 var testCreds = adapters.Credentials{APIKey: "spot-test", APISecret: "c2VjcmV0", Futures: &adapters.KeyPair{APIKey: "futures-test", APISecret: "c2VjcmV0"}}
 
-// separateScenario is the documentation-derived Separate-wallet overlay (ADR 0027).
+// separateScenario selects the explicit Separate-wallet interface samples (ADR 0027).
 const separateScenario = string(adapters.StructureKrakenSeparate)
 
 // allEndpoints are every endpoint the adapter and the recorder call.
@@ -43,7 +46,7 @@ var accountEndpoints = []string{
 }
 
 // errorClasses is the class of each error answer, by the scenario its file name ends with: the
-// recorded refusals and the documented errors no recording can provoke.
+// documented refusals and the documented errors no recording can provoke.
 var errorClasses = map[string]string{
 	"invalid_key":          adapters.ClassAuthentication,
 	"bad_signature":        adapters.ClassAuthentication,
@@ -72,49 +75,41 @@ func pathOf(endpoint string) string {
 	return path
 }
 
-// loadFixtures reads the recorded set, the documented error answers, and the scenario's
-// documented overlay, checking that each header states its provenance: a recording date for a
-// recording, documentation and no date for a documentation-derived response.
+// loadFixtures reads the explicitly selected flat samples and error responses.
 func loadFixtures(t *testing.T, scenario string) fixtures {
 	t.Helper()
 	out := fixtures{answers: map[string]fixture.File{}, failures: map[string]fixture.File{}}
-	refused := map[string]bool{}
-	for _, r := range refusals(testCreds) {
-		refused[failureKey(r.ep.String(), r.scenario)] = true
+	files, err := fixture.Load("testdata", sampleNames(scenario)...)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, path := range fixturePaths(t, "testdata") {
-		f := readFixture(t, path)
-		h := &f.Fixture
-		if h.RecordedAt == nil || h.Documentation != "" || h.AccountStructure != string(adapters.StructureKrakenUnified) {
-			t.Fatalf("%s: a recorded fixture carries its recording date and the recorded structure", path)
+	for _, f := range files {
+		name := f.Request.Method + " " + f.Request.Path
+		if _, exists := out.answers[name]; exists {
+			t.Fatalf("conflicting selected request: %s", name)
 		}
-		if h.Scenario == fixture.ScenarioRecorded {
-			if filepath.Base(path) != fixture.Name(pathOf(h.Endpoint), "")+".json" {
-				t.Fatalf("%s: a recorded answer is named after its endpoint", path)
-			}
-			out.answers[h.Endpoint] = f
-			continue
-		}
-		key := failureKey(h.Endpoint, h.Scenario)
-		if !refused[key] || filepath.Base(path) != fixture.Name(pathOf(h.Endpoint), h.Scenario)+".json" {
-			t.Fatalf("%s: a recorded error answer is one of the recorder's refusals, named after it", path)
-		}
-		out.failures[key] = f
+		out.answers[name] = f
 	}
-	for _, path := range fixturePaths(t, filepath.Join("testdata", "documented", "errors")) {
-		f := readDocumented(t, path, adapters.StructureKrakenUnified)
-		stem := fixture.Name(pathOf(f.Fixture.Endpoint), "") + "."
-		name := strings.TrimSuffix(filepath.Base(path), ".json")
-		if !strings.HasPrefix(name, stem) || errorClasses[strings.TrimPrefix(name, stem)] == "" {
-			t.Fatalf("%s: a documented error answer is named <endpoint>.<error>", path)
+	for variant := range errorClasses {
+		ep := epEarnAllocations
+		if variant == "invalid_key" || variant == "bad_signature" || variant == "invalid_nonce" {
+			ep = epAPIKeyInfo
 		}
-		out.failures[failureKey(f.Fixture.Endpoint, strings.TrimPrefix(name, stem))] = f
+		if variant == "authentication_error" || variant == "api_limit_exceeded" {
+			ep = epOpenPositions
+		}
+		f, err := fixture.Read("testdata/" + fixture.Name(ep.path, variant) + ".json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.failures[failureKey(ep.String(), variant)] = f
 	}
-	if scenario != "" {
-		for _, path := range fixturePaths(t, filepath.Join("testdata", "documented", scenario)) {
-			f := readDocumented(t, path, adapters.AccountStructure(scenario))
-			out.answers[f.Fixture.Endpoint] = f
+	for _, variant := range []string{"invalid_key", "bad_signature"} {
+		f, err := fixture.Read("testdata/" + fixture.Name(epFuturesKey.path, variant) + ".json")
+		if err != nil {
+			t.Fatal(err)
 		}
+		out.failures[failureKey(epFuturesKey.String(), variant)] = f
 	}
 	return out
 }
@@ -134,7 +129,7 @@ func readFixture(t *testing.T, path string) fixture.File {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.Fixture.Platform != "kraken" || f.Fixture.Endpoint == "" {
+	if f.Request.Service == "" {
 		t.Fatalf("%s: the header names no Kraken endpoint", path)
 	}
 	return f
@@ -142,20 +137,6 @@ func readFixture(t *testing.T, path string) fixture.File {
 
 // readDocumented reads a documentation-derived fixture (ADR 0027): it names its documentation and
 // structure and has no recording date.
-func readDocumented(t *testing.T, path string, structure adapters.AccountStructure) fixture.File {
-	t.Helper()
-	f := readFixture(t, path)
-	h := &f.Fixture
-	if !h.Documented() || h.RecordedAt != nil || !strings.HasPrefix(h.Documentation, "https://docs.kraken.com/") || h.AccountStructure != string(structure) {
-		t.Fatalf("%s: a documentation-derived fixture names its documentation and structure and has no recording date", path)
-	}
-	return f
-}
-
-// replay serves the committed fixtures, with one documentation-derived overlay when one is named.
-// It checks every key, signature, and Spot nonce the way Kraken does and remembers the endpoints
-// the adapter reached. A request Kraken would refuse fails the test, unless the replay is
-// refusing, when it gets the matching error answer instead.
 type replay struct {
 	t         *testing.T
 	adapter   *Adapter
@@ -181,7 +162,7 @@ func newReplay(t *testing.T, scenario string, overrides map[string]string) *repl
 	t.Cleanup(server.Close)
 	now := time.UnixMilli(snap.Timestamp).Add(-time.Second)
 	r.adapter = New(&Options{
-		SpotHost: server.URL, FuturesHost: server.URL, HTTP: server.Client(),
+		SpotHost: server.URL, FuturesHost: server.URL, HTTP: offline.Client(t, server),
 		WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1",
 		Now:          func() time.Time { return now },
 	})
@@ -228,6 +209,22 @@ func (r *replay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	endpoint := req.Method + " " + req.URL.Path
 	r.note(endpoint)
+
+	raw, err := io.ReadAll(req.Body)
+	if err != nil {
+		r.t.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+	req.Body = io.NopCloser(bytes.NewReader(raw))
+	req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(raw)), nil }
+	identity, err := recording.HTTPRequest(adapters.PlatformKraken, req)
+	expected, selected := r.files.answers[endpoint]
+	if err != nil || !selected || identity.Key() != expected.Request.Key() {
+		r.t.Errorf("unexpected request %s; expected %s (decode: %v)", identity.Key(), expected.Request.Key(), err)
+		w.WriteHeader(500)
+		return
+	}
 	body, status, ok := r.answer(endpoint)
 	if scenario := r.refusal(req); scenario != "" {
 		r.mu.Lock()
@@ -386,11 +383,11 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	reports := reportsByType(t, &batch)
 
 	mainReport := reports[TypeMain]
-	if value(mainReport.Equity) != "218.0994" || value(mainReport.AdjustedEquity) != "217.6833" || value(mainReport.AvailableEquity) != "217.6647" ||
-		value(mainReport.InitialMarginRatio) != "0.00008545" || value(mainReport.MaintenanceMarginRatio) != "0.00004272" || mainReport.UnifiedMarginRatio != nil {
+	if value(mainReport.Equity) != "1000" || value(mainReport.AdjustedEquity) != "950" || value(mainReport.AvailableEquity) != "800" ||
+		value(mainReport.InitialMarginRatio) != "0.10526316" || value(mainReport.MaintenanceMarginRatio) != "0.01052632" || mainReport.UnifiedMarginRatio != nil {
 		t.Fatalf("Unified Main figures: %s %s %s %s %s", value(mainReport.Equity), value(mainReport.AdjustedEquity), value(mainReport.AvailableEquity), value(mainReport.InitialMarginRatio), value(mainReport.MaintenanceMarginRatio))
 	}
-	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "134.835" || got["USDT"] != "83.22669697" {
+	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "500" || got["BTC"] != "0.01" {
 		t.Fatalf("Unified Main balances: %v", got)
 	}
 	for _, balance := range mainReport.Balances {
@@ -402,23 +399,23 @@ func TestReplayUnifiedWallet(t *testing.T) {
 		t.Fatalf("Unified Main positions: %+v", mainReport.Positions)
 	}
 	position := mainReport.Positions[0]
-	if position.PlatformPositionRef != "PF_DOGEUSD:long" || position.Side != adapters.SideLong || position.Quantity != "10" ||
+	if position.PlatformPositionRef != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.Quantity != "1" ||
 		position.QuantityUnit != adapters.UnitContracts || position.Instrument.Kind != adapters.KindLinearPerp ||
-		position.Instrument.BaseSymbol != "DOGE" || position.Instrument.SettlementSymbol != "USD" || value(position.Instrument.ContractSize) != "1" ||
-		value(position.EntryPrice) != "0.09275" || value(position.MarkPrice) != "0.09839438392" || value(position.UnrealizedPnl) != "0.05631962130000001" {
+		position.Instrument.BaseSymbol != "BTC" || position.Instrument.SettlementSymbol != "USD" || value(position.Instrument.ContractSize) != "1" ||
+		value(position.EntryPrice) != "570" || value(position.MarkPrice) != "30209.9" || position.UnrealizedPnl != nil {
 		t.Fatalf("Unified Main position: %+v", position)
 	}
 
-	if earn := reports[TypeEarn]; len(earn.Balances) != 1 || balances(&earn)["USDT"] != "60612.32349278" {
+	if earn := reports[TypeEarn]; len(earn.Balances) != 1 || balances(&earn)["USDT"] != "20" {
 		t.Fatalf("Earn: %v", balances(&earn))
 	}
-	if holding := reports[TypeDerivativesHolding]; len(holding.Balances) != 2 || balances(&holding)["XRP"] != "0.01" {
+	if holding := reports[TypeDerivativesHolding]; len(holding.Balances) != 1 || balances(&holding)["BTC"] != "0.01" {
 		t.Fatalf("Derivatives Holding: %v", balances(&holding))
 	}
-	if coin := reports[TypeCoinM]; value(coin.Equity) != "0" || len(coin.Balances) != 0 || len(coin.Positions) != 0 {
-		t.Fatalf("empty Coin-M: %+v", coin)
+	if coin := reports[TypeCoinM]; value(coin.Equity) != "10" || balances(&coin)["BTC"] != "0.02" || len(coin.Positions) != 2 {
+		t.Fatalf("Coin-M: %+v", coin)
 	}
-	if len(batch.Prices) != 1 || batch.Prices[0].AssetSymbol != "XRP" || batch.Prices[0].QuoteSymbol != "USD" || batch.Prices[0].Price != "1.56888" {
+	if len(batch.Prices) != 1 || batch.Prices[0].AssetSymbol != "BTC" || batch.Prices[0].QuoteSymbol != "USD" || batch.Prices[0].Price != "30000" {
 		t.Fatalf("prices: %+v", batch.Prices)
 	}
 	for i := range batch.Reports {
@@ -456,7 +453,7 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "25445.21" || got["BTC"] != "1.2435" {
 		t.Fatalf("Separate Main balances: %v", got)
 	}
-	if value(mainReport.Equity) != "129848.02695" || mainReport.AdjustedEquity != nil {
+	if value(mainReport.Equity) != "62740.1868" || mainReport.AdjustedEquity != nil {
 		t.Fatalf("Separate Main equity: %s", value(mainReport.Equity))
 	}
 
@@ -491,7 +488,7 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if got := balances(&holding); len(got) != 10 || got["BTC"] != "0.1285407184" || got["USD"] != "5000" {
 		t.Fatalf("Derivatives Holding: %v", got)
 	}
-	if earn := reports[TypeEarn]; balances(&earn)["USDT"] != "60612.32349278" {
+	if earn := reports[TypeEarn]; balances(&earn)["USDT"] != "20" {
 		t.Fatal("Separate Earn lost its allocations")
 	}
 }
@@ -738,7 +735,7 @@ func TestNumberReadsEveryKrakenAmountForm(t *testing.T) {
 	}
 }
 
-// Every error answer, recorded or documented, maps to its class, and the detail names only the
+// Every error answer, documented or documented, maps to its class, and the detail names only the
 // endpoint, the status, and the matched error name, never Kraken's text. Every one of them is a
 // documented name, so none falls back to the generic detail.
 func TestErrorAnswersClassify(t *testing.T) {
@@ -841,110 +838,5 @@ func TestDocumentedErrorScope(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestRecordTrimsAndRedacts(t *testing.T) {
-	r := newReplay(t, "", nil)
-	r.refuse()
-	recordings, err := r.adapter.Record(context.Background(), testCreds)
-	if err != nil {
-		t.Fatal(err)
-	}
-	recorded := map[string]fixture.Recording{}
-	refused := map[string]fixture.Recording{}
-	for i := range recordings {
-		rec := recordings[i]
-		if rec.AccountStructure != string(adapters.StructureKrakenUnified) || rec.MarginMode != "" {
-			t.Fatalf("%s recorded as %q/%q", rec.Endpoint, rec.AccountStructure, rec.MarginMode)
-		}
-		for _, secret := range []string{"spot-test", "futures-test", "c2VjcmV0"} {
-			if strings.Contains(string(rec.Body), secret) {
-				t.Fatalf("%s: a credential survived", rec.Endpoint)
-			}
-		}
-		if rec.Scenario == fixture.ScenarioRecorded {
-			if _, duplicate := recorded[rec.Endpoint]; duplicate || rec.Status != http.StatusOK || rec.Name != fixture.Name(pathOf(rec.Endpoint), "") {
-				t.Fatalf("recording %s: status %d, name %s", rec.Endpoint, rec.Status, rec.Name)
-			}
-			recorded[rec.Endpoint] = rec
-			continue
-		}
-		key := failureKey(rec.Endpoint, rec.Scenario)
-		if _, duplicate := refused[key]; duplicate || rec.Name != fixture.Name(pathOf(rec.Endpoint), rec.Scenario) || rec.Trimmed != nil {
-			t.Fatalf("refusal %s: name %s", key, rec.Name)
-		}
-		refused[key] = rec
-	}
-	for _, ep := range allEndpoints {
-		if _, ok := recorded[ep.String()]; !ok {
-			t.Errorf("%s was not recorded", ep)
-		}
-	}
-	for _, want := range refusals(testCreds) {
-		if _, ok := refused[failureKey(want.ep.String(), want.scenario)]; !ok {
-			t.Errorf("no %s refusal of %s", want.scenario, want.ep)
-		}
-	}
-	if len(refused) != len(refusals(testCreds)) {
-		t.Fatalf("%d refusals recorded", len(refused))
-	}
-	var instruments struct {
-		Instruments []instrument `json:"instruments"`
-	}
-	if err := json.Unmarshal(recorded[epInstruments.String()].Body, &instruments); err != nil {
-		t.Fatal(err)
-	}
-	held := false
-	for _, row := range instruments.Instruments {
-		held = held || row.Symbol == "PF_DOGEUSD"
-		if row.Type == typeOptions {
-			t.Fatalf("unheld option %s was kept", row.Symbol)
-		}
-	}
-	if !held || recorded[epInstruments.String()].Trimmed == nil {
-		t.Fatal("the held contract must survive trimming, and the header must say the list was trimmed")
-	}
-	if len(recorded[epEarnStrategies.String()].Body) > 64<<10 {
-		t.Fatal("Earn strategies were not trimmed")
-	}
-}
-
-func TestRecordSelectedEarnFixture(t *testing.T) {
-	r := newReplay(t, "", nil)
-	name := fixture.Name(epEarnAllocations.path, "")
-	recordings, err := r.adapter.RecordSelected(context.Background(), testCreds, name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(recordings) != 1 || recordings[0].Name != name || recordings[0].Endpoint != epEarnAllocations.String() {
-		t.Fatalf("selected recording: %+v", recordings)
-	}
-	if !r.reached(epEarnAllocations.String()) || r.reached(epEarnStrategies.String()) || r.reached(epAssets.String()) || r.reached(epOpenPositions.String()) {
-		t.Fatal("selected recording reached unrelated product or market endpoints")
-	}
-}
-
-func TestRedactorReplacesIdentifiersAndEchoes(t *testing.T) {
-	filter := &recordingFilter{assets: assetNames{}, coins: map[string]bool{}, pairs: map[string]bool{}, contracts: map[string]bool{}, options: map[string]bool{}, strategies: map[string]bool{}}
-	raw := []byte(`{"allowedCidrBlock":"192.0.2.4/32","allowedCidrBlocks":["192.0.2.4/32"],"iiban":"customer-id","accountUid":7,"createdAt":"2026-09-24T04:26:59Z","message":"key spot-test-long-key"}`)
-	body, redacted, err := filter.apply(epFuturesKey, raw, []string{"spot-test-long-key"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, s := range []string{"192.0.2.4", "customer-id", "spot-test-long-key", "2026-09-24"} {
-		if strings.Contains(string(body), s) {
-			t.Fatalf("%s survived redaction", s)
-		}
-	}
-	if !strings.Contains(string(body), `"accountUid":100001`) || strings.Join(redacted, ",") != "accountUid,allowedCidrBlock,allowedCidrBlocks,createdAt,credential and identifier echoes,iiban" {
-		t.Fatalf("redacted %v: %s", redacted, body)
-	}
-	kept, redacted, err := filter.apply(epFuturesKey, []byte(`{"iiban":null,"allowedCidrBlocks":[]}`), nil)
-	if err != nil || string(kept) != `{"allowedCidrBlocks":[],"iiban":null}` || len(redacted) != 0 {
-		t.Fatalf("a null or an empty list names nothing and stays as recorded: %v %s", redacted, kept)
-	}
-	if _, _, err := filter.apply(epFuturesKey, []byte(`[1]`), nil); err == nil {
-		t.Fatal("a body that is not a JSON object must fail")
 	}
 }

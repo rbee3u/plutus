@@ -1,0 +1,64 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/account/wallet-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/wallet-balance",
+    "query": {
+      "accountType": "UNIFIED"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "list": [
+        {
+          "totalEquity": "10000",
+          "accountIMRate": "0.1",
+          "accountIMRateByMp": "0",
+          "totalMarginBalance": "3.00326056",
+          "totalInitialMargin": "0",
+          "totalInitialMarginByMp": "0",
+          "accountType": "UNIFIED",
+          "totalAvailableBalance": "8000",
+          "accountMMRate": "0.01",
+          "accountMMRateByMp": "0",
+          "totalPerpUPL": "0",
+          "totalWalletBalance": "3.00326056",
+          "accountLTV": "0",
+          "totalMaintenanceMargin": "0",
+          "totalMaintenanceMarginByMp": "0",
+          "coin": [
+            {
+              "availableToBorrow": "3",
+              "bonus": "0",
+              "accruedInterest": "0",
+              "availableToWithdraw": "0",
+              "totalOrderIM": "0",
+              "equity": "0",
+              "totalPositionMM": "0",
+              "usdValue": "0",
+              "spotHedgingQty": "0.01592413",
+              "unrealisedPnl": "0",
+              "collateralSwitch": true,
+              "borrowAmount": "0.0",
+              "totalPositionIM": "0",
+              "walletBalance": "0",
+              "cumRealisedPnl": "0",
+              "locked": "0",
+              "marginCollateral": true,
+              "coin": "BTC",
+              "spotBorrow": "0"
+            }
+          ]
+        }
+      ]
+    },
+    "retExtInfo": {},
+    "time": 1690872862481
+  }
+}

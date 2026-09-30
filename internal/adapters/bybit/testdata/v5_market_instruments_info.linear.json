@@ -1,0 +1,66 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/market/instrument",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/instruments-info",
+    "query": {
+      "category": "linear",
+      "limit": "1000"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "category": "linear",
+      "list": [
+        {
+          "symbol": "BTCUSDT",
+          "contractType": "LinearPerpetual",
+          "baseCoin": "BTC",
+          "quoteCoin": "USDT",
+          "settleCoin": "USDT",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "ETHUSDT",
+          "contractType": "LinearPerpetual",
+          "baseCoin": "ETH",
+          "quoteCoin": "USDT",
+          "settleCoin": "USDT",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "ETHPERP",
+          "contractType": "LinearPerpetual",
+          "baseCoin": "ETH",
+          "quoteCoin": "USDC",
+          "settleCoin": "USDC",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "BTCPERP",
+          "contractType": "LinearPerpetual",
+          "baseCoin": "BTC",
+          "quoteCoin": "USDC",
+          "settleCoin": "USDC",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "BTCUSDT-30JUN23",
+          "contractType": "LinearFutures",
+          "baseCoin": "BTC",
+          "quoteCoin": "USDT",
+          "settleCoin": "USDT",
+          "deliveryTime": "1719532800000"
+        }
+      ],
+      "nextPageCursor": ""
+    },
+    "time": 1700000000000
+  }
+}

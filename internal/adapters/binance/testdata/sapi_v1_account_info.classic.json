@@ -1,0 +1,18 @@
+{
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/account#account-info",
+  "notes": "isPortfolioMarginRetailEnabled changed from the example's true to false, which describes a Classic Trading account.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/account/info"
+  },
+  "status": 200,
+  "body": {
+    "vipLevel": 0,
+    "isMarginEnabled": true,
+    "isFutureEnabled": true,
+    "isOptionsEnabled": true,
+    "isPortfolioMarginRetailEnabled": false
+  }
+}

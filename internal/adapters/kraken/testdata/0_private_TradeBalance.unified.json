@@ -1,0 +1,26 @@
+{
+  "source": "documented",
+  "documentation": "https://docs.kraken.com/api-reference/account-data/get-trade-balance",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/TradeBalance",
+    "form": {
+      "asset": "ZUSD"
+    }
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "n": "-10",
+      "eb": "1000",
+      "tb": "1000",
+      "m": "100",
+      "e": "990",
+      "mf": "890",
+      "ml": "990"
+    }
+  }
+}

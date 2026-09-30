@@ -1,0 +1,50 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/market/instrument",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/instruments-info",
+    "query": {
+      "category": "inverse",
+      "limit": "1000"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "retMsg": "OK",
+    "result": {
+      "category": "inverse",
+      "list": [
+        {
+          "symbol": "BTCUSD",
+          "contractType": "InversePerpetual",
+          "baseCoin": "BTC",
+          "quoteCoin": "USD",
+          "settleCoin": "BTC",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "ETHUSD",
+          "contractType": "InversePerpetual",
+          "baseCoin": "ETH",
+          "quoteCoin": "USD",
+          "settleCoin": "ETH",
+          "deliveryTime": "0"
+        },
+        {
+          "symbol": "BTCUSDH23",
+          "contractType": "InverseFutures",
+          "baseCoin": "BTC",
+          "quoteCoin": "USD",
+          "settleCoin": "BTC",
+          "deliveryTime": "1719532800000"
+        }
+      ],
+      "nextPageCursor": ""
+    },
+    "time": 1700000000000
+  }
+}

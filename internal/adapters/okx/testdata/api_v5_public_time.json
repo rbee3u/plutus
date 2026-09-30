@@ -1,22 +1,20 @@
 {
-  "fixture": {
-    "platform": "okx",
-    "endpoint": "GET /api/v5/public/time",
-    "accountStructure": "okx_unified",
-    "marginMode": "okx_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T18:18:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://www.okx.com/docs-v5/en/#public-data-rest-api-system-time",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/public/time"
   },
   "status": 200,
   "body": {
     "code": "0",
+    "msg": "",
     "data": [
       {
-        "ts": "1790360315799"
+        "ts": "1700000000000"
       }
-    ],
-    "msg": ""
+    ]
   }
 }

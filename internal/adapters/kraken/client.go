@@ -395,6 +395,9 @@ func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 			}
 			subscribed = true
 		case env.Feed == "balances_snapshot":
+			if c.a.captureSnapshot != nil {
+				c.a.captureSnapshot(body)
+			}
 			if c.record != nil {
 				if err := c.record(epBalancesSnapshot, response{status: http.StatusOK, body: body}); err != nil {
 					return snapshot{}, err

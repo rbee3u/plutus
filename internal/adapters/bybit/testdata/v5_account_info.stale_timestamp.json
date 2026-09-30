@@ -1,20 +1,17 @@
 {
-  "fixture": {
-    "platform": "bybit",
-    "endpoint": "GET /v5/account/info",
-    "accountStructure": "bybit_uta_2_0",
-    "marginMode": "bybit_pm",
-    "scenario": "stale_timestamp",
-    "recordedAt": "2026-09-25T19:55:39Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/error",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
   },
   "status": 200,
   "body": {
-    "result": {},
     "retCode": 10002,
-    "retExtInfo": {},
-    "retMsg": "invalid request, please check your server timestamp or recv_window param: req_timestamp[1790366078754],server_timestamp[1790366139055],recv_window[5000]",
-    "time": 1790366139055
+    "retMsg": "The request time exceeds the time window range",
+    "result": {},
+    "time": 1700000000000
   }
 }

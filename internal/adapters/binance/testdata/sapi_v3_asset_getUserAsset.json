@@ -1,23 +1,27 @@
 {
-  "fixture": {
-    "platform": "binance",
-    "endpoint": "POST /sapi/v3/asset/getUserAsset",
-    "accountStructure": "binance_pm",
-    "scenario": "recorded",
-    "recordedAt": "2026-09-25T19:34:47Z",
-    "trimmed": null,
-    "redacted": []
+  "source": "documented",
+  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset",
+  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/sapi/v3/asset/getUserAsset"
   },
   "status": 200,
   "body": [
     {
       "asset": "USDT",
-      "free": "0.40021917",
+      "free": "100",
+      "locked": "5",
+      "freeze": "2",
+      "withdrawing": "3"
+    },
+    {
+      "asset": "ETH",
+      "free": "0.2",
       "locked": "0",
       "freeze": "0",
-      "withdrawing": "0",
-      "ipoable": "0",
-      "btcValuation": "0"
+      "withdrawing": "0"
     }
   ]
 }

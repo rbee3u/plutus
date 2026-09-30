@@ -1,0 +1,13 @@
+{
+  "source": "documented",
+  "documentation": "https://bybit-exchange.github.io/docs/v5/rate-limit",
+  "notes": "Bybit documents HTTP 403 with the error \"403, access too frequent\" for an IP over its request budget but shows no body: the body is that text as a JSON string.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 403,
+  "body": "403, access too frequent",
+  "bodyFormat": "text"
+}

@@ -522,7 +522,7 @@ Seeds are generated in Go (`db/seeds`) from the same deterministic `fake` scenar
 
 `db reset` drops every table, migrates, and seeds when a profile is given; it requires `[database].allow_reset = true` and a database named `plutus` or `plutus_<suffix>` without `prod`. Without a profile it leaves an empty migrated database, which is how the test environment is wiped before real keys are entered through the UI.
 
-Database-backed test packages call `mysql.RunTestMain`, which creates one `plutus_gotest_<unix>_<hex>` database per package from the server-level `PLUTUS_GOTEST_DSN`, migrates it, and drops it afterwards; the integration test in `db/seeds` applies every profile there and asserts the §13 rules on `edge-cases`. Adapter tests are layered as in [ADR 0023](./adr/0023-test-platform-adapters-in-three-layers.md): fixture replay and the fake in `make test`, live smoke tests under the `live` build tag in `make test-live`. Environments, scripts, `make dist`, and the manual remote deployment are described in the README and [ADR 0022](./adr/0022-separate-dev-test-and-prod-environments.md). The baseline migration is frozen once prod has migrated ([ADR 0024](./adr/0024-freeze-the-baseline-migration-once-prod-has-migrated.md)).
+Database-backed test packages call `mysql.RunTestMain`, which creates one `plutus_gotest_<unix>_<hex>` database per package from the server-level `PLUTUS_GOTEST_DSN`, migrates it, and drops it afterwards; the integration test in `db/seeds` applies every profile there and asserts the §13 rules on `edge-cases`. Adapter verification follows [ADR 0036](./adr/0036-use-flat-interface-samples-and-single-request-recording.md): flat interface sample replay and the fake in network-guarded `make test`; exchange access only through explicit single-interface `adapter record`, followed by offline mapping tests and owner review. The current rebuilt library has documented samples and no recorded evidence. Environments, scripts, `make dist`, and the manual remote deployment are described in the README and [ADR 0022](./adr/0022-separate-dev-test-and-prod-environments.md). The baseline migration is frozen once prod has migrated ([ADR 0024](./adr/0024-freeze-the-baseline-migration-once-prod-has-migrated.md)).
 
 ## 11. Observability and operations
 
@@ -534,9 +534,9 @@ Phases 1–3 built the platform on the previous model; Phase 4 restructured it t
 
 ### Phase 5: Integrations
 
-- Phase 0 (done): dev / test / prod environments, throwaway `plutus_gotest_*` test databases, the `live` test layer and `make test-live`, `make dist`, `db reset` without a profile, and `kraken` reserved in the schema;
+- Phase 0 (done): dev / test / prod environments, throwaway `plutus_gotest_*` test databases, explicit recording acceptance (replacing the original live smoke layer), `make dist`, `db reset` without a profile, and `kraken` reserved in the schema;
 - Binance Portfolio Margin, OKX MCM/PM, Bybit UTA 2.0 Adapters with the Account Types each declares, registered instead of the `fake` Adapter when `fake_adapter = false`, delivered one Platform at a time in that order; Kraken follows ADR 0026 with Separate wallets and Unified Wallet;
-- per Platform: recorded and redacted fixtures with `httptest` replay tests, a `//go:build live` smoke test, and the `plutus adapter record` subcommand that produces the fixtures;
+- per Platform: flat interface samples with explicit `httptest` replay, the exchange-network guard, and single-request `plutus adapter record` for new reviewed evidence;
 - per-Platform mapping tables for Account Report, Balance, Position, and price columns, documented in `docs/adapters/<platform>.md` together with a checklist for comparing numbers with the exchange app on the test environment;
 - live validation of the stale, complete-set, boundary, and no-price rules against real read-only keys.
 
