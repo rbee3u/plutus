@@ -3,7 +3,6 @@
 # See docs/development.md#configuration for optional settings and defaults.
 
 [server]
-# Local allows LAN access; the other instances use loopback with a proxy or tunnel.
 listen_address = "0.0.0.0"
 port = 8080
 

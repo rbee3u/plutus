@@ -43,7 +43,7 @@ func TestLoadDefaultsWithoutFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Server.ListenAddress != "127.0.0.1" || cfg.Server.Port != 8080 {
+	if cfg.Server.ListenAddress != "0.0.0.0" || cfg.Server.Port != 8080 {
 		t.Fatalf("unexpected listen %s:%d", cfg.Server.ListenAddress, cfg.Server.Port)
 	}
 	if cfg.Auth.SessionCookieName() != "plutus_session" || cfg.Auth.CSRFCookieName() != "plutus_csrf" {
@@ -250,9 +250,9 @@ func TestExampleTOMLLoads(t *testing.T) {
 		fake, reset, mtls    bool
 	}{
 		{"local", "0.0.0.0", "local", 8080, true, true, false},
-		{"agent", "127.0.0.1", "agent", 8081, true, true, false},
-		{"test", "127.0.0.1", "test", 8082, false, true, true},
-		{"prod", "127.0.0.1", "", 8083, false, false, true},
+		{"agent", "0.0.0.0", "agent", 8081, true, true, false},
+		{"test", "0.0.0.0", "test", 8082, false, true, true},
+		{"prod", "0.0.0.0", "", 8083, false, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -19,7 +19,7 @@ fi
 
 make web-build
 
-echo "Serving the dev (agent) environment on 127.0.0.1:8081 using $config and $envfile."
+echo "Serving the dev (agent) environment on :8081 using $config and $envfile."
 echo "This script does not reset the database."
 echo "Open http://127.0.0.1:8081 (not :8080)."
 echo

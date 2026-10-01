@@ -15,7 +15,7 @@ const (
 	envMasterKey     = "PLUTUS_MASTER_KEY"
 	envMasterKeyFile = "PLUTUS_MASTER_KEY_FILE"
 
-	defaultListenAddress     = "127.0.0.1"
+	defaultListenAddress     = "0.0.0.0"
 	defaultPort              = 8080
 	defaultConfigFileName    = "config/local.toml"
 	defaultEnvFileName       = "config/local.env"

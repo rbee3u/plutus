@@ -17,7 +17,7 @@ if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   exit 1
 fi
 
-echo "Resetting plutus_agent with the walkthrough seed, then serving on 127.0.0.1:8081."
+echo "Resetting plutus_agent with the walkthrough seed, then serving on :8081."
 echo
 
 make web-build

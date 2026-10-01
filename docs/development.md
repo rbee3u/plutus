@@ -11,12 +11,12 @@ Plutus runs in three environments
 Automated tests are not an environment; they create their own throwaway
 databases.
 
-| Environment                          | Where                            | Adapter                                | Port and database                | Data                           |
-| ------------------------------------ | -------------------------------- | -------------------------------------- | -------------------------------- | ------------------------------ |
-| dev, `local` instance (you)          | your machine, `go run`           | deterministic fake, seeded             | `0.0.0.0:8080`, `plutus_local`   | reset whenever you like        |
-| dev, `agent` instance (the AI agent) | your machine, `go run`           | deterministic fake, seeded             | `127.0.0.1:8081`, `plutus_agent` | reset whenever the agent likes |
-| test                                 | a remote server, deployed binary | live Adapters with real read-only keys | `127.0.0.1:8082`, `plutus_test`  | reset by hand, never seeded    |
-| prod                                 | a remote server, deployed binary | live Adapters with real read-only keys | `127.0.0.1:8083`, `plutus_prod`  | never reset                    |
+| Environment                          | Where                            | Adapter                                | Port and database              | Data                           |
+| ------------------------------------ | -------------------------------- | -------------------------------------- | ------------------------------ | ------------------------------ |
+| dev, `local` instance (you)          | your machine, `go run`           | deterministic fake, seeded             | `0.0.0.0:8080`, `plutus_local` | reset whenever you like        |
+| dev, `agent` instance (the AI agent) | your machine, `go run`           | deterministic fake, seeded             | `0.0.0.0:8081`, `plutus_agent` | reset whenever the agent likes |
+| test                                 | a remote server, deployed binary | live Adapters with real read-only keys | `0.0.0.0:8082`, `plutus_test`  | reset by hand, never seeded    |
+| prod                                 | a remote server, deployed binary | live Adapters with real read-only keys | `0.0.0.0:8083`, `plutus_prod`  | never reset                    |
 
 Each environment has its own `PLUTUS_MASTER_KEY` (`openssl rand -base64 32`),
 its own database, and its own session cookie name. Dev instances never hold a
@@ -63,7 +63,7 @@ Agent sessions may connect only to `plutus_agent` and throwaway
 CREATE DATABASE plutus_agent;
 ```
 
-For `agent` (`127.0.0.1:8081`, database `plutus_agent`), copy
+For `agent` (`0.0.0.0:8081`, database `plutus_agent`), copy
 [config/agent-example.toml](../config/agent-example.toml) to `config/agent.toml`
 and [config/agent-example.env](../config/agent-example.env) to
 `config/agent.env`, then set `PLUTUS_DSN` and a unique `PLUTUS_MASTER_KEY`.
@@ -95,20 +95,20 @@ TOML fields fail startup with their names; explicit invalid values, including
 Durations use Go notation such as `15s`, `2m`, and `168h`; days are expressed in
 hours.
 
-| TOML field                                 | Default       | Purpose                                                                             |
-| ------------------------------------------ | ------------- | ----------------------------------------------------------------------------------- |
-| `server.listen_address`                    | `"127.0.0.1"` | Bind address; local dev uses `"0.0.0.0"` for LAN access                             |
-| `server.port`                              | `8080`        | Instance HTTP or HTTPS port                                                         |
-| `server.tls.cert_file`                     | `""`          | PEM server certificate; configure together with `key_file`                          |
-| `server.tls.key_file`                      | `""`          | PEM private key matching the server certificate                                     |
-| `server.tls.client_ca_file`                | `""`          | PEM trust bundle that enables required, verified client certificates                |
-| `auth.cookie_suffix`                       | `""`          | Shared suffix for session and CSRF cookie names                                     |
-| `auth.session_idle_lifetime`               | `"168h"`      | Session expiry after inactivity; 1 minute to 90 days                                |
-| `auth.session_absolute_lifetime`           | `"720h"`      | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime            |
-| `jobs.finished_retention`                  | `"2160h"`     | Retain finished jobs without report or point references; 1 to 365 days              |
-| `collection.connection_validation_timeout` | `"15s"`       | Total budget for one synchronous Connection validation; 1 second to 2 minutes       |
-| `collection.fake_adapter`                  | `false`       | Register fake Adapters for dev rather than live Adapters                            |
-| `database.allow_reset`                     | `false`       | Permit the explicit destructive `db reset` command, subject to database-name checks |
+| TOML field                                 | Default     | Purpose                                                                             |
+| ------------------------------------------ | ----------- | ----------------------------------------------------------------------------------- |
+| `server.listen_address`                    | `"0.0.0.0"` | Bind address                                                                        |
+| `server.port`                              | `8080`      | Instance HTTP or HTTPS port                                                         |
+| `server.tls.cert_file`                     | `""`        | PEM server certificate; configure together with `key_file`                          |
+| `server.tls.key_file`                      | `""`        | PEM private key matching the server certificate                                     |
+| `server.tls.client_ca_file`                | `""`        | PEM trust bundle that enables required, verified client certificates                |
+| `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                     |
+| `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                |
+| `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime            |
+| `jobs.finished_retention`                  | `"2160h"`   | Retain finished jobs without report or point references; 1 to 365 days              |
+| `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes       |
+| `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                            |
+| `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks |
 
 Each field has a matching environment override: prefix `PLUTUS_`, uppercase the
 field path, and replace dots with underscores. For example,
