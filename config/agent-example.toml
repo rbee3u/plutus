@@ -1,34 +1,20 @@
-# dev (agent) example: the AI agent's self-check instance, deterministic fake adapter, resettable.
-# Copy to gitignored config/agent.toml. Put the MySQL DSN and a unique master key in gitignored config/agent.env.
+# agent environment: see docs/development.md for environment boundaries.
+# Copy to gitignored config/agent.toml; put secrets in config/agent.env.
+# See docs/development.md#configuration for optional settings and defaults.
 
 [server]
+# Local allows LAN access; the other instances use loopback with a proxy or tunnel.
 listen_address = "127.0.0.1"
 port = 8081
 
-[server.tls]
-https_enabled = false
-https_cert_path = ""
-https_key_path = ""
-mtls_enabled = false
-mtls_ca_path = ""
-
 [auth]
-session_idle_lifetime = "168h"
-session_absolute_lifetime = "720h"
-session_cookie_name = "plutus_session_agent"
-csrf_cookie_name = "plutus_csrf_agent"
-
-[jobs]
-worker_poll_interval = "1s"
-lease_duration = "2m"
-completed_retention = "2160h"
+# Both session and CSRF cookies use this suffix; ports do not isolate cookies.
+cookie_suffix = "agent"
 
 [collection]
-default_interval = "15m"      # Collection Cycle interval for new Portfolios; each Portfolio may override
-stagger = "3s"                # delay between Identities within one cycle
-validate_timeout = "15s"      # bound for one synchronous Connection validation
-fake_adapter = true           # dev environments use the deterministic offline adapter; never real keys
+# Dev uses the deterministic offline Adapter; test and prod use live Adapters.
+fake_adapter = true
 
 [database]
-# `plutus db reset --profile …` drops, migrates, and reseeds plutus_agent; scripts/agent-wipe-and-serve.sh runs it.
+# Reset drops all tables and reapplies migrations; never enable it on prod.
 allow_reset = true

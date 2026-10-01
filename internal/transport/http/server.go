@@ -139,7 +139,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 	errCh := make(chan error, 1)
 	go func() {
 		var err error
-		if cfg.Server.TLS.HTTPSEnabled {
+		if cfg.Server.TLS.HTTPSEnabled() {
 			err = server.ListenAndServeTLS("", "")
 		} else {
 			err = server.ListenAndServe()
@@ -149,8 +149,8 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 
 	logger.Info("http server started",
 		slog.String("addr", cfg.Server.Addr()),
-		slog.Bool("https", cfg.Server.TLS.HTTPSEnabled),
-		slog.Bool("mtls", cfg.Server.TLS.MTLSEnabled),
+		slog.Bool("https", cfg.Server.TLS.HTTPSEnabled()),
+		slog.Bool("mtls", cfg.Server.TLS.MTLSEnabled()),
 		slog.Bool("database_configured", cfg.Database.DSN != ""),
 		slog.Bool("master_key_configured", cfg.Crypto.HasMasterKey()),
 	)
@@ -176,14 +176,14 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 }
 
 func tlsServerConfig(cfg *config.Config) *tls.Config {
-	if cfg == nil || !cfg.Server.TLS.HTTPSEnabled {
+	if cfg == nil || !cfg.Server.TLS.HTTPSEnabled() {
 		return nil
 	}
 	tlsCfg := &tls.Config{
 		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{*cfg.Server.TLS.Certificate},
 	}
-	if cfg.Server.TLS.MTLSEnabled {
+	if cfg.Server.TLS.MTLSEnabled() {
 		tlsCfg.ClientCAs = cfg.Server.TLS.ClientCAs
 		tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}

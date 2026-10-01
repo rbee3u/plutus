@@ -60,7 +60,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	portfolios, err := portfolio.NewService(db, 15*time.Minute).List(ctx, user.ID)
+	portfolios, err := portfolio.NewService(db).List(ctx, user.ID)
 	if err != nil || len(portfolios) != 1 {
 		t.Fatalf("expected the birth portfolio, got %d (%v)", len(portfolios), err)
 	}
@@ -347,7 +347,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &input); !errors.Is(err, catalog.ErrPrecondition) {
 		t.Fatalf("stale exclusion version: %v", err)
 	}
-	other, err := portfolio.NewService(h.collection.db, 15*time.Minute).Create(h.ctx, h.userID, portfolio.CreateInput{Name: "separate", Timezone: "UTC"})
+	other, err := portfolio.NewService(h.collection.db).Create(h.ctx, h.userID, portfolio.CreateInput{Name: "separate", Timezone: "UTC"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +507,7 @@ func TestOwnershipIsScopedByUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := portfolio.NewService(h.collection.db, 15*time.Minute).Get(h.ctx, other.ID, h.portfolioID); !errors.Is(err, portfolio.ErrNotFound) {
+	if _, err := portfolio.NewService(h.collection.db).Get(h.ctx, other.ID, h.portfolioID); !errors.Is(err, portfolio.ErrNotFound) {
 		t.Fatalf("another user's portfolio must be not found, got %v", err)
 	}
 }

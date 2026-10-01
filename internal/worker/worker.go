@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	maxBackoff        = time.Minute
-	schedulerInterval = 15 * time.Second
-	pruneInterval     = time.Hour
+	defaultPollInterval  = time.Second
+	defaultLeaseDuration = 2 * time.Minute
+	maxBackoff           = time.Minute
+	schedulerInterval    = 15 * time.Second
+	pruneInterval        = time.Hour
 )
 
 // ErrUnavailable means the worker loop is not heartbeating.
@@ -60,10 +62,10 @@ type Options struct {
 // New constructs a worker.
 func New(opts *Options) *Worker {
 	if opts.Poll <= 0 {
-		opts.Poll = time.Second
+		opts.Poll = defaultPollInterval
 	}
 	if opts.Lease <= 0 {
-		opts.Lease = 2 * time.Minute
+		opts.Lease = defaultLeaseDuration
 	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()

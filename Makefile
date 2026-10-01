@@ -8,7 +8,7 @@ LDFLAGS := -X main.version=$(VERSION)
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-.PHONY: help deps style format generate web-build build test lint run dev
+.PHONY: help deps style format generate web-build build test lint run
 
 help:
 	@printf "%s\n" \
@@ -25,7 +25,6 @@ help:
 		"  make test       Run offline Go and frontend unit tests using temporary test databases" \
 		"  make lint       Run Go linters, TypeScript type checks, and ESLint" \
 		"  make run        Run the CLI with go run; pass CLI arguments via ARGS" \
-		"  make dev        Build and serve the local environment on :8080, keeping existing data" \
 		"" \
 		Examples: \
 		"  make run ARGS=--help" \
@@ -78,6 +77,3 @@ lint: web-build
 
 run: web-build
 	go run ./cmd/plutus $(ARGS)
-
-dev:
-	./scripts/local-serve.sh

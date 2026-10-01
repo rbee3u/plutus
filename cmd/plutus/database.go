@@ -123,7 +123,7 @@ func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config,
 		return nil
 	}
 	registry := buildAdapters(cfg)
-	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ValidateTimeout})
+	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
 	if err != nil {
 		return err
 	}

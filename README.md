@@ -79,8 +79,9 @@ migrates it, loads the seed data, builds the frontend, and starts the service:
 ```
 
 Open [localhost:8080](http://127.0.0.1:8080) and sign in with `alice` /
-`Alice=123456`. On subsequent runs, `make dev` keeps the existing data. Public
-registration is unavailable; create other Users with `plutus user create`.
+`Alice=123456`. On subsequent runs, `./scripts/local-serve.sh` keeps the
+existing data. Public registration is unavailable; create other Users with
+`plutus user create`.
 
 See [development](./docs/development.md) for complete setup, configuration,
 seeds, and CLI commands, and [deployment](./docs/deployment.md) for remote test

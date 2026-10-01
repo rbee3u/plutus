@@ -24,22 +24,14 @@ const (
 	defaultSessionCookieName = "plutus_session"
 	defaultCSRFCookieName    = "plutus_csrf"
 
-	minSessionIdle        = time.Minute
-	maxSessionIdle        = 90 * 24 * time.Hour
-	minSessionAbsolute    = time.Hour
-	maxSessionAbsolute    = 365 * 24 * time.Hour
-	minWorkerPoll         = 100 * time.Millisecond
-	maxWorkerPoll         = time.Minute
-	minLease              = 5 * time.Second
-	maxLease              = 30 * time.Minute
-	minCompletedRetain    = 24 * time.Hour
-	maxCompletedRetain    = 365 * 24 * time.Hour
-	minCollectionInterval = time.Minute
-	maxCollectionInterval = 24 * time.Hour
-	minStagger            = 0
-	maxStagger            = time.Minute
-	minValidateTimeout    = time.Second
-	maxValidateTimeout    = 2 * time.Minute
+	minSessionIdle     = time.Minute
+	maxSessionIdle     = 90 * 24 * time.Hour
+	minSessionAbsolute = time.Hour
+	maxSessionAbsolute = 365 * 24 * time.Hour
+	minCompletedRetain = 24 * time.Hour
+	maxCompletedRetain = 365 * 24 * time.Hour
+	minValidateTimeout = time.Second
+	maxValidateTimeout = 2 * time.Minute
 
 	masterKeySize = 32
 )
@@ -68,38 +60,56 @@ func (s *Server) Addr() string {
 
 // TLS holds validated transport security settings.
 type TLS struct {
-	HTTPSEnabled  bool
-	HTTPSCertPath string
-	HTTPSKeyPath  string
-	MTLSEnabled   bool
-	MTLSCAPath    string
-	Certificate   *tls.Certificate
-	ClientCAs     *x509.CertPool
+	CertFile     string
+	KeyFile      string
+	ClientCAFile string
+	Certificate  *tls.Certificate
+	ClientCAs    *x509.CertPool
 }
 
-// Auth holds session lifetime and cookie name settings.
+// HTTPSEnabled reports whether a server certificate has been loaded.
+func (t *TLS) HTTPSEnabled() bool {
+	return t.Certificate != nil
+}
+
+// MTLSEnabled reports whether client certificate verification has been configured.
+func (t *TLS) MTLSEnabled() bool {
+	return t.ClientCAs != nil
+}
+
+// Auth holds session lifetimes and the shared cookie suffix.
 type Auth struct {
 	SessionIdleLifetime     time.Duration
 	SessionAbsoluteLifetime time.Duration
-	SessionCookieName       string
-	CSRFCookieName          string
+	CookieSuffix            string
 }
 
-// Jobs holds durable worker settings.
+// SessionCookieName returns the instance's session cookie name.
+func (a *Auth) SessionCookieName() string {
+	return a.cookieName(defaultSessionCookieName)
+}
+
+// CSRFCookieName returns the instance's CSRF cookie name.
+func (a *Auth) CSRFCookieName() string {
+	return a.cookieName(defaultCSRFCookieName)
+}
+
+func (a *Auth) cookieName(base string) string {
+	if a.CookieSuffix == "" {
+		return base
+	}
+	return base + "_" + a.CookieSuffix
+}
+
+// Jobs holds the retention policy for finished jobs without reports or points.
 type Jobs struct {
-	WorkerPollInterval time.Duration
-	LeaseDuration      time.Duration
-	CompletedRetention time.Duration
+	FinishedRetention time.Duration
 }
 
-// Collection holds Collection Cycle defaults and the adapter selection.
+// Collection holds Connection validation settings and the adapter selection.
 type Collection struct {
-	// DefaultInterval is the Collection Cycle interval given to new Portfolios.
-	DefaultInterval time.Duration
-	// Stagger is the delay between Identities within one cycle.
-	Stagger time.Duration
-	// ValidateTimeout bounds one synchronous Connection validation call.
-	ValidateTimeout time.Duration
+	// ConnectionValidationTimeout bounds one synchronous Connection validation call.
+	ConnectionValidationTimeout time.Duration
 	// FakeAdapter registers the deterministic offline adapter for every Platform.
 	FakeAdapter bool
 }

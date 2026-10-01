@@ -48,9 +48,9 @@ CREATE DATABASE plutus_local;
 For `local` (`0.0.0.0:8080`, database `plutus_local`), copy
 [config/local-example.toml](../config/local-example.toml) to `config/local.toml`
 and [config/local-example.env](../config/local-example.env) to
-`config/local.env`, then set `PLUTUS_DSN` and `PLUTUS_MASTER_KEY`. `make dev`
-runs `./scripts/local-serve.sh`, which rebuilds the SPA and serves the existing
-data; `./scripts/local-wipe-and-serve.sh` also resets `plutus_local` with the
+`config/local.env`, then set `PLUTUS_DSN` and `PLUTUS_MASTER_KEY`.
+`./scripts/local-serve.sh` rebuilds the SPA and serves the existing data;
+`./scripts/local-wipe-and-serve.sh` also resets `plutus_local` with the
 walkthrough seed. Other machines on the LAN can open `http://<lan-ip>:8080`.
 
 ### Agent setup
@@ -75,11 +75,97 @@ walkthrough seed.
 
 Pass `--config` and `--env-file` to any `plutus` command to select an
 environment. When `--env-file` is set, that file is the only env file loaded; it
-does not merge with `config/local.env`. `PLUTUS_DSN` or `PLUTUS_DSN_FILE` can
-still override a DSN. The credential encryption master key stays in
-`PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML.
-Without a key, credential writes, validation, and enabling return 503 and seeded
-Identities stay `unconfigured`.
+does not merge with `config/local.env`. The MySQL DSN comes only from
+`PLUTUS_DSN` or `PLUTUS_DSN_FILE`, never TOML. The credential encryption master
+key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear
+in TOML. Without a key, credential writes, validation, and enabling return 503
+and seeded Identities stay `unconfigured`.
+
+The environment examples contain deployment differences and explicit environment
+permissions, rather than every default. Keep their listener, port, cookie
+suffix, fake Adapter selection, and reset permission explicit when comparing
+files. Comments belong on separate lines above settings.
+
+### Optional settings and defaults
+
+Runtime loading applies code defaults, TOML, then environment overrides. Process
+environment values take precedence over values in the selected env file. Unknown
+TOML fields fail startup with their names; explicit invalid values, including
+`port = 0` or an empty duration, fail rather than reverting to defaults.
+Durations use Go notation such as `15s`, `2m`, and `168h`; days are expressed in
+hours.
+
+| TOML field                                 | Default       | Purpose                                                                             |
+| ------------------------------------------ | ------------- | ----------------------------------------------------------------------------------- |
+| `server.listen_address`                    | `"127.0.0.1"` | Bind address; local dev uses `"0.0.0.0"` for LAN access                             |
+| `server.port`                              | `8080`        | Instance HTTP or HTTPS port                                                         |
+| `server.tls.cert_file`                     | `""`          | PEM server certificate; configure together with `key_file`                          |
+| `server.tls.key_file`                      | `""`          | PEM private key matching the server certificate                                     |
+| `server.tls.client_ca_file`                | `""`          | PEM trust bundle that enables required, verified client certificates                |
+| `auth.cookie_suffix`                       | `""`          | Shared suffix for session and CSRF cookie names                                     |
+| `auth.session_idle_lifetime`               | `"168h"`      | Session expiry after inactivity; 1 minute to 90 days                                |
+| `auth.session_absolute_lifetime`           | `"720h"`      | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime            |
+| `jobs.finished_retention`                  | `"2160h"`     | Retain finished jobs without report or point references; 1 to 365 days              |
+| `collection.connection_validation_timeout` | `"15s"`       | Total budget for one synchronous Connection validation; 1 second to 2 minutes       |
+| `collection.fake_adapter`                  | `false`       | Register fake Adapters for dev rather than live Adapters                            |
+| `database.allow_reset`                     | `false`       | Permit the explicit destructive `db reset` command, subject to database-name checks |
+
+Each field has a matching environment override: prefix `PLUTUS_`, uppercase the
+field path, and replace dots with underscores. For example,
+`collection.connection_validation_timeout` becomes
+`PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT`. The three TLS file settings
+are paths to PEM files; their environment values are paths too.
+
+The cookie suffix generates both names. `cookie_suffix = "agent"` produces
+`plutus_session_agent` and `plutus_csrf_agent`; an empty suffix produces
+`plutus_session` and `plutus_csrf`. Nonempty suffixes may contain letters,
+digits, `_`, and `-`. Browser cookies are shared across ports on the same host,
+so use a distinct suffix for each instance.
+
+With no certificate or key, Plutus serves HTTP. A complete certificate/key pair
+enables HTTPS; an incomplete, unreadable, invalid, or expired pair fails
+startup. Adding `client_ca_file` requires HTTPS and enables mTLS with mandatory
+verified client certificates. There are no separate TLS enable flags. An
+optional HTTPS configuration is:
+
+```toml
+[server.tls]
+cert_file = "/etc/plutus/server.pem"
+key_file = "/etc/plutus/server-key.pem"
+# Add this only when every client must present a trusted certificate.
+# client_ca_file = "/etc/plutus/client-ca.pem"
+```
+
+Finished-job retention includes succeeded, failed, and cancelled jobs, but never
+deletes jobs referenced by Account Reports or Valuation Points. It does not set
+a retention period for financial history.
+
+### Configuration migration
+
+Configuration changes are direct migrations without legacy aliases. Update
+existing TOML and environment overrides together before starting the new binary.
+Known removed environment names fail with migration instructions, including
+those loaded from an env file.
+
+| Previous field                                        | Replacement                                                                            |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `server.tls.https_cert_path`                          | `server.tls.cert_file`                                                                 |
+| `server.tls.https_key_path`                           | `server.tls.key_file`                                                                  |
+| `server.tls.mtls_ca_path`                             | `server.tls.client_ca_file`                                                            |
+| `server.tls.https_enabled`, `server.tls.mtls_enabled` | Remove; transport mode follows the configured certificate and CA files                 |
+| `auth.session_cookie_name`, `auth.csrf_cookie_name`   | `auth.cookie_suffix`; use `local`, `agent`, `test`, or empty for the supplied examples |
+| `jobs.completed_retention`                            | `jobs.finished_retention`                                                              |
+| `collection.validate_timeout`                         | `collection.connection_validation_timeout`                                             |
+| `database.dsn`                                        | `PLUTUS_DSN` or `PLUTUS_DSN_FILE` outside TOML                                         |
+| `jobs.worker_poll_interval`                           | Remove; the serving worker polls an idle queue every 1 second                          |
+| `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long jobs                      |
+| `collection.default_interval`                         | Remove; new Portfolios start at 15 minutes; edit each Portfolio's interval in settings |
+| `collection.stagger`                                  | Remove; Collection Cycles wait 3 seconds between Identities                            |
+
+Existing Portfolio intervals and financial history are unaffected. Both CLI User
+creation and subsequent Portfolio creation use the same 15-minute initial
+interval. Worker polling, leases, and the Identity delay are internal
+mechanisms, not deployment policies.
 
 ## Seeds and collection
 
@@ -130,8 +216,9 @@ Passwords must be 8 to 128 characters.
 and ignored by Git. After installing frontend dependencies with `make deps`,
 Make targets that compile Go build the SPA first. Run `make web-build` before
 direct `go build`, `go test`, or `go run` commands, and again after frontend
-changes. `make dev` runs the complete local service on `:8080` and keeps
-existing data. Restart it after frontend changes to rebuild the embedded SPA.
+changes. `./scripts/local-serve.sh` runs the complete local service on `:8080`
+and keeps existing data. Restart it after frontend changes to rebuild the
+embedded SPA.
 
 See [testing and verification](./testing.md) for validation gates, temporary
 MySQL setup, agent runtime verification, and Adapter delivery reports. For

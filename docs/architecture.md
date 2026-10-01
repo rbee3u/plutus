@@ -55,18 +55,18 @@ Package boundaries do not imply exclusive ownership of tables or queries.
 ## Collection and job lifecycle
 
 Scheduled and manual collection use the same persistent job and Portfolio
-deduplication rule. The worker claims jobs transactionally, renews their leases,
-and can reclaim expired jobs. Handler failures have bounded retries with
-backoff. Partially persisted collection is not an exactly-once operation;
-reclaiming a lease does not promise seamless completion of every interrupted
-cycle.
+deduplication rule. The worker polls an idle queue every second, claims jobs
+transactionally, renews its two-minute leases, and can reclaim expired jobs.
+Handler failures have bounded retries with backoff. Partially persisted
+collection is not an exactly-once operation; reclaiming a lease does not promise
+seamless completion of every interrupted cycle.
 
 A cycle establishes its selected Accounts, then collects each usable Connection
-with configured staggering. Adapters perform the applicable structure and Margin
-Mode checks. Successful normalized reports, holdings, and prices are persisted;
-failed or omitted Accounts receive failure reports. Valuation then selects
-compatible source reports, calculates Account values and Boundary Events, and
-writes one Valuation Point for the cycle.
+with a fixed three-second delay between Identities. Adapters perform the
+applicable structure and Margin Mode checks. Successful normalized reports,
+holdings, and prices are persisted; failed or omitted Accounts receive failure
+reports. Valuation then selects compatible source reports, calculates Account
+values and Boundary Events, and writes one Valuation Point for the cycle.
 
 Temporary and rate-limit Adapter failures have bounded retries within the cycle.
 Authentication and authorization failures invalidate the Connection. Platform
@@ -165,7 +165,10 @@ pre-authentication cookie/header match. Login throttling is in memory.
 Transport middleware applies security headers, request body limits, sensitive
 response cache controls, and an Origin check for mutations. The server supports
 HTTP, TLS 1.3 HTTPS, and HTTPS with verified client certificates using
-configured PEM files. Certificate automation and hot reload are not implemented.
+configured PEM files. A loaded server certificate/key pair selects HTTPS; a
+client CA bundle additionally requires verified client certificates. Transport
+mode has no independent enable flags. Certificate automation and hot reload are
+not implemented.
 
 Connection credentials are write-only and sealed with AES-256-GCM under a
 32-byte master key, bound to their Identity and Portfolio. The key stays outside
@@ -181,6 +184,11 @@ credentials use separate configuration sources. See
 Structured logs carry request and job identifiers and operational outcomes.
 Readiness checks database access, schema version, encryption-key availability,
 and worker heartbeat. Liveness only indicates that the HTTP process responds.
+
+The current worker updates its heartbeat between jobs. A normal job longer than
+the three-second health threshold can temporarily make readiness report
+`worker_unavailable` while work continues. This remains an unresolved health
+check limitation; increasing configuration timeouts does not repair it.
 
 Shutdown cancels the worker context, waits for its loop, and gives HTTP a
 bounded shutdown window before closing the database. It does not promise that an

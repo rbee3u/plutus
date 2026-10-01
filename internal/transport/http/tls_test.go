@@ -55,11 +55,9 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 
 	cfg, err := config.Load(config.Options{
 		LookupEnv: envMap(map[string]string{
-			"PLUTUS_SERVER_TLS_HTTPS_ENABLED":   "true",
-			"PLUTUS_SERVER_TLS_HTTPS_CERT_PATH": "cert.pem",
-			"PLUTUS_SERVER_TLS_HTTPS_KEY_PATH":  "key.pem",
-			"PLUTUS_SERVER_TLS_MTLS_ENABLED":    "true",
-			"PLUTUS_SERVER_TLS_MTLS_CA_PATH":    "ca.pem",
+			"PLUTUS_SERVER_TLS_CERT_FILE":      "cert.pem",
+			"PLUTUS_SERVER_TLS_KEY_FILE":       "key.pem",
+			"PLUTUS_SERVER_TLS_CLIENT_CA_FILE": "ca.pem",
 		}),
 		ReadFile: filesMap(map[string]string{
 			"cert.pem": string(serverPEM),

@@ -20,25 +20,23 @@ const (
 	DefaultName = "default"
 	// DefaultTimezone is the IANA zone used when none is given.
 	DefaultTimezone = "Asia/Shanghai"
-	maxNameLength   = 120
-	minInterval     = 60
-	maxInterval     = 86400
+	// DefaultCollectionInterval is the initial Collection Cycle interval for new Portfolios.
+	DefaultCollectionInterval = 15 * time.Minute
+	maxNameLength             = 120
+	minInterval               = 60
+	maxInterval               = 86400
 )
 
 // Service owns portfolio use cases.
 type Service struct {
-	db              *sql.DB
-	q               *sqlcgen.Queries
-	now             func() time.Time
-	defaultInterval time.Duration
+	db  *sql.DB
+	q   *sqlcgen.Queries
+	now func() time.Time
 }
 
-// NewService constructs a portfolio service. defaultInterval seeds new Portfolios' Collection Cycle interval.
-func NewService(db *sql.DB, defaultInterval time.Duration) *Service {
-	if defaultInterval <= 0 {
-		defaultInterval = 15 * time.Minute
-	}
-	return &Service{db: db, q: sqlcgen.New(db), now: time.Now, defaultInterval: defaultInterval}
+// NewService constructs a portfolio service.
+func NewService(db *sql.DB) *Service {
+	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
 // Portfolio is one person's ledger.
@@ -132,7 +130,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, in CreateInput) 
 	if err != nil {
 		return Portfolio{}, err
 	}
-	interval := int(s.defaultInterval / time.Second)
+	interval := int(DefaultCollectionInterval / time.Second)
 	if in.CollectionIntervalSeconds != nil {
 		interval = *in.CollectionIntervalSeconds
 	}

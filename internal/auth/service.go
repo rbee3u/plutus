@@ -31,8 +31,6 @@ type Service struct {
 	absolute time.Duration
 	now      func() time.Time
 	limiter  *limiter
-	// defaultInterval is the Collection Cycle interval of the portfolio created with a user.
-	defaultInterval time.Duration
 }
 
 // NewService constructs an authentication service.
@@ -44,13 +42,12 @@ func NewService(db *sql.DB, idle, absolute time.Duration) *Service {
 		absolute = 30 * 24 * time.Hour
 	}
 	return &Service{
-		q:               sqlcgen.New(db),
-		db:              db,
-		idle:            idle,
-		absolute:        absolute,
-		now:             time.Now,
-		defaultInterval: 15 * time.Minute,
-		limiter:         newLimiter(),
+		q:        sqlcgen.New(db),
+		db:       db,
+		idle:     idle,
+		absolute: absolute,
+		now:      time.Now,
+		limiter:  newLimiter(),
 	}
 }
 
@@ -73,13 +70,6 @@ type Session struct {
 	AbsoluteExpiresAt time.Time
 	ClientLabel       *string
 	Current           bool
-}
-
-// SetDefaultCollectionInterval sets the Collection Cycle interval given to the birth Portfolio.
-func (s *Service) SetDefaultCollectionInterval(d time.Duration) {
-	if d > 0 {
-		s.defaultInterval = d
-	}
 }
 
 // CreateUser inserts a user and default undeletable portfolio.
@@ -134,7 +124,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 		UserID:                    userBytes,
 		Name:                      portfolio.DefaultName,
 		Timezone:                  portfolio.DefaultTimezone,
-		CollectionIntervalSeconds: uint32(s.defaultInterval / time.Second),
+		CollectionIntervalSeconds: uint32(portfolio.DefaultCollectionInterval / time.Second),
 		Undeletable:               true,
 		Version:                   1,
 		CreatedAt:                 now,

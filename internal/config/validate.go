@@ -27,46 +27,25 @@ func Validate(cfg *Config, opts *Options) error {
 	if cfg.Auth.SessionAbsoluteLifetime < cfg.Auth.SessionIdleLifetime {
 		return errors.New("auth.session_absolute_lifetime must be greater than or equal to auth.session_idle_lifetime")
 	}
-	if err := validateCookieName("auth.session_cookie_name", cfg.Auth.SessionCookieName); err != nil {
+	if err := validateCookieSuffix(cfg.Auth.CookieSuffix); err != nil {
 		return err
 	}
-	if err := validateCookieName("auth.csrf_cookie_name", cfg.Auth.CSRFCookieName); err != nil {
+	if err := durationInRange("jobs.finished_retention", cfg.Jobs.FinishedRetention, minCompletedRetain, maxCompletedRetain); err != nil {
 		return err
 	}
-	if cfg.Auth.SessionCookieName == cfg.Auth.CSRFCookieName {
-		return errors.New("auth.session_cookie_name and auth.csrf_cookie_name must differ")
-	}
-	if err := durationInRange("jobs.worker_poll_interval", cfg.Jobs.WorkerPollInterval, minWorkerPoll, maxWorkerPoll); err != nil {
-		return err
-	}
-	if err := durationInRange("jobs.lease_duration", cfg.Jobs.LeaseDuration, minLease, maxLease); err != nil {
-		return err
-	}
-	if err := durationInRange("jobs.completed_retention", cfg.Jobs.CompletedRetention, minCompletedRetain, maxCompletedRetain); err != nil {
-		return err
-	}
-	if err := durationInRange("collection.default_interval", cfg.Collection.DefaultInterval, minCollectionInterval, maxCollectionInterval); err != nil {
-		return err
-	}
-	if cfg.Collection.Stagger < minStagger || cfg.Collection.Stagger > maxStagger {
-		return fmt.Errorf("collection.stagger must be between %s and %s", time.Duration(minStagger), maxStagger)
-	}
-	if err := durationInRange("collection.validate_timeout", cfg.Collection.ValidateTimeout, minValidateTimeout, maxValidateTimeout); err != nil {
+	if err := durationInRange("collection.connection_validation_timeout", cfg.Collection.ConnectionValidationTimeout, minValidateTimeout, maxValidateTimeout); err != nil {
 		return err
 	}
 	return validateTLS(&cfg.Server.TLS, opts)
 }
 
-func validateCookieName(field, name string) error {
-	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("%s is required", field)
-	}
-	for _, r := range name {
+func validateCookieSuffix(suffix string) error {
+	for _, r := range suffix {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
 			continue
 		default:
-			return fmt.Errorf("%s must be a cookie token of letters, digits, '_' or '-'", field)
+			return errors.New("auth.cookie_suffix must contain only letters, digits, '_' or '-'")
 		}
 	}
 	return nil
@@ -83,37 +62,25 @@ func durationInRange(name string, d, lower, upper time.Duration) error {
 }
 
 func validateTLS(tlsCfg *TLS, opts *Options) error {
-	certSet := strings.TrimSpace(tlsCfg.HTTPSCertPath) != ""
-	keySet := strings.TrimSpace(tlsCfg.HTTPSKeyPath) != ""
-	caSet := strings.TrimSpace(tlsCfg.MTLSCAPath) != ""
+	certSet := tlsCfg.CertFile != ""
+	keySet := tlsCfg.KeyFile != ""
+	caSet := tlsCfg.ClientCAFile != ""
 
-	if !tlsCfg.HTTPSEnabled && !tlsCfg.MTLSEnabled && !certSet && !keySet && !caSet {
-		return nil
+	if certSet != keySet {
+		return errors.New("server.tls.cert_file and key_file must be configured together")
 	}
-	if !tlsCfg.HTTPSEnabled && (certSet || keySet) {
-		return errors.New("server.tls certificate paths are set while HTTPS is disabled")
+	if caSet && !certSet {
+		return errors.New("server.tls.client_ca_file requires cert_file and key_file")
 	}
-	if !tlsCfg.MTLSEnabled && caSet {
-		return errors.New("server.tls mtls_ca_path is set while mTLS is disabled")
-	}
-	if tlsCfg.MTLSEnabled && !tlsCfg.HTTPSEnabled {
-		return errors.New("server.tls.mtls_enabled requires HTTPS")
-	}
-	if tlsCfg.HTTPSEnabled && (!certSet || !keySet) {
-		return errors.New("server.tls.https_enabled requires https_cert_path and https_key_path")
-	}
-	if tlsCfg.HTTPSEnabled {
-		cert, err := loadCertificate(opts, tlsCfg.HTTPSCertPath, tlsCfg.HTTPSKeyPath)
+	if certSet {
+		cert, err := loadCertificate(opts, tlsCfg.CertFile, tlsCfg.KeyFile)
 		if err != nil {
 			return err
 		}
 		tlsCfg.Certificate = &cert
 	}
-	if tlsCfg.MTLSEnabled {
-		if !caSet {
-			return errors.New("server.tls.mtls_enabled requires mtls_ca_path")
-		}
-		pool, err := loadCAPool(opts, tlsCfg.MTLSCAPath)
+	if caSet {
+		pool, err := loadCAPool(opts, tlsCfg.ClientCAFile)
 		if err != nil {
 			return err
 		}

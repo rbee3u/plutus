@@ -63,9 +63,9 @@ func runServe(cmd *cobra.Command) error {
 	options := httpserver.EngineOptions{
 		Logger:            logger,
 		Ready:             httpserver.StaticReady{Err: errors.New("database DSN is not configured")},
-		SecureCookies:     cfg.Server.TLS.HTTPSEnabled,
-		SessionCookieName: cfg.Auth.SessionCookieName,
-		CSRFCookieName:    cfg.Auth.CSRFCookieName,
+		SecureCookies:     cfg.Server.TLS.HTTPSEnabled(),
+		SessionCookieName: cfg.Auth.SessionCookieName(),
+		CSRFCookieName:    cfg.Auth.CSRFCookieName(),
 		AllowedOrigins:    []string{"http://127.0.0.1:5173", "http://localhost:5173"},
 		Adapters:          buildAdapters(&cfg),
 	}
@@ -78,11 +78,9 @@ func runServe(cmd *cobra.Command) error {
 			Jobs:       services.jobs,
 			Collection: services.collection,
 			Valuation:  services.valuation,
-			Poll:       cfg.Jobs.WorkerPollInterval,
-			Lease:      cfg.Jobs.LeaseDuration,
 			Logger:     logger,
 			Scheduler:  true,
-			Retention:  cfg.Jobs.CompletedRetention,
+			Retention:  cfg.Jobs.FinishedRetention,
 		})
 		workerCtx, stopWorker := context.WithCancel(ctx)
 		workerDone := make(chan struct{})
@@ -124,17 +122,16 @@ type services struct {
 }
 
 func newServices(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *slog.Logger) (*services, error) {
-	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ValidateTimeout})
+	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
 	if err != nil {
 		return nil, err
 	}
 	authSvc := auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
-	authSvc.SetDefaultCollectionInterval(cfg.Collection.DefaultInterval)
 	catalogSvc := catalog.NewService(db)
 	valuationSvc := valuation.NewService(db)
 	return &services{
 		auth:       authSvc,
-		portfolios: portfolio.NewService(db, cfg.Collection.DefaultInterval),
+		portfolios: portfolio.NewService(db),
 		identities: identities,
 		catalog:    catalogSvc,
 		capital:    capital.NewService(db),
@@ -144,7 +141,7 @@ func newServices(db *sql.DB, cfg *config.Config, registry *adapters.Registry, lo
 			Identities: identities,
 			Catalog:    catalogSvc,
 			Valuation:  valuationSvc,
-			Stagger:    cfg.Collection.Stagger,
+			Stagger:    collection.IdentityDelay,
 			Logger:     logger,
 		}),
 		jobs:        jobs.NewService(db),

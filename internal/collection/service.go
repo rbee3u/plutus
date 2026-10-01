@@ -20,6 +20,9 @@ import (
 	"github.com/rbee3u/plutus/internal/valuation"
 )
 
+// IdentityDelay is the fixed runtime delay between Identities in one Collection Cycle.
+const IdentityDelay = 3 * time.Second
+
 // Error classes written by the runner itself.
 const (
 	ClassSkipped     = "skipped"

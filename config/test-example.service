@@ -1,0 +1,14 @@
+# Install as /etc/systemd/system/plutus-test.service.
+[Unit]
+Description=Plutus test
+Wants=mysql.service
+After=mysql.service
+
+[Service]
+WorkingDirectory=/opt/plutus-test
+ExecStart=/opt/plutus-test/plutus --config test.toml --env-file test.env serve
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

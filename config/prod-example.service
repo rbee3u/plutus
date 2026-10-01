@@ -1,0 +1,14 @@
+# Install as /etc/systemd/system/plutus-prod.service.
+[Unit]
+Description=Plutus prod
+Wants=mysql.service
+After=mysql.service
+
+[Service]
+WorkingDirectory=/opt/plutus-prod
+ExecStart=/opt/plutus-prod/plutus --config prod.toml --env-file prod.env serve
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

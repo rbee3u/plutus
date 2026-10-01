@@ -8,7 +8,42 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/portfolio"
 )
+
+func TestNewPortfolioIntervals(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	ctx := context.Background()
+	user, err := NewService(db, time.Hour, 24*time.Hour).CreateUser(ctx, "interval-"+uuid.NewString()[:8], "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	portfolios := portfolio.NewService(db)
+	initial, err := portfolios.List(ctx, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(initial) != 1 || initial[0].CollectionIntervalSeconds != 900 {
+		t.Fatalf("User's first Portfolio must start at 15 minutes: %+v", initial)
+	}
+	secondary, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{Name: "secondary", Timezone: "UTC"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondary.CollectionIntervalSeconds != 900 {
+		t.Fatalf("subsequent Portfolio must also start at 15 minutes: %+v", secondary)
+	}
+	interval := 1800
+	custom, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{
+		Name: "custom", Timezone: "UTC", CollectionIntervalSeconds: &interval,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if custom.CollectionIntervalSeconds != interval {
+		t.Fatal("each Portfolio must retain its own selectable interval")
+	}
+}
 
 func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	db := mysql.OpenTestDB(t)

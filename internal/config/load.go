@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -29,36 +31,28 @@ type Options struct {
 
 type fileConfig struct {
 	Server struct {
-		ListenAddress string `toml:"listen_address"`
-		Port          int    `toml:"port"`
+		ListenAddress *string `toml:"listen_address"`
+		Port          *int    `toml:"port"`
 		TLS           struct {
-			HTTPSEnabled  bool   `toml:"https_enabled"`
-			HTTPSCertPath string `toml:"https_cert_path"`
-			HTTPSKeyPath  string `toml:"https_key_path"`
-			MTLSEnabled   bool   `toml:"mtls_enabled"`
-			MTLSCAPath    string `toml:"mtls_ca_path"`
+			CertFile     string `toml:"cert_file"`
+			KeyFile      string `toml:"key_file"`
+			ClientCAFile string `toml:"client_ca_file"`
 		} `toml:"tls"`
 	} `toml:"server"`
 	Auth struct {
-		SessionIdleLifetime     string `toml:"session_idle_lifetime"`
-		SessionAbsoluteLifetime string `toml:"session_absolute_lifetime"`
-		SessionCookieName       string `toml:"session_cookie_name"`
-		CSRFCookieName          string `toml:"csrf_cookie_name"`
+		SessionIdleLifetime     *string `toml:"session_idle_lifetime"`
+		SessionAbsoluteLifetime *string `toml:"session_absolute_lifetime"`
+		CookieSuffix            string  `toml:"cookie_suffix"`
 	} `toml:"auth"`
 	Jobs struct {
-		WorkerPollInterval string `toml:"worker_poll_interval"`
-		LeaseDuration      string `toml:"lease_duration"`
-		CompletedRetention string `toml:"completed_retention"`
+		FinishedRetention *string `toml:"finished_retention"`
 	} `toml:"jobs"`
 	Collection struct {
-		DefaultInterval string `toml:"default_interval"`
-		Stagger         string `toml:"stagger"`
-		ValidateTimeout string `toml:"validate_timeout"`
-		FakeAdapter     bool   `toml:"fake_adapter"`
+		ConnectionValidationTimeout *string `toml:"connection_validation_timeout"`
+		FakeAdapter                 bool    `toml:"fake_adapter"`
 	} `toml:"collection"`
 	Database struct {
-		DSN        string `toml:"dsn"`
-		AllowReset bool   `toml:"allow_reset"`
+		AllowReset bool `toml:"allow_reset"`
 	} `toml:"database"`
 }
 
@@ -106,18 +100,12 @@ func defaults() Config {
 		Auth: Auth{
 			SessionIdleLifetime:     7 * 24 * time.Hour,
 			SessionAbsoluteLifetime: 30 * 24 * time.Hour,
-			SessionCookieName:       defaultSessionCookieName,
-			CSRFCookieName:          defaultCSRFCookieName,
 		},
 		Jobs: Jobs{
-			WorkerPollInterval: time.Second,
-			LeaseDuration:      2 * time.Minute,
-			CompletedRetention: 90 * 24 * time.Hour,
+			FinishedRetention: 90 * 24 * time.Hour,
 		},
 		Collection: Collection{
-			DefaultInterval: 15 * time.Minute,
-			Stagger:         3 * time.Second,
-			ValidateTimeout: 15 * time.Second,
+			ConnectionValidationTimeout: 15 * time.Second,
 		},
 	}
 }
@@ -136,64 +124,54 @@ func applyFile(cfg *Config, opts *Options) error {
 		return fmt.Errorf("read config file %s: %w", path, err)
 	}
 	var parsed fileConfig
-	if err := toml.Unmarshal(raw, &parsed); err != nil {
+	decoder := toml.NewDecoder(bytes.NewReader(raw)).DisallowUnknownFields()
+	if err := decoder.Decode(&parsed); err != nil {
+		var unknown *toml.StrictMissingError
+		if errors.As(err, &unknown) {
+			keys := make([]string, len(unknown.Errors))
+			for i := range unknown.Errors {
+				keys[i] = strings.Join(unknown.Errors[i].Key(), ".")
+			}
+			return fmt.Errorf("config file %s contains unsupported fields: %s; see docs/development.md#configuration-migration", path, strings.Join(keys, ", "))
+		}
 		return fmt.Errorf("parse config file %s: %w", path, err)
 	}
 	return overlayFile(cfg, &parsed)
 }
 
 func overlayFile(cfg *Config, parsed *fileConfig) error {
-	if parsed.Server.ListenAddress != "" {
-		cfg.Server.ListenAddress = parsed.Server.ListenAddress
+	if parsed.Server.ListenAddress != nil {
+		cfg.Server.ListenAddress = strings.TrimSpace(*parsed.Server.ListenAddress)
 	}
-	if parsed.Server.Port != 0 {
-		cfg.Server.Port = parsed.Server.Port
+	if parsed.Server.Port != nil {
+		cfg.Server.Port = *parsed.Server.Port
 	}
-	cfg.Server.TLS.HTTPSEnabled = parsed.Server.TLS.HTTPSEnabled
-	cfg.Server.TLS.HTTPSCertPath = parsed.Server.TLS.HTTPSCertPath
-	cfg.Server.TLS.HTTPSKeyPath = parsed.Server.TLS.HTTPSKeyPath
-	cfg.Server.TLS.MTLSEnabled = parsed.Server.TLS.MTLSEnabled
-	cfg.Server.TLS.MTLSCAPath = parsed.Server.TLS.MTLSCAPath
+	cfg.Server.TLS.CertFile = strings.TrimSpace(parsed.Server.TLS.CertFile)
+	cfg.Server.TLS.KeyFile = strings.TrimSpace(parsed.Server.TLS.KeyFile)
+	cfg.Server.TLS.ClientCAFile = strings.TrimSpace(parsed.Server.TLS.ClientCAFile)
+	cfg.Auth.CookieSuffix = strings.TrimSpace(parsed.Auth.CookieSuffix)
 
-	if strings.TrimSpace(parsed.Auth.SessionCookieName) != "" {
-		cfg.Auth.SessionCookieName = strings.TrimSpace(parsed.Auth.SessionCookieName)
-	}
-	if strings.TrimSpace(parsed.Auth.CSRFCookieName) != "" {
-		cfg.Auth.CSRFCookieName = strings.TrimSpace(parsed.Auth.CSRFCookieName)
-	}
 	if err := optionalDuration(&cfg.Auth.SessionIdleLifetime, parsed.Auth.SessionIdleLifetime, "auth.session_idle_lifetime"); err != nil {
 		return err
 	}
 	if err := optionalDuration(&cfg.Auth.SessionAbsoluteLifetime, parsed.Auth.SessionAbsoluteLifetime, "auth.session_absolute_lifetime"); err != nil {
 		return err
 	}
-	if err := optionalDuration(&cfg.Jobs.WorkerPollInterval, parsed.Jobs.WorkerPollInterval, "jobs.worker_poll_interval"); err != nil {
+	if err := optionalDuration(&cfg.Jobs.FinishedRetention, parsed.Jobs.FinishedRetention, "jobs.finished_retention"); err != nil {
 		return err
 	}
-	if err := optionalDuration(&cfg.Jobs.LeaseDuration, parsed.Jobs.LeaseDuration, "jobs.lease_duration"); err != nil {
-		return err
-	}
-	if err := optionalDuration(&cfg.Jobs.CompletedRetention, parsed.Jobs.CompletedRetention, "jobs.completed_retention"); err != nil {
-		return err
-	}
-	if err := optionalDuration(&cfg.Collection.DefaultInterval, parsed.Collection.DefaultInterval, "collection.default_interval"); err != nil {
-		return err
-	}
-	if err := optionalDuration(&cfg.Collection.Stagger, parsed.Collection.Stagger, "collection.stagger"); err != nil {
-		return err
-	}
-	if err := optionalDuration(&cfg.Collection.ValidateTimeout, parsed.Collection.ValidateTimeout, "collection.validate_timeout"); err != nil {
+	if err := optionalDuration(&cfg.Collection.ConnectionValidationTimeout, parsed.Collection.ConnectionValidationTimeout, "collection.connection_validation_timeout"); err != nil {
 		return err
 	}
 	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
-	if strings.TrimSpace(parsed.Database.DSN) != "" {
-		cfg.Database.DSN = strings.TrimSpace(parsed.Database.DSN)
-	}
 	cfg.Database.AllowReset = parsed.Database.AllowReset
 	return nil
 }
 
 func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
+	if err := rejectRemovedEnv(lookup); err != nil {
+		return err
+	}
 	if err := optionalString(&cfg.Server.ListenAddress, lookup, "PLUTUS_SERVER_LISTEN_ADDRESS"); err != nil {
 		return err
 	}
@@ -204,19 +182,16 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 		}
 		cfg.Server.Port = port
 	}
-	if err := optionalBool(&cfg.Server.TLS.HTTPSEnabled, lookup, "PLUTUS_SERVER_TLS_HTTPS_ENABLED"); err != nil {
+	if err := optionalString(&cfg.Server.TLS.CertFile, lookup, "PLUTUS_SERVER_TLS_CERT_FILE"); err != nil {
 		return err
 	}
-	if err := optionalString(&cfg.Server.TLS.HTTPSCertPath, lookup, "PLUTUS_SERVER_TLS_HTTPS_CERT_PATH"); err != nil {
+	if err := optionalString(&cfg.Server.TLS.KeyFile, lookup, "PLUTUS_SERVER_TLS_KEY_FILE"); err != nil {
 		return err
 	}
-	if err := optionalString(&cfg.Server.TLS.HTTPSKeyPath, lookup, "PLUTUS_SERVER_TLS_HTTPS_KEY_PATH"); err != nil {
+	if err := optionalString(&cfg.Server.TLS.ClientCAFile, lookup, "PLUTUS_SERVER_TLS_CLIENT_CA_FILE"); err != nil {
 		return err
 	}
-	if err := optionalBool(&cfg.Server.TLS.MTLSEnabled, lookup, "PLUTUS_SERVER_TLS_MTLS_ENABLED"); err != nil {
-		return err
-	}
-	if err := optionalString(&cfg.Server.TLS.MTLSCAPath, lookup, "PLUTUS_SERVER_TLS_MTLS_CA_PATH"); err != nil {
+	if err := optionalString(&cfg.Auth.CookieSuffix, lookup, "PLUTUS_AUTH_COOKIE_SUFFIX"); err != nil {
 		return err
 	}
 	if err := optionalDurationEnv(&cfg.Auth.SessionIdleLifetime, lookup, "PLUTUS_AUTH_SESSION_IDLE_LIFETIME"); err != nil {
@@ -225,22 +200,10 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 	if err := optionalDurationEnv(&cfg.Auth.SessionAbsoluteLifetime, lookup, "PLUTUS_AUTH_SESSION_ABSOLUTE_LIFETIME"); err != nil {
 		return err
 	}
-	if err := optionalDurationEnv(&cfg.Jobs.WorkerPollInterval, lookup, "PLUTUS_JOBS_WORKER_POLL_INTERVAL"); err != nil {
+	if err := optionalDurationEnv(&cfg.Jobs.FinishedRetention, lookup, "PLUTUS_JOBS_FINISHED_RETENTION"); err != nil {
 		return err
 	}
-	if err := optionalDurationEnv(&cfg.Jobs.LeaseDuration, lookup, "PLUTUS_JOBS_LEASE_DURATION"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Jobs.CompletedRetention, lookup, "PLUTUS_JOBS_COMPLETED_RETENTION"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Collection.DefaultInterval, lookup, "PLUTUS_COLLECTION_DEFAULT_INTERVAL"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Collection.Stagger, lookup, "PLUTUS_COLLECTION_STAGGER"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Collection.ValidateTimeout, lookup, "PLUTUS_COLLECTION_VALIDATE_TIMEOUT"); err != nil {
+	if err := optionalDurationEnv(&cfg.Collection.ConnectionValidationTimeout, lookup, "PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT"); err != nil {
 		return err
 	}
 	if err := optionalBool(&cfg.Collection.FakeAdapter, lookup, "PLUTUS_COLLECTION_FAKE_ADAPTER"); err != nil {
@@ -248,6 +211,34 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 	}
 	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {
 		return err
+	}
+	return nil
+}
+
+// Removed environment names must fail instead of silently selecting defaults.
+func rejectRemovedEnv(lookup func(string) (string, bool)) error {
+	removed := []struct {
+		key         string
+		instruction string
+	}{
+		{"PLUTUS_SERVER_TLS_HTTPS_ENABLED", "HTTPS is derived from cert_file and key_file"},
+		{"PLUTUS_SERVER_TLS_HTTPS_CERT_PATH", "use PLUTUS_SERVER_TLS_CERT_FILE"},
+		{"PLUTUS_SERVER_TLS_HTTPS_KEY_PATH", "use PLUTUS_SERVER_TLS_KEY_FILE"},
+		{"PLUTUS_SERVER_TLS_MTLS_ENABLED", "mTLS is derived from client_ca_file"},
+		{"PLUTUS_SERVER_TLS_MTLS_CA_PATH", "use PLUTUS_SERVER_TLS_CLIENT_CA_FILE"},
+		{"PLUTUS_AUTH_SESSION_COOKIE_NAME", "use PLUTUS_AUTH_COOKIE_SUFFIX"},
+		{"PLUTUS_AUTH_CSRF_COOKIE_NAME", "use PLUTUS_AUTH_COOKIE_SUFFIX"},
+		{"PLUTUS_JOBS_WORKER_POLL_INTERVAL", "worker polling is fixed at 1s"},
+		{"PLUTUS_JOBS_LEASE_DURATION", "the worker lease is fixed at 2m"},
+		{"PLUTUS_JOBS_COMPLETED_RETENTION", "use PLUTUS_JOBS_FINISHED_RETENTION"},
+		{"PLUTUS_COLLECTION_DEFAULT_INTERVAL", "new Portfolios default to 15m; edit each Portfolio's interval"},
+		{"PLUTUS_COLLECTION_STAGGER", "the delay between Identities is fixed at 3s"},
+		{"PLUTUS_COLLECTION_VALIDATE_TIMEOUT", "use PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT"},
+	}
+	for _, field := range removed {
+		if _, ok := lookup(field.key); ok {
+			return fmt.Errorf("%s is no longer supported: %s", field.key, field.instruction)
+		}
 	}
 	return nil
 }
@@ -274,11 +265,11 @@ func optionalBool(dst *bool, lookup func(string) (string, bool), key string) err
 	return nil
 }
 
-func optionalDuration(dst *time.Duration, raw, name string) error {
-	if strings.TrimSpace(raw) == "" {
+func optionalDuration(dst *time.Duration, raw *string, name string) error {
+	if raw == nil {
 		return nil
 	}
-	d, err := time.ParseDuration(raw)
+	d, err := time.ParseDuration(strings.TrimSpace(*raw))
 	if err != nil {
 		return fmt.Errorf("%s: %w", name, err)
 	}
@@ -291,5 +282,5 @@ func optionalDurationEnv(dst *time.Duration, lookup func(string) (string, bool),
 	if !ok {
 		return nil
 	}
-	return optionalDuration(dst, v, key)
+	return optionalDuration(dst, &v, key)
 }
