@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/exchange/api-reference/futures-websocket/balances",
-  "notes": "Documented balances_snapshot example, with its multi-collateral wallet taken from the documented Multi-Collateral Delta and its F-XBT:USD wallet from the documented Single-Collateral Delta. Added three documented fields the example omits: unified_balances = false, and futures_cash_value and futures_upnl_cash_value, both invented as 0.1219368845 XBT at the documented PI_XBTUSD mark price. Values from different examples are not mutually consistent; the fixture proves the field mapping, not arithmetic across endpoints.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "futures-ws",
     "method": "WS",

@@ -1,0 +1,40 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T18:31:20.863606Z",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/cm/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "breakEvenPrice": "2676.0113249677365",
+      "entryPrice": "2677.35",
+      "leverage": "20",
+      "liquidationPrice": "2.82678988",
+      "markPrice": "2678.63",
+      "maxQty": "1500",
+      "notionalValue": "-0.00373325",
+      "positionAmt": "-1",
+      "positionSide": "SHORT",
+      "symbol": "ETHUSD_PERP",
+      "unRealizedProfit": "-0.00000178",
+      "updateTime": 1790793015330
+    },
+    {
+      "breakEvenPrice": "2678.6986800145028",
+      "entryPrice": "2677.36",
+      "leverage": "20",
+      "liquidationPrice": "2.82678988",
+      "markPrice": "2678.63",
+      "maxQty": "1500",
+      "notionalValue": "0.00373325",
+      "positionAmt": "1",
+      "positionSide": "LONG",
+      "symbol": "ETHUSD_PERP",
+      "unRealizedProfit": "0.00000177",
+      "updateTime": 1790793015330
+    }
+  ]
+}

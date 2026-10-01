@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-balance",
-  "notes": "The documentation's example with every field its table does not list for Futures mode set to \"\", a BTC row added for the margin of the positions example's isolated MARGIN position, and the USDT row's cross margin fields (imr, mmr, mgnRatio, notionalLever) filled for a cross BTC-USDT-SWAP position; totalEq and isoEq recomputed.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

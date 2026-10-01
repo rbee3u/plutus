@@ -1,0 +1,50 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:00:56.6164Z",
+  "notes": "Redacted: uid.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/api/v3/account",
+    "query": {
+      "omitZeroBalances": "true"
+    }
+  },
+  "status": 200,
+  "body": {
+    "accountType": "SPOT",
+    "balances": [
+      {
+        "asset": "USDT",
+        "free": "25.00131525",
+        "locked": "0.00000000"
+      },
+      {
+        "asset": "LDUSDT",
+        "free": "1.75874279",
+        "locked": "0.00000000"
+      }
+    ],
+    "brokered": false,
+    "buyerCommission": 0,
+    "canDeposit": true,
+    "canTrade": true,
+    "canWithdraw": true,
+    "commissionRates": {
+      "buyer": "0.00000000",
+      "maker": "0.00100000",
+      "seller": "0.00000000",
+      "taker": "0.00100000"
+    },
+    "makerCommission": 10,
+    "permissions": [
+      "TRD_GRP_236"
+    ],
+    "preventSor": false,
+    "requireSelfTradePrevention": false,
+    "sellerCommission": 0,
+    "takerCommission": 10,
+    "uid": 123456790,
+    "updateTime": 1790770398176
+  }
+}

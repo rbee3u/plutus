@@ -96,7 +96,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 				}
 				h.registry.Register(platform, kraken.New(&kraken.Options{SpotHost: server.URL, FuturesHost: server.URL, WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1", HTTP: offline.Client(t, server), Now: func() time.Time { return time.UnixMilli(snap.Timestamp).Add(-time.Second) }}))
 			}
-			item := h.createIdentity("documented "+string(platform), platform, structure, types...)
+			item := h.createIdentity("synthetic "+string(platform), platform, structure, types...)
 			item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, creds)
 			if err != nil {
 				t.Fatal(err)
@@ -110,7 +110,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 			}
 			for _, v := range h.accountsByType(jobID, item.ID) {
 				if len(v.Omitted) != 0 || v.ValueUSD == nil {
-					t.Fatalf("%s omitted values despite documented prices", v.AccountType)
+					t.Fatalf("%s omitted values despite synthetic prices", v.AccountType)
 				}
 			}
 		})

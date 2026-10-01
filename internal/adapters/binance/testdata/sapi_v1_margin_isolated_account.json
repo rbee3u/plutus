@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-isolated-margin-account-info",
-  "notes": "assets replaces the example's all-zero BTCUSDT pair with a BTCUSDT pair holding BTC and a USDT loan and an ETHUSDT pair, so USDT is summed across two pairs; the BTC-denominated totals are kept from the example and are not mapped.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",

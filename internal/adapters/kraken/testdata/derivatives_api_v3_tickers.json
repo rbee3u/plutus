@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/api-reference/market-data/get-tickers",
-  "notes": "Documented example; FI_XBTUSD_211231 renamed FI_XBTUSD_220930 to match the documented instrument example, and an invented PF_XBTUSD row added with the documented PI_XBTUSD mark price.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "futures",
     "method": "GET",

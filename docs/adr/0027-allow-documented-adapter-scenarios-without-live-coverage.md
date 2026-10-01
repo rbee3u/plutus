@@ -4,7 +4,7 @@ status: accepted
 
 # Distinguish documented adapter support from live coverage
 
-[ADR 0036](./0036-use-flat-interface-samples-and-single-request-recording.md) retains this evidence distinction and defines flat interface samples and single-request recording.
+[ADR 0037](./0037-separate-recorded-evidence-from-synthetic-tests.md) retains this evidence distinction: documentation-based synthetic tests show supported mappings; independent reviewed recordings show observed real response shapes. New captures never become ordinary test inputs.
 
 Deliver Bybit and Kraken together at the existing Binance/OKX data-integration and smoke-test standard. Bybit initially supports the global UTA 2.0 service (including UTA 2.0 Pro), Unified, Funding, and flexible/fixed savings; on-chain staking and structured Earn products are outside this delivery. Kraken supports both wallet structures in [ADR 0026](./0026-support-kraken-separate-and-unified-wallets.md), with the available test credentials expected to use Unified Wallet.
 

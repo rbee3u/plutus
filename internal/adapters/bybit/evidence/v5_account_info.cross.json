@@ -1,0 +1,24 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:30:07.500618Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/account/info"
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "dcpStatus": "OFF",
+      "isMasterTrader": false,
+      "marginMode": "REGULAR_MARGIN",
+      "smpGroup": 0,
+      "spotHedgingStatus": "ON",
+      "timeWindow": 0,
+      "unifiedMarginStatus": 6,
+      "updatedTime": "1790832350000"
+    },
+    "retCode": 0,
+    "retMsg": "OK"
+  }
+}

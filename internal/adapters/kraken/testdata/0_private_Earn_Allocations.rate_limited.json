@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/exchange/guides/rest/ratelimits",
-  "notes": "The documented EAPI:Rate limit exceeded message in the error envelope of the error guide. The documentation gives no HTTP status; 200 is assumed, because Spot reports errors in its error list.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "POST",

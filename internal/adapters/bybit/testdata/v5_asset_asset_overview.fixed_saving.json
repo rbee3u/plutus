@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://bybit-exchange.github.io/docs/v5/asset/balance/asset-overview",
-  "notes": "Documentation example reduced to an Earn bucket of 301 USD: the recorded 20 USDT of Flexible Savings plus this scenario's 281 USDT of fixed-term principal.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

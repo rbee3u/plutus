@@ -1,0 +1,19 @@
+{
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v1/symbolConfig"
+  },
+  "status": 200,
+  "body": [
+    {
+      "symbol": "DOGEUSDT",
+      "marginType": "ISOLATED",
+      "isAutoAddMargin": false,
+      "leverage": 5,
+      "maxNotionalValue": "1000000"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:01:21.297902Z",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/cm/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "breakEvenPrice": "0.10179087",
+      "entryPrice": "0.10174",
+      "leverage": "3",
+      "liquidationPrice": "0.00018677",
+      "markPrice": "0.09501",
+      "maxQty": "20000000",
+      "notionalValue": "105.25207873",
+      "positionAmt": "1",
+      "positionSide": "BOTH",
+      "symbol": "DOGEUSD_PERP",
+      "unRealizedProfit": "-6.96232052",
+      "updateTime": 1790144246362
+    }
+  ]
+}

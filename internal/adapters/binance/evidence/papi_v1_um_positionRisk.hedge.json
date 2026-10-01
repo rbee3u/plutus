@@ -1,0 +1,40 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T18:31:16.597003Z",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/um/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "breakEvenPrice": "2676.661",
+      "entryPrice": "2678.0",
+      "leverage": "5",
+      "liquidationPrice": "0",
+      "markPrice": "2679.71132558",
+      "maxNotionalValue": "320000000",
+      "notional": "-21.4376906",
+      "positionAmt": "-0.008",
+      "positionSide": "SHORT",
+      "symbol": "ETHUSDT",
+      "unRealizedProfit": "-0.0136906",
+      "updateTime": 1790792989824
+    },
+    {
+      "breakEvenPrice": "2679.349005",
+      "entryPrice": "2678.01",
+      "leverage": "5",
+      "liquidationPrice": "0",
+      "markPrice": "2679.71132558",
+      "maxNotionalValue": "320000000",
+      "notional": "24.11740193",
+      "positionAmt": "0.009",
+      "positionSide": "LONG",
+      "symbol": "ETHUSDT",
+      "unRealizedProfit": "0.01531193",
+      "updateTime": 1790792989824
+    }
+  ]
+}

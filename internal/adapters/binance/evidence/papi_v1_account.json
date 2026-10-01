@@ -1,0 +1,22 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:01:09.101514Z",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/account"
+  },
+  "status": 200,
+  "body": {
+    "accountEquity": "5163.48222661",
+    "accountInitialMargin": "144.41237489",
+    "accountMaintMargin": "17.19910118",
+    "accountStatus": "NORMAL",
+    "actualEquity": "5501.50561636",
+    "totalAvailableBalance": "5019.06875031",
+    "totalMarginOpenLoss": "0.0",
+    "uniMMR": "300.21814353",
+    "updateTime": 1790787669151,
+    "virtualMaxWithdrawAmount": "5019.06875031"
+  }
+}

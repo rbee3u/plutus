@@ -1,0 +1,20 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:01:05.717296Z",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/sapi/v1/asset/get-funding-asset"
+  },
+  "status": 200,
+  "body": [
+    {
+      "asset": "USDT",
+      "btcValuation": "0",
+      "free": "0.1",
+      "freeze": "0",
+      "locked": "0",
+      "withdrawing": "0"
+    }
+  ]
+}

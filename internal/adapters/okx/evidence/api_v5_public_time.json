@@ -1,0 +1,19 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:50:08.561174Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/public/time"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "ts": "1790823008562"
+      }
+    ],
+    "msg": ""
+  }
+}

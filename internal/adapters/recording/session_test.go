@@ -137,6 +137,38 @@ func TestRedactionFailureCannotReturnWritableEvidence(t *testing.T) {
 	}
 }
 
+func TestFundingMemberIdentityIsRedactedWithoutChangingBalances(t *testing.T) {
+	request := fixture.Request{Service: "v5", Method: "GET", Path: "/v5/asset/transfer/query-account-coins-balance"}
+	s := New(adapters.PlatformBybit, request)
+	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+		s.Add(request, 200, []byte(`{"retCode":0,"result":{"memberId":"987654321","userID":"987654321","balance":[{"coin":"USDT","walletBalance":"987654321.00000001","transferBalance":"4.0193"}]},"retMsg":"member 987654321"}`))
+		return nil
+	})
+	if err != nil || f == nil {
+		t.Fatalf("recording failed: %v", err)
+	}
+	var body struct {
+		Result struct {
+			MemberID string `json:"memberId"`
+			UserID   string `json:"userID"`
+			Balance  []struct {
+				WalletBalance   string `json:"walletBalance"`
+				TransferBalance string `json:"transferBalance"`
+			} `json:"balance"`
+		} `json:"result"`
+		RetMsg string `json:"retMsg"`
+	}
+	if err := json.Unmarshal(f.Body, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Result.MemberID == "987654321" || body.Result.MemberID != body.Result.UserID || strings.Contains(body.RetMsg, "987654321") {
+		t.Fatal("funding identity or echo survived redaction, or equal references were separated")
+	}
+	if len(body.Result.Balance) != 1 || body.Result.Balance[0].WalletBalance != "987654321.00000001" || body.Result.Balance[0].TransferBalance != "4.0193" || !strings.Contains(f.Notes, "memberId") {
+		t.Fatal("business balances changed or memberId redaction was not disclosed")
+	}
+}
+
 func TestLogicalSnapshotAndEmptyStates(t *testing.T) {
 	request := fixture.Request{Service: "futures-ws", Method: "WS", Path: "/ws/v1/balances_snapshot"}
 	s := New(adapters.PlatformKraken, request)

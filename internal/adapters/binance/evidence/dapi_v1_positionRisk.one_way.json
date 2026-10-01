@@ -1,0 +1,67 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:32:46.729834Z",
+  "notes": "Kept 3 of 30 inspected balance/position rows: omitted only redundant known zero shapes, retaining a representative of each shape and setting. Unknown fields, nulls, empty strings and all nonzero financial measures are retained; original totals are unchanged.",
+  "request": {
+    "service": "cm",
+    "method": "GET",
+    "path": "/dapi/v1/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "breakEvenPrice": "0.00000000",
+      "entryPrice": "0.00000000",
+      "isAutoAddMargin": "false",
+      "isolatedMargin": "0.00000000",
+      "isolatedWallet": "0",
+      "leverage": "20",
+      "liquidationPrice": "0",
+      "marginType": "cross",
+      "markPrice": "0.00000000",
+      "maxQty": "500.0",
+      "notionalValue": "0",
+      "positionAmt": "0",
+      "positionSide": "BOTH",
+      "symbol": "BCHUSD_PERP",
+      "unRealizedProfit": "0.00000000",
+      "updateTime": 0
+    },
+    {
+      "breakEvenPrice": "2709.03480497",
+      "entryPrice": "2710.39000000",
+      "isAutoAddMargin": "false",
+      "isolatedMargin": "0.00073875",
+      "isolatedWallet": "0.00073652",
+      "leverage": "5",
+      "liquidationPrice": "3352.53882239",
+      "marginType": "isolated",
+      "markPrice": "2708.74785465",
+      "maxQty": "2000.0",
+      "notionalValue": "-0.00369174",
+      "positionAmt": "-1",
+      "positionSide": "BOTH",
+      "symbol": "ETHUSD_261225",
+      "unRealizedProfit": "0.00000223",
+      "updateTime": 1790789438664
+    },
+    {
+      "breakEvenPrice": "2684.47156496",
+      "entryPrice": "2683.13000000",
+      "isAutoAddMargin": "false",
+      "isolatedMargin": "0.00000000",
+      "isolatedWallet": "0",
+      "leverage": "5",
+      "liquidationPrice": "1527.29283873",
+      "marginType": "cross",
+      "markPrice": "2680.85768379",
+      "maxQty": "14000.0",
+      "notionalValue": "0.00373014",
+      "positionAmt": "1",
+      "positionSide": "BOTH",
+      "symbol": "ETHUSD_PERP",
+      "unRealizedProfit": "-0.00000315",
+      "updateTime": 1790789418671
+    }
+  ]
+}

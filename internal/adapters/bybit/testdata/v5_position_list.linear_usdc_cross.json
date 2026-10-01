@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://bybit-exchange.github.io/docs/v5/position",
-  "notes": "Documentation example with an empty list: this documented account holds only the documented inverse position.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

@@ -1,0 +1,52 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:02:27.2005Z",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/dci/product/positions",
+    "query": {
+      "pageIndex": "1",
+      "pageSize": "100",
+      "status": "PURCHASE_SUCCESS"
+    }
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "apr": "0.1069",
+        "autoCompoundPlan": "NONE",
+        "duration": 2,
+        "exercisedCoin": "SOL",
+        "id": "18482468",
+        "investCoin": "USDT",
+        "optionType": "PUT",
+        "orderId": 51829528118,
+        "purchaseEndTime": 1790899200000,
+        "purchaseStatus": "PURCHASE_SUCCESS",
+        "settleDate": 1790928000000,
+        "strikePrice": "112.5",
+        "subscriptionAmount": "10",
+        "subscriptionTime": 1790770398189
+      },
+      {
+        "apr": "0.0794",
+        "autoCompoundPlan": "NONE",
+        "duration": 3,
+        "exercisedCoin": "USDT",
+        "id": "18475898",
+        "investCoin": "SOL",
+        "optionType": "CALL",
+        "orderId": 51790942473,
+        "purchaseEndTime": 1790899200000,
+        "purchaseStatus": "PURCHASE_SUCCESS",
+        "settleDate": 1790928000000,
+        "strikePrice": "132.5",
+        "subscriptionAmount": "0.1",
+        "subscriptionTime": 1790678854360
+      }
+    ],
+    "total": 2
+  }
+}

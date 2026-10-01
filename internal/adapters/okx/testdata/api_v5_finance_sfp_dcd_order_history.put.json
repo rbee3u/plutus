@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#financial-product-dual-investment-get-order-history",
-  "notes": "The documentation's example order (settled) plus three copies with ordId, state, notionalSz, notionalCcy, and productId changed, and their settlement fields emptied, to cover invested orders: live 1.5 BTC, pending_redeem 2000 USDT, and redeeming 3 ETH. Product pair and strike fields are aligned with each synthetic productId.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

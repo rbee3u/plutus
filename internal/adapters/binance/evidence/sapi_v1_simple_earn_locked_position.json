@@ -1,0 +1,45 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:02:22.643714Z",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/simple-earn/locked/position",
+    "query": {
+      "current": "1",
+      "size": "100"
+    }
+  },
+  "status": 200,
+  "body": {
+    "rows": [
+      {
+        "accrualDays": 0,
+        "amount": "0.01",
+        "apy": "0.2",
+        "asset": "ETH",
+        "canFastRedemption": true,
+        "canReStake": false,
+        "canRedeemEarly": true,
+        "deliverDate": 1791367200000,
+        "duration": 5,
+        "nextPay": "0.00000547",
+        "nextPayDate": 1790899200000,
+        "payPeriod": 1,
+        "positionId": 351261844,
+        "projectId": "Eth*5*FS_Apac",
+        "purchaseTime": 1790751231000,
+        "redeemAmountEarly": "0.01",
+        "redeemPeriod": 1,
+        "redeemTo": "FLEXIBLE",
+        "rewardAmt": "0",
+        "rewardAsset": "ETH",
+        "rewardsEndDate": 1791244800000,
+        "status": "HOLDING",
+        "totalBoostRewardAmt": "0",
+        "type": "NORMAL"
+      }
+    ],
+    "total": 1
+  }
+}

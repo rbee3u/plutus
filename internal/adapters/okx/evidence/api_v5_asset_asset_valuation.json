@@ -1,0 +1,29 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:50:04.412635Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/asset/asset-valuation",
+    "query": {
+      "ccy": "USDT"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "details": {
+          "classic": "0",
+          "earn": "3237.13",
+          "funding": "9.01",
+          "trading": "1819.85"
+        },
+        "totalBal": "5065.99000000",
+        "ts": "1790823004393"
+      }
+    ],
+    "msg": ""
+  }
+}

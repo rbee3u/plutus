@@ -19,7 +19,7 @@ import (
 )
 
 // TestOKXFixturesStoreAndValue runs one cycle through the live OKX adapter replaying the committed
-// fixtures, so every documented balance, position, instrument, and price must be accepted by the
+// fixtures, so every synthetic balance, position, instrument, and price must be accepted by the
 // catalog and the database and valued without omissions.
 func TestOKXFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
@@ -81,7 +81,7 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	assertLinearContractNotional(t, h, accounts[string(okx.TypeTrading)].AccountID)
 }
 
-// assertLinearContractNotional checks the documented swap position, which OKX counts in contracts of
+// assertLinearContractNotional checks the synthetic swap position, which OKX counts in contracts of
 // ctVal base coins each: its USD notional is contracts × contract size × mark price.
 func assertLinearContractNotional(t *testing.T, h *harness, accountID uuid.UUID) {
 	t.Helper()
@@ -90,12 +90,12 @@ func assertLinearContractNotional(t *testing.T, h *harness, accountID uuid.UUID)
 		t.Fatal(err)
 	}
 	if len(view.Positions) == 0 {
-		t.Fatal("no position in the documented trading account")
+		t.Fatal("no position in the synthetic trading account")
 	}
 	for _, position := range view.Positions {
 		if position.Kind != adapters.KindLinearPerp || position.QuantityUnit != adapters.UnitContracts ||
 			position.ContractSize == nil || position.MarkPrice == nil || position.NotionalUSD == nil {
-			t.Fatalf("documented position %+v", position)
+			t.Fatalf("synthetic position %+v", position)
 		}
 		want := decimal.Format(decimal.Abs(decimal.Mul(decimal.Mul(decimal.MustParse(position.Quantity),
 			decimal.MustParse(*position.ContractSize)), decimal.MustParse(*position.MarkPrice))))

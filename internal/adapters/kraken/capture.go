@@ -9,11 +9,11 @@ import (
 )
 
 // RecordRequest is the sole recorder entry point: no validation, clock read or collection.
-func (a *Adapter) RecordRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) (*fixture.File, error) {
+func (a *Adapter) RecordRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request, options ...recording.Options) (*fixture.File, error) {
 	if err := RecordingRequests().Validate(request); err != nil {
 		return nil, err
 	}
-	s := recording.New(adapters.PlatformKraken, request)
+	s := recording.New(adapters.PlatformKraken, request, options...)
 	captured := New(&Options{SpotHost: a.spotHost, FuturesHost: a.futuresHost, WebSocketURL: a.wsURL, HTTP: s.Client(a.http), Now: a.clock})
 	captured.captureSnapshot = func(body []byte) { s.Add(request, 0, body) }
 	return s.Run(ctx, creds, func(ctx context.Context) error { return captured.captureRequest(ctx, creds, request) })

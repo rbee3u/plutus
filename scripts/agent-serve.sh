@@ -11,7 +11,7 @@ envfile="config/agent.env"
 
 if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   echo "Missing $config and/or $envfile." >&2
-  echo "Copy config/agent-example.toml to $config and config/agent-example.env to $envfile, then set PLUTUS_DATABASE_DSN and a unique PLUTUS_MASTER_KEY." >&2
+  echo "Copy config/agent-example.toml to $config and config/agent-example.env to $envfile, then set PLUTUS_DSN and a unique PLUTUS_MASTER_KEY." >&2
   echo "Create the MySQL database once: CREATE DATABASE plutus_agent;" >&2
   echo "Do not point this environment at plutus_local." >&2
   exit 1

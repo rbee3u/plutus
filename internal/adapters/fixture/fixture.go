@@ -1,4 +1,4 @@
-// Package fixture defines flat, explicitly selected Platform interface samples.
+// Package fixture defines the shared envelope for recorded evidence and synthetic test responses.
 package fixture
 
 import (
@@ -140,16 +140,15 @@ func (r Request) Validate() error {
 	return nil
 }
 
-// File is one response. Source is evidence provenance, never an applicability rule.
+// File is one response. Recorded evidence and synthetic test inputs have independent lifecycles.
 type File struct {
-	Source        string          `json:"source"`
-	RecordedAt    *time.Time      `json:"recordedAt,omitempty"`
-	Documentation string          `json:"documentation,omitempty"`
-	Notes         string          `json:"notes,omitempty"`
-	Request       Request         `json:"request"`
-	Status        int             `json:"status,omitempty"`
-	Body          json.RawMessage `json:"body"`
-	BodyFormat    string          `json:"bodyFormat,omitempty"`
+	Source     string          `json:"source"`
+	RecordedAt *time.Time      `json:"recordedAt,omitempty"`
+	Notes      string          `json:"notes,omitempty"`
+	Request    Request         `json:"request"`
+	Status     int             `json:"status,omitempty"`
+	Body       json.RawMessage `json:"body"`
+	BodyFormat string          `json:"bodyFormat,omitempty"`
 }
 
 // UnmarshalJSON rejects legacy fields and an explicitly stored HTTP status on WS snapshots.
@@ -159,11 +158,16 @@ func (f *File) UnmarshalJSON(raw []byte) error {
 	if err := decode(raw, &value); err != nil {
 		return err
 	}
-	if value.Request.Method == "WS" {
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &fields); err != nil {
-			return err
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return err
+	}
+	if value.Source == "synthetic" {
+		if _, present := fields["recordedAt"]; present {
+			return errors.New("synthetic responses must omit recordedAt, including null")
 		}
+	}
+	if value.Request.Method == "WS" {
 		if _, present := fields["status"]; present {
 			return errors.New("WebSocket snapshots must omit HTTP status")
 		}
@@ -172,38 +176,18 @@ func (f *File) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
-func officialDocumentation(u *url.URL) bool {
-	if u.Scheme != "https" || u.User != nil || u.Port() != "" {
-		return false
-	}
-	switch u.Hostname() {
-	case "developers.binance.com", "docs.kraken.com", "www.okx.com":
-		return true
-	case "bybit-exchange.github.io":
-		return strings.HasPrefix(u.Path, "/docs/")
-	case "github.com":
-		return strings.HasPrefix(u.Path, "/binance/binance-spot-api-docs/")
-	}
-	return false
-}
-
 func (f *File) Validate() error {
 	if err := f.Request.Validate(); err != nil {
 		return err
 	}
 	switch f.Source {
 	case "recorded":
-		if f.RecordedAt == nil || f.RecordedAt.IsZero() || f.RecordedAt.Location() != time.UTC || f.Documentation != "" {
-			return errors.New("recorded samples require an actual UTC recording time and no documentation provenance")
-		}
-	case "documented":
-		u, err := url.Parse(f.Documentation)
-		if f.RecordedAt != nil || err != nil || !officialDocumentation(u) {
-			return errors.New("documented samples require an official HTTPS documentation URL and no recording time")
+		if f.RecordedAt == nil || f.RecordedAt.IsZero() || f.RecordedAt.Location() != time.UTC {
+			return errors.New("recorded evidence requires an actual UTC recording time")
 		}
 	case "synthetic":
-		if f.RecordedAt != nil || f.Documentation != "" {
-			return errors.New("synthetic samples cannot claim recording or documentation provenance")
+		if f.RecordedAt != nil {
+			return errors.New("synthetic responses cannot claim a recording time")
 		}
 	default:
 		return errors.New("unknown or missing sample source")
@@ -253,6 +237,18 @@ func Read(path string) (File, error) {
 	}
 	if err := f.Validate(); err != nil {
 		return File{}, fmt.Errorf("invalid sample %s: %w", path, err)
+	}
+	return f, nil
+}
+
+// ReadSynthetic prevents tests from depending on recorded evidence, even through an explicit path.
+func ReadSynthetic(path string) (File, error) {
+	f, err := Read(path)
+	if err != nil {
+		return File{}, err
+	}
+	if f.Source != "synthetic" {
+		return File{}, fmt.Errorf("test input %s must be synthetic; recorded evidence is reviewed independently", path)
 	}
 	return f, nil
 }
@@ -319,14 +315,14 @@ func Write(dir, name string, f *File) (string, error) {
 	return path, nil
 }
 
-// Load reads exactly the named flat samples, with no search or fallback.
+// Load reads exactly the named flat synthetic responses, with no evidence search or fallback.
 func Load(root string, names ...string) ([]File, error) {
 	files := make([]File, 0, len(names))
 	for _, name := range names {
 		if !filepath.IsLocal(name) || filepath.Base(name) != name || filepath.Ext(name) != ".json" {
 			return nil, fmt.Errorf("invalid flat sample name %q", name)
 		}
-		f, err := Read(filepath.Join(root, name))
+		f, err := ReadSynthetic(filepath.Join(root, name))
 		if err != nil {
 			return nil, err
 		}

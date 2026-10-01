@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/exchange/guides/general/errors",
-  "notes": "The error envelope example of the guide with its documented EGeneral:Permission denied message. The documentation gives no HTTP status; 200 is assumed, because Spot reports errors in its error list.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "POST",

@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/exchange/guides/futures/ratelimits",
-  "notes": "The documented apiLimitExceeded example, which the guide shows for sendorder; every Futures endpoint shares the format. The documentation gives no HTTP status; 200 is assumed, because Futures reports errors in the body.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "futures",
     "method": "GET",

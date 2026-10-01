@@ -5,7 +5,7 @@ Package `internal/adapters/binance`. Binance has two Account Structures ([ADR 00
 - **Classic Trading** (`binance_classic`): Spot, Funding, Cross Margin, Isolated Margin, USDⓈ-M Futures, COIN-M Futures, and Earn are separate wallets, each its own Account Type.
 - **Portfolio Margin** (`binance_pm`): Cross Margin, USDⓈ-M Futures, and COIN-M Futures merge into one `portfolio_margin` Account that Binance values itself. Spot, Funding, and Earn stay separate.
 
-Portfolio Margin Pro is for institutions only and is not offered. Every call is a read-only account, balance, position, Earn position, or market-data endpoint. Both supported structures currently use documented interface samples; new-standard real coverage is pending ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)).
+Portfolio Margin Pro is for institutions only and is not offered. Every call is a read-only account, balance, position, Earn position, or market-data endpoint. Current offline coverage uses independent synthetic responses based on official contracts. Thirty-four responses covering PM One-way/Hedge, shared wallets/products, Classic Single-Asset One-way/Hedge and Classic Multi-Assets are owner-reviewed; other unobserved necessary real states remain pending after the reset ([ADR 0037](../adr/0037-separate-recorded-evidence-from-synthetic-tests.md)).
 
 ## Endpoints
 
@@ -168,11 +168,11 @@ Error details name the endpoint and Binance's code and message, never a body or 
 
 ## Fixtures and evidence
 
-The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The Binance inventory](./binance-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
+The [two-layer library](./fixtures.md) separates reviewed real `evidence/` from independently constructed `synthetic` inputs in `testdata/`. [The Binance inventory](./binance-fixtures.md) links official contracts, test cases and missing real evidence. Thirty-four responses covering PM One-way/Hedge, shared wallets/Savings/Dual, Classic Single-Asset One-way/Hedge and Classic Multi-Assets recorded on 2026-09-30 UTC are reviewed; other unobserved necessary real states remain gaps. Tests verify mapping, signatures, paging, failure classification and completeness without exchange access. Recording selects one explicit interface with `--only`, optional `--variant`, business `--query`/`--form`, and local `--keep-symbol` hints; prepared rounds may run an agreed sequential list, stopping at the first failure. Review critical shapes/document differences and owner-review before promoting to evidence; no full replay is required and synthetic tests are not regenerated.
 
 ## Comparison checklist (test environment)
 
-Run these on the test environment against the Binance app on the same account, within a few minutes of a collection. Items 5 and 6 need a Classic Trading account and still have only documented coverage. Item 7 has documented coverage for a running CALL subscription, but still needs comparison with the app.
+Run these on the test environment against the Binance app on the same account, within a few minutes of a collection. Items 5 and 6 need a Classic Trading account. All current offline results are synthetic; real/app comparisons remain pending.
 
 1. **Identity and structure**: validation stores the UID shown under the app's profile. Validating the account as the other structure fails with `unsupported`, naming both. After switching structure in the app, the next Collection Run fails the same way without reading any Account.
 2. **Portfolio Margin equity**: `Equity` equals the app's Portfolio Margin "Total equity" (actual equity) in USD. `AdjEq` equals the adjusted, collateral-rate equity. `UniMMR` equals the uniMMR on the Portfolio Margin page.

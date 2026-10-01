@@ -10,16 +10,17 @@ import (
 )
 
 const (
-	envDatabaseDSN     = "PLUTUS_DATABASE_DSN"
-	envDatabaseDSNFile = "PLUTUS_DATABASE_DSN_FILE"
-	envMasterKey       = "PLUTUS_MASTER_KEY"
-	envMasterKeyFile   = "PLUTUS_MASTER_KEY_FILE"
+	envDSN           = "PLUTUS_DSN"
+	envDSNFile       = "PLUTUS_DSN_FILE"
+	envMasterKey     = "PLUTUS_MASTER_KEY"
+	envMasterKeyFile = "PLUTUS_MASTER_KEY_FILE"
 
 	defaultListenAddress     = "127.0.0.1"
 	defaultPort              = 8080
 	defaultConfigFileName    = "config/local.toml"
 	defaultEnvFileName       = "config/local.env"
 	defaultGotestEnvFileName = "config/gotest.env"
+	defaultRecordEnvFileName = "config/record.env"
 	defaultSessionCookieName = "plutus_session"
 	defaultCSRFCookieName    = "plutus_csrf"
 

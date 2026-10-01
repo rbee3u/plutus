@@ -1,0 +1,370 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:31:35.116165Z",
+  "notes": "Kept 7 of 890 market rows: prepared/requested symbols and representative product, settlement and contract-unit types. Retained rows and original totals are unchanged.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/instruments-info",
+    "query": {
+      "category": "linear",
+      "limit": "1000"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "linear",
+      "list": [
+        {
+          "baseCoin": "BTC",
+          "contractType": "LinearPerpetual",
+          "copyTrading": "none",
+          "deliveryFeeRate": "",
+          "deliveryTime": "0",
+          "displayName": "BTCUSDC",
+          "forbidUplWithdrawal": false,
+          "fullName": "Bitcoin",
+          "fundingInterval": 480,
+          "isPreListing": false,
+          "launchTime": "1610604231000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "125.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "200.000",
+            "maxOrderQty": "1000.000",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.001",
+            "postOnlyMaxOrderQty": "1000.000",
+            "qtyStep": "0.001"
+          },
+          "lowerFundingRate": "-0.005",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "1999999.80",
+            "minPrice": "0.10",
+            "tickSize": "0.10"
+          },
+          "priceScale": "2",
+          "quoteCoin": "USDC",
+          "riskParameters": {
+            "priceLimitRatioX": "0.03",
+            "priceLimitRatioY": "0.05"
+          },
+          "settleCoin": "USDC",
+          "status": "Trading",
+          "symbol": "BTCPERP",
+          "symbolId": 45,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0.005"
+        },
+        {
+          "baseCoin": "BTC",
+          "contractType": "LinearPerpetual",
+          "copyTrading": "both",
+          "deliveryFeeRate": "",
+          "deliveryTime": "0",
+          "displayName": "BTCUSDT",
+          "forbidUplWithdrawal": false,
+          "fullName": "Bitcoin",
+          "fundingInterval": 480,
+          "isPreListing": false,
+          "launchTime": "1584230400000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "150.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "150.000",
+            "maxOrderQty": "1500.000",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.001",
+            "postOnlyMaxOrderQty": "1500.000",
+            "qtyStep": "0.001"
+          },
+          "lowerFundingRate": "-0.00333",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "1999999.80",
+            "minPrice": "0.10",
+            "tickSize": "0.10"
+          },
+          "priceScale": "2",
+          "quoteCoin": "USDT",
+          "riskParameters": {
+            "priceLimitRatioX": "0.01",
+            "priceLimitRatioY": "0.02"
+          },
+          "settleCoin": "USDT",
+          "status": "Trading",
+          "symbol": "BTCUSDT",
+          "symbolId": 5,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0.00333"
+        },
+        {
+          "baseCoin": "BTC",
+          "contractType": "LinearFutures",
+          "copyTrading": "none",
+          "deliveryFeeRate": "0",
+          "deliveryTime": "1790928000000",
+          "displayName": "BTCUSDT-02OCT26",
+          "forbidUplWithdrawal": false,
+          "fullName": "Bitcoin",
+          "fundingInterval": 0,
+          "isPreListing": false,
+          "launchTime": "1789113600000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "50.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "10.000",
+            "maxOrderQty": "10.000",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.001",
+            "postOnlyMaxOrderQty": "10.000",
+            "qtyStep": "0.001"
+          },
+          "lowerFundingRate": "0",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "1999999.8",
+            "minPrice": "0.1",
+            "tickSize": "0.1"
+          },
+          "priceScale": "1",
+          "quoteCoin": "USDT",
+          "riskParameters": {
+            "priceLimitRatioX": "0.05",
+            "priceLimitRatioY": "0.1"
+          },
+          "settleCoin": "USDT",
+          "status": "Trading",
+          "symbol": "BTCUSDT-02OCT26",
+          "symbolId": 1483,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0"
+        },
+        {
+          "baseCoin": "DOGE",
+          "contractType": "LinearPerpetual",
+          "copyTrading": "both",
+          "deliveryFeeRate": "",
+          "deliveryTime": "0",
+          "displayName": "DOGEUSDT",
+          "forbidUplWithdrawal": false,
+          "fullName": "Dogecoin",
+          "fundingInterval": 480,
+          "isPreListing": false,
+          "launchTime": "1622630640000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "75.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "5991100",
+            "maxOrderQty": "43678900",
+            "minNotionalValue": "5",
+            "minOrderQty": "1",
+            "postOnlyMaxOrderQty": "43678900",
+            "qtyStep": "1"
+          },
+          "lowerFundingRate": "-0.0058",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "199.99998",
+            "minPrice": "0.00001",
+            "tickSize": "0.00001"
+          },
+          "priceScale": "5",
+          "quoteCoin": "USDT",
+          "riskParameters": {
+            "priceLimitRatioX": "0.05",
+            "priceLimitRatioY": "0.1"
+          },
+          "settleCoin": "USDT",
+          "status": "Trading",
+          "symbol": "DOGEUSDT",
+          "symbolId": 33,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0.0058"
+        },
+        {
+          "baseCoin": "HYPE",
+          "contractType": "LinearPerpetual",
+          "copyTrading": "both",
+          "deliveryFeeRate": "",
+          "deliveryTime": "0",
+          "displayName": "HYPEUSDT",
+          "forbidUplWithdrawal": false,
+          "fullName": "Hyperliquid",
+          "fundingInterval": 480,
+          "isPreListing": false,
+          "launchTime": "1733316740000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "75.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "14700.00",
+            "maxOrderQty": "73500.00",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.01",
+            "postOnlyMaxOrderQty": "73500.00",
+            "qtyStep": "0.01"
+          },
+          "lowerFundingRate": "-0.0063",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "199999.980",
+            "minPrice": "0.010",
+            "tickSize": "0.010"
+          },
+          "priceScale": "3",
+          "quoteCoin": "USDT",
+          "riskParameters": {
+            "priceLimitRatioX": "0.05",
+            "priceLimitRatioY": "0.1"
+          },
+          "settleCoin": "USDT",
+          "status": "Trading",
+          "symbol": "HYPEUSDT",
+          "symbolId": 654,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0.0063"
+        },
+        {
+          "baseCoin": "SOL",
+          "contractType": "LinearPerpetual",
+          "copyTrading": "none",
+          "deliveryFeeRate": "",
+          "deliveryTime": "0",
+          "displayName": "SOLUSDC",
+          "forbidUplWithdrawal": false,
+          "fullName": "Solana",
+          "fundingInterval": 480,
+          "isPreListing": false,
+          "launchTime": "1659657600000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "66.67",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "300.0",
+            "maxOrderQty": "1500.0",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.1",
+            "postOnlyMaxOrderQty": "1500.0",
+            "qtyStep": "0.1"
+          },
+          "lowerFundingRate": "-0.005",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "199999.980",
+            "minPrice": "0.010",
+            "tickSize": "0.010"
+          },
+          "priceScale": "3",
+          "quoteCoin": "USDC",
+          "riskParameters": {
+            "priceLimitRatioX": "0.05",
+            "priceLimitRatioY": "0.1"
+          },
+          "settleCoin": "USDC",
+          "status": "Trading",
+          "symbol": "SOLPERP",
+          "symbolId": 234,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0.005"
+        },
+        {
+          "baseCoin": "SOL",
+          "contractType": "LinearFutures",
+          "copyTrading": "none",
+          "deliveryFeeRate": "0",
+          "deliveryTime": "1791532800000",
+          "displayName": "SOLUSDT-09OCT26",
+          "forbidUplWithdrawal": false,
+          "fullName": "Solana",
+          "fundingInterval": 0,
+          "isPreListing": false,
+          "launchTime": "1789718400000",
+          "leverageFilter": {
+            "leverageStep": "0.01",
+            "maxLeverage": "50.00",
+            "minLeverage": "1"
+          },
+          "lotSizeFilter": {
+            "maxMktOrderQty": "200.00",
+            "maxOrderQty": "1000.00",
+            "minNotionalValue": "5",
+            "minOrderQty": "0.01",
+            "postOnlyMaxOrderQty": "1000.00",
+            "qtyStep": "0.01"
+          },
+          "lowerFundingRate": "0",
+          "marketRegion": "",
+          "preListingInfo": null,
+          "priceFilter": {
+            "maxPrice": "199999.98",
+            "minPrice": "0.01",
+            "tickSize": "0.01"
+          },
+          "priceScale": "2",
+          "quoteCoin": "USDT",
+          "riskParameters": {
+            "priceLimitRatioX": "0.05",
+            "priceLimitRatioY": "0.1"
+          },
+          "settleCoin": "USDT",
+          "status": "Trading",
+          "symbol": "SOLUSDT-09OCT26",
+          "symbolId": 1493,
+          "symbolType": "",
+          "tags": [],
+          "underlyingTicker": "",
+          "unifiedMarginTrade": true,
+          "upperFundingRate": "0"
+        }
+      ],
+      "nextPageCursor": ""
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790832694952
+  }
+}

@@ -61,7 +61,7 @@ func TestFlatSamples(t *testing.T) {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			t.Fatalf("unexpected sample layout: %s", entry.Name())
 		}
-		f, err := fixture.Read(filepath.Join("testdata", entry.Name()))
+		f, err := fixture.ReadSynthetic(filepath.Join("testdata", entry.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}

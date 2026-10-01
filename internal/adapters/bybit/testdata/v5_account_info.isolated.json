@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://bybit-exchange.github.io/docs/v5/account/account-info",
-  "notes": "Documentation example with unifiedMarginStatus 5 and marginMode ISOLATED_MARGIN instead of 4 and REGULAR_MARGIN.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

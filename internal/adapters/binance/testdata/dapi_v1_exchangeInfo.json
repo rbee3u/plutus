@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-coin-m-futures/api/rest-api/market-data",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "cm",
     "method": "GET",
@@ -45,6 +44,15 @@
         "marginAsset": "BTC",
         "contractSize": 100,
         "deliveryDate": 1719532800000
+      },
+      {
+        "symbol": "ETHUSD_261225",
+        "contractType": "CURRENT_QUARTER",
+        "baseAsset": "ETH",
+        "quoteAsset": "USD",
+        "marginAsset": "ETH",
+        "contractSize": 10,
+        "deliveryDate": 1798185600000
       }
     ]
   }

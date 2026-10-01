@@ -1,0 +1,89 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:40:03.535114Z",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/margin/isolated/account"
+  },
+  "status": 200,
+  "body": {
+    "assets": [
+      {
+        "baseAsset": {
+          "asset": "DOGE",
+          "borrowEnabled": true,
+          "borrowed": "0",
+          "free": "62.937",
+          "interest": "0",
+          "locked": "0",
+          "netAsset": "62.937",
+          "netAssetOfBtc": "0.00007077",
+          "repayEnabled": true,
+          "totalAsset": "62.937"
+        },
+        "enabled": true,
+        "indexPrice": "0.09447512",
+        "isolatedCreated": true,
+        "liquidatePrice": "0",
+        "liquidateRate": "0",
+        "marginLevel": "999",
+        "marginLevelStatus": "EXCESSIVE",
+        "marginRatio": "10",
+        "quoteAsset": {
+          "asset": "USDT",
+          "borrowEnabled": true,
+          "borrowed": "0",
+          "free": "4.04776",
+          "interest": "0",
+          "locked": "0",
+          "netAsset": "4.04776",
+          "netAssetOfBtc": "0.00004818",
+          "repayEnabled": true,
+          "totalAsset": "4.04776"
+        },
+        "symbol": "DOGEUSDT",
+        "tradeEnabled": true
+      },
+      {
+        "baseAsset": {
+          "asset": "ETH",
+          "borrowEnabled": true,
+          "borrowed": "0",
+          "free": "0.0073926",
+          "interest": "0",
+          "locked": "0",
+          "netAsset": "0.0073926",
+          "netAssetOfBtc": "0.00023582",
+          "repayEnabled": true,
+          "totalAsset": "0.0073926"
+        },
+        "enabled": true,
+        "indexPrice": "2680.37697674",
+        "isolatedCreated": true,
+        "liquidatePrice": "1402.56357715",
+        "liquidateRate": "-47.672899",
+        "marginLevel": "1.99463314",
+        "marginLevelStatus": "EXCESSIVE",
+        "marginRatio": "10",
+        "quoteAsset": {
+          "asset": "USDT",
+          "borrowEnabled": true,
+          "borrowed": "10",
+          "free": "0.131444",
+          "interest": "0.00003381",
+          "locked": "0",
+          "netAsset": "-9.86858981",
+          "netAssetOfBtc": "-0.00011745",
+          "repayEnabled": true,
+          "totalAsset": "0.131444"
+        },
+        "symbol": "ETHUSDT",
+        "tradeEnabled": true
+      }
+    ],
+    "totalAssetOfBtc": "0.00035633",
+    "totalLiabilityOfBtc": "0.00011902",
+    "totalNetAssetOfBtc": "0.00023731"
+  }
+}

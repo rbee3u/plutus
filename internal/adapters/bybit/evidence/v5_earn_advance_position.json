@@ -1,0 +1,48 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T04:30:32.532309Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/earn/advance/position",
+    "query": {
+      "category": "DualAssets",
+      "limit": "20"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "DualAssets",
+      "list": [
+        {
+          "accountType": "FUND",
+          "amount": "20",
+          "apyE8": "5880566",
+          "baseCoin": "HYPE",
+          "category": "DualAssets",
+          "direction": "BuyLow",
+          "duration": "3d",
+          "expectReturnAmount": "20.0096",
+          "expectReturnCoin": "USDT",
+          "investCoin": "USDT",
+          "orderId": "dfa71733-767a-4677-aa0f-50b9b960ba0a",
+          "positionId": "3101994",
+          "productId": "153887",
+          "quoteCoin": "USDT",
+          "settlementTime": "1791014399000",
+          "status": "Active",
+          "targetPrice": "84",
+          "toAccountType": "FUND",
+          "yieldEndAt": "1791014399000",
+          "yieldStartAt": "1790755199000"
+        }
+      ],
+      "nextPageCursor": ""
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "",
+    "time": 1790829032539
+  }
+}

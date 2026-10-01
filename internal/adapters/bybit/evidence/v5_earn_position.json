@@ -1,0 +1,63 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T04:30:24.667675Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/earn/position",
+    "query": {
+      "category": "FlexibleSaving"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "list": [
+        {
+          "amount": "20",
+          "autoReinvest": "",
+          "availableAmount": "20",
+          "claimableYield": "0.0008",
+          "coin": "USDT",
+          "effectiveAmount": "20",
+          "estimateInterestCalculationTime": "",
+          "estimateRedeemTime": "",
+          "estimateStakeTime": "",
+          "freezeDetails": [],
+          "id": "0",
+          "orderId": "",
+          "productId": "1",
+          "settlementTime": "",
+          "status": "",
+          "totalPnl": "2.347",
+          "yesterdayYield": "0.003956849315068478",
+          "yesterdayYieldDate": "2026-10-01"
+        },
+        {
+          "amount": "0",
+          "autoReinvest": "",
+          "availableAmount": "0",
+          "claimableYield": "0",
+          "coin": "HYPE",
+          "effectiveAmount": "0",
+          "estimateInterestCalculationTime": "",
+          "estimateRedeemTime": "",
+          "estimateStakeTime": "",
+          "freezeDetails": [],
+          "id": "0",
+          "orderId": "",
+          "productId": "697",
+          "settlementTime": "",
+          "status": "",
+          "totalPnl": "0.09651726",
+          "yesterdayYield": "0",
+          "yesterdayYieldDate": "2026-10-01"
+        }
+      ]
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "",
+    "time": 1790829024676
+  }
+}

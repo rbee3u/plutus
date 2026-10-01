@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",
@@ -13,12 +12,8 @@
   "status": 200,
   "body": [
     {
-      "walletName": "Spot",
-      "balance": "510"
-    },
-    {
       "walletName": "Earn",
-      "balance": "1220"
+      "balance": "34"
     }
   ]
 }

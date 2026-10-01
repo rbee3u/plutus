@@ -1,0 +1,46 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:49:46.56542Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/asset/balances"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "availBal": "3.6448242962334172",
+        "bal": "3.6448242962334172",
+        "ccy": "USDT",
+        "frozenBal": "0"
+      },
+      {
+        "availBal": "0.00000001",
+        "bal": "0.00000001",
+        "ccy": "USDC",
+        "frozenBal": "0"
+      },
+      {
+        "availBal": "0.002",
+        "bal": "0.002",
+        "ccy": "BETH",
+        "frozenBal": "0"
+      },
+      {
+        "availBal": "0.0000000045502193",
+        "bal": "0.0000000045502193",
+        "ccy": "ENS",
+        "frozenBal": "0"
+      },
+      {
+        "availBal": "0.0000000042335077",
+        "bal": "0.0000000042335077",
+        "ccy": "NIGHT",
+        "frozenBal": "0"
+      }
+    ],
+    "msg": ""
+  }
+}

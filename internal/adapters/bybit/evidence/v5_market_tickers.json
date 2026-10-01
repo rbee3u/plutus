@@ -1,0 +1,114 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:05:30.01922Z",
+  "notes": "Kept 6 of 530 market rows: prepared/requested symbols and representative product, settlement and contract-unit types. Retained rows and original totals are unchanged.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/tickers",
+    "query": {
+      "category": "spot"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "spot",
+      "list": [
+        {
+          "ask1Price": "2710.27",
+          "ask1Size": "4.36362",
+          "bid1Price": "2710.26",
+          "bid1Size": "3.07114",
+          "highPrice24h": "2738.8",
+          "lastPrice": "2710.26",
+          "lowPrice24h": "2657.72",
+          "prevPrice24h": "2671.9",
+          "price24hPcnt": "0.0144",
+          "symbol": "ETHUSDT",
+          "turnover24h": "206057644.9442478",
+          "usdIndexPrice": "2708.225331",
+          "volume24h": "76539.27529"
+        },
+        {
+          "ask1Price": "0.09589",
+          "ask1Size": "3191.5",
+          "bid1Price": "0.09588",
+          "bid1Size": "12041.8",
+          "highPrice24h": "0.09812",
+          "lastPrice": "0.0959",
+          "lowPrice24h": "0.09285",
+          "prevPrice24h": "0.09353",
+          "price24hPcnt": "0.0253",
+          "symbol": "DOGEUSDT",
+          "turnover24h": "18370933.807997",
+          "usdIndexPrice": "0.0958559",
+          "volume24h": "193171829.7"
+        },
+        {
+          "ask1Price": "119.19",
+          "ask1Size": "20.7837",
+          "bid1Price": "119.18",
+          "bid1Size": "27.3199",
+          "highPrice24h": "122.83",
+          "lastPrice": "119.19",
+          "lowPrice24h": "117.04",
+          "prevPrice24h": "118.95",
+          "price24hPcnt": "0.0020",
+          "symbol": "SOLUSDT",
+          "turnover24h": "91529166.766205",
+          "usdIndexPrice": "119.107845",
+          "volume24h": "768289.3631"
+        },
+        {
+          "ask1Price": "84181",
+          "ask1Size": "0.023766",
+          "bid1Price": "83979.2",
+          "bid1Size": "1.6",
+          "highPrice24h": "85592.9",
+          "lastPrice": "84169.4",
+          "lowPrice24h": "83000",
+          "prevPrice24h": "83285.8",
+          "price24hPcnt": "0.0106",
+          "symbol": "BTCUSDE",
+          "turnover24h": "178218.7503962",
+          "volume24h": "2.13454"
+        },
+        {
+          "ask1Price": "1.5056",
+          "ask1Size": "1248.99",
+          "bid1Price": "1.5055",
+          "bid1Size": "1235.24",
+          "highPrice24h": "1.5447",
+          "lastPrice": "1.5056",
+          "lowPrice24h": "1.4851",
+          "prevPrice24h": "1.4948",
+          "price24hPcnt": "0.0072",
+          "symbol": "XRPUSDT",
+          "turnover24h": "36831821.548698",
+          "usdIndexPrice": "1.504713",
+          "volume24h": "24468835.42"
+        },
+        {
+          "ask1Price": "88.76",
+          "ask1Size": "5.579",
+          "bid1Price": "88.75",
+          "bid1Size": "9.044",
+          "highPrice24h": "91.9",
+          "lastPrice": "88.75",
+          "lowPrice24h": "84.66",
+          "prevPrice24h": "85.76",
+          "price24hPcnt": "0.0349",
+          "symbol": "HYPEUSDT",
+          "turnover24h": "55091900.10317",
+          "usdIndexPrice": "88.667861",
+          "volume24h": "621383.627"
+        }
+      ]
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790831129836
+  }
+}

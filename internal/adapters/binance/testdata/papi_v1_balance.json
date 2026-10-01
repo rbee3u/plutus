@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#account-balance-user_data",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "portfolio",
     "method": "GET",
@@ -17,7 +16,7 @@
       "crossMarginBorrowed": "10",
       "crossMarginInterest": "1",
       "umWalletBalance": "0",
-      "umUnrealizedPNL": "20",
+      "umUnrealizedPNL": "10",
       "cmWalletBalance": "0",
       "cmUnrealizedPNL": "0",
       "negativeBalance": "0"

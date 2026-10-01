@@ -1,0 +1,92 @@
+{
+  "source": "recorded",
+  "notes": "Redacted: memberId. Account identifier corrected offline after recorder redaction repair; business fields and recordedAt are unchanged.",
+  "recordedAt": "2026-10-01T04:30:06.310347Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/asset/transfer/query-account-coins-balance",
+    "query": {
+      "accountType": "FUND"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "accountType": "FUND",
+      "balance": [
+        {
+          "bonus": "",
+          "coin": "ETH",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "BNB",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "HYPE",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "XRP",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "GRAM",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "BTC",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "USDT",
+          "transferBalance": "4.0193",
+          "walletBalance": "4.0193"
+        },
+        {
+          "bonus": "",
+          "coin": "USD",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "USDC",
+          "transferBalance": "454.743546",
+          "walletBalance": "454.743546"
+        },
+        {
+          "bonus": "",
+          "coin": "MNT",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        },
+        {
+          "bonus": "",
+          "coin": "SOL",
+          "transferBalance": "0",
+          "walletBalance": "0"
+        }
+      ],
+      "memberId": "123456790"
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "success",
+    "time": 1790829006320
+  }
+}

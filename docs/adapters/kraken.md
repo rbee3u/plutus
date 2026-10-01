@@ -1,6 +1,6 @@
 # Kraken adapter
 
-Package `internal/adapters/kraken`. Account Structures `kraken_separate` (Separate wallets) and `kraken_unified` (Unified Wallet), [ADR 0026](../adr/0026-support-kraken-separate-and-unified-wallets.md). Neither has a Margin Mode ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)): validation and every batch return an empty one. Both structures currently use documented interface samples; new-standard real evidence is pending ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)). Every call is a read-only balance, position, account, or market-data endpoint of Kraken's Spot REST API or Futures REST API, plus one balances snapshot of the Futures WebSocket feed.
+Package `internal/adapters/kraken`. Account Structures `kraken_separate` (Separate wallets) and `kraken_unified` (Unified Wallet), [ADR 0026](../adr/0026-support-kraken-separate-and-unified-wallets.md). Neither has a Margin Mode ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)): validation and every batch return an empty one. Both structures use independent synthetic test responses; 11 owner-reviewed Unified wallet, position, Earn, credential and market responses were recorded on 2026-10-01. Separate wallets and other unobserved states remain without real evidence ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)). Every call is a read-only balance, position, account, or market-data endpoint of Kraken's Spot REST API or Futures REST API, plus one balances snapshot of the Futures WebSocket feed.
 
 | Account Type | `kraken_separate` | `kraken_unified` |
 | --- | --- | --- |
@@ -71,7 +71,7 @@ Kraken reports the structure only as `flex_futures.unified_balances` on the bala
 
 ## Position
 
-Futures `openpositions` lists every futures wallet's positions. Flexible futures (`PF_` symbols) belong to the multi-collateral wallet: `main` in Unified Wallet, `multi_m` in Separate wallets. Inverse and vanilla futures belong to `coin_m`.
+Futures `openpositions` lists every futures wallet's positions. Contracts with type `flexible_futures`, including `PF_` perpetuals and `FF_` delivery contracts, belong to the multi-collateral wallet: `main` in Unified Wallet, `multi_m` in Separate wallets. Inverse and vanilla futures belong to `coin_m`; routing uses the instrument type, not its symbol prefix or expiry.
 
 | Plutus column | Source |
 | --- | --- |
@@ -120,7 +120,7 @@ Kraken answers many Spot failures with HTTP 200 and an `error` list, so both the
 
 ## Fixtures and evidence
 
-The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The Kraken inventory](./kraken-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
+The [two-layer library](./fixtures.md) separates reviewed real `evidence/` from independently constructed `synthetic` inputs in `testdata/`. [The Kraken inventory](./kraken-fixtures.md) links official contracts, test cases, actual recording dates and missing real evidence. The 11 responses recorded on 2026-10-01 are owner-reviewed and frozen, covering nonzero Unified Main, Coin-M and Holding wallets, linear perpetual/delivery and inverse perpetual positions, and instant/bonded/timed USDT Earn allocations. They also preserve cross and isolated wallet fields. A listed flex strategy is not nonempty Auto Earn coverage. Separate wallets, inverse delivery positions and other inventory gaps remain without real evidence; the owner has no Separate account and requests no further account adjustments. These interface samples do not prove a complete asset total, credential ownership or exchange-app reconciliation. Tests verify mapping, signatures, paging, failure classification and completeness without exchange access. Recording selects one explicit interface with `--only`, optional `--variant`, business `--query`/`--form`, and local `--keep-symbol` hints; prepared rounds may run an agreed sequential list, stopping at the first failure. Review critical shapes/document differences and owner-review before promoting to evidence; no full replay is required and synthetic tests are not regenerated.
 
 ## Comparison checklist (test environment)
 
@@ -129,7 +129,7 @@ Run on the test environment against Kraken Pro on the same account, within a few
 1. **Identity**: validation stores the public account ID shown in Kraken's account settings, without spaces.
 2. **Structure**: the Identity's structure matches the Unified Wallet setting in Kraken Pro; an Identity with the other structure is refused at validation, naming `unified_balances`.
 3. **Multi-collateral wallet** (Main in Unified Wallet, Multi-M in Separate wallets): `Equity` equals the wallet's portfolio value in USD, `AdjEq` its margin equity, and `AvailEq` its available margin; the margin ratios equal initial and maintenance margin ÷ margin equity; each currency's quantity matches the wallet.
-4. **Positions**: every open flexible futures position appears under that wallet with the same side, size in contracts, entry price, and mark price; inverse and dated contracts appear under Coin-M.
+4. **Positions**: every open flexible futures position, including delivery contracts, appears under that wallet with the same side, size in contracts, entry price, and mark price; inverse and vanilla contracts, perpetual or delivery, appear under Coin-M.
 5. **Coin-M**: each single-collateral wallet's balance in its own coin matches, and `Equity` equals their USD value with unrealized profit.
 6. **Derivatives Holding**: coin amounts match the holding wallet.
 7. **Earn**: allocated amounts per coin match the Earn page, including bonding and unbonding amounts; Kraken Rewards (Auto Earn) stays in Main and does not appear under Earn.

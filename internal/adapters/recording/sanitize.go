@@ -8,7 +8,7 @@ import (
 
 func sensitive(key string) bool {
 	switch strings.ToLower(key) {
-	case "uid", "mainuid", "userid", "accountuid", "iban", "iiban", "api_key", "apikey", "secret", "passphrase", "ip", "ips", "iplist", "ip_allowlist", "allowedcidrblock", "allowedcidrblocks", "label", "apikeyname", "api_key_name", "signature", "authorization", "access_token", "refresh_token", "privatekey", "api_secret":
+	case "uid", "mainuid", "userid", "accountuid", "memberid", "iban", "iiban", "api_key", "apikey", "secret", "passphrase", "ip", "ips", "iplist", "ip_allowlist", "allowedcidrblock", "allowedcidrblocks", "label", "apikeyname", "api_key_name", "signature", "authorization", "access_token", "refresh_token", "privatekey", "api_secret":
 		return true
 	}
 	return false

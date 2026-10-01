@@ -18,14 +18,14 @@ func TestDocumentedDualPositions(t *testing.T) {
 	}
 	dual := reportOf(t, batch, TypeDualInvestment)
 	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
-		t.Fatalf("documented dual report: %+v", dual)
+		t.Fatalf("synthetic dual report: %+v", dual)
 	}
 	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK || r.count(epDCD) != 1 {
-		t.Fatal("the documented Earn and Dual Accounts must share a successful order history read")
+		t.Fatal("the synthetic Earn and Dual Accounts must share a successful order history read")
 	}
 	orders := rowsIn[dcdOrder](t, r.file(epDCD, ""))
 	if len(orders) != 3 || orders[0].State != "LIVE" || orders[1].State != "LIVE" || orders[2].State != "SETTLED" {
-		t.Fatal("the documented fixture must retain two live orders and one settled order")
+		t.Fatal("the synthetic fixture must retain two live orders and one settled order")
 	}
 	wantExpiry := time.UnixMilli(1700600000000).UTC()
 	for i, p := range dual.DualPositions {
@@ -36,19 +36,19 @@ func TestDocumentedDualPositions(t *testing.T) {
 			p.TargetPrice == nil || rat(t, *p.TargetPrice).Cmp(rat(t, order.Strike)) != 0 ||
 			p.AnnualizedRate == nil || rat(t, *p.AnnualizedRate).Cmp(rat(t, order.AnnualizedYield)) != 0 ||
 			p.Status != "active" || len(p.MissingFields()) != 0 {
-			t.Fatalf("documented order %d mapped incompletely: %+v", i, p)
+			t.Fatalf("synthetic order %d mapped incompletely: %+v", i, p)
 		}
 		wantDirection := "sell_high"
 		if order.NotionalCcy == order.QuoteCcy {
 			wantDirection = "buy_low"
 		}
 		if p.Direction == nil || *p.Direction != wantDirection {
-			t.Fatalf("documented order %d direction: %+v", i, p)
+			t.Fatalf("synthetic order %d direction: %+v", i, p)
 		}
 		ms, _ := strconv.ParseInt(order.CTime, 10, 64)
 		wantSubscribed := time.UnixMilli(ms).UTC()
 		if p.SubscribedAt == nil || !p.SubscribedAt.Equal(wantSubscribed) {
-			t.Fatalf("documented order %d subscribedAt: %+v", i, p)
+			t.Fatalf("synthetic order %d subscribedAt: %+v", i, p)
 		}
 	}
 }
@@ -83,7 +83,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 				}
 				for _, p := range r.DualPositions {
 					if len(p.MissingFields()) != 0 || *p.RateKind != "annualized_yield" {
-						t.Fatalf("missing documented terms: %+v", p)
+						t.Fatalf("missing synthetic terms: %+v", p)
 					}
 					if p.InvestSymbol == "ETH" && (*p.BaseSymbol != "ETH" || *p.TargetPrice != "5000") {
 						t.Fatal("synthetic ETH terms contradict the product")

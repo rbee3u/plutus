@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://bybit-exchange.github.io/docs/v5/user/apikey-info",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-account-configuration",
-  "notes": "The documentation's example with acctLv 1 (Spot mode) instead of 2, enableSpotBorrow true, and posMode net_mode.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

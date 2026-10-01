@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-balance",
-  "notes": "The documentation's example with every field its table does not list for Spot mode set to \"\"; amounts changed to a Spot mode account holding 0.8 BTC (valued at the positions example's markPx 62891.9, discount 0.99) with a 100 USDT borrowing plus 0.0125 USDT interest; totalEq, adjEq, imr, mmr, and mgnRatio recomputed to match.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

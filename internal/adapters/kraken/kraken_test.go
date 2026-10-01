@@ -46,7 +46,7 @@ var accountEndpoints = []string{
 }
 
 // errorClasses is the class of each error answer, by the scenario its file name ends with: the
-// documented refusals and the documented errors no recording can provoke.
+// synthetic refusals and the synthetic errors no recording can provoke.
 var errorClasses = map[string]string{
 	"invalid_key":          adapters.ClassAuthentication,
 	"bad_signature":        adapters.ClassAuthentication,
@@ -98,14 +98,14 @@ func loadFixtures(t *testing.T, scenario string) fixtures {
 		if variant == "authentication_error" || variant == "api_limit_exceeded" {
 			ep = epOpenPositions
 		}
-		f, err := fixture.Read("testdata/" + fixture.Name(ep.path, variant) + ".json")
+		f, err := fixture.ReadSynthetic("testdata/" + fixture.Name(ep.path, variant) + ".json")
 		if err != nil {
 			t.Fatal(err)
 		}
 		out.failures[failureKey(ep.String(), variant)] = f
 	}
 	for _, variant := range []string{"invalid_key", "bad_signature"} {
-		f, err := fixture.Read("testdata/" + fixture.Name(epFuturesKey.path, variant) + ".json")
+		f, err := fixture.ReadSynthetic("testdata/" + fixture.Name(epFuturesKey.path, variant) + ".json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +125,7 @@ func fixturePaths(t *testing.T, dir string) []string {
 
 func readFixture(t *testing.T, path string) fixture.File {
 	t.Helper()
-	f, err := fixture.Read(path)
+	f, err := fixture.ReadSynthetic(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ func TestReplayUnifiedWallet(t *testing.T) {
 }
 
 // The Separate-wallet responses are documentation-derived (ADR 0027): they prove the field
-// mapping of the documented shapes, not live access.
+// mapping of the synthetic shapes, not live access.
 func TestReplaySeparateWallets(t *testing.T) {
 	r := newReplay(t, separateScenario, nil)
 	ctx := context.Background()
@@ -735,9 +735,9 @@ func TestNumberReadsEveryKrakenAmountForm(t *testing.T) {
 	}
 }
 
-// Every error answer, documented or documented, maps to its class, and the detail names only the
+// Every synthetic error answer maps to its class, and the detail names only the
 // endpoint, the status, and the matched error name, never Kraken's text. Every one of them is a
-// documented name, so none falls back to the generic detail.
+// synthetic name, so none falls back to the generic detail.
 func TestErrorAnswersClassify(t *testing.T) {
 	files := loadFixtures(t, "")
 	for _, refused := range refusals(testCreds) {
@@ -756,7 +756,7 @@ func TestErrorAnswersClassify(t *testing.T) {
 	}
 }
 
-// Without a documented error name, the HTTP status decides, and an unreadable success fails as
+// Without a synthetic error name, the HTTP status decides, and an unreadable success fails as
 // normalization.
 func TestHTTPStatusDecidesWithoutAnErrorName(t *testing.T) {
 	cases := []struct {
@@ -818,7 +818,7 @@ func TestDocumentedErrorScope(t *testing.T) {
 		t.Run(tc.scenario, func(t *testing.T) {
 			f := files.failures[failureKey(tc.ep.String(), tc.scenario)]
 			if f.Status != http.StatusOK {
-				t.Fatalf("the documented %s answer has status %d", tc.scenario, f.Status)
+				t.Fatalf("the synthetic %s answer has status %d", tc.scenario, f.Status)
 			}
 			r := newReplay(t, "", map[string]string{tc.ep.String(): string(f.Body)})
 			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureKrakenUnified, []adapters.AccountType{TypeMain, TypeEarn})

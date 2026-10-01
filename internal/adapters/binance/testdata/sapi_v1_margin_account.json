@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-cross-margin-account-details",
-  "notes": "userAssets extends the example's BTC row with a borrowed USDT row, whose netAsset is free + locked - borrowed - interest, and an all-zero ETH row, as Binance also lists coins that hold nothing.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",

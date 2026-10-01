@@ -24,7 +24,7 @@ import (
 
 // Raw responses are available only to this explicit developer command.
 type recorder interface {
-	RecordRequest(context.Context, adapters.Credentials, fixture.Request) (*fixture.File, error)
+	RecordRequest(context.Context, adapters.Credentials, fixture.Request, ...recording.Options) (*fixture.File, error)
 }
 
 var recorders = map[adapters.Platform]struct {
@@ -56,7 +56,7 @@ func newAdapterCommand() *cobra.Command {
 
 func newAdapterRecordCommand() *cobra.Command {
 	var platformFlag, outFlag, variant string
-	var only, query, form []string
+	var only, query, form, keepSymbols []string
 	var list, dryRun bool
 	cmd := &cobra.Command{Use: "record", Short: "Record one explicit read-only interface response into tmp", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		platform := adapters.Platform(strings.ToLower(platformFlag))
@@ -91,6 +91,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		filename := fixture.Name(request.Path, variant) + ".json"
 		if dryRun {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\nOutput: %s\nOne explicit request; no keys read, preflight, retry, redirect or additional page.\n", request.Key(), filename)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Local market selection: keep symbols %v; representative product types.\n", keepSymbols)
 			return nil
 		}
 		if err := checkRecordingDirectory(outFlag); err != nil {
@@ -100,7 +101,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		file, captureErr := spec.adapter().RecordRequest(cmd.Context(), creds, request)
+		file, captureErr := spec.adapter().RecordRequest(cmd.Context(), creds, request, recording.Options{KeepSymbols: keepSymbols})
 		if file != nil {
 			parent := filepath.Join(outFlag, string(platform))
 			if err := os.MkdirAll(parent, 0o750); err != nil {
@@ -118,7 +119,7 @@ func newAdapterRecordCommand() *cobra.Command {
 			if file.Request.Method != "WS" {
 				status = fmt.Sprintf("HTTP %d", file.Status)
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Saved: %s\nResponse: %s; platform success: %t; empty: %t\nReview before promotion; business mapping has not been accepted.\n", path, status, captureErr == nil, recording.Empty(file))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Saved: %s\nResponse: %s; platform success: %t; empty: %t\nReview before promotion to evidence; synthetic tests are independent and business mapping has not been accepted.\n", path, status, captureErr == nil, recording.Empty(file))
 		}
 		if captureErr != nil {
 			return captureErr
@@ -135,7 +136,8 @@ func newAdapterRecordCommand() *cobra.Command {
 	cmd.Flags().StringArrayVar(&form, "form", nil, "business form key=value; repeat for multiple values")
 	cmd.Flags().BoolVar(&list, "list-requests", false, "list read-only interfaces and required parameters without keys or network")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the exact request and filename without keys or network")
-	cmd.Flags().StringVar(&outFlag, "out", "tmp/fixtures", "output parent inside gitignored tmp")
+	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "retain a prepared instrument in local market trimming; never sent to the exchange")
+	cmd.Flags().StringVar(&outFlag, "out", "tmp/evidence", "output parent inside gitignored tmp")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd
 }
@@ -175,10 +177,10 @@ func checkRecordingDirectory(path string) error {
 	return nil
 }
 
-// recorderCredentials reads the test environment's read-only key set. The recorder is the only
-// part of the binary that reads config/gotest.env; serve, the worker, and collect never do.
+// recorderCredentials reads the recording key set from config/record.env or PLUTUS_RECORD_*.
+// It never reads gotest or runtime env files; public requests need no credentials.
 func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalogue recording.Catalogue, request fixture.Request) (adapters.Credentials, error) {
-	prefix := "PLUTUS_GOTEST_" + strings.ToUpper(string(platform)) + "_"
+	prefix := "PLUTUS_RECORD_" + strings.ToUpper(string(platform)) + "_"
 	var creds adapters.Credentials
 	spot, futures := false, false
 	for _, request := range []fixture.Request{request} {
@@ -218,7 +220,7 @@ func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalo
 		fields = append(fields, variable{"PASSPHRASE", &creds.Passphrase})
 	}
 	for _, field := range fields {
-		value, err := config.Lookup(prefix + field.suffix)
+		value, err := config.LookupRecording(prefix + field.suffix)
 		if err != nil {
 			return adapters.Credentials{}, err
 		}
@@ -228,7 +230,7 @@ func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalo
 		}
 	}
 	if len(missing) > 0 {
-		return adapters.Credentials{}, fmt.Errorf("%s not set in the environment or config/gotest.env (copy config/gotest-example.env)", strings.Join(missing, ", "))
+		return adapters.Credentials{}, fmt.Errorf("%s not set in the environment or config/record.env (copy config/record-example.env)", strings.Join(missing, ", "))
 	}
 	return creds, nil
 }

@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://docs.kraken.com/api-reference/account-data/get-extended-balance",
-  "notes": "Documented example (ZUSD, XXBT) plus three invented rows in the recorded string form for the documented symbol extensions and a zero balance: ZUSD.F (Kraken Rewards, stays in Main), USDT.B (yield-bearing allocation, reported by Earn), and XETH at zero.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "POST",

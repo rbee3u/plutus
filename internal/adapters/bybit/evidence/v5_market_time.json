@@ -1,0 +1,20 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T04:33:41.695618Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/market/time"
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "timeNano": "1790829221697677855",
+      "timeSecond": "1790829221"
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790829221697
+  }
+}

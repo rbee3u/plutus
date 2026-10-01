@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded by ADR-0037
 ---
 
 # Use flat interface samples and single-request recording
+
+Historical decision. [ADR 0037](./0037-separate-recorded-evidence-from-synthetic-tests.md) separates recorded evidence from synthetic test inputs and replaces the provenance, trimming and promotion rules below. Single-request networking restrictions remain.
 
 Scenario manifests mixed response provenance with account applicability, duplicated common interfaces and made a small recording request consume unrelated endpoints. Replace ADRs 0034 and 0035 with one flat `testdata/` sample library per Platform and one explicit request per recording. This also replaces ADR 0023's historical online smoke and delivery gates; its fake Adapter and temporary-database rules remain. Keep ADR 0027's distinction between documented support and real evidence.
 

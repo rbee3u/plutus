@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#symbol-configuration",
-  "notes": "Documentation-derived response contract sample with illustrative business values; not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "um",
     "method": "GET",
@@ -14,6 +13,13 @@
       "marginType": "CROSSED",
       "isAutoAddMargin": false,
       "leverage": 21,
+      "maxNotionalValue": "1000000"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "marginType": "CROSSED",
+      "isAutoAddMargin": false,
+      "leverage": 5,
       "maxNotionalValue": "1000000"
     }
   ]

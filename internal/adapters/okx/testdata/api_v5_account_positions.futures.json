@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-positions",
-  "notes": "The documentation's example (an isolated MARGIN position with its USDT liability) plus a copy turned into a long cross BTC-USDT-SWAP position of 2 contracts (lever 10, liqPx 31012.5).",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

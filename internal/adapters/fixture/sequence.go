@@ -19,6 +19,9 @@ func NewSequence(steps ...File) (*Sequence, error) {
 		if err := steps[i].Validate(); err != nil {
 			return nil, err
 		}
+		if steps[i].Source != "synthetic" {
+			return nil, errors.New("replay sequences require synthetic responses, not recorded evidence")
+		}
 	}
 	return &Sequence{steps: append([]File(nil), steps...)}, nil
 }

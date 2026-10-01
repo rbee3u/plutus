@@ -1,0 +1,51 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T03:20:27.928552Z",
+  "notes": "Redacted: ip, label, mainUid, uid.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/account/config"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "acctLv": "3",
+        "acctStpMode": "cancel_both",
+        "autoLoan": true,
+        "ctIsoMode": "automatic",
+        "enableSpotBorrow": false,
+        "feeType": "0",
+        "greeksType": "BS",
+        "ip": "REDACTED",
+        "kycLv": "3",
+        "label": "REDACTED",
+        "level": "Lv1",
+        "levelTmp": "",
+        "liquidationGear": "0",
+        "mainUid": "123456790",
+        "mgnIsoMode": "auto_transfers_ccy",
+        "opAuth": "0",
+        "perm": "read_only",
+        "posMode": "net_mode",
+        "roleType": "0",
+        "settleCcy": "USDC",
+        "settleCcyList": [
+          "USDC",
+          "USDG"
+        ],
+        "spotBorrowAutoRepay": false,
+        "spotOffsetType": "",
+        "spotRoleType": "0",
+        "spotTraderInsts": [],
+        "stgyType": "0",
+        "traderInsts": [],
+        "type": "0",
+        "uid": "123456790"
+      }
+    ],
+    "msg": ""
+  }
+}

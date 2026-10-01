@@ -1,0 +1,21 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:01:01.234487Z",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/sapi/v3/asset/getUserAsset"
+  },
+  "status": 200,
+  "body": [
+    {
+      "asset": "USDT",
+      "btcValuation": "0",
+      "free": "25.00131525",
+      "freeze": "0",
+      "ipoable": "0",
+      "locked": "0",
+      "withdrawing": "0"
+    }
+  ]
+}

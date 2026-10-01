@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#account-information-user_data",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",

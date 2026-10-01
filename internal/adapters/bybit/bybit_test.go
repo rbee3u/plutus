@@ -35,9 +35,9 @@ type replay struct {
 	t        *testing.T
 	adapter  *Adapter
 	files    map[string]fixture.File // answers by request
-	failures map[string]fixture.File // documented refusals by scenario
+	failures map[string]fixture.File // synthetic refusals by scenario
 	answers  map[string]string       // invented answers by path, or by path and query
-	// serverMillis is Bybit's documented clock. The frozen test clock corrected by it matches it.
+	// serverMillis is Bybit's synthetic clock. The frozen test clock corrected by it matches it.
 	serverMillis int64
 
 	mu      sync.Mutex
@@ -60,7 +60,7 @@ func newReplay(t *testing.T, scenario string, answers map[string]string) *replay
 		files[f.Request.Target()] = f
 	}
 	for _, variant := range []string{scenarioInvalidKey, scenarioBadSignature, scenarioStaleTimestamp} {
-		f, err := fixture.Read("testdata/v5_account_info." + variant + ".json")
+		f, err := fixture.ReadSynthetic("testdata/v5_account_info." + variant + ".json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func newReplay(t *testing.T, scenario string, answers map[string]string) *replay
 		Time int64 `json:"time"`
 	}
 	if err := json.Unmarshal(files[epTime.request(nil)].Body, &clock); err != nil || clock.Time <= 0 {
-		t.Fatalf("the documented server time has no clock: %v", err)
+		t.Fatalf("the synthetic server time has no clock: %v", err)
 	}
 	r := &replay{
 		t: t, files: files, failures: failures, answers: answers, serverMillis: clock.Time,
@@ -147,18 +147,28 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	}
 	millis, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil || millis < r.serverMillis-5000 || millis >= r.serverMillis+1000 {
-		return scenarioStaleTimestamp, "timestamp is not aligned with the documented server time"
+		return scenarioStaleTimestamp, "timestamp is not aligned with the synthetic server time"
 	}
 	return "", ""
 }
 
 func serve(w http.ResponseWriter, f fixture.File) {
-	w.Header().Set("Content-Type", "application/json")
+	body := f.Body
+	if f.BodyFormat == "text" {
+		var text string
+		if err := json.Unmarshal(body, &text); err != nil {
+			panic(err) // All file-backed inputs were validated before starting the replay server.
+		}
+		body = []byte(text)
+		w.Header().Set("Content-Type", "text/plain")
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+	}
 	w.WriteHeader(f.Status)
-	_, _ = w.Write(f.Body)
+	_, _ = w.Write(body)
 }
 
-// failure is the documented refusal of a scenario.
+// failure is the synthetic refusal of a scenario.
 func (r *replay) failure(scenario string) fixture.File {
 	r.t.Helper()
 	f, ok := r.failures[scenario]
@@ -183,7 +193,7 @@ func (r *replay) once(path string, f fixture.File) {
 }
 
 // tolerateRefusals answers a badly signed request with its refusal without failing the test; the
-// recorder provokes exactly those.
+// only explicitly selected offline authentication tests provoke those.
 func (r *replay) tolerateRefusals() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -207,9 +217,7 @@ func (r *replay) count(path string) int {
 	return n
 }
 
-// loadFixtures reads one fixture directory and checks every provenance header: a recording names
-// its recording date and Margin Mode, a documentation-derived scenario the page it follows and no
-// date (ADR 0027). It returns the answers by request and the documented refusals by scenario.
+// retMsg reads the platform message from a synthetic response.
 func retMsg(f fixture.File) string {
 	var env struct {
 		Msg string `json:"retMsg"`
@@ -218,11 +226,11 @@ func retMsg(f fixture.File) string {
 	return env.Msg
 }
 
-// sampleBody decodes the result of one documented fixture, so tests compare mappings with the
-// documented values instead of copies of them.
+// sampleBody decodes the result of one synthetic fixture, so tests compare mappings with the
+// synthetic values instead of copies of them.
 func sampleBody(t *testing.T, name string, out any) {
 	t.Helper()
-	f, err := fixture.Read(filepath.Join("testdata", name+".json"))
+	f, err := fixture.ReadSynthetic(filepath.Join("testdata", name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,14 +307,14 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		List []walletAccount `json:"list"`
 	}
 	sampleBody(t, "v5_account_wallet_balance.pm", &wallet)
-	documented := wallet.List[0]
+	synthetic := wallet.List[0]
 	unified := reportOf(t, &batch, TypeUnified)
-	if text(unified.Equity) != decimal.Compact(documented.TotalEquity) || text(unified.AvailableEquity) != decimal.Compact(documented.TotalAvailableBalance) ||
-		text(unified.InitialMarginRatio) != decimal.Compact(documented.AccountIMRate) || text(unified.MaintenanceMarginRatio) != decimal.Compact(documented.AccountMMRate) ||
+	if text(unified.Equity) != decimal.Compact(synthetic.TotalEquity) || text(unified.AvailableEquity) != decimal.Compact(synthetic.TotalAvailableBalance) ||
+		text(unified.InitialMarginRatio) != decimal.Compact(synthetic.AccountIMRate) || text(unified.MaintenanceMarginRatio) != decimal.Compact(synthetic.AccountMMRate) ||
 		unified.AdjustedEquity != nil || unified.UnifiedMarginRatio != nil {
 		t.Fatalf("Portfolio Margin account figures = %+v", unified)
 	}
-	for _, coin := range documented.Coins {
+	for _, coin := range synthetic.Coins {
 		found := false
 		for _, balance := range unified.Balances {
 			if balance.Symbol == coin.Coin {
@@ -322,7 +330,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 	if len(unified.Positions) == 0 {
-		t.Fatal("the documented linear position is missing")
+		t.Fatal("the synthetic linear position is missing")
 	}
 	for i := range unified.Positions {
 		position := &unified.Positions[i]
@@ -503,7 +511,7 @@ func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "20" {
-		t.Fatalf("Earn = %+v: only the documented 20 USDT Dual Asset principal", earn)
+		t.Fatalf("Earn = %+v: only the synthetic 20 USDT Dual Asset principal", earn)
 	}
 }
 
@@ -558,7 +566,7 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 	}
 	earn := reportOf(t, &batch, TypeEarn)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
-		t.Fatalf("Earn = %+v: the documented 20 USDT of savings plus 201 active and 80 redeeming", earn)
+		t.Fatalf("Earn = %+v: the synthetic 20 USDT of savings plus 201 active and 80 redeeming", earn)
 	}
 	for _, path := range r.paths() {
 		if path == epWallet.path || path == epPositions.path {
@@ -654,7 +662,7 @@ func TestEveryRetryableFailureFailsTheBatch(t *testing.T) {
 }
 
 // TestErrorClasses replays, on the call every run starts with, the refusals Bybit gave the
-// documented key and the documented ones no recording can provoke.
+// synthetic key and the synthetic ones no recording can provoke.
 func TestErrorClasses(t *testing.T) {
 	for _, tc := range []struct {
 		name, failure, scenario, want string
@@ -694,8 +702,8 @@ func TestErrorClasses(t *testing.T) {
 	}
 }
 
-// TestErrorCodesWithoutAnAnswer classifies the documented codes that neither a recording nor a
-// documented answer shows.
+// TestErrorCodesWithoutAnAnswer classifies the synthetic codes that neither a recording nor a
+// synthetic answer shows.
 func TestErrorCodesWithoutAnAnswer(t *testing.T) {
 	for _, tc := range []struct {
 		status, code int

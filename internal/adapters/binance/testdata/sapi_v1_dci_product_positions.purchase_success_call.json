@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/market-data",
-  "notes": "Constructed from the documented response contract for offline mapping tests. Amounts, identifiers and account states are illustrative; this is not recorded evidence.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",
@@ -17,17 +16,17 @@
     "total": 1,
     "list": [
       {
-        "id": 1001,
-        "orderId": 2001,
-        "investCoin": "ETH",
+        "id": "1002",
+        "orderId": "2002",
+        "investCoin": "SOL",
         "exercisedCoin": "USDT",
         "subscriptionAmount": "0.1",
         "optionType": "CALL",
-        "strikePrice": "2100",
+        "strikePrice": "25",
         "apr": "0.12",
         "purchaseStatus": "PURCHASE_SUCCESS",
         "settleDate": 1700600000000,
-        "subscriptionTime": 1700000000000
+        "subscriptionTime": 1700000001000
       }
     ]
   }

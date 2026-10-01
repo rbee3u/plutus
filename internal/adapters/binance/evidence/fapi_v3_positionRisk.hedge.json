@@ -1,0 +1,56 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:56:28.522273Z",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v3/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "adl": 1,
+      "askNotional": "0",
+      "bidNotional": "0",
+      "breakEvenPrice": "2681.329995",
+      "entryPrice": "2679.9900000000002",
+      "initialMargin": "1.20597750",
+      "isolatedMargin": "1.19366554",
+      "isolatedWallet": "1.19402554",
+      "liquidationPrice": "2557.55069835",
+      "maintMargin": "0.09647820",
+      "marginAsset": "USDT",
+      "markPrice": "2679.95000000",
+      "notional": "24.11955000",
+      "openOrderInitialMargin": "0",
+      "positionAmt": "0.009",
+      "positionInitialMargin": "1.20597750",
+      "positionSide": "LONG",
+      "symbol": "ETHUSDT",
+      "unRealizedProfit": "-0.00036000",
+      "updateTime": 1790790875710
+    },
+    {
+      "adl": 2,
+      "askNotional": "0",
+      "bidNotional": "0",
+      "breakEvenPrice": "2678.0902849999998",
+      "entryPrice": "2679.43",
+      "initialMargin": "1.33997500",
+      "isolatedMargin": "1.32502148",
+      "isolatedWallet": "1.33022148",
+      "liquidationPrice": "2801.24715936",
+      "maintMargin": "0.10719800",
+      "marginAsset": "USDT",
+      "markPrice": "2679.95000000",
+      "notional": "-26.79950000",
+      "openOrderInitialMargin": "0",
+      "positionAmt": "-0.010",
+      "positionInitialMargin": "1.33997500",
+      "positionSide": "SHORT",
+      "symbol": "ETHUSDT",
+      "unRealizedProfit": "-0.00520000",
+      "updateTime": 1790790884395
+    }
+  ]
+}

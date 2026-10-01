@@ -1,0 +1,46 @@
+{
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/dci/product/positions",
+    "query": {
+      "pageIndex": "1",
+      "pageSize": "100",
+      "status": "PURCHASE_SUCCESS"
+    }
+  },
+  "status": 200,
+  "body": {
+    "total": 2,
+    "list": [
+      {
+        "id": "1001",
+        "orderId": "2001",
+        "investCoin": "USDT",
+        "exercisedCoin": "SOL",
+        "subscriptionAmount": "10",
+        "optionType": "PUT",
+        "strikePrice": "15",
+        "apr": "0.08",
+        "purchaseStatus": "PURCHASE_SUCCESS",
+        "settleDate": 1700600000000,
+        "subscriptionTime": 1700000000000
+      },
+      {
+        "id": "1002",
+        "orderId": "2002",
+        "investCoin": "SOL",
+        "exercisedCoin": "USDT",
+        "subscriptionAmount": "0.1",
+        "optionType": "CALL",
+        "strikePrice": "25",
+        "apr": "0.12",
+        "purchaseStatus": "PURCHASE_SUCCESS",
+        "settleDate": 1700600000000,
+        "subscriptionTime": 1700000001000
+      }
+    ]
+  }
+}

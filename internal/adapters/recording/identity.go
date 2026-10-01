@@ -34,7 +34,7 @@ func identityMask() func(string, any) any {
 		switch strings.ToLower(key) {
 		case "iban", "iiban":
 			text = strings.ToUpper(strings.Join(strings.Fields(text), ""))
-		case "uid", "mainuid", "userid", "accountuid", "account":
+		case "uid", "mainuid", "userid", "accountuid", "memberid", "account":
 			text = strings.TrimSpace(text)
 		default:
 			if numeric {

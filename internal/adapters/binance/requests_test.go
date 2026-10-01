@@ -9,6 +9,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters/fixture"
 	"github.com/rbee3u/plutus/internal/adapters/offline"
+	"github.com/rbee3u/plutus/internal/adapters/recording"
 )
 
 func TestSingleRecordingHasNoPreflightRetryOrPagination(t *testing.T) {
@@ -51,12 +52,15 @@ func TestSingleRecordingHasNoPreflightRetryOrPagination(t *testing.T) {
 			}))
 			defer server.Close()
 			a := New(&Options{Hosts: Hosts{API: server.URL, PAPI: server.URL, FAPI: server.URL, DAPI: server.URL}, HTTP: offline.Client(t, server)})
-			f, err := a.RecordRequest(context.Background(), testCreds, ep.Request)
+			f, err := a.RecordRequest(context.Background(), testCreds, ep.Request, recording.Options{KeepSymbols: []string{"DOGEUSDT"}})
 			if err != nil || calls != 1 || f == nil {
 				t.Fatalf("calls=%d file=%v error=%v", calls, f, err)
 			}
 			if f.Request.Key() != ep.Request.Key() || f.Source != "recorded" {
 				t.Fatal("request or provenance changed")
+			}
+			if f.Request.Query.Has("keep-symbol") || f.Request.Query.Has("keepSymbols") {
+				t.Fatal("local market hint reached the exchange request")
 			}
 			path, err := fixture.Write(t.TempDir(), name, f)
 			if err != nil {

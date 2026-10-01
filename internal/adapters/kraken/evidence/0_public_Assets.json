@@ -1,0 +1,94 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:58:37.518641Z",
+  "notes": "Kept 9 of 852 market rows: prepared/requested symbols and representative product, settlement and contract-unit types. Retained rows and original totals are unchanged.",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/0/public/Assets"
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "0G": {
+        "aclass": "currency",
+        "altname": "0G",
+        "decimals": 6,
+        "display_decimals": 4,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "1INCH": {
+        "aclass": "currency",
+        "altname": "1INCH",
+        "decimals": 10,
+        "display_decimals": 5,
+        "status": "enabled"
+      },
+      "USDC": {
+        "aclass": "currency",
+        "altname": "USDC",
+        "collateral_value": 0.995,
+        "decimals": 8,
+        "display_decimals": 4,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "USDT": {
+        "aclass": "currency",
+        "altname": "USDT",
+        "collateral_value": 0.995,
+        "decimals": 8,
+        "display_decimals": 4,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "XETH": {
+        "aclass": "currency",
+        "altname": "ETH",
+        "collateral_value": 0.99,
+        "decimals": 10,
+        "display_decimals": 5,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "XXBT": {
+        "aclass": "currency",
+        "altname": "XBT",
+        "collateral_value": 0.99,
+        "decimals": 10,
+        "display_decimals": 5,
+        "margin_rate": "0.01",
+        "status": "enabled"
+      },
+      "XXDG": {
+        "aclass": "currency",
+        "altname": "XDG",
+        "collateral_value": 0.925,
+        "decimals": 8,
+        "display_decimals": 2,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "XXRP": {
+        "aclass": "currency",
+        "altname": "XRP",
+        "collateral_value": 0.95,
+        "decimals": 8,
+        "display_decimals": 5,
+        "margin_rate": "0.02",
+        "status": "enabled"
+      },
+      "ZUSD": {
+        "aclass": "currency",
+        "altname": "USD",
+        "collateral_value": 1.0,
+        "decimals": 4,
+        "display_decimals": 2,
+        "margin_rate": "0.032",
+        "status": "enabled"
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:02:30.782555Z",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/asset/wallet/balance",
+    "query": {
+      "quoteAsset": "USDT"
+    }
+  },
+  "status": 200,
+  "body": [
+    {
+      "activate": true,
+      "balance": "25.00131525",
+      "walletName": "Spot"
+    },
+    {
+      "activate": true,
+      "balance": "0.1",
+      "walletName": "Funding"
+    },
+    {
+      "activate": true,
+      "balance": "5493.01835856",
+      "walletName": "Cross Margin (PM)"
+    },
+    {
+      "activate": true,
+      "balance": "0",
+      "walletName": "Isolated Margin"
+    },
+    {
+      "activate": true,
+      "balance": "12.00659782",
+      "walletName": "USDⓈ-M Futures (PM)"
+    },
+    {
+      "activate": true,
+      "balance": "-0.66886122",
+      "walletName": "COIN-M Futures (PM)"
+    },
+    {
+      "activate": true,
+      "balance": "50.97930024",
+      "walletName": "Earn"
+    },
+    {
+      "activate": true,
+      "balance": "0",
+      "walletName": "Options"
+    },
+    {
+      "activate": false,
+      "balance": "0",
+      "walletName": "Trading Bots"
+    },
+    {
+      "activate": true,
+      "balance": "0",
+      "walletName": "Copy Trading"
+    }
+  ]
+}

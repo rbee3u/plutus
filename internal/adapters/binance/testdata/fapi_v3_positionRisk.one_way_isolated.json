@@ -1,0 +1,26 @@
+{
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v3/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "symbol": "DOGEUSDT",
+      "positionSide": "BOTH",
+      "positionAmt": "-100",
+      "entryPrice": "0.11",
+      "markPrice": "0.1",
+      "unRealizedProfit": "1",
+      "liquidationPrice": "0.12",
+      "isolatedMargin": "3",
+      "isolatedWallet": "2",
+      "marginAsset": "USDT",
+      "initialMargin": "2",
+      "maintMargin": "0.1"
+    }
+  ]
+}

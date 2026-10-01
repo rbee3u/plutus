@@ -21,16 +21,28 @@ import (
 
 // Session blocks every request except one selected exchange, including retries and redirects.
 type Session struct {
-	platform adapters.Platform
-	request  fixture.Request
-	mu       sync.Mutex
-	used     bool
-	blocked  error
-	files    []fixture.File
+	platform    adapters.Platform
+	request     fixture.Request
+	mu          sync.Mutex
+	used        bool
+	blocked     error
+	files       []fixture.File
+	keepSymbols map[string]bool
 }
 
-func New(platform adapters.Platform, request fixture.Request) *Session {
-	return &Session{platform: platform, request: request}
+// Options affect local evidence selection only; they never add or change a network request.
+type Options struct {
+	KeepSymbols []string
+}
+
+func New(platform adapters.Platform, request fixture.Request, options ...Options) *Session {
+	s := &Session{platform: platform, request: request, keepSymbols: map[string]bool{}}
+	for _, option := range options {
+		for _, symbol := range option.KeepSymbols {
+			s.keepSymbols[symbol] = true
+		}
+	}
+	return s
 }
 
 func Service(platform adapters.Platform, path string) string {
@@ -220,6 +232,7 @@ func (s *Session) finish(creds adapters.Credentials, failure error) (*fixture.Fi
 		return ipPattern.ReplaceAllString(value, "203.0.113.1")
 	}
 	s.trimMarkets(values)
+	s.trimZeroRows(values)
 	mask := identityMask()
 	for i := range s.files {
 		f := &s.files[i]

@@ -11,6 +11,91 @@ func withGotestEnvWalk(opts *Options) *Options {
 	return opts
 }
 
+func TestTestAndRecordingLookupsKeepSeparateSources(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Join(string(filepath.Separator), "repo")
+	for _, tc := range []struct {
+		name, key, prefix, file, other string
+	}{
+		{"gotest", "PLUTUS_GOTEST_DSN", "PLUTUS_GOTEST_", defaultGotestEnvFileName, defaultRecordEnvFileName},
+		{"record", "PLUTUS_RECORD_BINANCE_APIKEY", "PLUTUS_RECORD_", defaultRecordEnvFileName, defaultGotestEnvFileName},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, present := range []bool{true, false} {
+				files := map[string]string{
+					filepath.Join(root, goModFileName): "module example\n",
+					filepath.Join(root, tc.other):      tc.key + "=wrong-source\n",
+					defaultEnvFileName:                 tc.key + "=runtime-source\n",
+				}
+				if present {
+					files[filepath.Join(root, tc.file)] = tc.key + "=selected-source\n"
+				}
+				read := filesMap(files)
+				opts := &Options{
+					LookupEnv: envMap(nil),
+					getwd:     func() (string, error) { return filepath.Join(root, "internal", "example"), nil },
+					ReadFile: func(path string) ([]byte, error) {
+						if filepath.Base(path) == filepath.Base(tc.other) || filepath.Base(path) == "local.env" {
+							t.Fatalf("lookup accessed unrelated credential file %s", path)
+						}
+						return read(path)
+					},
+				}
+				value, err := lookupScoped(tc.key, tc.prefix, tc.file, opts)
+				want := ""
+				if present {
+					want = "selected-source"
+				}
+				if err != nil || value != want {
+					t.Fatalf("wrong configuration source: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestScopedLookupRejectsOtherNamespaceBeforeAccess(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ key, prefix, file string }{
+		{"PLUTUS_RECORD_OKX_SECRET", "PLUTUS_GOTEST_", defaultGotestEnvFileName},
+		{"PLUTUS_GOTEST_OKX_SECRET", "PLUTUS_RECORD_", defaultRecordEnvFileName},
+	} {
+		_, err := lookupScoped(tc.key, tc.prefix, tc.file, &Options{
+			LookupEnv: func(string) (string, bool) { t.Fatal("wrong namespace reached environment"); return "", false },
+			ReadFile:  func(string) ([]byte, error) { t.Fatal("wrong namespace reached disk"); return nil, nil },
+		})
+		if err == nil {
+			t.Fatal("cross-namespace lookup accepted")
+		}
+	}
+}
+
+func TestRecordingEnvOverridesAndPreservesPEM(t *testing.T) {
+	t.Parallel()
+
+	const key = "PLUTUS_RECORD_BINANCE_SECRET"
+	const pem = "-----BEGIN PRIVATE KEY-----\nfake-key\n-----END PRIVATE KEY-----"
+	for _, fromEnv := range []bool{false, true} {
+		env := map[string]string{}
+		want := pem
+		if fromEnv {
+			env[key] = "process-secret"
+			want = "process-secret"
+		}
+		value, err := lookupScoped(key, "PLUTUS_RECORD_", defaultRecordEnvFileName, &Options{
+			LookupEnv: envMap(env),
+			ReadFile: filesMap(map[string]string{
+				defaultRecordEnvFileName: key + "=\"-----BEGIN PRIVATE KEY-----\\nfake-key\\n-----END PRIVATE KEY-----\"\n",
+			}),
+		})
+		if err != nil || value != want {
+			t.Fatalf("recording override or PEM decoding failed: %v", err)
+		}
+	}
+}
+
 func TestParseDotEnv(t *testing.T) {
 	t.Parallel()
 
@@ -213,8 +298,8 @@ func TestLoadSpecifiedEnvFileDoesNotMergeDotEnv(t *testing.T) {
 		EnvFile:   "config/agent.env",
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			defaultEnvFileName: "PLUTUS_DATABASE_DSN=from-dotenv\n",
-			"config/agent.env": "PLUTUS_DATABASE_DSN=from-agent\n",
+			defaultEnvFileName: "PLUTUS_DSN=from-dotenv\n",
+			"config/agent.env": "PLUTUS_DSN=from-agent\n",
 		}),
 	})
 	if err != nil {
@@ -232,7 +317,7 @@ func TestLoadSpecifiedEnvFileIgnoresMissingKeysInDotEnv(t *testing.T) {
 		EnvFile:   "config/agent.env",
 		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
-			defaultEnvFileName: "PLUTUS_DATABASE_DSN=from-dotenv\nPLUTUS_SERVER_PORT=9090\n",
+			defaultEnvFileName: "PLUTUS_DSN=from-dotenv\nPLUTUS_SERVER_PORT=9090\n",
 			"config/agent.env": "PLUTUS_MASTER_KEY=" + base64.StdEncoding.EncodeToString(bytesOf(t)) + "\n",
 		}),
 	})

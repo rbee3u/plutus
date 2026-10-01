@@ -14,4 +14,4 @@ Binance supports Ed25519 API keys for signed Spot requests. Plutus has one write
 ## Consequences
 
 - No database column, encrypted document version, API field, or Account Type is added.
-- The existing `PLUTUS_GOTEST_BINANCE_SECRET` accepts a PEM with newline escapes in the quoted `config/gotest.env` value, or a multiline process environment value, for explicit single-interface recording (ADR 0036).
+- `PLUTUS_RECORD_BINANCE_SECRET` accepts a PEM with newline escapes in the quoted `config/record.env` value, or a multiline process environment value, for explicit single-interface recording ([ADR 0037](./0037-separate-recorded-evidence-from-synthetic-tests.md)). [ADR 0038](./0038-separate-recording-credentials-from-test-configuration.md) replaces the previous `PLUTUS_GOTEST_BINANCE_SECRET` recording source; the signing and encrypted runtime credential decisions remain unchanged.

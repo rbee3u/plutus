@@ -1,0 +1,106 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:32:42.285334Z",
+  "notes": "Kept 5 of 81 inspected balance/position rows: omitted only redundant known zero shapes, retaining a representative of each shape and setting. Unknown fields, nulls, empty strings and all nonzero financial measures are retained; original totals are unchanged.",
+  "request": {
+    "service": "cm",
+    "method": "GET",
+    "path": "/dapi/v1/account"
+  },
+  "status": 200,
+  "body": {
+    "assets": [
+      {
+        "asset": "NEAR",
+        "availableBalance": "0.00000000",
+        "crossUnPnl": "0.00000000",
+        "crossWalletBalance": "0.00000000",
+        "initialMargin": "0.00000000",
+        "maintMargin": "0.00000000",
+        "marginBalance": "0.00000000",
+        "maxWithdrawAmount": "0.00000000",
+        "openOrderInitialMargin": "0.00000000",
+        "positionInitialMargin": "0.00000000",
+        "unrealizedProfit": "0.00000000",
+        "updateTime": 0,
+        "walletBalance": "0.00000000"
+      },
+      {
+        "asset": "ETH",
+        "availableBalance": "0.00210396",
+        "crossUnPnl": "-0.00000321",
+        "crossWalletBalance": "0.00285328",
+        "initialMargin": "0.00148438",
+        "maintMargin": "0.00005556",
+        "marginBalance": "0.00358877",
+        "maxWithdrawAmount": "0.00210396",
+        "openOrderInitialMargin": "0.00000000",
+        "positionInitialMargin": "0.00148438",
+        "unrealizedProfit": "-0.00000103",
+        "updateTime": 1790789438664,
+        "walletBalance": "0.00358980"
+      }
+    ],
+    "canDeposit": true,
+    "canTrade": true,
+    "canWithdraw": true,
+    "feeTier": 0,
+    "positions": [
+      {
+        "breakEvenPrice": "0.00000000",
+        "entryPrice": "0.00000000",
+        "initialMargin": "0",
+        "isolated": false,
+        "isolatedWallet": "0",
+        "leverage": "20",
+        "maintMargin": "0",
+        "maxQty": "500.0",
+        "notionalValue": "0",
+        "openOrderInitialMargin": "0",
+        "positionAmt": "0",
+        "positionInitialMargin": "0",
+        "positionSide": "BOTH",
+        "symbol": "BCHUSD_PERP",
+        "unrealizedProfit": "0.00000000",
+        "updateTime": 0
+      },
+      {
+        "breakEvenPrice": "2709.03480497",
+        "entryPrice": "2710.39000000",
+        "initialMargin": "0.00073834",
+        "isolated": true,
+        "isolatedWallet": "0.00073652",
+        "leverage": "5",
+        "maintMargin": "0.00003691",
+        "maxQty": "2000.0",
+        "notionalValue": "-0.00369168",
+        "openOrderInitialMargin": "0",
+        "positionAmt": "-1",
+        "positionInitialMargin": "0.00073834",
+        "positionSide": "BOTH",
+        "symbol": "ETHUSD_261225",
+        "unrealizedProfit": "0.00000218",
+        "updateTime": 1790789438664
+      },
+      {
+        "breakEvenPrice": "2684.47156496",
+        "entryPrice": "2683.13000000",
+        "initialMargin": "0.00074604",
+        "isolated": false,
+        "isolatedWallet": "0",
+        "leverage": "5",
+        "maintMargin": "0.00001865",
+        "maxQty": "14000.0",
+        "notionalValue": "0.00373020",
+        "openOrderInitialMargin": "0",
+        "positionAmt": "1",
+        "positionInitialMargin": "0.00074604",
+        "positionSide": "BOTH",
+        "symbol": "ETHUSD_PERP",
+        "unrealizedProfit": "-0.00000321",
+        "updateTime": 1790789418671
+      }
+    ],
+    "updateTime": 0
+  }
+}

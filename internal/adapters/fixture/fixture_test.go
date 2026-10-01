@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func documented() File {
-	return File{Source: "documented", Documentation: "https://docs.kraken.com/api/docs/rest-api/get-api-key-info", Request: Request{Service: "spot", Method: "GET", Path: "/account"}, Status: 200, Body: []byte(`{"balances":[]}`)}
+func synthetic() File {
+	return File{Source: "synthetic", Request: Request{Service: "spot", Method: "GET", Path: "/account"}, Status: 200, Body: []byte(`{"balances":[]}`)}
 }
 
 func TestParametersRoundTripWithoutCursorDecoding(t *testing.T) {
@@ -45,17 +45,14 @@ func TestSourceAndProtocolValidation(t *testing.T) {
 		change func(*File)
 		valid  bool
 	}{
-		{"documented", func(*File) {}, true},
-		{"recorded", func(f *File) { f.Source = "recorded"; f.Documentation = ""; f.RecordedAt = &now }, true},
-		{"synthetic", func(f *File) { f.Source = "synthetic"; f.Documentation = "" }, true},
+		{"legacy documented source", func(f *File) { f.Source = "documented" }, false},
+		{"recorded", func(f *File) { f.Source = "recorded"; f.RecordedAt = &now }, true},
+		{"synthetic", func(f *File) { f.Source = "synthetic" }, true},
 		{"WS", func(f *File) { f.Request.Method = "WS"; f.Status = 0 }, true},
 		{"text", func(f *File) { f.BodyFormat = "text"; f.Body = []byte(`"too frequent"`); f.Status = 403 }, true},
 		{"unknown source", func(f *File) { f.Source = "unknown" }, false},
 		{"invented date", func(f *File) { f.RecordedAt = &now }, false},
-		{"missing date", func(f *File) { f.Source = "recorded"; f.Documentation = "" }, false},
-		{"missing URL", func(f *File) { f.Documentation = "" }, false},
-		{"unofficial URL", func(f *File) { f.Documentation = "https://example.com/official" }, false},
-		{"credentials in URL", func(f *File) { f.Documentation = "https://secret@docs.kraken.com/" }, false},
+		{"missing date", func(f *File) { f.Source = "recorded" }, false},
 		{"missing status", func(f *File) { f.Status = 0 }, false},
 		{"fake WS status", func(f *File) { f.Request.Method = "WS" }, false},
 		{"object text", func(f *File) { f.BodyFormat = "text" }, false},
@@ -64,7 +61,7 @@ func TestSourceAndProtocolValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := documented()
+			f := synthetic()
 			tc.change(&f)
 			if (f.Validate() == nil) != tc.valid {
 				t.Fatalf("unexpected validation: %v", f.Validate())
@@ -75,7 +72,7 @@ func TestSourceAndProtocolValidation(t *testing.T) {
 
 func TestAtomicWriteCannotOverwriteOrLeavePartialSample(t *testing.T) {
 	dir := t.TempDir()
-	f := documented()
+	f := synthetic()
 	path, err := Write(dir, "account", &f)
 	if err != nil {
 		t.Fatal(err)
@@ -100,16 +97,16 @@ func TestAtomicWriteCannotOverwriteOrLeavePartialSample(t *testing.T) {
 	if err != nil || len(leftovers) > 0 {
 		t.Fatalf("partial write exposed: %v %v", leftovers, err)
 	}
-	if _, err = Write(filepath.Join(path, "not-a-directory"), "account", &documentedFile); err == nil {
+	if _, err = Write(filepath.Join(path, "not-a-directory"), "account", &syntheticFile); err == nil {
 		t.Fatal("disk failure ignored")
 	}
 }
 
-var documentedFile = documented()
+var syntheticFile = synthetic()
 
 func TestLoadHasNoFallbackOrNestedPaths(t *testing.T) {
 	dir := t.TempDir()
-	f := documented()
+	f := synthetic()
 	if _, err := Write(dir, "account", &f); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +126,7 @@ func TestLoadHasNoFallbackOrNestedPaths(t *testing.T) {
 }
 
 func TestSequenceMatchesEveryBusinessParameterAndConsumesEveryStep(t *testing.T) {
-	first := documented()
+	first := synthetic()
 	first.Request.Form = url.Values{"cursor": {"a%2Fb"}, "coin": {"BTC", "ETH"}}
 	first.Request.Method = "POST"
 	second := first
@@ -165,5 +162,36 @@ func TestSnapshotCannotStoreEvenAZeroHTTPStatus(t *testing.T) {
 	raw := []byte(`{"source":"synthetic","request":{"service":"futures-ws","method":"WS","path":"/ws/v1/balances_snapshot"},"status":0,"body":{}}`)
 	if json.Unmarshal(raw, &f) == nil {
 		t.Fatal("explicit WS status accepted")
+	}
+}
+
+func TestEvidenceCannotBecomeATestInput(t *testing.T) {
+	dir := t.TempDir()
+	f := synthetic()
+	now := time.Now().UTC()
+	f.Source, f.RecordedAt = "recorded", &now
+	path, err := Write(dir, "account", &f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Read(path); err != nil {
+		t.Fatalf("evidence envelope: %v", err)
+	}
+	if _, err := ReadSynthetic(path); err == nil {
+		t.Fatal("recorded response accepted as a test input")
+	}
+	if _, err := Load(dir, "account.json"); err == nil {
+		t.Fatal("test loader accepted recorded evidence")
+	}
+	if _, err := NewSequence(f); err == nil {
+		t.Fatal("test sequence accepted recorded evidence")
+	}
+	// Documentation is maintained in the inventory, not in a third response-file source.
+	var value File
+	if json.Unmarshal([]byte(`{"source":"synthetic","documentation":"https://docs.kraken.com/","request":{"service":"spot","method":"GET","path":"/account"},"status":200,"body":{}}`), &value) == nil {
+		t.Fatal("legacy documentation provenance accepted")
+	}
+	if json.Unmarshal([]byte(`{"source":"synthetic","recordedAt":null,"request":{"service":"spot","method":"GET","path":"/account"},"status":200,"body":{}}`), &value) == nil {
+		t.Fatal("synthetic response retained recording metadata")
 	}
 }

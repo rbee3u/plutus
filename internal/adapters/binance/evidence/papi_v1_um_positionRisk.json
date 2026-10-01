@@ -1,0 +1,40 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:01:17.728886Z",
+  "request": {
+    "service": "portfolio",
+    "method": "GET",
+    "path": "/papi/v1/um/positionRisk"
+  },
+  "status": 200,
+  "body": [
+    {
+      "breakEvenPrice": "0.112793575",
+      "entryPrice": "0.11284999999999999",
+      "leverage": "3",
+      "liquidationPrice": "9.88916339",
+      "markPrice": "0.10609",
+      "maxNotionalValue": "250000.0",
+      "notional": "-53.045",
+      "positionAmt": "-500.0",
+      "positionSide": "BOTH",
+      "symbol": "牛来USDT",
+      "unRealizedProfit": "3.38",
+      "updateTime": 1788091034184
+    },
+    {
+      "breakEvenPrice": "1511.2299570249997",
+      "entryPrice": "1511.9859499999995",
+      "leverage": "3",
+      "liquidationPrice": "26942.24509429",
+      "markPrice": "1468.01267825",
+      "maxNotionalValue": "10000000",
+      "notional": "-293.60253565",
+      "positionAmt": "-0.2",
+      "positionSide": "BOTH",
+      "symbol": "ZECUSDT",
+      "unRealizedProfit": "8.79465435",
+      "updateTime": 1789709489699
+    }
+  ]
+}

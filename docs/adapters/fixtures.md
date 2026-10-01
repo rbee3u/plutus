@@ -1,59 +1,56 @@
-# Flat Adapter interface samples
+# Recorded evidence and synthetic Adapter tests
 
-[ADR 0036](../adr/0036-use-flat-interface-samples-and-single-request-recording.md) defines this library and recording boundary. Each Platform's `testdata/` contains only flat JSON response files. Go tests explicitly choose files and match service, method, path and business query/form parameters. A required file missing or a request without a response fails; there is no source or account fallback. Pagination and state changes use explicit responses, with expected steps checked for consumption.
+[ADR 0037](../adr/0037-separate-recorded-evidence-from-synthetic-tests.md) separates each Platform's flat `evidence/` and `testdata/` directories. Evidence records observed exchange responses to check official documentation; tests construct deliberate business scenes from those two references. No test loads evidence, no generation/dependency manifest connects the files, and updating evidence does not regenerate test data. Empty evidence directories are created when first needed and contain no placeholder response files.
 
-The library verifies response contracts, parsing, mapping and failure isolation. It may combine samples from different dates; it does not prove a single-window real asset total. All current committed samples are **documented**. Previous recordings were removed, never relabeled or copied into the new library. Existing `tmp/` history is unchanged. Inline test responses are synthetic evidence. No new-standard recording or live acceptance is claimed.
+The previous recordings and their `tmp/fixtures`/`tmp/offline` scratch directories have been removed. All committed test responses are **synthetic**; Binance has 34 reviewed responses covering PM One-way/Hedge, shared wallets/products, Classic Single-Asset One-way/Hedge and Classic Multi-Assets under this standard, and OKX has 20 reviewed Spot, Futures, MCM, PM and shared wallet/product/market responses recorded on 2026-10-01. Borrowing-disabled Spot evidence is owner-deferred because no separate disable control was found; Bybit has 19 reviewed PM One-way, Cross One-way/Hedge and shared wallet/product/market responses recorded on 2026-10-01, with Isolated recording owner-deferred because it is rarely used and nonempty Fixed-Term Saving/SellHigh owner-deferred for principal/product requirements. These real gaps retain documented support and independent synthetic coverage. Kraken has 11 owner-reviewed Unified wallet, position, Earn, credential and market responses recorded on 2026-10-01. Separate wallets are unavailable and the owner defers further account preparation; nonzero Auto Earn, inverse delivery positions and other unobserved states remain explicit gaps. Other unobserved Binance/OKX states also remain pending. Passing a synthetic test is not real coverage or a real asset-total reconciliation. Each Platform inventory links official documentation, test files and outstanding evidence: [Binance](./binance-fixtures.md), [OKX](./okx-fixtures.md), [Bybit](./bybit-fixtures.md), [Kraken](./kraken-fixtures.md).
 
-## Names
+## Names and response envelope
 
-Use the path stem, replacing `/` and `-` with `_`: `/api/v3/account` becomes `api_v3_account.json`. A semantic variant identifies necessary differences, such as `api_v5_account_balance.mcm.json`, `api_v5_account_balance.pm.json` or `api_v5_public_instruments.swap.json`. Do not include dates, capture IDs, default page sizes or `.doc`. A single real response should cover coexisting positions/products; never splice real bodies to fabricate coverage. A mode suffix describes the selected response, not a recorder operation that switches account configuration.
+Use the path stem, replacing `/` and `-` with `_`: `/api/v3/account` becomes `api_v3_account.json`. Evidence adds a semantic variant only for necessary request or response differences, such as `.pm`, `.mcm` or `.swap`. Do not include recording dates, batches, default page sizes or `.doc`. Coexisting products/positions share one unspliced real response. Synthetic tests may split that contract into `.call`, `.put`, `.both`, failure or pagination examples; the layers need not share variants. Small test responses can remain inline.
 
-## JSON contract
+| Field | Evidence | Synthetic tests |
+| --- | --- | --- |
+| `source` | Required `recorded` | Required `synthetic` |
+| `request` | Actual service, method, path and nonempty query/form | Explicit expected business request |
+| `status` | Actual HTTP status; omitted for WS snapshot | Constructed HTTP status; omitted for WS snapshot |
+| `body` | Required sanitized response | Required constructed response |
+| `recordedAt` | Required actual UTC RFC 3339 time | Forbidden |
+| `notes` | Optional necessary redaction/trimming explanation | Optional construction explanation |
+| `bodyFormat` | `"text"` for non-JSON text with a string body | Same rule |
 
-| Field | Requirement |
-| --- | --- |
-| `source` | Required: `recorded`, `documented`, `synthetic` |
-| `request` | Required `service`, `method`, `path`; nonempty `query`/`form` only |
-| `status` | Real HTTP status; omitted for WS snapshots |
-| `body` | Required response body, preserving types and numeric precision |
-| `recordedAt` | Recorded only: actual UTC RFC 3339 recording time |
-| `documentation` | Documented only: corresponding official documentation URL |
-| `notes` | Optional necessary sanitation, trimming and construction explanation |
-| `bodyFormat` | `"text"` for non-JSON text, with a string body; otherwise omitted |
+A single query/form value is a string; multiple values are a nonempty string array. Preserve business values, pagination and literal cursor strings without a second decode. Exclude signatures, authentication timestamps, nonce and secrets. A WS request names its logical subscription (`method: "WS"`), not an HTTP success status. Legacy wrappers, `documented` source, embedded documentation URLs, source dates on synthetic files and invalid field/protocol combinations fail shared validation. Test loaders and response sequences additionally reject `recorded` inputs.
 
-One parameter value is a string; multiple values are a string array. Cursors, pages and exact business values remain; keys, signatures, timestamps, nonce and other authentication parameters do not. Decode HTTP query/form encoding once. The shared validator rejects legacy metadata, invalid sources, parameter types and protocol combinations. Small exceptional responses are constructed in tests; larger synthetic responses may have their own flat files.
+## Record one interface, prepare a group
 
-## Record exactly one interface
-
-Run from the repository root. Listing and dry-run require neither credentials nor network:
+The recorder is the only development-verification command that contacts exchanges. Runtime `serve`, worker and `collect` retain real collection. Listing and dry-run need no credentials or network:
 
 ```sh
-go run ./cmd/plutus adapter record --platform okx --list-requests
-go run ./cmd/plutus adapter record --platform okx \
-  --only api_v5_account_balance --variant pm --dry-run
-go run ./cmd/plutus adapter record --platform okx \
-  --only api_v5_account_balance --variant pm
-go run ./cmd/plutus adapter record --platform okx \
-  --only api_v5_public_instruments --query instType=SWAP --variant swap --dry-run
-go run ./cmd/plutus adapter record --platform binance \
-  --only sapi_v1_dci_product_positions --query status=PURCHASE_SUCCESS \
-  --variant purchase_success_call --dry-run
-go run ./cmd/plutus adapter record --platform kraken \
-  --only 0_private_Earn_Strategies --form cursor=next%2Fpage --dry-run
+plutus adapter record --platform binance --list-requests
+plutus adapter record --platform okx --only api_v5_account_balance --variant pm --dry-run
+plutus adapter record --platform okx --only api_v5_public_instruments \
+  --query instType=SWAP --variant swap --keep-symbol BTC-USDT-SWAP --dry-run
+plutus adapter record --platform binance --only sapi_v1_dci_product_positions \
+  --query status=PURCHASE_SUCCESS --dry-run
+plutus adapter record --platform kraken --only 0_private_Earn_Strategies \
+  --form cursor=next%2Fpage --dry-run
 ```
 
-`--only` selects exactly one allowlisted read-only interface. Identifiers exclude parameter values. `--query`/`--form` override native defaults; repeat a key for multiple values. Missing required parameters fail before keys or network. Bybit positions require `category`; linear positions also need `settleCoin` or `symbol`. OKX instruments require `instType`; Binance Dual positions require `status`. Kraken signed Spot parameters use `--form`. Public interfaces read no keys; Kraken reads only the selected service's credential group. Copy `config/gotest-example.env` to gitignored `config/gotest.env` for test-environment read-only credentials.
+`--only` selects one allowlisted read-only interface. `--query`/`--form` override native defaults literally; repeat a key for multiple values. Required parameters fail before keys/network. `--variant` affects the filename only and neither switches nor verifies account settings. Repeat `--keep-symbol` for prepared instruments that must survive local market trimming; these hints are never sent to the exchange. Public requests read no keys; private requests read only their selected `PLUTUS_RECORD_*` credential group from the process environment or gitignored `config/record.env` (copy [record-example.env](../../config/record-example.env)). Kraken Spot/Futures use separate groups. Recording never falls back to `gotest.env` or old `PLUTUS_GOTEST_*` keys; ordinary tests never load recording credentials ([ADR 0038](../adr/0038-separate-recording-credentials-from-test-configuration.md)).
 
-The recorder sends one HTTP request with native routing/signing and the local clock. It never adds validation, time synchronization, prices, products, totals, another page, retries, redirects or refusal probes. Clock drift or refusal returns a failed response; correct the local setup before another explicit command. Kraken WS uses one challenge/subscription/snapshot and no REST. Removed commands/flags: `adapter verify`, `--scenario`, `--full`, `--include-refusals` and scenario listing.
+Each invocation makes exactly one HTTP request without configuration, clock synchronization, prices, products, totals, extra pages, retries, redirects or refusal probes. Kraken WS permits the necessary challenge/subscription for one logical snapshot without REST. An owner prepares one compatible group of holdings/settings, reviews its exact request/parameter list, and authorizes the sequential commands together. Stop on the first request/write failure; keep successes and resume only the uncompleted commands after correction. There is no full sweep or new batch engine.
 
-## Save, review and freeze
+## Trim, save and review
 
-One command creates a unique directory under gitignored `tmp/fixtures/<platform>/` and publishes one JSON atomically without replacing a file. `--out` changes the parent only within `tmp/`. No batch manifest, summary or complete collection result is produced. Sanitation masks customer references and secrets; preserves business values, product identifiers, prices, terms and times; and trims market responses to the BTC/ETH/USD whitelist, explicitly requested symbols and representative contract types. Notes disclose trimming. Private account/product responses are not trimmed. A redaction failure produces no file.
+Market lists retain prepared/requested symbols and representatives of product kind, settlement, quote, contract unit and field/type shape. BTC/ETH representatives are preferred where available, not mandatory whitelisted coins. Lists retain original order, whole rows and original aggregate/count fields. A missing prepared symbol is reported during evidence review rather than fabricated or fetched from another interface.
 
-Terminal output separates the saved path, HTTP or WS response, Platform success and empty state. Request, Platform response or write failures return nonzero. Safe failure responses can be retained for offline diagnosis; successful writing never means business mapping acceptance. Empty responses remain in `tmp/` by default and do not replace a populated sample.
+Only explicitly recognized balance/position interfaces trim zero rows. Known financial fields (including wallet/position amount, debt, interest, frozen funds, margin and PnL) must all be zero before a row can be redundant. Keep one representative per field/type shape and meaningful position/margin/collateral setting. Any nonzero financial measure, unknown field/type, null, empty string or special state keeps the row. Product and configuration lists are not pruned by this rule. Notes disclose original and retained counts and the selection rule. Retained business values, precision, product terms, times and totals are not rewritten.
 
-Prepare only the selected interface's required account state. Review the response and its offline test, then promote that exact file and update the Platform inventory with evidence and the replacement reason. Freeze reviewed samples; update only for a coverage gap, interface change or error fix. Real access, account ownership and aggregate totals require separate evidence and are not inferred from a mapped sample. New recordings proceed Binance → OKX → Bybit → Kraken.
+Each command creates a unique directory under gitignored `tmp/evidence/<platform>/`, atomically publishing one JSON without overwrites. `--out` may change the parent only inside `tmp/`. No complete collection, batch manifest or asset-total proof is generated. Identity fields and secrets are masked; unsafe redaction leaves no file. Request/response/write failures return nonzero even when a safe failed response is retained. Terminal output separately reports the saved path, HTTP/WS result, Platform success and empty state. Saving does not prove correct business mapping. Empty and failed responses remain in `tmp/` by default; there is no automatic promotion.
 
-## Verification
+Review request identity, sanitation, critical response shapes and differences from official documentation; then the owner reviews before promoting the exact response to `evidence/`. Full Adapter replay is not an evidence gate. If new evidence exposes a parsing problem, fix it separately with an independently constructed regression response. Update the inventory with the actual date, observed or owner-declared settings, useful differences and remaining gaps. Do not infer generic product applicability from the account used to record it. Freeze reviewed evidence; replacements require a coverage-gap, interface-change or error-fix reason. Unavailable critical real states remain gaps while other work proceeds.
 
-`make test` runs local replay, the deterministic fake and throwaway MySQL databases. Exchange HTTP/HTTPS/WS, proxy and redirect attempts fail independently of Account Report error handling. `make test-live` is removed. Runtime collection remains live in test/prod. Deliver code through `make format && make build && make test && make lint`, then `make dist`. API/UI changes additionally require the agent lane; adapter sample/recorder-only changes do not.
+## Offline verification
+
+All four Platforms' tests explicitly choose synthetic files and match service, method, path and business parameters. Missing files and unknown requests fail; explicit pagination/repeated-response sequences must be consumed. A response library is not itself an expected call sequence: individual tests declare their required steps. Synthetic amounts, identifiers, prices and aggregates are chosen together for stable success or deliberate failure, preserving useful nonempty/mode/error/completeness/storage/valuation assertions.
+
+`make test` includes the deterministic fake, loopback HTTP/WS replay and throwaway MySQL. The network guard blocks exchange HTTP/HTTPS/WS, proxy and redirect attempts even when an Adapter converts the error into an Account Report. `make test-live` remains removed. Code deliveries pass ordered `make format && make build && make test && make lint`, then `make dist`; runtime/API/UI changes additionally require the agent lane. New evidence is acquired in Binance → OKX → Bybit → Kraken order, minimizing setting changes and never multiplying all modes, instruments and directions into a Cartesian matrix.

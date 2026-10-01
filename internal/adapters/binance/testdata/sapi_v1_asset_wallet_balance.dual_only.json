@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset#query-user-wallet-balance",
-  "notes": "The example's Spot wallet without assetBalances, which only needBalanceDetail=true returns, plus an Earn wallet valued at the open dual investment principal, 0.5 USDT.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "spot",
     "method": "GET",
@@ -13,14 +12,8 @@
   "status": 200,
   "body": [
     {
-      "activate": true,
-      "balance": "0",
-      "walletName": "Spot"
-    },
-    {
-      "activate": true,
-      "balance": "0.5",
-      "walletName": "Earn"
+      "walletName": "Earn",
+      "balance": "12"
     }
   ]
 }

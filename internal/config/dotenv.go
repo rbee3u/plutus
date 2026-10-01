@@ -15,11 +15,25 @@ const goModFileName = "go.mod"
 // directory or, when tests run from a subdirectory, the Go module root.
 // Existing process environment values win. A missing `config/gotest.env` is ignored.
 // The nearest `config/gotest.env` wins. `config/local.env` is not read.
-// It serves `go test` (PLUTUS_GOTEST_* variables) and `plutus adapter record`; serve, the worker,
-// and collect never call it.
+// Only PLUTUS_GOTEST_* names are accepted. Recording credentials use LookupRecording instead;
+// serve, the worker, and collect never call either lookup.
 func Lookup(key string) (string, error) {
-	opts := Options{walkEnvFile: defaultGotestEnvFileName}
-	return lookup(key, &opts)
+	return lookupScoped(key, "PLUTUS_GOTEST_", defaultGotestEnvFileName, &Options{})
+}
+
+// LookupRecording reads PLUTUS_RECORD_* credentials from the process environment or the nearest
+// config/record.env within the Go module. It never falls back to gotest or runtime env files.
+// Only the explicit adapter record command calls it; public requests do not need it.
+func LookupRecording(key string) (string, error) {
+	return lookupScoped(key, "PLUTUS_RECORD_", defaultRecordEnvFileName, &Options{})
+}
+
+func lookupScoped(key, prefix, filename string, opts *Options) (string, error) {
+	if !strings.HasPrefix(key, prefix) {
+		return "", fmt.Errorf("configuration lookup requires a %s variable", prefix)
+	}
+	opts.walkEnvFile = filename
+	return lookup(key, opts)
 }
 
 func lookup(key string, opts *Options) (string, error) {

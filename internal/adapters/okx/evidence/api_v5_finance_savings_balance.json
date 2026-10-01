@@ -1,0 +1,34 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:49:50.508672Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/finance/savings/balance"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "amt": "2006.76751753",
+        "ccy": "USDT",
+        "earnings": "98.02166783",
+        "loanAmt": "2006.76169542",
+        "pendingAmt": "0.00582211",
+        "rate": "0.01",
+        "redemptAmt": ""
+      },
+      {
+        "amt": "1037.31515215",
+        "ccy": "USDC",
+        "earnings": "37.31515216",
+        "loanAmt": "1037.31218291",
+        "pendingAmt": "0.00296923",
+        "rate": "0.01",
+        "redemptAmt": ""
+      }
+    ],
+    "msg": ""
+  }
+}

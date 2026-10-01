@@ -54,10 +54,14 @@ var (
 	classicTypes = adapters.AccountTypeIDs(adapters.StructureBinanceClassic)
 )
 
-// Explicit documentation-derived test selections (ADR 0027).
+// Explicit flat sample selections; provenance belongs to each selected response.
 const (
-	docClassic        = "binance_classic"
-	docDualInvestment = "dual_investment"
+	classicSamples        = "binance_classic"
+	classicSingleAsset    = "binance_classic_single_asset"
+	classicMultiAssets    = "binance_classic_multi_assets"
+	classicOneWayIsolated = "binance_classic_one_way_isolated"
+	classicCoinM          = "binance_classic_coin_m"
+	dualOnlySamples       = "dual_investment"
 )
 
 // endpoints lists every endpoint the adapter calls; a fixture for any other is a mistake.
@@ -81,7 +85,7 @@ func knownEndpoint(name string) (endpoint, bool) {
 type replay struct {
 	t          *testing.T
 	answers    map[string]fixture.File // successful answers by request, as fixture headers name it
-	failures   map[string]fixture.File // documented error answers by scenario
+	failures   map[string]fixture.File // synthetic error answers by scenario
 	serverTime int64
 	started    time.Time
 
@@ -134,7 +138,7 @@ func newReplay(t *testing.T, selection string) (*replay, *Adapter) {
 	return r, New(&Options{Hosts: hosts, HTTP: offline.Client(t, server)})
 }
 
-// earnUSD values coin amounts with the documented tickers, as Binance values its Earn wallet.
+// earnUSD values coin amounts with the synthetic tickers, as Binance values its Earn wallet.
 func (r *replay) earnUSD(amounts adapters.Totals) string {
 	r.t.Helper()
 	var rows []struct {
@@ -152,7 +156,7 @@ func (r *replay) earnUSD(amounts adapters.Totals) string {
 	for symbol, amount := range amounts {
 		unit, ok := prices.usd(symbol)
 		if !ok {
-			r.t.Fatalf("no documented price for %s", symbol)
+			r.t.Fatalf("no synthetic price for %s", symbol)
 		}
 		sum.Add(sum, new(big.Rat).Mul(amount, unit))
 	}
@@ -171,7 +175,7 @@ func fixturePaths(t *testing.T, dir string) []string {
 
 func readFixture(t *testing.T, path string) fixture.File {
 	t.Helper()
-	f, err := fixture.Read(path)
+	f, err := fixture.ReadSynthetic(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +206,7 @@ func (r *replay) failure(scenario string) fixture.File {
 	return f
 }
 
-// tolerateErrors makes the replay answer badly signed requests with the documented error fixtures.
+// tolerateErrors makes the replay answer badly signed requests with the synthetic error fixtures.
 func (r *replay) tolerateErrors() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -361,7 +365,7 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	}
 	expected := r.serverTime + time.Since(r.started).Milliseconds()
 	if diff := ts - expected; diff > 5000 || diff < -5000 {
-		return "stale_timestamp", "timestamp is not aligned with the documented server time: off by " + strconv.FormatInt(diff, 10) + " ms"
+		return "stale_timestamp", "timestamp is not aligned with the synthetic server time: off by " + strconv.FormatInt(diff, 10) + " ms"
 	}
 	return "", ""
 }
@@ -471,7 +475,7 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 	for _, tc := range []struct {
 		structure adapters.AccountStructure
 		selection string
-	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
+	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, classicSamples}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, tc.selection)
@@ -495,7 +499,7 @@ func TestEd25519ValidateAndCollectBothStructures(t *testing.T) {
 	for _, tc := range []struct {
 		structure adapters.AccountStructure
 		selection string
-	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, docClassic}} {
+	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, classicSamples}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
 			r, a := newReplay(t, tc.selection)
 			r.secret = testEdCreds.APISecret
@@ -525,7 +529,7 @@ func TestStructureMismatchStopsBeforeAnyAccountRead(t *testing.T) {
 		reported   string
 	}{
 		{"", adapters.StructureBinanceClassic, "Portfolio Margin"},
-		{docClassic, adapters.StructureBinancePM, "Classic Trading"},
+		{classicSamples, adapters.StructureBinancePM, "Classic Trading"},
 	} {
 		t.Run(string(tc.configured), func(t *testing.T) {
 			t.Parallel()
@@ -630,27 +634,23 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 	if !sawNegative {
-		t.Log("fixture has no negative-equity balance; the COIN-M loss case is not exercised")
+		t.Fatal("synthetic PM balances must exercise negative coin equity")
 	}
+}
 
-	// Σ balance equity × spot price must land within 0.5% of actualEquity, which ties the balance
-	// formula to Binance's own account equity.
-	prices := map[string]*big.Rat{"USDT": big.NewRat(1, 1), "USDC": big.NewRat(1, 1)}
-	for _, p := range batch.Prices {
-		prices[p.AssetSymbol] = rat(t, p.Price)
+func TestCollectPMBorrowingAndInterest(t *testing.T) {
+	t.Parallel()
+
+	r, a := newReplay(t, "")
+	// Exercise debt and interest without subtracting negativeBalance twice.
+	r.always(epPMBalance, status(http.StatusOK, `[{"asset":"USDT","totalWalletBalance":"-5","umUnrealizedPNL":"2","cmUnrealizedPNL":"-3","crossMarginBorrowed":"10","crossMarginInterest":"0.5","negativeBalance":"-5"}]`))
+	report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin), TypePortfolioMargin)
+	if report.Status != adapters.StatusOK || len(report.Balances) != 1 {
+		t.Fatalf("synthetic borrowing report %+v", report)
 	}
-	sum := new(big.Rat)
-	for _, b := range report.Balances {
-		price, ok := prices[b.Symbol]
-		if !ok {
-			t.Fatalf("no price for %s in %+v", b.Symbol, batch.Prices)
-		}
-		sum.Add(sum, new(big.Rat).Mul(rat(t, b.Equity), price))
-	}
-	actual := rat(t, account.ActualEquity)
-	gap, _ := new(big.Rat).Quo(new(big.Rat).Sub(sum, actual), actual).Float64()
-	if gap > 0.005 || gap < -0.005 {
-		t.Fatalf("Σ balance equity × price differs from actualEquity by %.4f%%", gap*100)
+	b := balanceOf(t, report, "USDT")
+	if b.Equity != "-16.5" || deref(b.Liability) != "10" || deref(b.Interest) != "0.5" || deref(b.UnrealizedPnl) != "-1" {
+		t.Fatalf("borrowing and interest must reduce equity without subtracting negativeBalance twice: %+v", b)
 	}
 }
 
@@ -725,7 +725,8 @@ func TestContractKinds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cm, err := fetchInstruments(context.Background(), c, marketCM)
+	_, cmAdapter := newReplay(t, classicCoinM)
+	cm, err := fetchInstruments(context.Background(), cmAdapter.client(testCreds), marketCM)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -758,6 +759,8 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
+	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinancePM, TypeSpot, TypeFunding, TypeEarn)
 	for _, tc := range []struct {
 		accountType adapters.AccountType
@@ -780,7 +783,10 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 			}
 		}
 	}
-	// The spot account fixture shows the flexible-earn receipt (LD*) that getUserAsset omits.
+	// The account endpoint includes a receipt token; collection must use getUserAsset instead.
+	if r.count(epSpotAccount) != 0 || r.count(epUserAsset) != 1 {
+		t.Fatal("Spot collection must use getUserAsset rather than account balances with Earn receipts")
+	}
 	spotAccount := body[struct {
 		Balances []struct {
 			Asset string `json:"asset"`
@@ -796,7 +802,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		}
 	}
 	if !hasReceipt {
-		t.Log("api/v3/account fixture holds no LD* receipt; the double-count guard is not exercised")
+		t.Fatal("synthetic api/v3/account response must retain its LDUSDT receipt")
 	}
 	earn := reportOf(t, batch, TypeEarn)
 	if earn.Status != adapters.StatusOK {
@@ -827,7 +833,6 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	}
 }
 
-// Inline pages exercise paging and every counted status; the Earn valuation matches them.
 func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 	t.Parallel()
 
@@ -837,7 +842,7 @@ func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 		status(http.StatusOK, `{"total":3,"rows":[{"asset":"ETH","totalAmount":"0.01"}]}`))
 	r.then(epLockedEarn, status(http.StatusOK, `{"total":1,"rows":[{"asset":"USDT","amount":"10","positionId":1}]}`))
 	// PURCHASE_SUCCESS spans two pages, and its ETH position starts settling between that read and
-	// the SETTLING one, so both list it. REFUNDING keeps the documented account's empty answer.
+	// the SETTLING one, so both list it. REFUNDING keeps the synthetic account's empty answer.
 	r.alwaysAt(epDualInvest, dualInvestmentQuery("PENDING", 1), status(http.StatusOK,
 		`{"total":1,"list":[{"id":4,"investCoin":"USDC","subscriptionAmount":"20","purchaseStatus":"PENDING"}]}`))
 	r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK,
@@ -922,7 +927,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 				r.alwaysAt(epDualInvest, dualInvestmentQuery(other, 1), status(http.StatusOK, `{"total":0,"list":[]}`))
 			}
 			r.alwaysAt(epDualInvest, dualInvestmentQuery(state, 1), dualInvestmentAnswer(state))
-			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"1520","walletName":"Earn"}]`))
+			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"522","walletName":"Earn"}]`))
 			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if earn.Status != adapters.StatusOK || balanceOf(t, earn, "ETH").Equity != "0.25" {
 				t.Fatalf("earn report %+v", earn)
@@ -954,13 +959,13 @@ func TestDualInvestmentStatuses(t *testing.T) {
 	}
 }
 
-func TestDocumentedDualInvestmentCountsThePrincipal(t *testing.T) {
+func TestDualInvestmentCountsPrincipal(t *testing.T) {
 	t.Parallel()
 
-	_, a := newReplay(t, docDualInvestment)
+	_, a := newReplay(t, dualOnlySamples)
 	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "0.5" {
-		t.Fatalf("earn report %+v: the example's running 0.5 USDT principal is counted", earn)
+	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || balanceOf(t, earn, "USDT").Equity != "10" || balanceOf(t, earn, "SOL").Equity != "0.1" {
+		t.Fatalf("earn report %+v: both synthetic principal balances must be counted", earn)
 	}
 }
 
@@ -969,12 +974,12 @@ func TestEarnCompletenessCheck(t *testing.T) {
 
 	t.Run("an unread product fails Earn", func(t *testing.T) {
 		t.Parallel()
-		r, a := newReplay(t, docDualInvestment)
+		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"5000","walletName":"Earn"}]`))
 		batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeSpot)
 		earn := reportOf(t, batch, TypeEarn)
 		if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported ||
-			!strings.Contains(earn.ErrorDetail, "5000.00") || !strings.Contains(earn.ErrorDetail, "0.50") {
+			!strings.Contains(earn.ErrorDetail, "5000.00") || !strings.Contains(earn.ErrorDetail, "12.00") {
 			t.Fatalf("earn report %+v", earn)
 		}
 		if reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
@@ -983,15 +988,15 @@ func TestEarnCompletenessCheck(t *testing.T) {
 	})
 	t.Run("the tolerance absorbs price differences", func(t *testing.T) {
 		t.Parallel()
-		r, a := newReplay(t, docDualInvestment)
-		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"1.49","walletName":"Earn"}]`))
+		r, a := newReplay(t, dualOnlySamples)
+		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"12.99","walletName":"Earn"}]`))
 		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusOK {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
 	t.Run("no Earn wallet is a normalization failure", func(t *testing.T) {
 		t.Parallel()
-		r, a := newReplay(t, docDualInvestment)
+		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"0","walletName":"Spot"}]`))
 		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization {
 			t.Fatalf("earn report %+v", earn)
@@ -999,7 +1004,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 	})
 	t.Run("a coin without a price skips the check", func(t *testing.T) {
 		t.Parallel()
-		r, a := newReplay(t, docDualInvestment)
+		r, a := newReplay(t, dualOnlySamples)
 		r.always(epTickerPrice, status(http.StatusServiceUnavailable, ``))
 		r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK,
 			`{"total":1,"list":[{"id":"7","investCoin":"BNB","subscriptionAmount":"3","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
@@ -1013,7 +1018,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 func TestClassicCrossMargin(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
 	if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || report.InitialMarginRatio != nil {
 		t.Fatalf("report %+v: a Classic wallet is valued from its Balances", report)
@@ -1037,7 +1042,7 @@ func TestClassicCrossMargin(t *testing.T) {
 func TestClassicCrossMarginNotCreatedIsEmpty(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
 	r.always(epCrossMargin, status(http.StatusOK, `{"created":false,"marginLevel":"999","userAssets":[]}`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
 	if report.Status != adapters.StatusOK || len(report.Balances) != 0 || report.UnifiedMarginRatio != nil {
@@ -1048,7 +1053,7 @@ func TestClassicCrossMarginNotCreatedIsEmpty(t *testing.T) {
 func TestClassicIsolatedMarginSumsCoinsAcrossPairs(t *testing.T) {
 	t.Parallel()
 
-	_, a := newReplay(t, docClassic)
+	_, a := newReplay(t, classicSamples)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeIsolatedMargin), TypeIsolatedMargin)
 	if report.Status != adapters.StatusOK || report.Equity != nil || report.UnifiedMarginRatio != nil || len(report.Balances) != 3 {
 		t.Fatalf("report %+v", report)
@@ -1062,10 +1067,12 @@ func TestClassicIsolatedMarginSumsCoinsAcrossPairs(t *testing.T) {
 	}
 }
 
-func TestClassicUSDMFuturesInMultiAssetsMode(t *testing.T) {
+func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
+	// Preserve the synthetic Multi-Assets position's illustrative configuration.
+	r.always(epUMSymbolConfig, status(http.StatusOK, `[{"symbol":"BTCUSDT","marginType":"CROSSED","isAutoAddMargin":false,"leverage":21,"maxNotionalValue":"1000000"}]`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
 	if report.Status != adapters.StatusOK || report.Equity != nil || report.UnifiedMarginRatio != nil {
 		t.Fatalf("report %+v", report)
@@ -1082,18 +1089,21 @@ func TestClassicUSDMFuturesInMultiAssetsMode(t *testing.T) {
 			t.Errorf("%s = %s, want %s", name, pair[0], pair[1])
 		}
 	}
-	if len(report.Balances) != 1 {
-		t.Fatalf("balances %+v: the all-zero BNB asset is omitted", report.Balances)
+	if len(report.Balances) != 2 {
+		t.Fatalf("balances %+v: only the two nonzero asset rows are kept", report.Balances)
 	}
 	usdt := balanceOf(t, report, "USDT")
-	if usdt.Equity != "127.48896906" || deref(usdt.UnrealizedPnl) != "0.764277" || deref(usdt.AvailableToTrade) != "126.87325521" || deref(usdt.AvailableToWithdraw) != "126.72469206" {
+	if usdt.Equity != "101.5" || deref(usdt.UnrealizedPnl) != "1.5" || deref(usdt.AvailableToTrade) != "90" || deref(usdt.AvailableToWithdraw) != "80" {
 		t.Fatalf("USDT %+v", usdt)
+	}
+	if eth := balanceOf(t, report, "ETH"); eth.Equity != "0.01" || deref(eth.AvailableToTrade) != "0.005" || deref(eth.AvailableToWithdraw) != "0.004" {
+		t.Fatalf("ETH %+v", eth)
 	}
 	if len(report.Positions) != 1 {
 		t.Fatalf("positions %+v", report.Positions)
 	}
 	p := report.Positions[0]
-	if p.PlatformPositionRef != "um:BTCUSDT:BOTH" || p.QuantityUnit != adapters.UnitBase || p.Quantity != "30" || p.Side != adapters.SideLong ||
+	if p.PlatformPositionRef != "um:BTCUSDT:BOTH" || p.QuantityUnit != adapters.UnitBase || p.Quantity != "0.01" || p.Side != adapters.SideLong ||
 		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.Instrument.Kind != adapters.KindLinearPerp {
 		t.Fatalf("position %+v", p)
 	}
@@ -1105,8 +1115,7 @@ func TestClassicUSDMFuturesInMultiAssetsMode(t *testing.T) {
 func TestClassicUSDMFuturesInSingleAssetModeHasNoAccountFigures(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
-	r.always(epUMMultiAssets, status(http.StatusOK, `{"multiAssetsMargin":false}`))
+	_, a := newReplay(t, classicSingleAsset)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
 	if report.Status != adapters.StatusOK || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
 		report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || len(report.Balances) != 1 {
@@ -1117,7 +1126,7 @@ func TestClassicUSDMFuturesInSingleAssetModeHasNoAccountFigures(t *testing.T) {
 func TestClassicUSDMWithoutPositionSkipsSymbolConfig(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
 	r.always(epUMPositionRisk, status(http.StatusOK, `[]`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
 	if report.Status != adapters.StatusOK || len(report.Positions) != 0 || r.count(epUMSymbolConfig) != 0 {
@@ -1125,31 +1134,25 @@ func TestClassicUSDMWithoutPositionSkipsSymbolConfig(t *testing.T) {
 	}
 }
 
-func TestClassicCOINMFutures(t *testing.T) {
+func TestClassicCOINMFuturesOmitsZeroRows(t *testing.T) {
 	t.Parallel()
-
-	_, a := newReplay(t, docClassic)
+	_, a := newReplay(t, classicCoinM)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCMFutures), TypeCMFutures)
 	if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || len(report.Balances) != 1 {
 		t.Fatalf("report %+v", report)
 	}
-	if btc := balanceOf(t, report, "BTC"); btc.Equity != "0.00241969" || deref(btc.AvailableToWithdraw) != "0.00241969" {
-		t.Fatalf("BTC %+v", btc)
+	if eth := balanceOf(t, report, "ETH"); eth.Equity != "0.011" || deref(eth.AvailableToWithdraw) != "0.007" {
+		t.Fatalf("ETH %+v", eth)
 	}
-	if len(report.Positions) != 1 {
-		t.Fatalf("positions %+v: the zero BTCUSD_201225 row is omitted", report.Positions)
-	}
-	p := report.Positions[0]
-	if p.PlatformPositionRef != "cm:BTCUSD_PERP:BOTH" || p.Side != adapters.SideShort || p.Quantity != "3" || p.QuantityUnit != adapters.UnitContracts ||
-		deref(p.Leverage) != "20" || deref(p.LiquidationPrice) != "95000.12345678" || p.Instrument.ContractSize == nil {
-		t.Fatalf("position %+v", p)
+	if len(report.Positions) != 2 {
+		t.Fatalf("positions %+v: only the two nonzero rows are retained", report.Positions)
 	}
 }
 
 func TestClassicWalletsBinanceSaysAreNotOpenedReportEmpty(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
 	r.always(epAccountInfo, status(http.StatusOK, `{"vipLevel":0,"isMarginEnabled":false,"isFutureEnabled":false,"isOptionsEnabled":false,"isPortfolioMarginRetailEnabled":false}`))
 	batch := collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin, TypeIsolatedMargin, TypeUMFutures, TypeCMFutures)
 	for _, report := range batch.Reports {
@@ -1167,7 +1170,9 @@ func TestClassicWalletsBinanceSaysAreNotOpenedReportEmpty(t *testing.T) {
 func TestClassicBatchValuesEveryAccount(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t, docClassic)
+	r, a := newReplay(t, classicSamples)
+	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinanceClassic, classicTypes...)
 	if len(batch.Reports) != len(classicTypes) {
 		t.Fatalf("%d reports for %d Account Types", len(batch.Reports), len(classicTypes))
@@ -1209,7 +1214,9 @@ func TestAccountTypeOfTheOtherStructureFailsOnlyItself(t *testing.T) {
 func TestCollectPrices(t *testing.T) {
 	t.Parallel()
 
-	_, a := newReplay(t, "")
+	r, a := newReplay(t, "")
+	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinancePM, pmTypes...)
 	priced := map[string]adapters.Price{}
 	for _, p := range batch.Prices {
@@ -1256,15 +1263,15 @@ func TestPricesFallBackToUSDC(t *testing.T) {
 	}
 }
 
-// Binance keeps delisted pairs in the ticker at price 0, such as the documented BCPTUSDC; such a
+// Binance keeps delisted pairs in the ticker at price 0, such as the synthetic BCPTUSDC; such a
 // pair must not value a coin at zero.
 func TestDelistedPairIsNotAPrice(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	documented, _ := a.lastPrices(context.Background(), a.client(testCreds))
-	if _, ok := documented.quote("BCPT", "USDC"); ok {
-		t.Fatal("the documented BCPTUSDC pair is listed at price 0 and must not price BCPT")
+	synthetic, _ := a.lastPrices(context.Background(), a.client(testCreds))
+	if _, ok := synthetic.quote("BCPT", "USDC"); ok {
+		t.Fatal("the synthetic BCPTUSDC pair is listed at price 0 and must not price BCPT")
 	}
 	r.always(epTickerPrice, status(http.StatusOK, `[{"symbol":"AAAUSDT","price":"0.00000000"},{"symbol":"AAAUSDC","price":"2.5"}]`))
 	prices, _ := a.lastPrices(context.Background(), a.client(testCreds))

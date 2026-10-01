@@ -4,6 +4,9 @@ status: superseded by ADR-0036
 
 # Record exact requests and require explicit full capture
 
+
+Current evidence/test separation follows [ADR 0037](./0037-separate-recorded-evidence-from-synthetic-tests.md); the contents below remain historical.
+
 Historical decision. [ADR 0036](./0036-use-flat-interface-samples-and-single-request-recording.md) replaces the scenario corpus and batch recording/acceptance machinery; current commands and evidence rules follow that decision.
 
 As a Platform gains endpoints, recording an entire Adapter for a small coverage gap consumes unnecessary requests and can exhaust shared IP limits. Account validation, repeated configuration reads, clock synchronization, retry and automatic pagination also made ADR 0034's `--only` recordings broader than their names implied. This supersedes that decision's default recording trigger and interface-sample behavior; its evidence, privacy, offline testing and freezing rules remain accepted.

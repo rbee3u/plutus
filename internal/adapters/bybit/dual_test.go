@@ -36,7 +36,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 				}
 				p := r.DualPositions[0]
 				if p.PlatformPositionRef != "19035" || *p.ProductRef != "36320" || *p.BaseSymbol != "ETH" || *p.Direction != "buy_low" || *p.TargetPrice != "2325" || *p.AnnualizedRate != "9.027" || *p.RateKind != "apy" {
-					t.Fatalf("documented terms: %+v", p)
+					t.Fatalf("synthetic terms: %+v", p)
 				}
 			}
 			if r.AccountType == TypeEarn && (len(r.Balances) != 1 || r.Balances[0].Equity != "20") {
@@ -47,12 +47,12 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 }
 
 func TestDocumentedDualPosition(t *testing.T) {
-	var documented struct {
+	var synthetic struct {
 		List []dualAssetPosition `json:"list"`
 	}
-	sampleBody(t, "v5_earn_advance_position.sell_high", &documented)
-	if len(documented.List) != 1 || documented.List[0].Status != "Active" || documented.List[0].Direction != "SellHigh" {
-		t.Fatal("the documented Dual Asset answer must contain one active SellHigh subscription")
+	sampleBody(t, "v5_earn_advance_position.sell_high", &synthetic)
+	if len(synthetic.List) != 1 || synthetic.List[0].Status != "Active" || synthetic.List[0].Direction != "SellHigh" {
+		t.Fatal("the synthetic Dual Asset answer must contain one active SellHigh subscription")
 	}
 
 	r := newReplay(t, "", nil)
@@ -63,9 +63,9 @@ func TestDocumentedDualPosition(t *testing.T) {
 	earn := reportOf(t, &batch, TypeEarn)
 	dual := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusOK || dual.Status != adapters.StatusOK || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
-		t.Fatalf("documented Earn and Dual reports: %+v", batch.Reports)
+		t.Fatalf("synthetic Earn and Dual reports: %+v", batch.Reports)
 	}
-	row := documented.List[0]
+	row := synthetic.List[0]
 	p := dual.DualPositions[0]
 	if p.PlatformPositionRef != row.PositionID || p.ProductRef == nil || *p.ProductRef != row.ProductID || p.OrderRef == nil || *p.OrderRef != row.OrderID ||
 		p.BaseSymbol == nil || *p.BaseSymbol != row.BaseCoin || p.QuoteSymbol == nil || *p.QuoteSymbol != row.QuoteCoin ||
@@ -73,10 +73,10 @@ func TestDocumentedDualPosition(t *testing.T) {
 		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1700600000000 ||
 		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1700000000000 ||
 		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
-		t.Fatalf("documented Dual Asset terms: %+v", p)
+		t.Fatalf("synthetic Dual Asset terms: %+v", p)
 	}
 	if dual.Balances[0].Symbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
-		t.Fatalf("documented Dual Asset principal: %+v", dual.Balances)
+		t.Fatalf("synthetic Dual Asset principal: %+v", dual.Balances)
 	}
 	if len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("ordinary Earn must exclude Dual Asset principal: %+v", earn.Balances)

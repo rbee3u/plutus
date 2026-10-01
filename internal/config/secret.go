@@ -7,7 +7,7 @@ import (
 )
 
 func applySecrets(cfg *Config, opts *Options) error {
-	dsn, err := exclusiveSecret(opts, envDatabaseDSN, envDatabaseDSNFile, "database DSN")
+	dsn, err := exclusiveSecret(opts, envDSN, envDSNFile, "database DSN")
 	if err != nil {
 		return err
 	}

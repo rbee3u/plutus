@@ -1,0 +1,82 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:56:22.49378Z",
+  "notes": "Kept 4 of 13 inspected balance/position rows: omitted only redundant known zero shapes, retaining a representative of each shape and setting. Unknown fields, nulls, empty strings and all nonzero financial measures are retained; original totals are unchanged.",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v3/account"
+  },
+  "status": 200,
+  "body": {
+    "assets": [
+      {
+        "asset": "U",
+        "availableBalance": "0.00000000",
+        "crossUnPnl": "0.00000000",
+        "crossWalletBalance": "0.00000000",
+        "initialMargin": "0.00000000",
+        "maintMargin": "0.00000000",
+        "marginBalance": "0.00000000",
+        "maxWithdrawAmount": "0.00000000",
+        "openOrderInitialMargin": "0.00000000",
+        "positionInitialMargin": "0.00000000",
+        "unrealizedProfit": "0.00000000",
+        "updateTime": 0,
+        "walletBalance": "0.00000000"
+      },
+      {
+        "asset": "USDT",
+        "availableBalance": "27.47385889",
+        "crossUnPnl": "0.00000000",
+        "crossWalletBalance": "27.47385889",
+        "initialMargin": "2.54561660",
+        "maintMargin": "0.20364932",
+        "marginBalance": "29.99289951",
+        "maxWithdrawAmount": "27.47385889",
+        "openOrderInitialMargin": "0.00000000",
+        "positionInitialMargin": "2.54561660",
+        "unrealizedProfit": "-0.00520640",
+        "updateTime": 1790790884395,
+        "walletBalance": "29.99810591"
+      }
+    ],
+    "availableBalance": "27.47385889",
+    "maxWithdrawAmount": "27.47385889",
+    "positions": [
+      {
+        "initialMargin": "1.20581839",
+        "isolatedMargin": "1.19048324",
+        "isolatedWallet": "1.19402554",
+        "maintMargin": "0.09646547",
+        "notional": "24.11636769",
+        "positionAmt": "0.009",
+        "positionSide": "LONG",
+        "symbol": "ETHUSDT",
+        "unrealizedProfit": "-0.00354230",
+        "updateTime": 1790790875710
+      },
+      {
+        "initialMargin": "1.33979821",
+        "isolatedMargin": "1.32855738",
+        "isolatedWallet": "1.33022148",
+        "maintMargin": "0.10718385",
+        "notional": "-26.79596410",
+        "positionAmt": "-0.010",
+        "positionSide": "SHORT",
+        "symbol": "ETHUSDT",
+        "unrealizedProfit": "-0.00166410",
+        "updateTime": 1790790884395
+      }
+    ],
+    "totalCrossUnPnl": "0.00000000",
+    "totalCrossWalletBalance": "27.47385889",
+    "totalInitialMargin": "2.54561660",
+    "totalMaintMargin": "0.20364932",
+    "totalMarginBalance": "29.99289951",
+    "totalOpenOrderInitialMargin": "0.00000000",
+    "totalPositionInitialMargin": "2.54561660",
+    "totalUnrealizedProfit": "-0.00520640",
+    "totalWalletBalance": "29.99810591"
+  }
+}

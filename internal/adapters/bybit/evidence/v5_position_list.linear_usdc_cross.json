@@ -1,0 +1,68 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:30:43.612122Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/position/list",
+    "query": {
+      "category": "linear",
+      "limit": "200",
+      "settleCoin": "USDC"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "category": "linear",
+      "list": [
+        {
+          "adlRankIndicator": 4,
+          "autoAddMargin": 0,
+          "avgPrice": "118.8",
+          "breakEvenPrice": "118.70204387",
+          "bustPrice": "",
+          "createdTime": "1790830541561",
+          "cumRealisedPnl": "-0.003267",
+          "curRealisedPnl": "-0.003267",
+          "isReduceOnly": false,
+          "leverage": "10",
+          "leverageSysUpdatedTime": "",
+          "liqPrice": "991.23974949",
+          "liqPriceByMp": "",
+          "markPrice": "119.12",
+          "mmrSysUpdatedTime": "",
+          "netDeltaRatio": "",
+          "openTime": 1790830541561,
+          "positionBalance": "0",
+          "positionIM": "1.1983874",
+          "positionIMByMp": "1.1983874",
+          "positionIdx": 0,
+          "positionMM": "0.1263074",
+          "positionMMByMp": "0.1263074",
+          "positionStatus": "Normal",
+          "positionValue": "11.912",
+          "riskId": 1,
+          "riskLimitValue": "500000",
+          "seq": 39338487708,
+          "sessionAvgPrice": "118.8",
+          "side": "Sell",
+          "size": "0.1",
+          "stopLoss": "",
+          "symbol": "SOLPERP",
+          "takeProfit": "",
+          "tpslMode": "Full",
+          "tradeMode": 0,
+          "trailingStop": "0",
+          "unrealisedPnl": "-0.032",
+          "updatedTime": "1790832640777"
+        }
+      ],
+      "nextPageCursor": "SOLPERP%2C1790832640777%2C0"
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "OK",
+    "time": 1790832643571
+  }
+}

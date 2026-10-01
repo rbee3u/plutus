@@ -18,7 +18,7 @@ Completed. Stopped for review after every item in this section was checked.
 ### Milestone 2 — Configuration and serve skeleton
 
 - [x] Load process config from `config/local.toml` (or `--config`) with `PLUTUS_*` overrides
-- [x] Accept the MySQL DSN from the selected gitignored env file, with an optional exclusive `PLUTUS_DATABASE_DSN` or `PLUTUS_DATABASE_DSN_FILE` override
+- [x] Accept the MySQL DSN from the selected gitignored env file, with an optional exclusive `PLUTUS_DSN` or `PLUTUS_DSN_FILE` override
 - [x] Accept the master key from exactly one of `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` when provided
 - [x] Validate the HTTP / HTTPS / mTLS startup matrix and refuse invalid combinations
 - [x] Implement `plutus serve` with structured `log/slog` logging
@@ -294,8 +294,9 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 - [x] dev / test / prod environments: `walk` lane removed, `test-example` and `prod-example` config pairs added, `scripts/agent-serve.sh` added, lane scripts renamed in their messages
 - [x] `go test` reads `PLUTUS_GOTEST_*` from `config/gotest.env`; `mysql.RunTestMain` creates and drops one `plutus_gotest_<unix>_<hex>` database per package and sweeps stale ones; `db/seeds` no longer needs `plutus_seedcheck`
-- [x] Flat interface samples and single-request recording, replacing scenario/batch acceptance and `make test-live` (ADR 0036). Ordinary replay installs the exchange-network guard.
-- [ ] Owner-prepared complete capture batches, review and freeze in Binance → OKX → Bybit → Kraken order; historical mixed-date samples remain interface evidence.
+- [x] Independent recorded evidence and synthetic tests with single-request recording, replacing coupled sample promotion and `make test-live` (ADR 0037). Ordinary replay installs the exchange-network guard.
+- [x] Separate `PLUTUS_RECORD_*` credentials in gitignored `config/record.env` from database-only `config/gotest.env`; ordinary tests use independent local synthetic inputs without recording keys (ADR 0038).
+- [ ] Owner-prepared per-interface recording, review and freeze in Binance → OKX → Bybit → Kraken order; compatible holdings share preparation rounds and only critical differences require setting changes. Previous evidence and scratch directories were reset; all four Platforms await new reviewed recordings.
 - [x] `make dist` cross-compiles a static Linux binary; `make build` and `make dist` inject `git describe` into `plutus --version`
 - [x] `db reset` without `--profile` drops and migrates only
 - [x] `kraken` accepted by the four `platform` CHECK constraints and the Platform constants, without any Account Structure; `OfferedPlatforms` hides it from the API and the fake
@@ -303,7 +304,7 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 ### Stage 1 — Binance
 
-- [x] `plutus adapter record` subcommand writing trimmed, redacted fixtures to `tmp/`
+- [x] `plutus adapter record` subcommand writing trimmed, redacted evidence to `tmp/`
 - [x] Binance Portfolio Margin Adapter with its declared Account Types, `httptest` fixture tests, offline failure and completeness tests, and `docs/adapters/binance.md` mapping table with the exchange-app comparison checklist
 - [x] Register live Adapters when `[collection] fake_adapter = false`; keep the fake for tests and dev
 
@@ -311,7 +312,7 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 - [x] OKX Adapter for `okx_mcm` and `okx_pm` on one code path, with the account level checked at validation and at the start of every Collection Run (ADR 0025), `httptest` fixture tests, a collection fixture test, offline per-Account completeness assertions, and `docs/adapters/okx.md`
 - [x] `plutus adapter record --platform okx`; the recorders share the flat `fixture.File` contract, one request per command, with semantic filename variants
-- [x] Inverse contracts: the USD notional of a Position is contracts × contract size, without the mark price. Covered by a valuation unit test and the documented Binance COIN-M position; the fake Adapter and seeds hold no inverse contract, so the dev environments never show this path
+- [x] Inverse contracts: the USD notional of a Position is contracts × contract size, without the mark price. Covered by a valuation unit test and synthetic Binance COIN-M positions; the fake Adapter and seeds hold no inverse contract, so the dev environments never show this path
 - [x] The credentials form requires the passphrase for OKX
 - [ ] Validate the `okx_mcm` Margin Mode on the test environment with the MCM sub-account entered as its own Identity with its own read-only key
 - [x] Futures mode (`acctLv = 2`) and Spot mode (`acctLv = 1`) as observed Margin Modes (ADR 0028; see Stage 5)
@@ -319,10 +320,10 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 
 ### Stages 3–4 — Bybit, Kraken
 
-- [x] Bybit global UTA 2.0 Adapter, flexible/fixed savings scope, documented interface replay, single-request recording (ADR 0036), and `docs/adapters/bybit.md`
+- [x] Bybit global UTA 2.0 Adapter, flexible/fixed savings scope, synthetic interface replay, single-request recording (ADR 0037), and `docs/adapters/bybit.md`
 - [x] Retain adapter-local signing, clock, and bounded transport logic: Bybit REST and Kraken REST/WebSocket protocols have different normalization and failure boundaries
-- [x] Kraken ADR 0026, Separate wallets / Unified Wallet, dual credentials, appended migration (folded back into the baseline in Stage 5), documented interface replay, single-request recording (ADR 0036), and `docs/adapters/kraken.md`
-- [ ] Owner review of the Bybit/Kraken recordings before committing fixtures
+- [x] Kraken ADR 0026, Separate wallets / Unified Wallet, dual credentials, appended migration (folded back into the baseline in Stage 5), synthetic interface replay, single-request recording (ADR 0037), and `docs/adapters/kraken.md`
+- [ ] Owner review of the Bybit/Kraken recordings before promoting evidence
 - [ ] Live nonempty Bybit fixed savings and Kraken Separate / Coin-M scenarios (documentation-derived tests cover these paths)
 - [ ] Live validation of stale, complete-set, boundary, and no-price rules against real read-only keys on the test environment
 - [ ] README marks integrations as implemented only after live validation
@@ -335,9 +336,9 @@ Current workstream. Stage 0 (workflow infrastructure), Stages 1–4 (the Binance
 - [x] Fake Adapter: every Account Type of every structure, the Margin Mode picked by the key, `switch-` and `restructured-` key prefixes, figures a Margin Mode does not report left null
 - [x] Shared per-Account batch assembly and field helpers in `internal/adapters`; the Bybit and Kraken Adapters follow the Binance/OKX conventions; a nonzero amount without a coin fails as `normalization` instead of vanishing
 - [x] Every recorder records the Platform's authentication refusals, and the replay tests classify them from those recordings (ADR 0023)
-- [x] Binance Classic Trading with seven Account Types, from documentation-derived fixtures
-- [x] OKX Spot mode and Futures mode, Bybit Isolated Margin and Cross Margin, from documentation-derived fixtures
+- [x] Binance Classic Trading with eight Account Types, from independently constructed synthetic tests based on official contracts
+- [x] OKX Spot mode and Futures mode, Bybit Isolated Margin and Cross Margin, from independently constructed synthetic tests based on official contracts
 - [x] Dual investment in the Earn Account on Binance, OKX, and Bybit, and the Earn completeness check against each Platform's own Earn valuation
-- [ ] Owner review of the re-recorded fixtures before commit
+- [ ] Owner review of the new recorded evidence before promotion
 - [ ] Reset every database (agent, local, test) and re-enter the test Identities with their Account Structures
 - [ ] Live validation on the test environment: Binance Classic Trading, OKX Spot / Futures / Multi-currency margin, Bybit Isolated / Cross Margin, Kraken Separate wallets, and a running dual investment subscription on Binance, OKX, and Bybit

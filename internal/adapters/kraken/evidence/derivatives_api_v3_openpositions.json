@@ -1,0 +1,56 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:57:16.234578Z",
+  "request": {
+    "service": "futures",
+    "method": "GET",
+    "path": "/derivatives/api/v3/openpositions"
+  },
+  "status": 200,
+  "body": {
+    "openPositions": [
+      {
+        "fillTime": "1970-01-01T00:00:00.000Z",
+        "pnlCurrency": "USD",
+        "price": 0.09275,
+        "side": "long",
+        "size": 10,
+        "symbol": "PF_DOGEUSD",
+        "unrealizedFunding": -2.5681609788818632E-5,
+        "unrealizedPnl": 0.029535250400000018
+      },
+      {
+        "fillTime": "1970-01-01T00:00:00.000Z",
+        "maxFixedLeverage": 9.0,
+        "pnlCurrency": "USD",
+        "price": 2694.3,
+        "side": "long",
+        "size": 0.002,
+        "symbol": "PF_ETHUSD",
+        "unrealizedFunding": -8.634210425387385E-5,
+        "unrealizedPnl": 0.042874910286439444
+      },
+      {
+        "fillTime": "1970-01-01T00:00:00.000Z",
+        "pnlCurrency": "USD",
+        "price": 2695.9,
+        "side": "short",
+        "size": 0.01,
+        "symbol": "FF_ETHUSD_261002",
+        "unrealizedFunding": null,
+        "unrealizedPnl": -0.2007410493108
+      },
+      {
+        "fillTime": "1970-01-01T00:00:00.000Z",
+        "price": 2693.85,
+        "side": "short",
+        "size": 20,
+        "symbol": "PI_ETHUSD",
+        "unrealizedFunding": 1.3916657372214287E-6,
+        "unrealizedPnl": -5.6729965210131376E-5
+      }
+    ],
+    "result": "success",
+    "serverTime": "2026-10-01T05:57:16.207Z"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
+  "request": {
+    "service": "um",
+    "method": "GET",
+    "path": "/fapi/v1/multiAssetsMargin"
+  },
+  "status": 200,
+  "body": {
+    "multiAssetsMargin": false
+  }
+}

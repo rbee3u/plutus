@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade#position-information-v3",
-  "notes": "symbol changed from the example's ADAUSDT to BTCUSDT, which the recorded exchangeInfo sample always keeps; amounts and prices are kept from the example.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "um",
     "method": "GET",
@@ -12,11 +11,11 @@
     {
       "symbol": "BTCUSDT",
       "positionSide": "BOTH",
-      "positionAmt": "30",
-      "entryPrice": "0.385",
+      "positionAmt": "0.01",
+      "entryPrice": "29850",
       "breakEvenPrice": "0.385077",
-      "markPrice": "0.41047590",
-      "unRealizedProfit": "0.76427700",
+      "markPrice": "30000",
+      "unRealizedProfit": "1.5",
       "liquidationPrice": "0",
       "isolatedMargin": "0",
       "notional": "12.31427700",

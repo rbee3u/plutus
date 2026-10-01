@@ -1,0 +1,17 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-09-30T17:00:14.877426Z",
+  "request": {
+    "service": "spot",
+    "method": "GET",
+    "path": "/sapi/v1/account/info"
+  },
+  "status": 200,
+  "body": {
+    "isFutureEnabled": true,
+    "isMarginEnabled": true,
+    "isOptionsEnabled": true,
+    "isPortfolioMarginRetailEnabled": true,
+    "vipLevel": 0
+  }
+}

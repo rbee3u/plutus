@@ -4,6 +4,9 @@ status: superseded by ADR-0036
 
 # Freeze scenario fixtures and accept recordings offline
 
+
+Current evidence/test separation follows [ADR 0037](./0037-separate-recorded-evidence-from-synthetic-tests.md); the contents below remain historical.
+
 Historical decision. [ADR 0036](./0036-use-flat-interface-samples-and-single-request-recording.md) replaces the scenario corpus and batch recording/acceptance machinery; current commands and evidence rules follow that decision.
 
 The default recording trigger and interface-sample behavior are superseded by [ADR 0035](./0035-record-exact-requests-and-require-explicit-full-capture.md). The remaining evidence, full collection acceptance, privacy, offline verification and freezing rules stay accepted.

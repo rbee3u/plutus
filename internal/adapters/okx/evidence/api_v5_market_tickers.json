@@ -1,0 +1,92 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:50:42.037563Z",
+  "notes": "Kept 4 of 1148 market rows: prepared/requested symbols and representative product, settlement and contract-unit types. Retained rows and original totals are unchanged.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/market/tickers",
+    "query": {
+      "instType": "SPOT"
+    }
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "askPx": "1.00064",
+        "askSz": "1674397.63465",
+        "bidPx": "1.00063",
+        "bidSz": "995913.104502",
+        "high24h": "1.00071",
+        "instId": "USDC-USDT",
+        "instType": "SPOT",
+        "last": "1.00064",
+        "lastSz": "89.599072",
+        "low24h": "1.00032",
+        "open24h": "1.00049",
+        "sodUtc0": "1.00062",
+        "sodUtc8": "1.00065",
+        "ts": "1790823041070",
+        "vol24h": "603063651.899523",
+        "volCcy24h": "603385428.39837139548"
+      },
+      {
+        "askPx": "2685.37",
+        "askSz": "7.004071",
+        "bidPx": "2685.36",
+        "bidSz": "8.615224",
+        "high24h": "2738.98",
+        "instId": "ETH-USDT",
+        "instType": "SPOT",
+        "last": "2685.37",
+        "lastSz": "0.000372",
+        "low24h": "2658",
+        "open24h": "2675.52",
+        "sodUtc0": "2685.76",
+        "sodUtc8": "2683.63",
+        "ts": "1790823041367",
+        "vol24h": "115856.282911",
+        "volCcy24h": "311884793.5352797"
+      },
+      {
+        "askPx": "2685.7",
+        "askSz": "0.0085",
+        "bidPx": "2683.3",
+        "bidSz": "0.0085",
+        "high24h": "2737.1",
+        "instId": "BETH-USDT",
+        "instType": "SPOT",
+        "last": "2685.8",
+        "lastSz": "0.003723",
+        "low24h": "2659.5",
+        "open24h": "2670.8",
+        "sodUtc0": "2685.7",
+        "sodUtc8": "2686",
+        "ts": "1790823041072",
+        "vol24h": "228.861395",
+        "volCcy24h": "617337.2097441"
+      },
+      {
+        "askPx": "88.981",
+        "askSz": "33.6456",
+        "bidPx": "88.98",
+        "bidSz": "18.7768",
+        "high24h": "91.898",
+        "instId": "HYPE-USDT",
+        "instType": "SPOT",
+        "last": "88.983",
+        "lastSz": "0.2",
+        "low24h": "84.643",
+        "open24h": "86.385",
+        "sodUtc0": "90.976",
+        "sodUtc8": "87.754",
+        "ts": "1790823041264",
+        "vol24h": "631066.381",
+        "volCcy24h": "55942802.3023811"
+      }
+    ],
+    "msg": ""
+  }
+}

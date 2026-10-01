@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://www.okx.com/docs-v5/en/#trading-account-rest-api-get-positions",
-  "notes": "An empty list: Spot mode trades no swaps or futures (only bought options, which Plutus refuses), and a Spot mode borrowing is reported in the balance details (liab), not as a position.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

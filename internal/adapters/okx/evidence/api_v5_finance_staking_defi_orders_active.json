@@ -1,0 +1,44 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T02:49:59.870495Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/api/v5/finance/staking-defi/orders-active"
+  },
+  "status": 200,
+  "body": {
+    "code": "0",
+    "data": [
+      {
+        "apy": "0.0329",
+        "cancelRedemptionDeadline": "",
+        "ccy": "USDT",
+        "earningData": [
+          {
+            "ccy": "USDT",
+            "earningType": "0",
+            "earnings": "0"
+          }
+        ],
+        "estSettlementTime": "",
+        "fastRedemptionData": [],
+        "investData": [
+          {
+            "amt": "5",
+            "ccy": "USDT"
+          }
+        ],
+        "ordId": "4558283",
+        "productId": "4022",
+        "protocol": "On-Chain Defi",
+        "protocolType": "defi",
+        "purchasedTime": "1790822889000",
+        "state": "8",
+        "tag": "",
+        "term": "0"
+      }
+    ],
+    "msg": ""
+  }
+}

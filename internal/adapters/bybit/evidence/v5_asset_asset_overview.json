@@ -1,0 +1,94 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T04:30:37.312257Z",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/asset/asset-overview",
+    "query": {
+      "valuationCurrency": "USD"
+    }
+  },
+  "status": 200,
+  "body": {
+    "result": {
+      "list": [
+        {
+          "accountType": "FundingAccount",
+          "coinDetail": [
+            {
+              "coin": "USDT",
+              "equity": "4.0193"
+            },
+            {
+              "coin": "USDC",
+              "equity": "454.743546"
+            }
+          ],
+          "snapshotTime": "1790829037314",
+          "totalEquity": "458.76",
+          "valuationCurrency": "USD"
+        },
+        {
+          "accountType": "UnifiedTradingAccount",
+          "categories": [
+            {
+              "category": "CRYPTO",
+              "coinDetail": [
+                {
+                  "coin": "XRP",
+                  "equity": "0"
+                },
+                {
+                  "coin": "USDT",
+                  "equity": "20.0085"
+                },
+                {
+                  "coin": "USDC",
+                  "equity": "50"
+                }
+              ],
+              "equity": "69.99"
+            }
+          ],
+          "snapshotTime": "1790829037314",
+          "totalEquity": "69.99",
+          "valuationCurrency": "USD"
+        },
+        {
+          "accountType": "Earn",
+          "categories": [
+            {
+              "category": "Easy Earn",
+              "coinDetail": [
+                {
+                  "coin": "USDT",
+                  "equity": "20"
+                }
+              ],
+              "equity": "19.98"
+            },
+            {
+              "category": "Dual Asset",
+              "coinDetail": [
+                {
+                  "coin": "USDT",
+                  "equity": "20"
+                }
+              ],
+              "equity": "19.98"
+            }
+          ],
+          "snapshotTime": "1790829037314",
+          "totalEquity": "39.97",
+          "valuationCurrency": "USD"
+        }
+      ],
+      "totalEquity": "568.72"
+    },
+    "retCode": 0,
+    "retExtInfo": {},
+    "retMsg": "Success",
+    "time": 1790829037322
+  }
+}

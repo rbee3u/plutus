@@ -59,8 +59,8 @@ func TestLoadTOMLAndEnvOverride(t *testing.T) {
 	cfg, err := Load(Options{
 		Path: "plutus.toml",
 		LookupEnv: envMap(map[string]string{
-			"PLUTUS_SERVER_PORT":  "9090",
-			"PLUTUS_DATABASE_DSN": "user:pass@tcp(127.0.0.1:3306)/plutus",
+			"PLUTUS_SERVER_PORT": "9090",
+			"PLUTUS_DSN":         "user:pass@tcp(127.0.0.1:3306)/plutus",
 		}),
 		ReadFile: filesMap(map[string]string{
 			"plutus.toml": `
@@ -92,13 +92,32 @@ func TestExclusiveDSNSources(t *testing.T) {
 
 	_, err := Load(Options{
 		LookupEnv: envMap(map[string]string{
-			envDatabaseDSN:     "dsn",
-			envDatabaseDSNFile: "dsn.txt",
+			envDSN:     "dsn",
+			envDSNFile: "dsn.txt",
 		}),
 		ReadFile: filesMap(map[string]string{"dsn.txt": "other"}),
 	})
-	if err == nil {
-		t.Fatal("expected exclusive DSN error")
+	if err == nil || !strings.Contains(err.Error(), "PLUTUS_DSN or PLUTUS_DSN_FILE") {
+		t.Fatalf("expected exclusive DSN error naming the supported variables, got %v", err)
+	}
+}
+
+func TestDSNFromFileOverridesTOML(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(Options{
+		Path:      "plutus.toml",
+		LookupEnv: envMap(map[string]string{"PLUTUS_DSN_FILE": "dsn.txt"}),
+		ReadFile: filesMap(map[string]string{
+			"plutus.toml": "[database]\ndsn = \"toml-dsn\"\n",
+			"dsn.txt":     "file-dsn\n",
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Database.DSN != "file-dsn" {
+		t.Fatalf("expected DSN file to override TOML, got %q", cfg.Database.DSN)
 	}
 }
 
@@ -440,7 +459,7 @@ func TestDSNEnvOverridesTOML(t *testing.T) {
 	cfg, err := Load(Options{
 		Path: "plutus.toml",
 		LookupEnv: envMap(map[string]string{
-			envDatabaseDSN: "env-dsn@tcp(127.0.0.1:3306)/plutus",
+			envDSN: "env-dsn@tcp(127.0.0.1:3306)/plutus",
 		}),
 		ReadFile: filesMap(map[string]string{
 			"plutus.toml": `

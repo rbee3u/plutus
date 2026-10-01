@@ -2,46 +2,70 @@ package binance
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/adapters"
 )
 
-func TestDocumentedDualInvestmentMapsSubscription(t *testing.T) {
+func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 1 || len(dual.Balances) != 1 {
-		t.Fatalf("documented dual report: %+v", dual)
+	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
+		t.Fatalf("synthetic dual report: %+v", dual)
 	}
 	page := body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1))
-	if page.Total != 1 || len(page.List) != 1 || page.List[0].PurchaseStatus != "PURCHASE_SUCCESS" {
-		t.Fatal("the documented fixture must contain one running subscription")
+	if page.Total != 2 || len(page.List) != 2 || r.count(epDualInvest) != 4 {
+		t.Fatal("synthetic page must contain both subscriptions and require no additional page")
 	}
-	row, position := page.List[0], dual.DualPositions[0]
-	wantExpiry := time.UnixMilli(1700600000000).UTC()
-	wantSubscribed := time.UnixMilli(1700000000000).UTC()
-	if row.OptionType != "CALL" || position.PlatformPositionRef != dualID(row.ID) ||
-		position.OrderRef == nil || *position.OrderRef != dualID(row.OrderID) ||
-		position.InvestSymbol != row.InvestCoin || rat(t, position.Principal).Cmp(rat(t, row.SubscriptionAmount)) != 0 ||
-		position.BaseSymbol == nil || *position.BaseSymbol != row.InvestCoin ||
-		position.QuoteSymbol == nil || *position.QuoteSymbol != row.ExercisedCoin ||
-		position.Direction == nil || *position.Direction != "sell_high" ||
-		position.TargetPrice == nil || rat(t, *position.TargetPrice).Cmp(rat(t, row.StrikePrice)) != 0 ||
-		position.AnnualizedRate == nil || rat(t, *position.AnnualizedRate).Cmp(rat(t, row.APR)) != 0 ||
-		position.RateKind == nil || *position.RateKind != "apr" ||
-		position.ExpiryAt == nil || !position.ExpiryAt.Equal(wantExpiry) ||
-		position.SubscribedAt == nil || !position.SubscribedAt.Equal(wantSubscribed) ||
-		position.Status != "active" || len(position.MissingFields()) != 0 {
-		t.Fatalf("documented subscription mapped incompletely: %+v", position)
+	want := map[string]struct {
+		order, invest, principal, direction, target, apr string
+		subscribed                                       int64
+	}{
+		"1001": {"2001", "USDT", "10", "buy_low", "15", "0.08", 1700000000000},
+		"1002": {"2002", "SOL", "0.1", "sell_high", "25", "0.12", 1700000001000},
 	}
-	if dual.Balances[0].Symbol != row.InvestCoin || rat(t, dual.Balances[0].Equity).Cmp(rat(t, row.SubscriptionAmount)) != 0 {
-		t.Fatalf("documented principal balance: %+v", dual.Balances)
+	seen := map[string]bool{}
+	for _, position := range dual.DualPositions {
+		expected, ok := want[position.PlatformPositionRef]
+		if !ok || seen[position.PlatformPositionRef] {
+			t.Fatalf("unexpected or duplicate synthetic position %+v", position)
+		}
+		seen[position.PlatformPositionRef] = true
+		if deref(position.OrderRef) != expected.order || position.InvestSymbol != expected.invest ||
+			position.Principal != expected.principal || deref(position.BaseSymbol) != "SOL" || deref(position.QuoteSymbol) != "USDT" ||
+			deref(position.Direction) != expected.direction || deref(position.TargetPrice) != expected.target ||
+			deref(position.AnnualizedRate) != expected.apr || deref(position.RateKind) != "apr" ||
+			position.ExpiryAt == nil || !position.ExpiryAt.Equal(time.UnixMilli(1700600000000).UTC()) ||
+			position.SubscribedAt == nil || !position.SubscribedAt.Equal(time.UnixMilli(expected.subscribed).UTC()) ||
+			position.Status != "active" || len(position.MissingFields()) != 0 {
+			t.Fatalf("synthetic product terms mapped incompletely: %+v", position)
+		}
 	}
-	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK {
-		t.Fatal("ordinary Earn must remain successful beside the documented Dual subscription")
+	if balanceOf(t, dual, "USDT").Equity != "10" || balanceOf(t, dual, "SOL").Equity != "0.1" {
+		t.Fatalf("synthetic principal must remain in each invested currency: %+v", dual.Balances)
+	}
+	earn := reportOf(t, batch, TypeEarn)
+	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 ||
+		balanceOf(t, earn, "USDT").Equity != "2" || balanceOf(t, earn, "ETH").Equity != "0.01" {
+		t.Fatalf("Dual principal must not enter ordinary Earn: %+v", earn)
+	}
+}
+
+func TestDualAggregateMismatchFailsDependentReports(t *testing.T) {
+	t.Parallel()
+	r, a := newReplay(t, "")
+	r.always(epWalletValue, status(http.StatusOK, `[{"walletName":"Earn","balance":"40"}]`))
+	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	for _, kind := range []adapters.AccountType{TypeEarn, TypeDualInvestment} {
+		report := reportOf(t, batch, kind)
+		if report.Status != adapters.StatusFailed || report.ErrorClass != adapters.ClassUnsupported ||
+			!strings.Contains(report.ErrorDetail, "40.00") || !strings.Contains(report.ErrorDetail, "34.00") {
+			t.Fatalf("inconsistent sample combination must fail completeness: %+v", report)
+		}
 	}
 }
 
@@ -49,7 +73,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 	t.Parallel()
 	for _, types := range [][]adapters.AccountType{{TypeSpot}, {TypeEarn}, {TypeDualInvestment}, {TypeEarn, TypeDualInvestment}} {
 		t.Run(selectionName(types), func(t *testing.T) {
-			r, a := newReplay(t, docDualInvestment)
+			r, a := newReplay(t, dualOnlySamples)
 			batch := collect(t, a, adapters.StructureBinancePM, types...)
 			if len(batch.Reports) != len(types) {
 				t.Fatal("auxiliary report escaped the adapter")
@@ -73,12 +97,16 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 					t.Fatal("dual principal leaked into Earn")
 				}
 				if report.AccountType == TypeDualInvestment {
-					if len(report.DualPositions) != 1 {
+					if len(report.DualPositions) != 2 {
 						t.Fatalf("positions: %+v", report)
 					}
-					p := report.DualPositions[0]
-					if p.PlatformPositionRef != "10160533" || *p.OrderRef != "7973677530" || *p.BaseSymbol != "BNB" || *p.Direction != "buy_low" || *p.TargetPrice != "330" || *p.AnnualizedRate != "0.0365" || *p.RateKind != "apr" || p.ExpiryAt.UnixMilli() != 1708416000000 {
-						t.Fatalf("documented product mapping: %+v", p)
+					if len(report.Balances) != 2 || balanceOf(t, report, "USDT").Equity != "10" || balanceOf(t, report, "SOL").Equity != "0.1" {
+						t.Fatalf("synthetic principal mapping: %+v", report)
+					}
+					for _, p := range report.DualPositions {
+						if len(p.MissingFields()) != 0 || deref(p.BaseSymbol) != "SOL" || deref(p.QuoteSymbol) != "USDT" {
+							t.Fatalf("synthetic product terms: %+v", p)
+						}
 					}
 				}
 			}
@@ -96,7 +124,7 @@ func selectionName(types []adapters.AccountType) string {
 
 func TestDualOnlyDependsOnAuxiliarySavings(t *testing.T) {
 	t.Parallel()
-	r, a := newReplay(t, docDualInvestment)
+	r, a := newReplay(t, dualOnlySamples)
 	r.always(epFlexibleEarn, status(http.StatusOK, `{"total":1,"rows":[{"asset":"USDT","totalAmount":""}]}`))
 	batch := collect(t, a, adapters.StructureBinancePM, TypeDualInvestment, TypeSpot)
 	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
@@ -111,7 +139,7 @@ func TestRepeatedDualSubscriptionCannotChangePrincipal(t *testing.T) {
 			r, a := newReplay(t, "")
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"0.5","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("SETTLING", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"`+amount+`","purchaseStatus":"SETTLING"}]}`))
-			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"1020.5","walletName":"Earn"}]`))
+			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"22.5","walletName":"Earn"}]`))
 			report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if amount == "0.5" {
 				if report.Status != adapters.StatusOK || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {

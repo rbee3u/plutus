@@ -2,11 +2,7 @@
 
 Package `internal/adapters/okx`. OKX has one account, the Unified account, so it has one Account Structure, `okx_unified`, with the Account Types `trading`, `funding`, `earn`, and `dual_investment`. The Margin Mode is OKX's account mode (the `acctLv` level). Plutus supports all four levels: Spot mode, Futures mode, Multi-currency margin, and Portfolio margin. The adapter observes the level at validation and at the start of every Collection Run. It is never chosen in Plutus ([ADR 0028](../adr/0028-separate-account-structure-from-margin-mode.md)).
 
-Coverage differs by mode:
-
-- **Portfolio margin:** exercised against a real account.
-- **Multi-currency margin:** uses the same fields as Portfolio margin. It is tested by replaying the Portfolio margin recording as level 3.
-- **Spot mode and Futures mode:** implemented and tested from OKX's documentation only ([ADR 0027](../adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md)).
+All four modes have independent synthetic response coverage based on official contracts; 20 Spot, Futures, MCM, PM and shared responses recorded on 2026-10-01 are now owner-reviewed. Spot evidence includes enabled borrowing; its borrowing-disabled real shape is deferred because the owner found no separate disable control. PM and MCM use separate constructed shapes, including their empty and mode-specific fields. New recordings are reviewed independently of those tests ([ADR 0037](../adr/0037-separate-recorded-evidence-from-synthetic-tests.md)).
 
 Every call is a read-only GET for account, balance, position, Earn holdings, or market data.
 
@@ -20,10 +16,10 @@ The adapter calls `https://openapi.okx.com`. OKX requires accounts registered on
 
 | `acctLv` | Margin Mode | OKX name | What the trading account holds | Coverage |
 | --- | --- | --- | --- | --- |
-| `1` | `okx_spot` | Spot mode | Spot, spot borrowing once enabled, bought options. No swaps or futures. | documented |
-| `2` | `okx_futures` | Futures mode | Spot, margin, swaps, futures, options. Margin is assessed per coin, and spot margin borrowings are `MARGIN` positions. | documented |
-| `3` | `okx_mcm` | Multi-currency margin | Every product, cross-collateralized in USD | documented mode-specific response |
-| `4` | `okx_pm` | Portfolio margin | As Multi-currency margin, margined by portfolio risk | documented mode-specific response |
+| `1` | `okx_spot` | Spot mode | Spot, spot borrowing once enabled, bought options. No swaps or futures. | synthetic; reviewed borrowing-enabled config/balance evidence (2026-10-01) |
+| `2` | `okx_futures` | Futures mode | Spot, margin, swaps, futures, options. Margin is assessed per coin, and spot margin borrowings are `MARGIN` positions. | synthetic; reviewed isolated Hedge, cross and MARGIN evidence (2026-10-01) |
+| `3` | `okx_mcm` | Multi-currency margin | Every product, cross-collateralized in USD | synthetic mode-specific response; reviewed cross/net evidence (2026-10-01) |
+| `4` | `okx_pm` | Portfolio margin | As Multi-currency margin, margined by portfolio risk | synthetic mode-specific response; reviewed cross/net evidence (2026-10-01) |
 | empty | none | | `normalization` | tested |
 | any other | none | | `unsupported`, naming the level. The run fails before any Account is read. | tested with `5` |
 
@@ -229,7 +225,7 @@ OKX answers many failures with HTTP 200 and a non-zero `code`, so both the statu
 
 ## Fixtures and evidence
 
-The [flat interface library](./fixtures.md) uses explicit Go file selection and exact request matching. [The OKX inventory](./okx-fixtures.md) lists documented response shapes and future acquisition gaps. Current samples have no recorded evidence under ADR 0036. They verify field mapping, signatures, paging, failure classification and completeness behavior without exchange access. Single-interface recording uses `--only`, optional semantic `--variant`, and explicit business `--query`/`--form`; it performs no additional reads and writes only to `tmp/`. Review and offline tests precede promotion.
+The [two-layer library](./fixtures.md) separates reviewed real `evidence/` from independently constructed `synthetic` inputs in `testdata/`. [The Okx inventory](./okx-fixtures.md) links official contracts, test cases and missing real evidence. Twenty Spot, Futures, MCM, PM and shared responses recorded on 2026-10-01 are frozen after owner review, covering nonzero linear/inverse perpetual/delivery positions, borrowing, Funding/BETH, Savings, both Dual directions and On-chain Earn. Futures evidence includes same-contract isolated Hedge sides, cross inverse positions and an isolated spot-margin borrowing row. Spot evidence includes nonzero HYPE borrowing with distinct cash and equity. Nonzero accrued interest remains a real gap. Borrowing-disabled Spot evidence is explicitly deferred; this account uses its observed enabled state as the baseline, without imposing that default on other accounts. Tests verify mapping, signatures, paging, failure classification and completeness without exchange access. Recording selects one explicit interface with `--only`, optional `--variant`, business `--query`/`--form`, and local `--keep-symbol` hints; prepared rounds may run an agreed sequential list, stopping at the first failure. Review critical shapes/document differences and owner-review before promoting to evidence; no full replay is required and synthetic tests are not regenerated.
 
 ## Comparison checklist (test environment)
 

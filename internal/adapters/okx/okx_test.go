@@ -77,7 +77,7 @@ func newReplay(t *testing.T, scenarios ...string) (*replay, *Adapter) {
 		r.files[key(f.Request.Endpoint(), "")] = f
 	}
 	for _, variant := range []string{"invalid_key", "bad_signature", "stale_timestamp", "wrong_passphrase"} {
-		f, err := fixture.Read("testdata/api_v5_account_config." + variant + ".json")
+		f, err := fixture.ReadSynthetic("testdata/api_v5_account_config." + variant + ".json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func newReplay(t *testing.T, scenarios ...string) (*replay, *Adapter) {
 	return r, a
 }
 
-// answerScenario is the replay key of a fixture's scenario: a documented or documented success is
+// answerScenario selects a synthetic success or failure response by its request variant; success is
 // the endpoint's default answer "", and an error answer keeps the name of its failure.
 func key(endpoint, scenario string) string { return endpoint + "#" + scenario }
 
@@ -231,7 +231,7 @@ func (r *replay) checkSigned(req *http.Request) string {
 	}
 	expected := r.serverTime + time.Since(r.started).Milliseconds()
 	if diff := at.UnixMilli() - expected; diff > 5000 || diff < -5000 {
-		return fmt.Sprintf("timestamp is not aligned with the documented server time: off by %d ms", diff)
+		return fmt.Sprintf("timestamp is not aligned with the synthetic server time: off by %d ms", diff)
 	}
 	return ""
 }
@@ -352,7 +352,7 @@ func TestValidateReportsTheMarginMode(t *testing.T) {
 	r, a := newReplay(t)
 	result, err := a.Validate(context.Background(), testCreds, adapters.StructureOKXUnified)
 	if err != nil || result.ExternalRef != RedactedUID || result.MarginMode != adapters.MarginOKXPM {
-		t.Fatalf("validate the documented portfolio margin account: %v %+v", err, result)
+		t.Fatalf("validate the synthetic portfolio margin account: %v %+v", err, result)
 	}
 	if r.count(epTime) != 1 || r.count(epConfig) != 1 {
 		t.Fatalf("server time %d, config %d calls; want one clock sync and one config read", r.count(epTime), r.count(epConfig))
@@ -615,7 +615,7 @@ func TestCollectMapsPositionsAndInstruments(t *testing.T) {
 	report := reportOf(t, batch, TypeTrading)
 	rows := rowsIn[openPosition](t, r.file(epPositions, ""))
 	if len(report.Positions) != len(rows) || len(rows) == 0 {
-		t.Fatalf("%d positions for %d documented rows", len(report.Positions), len(rows))
+		t.Fatalf("%d positions for %d synthetic rows", len(report.Positions), len(rows))
 	}
 	for i := range rows {
 		row := &rows[i]
@@ -670,7 +670,7 @@ func TestInstrumentKinds(t *testing.T) {
 	} {
 		row, ok := listed[tc.instID]
 		if !ok {
-			t.Fatalf("%s is not in the documented instruments", tc.instID)
+			t.Fatalf("%s is not in the synthetic instruments", tc.instID)
 		}
 		got, ok := mapInstrument(tc.m, &row)
 		if !ok || got.Kind != tc.kind || got.BaseSymbol != tc.base || got.QuoteSymbol != tc.quote || got.SettlementSymbol != tc.settle || deref(got.ContractSize) != tc.size {
@@ -713,7 +713,7 @@ func sampleFuture(t *testing.T, ctType string) string {
 			return row.InstID
 		}
 	}
-	t.Fatalf("the documented FUTURES sample has no %s BTC contract", ctType)
+	t.Fatalf("the synthetic FUTURES sample has no %s BTC contract", ctType)
 	return ""
 }
 
@@ -796,9 +796,9 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 			t.Errorf("funding balance %+v for row %+v", b, rows[i])
 		}
 	}
-	// A successful Earn report has also passed the Earn check against the documented valuation.
+	// A successful Earn report has also passed the Earn check against the synthetic valuation.
 	earn := reportOf(t, batch, TypeEarn)
-	want := documentedOrdinaryEarn(t, r)
+	want := syntheticOrdinaryEarn(t, r)
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != len(want) || earn.Equity != nil {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
@@ -810,8 +810,8 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	}
 }
 
-// documentedOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
-func documentedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
+// syntheticOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
+func syntheticOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
 	t.Helper()
 	sums := map[string]*big.Rat{}
 	add := func(ccy, amount string) {
@@ -837,18 +837,18 @@ func documentedOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
 }
 
 // TestDocumentedValuationCatchesUnreadEarn replays OKX's real valuation answer without the Earn
-// Balances it values, so the check must read the documented earn bucket to fail.
+// Balances it values, so the check must read the synthetic earn bucket to fail.
 func TestDocumentedValuationCatchesUnreadEarn(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t)
-	documented := rat(t, rowsIn[struct {
+	synthetic := rat(t, rowsIn[struct {
 		Details struct {
 			Earn string `json:"earn"`
 		} `json:"details"`
 	}](t, r.file(epValuation, ""))[0].Details.Earn)
-	if documented.Cmp(big.NewRat(1, 1)) <= 0 {
-		t.Skip("the documented account holds no Earn value to leave out")
+	if synthetic.Cmp(big.NewRat(1, 1)) <= 0 {
+		t.Skip("the synthetic account holds no Earn value to leave out")
 	}
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
@@ -858,8 +858,8 @@ func TestDocumentedValuationCatchesUnreadEarn(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, documented.FloatString(2)+" USD") {
-		t.Fatalf("earn report %+v; want unsupported naming the documented %s USD", earn, documented.FloatString(2))
+	if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, synthetic.FloatString(2)+" USD") {
+		t.Fatalf("earn report %+v; want unsupported naming the synthetic %s USD", earn, synthetic.FloatString(2))
 	}
 }
 

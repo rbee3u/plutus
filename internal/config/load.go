@@ -20,7 +20,7 @@ type Options struct {
 	getwd func() (string, error)
 
 	// walkEnvFile, when EnvFile is empty, is the relative path walked from cwd to the module root.
-	// Empty means config/local.env. Lookup uses config/gotest.env.
+	// Empty means config/local.env. Lookup and LookupRecording select their own files.
 	walkEnvFile string
 
 	// EnvFile, when set, is the only env file loaded. The nearest walked env file is skipped.

@@ -1,7 +1,6 @@
 {
-  "source": "documented",
-  "documentation": "https://bybit-exchange.github.io/docs/v5/position",
-  "notes": "Documentation example with liqPrice 30191.5 instead of empty: an isolated position reports its own.",
+  "source": "synthetic",
+  "notes": "Constructed from the official response contract for offline tests; values and combinations are illustrative. See the Platform sample inventory.",
   "request": {
     "service": "v5",
     "method": "GET",

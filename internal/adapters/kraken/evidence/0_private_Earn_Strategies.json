@@ -1,0 +1,699 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:57:20.155647Z",
+  "notes": "Local review trimming kept 24 of 403 strategy rows: all allocated strategy IDs and representatives of recursive field types, lock terms, yield source, compounding, allocation permissions and restrictions. Whole retained rows, next_cursor and original aggregate fields are unchanged.",
+  "request": {
+    "service": "spot",
+    "method": "POST",
+    "path": "/0/private/Earn/Strategies"
+  },
+  "status": 200,
+  "body": {
+    "error": [],
+    "result": {
+      "items": [
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.2500",
+            "low": "4.2500"
+          },
+          "asset": "USD",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESIOIVT-FX5T4-BRIL2F",
+          "lock_type": {
+            "type": "flex"
+          },
+          "user_cap": "5000000.0000",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "0.1000",
+            "low": "0.1000"
+          },
+          "asset": "XRP",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ES325KM-5PZNE-TPCYQJ",
+          "lock_type": {
+            "type": "flex"
+          },
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "0.1500",
+            "low": "0.1500"
+          },
+          "asset": "BTC",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESZ4QWD-E7FCW-7PBERA",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 2592000,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": true
+          },
+          "user_min_allocation": "0.0000",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.2500",
+            "low": "4.2500"
+          },
+          "asset": "USDT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESMHXFW-RQWXH-CHF6OD",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 5184000,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": true
+          },
+          "user_min_allocation": "0.0000",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.0000",
+            "low": "4.0000"
+          },
+          "asset": "USDT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESWS7VM-7CJ27-MMO4YN",
+          "lock_type": {
+            "payout_frequency": 604800,
+            "type": "instant"
+          },
+          "user_cap": "10000000.00000000",
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "5.2000",
+            "low": "5.2000"
+          },
+          "asset": "USDC",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESVBXHB-RXHUF-F77FSS",
+          "lock_type": {
+            "duration_months": 12,
+            "payout_frequency": 604800,
+            "type": "timed"
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.7500",
+            "low": "4.7500"
+          },
+          "asset": "USDC",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESRBABH-WGEJQ-44FSAO",
+          "lock_type": {
+            "duration_months": 3,
+            "payout_frequency": 604800,
+            "type": "timed"
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.9000",
+            "low": "4.9000"
+          },
+          "asset": "USDT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESZS6E6-N3UCO-C5LGDQ",
+          "lock_type": {
+            "duration_months": 6,
+            "payout_frequency": 604800,
+            "type": "timed"
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "5.6000",
+            "low": "5.6000"
+          },
+          "asset": "USDT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESQCUQA-XC4W3-4LN3JW",
+          "lock_type": {
+            "duration_months": 18,
+            "payout_frequency": 604800,
+            "type": "timed"
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "opt_in_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "2.6090",
+            "low": "2.6090"
+          },
+          "asset": "ADA",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESD25D3-7F6PQ-7T2TZA",
+          "lock_type": {
+            "type": "flex"
+          },
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "3.3430",
+            "low": "3.3430"
+          },
+          "asset": "XTZ",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESWRGE7-KTA55-ZNKAF6",
+          "lock_type": {
+            "type": "flex"
+          },
+          "user_cap": "220000.00000000",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "18.0230",
+            "low": "18.0230"
+          },
+          "asset": "ATOM",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESN4CUK-L4N2K-ZE4S27",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 1814400,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "3.0900",
+            "low": "3.0900"
+          },
+          "asset": "DOT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESMWVX6-JAPVY-23L3CV",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 172800,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "15.1090",
+            "low": "15.1090"
+          },
+          "asset": "KSM",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESXUM7H-SJHQ6-KOQNNI",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 604800,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "13.9690",
+            "low": "13.9690"
+          },
+          "asset": "FLOW",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ES3TW2S-6OVDU-U2LN4W",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 1209600,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "7.3400",
+            "low": "7.3400"
+          },
+          "asset": "GRT",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESIG7QR-O4FFV-PRGQVJ",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 2419200,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.6630",
+            "low": "4.6630"
+          },
+          "asset": "SOL",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESITPR4-NOX6X-SELCID",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 259200,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "2.5590",
+            "low": "2.5590"
+          },
+          "asset": "ETH",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESDQCOL-WTZEU-NU55QF",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 1158900,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 475200,
+            "unbonding_period_variable": true,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "6.6860",
+            "low": "6.6860"
+          },
+          "asset": "XTZ",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESDJRGZ-LAO6V-ZLUJN3",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 345600,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "1.5030",
+            "low": "1.5030"
+          },
+          "asset": "SUI",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ES3LAT5-XCPBQ-WBERUO",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 86400,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "12.3500",
+            "low": "12.3500"
+          },
+          "asset": "MON",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESVJLG7-JTEFN-CDIKAF",
+          "lock_type": {
+            "bonding_period": 0,
+            "bonding_period_variable": false,
+            "bonding_rewards": false,
+            "exit_queue_period": 0,
+            "payout_frequency": 604800,
+            "type": "bonded",
+            "unbonding_period": 43200,
+            "unbonding_period_variable": false,
+            "unbonding_rewards": false
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "2.6090",
+            "low": "2.6090"
+          },
+          "asset": "ADA",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "enabled"
+          },
+          "can_allocate": true,
+          "can_deallocate": true,
+          "deallocation_fee": "0.0000",
+          "id": "ESNHEMI-SNZ7D-PNH423",
+          "lock_type": {
+            "payout_frequency": 604800,
+            "type": "instant"
+          },
+          "user_min_allocation": "0.0100",
+          "yield_source": {
+            "type": "staking"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "2.2500",
+            "low": "2.2500"
+          },
+          "asset": "USDG",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESDE4BG-5NNGK-5WTK6X",
+          "lock_type": {
+            "type": "flex"
+          },
+          "yield_source": {
+            "type": "base_rewards"
+          }
+        },
+        {
+          "allocation_fee": "0.0000",
+          "allocation_restriction_info": [],
+          "apr_estimate": {
+            "high": "4.2500",
+            "low": "4.2500"
+          },
+          "asset": "USDE",
+          "asset_class": "currency",
+          "auto_compound": {
+            "type": "disabled"
+          },
+          "can_allocate": false,
+          "can_deallocate": false,
+          "deallocation_fee": "0.0000",
+          "id": "ESOO6XL-JXBNF-OMAPRJ",
+          "lock_type": {
+            "type": "flex"
+          },
+          "user_cap": "25000.00000000",
+          "yield_source": {
+            "type": "base_rewards"
+          }
+        }
+      ],
+      "next_cursor": null
+    }
+  }
+}

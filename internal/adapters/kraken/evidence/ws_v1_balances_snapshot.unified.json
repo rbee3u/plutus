@@ -1,0 +1,245 @@
+{
+  "source": "recorded",
+  "recordedAt": "2026-10-01T05:56:31.958479Z",
+  "notes": "Kept 2 of 69 inspected balance/position rows: omitted only redundant known zero shapes, retaining a representative of each shape and setting. Unknown fields, nulls, empty strings and all nonzero financial measures are retained; original totals are unchanged. Redacted: account. Local review trimming additionally kept 14 of 69 flex_futures currency rows: all nonzero financial rows, held-asset aliases and a zero representative of every haircut/conversion-spread and field-type combination. Only redundant whole zero rows were removed; cross, isolated, isolated_list, Futures wallets and original totals are unchanged.",
+  "request": {
+    "service": "futures-ws",
+    "method": "WS",
+    "path": "/ws/v1/balances_snapshot"
+  },
+  "body": {
+    "account": "REDACTED_ACCOUNT_1",
+    "feed": "balances_snapshot",
+    "flex_futures": {
+      "available_margin": 88.95410000000003,
+      "balance_value": 91.4874,
+      "collateral_value": 91.0685,
+      "cross": {
+        "available_margin": 88.95410000000003,
+        "balance_value": 91.4874,
+        "collateral_value": 91.0685,
+        "effective_leverage": 0.018702459075979564,
+        "initial_margin": 1.8361,
+        "initial_margin_without_orders": 1.8361,
+        "maintenance_margin": 0.3058,
+        "margin_equity": 90.79020000000001,
+        "pnl": -0.233,
+        "portfolio_value": 91.2544,
+        "total_position_size": 0.0,
+        "total_unrealized": -0.2783,
+        "total_unrealized_as_margin": -0.2783,
+        "unrealized_funding": 0.0
+      },
+      "currencies": {
+        "AAPLX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.2,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ALGO": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.1,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "AUD": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "CRCLX": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.3,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "DOGE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.075,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "ETH": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "FEE": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 1.0,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "PAXG": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.03,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USD": {
+          "available": 7.724,
+          "collateral_value": 7.724,
+          "conversion_spread": 0.0,
+          "haircut": 0.0,
+          "quantity": 7.724,
+          "value": 7.724
+        },
+        "USDC": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.005,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "USDT": {
+          "available": 83.82118891,
+          "collateral_value": 83.34453552820383,
+          "conversion_spread": 0.0,
+          "haircut": 0.005,
+          "quantity": 83.82118891,
+          "value": 83.7633522896521
+        },
+        "XAUT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.4,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XBT": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.01,
+          "quantity": 0.0,
+          "value": 0.0
+        },
+        "XRP": {
+          "available": 0.0,
+          "collateral_value": 0.0,
+          "conversion_spread": 0.0,
+          "haircut": 0.05,
+          "quantity": 0.0,
+          "value": 0.0
+        }
+      },
+      "initial_margin": 1.8361,
+      "initial_margin_without_orders": 1.8361,
+      "isolated": {
+        "PF_ETHUSD": {
+          "initial_margin": 0.5987333333333333,
+          "initial_margin_without_orders": 0.5987333333333333,
+          "maintenance_margin": 0.026943,
+          "pnl": 0.04527714639345959,
+          "total_unrealized": 0.045191916819423035,
+          "total_unrealized_as_margin": 0.045191916819423,
+          "unrealized_funding": -0.00008522957403655147
+        }
+      },
+      "isolated_list": [
+        {
+          "initial_margin": 0.5987333333333333,
+          "initial_margin_without_orders": 0.5987333333333333,
+          "maintenance_margin": 0.026943,
+          "pnl": 0.04527714639345959,
+          "total_unrealized": 0.045191916819423035,
+          "total_unrealized_as_margin": 0.045191916819423,
+          "unrealized_funding": -0.00008522957403655147
+        }
+      ],
+      "maintenance_margin": 0.57748,
+      "margin_equity": 90.79020000000001,
+      "pnl": -0.233,
+      "portfolio_value": 91.2544,
+      "total_position_size": 0.0,
+      "total_unrealized": -0.233,
+      "total_unrealized_as_margin": -0.2783,
+      "unified_balances": true,
+      "unrealized_funding": 0.0
+    },
+    "futures": {
+      "F-ETH:USD": {
+        "available": 0.009789283561449456,
+        "balance": 0.0099983209,
+        "cash_value": 27.165337902090997,
+        "initial_margin": 0.00014721725476388625,
+        "maintenance_margin": 0.00007360862738194313,
+        "name": "F-ETH:USD",
+        "pair": "ETH/USD",
+        "pnl": -0.0000631938177141501,
+        "portfolio_value": 0.009936500816213343,
+        "unit": "ETH",
+        "unrealized_funding": 1.3737339274925545e-6
+      },
+      "F-LTC:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-LTC:USD",
+        "pair": "LTC/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "LTC",
+        "unrealized_funding": 0.0
+      },
+      "F-XBT:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-XBT:USD",
+        "pair": "XBT/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "XBT",
+        "unrealized_funding": 0.0
+      },
+      "F-XRP:USD": {
+        "available": 0.0,
+        "balance": 0.0,
+        "cash_value": 0.0,
+        "initial_margin": 0.0,
+        "maintenance_margin": 0.0,
+        "name": "F-XRP:USD",
+        "pair": "XRP/USD",
+        "pnl": 0.0,
+        "portfolio_value": 0.0,
+        "unit": "XRP",
+        "unrealized_funding": 0.0
+      }
+    },
+    "futures_cash_value": 27.165337902090997,
+    "futures_upnl_cash_value": 26.99737335264349,
+    "holding": {
+      "AAPLX": 0.0,
+      "USDT": 0.02,
+      "XRP": 0.01
+    },
+    "seq": 0,
+    "timestamp": 1790834191930
+  }
+}
