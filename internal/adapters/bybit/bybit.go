@@ -1,9 +1,11 @@
-// Package bybit is the read-only Bybit adapter for the global Unified Trading Account 2.0 in its
-// three Margin Modes: Isolated Margin, Cross Margin, and Portfolio Margin.
+// Package bybit is the read-only Bybit adapter for the global Unified Trading
+// Account 2.0 in its three Margin Modes: Isolated Margin, Cross Margin, and
+// Portfolio Margin.
 //
-// It calls only balance, position, account, and market-data endpoints. Raw responses are decoded
-// inside this package and never cross the adapter boundary; the one exception is Record, the
-// offline fixture recorder of ADR 0023. Field mappings are documented in docs/adapters/bybit.md.
+// It calls only balance, position, account, and market-data endpoints. Raw
+// responses are decoded inside this package and never cross the adapter
+// boundary; the one exception is Record, the explicit response recorder of ADR
+// 0009. Field mappings are documented in docs/adapters/bybit/mapping.md.
 package bybit
 
 import (
@@ -48,8 +50,8 @@ var marginModes = map[string]adapters.MarginMode{
 	"PORTFOLIO_MARGIN": adapters.MarginBybitPM,
 }
 
-// quotes are the spot quotes a coin is priced in, in order of preference. Both value at 1 USD
-// (ADR 0017).
+// quotes are the spot quotes a coin is priced in, in order of preference. Both
+// value at 1 USD (ADR 0003).
 var quotes = []string{"USDT", "USDC"}
 
 // Options configures an Adapter. Zero values select production defaults.
@@ -114,10 +116,10 @@ func (a *Adapter) validate(ctx context.Context, c *client, structure adapters.Ac
 	return adapters.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
 }
 
-// marginMode confirms the account still has the Identity's Account Structure (ADR 0025) and
-// returns its Margin Mode (ADR 0028). The structure is chosen once by the User, while Bybit lets
-// the Margin Mode change at any time, so both are read at validation and at the start of every
-// Collection Run.
+// marginMode confirms the account still has the Identity's Account Structure
+// (ADR 0001) and returns its Margin Mode (ADR 0001). The structure is chosen
+// once by the User, while Bybit lets the Margin Mode change at any time, so
+// both are read at validation and at the start of every Collection Run.
 func (a *Adapter) marginMode(ctx context.Context, c *client, structure adapters.AccountStructure) (adapters.MarginMode, error) {
 	if structure != adapters.StructureBybitUTA2 {
 		return "", adapters.UnsupportedStructure(adapters.PlatformBybit, structure)

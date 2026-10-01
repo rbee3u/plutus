@@ -1,53 +1,69 @@
-# Repository Guidance
+# Agent guidance
 
-## Language and domain
+## Working rules
 
-- Write all code, comments, documentation, and user-facing application text in English.
-- Read [CONTEXT.md](./CONTEXT.md) and the relevant [ADRs](./docs/adr/) before changing domain behavior. Use the canonical terms consistently.
-- Keep `CONTEXT.md` a glossary: concise definitions only, without implementation details, requirements, or roadmap notes.
-- Record durable decisions with meaningful trade-offs in short, sequentially numbered ADRs. Update their status and references when a decision is superseded.
-- Follow the accepted scope and valuation decisions in ADRs 0014–0021: one Valuation Point per Collection Cycle, User-selected Account Types, Boundary Events as implicit Capital Flows, USD-only valuation with USDT/USDC at 1 USD, symbol-based Asset merging, Account-level stale carry-forward, manual Capital Flows with read-only keys, and one aligned Account Report. Do not silently expand supported Account Structures, Margin Modes, or Account Types. The declared Account Structure and the observed Margin Mode follow [ADR 0028](./docs/adr/0028-separate-account-structure-from-margin-mode.md); dual investment Accounts, Dual Positions, auxiliary completeness reads, and report scope transitions follow [ADR 0033](./docs/adr/0033-separate-dual-investment-accounts-and-positions.md). Kraken Separate wallets, Unified Wallet, and its two-key credential entry follow [ADR 0026](./docs/adr/0026-support-kraken-separate-and-unified-wallets.md). Documentation-derived scenarios without live coverage follow [ADR 0027](./docs/adr/0027-allow-documented-adapter-scenarios-without-live-coverage.md).
-- Unknown value is never written as zero and never dropped silently: a total is the sum of what could be valued, marked `incomplete`, with the omitted items named. Only a successful Account Report may make a coin disappear (the Complete Set rule).
-- Adapters may call only read-only balance, position, account, and market-data endpoints. At runtime (`serve`, the worker, `collect`) raw Platform payloads never cross the adapter boundary, are never logged, and are never stored. The only place a raw response may be written to disk is the `plutus adapter record` single-interface recorder described in [ADR 0037](./docs/adr/0037-separate-recorded-evidence-from-synthetic-tests.md), and only into gitignored `tmp/`.
+- Write code, comments, documentation, and application text in English. Wrap
+  Markdown prose near 80 columns; preserve useful content, tables, code blocks,
+  and indivisible links.
+- Do not change the Git index unless explicitly asked. `CLAUDE.md` is a relative
+  symlink to this file; edit `AGENTS.md` as the shared source.
+- Before changing behavior, read the [domain model](./CONTEXT.md),
+  [product scope](./docs/product-scope.md), and relevant
+  [ADRs](./docs/adr/README.md). Use canonical terms; do not silently expand
+  supported Account Structures, Margin Modes, or Account Types. Record durable
+  decisions and meaningful trade-offs in the relevant ADR, distinguishing
+  preferences from accepted choices.
+- Keep [README status](./README.md#current-status) honest. Synthetic tests and
+  recorded evidence do not establish exchange-app validation or a completed
+  integration. Technical mechanisms belong in
+  [architecture](./docs/architecture.md); domain terms and rules belong in
+  `CONTEXT.md`.
 
-## Environments
+## Domain and data safeguards
 
-[ADR 0022](./docs/adr/0022-separate-dev-test-and-prod-environments.md) defines them. Automated tests are not an environment.
+- Unknown value is never zero or silently omitted. Sum known value, mark
+  affected totals incomplete, and name omissions. Only a successful Account
+  Report removes holdings; failures use compatible successful history as stale.
+- Account Structure and Margin Mode are distinct. Earn and Dual Investment are
+  separate selected Accounts with shared completeness reads and scope-aware
+  stale fallback. Follow the [domain model](./CONTEXT.md).
+- Adapters call only read-only balance, position, account, and market-data
+  endpoints. Runtime raw Platform payloads never cross the Adapter boundary,
+  enter logs, or reach storage. Only explicit `plutus adapter record` may write
+  sanitized responses to gitignored `tmp/`.
+- After prod's first `migrate up`, freeze the baseline and append migrations
+  that work on populated databases. Follow [deployment](./docs/deployment.md).
 
-| Environment | Where | Adapter | Config | Reset |
-| --- | --- | --- | --- | --- |
-| dev `local` (the human, :8080, `plutus_local`) | this machine, `go run` | fake | `config/local.toml` + `local.env` | `scripts/local-wipe-and-serve.sh`; `local-serve.sh` keeps data |
-| dev `agent` (the AI agent, :8081, `plutus_agent`) | this machine, `go run` | fake | `config/agent.toml` + `agent.env` | `scripts/agent-wipe-and-serve.sh`; `agent-serve.sh` keeps data |
-| test (:8082, `plutus_test`) | remote server, `make dist` binary | live read-only keys | hand-edited `test.toml` + `test.env` on the server | `plutus db reset` (no profile), by the owner |
-| prod (:8083, `plutus_prod`) | remote server, `make dist` binary | live read-only keys | hand-edited `prod.toml` + `prod.env` on the server | never |
+## Environment boundaries
 
-- Never point a dev instance at real keys, and never register the fake in test or prod. Never connect to `plutus_local`, `plutus_test`, or `plutus_prod` from an agent session; the agent's databases are `plutus_agent` and the throwaway `plutus_gotest_*` ones.
-- `go test` reads `PLUTUS_GOTEST_*` from gitignored `config/gotest.env` (copy `config/gotest-example.env`). `PLUTUS_GOTEST_DSN` is a server-level DSN; each database-backed test package creates and drops its own `plutus_gotest_<unix>_<hex>` database through `mysql.RunTestMain`. A package that adds database tests must add `func TestMain(m *testing.M) { mysql.RunTestMain(m) }`. Never edit `config/gotest.env` to fit a test.
-- Recording credentials live separately in gitignored `config/record.env` (copy `config/record-example.env`), using `PLUTUS_RECORD_<PLATFORM>_APIKEY` / `_SECRET` / `_PASSPHRASE`; Kraken uses `_SPOT_APIKEY` / `_SPOT_SECRET` and `_FUTURES_APIKEY` / `_FUTURES_SECRET`. Only explicit `plutus adapter record` reads this file/namespace; public requests, `--list-requests` and `--dry-run` read no keys. Ordinary tests use synthetic testdata and the fake Adapter and never load recording credentials. Do not put Platform keys in `gotest.env` or fall back to its former key variables ([ADR 0038](./docs/adr/0038-separate-recording-credentials-from-test-configuration.md)). Recording may use the test environment's read-only key set; prod's set never appears on a development machine.
-- Once prod has run `migrate up` for the first time, the baseline migration is frozen and every schema change is an appended migration that works on populated databases ([ADR 0024](./docs/adr/0024-freeze-the-baseline-migration-once-prod-has-migrated.md)).
+- Follow [environments](./docs/development.md#environments): dev uses the fake
+  without live keys; remote test and prod use live read-only keys without fake.
+- Agent sessions may connect only to `plutus_agent` on :8081 and throwaway
+  `plutus_gotest_*` databases, never `plutus_local`, `plutus_test`, or
+  `plutus_prod`. Use [agent setup](./docs/development.md#agent-setup), never the
+  human's :8080 instance.
+- Tests use `config/gotest.env` and per-package temporary databases through
+  `mysql.RunTestMain`; new database-backed packages need that `TestMain`. Do not
+  edit `gotest.env` to fit tests. See
+  [test configuration](./docs/testing.md#test-configuration).
+- Only explicit recording loads `config/record.env` / `PLUTUS_RECORD_*`; tests
+  and runtime commands never load them. Never use test or runtime credentials as
+  a recording fallback. Prod keys never belong on a development machine.
 
-## Changes and documentation
+## Verification
 
-- Keep changes focused on the requested stage of work and consistent with existing repository conventions.
-- Keep [README.md](./README.md) accurate about implemented capabilities, working commands, and planned work. A proposed architecture or synthetic-data demo is not a completed integration. Adapter order is Binance, OKX, Bybit, then Kraken; each is a separate delivery.
-- Update affected terminology and decision records when behavior changes. Keep design preferences distinct from accepted decisions.
-- `CLAUDE.md` is a relative symlink to this file. Maintain one shared set of instructions by editing `AGENTS.md`.
-
-## Validation
-
-- For local Go code changes, run `make format && make build && make test && make lint`. These are successive gates: format the code, confirm compilation, verify unit tests, then check lint. Each gate must pass before the next starts; fix failures and repeat the sequence. Install the pinned tools with `make deps` when needed. `make test` must stay offline: no live keys, no network, no pre-created database.
-- Reserve `make style` for future GitHub CI as the non-mutating replacement for `make format`. The CI sequence is `make style && make build && make test && make lint`; formatting failures must be corrected locally with `make format`.
-- For documentation-only changes, verify terminology, stated behavior, relative links, and any symlink targets. Domain changes should also be checked against concrete identity, account, valuation, and data-failure scenarios.
-- Adapter verification follows [ADR 0037](./docs/adr/0037-separate-recorded-evidence-from-synthetic-tests.md): independently constructed synthetic replay and the fake Adapter in `make test`. Ordinary adapter tests install the network guard; forbidden exchange requests must fail even when mapped into Account Report errors. Loopback replay and temporary MySQL remain allowed.
-- `make test-live` is removed. Only explicit `plutus adapter record --platform <platform> --only <interface>` may contact exchanges during development verification. Send exactly one selected HTTP request with native signing, no implicit configuration, clock, retry, redirect, pagination or refusal probes. Kraken WS permits its required challenge/subscription for one logical snapshot, without REST. `--query`/`--form` override literal business parameters; required parameters fail before keys or network. Runtime `serve`, worker and `collect` retain real collection.
-- Each Platform has independent flat `evidence/` (recorded only) and `testdata/` (synthetic only) directories; empty evidence directories are created when first needed. Test loaders and sequences reject recorded inputs. Go tests explicitly match service, method, path and business query/form; no manifests, evidence fallback or automatic generation. Expected response steps must be consumed. Follow [the shared response schema](./docs/adapters/fixtures.md): source/request/status/body, recorded-only actual UTC date, optional notes/text body format. Official documentation, preparation settings, observed differences and gaps live in Platform inventories. Never relabel recordings as documented or synthetic test inputs.
-- Recording writes one sanitized JSON atomically without overwrites under gitignored `tmp/evidence/`, never directly into either committed layer. Market trimming retains prepared/requested symbols and representative product/settlement/unit/field shapes. Known balance/position interfaces may omit redundant zero rows while retaining representative shapes/settings; preserve debt, interest, margin, nonzero amounts, unknown fields, nulls, empty strings and retained business precision/terms/times. Keep whole rows and original totals; disclose counts/rules in notes. `--keep-symbol` is local selection only, never a business request parameter.
-- Prepare and authorize an exact sequential interface/parameter list per compatible account state. Stop on the first request/write failure without automatic retries; keep successful files and resume only uncompleted requests. Unsafe redaction writes nothing; safe failed and empty responses stay in tmp by default. Evidence acceptance checks request identity, format/safety, critical shapes and document discrepancies, then owner review; full Adapter replay is not a promotion gate. Parsing fixes have separate synthetic regression tests. Freeze reviewed evidence and record replacement reasons. Reacquire in Binance → OKX → Bybit → Kraken order, combining coexisting products and avoiding Cartesian recording matrices; unavailable critical states remain explicit gaps. All committed test inputs remain synthetic; the Platform inventories report accepted real evidence and remaining gaps. The owner stages each round manually; do not change the Git index unless explicitly asked.
-- After any change that can affect `serve`, the JSON API, or the UI (including seeds, valuation reads, the embedded SPA, and history defaults), the make gates are not enough. Changes confined to adapter packages, their tests, or fixtures do not need this step; verify them with the applicable offline tests and the recording acceptance rule above. Otherwise start the agent dev environment and exercise the changed flow before claiming the work is done:
-  1. Run `./scripts/agent-wipe-and-serve.sh` in the background (or `agent-serve.sh` to keep data). Wait until `GET http://127.0.0.1:8081/health/live` succeeds.
-  2. Open `http://127.0.0.1:8081` (not `:8080` / Vite). Follow the changed path as a real user: click, type, submit, and navigate. For API-only changes, `curl` the affected routes on `:8081`. A single screenshot is not verification.
-  3. If `config/agent.toml`, `config/agent.env`, or MySQL database `plutus_agent` is missing, stop and say how to copy `config/agent-example.toml` and `config/agent-example.env` and `CREATE DATABASE plutus_agent`. Do not connect to `plutus_local`, and do not skip this check.
-  4. In the final report, state what was exercised on `:8081`, what was observed, and what was not covered. Do not call UI or runtime behavior complete without this check.
-- For a new or expanded real Platform adapter delivery, also run `make dist` once so a new dependency cannot break the cross-build, and structure the final report in four parts: recorded evidence/date and gaps, independent synthetic test results per affected Platform, agent-environment coverage, and what was not covered.
-- Stop every process this session started before finishing, including the agent scripts, `go run`, and Vite if this session launched them. Kill the process group so child `serve` processes exit too. Confirm the agent environment is down (`GET http://127.0.0.1:8081/health/live` fails). Do not leave `:8081` occupied, and do not kill a `:8080` process that the user started. Say in the final report that the started processes were stopped.
-- Review the final diff for unintended changes and report the checks performed and any remaining limitations.
+- Go changes must pass the
+  [validation gates](./docs/testing.md#validation-gates) in order:
+  `make format && make build && make test && make lint`. Fix failures and repeat
+  the sequence. Tests allow loopback replay and temporary MySQL, never external
+  requests, live keys, or pre-created databases.
+- New or expanded real Adapter deliveries also require a Linux amd64 build and
+  an [Adapter delivery report](./docs/testing.md#adapter-delivery-reports).
+  Synthetic `testdata/` and recorded `evidence/` are independent; follow the
+  [evidence workflow](./docs/adapters/evidence-workflow.md).
+- Changes affecting `serve`, the JSON API, or the UI require
+  [agent runtime verification](./docs/testing.md#agent-runtime-verification) on
+  :8081. Changes confined to Adapters, tests, or fixtures use offline
+  verification and evidence review.
+- Markdown-only changes require
+  [documentation verification](./docs/testing.md#documentation-verification).

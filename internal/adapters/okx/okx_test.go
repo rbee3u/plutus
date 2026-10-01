@@ -535,8 +535,9 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 		}
 	}
 
-	// Σ balance equity × spot price lands within 0.5% of totalEq, which ties the per-coin
-	// mapping to OKX's own account equity (USDT and USDC count at 1 per ADR 0017).
+	// Σ balance equity × spot price lands within 0.5% of totalEq, which ties
+	// the per-coin mapping to OKX's own account equity (USDT and USDC count at
+	// 1 per ADR 0003).
 	prices := map[string]*big.Rat{"USDT": big.NewRat(1, 1), "USDC": big.NewRat(1, 1)}
 	for _, p := range batch.Prices {
 		prices[p.AssetSymbol] = rat(t, p.Price)

@@ -74,7 +74,7 @@ type Identity struct {
 	PortfolioID uuid.UUID
 	Platform    adapters.Platform
 	DisplayName string
-	// AccountStructure is declared at creation and never changes (ADR 0028).
+	// AccountStructure is declared at creation and never changes (ADR 0001).
 	AccountStructure adapters.AccountStructure
 	// MarginMode is the last Margin Mode the Platform reported; empty before the first successful
 	// validation and for structures that have none.
@@ -808,9 +808,10 @@ func (s *Service) RecordCollection(ctx context.Context, portfolioID, id uuid.UUI
 	return s.q.RecordIdentityCollection(ctx, params)
 }
 
-// RecordMarginMode stores the Margin Mode a Collection Run observed. A change is written to the
-// audit log with the system as the actor, because nobody changed it in Plutus: the owner switched
-// it on the Platform (ADR 0028). An empty mode, reported by structures without one, is ignored.
+// RecordMarginMode stores the Margin Mode a Collection Run observed. A change
+// is written to the audit log with the system as the actor, because nobody
+// changed it in Plutus: the owner switched it on the Platform (ADR 0001). An
+// empty mode, reported by structures without one, is ignored.
 func (s *Service) RecordMarginMode(ctx context.Context, portfolioID, id uuid.UUID, mode adapters.MarginMode) error {
 	if mode == "" {
 		return nil

@@ -12,8 +12,8 @@ import (
 // earnBucket is the asset-overview account type that carries Bybit's own valuation of Earn.
 const earnBucket = "Earn"
 
-// dualAssetStatuses are the Dual Asset position states Bybit documents. Both hold principal that
-// has not been settled yet, so both count (ADR 0029).
+// dualAssetStatuses are the Dual Asset position states Bybit documents. Both
+// hold principal that has not been settled yet, so both count (ADR 0005).
 var dualAssetStatuses = map[string]bool{"Active": true, "Redeeming": true}
 
 type savingsPosition struct {
@@ -168,9 +168,10 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 	return out, nil
 }
 
-// checkEarn compares combined Earn and Dual Balances with Bybit's own USD valuation of Earn in asset-overview
-// (ADR 0033). A list without an Earn entry counts as zero: the check only ever fails when Bybit
-// values Earn higher than the Balances.
+// checkEarn compares combined Earn and Dual Balances with Bybit's own USD
+// valuation of Earn in asset-overview (ADR 0005). A list without an Earn entry
+// counts as zero: the check only ever fails when Bybit values Earn higher than
+// the Balances.
 func checkEarn(ctx context.Context, c *client, balances []adapters.Balance, prices spotPrices) error {
 	var overview struct {
 		List []struct {

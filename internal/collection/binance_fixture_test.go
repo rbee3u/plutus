@@ -60,9 +60,11 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	assertSyntheticDualPositions(t, h, accounts[string(binance.TypeDualInvestment)])
 }
 
-// TestBinanceClassicScenarioStoresAndValues runs one cycle of a Classic Trading Identity with all
-// supported Account Types: synthetic answers selected explicitly from the flat library (ADR 0027). Every
-// Classic Account is valued from its Balances, and the COIN-M position keeps its inverse notional.
+// TestBinanceClassicScenarioStoresAndValues runs one cycle of a Classic
+// Trading Identity with all supported Account Types: synthetic answers
+// selected explicitly from the flat library (ADR 0009). Every Classic Account
+// is valued from its Balances, and the COIN-M position keeps its inverse
+// notional.
 func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 	h := newHarness(t)
 	registerBinanceReplay(t, h, "binance_classic")

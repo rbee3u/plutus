@@ -1,4 +1,4 @@
-// Package capital owns manual Capital Flows (ADR 0020).
+// Package capital owns manual Capital Flows (ADR 0004).
 package capital
 
 import (
@@ -332,7 +332,8 @@ func (s *Service) apply(ctx context.Context, draft *Flow, in *Input) error {
 	return nil
 }
 
-// valueInUSD converts a quantity at the nearest Platform price at or before effectiveAt (ADR 0017).
+// valueInUSD converts a quantity at the nearest Platform price at or before
+// effectiveAt (ADR 0003).
 func (s *Service) valueInUSD(ctx context.Context, assetSymbol, quantity string, at time.Time) *string {
 	qty, ok := decimal.Parse(quantity)
 	if !ok {

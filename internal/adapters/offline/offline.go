@@ -1,4 +1,5 @@
-// Package offline enforces the exchange-network boundary of adapter tests (ADR 0034).
+// Package offline enforces the exchange-network boundary of adapter tests (ADR
+// 0009).
 package offline
 
 import (

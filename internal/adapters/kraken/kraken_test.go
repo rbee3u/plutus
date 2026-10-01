@@ -30,7 +30,8 @@ import (
 // testCreds carry the base64 secret "secret" for both key groups, which the replay verifies.
 var testCreds = adapters.Credentials{APIKey: "spot-test", APISecret: "c2VjcmV0", Futures: &adapters.KeyPair{APIKey: "futures-test", APISecret: "c2VjcmV0"}}
 
-// separateScenario selects the explicit Separate-wallet interface samples (ADR 0027).
+// separateScenario selects the explicit Separate-wallet interface samples (ADR
+// 0009).
 const separateScenario = string(adapters.StructureKrakenSeparate)
 
 // allEndpoints are every endpoint the adapter and the recorder call.
@@ -135,8 +136,8 @@ func readFixture(t *testing.T, path string) fixture.File {
 	return f
 }
 
-// readDocumented reads a documentation-derived fixture (ADR 0027): it names its documentation and
-// structure and has no recording date.
+// readDocumented reads a documentation-derived fixture (ADR 0009): it names
+// its documentation and structure and has no recording date.
 type replay struct {
 	t         *testing.T
 	adapter   *Adapter
@@ -430,8 +431,8 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	}
 }
 
-// The Separate-wallet responses are documentation-derived (ADR 0027): they prove the field
-// mapping of the synthetic shapes, not live access.
+// The Separate-wallet responses are documentation-derived (ADR 0009): they
+// prove the field mapping of the synthetic shapes, not live access.
 func TestReplaySeparateWallets(t *testing.T) {
 	r := newReplay(t, separateScenario, nil)
 	ctx := context.Background()

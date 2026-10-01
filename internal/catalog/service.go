@@ -121,7 +121,8 @@ func NormalizeSymbol(raw string) (string, error) {
 	return symbol, nil
 }
 
-// AssetSymbolFor derives the automatic Asset symbol from a Platform listing symbol (ADR 0018).
+// AssetSymbolFor derives the automatic Asset symbol from a Platform listing
+// symbol (ADR 0003).
 func AssetSymbolFor(symbol string) string {
 	upper := strings.ToUpper(strings.TrimSpace(symbol))
 	// Platform-specific wrappers such as "LDBTC" or "BETHUSDT" are left as-is; only the
@@ -204,8 +205,8 @@ func (s *Service) EnsureInstrument(ctx context.Context, q *sqlcgen.Queries, plat
 	return uuid.FromBytes(row.ID)
 }
 
-// RecordPrice upserts one Platform price inside q. Prices are stored in their quote symbol;
-// valuation treats USDT, USDC, and USD quotes as USD (ADR 0017).
+// RecordPrice upserts one Platform price inside q. Prices are stored in their
+// quote symbol; valuation treats USDT, USDC, and USD quotes as USD (ADR 0003).
 func (s *Service) RecordPrice(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, price adapters.Price) error {
 	asset, err := NormalizeSymbol(price.AssetSymbol)
 	if err != nil {

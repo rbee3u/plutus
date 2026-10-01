@@ -235,7 +235,8 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("point total %s, want sum of accounts %s", summary.Point.TotalUSD, decimal.Format(total))
 	}
 
-	// USDT on a second Platform maps to the same Asset symbol automatically (ADR 0018).
+	// USDT on a second Platform maps to the same Asset symbol automatically
+	// (ADR 0003).
 	listings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{Query: "USDT", Limit: 50})
 	if err != nil {
 		t.Fatal(err)

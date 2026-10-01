@@ -278,10 +278,10 @@ type Price struct {
 	ObservedAt  time.Time
 }
 
-// Adapter collects normalized facts for one Identity through read-only endpoints. Both calls
-// first confirm that the account still has the Identity's Account Structure (ADR 0025) and read
-// its Margin Mode (ADR 0028); a different structure or an unknown Margin Mode fails with
-// ClassUnsupported.
+// Adapter collects normalized facts for one Identity through read-only
+// endpoints. Both calls first confirm that the account still has the
+// Identity's Account Structure (ADR 0001) and read its Margin Mode (ADR 0001);
+// a different structure or an unknown Margin Mode fails with ClassUnsupported.
 type Adapter interface {
 	// Validate checks the key and returns the Platform's own account reference and Margin Mode.
 	Validate(ctx context.Context, creds Credentials, structure AccountStructure) (ValidationResult, error)

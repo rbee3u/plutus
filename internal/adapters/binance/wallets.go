@@ -65,9 +65,10 @@ func mapWallet(ep endpoint, rows []walletAsset) ([]adapters.Balance, error) {
 // earnWallet is the walletName of the Earn wallet in /sapi/v1/asset/wallet/balance.
 const earnWallet = "Earn"
 
-// dualInvestmentStates says, for every purchaseStatus Binance documents, whether the position is
-// running, its principal still held in Dual Investment (ADR 0033). Only running states are queried;
-// an undocumented status fails the selected Earn and Dual Accounts instead of being guessed.
+// dualInvestmentStates says, for every purchaseStatus Binance documents,
+// whether the position is running, its principal still held in Dual Investment
+// (ADR 0005). Only running states are queried; an undocumented status fails
+// the selected Earn and Dual Accounts instead of being guessed.
 var dualInvestmentStates = map[string]bool{
 	"PENDING":          true,  // subscribed, awaiting the purchase result
 	"PURCHASE_SUCCESS": true,  // running until the settlement date
@@ -89,9 +90,9 @@ func runningDualInvestmentStates() []string {
 	return out
 }
 
-// simpleEarnQuery and dualInvestmentQuery are the queries of one page of the paged Earn
-// endpoints; walletValueQuery asks for wallet values in USDT, which values at 1 USD (ADR 0017).
-// The recorder sends the same queries.
+// simpleEarnQuery and dualInvestmentQuery are the queries of one page of the
+// paged Earn endpoints; walletValueQuery asks for wallet values in USDT, which
+// values at 1 USD (ADR 0003). The recorder sends the same queries.
 func simpleEarnQuery(current int) url.Values {
 	return url.Values{"current": {strconv.Itoa(current)}, "size": {strconv.Itoa(pageSize)}}
 }
@@ -132,8 +133,8 @@ type dualInvestmentPosition struct {
 	SubscriptionTime   json.RawMessage `json:"subscriptionTime"`
 }
 
-// earn returns separate savings and Dual reports, then checks their combined principal
-// against Binance's Earn wallet valuation (ADR 0033).
+// earn returns separate savings and Dual reports, then checks their combined
+// principal against Binance's Earn wallet valuation (ADR 0005).
 func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	if err := simpleEarn(ctx, c, totals); err != nil {

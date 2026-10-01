@@ -56,8 +56,9 @@ func UnknownAccountType(platform Platform, structure AccountStructure, accountTy
 	return NewError(ClassUnsupported, "The "+PlatformName(platform)+" "+StructureName(structure)+" structure has no Account Type "+string(accountType)+".")
 }
 
-// StructureMismatch is the failure of a run whose account no longer has the Identity's Account
-// Structure (ADR 0025). actual names what the Platform reports, in the Platform's own words.
+// StructureMismatch is the failure of a run whose account no longer has the
+// Identity's Account Structure (ADR 0001). actual names what the Platform
+// reports, in the Platform's own words.
 func StructureMismatch(platform Platform, actual string, configured AccountStructure) error {
 	return NewError(ClassUnsupported, PlatformName(platform)+" reports "+actual+", but this Identity is configured as "+
 		StructureName(configured)+". Create a new Identity for the new structure and archive this one.")

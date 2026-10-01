@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is the CLI release string shown by --version. `make build` and `make dist` set it
+// version is the CLI release string shown by --version. `make build` sets it
 // through -ldflags "-X main.version=..." from `git describe`; a plain `go run` reports "dev".
 var version = "dev"
 

@@ -1,11 +1,14 @@
-// Package binance is the read-only Binance adapter for both Binance Account Structures: Classic
-// Trading (binance_classic), where Cross Margin, Isolated Margin, USDⓈ-M Futures, and COIN-M
-// Futures are separate wallets, and Portfolio Margin (binance_pm), which merges those four into
-// one portfolio_margin Account. Spot, Funding, and Earn exist in both. Binance has no Margin Mode.
+// Package binance is the read-only Binance adapter for both Binance Account
+// Structures: Classic Trading (binance_classic), where Cross Margin, Isolated
+// Margin, USDⓈ-M Futures, and COIN-M Futures are separate wallets, and
+// Portfolio Margin (binance_pm), which merges those four into one
+// portfolio_margin Account. Spot, Funding, and Earn exist in both. Binance has
+// no Margin Mode.
 //
-// It calls only balance, position, account, and market-data endpoints. Raw responses are decoded
-// inside this package and never cross the adapter boundary; the one exception is Record, the
-// offline fixture recorder of ADR 0023. Field mappings are documented in docs/adapters/binance.md.
+// It calls only balance, position, account, and market-data endpoints. Raw
+// responses are decoded inside this package and never cross the adapter
+// boundary; the one exception is Record, the explicit response recorder of ADR
+// 0009. Field mappings are documented in docs/adapters/binance/mapping.md.
 package binance
 
 import (
@@ -36,8 +39,8 @@ const (
 	TypeCMFutures       adapters.AccountType = "cm_futures"
 )
 
-// quotes are the spot quote coins prices are read in, in order of preference. Both value at 1 USD
-// (ADR 0017).
+// quotes are the spot quote coins prices are read in, in order of preference.
+// Both value at 1 USD (ADR 0003).
 var quotes = []string{"USDT", "USDC"}
 
 // pageSize is the largest page the Simple Earn and dual investment position endpoints accept.
@@ -215,10 +218,10 @@ func (info *accountInfo) futuresClosed() bool {
 	return info.FuturesEnabled != nil && !*info.FuturesEnabled
 }
 
-// checkStructure reads the account's Account Structure. The User can switch between Classic
-// Trading and Portfolio Margin inside Binance at any time, so every validation and every
-// Collection Run checks it first (ADR 0025); a different structure fails before any account is
-// read.
+// checkStructure reads the account's Account Structure. The User can switch
+// between Classic Trading and Portfolio Margin inside Binance at any time, so
+// every validation and every Collection Run checks it first (ADR 0001); a
+// different structure fails before any account is read.
 func checkStructure(ctx context.Context, c *client, configured adapters.AccountStructure) (accountInfo, error) {
 	var info accountInfo
 	if err := c.call(ctx, epAccountInfo, nil, &info); err != nil {

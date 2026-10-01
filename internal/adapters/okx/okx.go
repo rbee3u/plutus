@@ -1,10 +1,11 @@
-// Package okx is the read-only OKX adapter for the Unified account, Account Structure
-// okx_unified, in all four Margin Modes OKX offers: Spot mode, Futures mode, Multi-currency
-// margin, and Portfolio margin.
+// Package okx is the read-only OKX adapter for the Unified account, Account
+// Structure okx_unified, in all four Margin Modes OKX offers: Spot mode,
+// Futures mode, Multi-currency margin, and Portfolio margin.
 //
-// It calls only balance, position, account, and market-data endpoints. Raw responses are decoded
-// inside this package and never cross the adapter boundary; the one exception is Record, the
-// offline fixture recorder of ADR 0023. Field mappings are documented in docs/adapters/okx.md.
+// It calls only balance, position, account, and market-data endpoints. Raw
+// responses are decoded inside this package and never cross the adapter
+// boundary; the one exception is Record, the explicit response recorder of ADR
+// 0009. Field mappings are documented in docs/adapters/okx/mapping.md.
 package okx
 
 import (
@@ -37,8 +38,8 @@ var marginModes = map[string]adapters.MarginMode{
 	"4": adapters.MarginOKXPM,
 }
 
-// quotes are the spot quote coins prices are read in, in order of preference. Both value at 1 USD
-// (ADR 0017).
+// quotes are the spot quote coins prices are read in, in order of preference.
+// Both value at 1 USD (ADR 0003).
 var quotes = []string{"USDT", "USDC"}
 
 // pageInterval spaces two pages of an endpoint OKX limits to one request per second.
@@ -111,9 +112,9 @@ type accountConfig struct {
 	AcctLv  string `json:"acctLv"`
 }
 
-// config reads the account configuration: the account's own UID and its Margin Mode. The User can
-// switch the level inside OKX at any time, so every validation and every Collection Run reads it
-// afresh (ADR 0028).
+// config reads the account configuration: the account's own UID and its Margin
+// Mode. The User can switch the level inside OKX at any time, so every
+// validation and every Collection Run reads it afresh (ADR 0001).
 func (a *Adapter) config(ctx context.Context, c *client) (accountConfig, adapters.MarginMode, error) {
 	var rows []accountConfig
 	if err := c.call(ctx, epConfig, &rows); err != nil {
@@ -223,10 +224,11 @@ type tradingBalance struct {
 	Upl      string `json:"upl"`
 }
 
-// trading maps the trading account: its USD equity and margin figures, its per-coin equities, and
-// its open positions. One mapping serves all four Margin Modes: OKX returns "" for every field that
-// does not apply to the account's level (docs/adapters/okx.md lists them per mode), and an empty
-// field stays unknown rather than becoming zero.
+// trading maps the trading account: its USD equity and margin figures, its
+// per-coin equities, and its open positions. One mapping serves all four
+// Margin Modes: OKX returns "" for every field that does not apply to the
+// account's level (docs/adapters/okx/mapping.md lists them per mode), and an
+// empty field stays unknown rather than becoming zero.
 func (a *Adapter) trading(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var rows []tradingAccount
 	if err := c.call(ctx, epBalance, &rows); err != nil {
@@ -392,12 +394,14 @@ type stakingOrder struct {
 	} `json:"investData"`
 }
 
-// earn maps the Earn bucket, one Balance per coin: Simple Earn flexible balances, the principal of
-// active on-chain earn orders, and the principal of dual investment orders still invested. An empty
-// amount fails the Account. ETH and SOL staking are deliberately not collected: OKX reports those
-// balances account-wide, and the BETH and OKSOL coins they produce are already held in the trading
-// or funding account. Last, the Earn check compares the Balances with OKX's own valuation of Earn
-// (ADR 0033), so unitemized value fails selected Earn and Dual Accounts instead of vanishing.
+// earn maps the Earn bucket, one Balance per coin: Simple Earn flexible
+// balances, the principal of active on-chain earn orders, and the principal of
+// dual investment orders still invested. An empty amount fails the Account.
+// ETH and SOL staking are deliberately not collected: OKX reports those
+// balances account-wide, and the BETH and OKSOL coins they produce are already
+// held in the trading or funding account. Last, the Earn check compares the
+// Balances with OKX's own valuation of Earn (ADR 0005), so unitemized value
+// fails selected Earn and Dual Accounts instead of vanishing.
 func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	var savings []savingsBalance

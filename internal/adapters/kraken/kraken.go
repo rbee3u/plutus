@@ -1,11 +1,12 @@
-// Package kraken is the read-only Kraken adapter for the Separate wallets and Unified Wallet
-// Account Structures (ADR 0026).
+// Package kraken is the read-only Kraken adapter for the Separate wallets and
+// Unified Wallet Account Structures (ADR 0001).
 //
-// It calls only balance, position, account, and market-data endpoints of Kraken's Spot REST API
-// and Futures REST API, plus one bounded balances snapshot of the Futures WebSocket feed. Raw
-// responses are decoded inside this package and never cross the adapter boundary; the one
-// exception is Record, the offline fixture recorder of ADR 0023. Field mappings are documented in
-// docs/adapters/kraken.md.
+// It calls only balance, position, account, and market-data endpoints of
+// Kraken's Spot REST API and Futures REST API, plus one bounded balances
+// snapshot of the Futures WebSocket feed. Raw responses are decoded inside
+// this package and never cross the adapter boundary; the one exception is
+// Record, the explicit response recorder of ADR 0009. Field mappings are
+// documented in docs/adapters/kraken/mapping.md.
 package kraken
 
 import (
@@ -32,8 +33,8 @@ const (
 	TypeDerivativesHolding adapters.AccountType = "derivatives_holding"
 )
 
-// priceQuotes are the Spot quotes a Balance is priced in, in order of preference: USD, then the
-// two stablecoins ADR 0017 values at 1 USD.
+// priceQuotes are the Spot quotes a Balance is priced in, in order of
+// preference: USD, then the two stablecoins ADR 0003 values at 1 USD.
 var priceQuotes = []string{"USD", "USDT", "USDC"}
 
 // structureWords names each Account Structure the way Kraken's flag reports it, for the detail of
@@ -116,8 +117,9 @@ func structureOf(s *snapshot) (adapters.AccountStructure, error) {
 	return adapters.StructureKrakenSeparate, nil
 }
 
-// checkStructure confirms the account still has the Identity's Account Structure. The structure
-// is declared once, while the owner can switch wallets inside Kraken at any time (ADR 0025).
+// checkStructure confirms the account still has the Identity's Account
+// Structure. The structure is declared once, while the owner can switch
+// wallets inside Kraken at any time (ADR 0001).
 func checkStructure(s *snapshot, structure adapters.AccountStructure) error {
 	actual, err := structureOf(s)
 	if err != nil {
@@ -666,7 +668,8 @@ func (r *run) earnStrategies(ctx context.Context) (map[string]string, error) {
 // them (XBT, USD).
 type assetNames map[string]string
 
-// aliases are the legacy Kraken names that differ from the symbols Plutus merges by (ADR 0018).
+// aliases are the legacy Kraken names that differ from the symbols Plutus
+// merges by (ADR 0003).
 var aliases = map[string]string{"XBT": "BTC", "XXBT": "BTC", "XDG": "DOGE", "XXDG": "DOGE", "ZUSD": "USD"}
 
 // assetNames reads the public asset list.

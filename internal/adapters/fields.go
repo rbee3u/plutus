@@ -116,7 +116,8 @@ func SortedKeys[T any](m map[string]T) []string {
 	return out
 }
 
-// USDEquivalent mirrors ADR 0017: USD, USDT, and USDC value at 1 USD without a price row.
+// USDEquivalent mirrors ADR 0003: USD, USDT, and USDC value at 1 USD without a
+// price row.
 func USDEquivalent(symbol string) bool {
 	switch strings.ToUpper(strings.TrimSpace(symbol)) {
 	case "USD", "USDT", "USDC":
