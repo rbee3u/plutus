@@ -1,33 +1,28 @@
 # Deployment
 
-Use this guide for remote test/prod installation, upgrades, and Platform
-connectivity. See [development environments](./development.md#environments) for
-database, port, Adapter, and credential boundaries. Agent sessions use only the
-agent dev instance and throwaway test databases.
+Remote test/prod use live read-only keys; see
+[environment boundaries](./development.md#environments). Examples below use
+test. For prod, replace `test` with `prod` in paths and commands, and use port
+8083 instead of 8082.
 
 ## Installation
 
-Deployment is manual; read each command before running it.
-
-1. Build the static binary for the server, including the SPA and Git version:
+1. Build the server binary with the SPA:
 
    ```sh
    make build GOOS=linux GOARCH=amd64
    ```
 
-2. Copy `dist/plutus-linux-amd64` to the server as `/opt/plutus-test/plutus` or
-   `/opt/plutus-prod/plutus`, alongside the
-   [test config](../config/test-example.toml) /
-   [test env](../config/test-example.env) examples, or use the
-   [prod config](../config/prod-example.toml) /
-   [prod env](../config/prod-example.env) pair. Rename them to `test.toml` /
-   `test.env` or `prod.toml` / `prod.env` in the corresponding directory. Set
-   the DSN, a fresh master key, listen address, and TLS. Back up the prod master
-   key separately; without it, stored Platform credentials cannot be decrypted.
+2. Upload it as `/opt/plutus-test/plutus`. Copy the
+   [test TOML](../config/test-example.toml) and
+   [env](../config/test-example.env) examples as `test.toml` and `test.env` in
+   that directory; prod uses the [prod TOML](../config/prod-example.toml) and
+   [env](../config/prod-example.env) pair. Set the DSN, a fresh master key, and
+   listen address. Back up the prod master key separately; losing it makes
+   stored Platform credentials unreadable.
 
-3. Create `plutus_test` or `plutus_prod` once on the server's MySQL, then
-   migrate and create a User. The example uses test configuration; substitute
-   the prod pair for prod:
+3. Prepare the [certificates](#certificates), create MySQL database
+   `plutus_test`, then migrate and create a User:
 
    ```sh
    cd /opt/plutus-test
@@ -35,114 +30,89 @@ Deployment is manual; read each command before running it.
    ./plutus --config test.toml --env-file test.env user create
    ```
 
-4. Start the [systemd service](#systemd-services), then sign in, create
-   Identities with real read-only keys, select Accounts, and enable them. The
-   scheduler uses each Portfolio's interval. `./plutus --version` identifies a
-   binary's build, not an already-running process.
+4. Start the [service](#systemd-services), sign in, create and enable Identities
+   with read-only keys, and select their Accounts.
 
-Existing installations must apply the
-[configuration migration](./development.md#configuration-migration) before
-starting a binary with the simplified configuration schema. Update renamed TOML
-keys and environment overrides, remove internal tuning fields, and keep secrets
-outside TOML; legacy names are not aliases.
+## Certificates
+
+Both TOML examples require mTLS. Prepare these files in the deployment
+directory:
+
+- Obtain `server.pem` and `server-key.pem` from
+  [Cloudflare Origin CA](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/).
+  Save the matching CA root as `origin-ca.pem` for the curl readiness check.
+- Run [test-certs.sh](../config/test-certs.sh) or
+  [prod-certs.sh](../config/prod-certs.sh) there using OpenSSL with
+  `req -addext` support. Plutus trusts the generated `client-ca.pem`; upload
+  `client.pem` and `client-key.pem` to
+  [Cloudflare Authenticated Origin Pulls](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/zone-level/).
+
+The scripts refuse existing files and discard the CA private key. For renewal,
+generate a new set separately, coordinate Cloudflare's client certificate and
+Plutus's CA replacement, then restart Plutus.
 
 ## systemd services
 
-The [test unit](../config/test-example.service) and
-[prod unit](../config/prod-example.service) run as root by default, following
-the operator's preference. They use separate deployment directories and
-configuration files. The examples assume local MySQL named `mysql.service`;
-change that name in both `Wants` and `After` if your distribution uses
-`mysqld.service`. Remove it from both directives when using remote MySQL.
+Upload the [test unit](../config/test-example.service) or
+[prod unit](../config/prod-example.service). They run as root and expect
+`mysql.service`; adjust `Wants` and `After` for a different service name, or
+remove both for remote MySQL.
 
-`WorkingDirectory` lets the configuration arguments use relative paths, such as
-`--config test.toml --env-file test.env`. The executable in `ExecStart` must
-still use its absolute path: systemd accepts an absolute path or a bare filename
-resolved through its executable search path, but not `./plutus`. See the
-[systemd command-line rules](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml).
-
-Run the following commands as root on the deployment server after copying and
-configuring the test files. `test-example.service` is the uploaded unit example;
-for prod, substitute `prod` for `test` in the directory, file, and unit names:
+Run as root on the server:
 
 ```sh
-chown root:root /opt/plutus-test/plutus /opt/plutus-test/test.toml /opt/plutus-test/test.env
-chmod 0755 /opt/plutus-test/plutus
-chmod 0600 /opt/plutus-test/test.toml /opt/plutus-test/test.env
+cd /opt/plutus-test
+chown root:root plutus test.toml test.env server-key.pem client-key.pem
+chmod 0755 plutus
+chmod 0600 test.toml test.env server-key.pem client-key.pem
 install -m 0644 test-example.service /etc/systemd/system/plutus-test.service
 systemd-analyze verify /etc/systemd/system/plutus-test.service
 systemctl daemon-reload
 systemctl enable --now plutus-test.service
-systemctl status plutus-test.service
 journalctl -u plutus-test.service -n 100 --no-pager
-curl --fail http://127.0.0.1:8082/health/ready
+curl --fail --noproxy '*' \
+  --cacert origin-ca.pem --cert client.pem --key client-key.pem \
+  --resolve plutus-test.example.com:8082:127.0.0.1 \
+  https://plutus-test.example.com:8082/health/ready
 ```
 
-Use port 8083 for prod's readiness check. If application HTTPS is enabled, use
-the configured HTTPS address and CA, plus a client certificate when mTLS is
-enabled. Check readiness after starting: an active unit alone does not establish
-that the database, schema, encryption key, and worker are ready.
-
-`Wants=mysql.service` starts local MySQL without stopping Plutus when MySQL is
-restarted. `After` orders startup and shutdown; it does not check database
-readiness. `Restart=on-failure` retries failed processes after 30 seconds. The
-units inherit systemd's logging, stop timeout, and start-rate limits. With the
-usual manager defaults, logs go to the journal, the stop timeout is 90 seconds,
-and the start limit is five starts per ten seconds; the 30-second retry interval
-stays outside that window. Host configuration and unit drop-ins can override
-these defaults.
-
-Migrations and User creation remain explicit CLI operations before service
-startup. Stopping the unit sends SIGTERM, which cancels the worker and shuts
-down HTTP; it does not guarantee an in-flight Collection Cycle completes.
+Replace the hostname in both curl arguments with one covered by `server.pem`.
+The check connects directly to loopback and verifies the server with
+`origin-ca.pem`. Require readiness success after each start; an active unit
+alone is insufficient.
 
 ## Upgrades and resets
 
-Stop the previous service before migrating and starting the new binary; only one
-process may use a database. Run `migrate up` with the environment's config and
-env file after every new migration. Check migration-specific prerequisites below
-before stopping the old release.
+Check migration prerequisites below and apply any
+[configuration migration](./development.md#configuration-migration). Stop the
+service, replace the binary, run `migrate up`, then start the service and check
+readiness. Only one process may use a database. Run `systemctl daemon-reload`
+when the unit changes; preserve file ownership and permissions.
 
-With systemd, run `systemctl stop plutus-test.service` (or
-`plutus-prod.service`), replace the binary, run the migration, then
-`systemctl start` the same unit and check readiness. Run
-`systemctl daemon-reload` before starting if the unit file changed. Preserve the
-deployment file ownership and modes shown above.
-
-After prod's first `migrate up`, the baseline is frozen. Append migrations that
-work on populated databases; never reset prod. See
+After prod's first migration, freeze the baseline and append migrations that
+work on populated databases. Never reset prod; see
 [ADR 0008](./adr/0008-environments-and-migrations.md).
 
-Test can be reset and collected again without seed data:
+Test allows reset with `allow_reset = true`; it needs no seed data:
 
 ```sh
 cd /opt/plutus-test
 ./plutus --config test.toml --env-file test.env db reset
 ```
 
-Reset requires `allow_reset = true`. Prod keeps it false, and the command also
-refuses any database whose name contains `prod`.
-
 ### Dual Investment split upgrade
 
-This procedure applies when upgrading from combined Earn history through
+Before applying
 [20260929010000_dual_positions.sql](../db/migrations/20260929010000_dual_positions.sql)
 and
-[20260929010100_dual_accounts.sql](../db/migrations/20260929010100_dual_accounts.sql).
-
-Drain running or partially collected cycles with the previous release, stop all
-workers, run `migrate up`, then start only the new binary. Migration refuses
-unfinished cycles. Missing Dual Accounts inherit existing Earn selections;
-existing Dual configuration is retained. No database reset is needed.
-
-History is preserved, and Value Changes spanning the split are incomplete. Until
-ordinary Earn has a successful report in its new scope, an old combined report
-cannot be carried forward. Scope semantics belong in the
-[domain model](../CONTEXT.md#report-scope-compatibility).
+[20260929010100_dual_accounts.sql](../db/migrations/20260929010100_dual_accounts.sql),
+drain running or partially collected cycles with the previous release, then stop
+all workers. Migration refuses unfinished cycles. Missing Dual Accounts inherit
+Earn selections; existing Dual selections and history remain. No reset is
+needed. See [report scope rules](../CONTEXT.md#report-scope-compatibility).
 
 ## Platform connectivity
 
-Live Adapters use IPv4 for HTTP and Kraken WebSocket connections. Allow the
-server's public IPv4 address in each Platform API key. An HTTP proxy controls
-which address family the Platform sees. The accepted connectivity choice is in
-[ADR 0008](./adr/0008-environments-and-migrations.md).
+Allow the server's public IPv4 address in each Platform API key. Live Adapters
+use IPv4 for HTTP and Kraken WebSocket connections; an external proxy determines
+the address family seen by the Platform.

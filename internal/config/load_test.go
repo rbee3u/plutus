@@ -217,13 +217,21 @@ func TestTLSMatrix(t *testing.T) {
 
 func loadExampleTOML(t *testing.T, path string) Config {
 	t.Helper()
+	now := time.Now()
+	certPEM, keyPEM := mustCert(t, now.Add(-time.Hour), now.Add(24*time.Hour))
 	cfg, err := Load(Options{
 		Path:      path,
 		LookupEnv: envMap(nil),
 		EnvFile:   "empty.env",
+		Now:       now,
 		ReadFile: func(name string) ([]byte, error) {
-			if name == "empty.env" {
+			switch name {
+			case "empty.env":
 				return []byte{}, nil
+			case "server.pem", "client-ca.pem":
+				return certPEM, nil
+			case "server-key.pem":
+				return keyPEM, nil
 			}
 			return os.ReadFile(name)
 		},
@@ -239,12 +247,12 @@ func TestExampleTOMLLoads(t *testing.T) {
 	cases := []struct {
 		name, listen, suffix string
 		port                 int
-		fake, reset          bool
+		fake, reset, mtls    bool
 	}{
-		{"local", "0.0.0.0", "local", 8080, true, true},
-		{"agent", "127.0.0.1", "agent", 8081, true, true},
-		{"test", "127.0.0.1", "test", 8082, false, true},
-		{"prod", "127.0.0.1", "", 8083, false, false},
+		{"local", "0.0.0.0", "local", 8080, true, true, false},
+		{"agent", "127.0.0.1", "agent", 8081, true, true, false},
+		{"test", "127.0.0.1", "test", 8082, false, true, true},
+		{"prod", "127.0.0.1", "", 8083, false, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -266,8 +274,8 @@ func TestExampleTOMLLoads(t *testing.T) {
 			if cfg.Auth.SessionCookieName() != "plutus_session"+suffix || cfg.Auth.CSRFCookieName() != "plutus_csrf"+suffix {
 				t.Fatal("example does not isolate its session and CSRF cookies")
 			}
-			if cfg.Server.TLS.HTTPSEnabled() || cfg.Server.TLS.MTLSEnabled() {
-				t.Fatal("examples should leave TLS unconfigured")
+			if cfg.Server.TLS.HTTPSEnabled() != tc.mtls || cfg.Server.TLS.MTLSEnabled() != tc.mtls {
+				t.Fatal("remote examples must require mTLS; dev examples must use HTTP")
 			}
 		})
 	}
