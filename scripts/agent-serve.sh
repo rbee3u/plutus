@@ -17,11 +17,9 @@ if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   exit 1
 fi
 
-make web-build
-
 echo "Serving the dev (agent) environment on :8081 using $config and $envfile."
 echo "This script does not reset the database."
 echo "Open http://127.0.0.1:8081 (not :8080)."
 echo
 
-exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve
+exec make run ARGS="--config $config --env-file $envfile serve"

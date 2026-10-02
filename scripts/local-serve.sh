@@ -16,8 +16,6 @@ if [[ ! -f "$config" || ! -f "$envfile" ]]; then
   exit 1
 fi
 
-make web-build
-
 echo "Serving the dev (local) environment on 0.0.0.0:8080 using $config and $envfile."
 echo "This script does not reset the database."
 echo "This machine: http://127.0.0.1:8080"
@@ -27,4 +25,4 @@ if [[ -n "$lan_ip" ]]; then
 fi
 echo
 
-exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve
+exec make run ARGS="--config $config --env-file $envfile serve"

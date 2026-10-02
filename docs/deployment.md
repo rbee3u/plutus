@@ -47,7 +47,8 @@ directory:
   `client.pem` and `client-key.pem` to
   [Cloudflare Authenticated Origin Pulls](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/zone-level/).
 
-The scripts refuse existing files and discard the CA private key. For renewal,
+The scripts use unique working directories under `/tmp/plutus/`, clean them up
+on exit, refuse existing files, and discard the CA private key. For renewal,
 generate a new set separately, coordinate Cloudflare's client certificate and
 Plutus's CA replacement, then restart Plutus.
 

@@ -169,7 +169,7 @@ Synthetic inputs:
 Recorded evidence:
 
 Missing nonempty evidence; owner cannot currently meet minimum principal. Empty
-diagnostic remains in tmp
+diagnostic was not promoted.
 
 ### `v5: GET /v5/earn/position`
 

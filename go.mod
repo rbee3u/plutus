@@ -2,6 +2,8 @@ module github.com/rbee3u/plutus
 
 go 1.27.1
 
+ignore node_modules
+
 require (
 	github.com/coder/websocket v1.8.15
 	github.com/getkin/kin-openapi v0.142.0

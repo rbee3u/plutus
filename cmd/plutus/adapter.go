@@ -38,6 +38,8 @@ var recorders = map[adapters.Platform]struct {
 	adapters.PlatformKraken:  {adapter: func() recorder { return kraken.New(nil) }, requests: kraken.RecordingRequests},
 }
 
+const recordingDirectory = "/tmp/plutus"
+
 func recordablePlatforms() string {
 	var names []string
 	for _, platform := range adapters.OfferedPlatforms() {
@@ -58,7 +60,7 @@ func newAdapterRecordCommand() *cobra.Command {
 	var platformFlag, outFlag, variant string
 	var only, query, form, keepSymbols []string
 	var list, dryRun bool
-	cmd := &cobra.Command{Use: "record", Short: "Record one explicit read-only interface response into tmp", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	cmd := &cobra.Command{Use: "record", Short: "Record one explicit read-only interface response into /tmp/plutus", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		platform := adapters.Platform(strings.ToLower(platformFlag))
 		spec, ok := recorders[platform]
 		if !ok {
@@ -104,7 +106,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		file, captureErr := spec.adapter().RecordRequest(cmd.Context(), creds, request, recording.Options{KeepSymbols: keepSymbols})
 		if file != nil {
 			parent := filepath.Join(outFlag, string(platform))
-			if err := os.MkdirAll(parent, 0o750); err != nil {
+			if err := checkRecordingDirectory(parent); err != nil {
 				return err
 			}
 			dir, err := os.MkdirTemp(parent, time.Now().UTC().Format("20060102T150405Z")+"-")
@@ -137,42 +139,59 @@ func newAdapterRecordCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&list, "list-requests", false, "list read-only interfaces and required parameters without keys or network")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the exact request and filename without keys or network")
 	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "retain a prepared instrument in local market trimming; never sent to the exchange")
-	cmd.Flags().StringVar(&outFlag, "out", "tmp/evidence", "output parent inside gitignored tmp")
+	cmd.Flags().StringVar(&outFlag, "out", recordingDirectory+"/evidence", "output parent inside /tmp/plutus")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd
 }
 
-// checkRecordingDirectory confines all raw fixture writes to the repository's real tmp tree.
+// checkRecordingDirectory confines recorded fixture writes to /tmp/plutus.
 func checkRecordingDirectory(path string) error {
-	root, err := filepath.Abs(".")
-	if err != nil {
-		return err
-	}
 	out, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	tmp := filepath.Join(root, "tmp")
 	inside := func(base, target string) bool {
 		rel, err := filepath.Rel(base, target)
 		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 	}
-	if !inside(tmp, out) {
-		return errors.New("fixture output must be inside the repository's gitignored tmp directory")
+	if !inside(recordingDirectory, out) {
+		return errors.New("fixture output must be inside /tmp/plutus")
 	}
-	if err := os.MkdirAll(out, 0o750); err != nil {
-		return err
-	}
-	realOut, err := filepath.EvalSymlinks(out)
+	// /tmp itself is a system symlink on macOS; resolve it without trusting
+	// symlinks that redirect the Plutus directory or any output parent.
+	realBase, err := filepath.EvalSymlinks(filepath.Dir(recordingDirectory))
 	if err != nil {
 		return err
 	}
-	realRoot, err := filepath.EvalSymlinks(root)
+	realRoot := filepath.Join(realBase, filepath.Base(recordingDirectory))
+	rel, err := filepath.Rel(recordingDirectory, out)
 	if err != nil {
 		return err
 	}
-	if !inside(filepath.Join(realRoot, "tmp"), realOut) {
-		return errors.New("fixture output must not escape tmp through a symlink")
+	dirs := []string{recordingDirectory}
+	if rel != "." {
+		for _, component := range strings.Split(rel, string(filepath.Separator)) {
+			dirs = append(dirs, filepath.Join(dirs[len(dirs)-1], component))
+		}
+	}
+	for _, dir := range dirs {
+		if err := os.Mkdir(dir, 0o750); err != nil && !os.IsExist(err) {
+			return err
+		}
+		realDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			return err
+		}
+		if !inside(realRoot, realDir) {
+			return errors.New("fixture output must not escape /tmp/plutus through a symlink")
+		}
+		info, err := os.Stat(realDir)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("fixture output parent %s is not a directory", dir)
+		}
 	}
 	return nil
 }

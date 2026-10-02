@@ -91,7 +91,7 @@ family it presents to the Platform.
 Development registers the deterministic fake for offered Platforms. Remote test
 and prod register live Adapters. Automated tests use independent synthetic
 responses and a network guard. Only explicit `adapter record` can publish
-sanitized responses to gitignored `tmp/` for review. See the
+sanitized responses to `/tmp/plutus/` for review. See the
 [evidence workflow](./adapters/evidence-workflow.md) and
 [Platform mapping guides](../README.md#documentation).
 

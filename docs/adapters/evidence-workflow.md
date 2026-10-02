@@ -101,15 +101,17 @@ by this rule. Notes disclose original and retained counts and the selection
 rule. Retained business values, precision, product terms, times and totals are
 not rewritten.
 
-Each command creates a unique directory under gitignored
-`tmp/evidence/<platform>/`, atomically publishing one JSON without overwrites.
-`--out` may change the parent only inside `tmp/`. No complete collection, batch
-manifest or asset-total proof is generated. Identity fields and secrets are
-masked; unsafe redaction leaves no file. Request/response/write failures return
-nonzero even when a safe failed response is retained. Terminal output separately
-reports the saved path, HTTP/WS result, Platform success and empty state. Saving
-does not prove correct business mapping. Empty and failed responses remain in
-`tmp/` by default; there is no automatic promotion.
+Each command creates a unique directory under
+`/tmp/plutus/evidence/<platform>/`, atomically publishing one JSON without
+overwrites. `--out` may change the parent only inside `/tmp/plutus/`. No
+complete collection, batch manifest or asset-total proof is generated. Identity
+fields and secrets are masked; unsafe redaction leaves no file.
+Request/response/write failures return nonzero even when a safe failed response
+is retained. Terminal output separately reports the saved path, HTTP/WS result,
+Platform success and empty state. Saving does not prove correct business
+mapping. Empty and failed responses remain in `/tmp/plutus/` by default; there
+is no automatic promotion. System temporary-file cleanup may remove unpromoted
+recordings.
 
 Review request identity, sanitation, critical response shapes and differences
 from official documentation; then the owner reviews before promoting the exact

@@ -5,6 +5,9 @@
 - Write code, comments, documentation, and application text in English. Wrap
   Markdown prose near 80 columns; preserve useful content, tables, code blocks,
   and indivisible links.
+- Put task and tool temporary artifacts under `/tmp/plutus`, never in a
+  repository-local `tmp/` directory. Use unique subdirectories for concurrent
+  work and clean up disposable files when finished.
 - Do not change the Git index unless explicitly asked. `CLAUDE.md` is a relative
   symlink to this file; edit `AGENTS.md` as the shared source.
 - Before changing behavior, read the [domain model](./CONTEXT.md),
@@ -30,7 +33,7 @@
 - Adapters call only read-only balance, position, account, and market-data
   endpoints. Runtime raw Platform payloads never cross the Adapter boundary,
   enter logs, or reach storage. Only explicit `plutus adapter record` may write
-  sanitized responses to gitignored `tmp/`.
+  sanitized responses to `/tmp/plutus/` for review.
 - After prod's first `migrate up`, freeze the baseline and append migrations
   that work on populated databases. Follow [deployment](./docs/deployment.md).
 
@@ -52,6 +55,10 @@
 
 ## Verification
 
+- For all Go verification, including golangci-lint and `make` targets, reuse the
+  host's existing cache configuration without overrides or persistent changes.
+  Request elevated execution when sandbox restrictions are expected or
+  encountered.
 - Go changes must pass the
   [validation gates](./docs/testing.md#validation-gates) in order:
   `make format && make build && make test && make lint`. Fix failures and repeat

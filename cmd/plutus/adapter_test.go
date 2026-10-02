@@ -25,6 +25,31 @@ func runRecord(args ...string) (string, error) {
 	return out.String(), err
 }
 
+// Each recording test owns a unique output directory and removes only its files.
+func recordingTestDirectory(t *testing.T) string {
+	t.Helper()
+	if err := checkRecordingDirectory(recordingDirectory); err != nil {
+		t.Fatal(err)
+	}
+	dir, err := os.MkdirTemp(recordingDirectory, "record-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	})
+	return dir
+}
+
+func TestRecordingDefaultDirectory(t *testing.T) {
+	cmd := newAdapterRecordCommand()
+	if got := cmd.Flags().Lookup("out").DefValue; got != "/tmp/plutus/evidence" {
+		t.Fatalf("default output: %s", got)
+	}
+}
+
 func TestListAndDryRunNeedNeitherCredentialsNorNetwork(t *testing.T) {
 	out, err := runRecord("--platform", "binance", "--list-requests")
 	if err != nil || !strings.Contains(out, "sapi_v1_simple_earn_locked_position:") {
@@ -118,6 +143,7 @@ func TestRecorderDoesNotFallBackToOldTestKeys(t *testing.T) {
 }
 
 func TestPublicRecordingIgnoresInvalidCredentialFiles(t *testing.T) {
+	outDir := recordingTestDirectory(t)
 	t.Chdir(t.TempDir())
 	if err := os.Mkdir("config", 0o750); err != nil {
 		t.Fatal(err)
@@ -133,7 +159,7 @@ func TestPublicRecordingIgnoresInvalidCredentialFiles(t *testing.T) {
 	changed.adapter = func() recorder { return stub }
 	recorders[adapters.PlatformBinance] = changed
 	t.Cleanup(func() { recorders[adapters.PlatformBinance] = original })
-	if _, err := runRecord("--platform", "binance", "--only", "api_v3_time"); err != nil || stub.calls != 1 {
+	if _, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--out", outDir); err != nil || stub.calls != 1 {
 		t.Fatalf("public recording accessed credential files: %v", err)
 	}
 	if _, err := runRecord("--platform", "binance", "--only", "papi_v1_balance", "--dry-run"); err != nil || stub.calls != 1 {
@@ -186,6 +212,7 @@ func (s *recordingStub) RecordRequest(_ context.Context, _ adapters.Credentials,
 }
 
 func TestRecordingWritesOnlyOneReviewableFile(t *testing.T) {
+	outDir := recordingTestDirectory(t)
 	t.Chdir(t.TempDir())
 	spec := recorders[adapters.PlatformBinance]
 	stub := &recordingStub{}
@@ -195,7 +222,7 @@ func TestRecordingWritesOnlyOneReviewableFile(t *testing.T) {
 	t.Cleanup(func() { recorders[adapters.PlatformBinance] = spec })
 	for _, failure := range []error{nil, errors.New("platform failure")} {
 		stub.failure = failure
-		out, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--keep-symbol", "DOGEUSDT")
+		out, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--keep-symbol", "DOGEUSDT", "--out", outDir)
 		if (err != nil) != (failure != nil) || !strings.Contains(out, "business mapping has not been accepted") {
 			t.Fatalf("status: %s %v", out, err)
 		}
@@ -206,7 +233,7 @@ func TestRecordingWritesOnlyOneReviewableFile(t *testing.T) {
 	if stub.calls != 2 {
 		t.Fatal("unexpected recorder calls")
 	}
-	paths, err := filepath.Glob("tmp/evidence/binance/*/*")
+	paths, err := filepath.Glob(filepath.Join(outDir, "binance", "*", "*"))
 	if err != nil || len(paths) != 2 {
 		t.Fatalf("output: %v %v", paths, err)
 	}
@@ -221,30 +248,60 @@ func TestRecordingWritesOnlyOneReviewableFile(t *testing.T) {
 }
 
 func TestRecordingOutputCannotEscapeTmp(t *testing.T) {
-	root := t.TempDir()
-	t.Chdir(root)
-	if err := checkRecordingDirectory("elsewhere"); err == nil {
-		t.Fatal("outside tmp accepted")
+	root := recordingTestDirectory(t)
+	t.Chdir(t.TempDir())
+	for _, path := range []string{"tmp/evidence", "elsewhere", "/tmp/plutus-other/evidence", filepath.Join(recordingDirectory, "..", "elsewhere")} {
+		if err := checkRecordingDirectory(path); err == nil {
+			t.Fatalf("outside /tmp/plutus accepted: %s", path)
+		}
 	}
-	if err := os.Mkdir("tmp", 0o750); err != nil {
+	if err := checkRecordingDirectory(filepath.Join(root, "nested", "evidence")); err != nil {
+		t.Fatalf("valid output rejected: %v", err)
+	}
+	outside := t.TempDir()
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(outside, link); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(t.TempDir(), "tmp/link"); err != nil {
-		t.Fatal(err)
-	}
-	if err := checkRecordingDirectory("tmp/link"); err == nil {
+	if err := checkRecordingDirectory(filepath.Join(link, "new")); err == nil {
 		t.Fatal("symlink escape accepted")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "new")); !os.IsNotExist(err) {
+		t.Fatalf("symlink escape created an outside directory: %v", err)
 	}
 }
 
-type recordingFailureStub struct{ unsafe, disk bool }
+func TestRecordingPlatformDirectoryCannotEscapeTmp(t *testing.T) {
+	outDir := recordingTestDirectory(t)
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(outDir, "binance")); err != nil {
+		t.Fatal(err)
+	}
+	original := recorders[adapters.PlatformBinance]
+	changed := original
+	changed.adapter = func() recorder { return &recordingStub{} }
+	recorders[adapters.PlatformBinance] = changed
+	t.Cleanup(func() { recorders[adapters.PlatformBinance] = original })
+	if _, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--out", outDir); err == nil {
+		t.Fatal("platform symlink escape accepted")
+	}
+	entries, err := os.ReadDir(outside)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("recording escaped output directory: %v %v", entries, err)
+	}
+}
+
+type recordingFailureStub struct {
+	unsafe, disk bool
+	outDir       string
+}
 
 func (s recordingFailureStub) RecordRequest(_ context.Context, _ adapters.Credentials, request fixture.Request, _ ...recording.Options) (*fixture.File, error) {
 	if s.unsafe {
 		return nil, errors.New("redaction failed")
 	}
 	if s.disk {
-		if err := os.WriteFile("tmp/evidence/binance", []byte("blocked output parent"), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(s.outDir, "binance"), []byte("blocked output parent"), 0o600); err != nil {
 			return nil, err
 		}
 	}
@@ -255,6 +312,7 @@ func (s recordingFailureStub) RecordRequest(_ context.Context, _ adapters.Creden
 func TestFailuresAndEmptyResponsesCannotPromoteSamples(t *testing.T) {
 	for _, mode := range []string{"empty", "unsafe", "disk"} {
 		t.Run(mode, func(t *testing.T) {
+			outDir := recordingTestDirectory(t)
 			t.Chdir(t.TempDir())
 			if err := os.Mkdir("testdata", 0o750); err != nil {
 				t.Fatal(err)
@@ -266,18 +324,18 @@ func TestFailuresAndEmptyResponsesCannotPromoteSamples(t *testing.T) {
 			original := recorders[adapters.PlatformBinance]
 			changed := original
 			changed.adapter = func() recorder {
-				return recordingFailureStub{unsafe: mode == "unsafe", disk: mode == "disk"}
+				return recordingFailureStub{unsafe: mode == "unsafe", disk: mode == "disk", outDir: outDir}
 			}
 			recorders[adapters.PlatformBinance] = changed
 			t.Cleanup(func() { recorders[adapters.PlatformBinance] = original })
-			out, err := runRecord("--platform", "binance", "--only", "api_v3_time")
+			out, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--out", outDir)
 			if (err == nil) != (mode == "empty") {
 				t.Fatalf("unexpected result: %s %v", out, err)
 			}
 			if mode == "empty" && !strings.Contains(out, "empty: true") {
 				t.Fatal("empty state not reported")
 			}
-			files, e := filepath.Glob("tmp/evidence/binance/*/*.json")
+			files, e := filepath.Glob(filepath.Join(outDir, "binance", "*", "*.json"))
 			if e != nil {
 				t.Fatal(e)
 			}

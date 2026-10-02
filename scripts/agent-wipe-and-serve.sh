@@ -20,8 +20,7 @@ fi
 echo "Resetting plutus_agent with the walkthrough seed, then serving on :8081."
 echo
 
-make web-build
-go run ./cmd/plutus --config "$config" --env-file "$envfile" db reset --profile walkthrough
+make run ARGS="--config $config --env-file $envfile db reset --profile walkthrough"
 
 echo
 echo "Seed logins:"
@@ -31,4 +30,4 @@ echo "Open http://127.0.0.1:8081 (not :8080)."
 echo "The next run of this script will reset plutus_agent again; agent-serve.sh keeps the data."
 echo
 
-exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve
+exec make run ARGS="--config $config --env-file $envfile serve"

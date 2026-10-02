@@ -19,8 +19,7 @@ fi
 echo "Resetting plutus_local with the walkthrough seed, then serving on 0.0.0.0:8080."
 echo
 
-make web-build
-go run ./cmd/plutus --config "$config" --env-file "$envfile" db reset --profile walkthrough
+make run ARGS="--config $config --env-file $envfile db reset --profile walkthrough"
 
 echo
 echo "Seed logins:"
@@ -34,4 +33,4 @@ fi
 echo "The next run of this script will reset plutus_local again; local-serve.sh keeps the data."
 echo
 
-exec go run ./cmd/plutus --config "$config" --env-file "$envfile" serve
+exec make run ARGS="--config $config --env-file $envfile serve"

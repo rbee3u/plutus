@@ -9,7 +9,12 @@ for file in client-ca.pem client.pem client-key.pem; do
 done
 
 umask 077
-cert_dir=$(mktemp -d ./.plutus-certs.XXXXXX)
+if [[ -L /tmp/plutus ]]; then
+  printf 'Refusing symlink temporary directory: /tmp/plutus\n' >&2
+  exit 1
+fi
+mkdir -p /tmp/plutus
+cert_dir=$(mktemp -d /tmp/plutus/test-certs.XXXXXX)
 trap 'rm -rf -- "$cert_dir"' EXIT
 
 (
