@@ -30,6 +30,15 @@ type Options struct {
 }
 
 type fileConfig struct {
+	Logging struct {
+		Directory  *string `toml:"directory"`
+		Level      *string `toml:"level"`
+		MaxSizeMB  *int    `toml:"max_size_mb"`
+		MaxBackups *int    `toml:"max_backups"`
+		MaxAgeDays *int    `toml:"max_age_days"`
+		Compress   *bool   `toml:"compress"`
+		SQLEnabled *bool   `toml:"sql_enabled"`
+	} `toml:"logging"`
 	Server struct {
 		ListenAddress *string `toml:"listen_address"`
 		Port          *int    `toml:"port"`
@@ -93,6 +102,7 @@ func Load(opts Options) (Config, error) { //nolint:gocritic // Options is a proc
 
 func defaults() Config {
 	return Config{
+		Logging: Logging{Directory: "./logs", Level: "info", MaxSizeMB: 100, MaxBackups: 5, Compress: true, SQLEnabled: true},
 		Server: Server{
 			ListenAddress: defaultListenAddress,
 			Port:          defaultPort,
@@ -165,6 +175,27 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	}
 	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
 	cfg.Database.AllowReset = parsed.Database.AllowReset
+	if parsed.Logging.Directory != nil {
+		cfg.Logging.Directory = strings.TrimSpace(*parsed.Logging.Directory)
+	}
+	if parsed.Logging.Level != nil {
+		cfg.Logging.Level = strings.TrimSpace(*parsed.Logging.Level)
+	}
+	if parsed.Logging.MaxSizeMB != nil {
+		cfg.Logging.MaxSizeMB = *parsed.Logging.MaxSizeMB
+	}
+	if parsed.Logging.MaxBackups != nil {
+		cfg.Logging.MaxBackups = *parsed.Logging.MaxBackups
+	}
+	if parsed.Logging.MaxAgeDays != nil {
+		cfg.Logging.MaxAgeDays = *parsed.Logging.MaxAgeDays
+	}
+	if parsed.Logging.Compress != nil {
+		cfg.Logging.Compress = *parsed.Logging.Compress
+	}
+	if parsed.Logging.SQLEnabled != nil {
+		cfg.Logging.SQLEnabled = *parsed.Logging.SQLEnabled
+	}
 	return nil
 }
 

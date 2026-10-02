@@ -6,6 +6,14 @@
 listen_address = "0.0.0.0"
 port = 8081
 
+[logging]
+directory = "./logs"
+level = "info"
+
+[database]
+# Reset drops all tables and reapplies migrations; never enable it on prod.
+allow_reset = true
+
 [auth]
 # Both session and CSRF cookies use this suffix; ports do not isolate cookies.
 cookie_suffix = "agent"
@@ -13,7 +21,3 @@ cookie_suffix = "agent"
 [collection]
 # Dev uses the deterministic offline Adapter; test and prod use live Adapters.
 fake_adapter = true
-
-[database]
-# Reset drops all tables and reapplies migrations; never enable it on prod.
-allow_reset = true

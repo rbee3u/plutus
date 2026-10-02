@@ -181,7 +181,25 @@ credentials use separate configuration sources. See
 
 ## Operations and limits
 
-Structured logs carry request and job identifiers and operational outcomes.
+The framework-independent `internal/infra/logging` component owns three `slog`
+loggers and independent rolling text files for application, HTTP access, and SQL
+events. The CLI loads configuration and initializes sinks before opening the
+database; it stops producers and closes the database before closing logs.
+Application logs also go to stderr. Gin framework writers and server diagnostics
+are adapted at the HTTP boundary. HTTP recovery records exceptions and stacks,
+and access logging surrounds recovery and early rejection so each request has
+one completion record.
+
+MySQL Connector, connection, statement, and transaction wrappers capture SQL
+execution without changing service constructors or generated sqlc code. They
+preserve driver conversion and connection lifecycle interfaces. Prepared
+fallbacks do not emit duplicate records. Parameter substitution is diagnostic;
+its uncertainty falls back to the original statement and arguments. Context
+fields associate SQL and application events with requests and claimed jobs. SQL
+duration ends at driver return, excluding row iteration. See
+[ADR 0010](./adr/0010-process-logging.md) for accepted visibility and retention
+trade-offs and [configuration](./development.md#logging) for settings.
+
 Readiness checks database access, schema version, encryption-key availability,
 and worker heartbeat. Liveness only indicates that the HTTP process responds.
 

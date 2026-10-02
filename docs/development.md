@@ -102,17 +102,24 @@ hours.
 | `server.tls.cert_file`                     | `""`        | PEM server certificate; configure together with `key_file`                          |
 | `server.tls.key_file`                      | `""`        | PEM private key matching the server certificate                                     |
 | `server.tls.client_ca_file`                | `""`        | PEM trust bundle that enables required, verified client certificates                |
+| `logging.directory`                        | `"./logs"`  | Log directory relative to the process working directory                             |
+| `logging.level`                            | `"info"`    | Application threshold: debug, info, warn, or error                                  |
+| `logging.max_size_mb`                      | `100`       | Independent active-file size limit in MiB; must be positive                         |
+| `logging.max_backups`                      | `5`         | Backup count per channel; zero removes the count limit                              |
+| `logging.max_age_days`                     | `0`         | Backup age limit in 24-hour days; zero removes the age limit                        |
+| `logging.compress`                         | `true`      | gzip rotated files                                                                  |
+| `logging.sql_enabled`                      | `true`      | Record all project SQL executions and transaction boundaries                        |
+| `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks |
 | `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                     |
 | `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                |
 | `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime            |
 | `jobs.finished_retention`                  | `"2160h"`   | Retain finished jobs without report or point references; 1 to 365 days              |
 | `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes       |
 | `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                            |
-| `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks |
 
-Each field has a matching environment override: prefix `PLUTUS_`, uppercase the
-field path, and replace dots with underscores. For example,
-`collection.connection_validation_timeout` becomes
+Fields outside `[logging]` have matching environment overrides: prefix
+`PLUTUS_`, uppercase the field path, and replace dots with underscores. For
+example, `collection.connection_validation_timeout` becomes
 `PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT`. The three TLS file settings
 are paths to PEM files; their environment values are paths too.
 
@@ -139,6 +146,40 @@ key_file = "/etc/plutus/server-key.pem"
 Finished-job retention includes succeeded, failed, and cancelled jobs, but never
 deletes jobs referenced by Account Reports or Valuation Points. It does not set
 a retention period for financial history.
+
+### Logging
+
+Runtime commands write single-line text to `app.log`, `access.log`, and
+`sql.log` in `logging.directory`. Application records also go to stderr;
+`logging.level` controls only application records. Access and enabled SQL
+records are independent of that threshold. Help, version, and Adapter recording
+do not initialize the runtime logging system. Command results remain on stdout.
+
+Access records contain request ID, method, path, status, and duration, including
+health checks, static resources, rejected requests, and recovered panics.
+Request IDs accepted from `X-Request-Id` must contain 1–128 ASCII letters,
+digits, dots, underscores, or hyphens; otherwise a new ID is generated. That ID
+also accompanies application and SQL records issued with the request context.
+Claimed background jobs carry job, Portfolio, and, for Collection Cycles, cycle
+IDs. Correlation does not persist a request ID across asynchronous job
+execution.
+
+SQL logs show statements with parameter values substituted for inspection,
+execution duration, and errors. They include transactions, migrations, seeds,
+and UTC initialization. Values are not redacted; binary values use hexadecimal
+literals. Result rows are not recorded. If rendering is uncertain, the original
+statement, arguments, and `render_error` are recorded instead. SQL rendering
+never changes database execution. Query duration excludes result consumption.
+Turning off `logging.sql_enabled` avoids both the SQL file and SQL formatting.
+
+Logging settings come only from the TOML `[logging]` section and code defaults;
+environment variables do not override them. Examples show only `directory` and
+`level`; add other fields when changing their documented defaults. Rotation
+limits apply separately to each file. Writes are synchronous, without per-record
+fsync. Backup compression and cleanup run in the rotation library's background
+maintenance; short commands do not wait, and subsequent runs resume maintenance.
+See [deployment logs](./deployment.md#logs) for directory ownership and
+write-failure behavior.
 
 ### Configuration migration
 

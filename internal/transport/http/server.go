@@ -57,6 +57,7 @@ func (f FuncReady) Ready(ctx context.Context) error {
 // EngineOptions configures the HTTP engine.
 type EngineOptions struct {
 	Logger            *slog.Logger
+	AccessLogger      *slog.Logger
 	Ready             ReadyChecker
 	Auth              *auth.Service
 	SecureCookies     bool
@@ -80,14 +81,21 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		opts = &EngineOptions{}
 	}
 	engine := gin.New()
-	engine.Use(gin.Recovery())
+	// Generated strict handlers pass *gin.Context to services. Preserve the
+	// request's cancellation and typed correlation values at that boundary.
+	engine.ContextWithFallback = true
+	access := opts.AccessLogger
+	if access == nil {
+		access = opts.Logger
+	}
+	engine.Use(requestLog(access))
+	engine.Use(recoveryLog(opts.Logger))
 	engine.Use(bindGinContext())
 	engine.Use(securityHeaders())
 	engine.Use(noStoreSensitive())
 	engine.Use(limitBody(1 << 20))
 	engine.Use(captureBody())
 	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
-	engine.Use(requestLog(opts.Logger))
 	impl := &API{
 		Ready:             opts.Ready,
 		Auth:              opts.Auth,
@@ -126,7 +134,11 @@ func cookieName(value, fallback string) string {
 
 // Run serves HTTP or HTTPS until ctx is cancelled.
 func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler http.Handler) error {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	server := &http.Server{
+		ErrorLog:          slog.NewLogLogger(logger.With("source", "http").Handler(), slog.LevelError),
 		Addr:              cfg.Server.Addr(),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -135,14 +147,18 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 		},
 	}
 	server.TLSConfig = tlsServerConfig(cfg)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", server.Addr)
+	if err != nil {
+		return fmt.Errorf("http listen: %w", err)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
 		var err error
 		if cfg.Server.TLS.HTTPSEnabled() {
-			err = server.ListenAndServeTLS("", "")
+			err = server.ServeTLS(listener, "", "")
 		} else {
-			err = server.ListenAndServe()
+			err = server.Serve(listener)
 		}
 		errCh <- err
 	}()

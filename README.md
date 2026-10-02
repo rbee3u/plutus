@@ -22,6 +22,8 @@ Implemented capabilities include:
   validation, enabling, disabling, and archiving.
 - Scheduled and on-demand collection, USD valuation, stale report carry-forward,
   and explicit incomplete totals when some holdings cannot be valued.
+- Unified rotating application, HTTP access, and full-value SQL logs; see
+  [logging configuration](./docs/development.md#logging).
 - Holdings, historical Valuation Points, Period Closes, and Value Changes, with
   manual Capital Flows and derived Boundary Events.
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and

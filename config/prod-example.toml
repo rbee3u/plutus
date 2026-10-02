@@ -12,6 +12,14 @@ cert_file = "server.pem"
 key_file = "server-key.pem"
 client_ca_file = "client-ca.pem"
 
+[logging]
+directory = "./logs"
+level = "info"
+
+[database]
+# Reset drops all tables and reapplies migrations; never enable it on prod.
+allow_reset = false
+
 [auth]
 # Both session and CSRF cookies use this suffix; ports do not isolate cookies.
 cookie_suffix = ""
@@ -19,7 +27,3 @@ cookie_suffix = ""
 [collection]
 # Dev uses the deterministic offline Adapter; test and prod use live Adapters.
 fake_adapter = false
-
-[database]
-# Reset drops all tables and reapplies migrations; never enable it on prod.
-allow_reset = false

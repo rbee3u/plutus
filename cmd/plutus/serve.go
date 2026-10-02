@@ -41,7 +41,10 @@ func newServeCommand() *cobra.Command {
 }
 
 func runServe(cmd *cobra.Command) error {
-	logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: slog.LevelInfo}))
+	runtime := runtimeFrom(cmd)
+	logger := runtime.logs.App
+	restoreGin := httpserver.BridgeGinLogs(logger)
+	defer restoreGin()
 	cfg, err := loadProcessConfig(cmd)
 	if err != nil {
 		return err
@@ -52,7 +55,7 @@ func runServe(cmd *cobra.Command) error {
 
 	var db *sql.DB
 	if cfg.Database.DSN != "" {
-		opened, err := mysql.Open(cfg.Database.DSN)
+		opened, err := mysql.Open(cfg.Database.DSN, mysql.Loggers{App: logger, SQL: runtime.logs.SQL})
 		if err != nil {
 			return err
 		}
@@ -62,6 +65,7 @@ func runServe(cmd *cobra.Command) error {
 
 	options := httpserver.EngineOptions{
 		Logger:            logger,
+		AccessLogger:      runtime.logs.Access,
 		Ready:             httpserver.StaticReady{Err: errors.New("database DSN is not configured")},
 		SecureCookies:     cfg.Server.TLS.HTTPSEnabled(),
 		SessionCookieName: cfg.Auth.SessionCookieName(),

@@ -44,6 +44,18 @@ type Config struct {
 	Collection Collection
 	Database   Database
 	Crypto     Crypto
+	Logging    Logging
+}
+
+// Logging holds process log output and rotation policies. Size is measured in MiB.
+type Logging struct {
+	Directory  string
+	Level      string
+	MaxSizeMB  int
+	MaxBackups int
+	MaxAgeDays int
+	Compress   bool
+	SQLEnabled bool
 }
 
 // Server holds HTTP listen and TLS settings.

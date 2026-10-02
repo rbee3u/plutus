@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -13,7 +14,10 @@ var version = "dev"
 
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
+		var reported *reportedError
+		if !errors.As(err, &reported) {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }
@@ -32,6 +36,10 @@ func newRootCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().String("config", "", "path to a non-secret TOML config file")
 	cmd.PersistentFlags().String("env-file", "", "path to an env file used instead of walking config/local.env")
-	cmd.AddCommand(newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand(), newAdapterCommand())
+	for _, runtimeCmd := range []*cobra.Command{newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand()} {
+		withRuntime(runtimeCmd)
+		cmd.AddCommand(runtimeCmd)
+	}
+	cmd.AddCommand(newAdapterCommand())
 	return cmd
 }

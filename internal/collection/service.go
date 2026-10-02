@@ -169,7 +169,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 	summary.Point = point
 	summary.ObservationTime = now
 	if point.IncompleteAccountCount > 0 || summary.Invalidated > 0 {
-		s.logger.Warn("valuation point written with issues",
+		s.logger.WarnContext(ctx, "valuation point written with issues",
 			slog.String("portfolio_id", portfolioID.String()), slog.String("job_id", jobID.String()),
 			slog.Int("incomplete_accounts", point.IncompleteAccountCount), slog.Int("stale_accounts", point.StaleAccountCount),
 			slog.Int("connections_invalidated", summary.Invalidated))
@@ -206,7 +206,7 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 			return nil, 0, false, err
 		}
 		if invalidate {
-			s.logger.Warn("connection set invalid", slog.String("identity_id", item.Identity.ID.String()), slog.String("error_class", class))
+			s.logger.WarnContext(ctx, "connection set invalid", slog.String("identity_id", item.Identity.ID.String()), slog.String("error_class", class))
 		}
 		return written, len(item.Accounts), invalidate, nil
 	}

@@ -98,6 +98,7 @@ func handlerError(c *gin.Context, err error) {
 	case errors.Is(err, auth.ErrUnauthenticated):
 		writeProblem(c, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
 	default:
+		logHandlerError(c, err)
 		writeProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error", "The request failed due to an internal error.")
 	}
 }

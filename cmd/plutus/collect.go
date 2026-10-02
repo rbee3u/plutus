@@ -30,12 +30,12 @@ func newCollectCommand() *cobra.Command {
 				return err
 			}
 			defer func() { _ = db.Close() }()
-			logger := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{Level: slog.LevelInfo}))
+			logger := runtimeFrom(cmd).logs.App
 			services, err := newServices(db, &cfg, buildAdapters(&cfg), logger)
 			if err != nil {
 				return err
 			}
-			return runCollect(cmd.Context(), services, portfolioID, cmd.OutOrStdout())
+			return runCollect(cmd.Context(), services, portfolioID, cmd.OutOrStdout(), logger)
 		},
 	}
 	cmd.Flags().StringVar(&portfolioFlag, "portfolio", "", "Portfolio UUID to collect")
@@ -43,7 +43,7 @@ func newCollectCommand() *cobra.Command {
 	return cmd
 }
 
-func runCollect(ctx context.Context, services *services, portfolioID uuid.UUID, out interface{ Write([]byte) (int, error) }) error {
+func runCollect(ctx context.Context, services *services, portfolioID uuid.UUID, out interface{ Write([]byte) (int, error) }, logger *slog.Logger) error {
 	job, created, err := services.jobs.EnqueueCycle(ctx, portfolioID, jobs.TriggerManual, nil)
 	if err != nil {
 		if errors.Is(err, jobs.ErrNotFound) {
@@ -54,7 +54,7 @@ func runCollect(ctx context.Context, services *services, portfolioID uuid.UUID, 
 	if !created {
 		_, _ = fmt.Fprintf(out, "reusing active cycle %s (%s)\n", job.ID, job.Status)
 	}
-	loop := worker.New(&worker.Options{Jobs: services.jobs, Collection: services.collection, Valuation: services.valuation, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
+	loop := worker.New(&worker.Options{Jobs: services.jobs, Collection: services.collection, Valuation: services.valuation, Logger: logger, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
 	deadline := time.Now().Add(10 * time.Minute)
 	for time.Now().Before(deadline) {
 		if _, err := loop.ProcessOnce(ctx); err != nil {

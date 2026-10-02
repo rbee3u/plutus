@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/pressly/goose/v3"
 
@@ -81,6 +82,25 @@ func CurrentVersion(db *sql.DB) (int64, error) {
 
 type writerLogger struct {
 	w io.Writer
+}
+
+// SetMigrationLogger routes operational migration logs for the current process.
+// Status deliberately replaces this logger with its command-result writer.
+func SetMigrationLogger(logger *slog.Logger) {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	goose.SetLogger(&migrationLogger{logger: logger.With("source", "goose")})
+}
+
+type migrationLogger struct{ logger *slog.Logger }
+
+func (l *migrationLogger) Printf(format string, values ...any) {
+	l.logger.Info(fmt.Sprintf(format, values...))
+}
+
+func (l *migrationLogger) Fatalf(format string, values ...any) {
+	l.logger.Error(fmt.Sprintf(format, values...))
 }
 
 func (l *writerLogger) Fatalf(format string, v ...any) {

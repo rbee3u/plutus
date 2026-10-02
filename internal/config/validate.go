@@ -12,6 +12,9 @@ import (
 
 // Validate checks durations, listen settings, and the TLS matrix.
 func Validate(cfg *Config, opts *Options) error {
+	if err := validateLogging(&cfg.Logging); err != nil {
+		return err
+	}
 	if strings.TrimSpace(cfg.Server.ListenAddress) == "" {
 		return errors.New("server.listen_address is required")
 	}
@@ -37,6 +40,27 @@ func Validate(cfg *Config, opts *Options) error {
 		return err
 	}
 	return validateTLS(&cfg.Server.TLS, opts)
+}
+
+func validateLogging(cfg *Logging) error {
+	if strings.TrimSpace(cfg.Directory) == "" {
+		return errors.New("logging.directory is required")
+	}
+	switch cfg.Level {
+	case "debug", "info", "warn", "error":
+	default:
+		return errors.New("logging.level must be debug, info, warn, or error")
+	}
+	if cfg.MaxSizeMB <= 0 || cfg.MaxSizeMB > int(^uint(0)>>1)/(1024*1024) {
+		return errors.New("logging.max_size_mb must be positive and fit in bytes")
+	}
+	if cfg.MaxBackups < 0 {
+		return errors.New("logging.max_backups must be nonnegative")
+	}
+	if cfg.MaxAgeDays < 0 || int64(cfg.MaxAgeDays) > int64(^uint64(0)>>1)/int64(24*time.Hour) {
+		return errors.New("logging.max_age_days must be nonnegative and fit in a duration")
+	}
+	return nil
 }
 
 func validateCookieSuffix(suffix string) error {

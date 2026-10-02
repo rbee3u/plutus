@@ -82,6 +82,39 @@ The check connects directly to loopback and verifies the server with
 `origin-ca.pem`. Require readiness success after each start; an active unit
 alone is insufficient.
 
+## Logs
+
+The default directory is `./logs` relative to the unit's `WorkingDirectory`, so
+test and prod files are isolated in their deployment directories. Runtime
+commands create `app.log`, `access.log`, and, when enabled, `sql.log`;
+application records also appear in the systemd journal. New directories use mode
+`0750` and new files use `0600`. The service user needs write access to the
+directory.
+
+Exactly one process may use a log directory. Stop `serve` before running
+maintenance or `collect` against its database, following the existing database
+ownership rule. Separate instances need separate working directories or
+`logging.directory` overrides. No process lock enforces this convention.
+
+Each file rotates before a write would exceed 100 MiB by default. Backups are
+named `app-<UTC timestamp>.log.gz` (and likewise for access/SQL), with five
+backups per channel and no default age limit. Configure count, age, size, and
+compression through the [logging settings](./development.md#logging).
+Compression and cleanup are asynchronous, not a disk quota or an exit-time
+guarantee; short commands may leave plain backups for the next run to process,
+and maintenance errors are not returned by the rotation library.
+
+Unusable active log files fail startup. During operation, write or rotation
+failure reports the error and affected record to stderr; subsequent writes retry
+the file. Records individually exceeding the size limit also go to stderr.
+Normal shutdown closes active files after HTTP, worker, and database producers
+stop. No per-record fsync is performed.
+
+SQL logging is enabled by default and includes full parameter values,
+migrations, and seed SQL. This is the accepted inspection policy. Disable it
+with `sql_enabled = false` in the TOML `[logging]` section when it is not
+needed. Log levels control application output independently of access/SQL.
+
 ## Upgrades and resets
 
 Check migration prerequisites below and apply any

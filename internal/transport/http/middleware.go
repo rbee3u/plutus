@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"github.com/rbee3u/plutus/internal/infra/logging"
 )
 
 func securityHeaders() gin.HandlerFunc {
@@ -26,7 +28,7 @@ func requestLog(logger *slog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		traceID := c.GetHeader("X-Request-Id")
-		if traceID == "" {
+		if !validTraceID(traceID) {
 			id, err := uuid.NewV7()
 			if err != nil {
 				id = uuid.Must(uuid.NewRandom())
@@ -34,9 +36,10 @@ func requestLog(logger *slog.Logger) gin.HandlerFunc {
 			traceID = id.String()
 		}
 		c.Set("trace_id", traceID)
+		c.Request = c.Request.WithContext(logging.WithFields(c.Request.Context(), slog.String("trace_id", traceID)))
 		c.Writer.Header().Set("X-Request-Id", traceID)
 		c.Next()
-		logger.Info("http request",
+		logger.InfoContext(c.Request.Context(), "http request",
 			slog.String("trace_id", traceID),
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
@@ -44,4 +47,17 @@ func requestLog(logger *slog.Logger) gin.HandlerFunc {
 			slog.Duration("duration", time.Since(start)),
 		)
 	}
+}
+
+func validTraceID(value string) bool {
+	if len(value) < 1 || len(value) > 128 {
+		return false
+	}
+	for _, char := range value {
+		if char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9' || char == '.' || char == '_' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }

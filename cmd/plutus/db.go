@@ -11,6 +11,9 @@ import (
 )
 
 func loadProcessConfig(cmd *cobra.Command) (config.Config, error) {
+	if runtime := runtimeFrom(cmd); runtime != nil {
+		return runtime.config, nil
+	}
 	configPath, err := flagString(cmd, "config")
 	if err != nil {
 		return config.Config{}, err
@@ -40,7 +43,8 @@ func openConfiguredDB(cmd *cobra.Command) (*sql.DB, config.Config, error) {
 	if cfg.Database.DSN == "" {
 		return nil, config.Config{}, errors.New("database DSN is required in the selected env file, PLUTUS_DSN / PLUTUS_DSN_FILE, or the selected TOML file")
 	}
-	db, err := mysql.Open(cfg.Database.DSN)
+	runtime := runtimeFrom(cmd)
+	db, err := mysql.Open(cfg.Database.DSN, mysql.Loggers{App: runtime.logs.App, SQL: runtime.logs.SQL})
 	if err != nil {
 		return nil, config.Config{}, err
 	}

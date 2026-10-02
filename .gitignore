@@ -1,6 +1,7 @@
 .DS_Store
 /.idea/
 /dist/
+/logs/
 /config/local.toml
 /config/local.env
 /config/agent.toml
