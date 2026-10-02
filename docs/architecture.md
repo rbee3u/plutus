@@ -85,8 +85,19 @@ application does not retain or depend on raw Platform response shapes.
 Runtime calls use only read-only account, balance, position, and market-data
 interfaces. Normalized error details may name an endpoint and Platform error
 code; raw bodies and credentials must not enter logs or storage. Live HTTP and
-Kraken WebSocket connections use IPv4; an external proxy controls the address
-family it presents to the Platform.
+Kraken WebSocket connections use IPv4 for direct access and proxy first hops; an
+external proxy controls the address family it presents to the Platform.
+
+Validated instance configuration selects environment proxies, forced direct
+access, or one forced HTTP/HTTPS/SOCKS proxy for all runtime Adapters. Explicit
+proxy mode ignores environment bypass rules and never falls back to direct. The
+shared transport clones the default transport without global mutation; Adapter
+factories preserve individual timeouts and caller-supplied HTTP clients retain
+precedence. Kraken WebSocket uses the same configured HTTP client. Proxy
+availability is not a readiness dependency. External software such as sing-box
+owns SS protocols, credentials, and tunnel lifecycle. Explicit Adapter recording
+retains its separate process-environment proxy policy. See
+[proxy configuration](./development.md#platform-proxies).
 
 Development registers the deterministic fake for offered Platforms. Remote test
 and prod register live Adapters. Automated tests use independent synthetic

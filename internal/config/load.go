@@ -59,6 +59,10 @@ type fileConfig struct {
 	Collection struct {
 		ConnectionValidationTimeout *string `toml:"connection_validation_timeout"`
 		FakeAdapter                 bool    `toml:"fake_adapter"`
+		Proxy                       struct {
+			Mode *string `toml:"mode"`
+			URL  *string `toml:"url"`
+		} `toml:"proxy"`
 	} `toml:"collection"`
 	Database struct {
 		AllowReset bool `toml:"allow_reset"`
@@ -116,6 +120,7 @@ func defaults() Config {
 		},
 		Collection: Collection{
 			ConnectionValidationTimeout: 15 * time.Second,
+			Proxy:                       Proxy{Mode: "environment"},
 		},
 	}
 }
@@ -174,6 +179,12 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 		return err
 	}
 	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
+	if parsed.Collection.Proxy.Mode != nil {
+		cfg.Collection.Proxy.Mode = strings.TrimSpace(*parsed.Collection.Proxy.Mode)
+	}
+	if parsed.Collection.Proxy.URL != nil {
+		cfg.Collection.Proxy.URL = strings.TrimSpace(*parsed.Collection.Proxy.URL)
+	}
 	cfg.Database.AllowReset = parsed.Database.AllowReset
 	if parsed.Logging.Directory != nil {
 		cfg.Logging.Directory = strings.TrimSpace(*parsed.Logging.Directory)
@@ -238,6 +249,12 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 		return err
 	}
 	if err := optionalBool(&cfg.Collection.FakeAdapter, lookup, "PLUTUS_COLLECTION_FAKE_ADAPTER"); err != nil {
+		return err
+	}
+	if err := optionalString(&cfg.Collection.Proxy.Mode, lookup, "PLUTUS_COLLECTION_PROXY_MODE"); err != nil {
+		return err
+	}
+	if err := optionalString(&cfg.Collection.Proxy.URL, lookup, "PLUTUS_COLLECTION_PROXY_URL"); err != nil {
 		return err
 	}
 	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {

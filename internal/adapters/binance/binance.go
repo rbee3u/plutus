@@ -51,6 +51,8 @@ type Options struct {
 	Hosts Hosts
 	HTTP  *http.Client
 	Now   func() time.Time
+	// HTTPFactory creates a client with the Adapter timeout when HTTP is nil.
+	HTTPFactory func(time.Duration) *http.Client
 }
 
 // Adapter is the Binance adapter. It is safe for concurrent use.
@@ -71,7 +73,11 @@ func New(in *Options) *Adapter {
 		opts.Hosts = DefaultHosts
 	}
 	if opts.HTTP == nil {
-		opts.HTTP = httpclient.NewIPv4(requestTimeout)
+		factory := opts.HTTPFactory
+		if factory == nil {
+			factory = httpclient.NewIPv4
+		}
+		opts.HTTP = factory(requestTimeout)
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now

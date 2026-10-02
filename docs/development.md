@@ -95,27 +95,29 @@ TOML fields fail startup with their names; explicit invalid values, including
 Durations use Go notation such as `15s`, `2m`, and `168h`; days are expressed in
 hours.
 
-| TOML field                                 | Default     | Purpose                                                                             |
-| ------------------------------------------ | ----------- | ----------------------------------------------------------------------------------- |
-| `server.listen_address`                    | `"0.0.0.0"` | Bind address                                                                        |
-| `server.port`                              | `8080`      | Instance HTTP or HTTPS port                                                         |
-| `server.tls.cert_file`                     | `""`        | PEM server certificate; configure together with `key_file`                          |
-| `server.tls.key_file`                      | `""`        | PEM private key matching the server certificate                                     |
-| `server.tls.client_ca_file`                | `""`        | PEM trust bundle that enables required, verified client certificates                |
-| `logging.directory`                        | `"./logs"`  | Log directory relative to the process working directory                             |
-| `logging.level`                            | `"info"`    | Application threshold: debug, info, warn, or error                                  |
-| `logging.max_size_mb`                      | `100`       | Independent active-file size limit in MiB; must be positive                         |
-| `logging.max_backups`                      | `5`         | Backup count per channel; zero removes the count limit                              |
-| `logging.max_age_days`                     | `0`         | Backup age limit in 24-hour days; zero removes the age limit                        |
-| `logging.compress`                         | `true`      | gzip rotated files                                                                  |
-| `logging.sql_enabled`                      | `true`      | Record all project SQL executions and transaction boundaries                        |
-| `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks |
-| `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                     |
-| `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                |
-| `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime            |
-| `jobs.finished_retention`                  | `"2160h"`   | Retain finished jobs without report or point references; 1 to 365 days              |
-| `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes       |
-| `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                            |
+| TOML field                                 | Default         | Purpose                                                                                |
+| ------------------------------------------ | --------------- | -------------------------------------------------------------------------------------- |
+| `server.listen_address`                    | `"0.0.0.0"`     | Bind address                                                                           |
+| `server.port`                              | `8080`          | Instance HTTP or HTTPS port                                                            |
+| `server.tls.cert_file`                     | `""`            | PEM server certificate; configure together with `key_file`                             |
+| `server.tls.key_file`                      | `""`            | PEM private key matching the server certificate                                        |
+| `server.tls.client_ca_file`                | `""`            | PEM trust bundle that enables required, verified client certificates                   |
+| `logging.directory`                        | `"./logs"`      | Log directory relative to the process working directory                                |
+| `logging.level`                            | `"info"`        | Application threshold: debug, info, warn, or error                                     |
+| `logging.max_size_mb`                      | `100`           | Independent active-file size limit in MiB; must be positive                            |
+| `logging.max_backups`                      | `5`             | Backup count per channel; zero removes the count limit                                 |
+| `logging.max_age_days`                     | `0`             | Backup age limit in 24-hour days; zero removes the age limit                           |
+| `logging.compress`                         | `true`          | gzip rotated files                                                                     |
+| `logging.sql_enabled`                      | `true`          | Record all project SQL executions and transaction boundaries                           |
+| `database.allow_reset`                     | `false`         | Permit the explicit destructive `db reset` command, subject to database-name checks    |
+| `auth.cookie_suffix`                       | `""`            | Shared suffix for session and CSRF cookie names                                        |
+| `auth.session_idle_lifetime`               | `"168h"`        | Session expiry after inactivity; 1 minute to 90 days                                   |
+| `auth.session_absolute_lifetime`           | `"720h"`        | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
+| `jobs.finished_retention`                  | `"2160h"`       | Retain finished jobs without report or point references; 1 to 365 days                 |
+| `collection.connection_validation_timeout` | `"15s"`         | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
+| `collection.fake_adapter`                  | `false`         | Register fake Adapters for dev rather than live Adapters                               |
+| `collection.proxy.mode`                    | `"environment"` | Runtime Platform proxy policy: environment, direct, or proxy                           |
+| `collection.proxy.url`                     | `""`            | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
 
 Fields outside `[logging]` have matching environment overrides: prefix
 `PLUTUS_`, uppercase the field path, and replace dots with underscores. For
@@ -146,6 +148,57 @@ key_file = "/etc/plutus/server-key.pem"
 Finished-job retention includes succeeded, failed, and cancelled jobs, but never
 deletes jobs referenced by Account Reports or Valuation Points. It does not set
 a retention period for financial history.
+
+### Platform proxies
+
+One `[collection.proxy]` policy applies to all live runtime Adapters, including
+Connection validation, Collection, market data, and Kraken WebSocket reads.
+Restart the process after changing it. Each Adapter retains its own request
+budget; direct connections and proxy first hops use IPv4. An external proxy
+chooses the address family and public IP used to reach the Platform.
+
+```toml
+[collection.proxy]
+mode = "proxy"
+url = "http://127.0.0.1:7890"
+```
+
+- `environment` is the default. It preserves the process environment's
+  `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` behavior (including lowercase
+  variants). Go does not use `ALL_PROXY` here.
+- `direct` ignores all environment proxy settings.
+- `proxy` forces the configured URL for every runtime Platform request and
+  ignores `NO_PROXY`. An unavailable proxy fails the request; it never triggers
+  automatic direct fallback. Temporary failures retain compatible earlier
+  Account Reports as stale under the normal collection rules.
+
+The URL must be empty in `environment` or `direct` mode. In `proxy` mode it must
+use `http`, `https`, `socks5`, or `socks5h`, with a host and explicit port from
+1 to 65535. Only an empty or root path is allowed; usernames, passwords,
+queries, and fragments are rejected. TLS certificate verification remains
+enabled. The matching overrides are `PLUTUS_COLLECTION_PROXY_MODE` and
+`PLUTUS_COLLECTION_PROXY_URL`, with the normal process/env-file/TOML precedence.
+To override a proxy configuration with direct mode, also clear its URL.
+
+For a Shadowsocks exit on another server, run sing-box separately. Plutus
+connects to its loopback HTTP/SOCKS entry point, sing-box connects over SS to
+the exit server, and that server reaches the Platform. Bind the local entry
+point only to `127.0.0.1`, keep SS credentials in sing-box, and configure its
+routes without direct fallback. Ensure the exit uses the IPv4 address
+allowlisted for the Platform API keys. Plutus does not accept `ss://` or manage
+the tunnel.
+
+The deterministic fake stays offline and does not create proxy clients. Explicit
+`adapter record` remains independent: it ignores this runtime proxy
+configuration and uses only process proxy environment variables. The
+`--env-file` loader does not export variables into the process environment, so
+putting `HTTPS_PROXY` in that file alone does not configure the recording or
+`environment`-mode transport. Use shell exports or systemd `Environment=` /
+`EnvironmentFile=` for those variables. Recording credentials remain exclusively
+in `config/record.env` or `PLUTUS_RECORD_*`.
+
+See the [runtime proxy delivery report](./adapters/proxy-verification.md) for
+synthetic and agent verification coverage and remaining deployment gaps.
 
 ### Logging
 

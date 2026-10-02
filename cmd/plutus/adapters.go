@@ -1,10 +1,15 @@
 package main
 
 import (
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/binance"
 	"github.com/rbee3u/plutus/internal/adapters/bybit"
 	"github.com/rbee3u/plutus/internal/adapters/fake"
+	"github.com/rbee3u/plutus/internal/adapters/httpclient"
 	"github.com/rbee3u/plutus/internal/adapters/kraken"
 	"github.com/rbee3u/plutus/internal/adapters/okx"
 	"github.com/rbee3u/plutus/internal/config"
@@ -24,9 +29,26 @@ func buildAdapters(cfg *config.Config) *adapters.Registry {
 		}
 		return registry
 	}
-	registry.Register(adapters.PlatformBinance, binance.New(nil))
-	registry.Register(adapters.PlatformOKX, okx.New(nil))
-	registry.Register(adapters.PlatformBybit, bybit.New(nil))
-	registry.Register(adapters.PlatformKraken, kraken.New(nil))
+	factory := platformHTTPFactory(cfg.Collection.Proxy)
+	registry.Register(adapters.PlatformBinance, binance.New(&binance.Options{HTTPFactory: factory}))
+	registry.Register(adapters.PlatformOKX, okx.New(&okx.Options{HTTPFactory: factory}))
+	registry.Register(adapters.PlatformBybit, bybit.New(&bybit.Options{HTTPFactory: factory}))
+	registry.Register(adapters.PlatformKraken, kraken.New(&kraken.Options{HTTPFactory: factory}))
 	return registry
+}
+
+// platformHTTPFactory receives validated configuration and creates a separate client per Adapter.
+func platformHTTPFactory(policy config.Proxy) func(time.Duration) *http.Client {
+	proxy := http.ProxyFromEnvironment
+	switch policy.Mode {
+	case "direct":
+		proxy = nil
+	case "proxy":
+		// Config validation has already checked the scheme, authority, and absence of credentials.
+		target, _ := url.Parse(policy.URL)
+		proxy = http.ProxyURL(target)
+	}
+	return func(timeout time.Duration) *http.Client {
+		return httpclient.NewIPv4WithProxy(timeout, proxy)
+	}
 }

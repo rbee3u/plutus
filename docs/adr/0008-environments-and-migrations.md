@@ -25,9 +25,15 @@ aliases.
 
 Test/prod use separate deployment directories and configs, with minimal systemd
 units, weak local-MySQL dependencies, and paced failure retries. Root execution
-is an operator preference. Live Adapters use IPv4; proxies remain external.
-Migrations are explicit: freeze the baseline after prod's first migration and
-append migrations compatible with populated databases. Never reset prod.
+is an operator preference. Live Adapters use IPv4 for direct access and proxy
+first hops. Runtime configuration chooses an instance-wide environment, direct,
+or forced proxy policy. Environment is the compatible default; explicit policies
+ignore environment proxy settings, including bypass rules. Forced proxy failure
+never falls back to direct. HTTP/HTTPS/SOCKS entry points are supported without
+URL credentials; SS protocols and tunnel lifecycle remain external. Adapter
+recording keeps its separate process-environment proxy behavior. Migrations are
+explicit: freeze the baseline after prod's first migration and append migrations
+compatible with populated databases. Never reset prod.
 
 ## Reason and trade-offs
 
@@ -38,6 +44,11 @@ necessary. Fewer configuration choices reduce operator burden while retaining
 meaningful policies; strict loading exposes mistakes. Manual upgrades, secret
 management, and direct configuration migration require operator care. IPv4
 simplifies exchange IP allowlisting without controlling external proxies.
+Explicit policies make deployment routing predictable while retaining existing
+environment behavior by default. External tunnels avoid coupling protocol
+versions, credentials, and process lifecycle to Plutus. Restarting to apply
+configuration is accepted; per-Platform routing, authenticated proxy URLs, and
+automatic direct fallback are not offered.
 
 [Development](../development.md#configuration),
 [testing](../testing.md#test-configuration), and [deployment](../deployment.md)

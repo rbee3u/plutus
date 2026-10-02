@@ -124,6 +124,14 @@ type Collection struct {
 	ConnectionValidationTimeout time.Duration
 	// FakeAdapter registers the deterministic offline adapter for every Platform.
 	FakeAdapter bool
+	// Proxy controls all runtime Platform HTTP and WebSocket requests.
+	Proxy Proxy
+}
+
+// Proxy holds the instance-wide runtime Platform proxy policy.
+type Proxy struct {
+	Mode string
+	URL  string
 }
 
 // Database holds the MySQL DSN and development-reset permission. The DSN must never be logged.

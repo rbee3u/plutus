@@ -27,3 +27,11 @@ cookie_suffix = ""
 [collection]
 # Dev uses the deterministic offline Adapter; test and prod use live Adapters.
 fake_adapter = false
+
+[collection.proxy]
+# environment preserves HTTP_PROXY/HTTPS_PROXY/NO_PROXY from the process environment.
+# direct ignores environment proxies; proxy requires a URL and ignores NO_PROXY.
+mode = "environment"
+# A local sing-box HTTP/SOCKS entry point can forward through an external SS tunnel.
+# Set mode = "proxy" before configuring the URL; usernames and passwords are not accepted.
+# url = "http://127.0.0.1:7890"

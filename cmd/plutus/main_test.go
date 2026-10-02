@@ -2,9 +2,17 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/rbee3u/plutus/internal/adapters/offline"
 )
+
+func TestMain(m *testing.M) {
+	offline.Install()
+	os.Exit(m.Run())
+}
 
 func TestRootCommandHelp(t *testing.T) {
 	t.Parallel()

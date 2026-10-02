@@ -349,3 +349,20 @@ func TestFailuresAndEmptyResponsesCannotPromoteSamples(t *testing.T) {
 		})
 	}
 }
+
+func TestRecordingIgnoresRuntimeProxyConfiguration(t *testing.T) {
+	// Both inherited runtime config flags must remain irrelevant to recording's offline commands.
+	t.Setenv("PLUTUS_COLLECTION_PROXY_MODE", "invalid")
+	t.Setenv("PLUTUS_COLLECTION_PROXY_URL", "ss://unused.invalid:1")
+	for _, flags := range [][]string{{"--list-requests"}, {"--only", "api_v3_account", "--dry-run"}} {
+		cmd := newRootCommand()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		args := []string{"--config", "/missing/runtime.toml", "--env-file", "/missing/runtime.env", "adapter", "record", "--platform", "binance"}
+		cmd.SetArgs(append(args, flags...))
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("recording loaded runtime configuration: %v", err)
+		}
+	}
+}

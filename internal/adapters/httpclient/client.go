@@ -5,6 +5,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -12,6 +13,18 @@ import (
 // TLS, connection reuse, and proxy behavior. A configured proxy determines the IP family used
 // between that proxy and a Platform.
 func NewIPv4(timeout time.Duration) *http.Client {
+	return &http.Client{Timeout: timeout, Transport: ipv4Transport()}
+}
+
+// NewIPv4WithProxy retains the default transport's TLS and connection reuse but replaces its
+// proxy policy. A nil callback forces direct access; a fixed callback ignores environment bypasses.
+func NewIPv4WithProxy(timeout time.Duration, proxy func(*http.Request) (*url.URL, error)) *http.Client {
+	transport := ipv4Transport()
+	transport.Proxy = proxy
+	return &http.Client{Timeout: timeout, Transport: transport}
+}
+
+func ipv4Transport() *http.Transport {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		base = &http.Transport{Proxy: http.ProxyFromEnvironment}
@@ -25,5 +38,5 @@ func NewIPv4(timeout time.Duration) *http.Client {
 	transport.DialContext = func(ctx context.Context, _ string, address string) (net.Conn, error) {
 		return dial(ctx, "tcp4", address)
 	}
-	return &http.Client{Timeout: timeout, Transport: transport}
+	return transport
 }
