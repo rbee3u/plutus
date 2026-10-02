@@ -227,7 +227,7 @@ unvalued-flow cases.
 Equivalent commands without dropping the database:
 
 ```sh
-npm --prefix web run build
+make web
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env migrate up
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env db seed --profile walkthrough
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env serve
@@ -254,12 +254,16 @@ Passwords must be 8 to 128 characters.
 ## Embedded frontend
 
 `serve` hosts the SPA from `web/dist` via `go:embed`. The directory is generated
-and ignored by Git. After installing frontend dependencies with `make deps`,
-Make targets that compile Go build the SPA first. Run
-`npm --prefix web run build` before direct `go build`, `go test`, or `go run`
-commands, and again after frontend changes. `./scripts/local-serve.sh` runs the
-complete local service on `:8080` and keeps existing data. Restart it after
-frontend changes to rebuild the embedded SPA.
+and ignored by Git. After installing frontend dependencies with `make deps`, run
+`make web` to build the SPA before `make build`, `make test`, `make lint`, or
+`make run`, and again after frontend changes. These targets are independent; the
+caller controls when to rebuild the frontend. Direct `go build`, `go test`, and
+`go run` commands also require the generated SPA.
+
+Each `*-serve.sh` script runs `make web` once before starting the service. The
+wipe-and-serve scripts reuse that build for both reset and serve commands.
+`./scripts/local-serve.sh` runs the complete local service on `:8080` and keeps
+existing data. Restart it after frontend changes to rebuild the embedded SPA.
 
 See [testing and verification](./testing.md) for validation gates, temporary
 MySQL setup, agent runtime verification, and Adapter delivery reports. For

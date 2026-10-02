@@ -19,6 +19,7 @@ fi
 echo "Resetting plutus_local with the walkthrough seed, then serving on 0.0.0.0:8080."
 echo
 
+make web
 make run ARGS="--config $config --env-file $envfile db reset --profile walkthrough"
 
 echo

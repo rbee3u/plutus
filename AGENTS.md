@@ -61,9 +61,9 @@
   encountered.
 - Go changes must pass the
   [validation gates](./docs/testing.md#validation-gates) in order:
-  `make format && make build && make test && make lint`. Fix failures and repeat
-  the sequence. Tests allow loopback replay and temporary MySQL, never external
-  requests, live keys, or pre-created databases.
+  `make format && make web && make build && make test && make lint`. Fix
+  failures and repeat the sequence. Tests allow loopback replay and temporary
+  MySQL, never external requests, live keys, or pre-created databases.
 - New or expanded real Adapter deliveries also require a Linux amd64 build and
   an [Adapter delivery report](./docs/testing.md#adapter-delivery-reports).
   Synthetic `testdata/` and recorded `evidence/` are independent; follow the

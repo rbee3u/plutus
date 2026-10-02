@@ -4,7 +4,7 @@ GOARCH ?= $(shell go env GOARCH)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 ARGS ?=
 
-.PHONY: help deps generate style format build test lint run
+.PHONY: help deps generate style format web build test lint run
 
 help:
 	@printf "%s\n" \
@@ -16,14 +16,16 @@ help:
 		"  make generate   Generate SQL query code and Go/TypeScript API bindings" \
 		"  make style      Check Go and frontend formatting without modifying files" \
 		"  make format     Format Go imports, Go code, and frontend sources" \
-		"  make build      Build the frontend and static CLI in dist/ (default: host platform)" \
+		"  make web        Build the frontend for Go embedding" \
+		"  make build      Build the static CLI in dist/ (default: host platform)" \
 		"  make test       Run offline Go and frontend unit tests using temporary test databases" \
 		"  make lint       Run Go linters, TypeScript type checks, and ESLint" \
 		"  make run        Run the CLI with go run; pass CLI arguments via ARGS" \
 		"" \
 		Examples: \
-		"  make run ARGS=--help" \
-		"  make build GOOS=linux GOARCH=arm64"
+		"  make format && make web && make build && make test && make lint" \
+		"  make web && make run ARGS=--help" \
+		"  make web && make build GOOS=linux GOARCH=arm64"
 
 deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
@@ -54,8 +56,10 @@ format:
 	gofumpt -l -w .
 	npm --prefix web run format
 
-build:
+web:
 	npm --prefix web run build
+
+build:
 	mkdir -p ./dist
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-trimpath -ldflags "-s -w -X main.version=$(VERSION)" \
@@ -63,16 +67,13 @@ build:
 	@echo "built dist/plutus-$(GOOS)-$(GOARCH) ($(VERSION))"
 
 test:
-	npm --prefix web run build
 	go test -count 1 ./...
 	npm --prefix web run test
 
 lint:
-	npm --prefix web run build
 	golangci-lint run
 	npm --prefix web run typecheck
 	npm --prefix web run lint
 
 run:
-	npm --prefix web run build
 	go run ./cmd/plutus $(ARGS)

@@ -10,7 +10,7 @@ test. For prod, replace `test` with `prod` in paths and commands, and use port
 1. Build the server binary with the SPA:
 
    ```sh
-   make build GOOS=linux GOARCH=amd64
+   make web && make build GOOS=linux GOARCH=amd64
    ```
 
 2. Upload it as `/opt/plutus-test/plutus`. Copy the

@@ -5,33 +5,34 @@ agent instance. Automated tests create their own temporary databases.
 
 ## Validation gates
 
-Local Go development follows four validation gates in order. `make format` also
+Local Go development follows five validation gates in order. `make format` also
 runs Prettier and `make lint` also runs the frontend typecheck and ESLint:
 
 1. `make format`: rewrite imports and formatting before validating the code.
-2. `make build`: build the SPA, confirm the formatted code compiles, and build a
-   static `dist/plutus-<GOOS>-<GOARCH>` binary for the current platform with the
-   git version baked in (`plutus --version`). Override `GOOS` and `GOARCH` to
+2. `make web`: build the SPA for Go embedding.
+3. `make build`: confirm the formatted code compiles and build a static
+   `dist/plutus-<GOOS>-<GOARCH>` binary for the current platform with the git
+   version baked in (`plutus --version`). Override `GOOS` and `GOARCH` to
    cross-compile for another platform.
-3. `make test`: run Go and frontend Vitest unit tests without cached results
+4. `make test`: run Go and frontend Vitest unit tests without cached results
    after the build passes. This gate is offline: no external requests or live
    keys; loopback replay and temporary MySQL are allowed.
-4. `make lint`: run the configured linters after tests pass.
+5. `make lint`: run the configured linters after tests pass.
 
 Each gate must pass before proceeding to the next. Stop on failure, fix the
 issue, and repeat the sequence:
 
 ```sh
-make format && make build && make test && make lint
+make format && make web && make build && make test && make lint
 ```
 
 `make style` is intended for future GitHub CI, where it replaces `make format`
 as the first gate. It checks formatting without rewriting files and fails when
-formatting corrections are needed; build, tests, and lint follow in the same
-order:
+formatting corrections are needed; frontend build, Go build, tests, and lint
+follow in the same order:
 
 ```sh
-make style && make build && make test && make lint
+make style && make web && make build && make test && make lint
 ```
 
 The optional Chromium check uses a loopback-only Vite server and mocked API
@@ -96,10 +97,11 @@ and evidence review instead.
 ## Adapter delivery reports
 
 For a new or expanded real Platform Adapter delivery, also run
-`make build GOOS=linux GOARCH=amd64`. Report four items: recorded evidence with
-dates and gaps; independent synthetic test results per affected Platform;
-agent-environment coverage when applicable; and what was not covered. Documented
-or synthetic scenarios must remain distinct from observed real coverage.
+`make build GOOS=linux GOARCH=amd64` after `make web`. Report four items:
+recorded evidence with dates and gaps; independent synthetic test results per
+affected Platform; agent-environment coverage when applicable; and what was not
+covered. Documented or synthetic scenarios must remain distinct from observed
+real coverage.
 
 ## Test configuration
 

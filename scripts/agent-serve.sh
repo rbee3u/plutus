@@ -22,4 +22,5 @@ echo "This script does not reset the database."
 echo "Open http://127.0.0.1:8081 (not :8080)."
 echo
 
+make web
 exec make run ARGS="--config $config --env-file $envfile serve"

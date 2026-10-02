@@ -25,4 +25,5 @@ if [[ -n "$lan_ip" ]]; then
 fi
 echo
 
+make web
 exec make run ARGS="--config $config --env-file $envfile serve"

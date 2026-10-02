@@ -73,8 +73,8 @@ the master key with `openssl rand -base64 32`. Dev uses the fake Adapter without
 real exchange keys. Agent sessions use the separate
 [agent setup](./docs/development.md#agent-setup) on :8081.
 
-For a fresh local walkthrough, the following command resets `plutus_local`,
-migrates it, loads the seed data, builds the frontend, and starts the service:
+For a fresh local walkthrough, the following command builds the frontend once,
+resets `plutus_local`, migrates it, loads the seed data, and starts the service:
 
 ```sh
 ./scripts/local-wipe-and-serve.sh
