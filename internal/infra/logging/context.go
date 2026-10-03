@@ -43,7 +43,7 @@ func BindContext(ctx context.Context, logger *slog.Logger) *slog.Logger {
 
 type contextHandler struct{ slog.Handler }
 
-func (h *contextHandler) Handle(ctx context.Context, record slog.Record) error { //nolint:gocritic // The slog.Handler interface requires passing Record by value.
+func (h *contextHandler) Handle(ctx context.Context, record slog.Record) error {
 	fields, _ := ctx.Value(fieldsKey{}).([]slog.Attr)
 	if len(fields) > 0 {
 		record = record.Clone()

@@ -55,7 +55,7 @@ func TestConfiguredProxyTunnels(t *testing.T) {
 			defer client.CloseIdleConnections()
 			transport := client.Transport.(*http.Transport)
 			transport.TLSClientConfig = origin.Client().Transport.(*http.Transport).TLSClientConfig.Clone()
-			response, err := client.Get(requestURL)
+			response, err := testGet(t, client, requestURL)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +74,7 @@ func TestDirectAndFailedProxy(t *testing.T) {
 	var requests atomic.Int64
 	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { requests.Add(1); w.WriteHeader(http.StatusNoContent) }))
 	defer origin.Close()
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestDirectAndFailedProxy(t *testing.T) {
 	t.Setenv("NO_PROXY", "*")
 	direct := NewIPv4WithProxy(time.Second, nil)
 	defer direct.CloseIdleConnections()
-	response, err := direct.Get(origin.URL)
+	response, err := testGet(t, direct, origin.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestDirectAndFailedProxy(t *testing.T) {
 	target, _ := url.Parse(address)
 	proxied := NewIPv4WithProxy(time.Second, http.ProxyURL(target))
 	defer proxied.CloseIdleConnections()
-	response, err = proxied.Get(origin.URL)
+	response, err = testGet(t, proxied, origin.URL)
 	if err == nil {
 		_ = response.Body.Close()
 		t.Fatal("unavailable proxy succeeded")
@@ -105,7 +105,8 @@ func TestDirectAndFailedProxy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, origin.URL, nil)
-	if _, err = proxied.Do(req); err == nil {
+	if response, err = proxied.Do(req); err == nil {
+		_ = response.Body.Close()
 		t.Fatal("cancelled proxy request succeeded")
 	}
 }
@@ -114,7 +115,7 @@ func TestEnvironmentProxyIsolation(t *testing.T) {
 	if os.Getenv("PLUTUS_PROXY_HELPER") != "" {
 		// Restore the standard environment callback only in this isolated helper process.
 		http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
-		req, _ := http.NewRequest(http.MethodGet, "https://exchange.invalid/account", nil)
+		req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://exchange.invalid/account", nil)
 		client := NewIPv4(time.Second)
 		proxy, err := client.Transport.(*http.Transport).Proxy(req)
 		if err != nil {
@@ -131,7 +132,7 @@ func TestEnvironmentProxyIsolation(t *testing.T) {
 		return
 	}
 	for _, bypass := range []bool{false, true} {
-		command := exec.Command(os.Args[0], "-test.run=^TestEnvironmentProxyIsolation$")
+		command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestEnvironmentProxyIsolation$") // #nosec G204 G702 -- Re-execute this test binary with a fixed test selector.
 		var env []string
 		for _, entry := range os.Environ() {
 			key, _, _ := strings.Cut(entry, "=")
@@ -147,7 +148,8 @@ func TestEnvironmentProxyIsolation(t *testing.T) {
 			want = ""
 			noProxy = "*"
 		}
-		command.Env = append(env, "PLUTUS_PROXY_HELPER=1", "HTTPS_PROXY=http://127.0.0.1:7890", "NO_PROXY="+noProxy, "PLUTUS_PROXY_EXPECT="+want)
+		env = append(env, "PLUTUS_PROXY_HELPER=1", "HTTPS_PROXY=http://127.0.0.1:7890", "NO_PROXY="+noProxy, "PLUTUS_PROXY_EXPECT="+want)
+		command.Env = env
 		if out, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("environment case bypass=%t: %v\n%s", bypass, err, out)
 		}

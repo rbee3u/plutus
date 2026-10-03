@@ -163,16 +163,6 @@ func (r *replay) earnUSD(amounts adapters.Totals) string {
 	return sum.FloatString(8)
 }
 
-func fixturePaths(t *testing.T, dir string) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
-
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no fixtures in %s: %v", dir, err)
-	}
-	return paths
-}
-
 func readFixture(t *testing.T, path string) fixture.File {
 	t.Helper()
 	f, err := fixture.ReadSynthetic(path)
@@ -204,13 +194,6 @@ func (r *replay) failure(scenario string) fixture.File {
 		r.t.Fatalf("no %s fixture", scenario)
 	}
 	return f
-}
-
-// tolerateErrors makes the replay answer badly signed requests with the synthetic error fixtures.
-func (r *replay) tolerateErrors() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.lenient = true
 }
 
 // then queues one-shot answers for an endpoint, served before the default fixture.

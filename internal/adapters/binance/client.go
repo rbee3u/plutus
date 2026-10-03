@@ -154,6 +154,8 @@ func (c *client) baseURL(h host) string {
 		return c.hosts.FAPI
 	case hostDAPI:
 		return c.hosts.DAPI
+	case hostAPI:
+		return c.hosts.API
 	default:
 		return c.hosts.API
 	}
@@ -315,10 +317,10 @@ func classOf(status, code int) string {
 	case -1001, errTimestampOutside:
 		return adapters.ClassTemporary
 	}
-	switch {
-	case status == http.StatusUnauthorized:
+	switch status {
+	case http.StatusUnauthorized:
 		return adapters.ClassAuthentication
-	case status == http.StatusTooManyRequests, status == http.StatusTeapot, status == http.StatusForbidden:
+	case http.StatusTooManyRequests, http.StatusTeapot, http.StatusForbidden:
 		return adapters.ClassRateLimited
 	default:
 		return adapters.ClassTemporary

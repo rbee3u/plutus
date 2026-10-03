@@ -23,7 +23,7 @@ import (
 func TestDefaultClientsCannotReachExchanges(t *testing.T) {
 	for _, target := range []string{"http", "https", "websocket", "binance", "okx", "bybit", "kraken"} {
 		t.Run(target, func(t *testing.T) {
-			cmd := exec.Command(os.Args[0], "-test.run=^TestForbiddenDefaultConnectionHelper$")
+			cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestForbiddenDefaultConnectionHelper$") // #nosec G204 G702 -- Re-execute this test binary with a fixed test selector.
 			cmd.Env = append(os.Environ(), "PLUTUS_OFFLINE_PROBE="+target, "HTTP_PROXY=http://exchange.invalid:8080", "HTTPS_PROXY=http://exchange.invalid:8080")
 			out, err := cmd.CombinedOutput()
 			if err == nil || !strings.Contains(string(out), "offline test attempted external connection") {
@@ -43,9 +43,9 @@ func TestForbiddenDefaultConnectionHelper(t *testing.T) {
 	ctx := context.Background()
 	switch target {
 	case "http", "https":
-		_, _ = http.Get(target + "://exchange.invalid/account")
+		_, _ = http.Get(target + "://exchange.invalid/account") //nolint:bodyclose,noctx // The offline guard must reject this convenience entrypoint before returning a response.
 	case "websocket":
-		_, _, _ = websocket.Dial(ctx, "wss://exchange.invalid/ws", nil)
+		_, _, _ = websocket.Dial(ctx, "wss://exchange.invalid/ws", nil) //nolint:bodyclose // The offline guard rejects the handshake before returning a response.
 	case "binance":
 		_, _ = binance.New(&binance.Options{Hosts: binance.Hosts{API: "https://exchange.invalid", PAPI: "https://exchange.invalid", FAPI: "https://exchange.invalid", DAPI: "https://exchange.invalid"}}).Validate(ctx, creds, adapters.StructureBinancePM)
 	case "okx":

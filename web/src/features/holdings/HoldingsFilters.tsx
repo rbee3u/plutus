@@ -28,7 +28,7 @@ export function HoldingsFilters({
   const platforms = usePlatforms();
   const identities = useIdentities(portfolioId);
   const items = identities.data?.items ?? [];
-  const platformIds = [...new Set(items.map((item) => item.platform))].sort();
+  const platformIds = [...new Set(items.map((item) => item.platform))];
   const visibleIdentities = items.filter(
     (item) => item.status !== "archived" && (!values.platform || item.platform === values.platform),
   );

@@ -13,7 +13,7 @@ func TestCatalogOffersEachPlatformsStructures(t *testing.T) {
 	t.Parallel()
 
 	offered := OfferedPlatforms()
-	want := []Platform{PlatformBinance, PlatformBybit, PlatformKraken, PlatformOKX}
+	want := []Platform{PlatformBinance, PlatformOKX, PlatformBybit, PlatformKraken}
 	if len(offered) != len(want) {
 		t.Fatalf("offered %v, want %v", offered, want)
 	}

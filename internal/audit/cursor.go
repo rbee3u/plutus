@@ -23,7 +23,7 @@ func encodeCursor(c listCursor) (string, error) {
 	payload := make([]byte, 73)
 	payload[0] = cursorVersion
 	copy(payload[1:17], c.PortfolioID[:])
-	binary.BigEndian.PutUint64(payload[17:25], uint64(c.OccurredAt))
+	binary.BigEndian.PutUint64(payload[17:25], uint64(c.OccurredAt)) // #nosec G115 -- Signed timestamp bits round-trip through the cursor wire format.
 	copy(payload[25:41], c.ID[:])
 	mac := hmac.New(sha256.New, cursorHMACKey)
 	if _, err := mac.Write(payload[:41]); err != nil {
@@ -49,7 +49,7 @@ func decodeCursor(raw string, portfolioID uuid.UUID) (listCursor, error) {
 	}
 	var cursor listCursor
 	copy(cursor.PortfolioID[:], payload[1:17])
-	cursor.OccurredAt = int64(binary.BigEndian.Uint64(payload[17:25]))
+	cursor.OccurredAt = int64(binary.BigEndian.Uint64(payload[17:25])) // #nosec G115 -- Restore the signed timestamp encoded by encodeCursor.
 	copy(cursor.ID[:], payload[25:41])
 	if cursor.PortfolioID != portfolioID {
 		return listCursor{}, ErrInvalidCursor

@@ -98,7 +98,7 @@ const listAccountsByIdentity = `-- name: ListAccountsByIdentity :many
 SELECT id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at
 FROM accounts
 WHERE portfolio_id = ? AND identity_id = ?
-ORDER BY account_type ASC
+ORDER BY id
 `
 
 type ListAccountsByIdentityParams struct {
@@ -145,7 +145,7 @@ SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.se
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ?
-ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC
+ORDER BY a.id
 `
 
 type ListAccountsByPortfolioRow struct {
@@ -201,11 +201,11 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byt
 
 const listBoundaryAccounts = `-- name: ListBoundaryAccounts :many
 SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, i.platform, i.display_name AS identity_name,
-       i.connection_status
+       i.connection_status, i.account_structure
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ? AND a.selected = TRUE AND i.status = 'enabled'
-ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC
+ORDER BY a.id
 `
 
 type ListBoundaryAccountsRow struct {
@@ -217,6 +217,7 @@ type ListBoundaryAccountsRow struct {
 	Platform         string
 	IdentityName     string
 	ConnectionStatus string
+	AccountStructure string
 }
 
 func (q *Queries) ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error) {
@@ -237,6 +238,7 @@ func (q *Queries) ListBoundaryAccounts(ctx context.Context, portfolioID []byte) 
 			&i.Platform,
 			&i.IdentityName,
 			&i.ConnectionStatus,
+			&i.AccountStructure,
 		); err != nil {
 			return nil, err
 		}

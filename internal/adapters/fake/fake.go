@@ -131,7 +131,7 @@ func MarginMode(structure adapters.AccountStructure, apiKey string, at time.Time
 	sum := sha256.Sum256([]byte(apiKey))
 	index := binary.BigEndian.Uint64(sum[:8]) % uint64(len(modes))
 	if strings.HasPrefix(apiKey, "switch-") {
-		index = (index + uint64(at.UTC().Unix()/60)) % uint64(len(modes))
+		index = (index + uint64(at.UTC().Unix()/60)) % uint64(len(modes)) // #nosec G115 -- Modulo scenario rotation intentionally uses the timestamp bit pattern.
 	}
 	return modes[index].ID
 }
@@ -201,8 +201,10 @@ func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.Ac
 		for i := range report.Positions {
 			report.Positions[i].Leverage, report.Positions[i].Margin, report.Positions[i].LiquidationPrice = nil, nil, nil
 		}
+	case adapters.MarginOKXSpot, adapters.MarginOKXMCM, adapters.MarginOKXPM, adapters.MarginBybitCross:
+		// These Margin Modes report every figure.
 	default:
-		// The other Margin Modes report every figure.
+		// Structures without a Margin Mode keep the base report.
 	}
 	return report
 }

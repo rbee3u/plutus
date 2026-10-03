@@ -276,7 +276,7 @@ func needsSnapshot(accounts []adapters.AccountType) bool {
 }
 
 func (r *run) account(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
-	switch accountType {
+	switch accountType { //nolint:exhaustive // Kraken supports only its declared Account Types, not Dual Investment.
 	case TypeMain:
 		if r.structure == adapters.StructureKrakenUnified {
 			return r.multiCollateral(ctx, TypeMain)

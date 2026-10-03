@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -376,29 +375,28 @@ var platformStructures = map[Platform][]AccountStructure{
 // Structure. These are the Platforms the API offers, the fake adapter covers, and the seeds use.
 func OfferedPlatforms() []Platform {
 	ids := make([]Platform, 0, len(platformNames))
-	for id := range platformNames {
+	for _, id := range []Platform{PlatformBinance, PlatformOKX, PlatformBybit, PlatformKraken} {
 		if len(platformStructures[id]) > 0 {
 			ids = append(ids, id)
 		}
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	return ids
 }
 
 var structureSpecs = map[AccountStructure]structureSpec{
 	StructureBinanceClassic: {name: "Classic Trading", types: []AccountTypeInfo{
 		{ID: "spot", Name: "Spot"},
-		{ID: "funding", Name: "Funding"},
 		{ID: "cross_margin", Name: "Cross Margin"},
 		{ID: "isolated_margin", Name: "Isolated Margin"},
 		{ID: "um_futures", Name: "USDⓈ-M Futures"},
 		{ID: "cm_futures", Name: "COIN-M Futures"},
+		{ID: "funding", Name: "Funding"},
 		{ID: "earn", Name: "Earn"},
 		{ID: TypeDualInvestment, Name: "Dual Investment"},
 	}},
 	StructureBinancePM: {name: "Portfolio Margin", types: []AccountTypeInfo{
-		{ID: "portfolio_margin", Name: "Portfolio Margin"},
 		{ID: "spot", Name: "Spot"},
+		{ID: "portfolio_margin", Name: "Portfolio Margin"},
 		{ID: "funding", Name: "Funding"},
 		{ID: "earn", Name: "Earn"},
 		{ID: TypeDualInvestment, Name: "Dual Investment"},
@@ -434,16 +432,16 @@ var structureSpecs = map[AccountStructure]structureSpec{
 	},
 	StructureKrakenSeparate: {name: "Separate wallets", types: []AccountTypeInfo{
 		{ID: "main", Name: "Main"},
-		{ID: "earn", Name: "Earn"},
 		{ID: "multi_m", Name: "Multi-M"},
 		{ID: "coin_m", Name: "Coin-M"},
 		{ID: "derivatives_holding", Name: "Derivatives Holding"},
+		{ID: "earn", Name: "Earn"},
 	}},
 	StructureKrakenUnified: {name: "Unified Wallet", types: []AccountTypeInfo{
 		{ID: "main", Name: "Main"},
-		{ID: "earn", Name: "Earn"},
 		{ID: "coin_m", Name: "Coin-M"},
 		{ID: "derivatives_holding", Name: "Derivatives Holding"},
+		{ID: "earn", Name: "Earn"},
 	}},
 }
 

@@ -64,13 +64,23 @@ func TestExtraRequestsFailEvenWhenTheirErrorsAreSwallowed(t *testing.T) {
 			request := fixture.Request{Service: "spot", Method: "GET", Path: "/account"}
 			s := New(adapters.PlatformBinance, request)
 			client := s.Client(offline.Client(t, server))
-			f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
-				resp, e := client.Get(server.URL + "/account")
+			f, err := s.Run(context.Background(), adapters.Credentials{}, func(ctx context.Context) error {
+				req, e := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/account", nil)
+				if e != nil {
+					return e
+				}
+				resp, e := client.Do(req)
 				if e != nil {
 					return e
 				}
 				_ = resp.Body.Close()
-				_, _ = client.Get(server.URL + extra)
+				extraReq, e := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+extra, nil)
+				if e != nil {
+					return e
+				}
+				if extraResp, extraErr := client.Do(extraReq); extraErr == nil {
+					_ = extraResp.Body.Close()
+				}
 				return nil
 			})
 			if calls != 1 || f == nil || err == nil {
@@ -89,8 +99,12 @@ func TestRedirectIsSavedWithoutFollowingIt(t *testing.T) {
 	defer server.Close()
 	s := New(adapters.PlatformBinance, fixture.Request{Service: "spot", Method: "GET", Path: "/account"})
 	client := s.Client(offline.Client(t, server))
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
-		resp, e := client.Get(server.URL + "/account")
+	f, err := s.Run(context.Background(), adapters.Credentials{}, func(ctx context.Context) error {
+		req, e := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/account", nil)
+		if e != nil {
+			return e
+		}
+		resp, e := client.Do(req)
 		if e != nil {
 			return e
 		}

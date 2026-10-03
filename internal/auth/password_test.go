@@ -53,3 +53,19 @@ func TestNormalizeUsername(t *testing.T) {
 		t.Fatalf("got display=%q normalized=%q", display, normalized)
 	}
 }
+
+func TestPasswordHashParameterBounds(t *testing.T) {
+	t.Parallel()
+	for _, params := range []string{"m=65536,t=3,p=0", "m=65536,t=3,p=256", "m=65536,t=3,p=257", "m=65536,t=3", "m=65536,t=0,p=2"} {
+		t.Run(params, func(t *testing.T) {
+			encoded := "$argon2id$v=19$" + params + "$c2FsdA$aGFzaA"
+			if ok, _, err := VerifyPassword("password", encoded); err == nil || ok {
+				t.Fatalf("invalid parameters accepted: ok=%v err=%v", ok, err)
+			}
+		})
+	}
+	params, _, _, err := decodePHC("$argon2id$v=19$m=65536,t=3,p=255$c2FsdA$aGFzaA")
+	if err != nil || params.threads != 255 {
+		t.Fatalf("valid uint8 boundary rejected: threads=%d err=%v", params.threads, err)
+	}
+}

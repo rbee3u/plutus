@@ -147,7 +147,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, in CreateInput) 
 		UserID:                    bin(userID),
 		Name:                      name,
 		Timezone:                  timezone,
-		CollectionIntervalSeconds: uint32(interval),
+		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 60..86400 seconds.
 		Undeletable:               false,
 		Version:                   1,
 		CreatedAt:                 now,
@@ -194,7 +194,7 @@ func (s *Service) Patch(ctx context.Context, userID, portfolioID uuid.UUID, vers
 	n, err := s.q.UpdatePortfolio(ctx, sqlcgen.UpdatePortfolioParams{
 		Name:                      name,
 		Timezone:                  timezone,
-		CollectionIntervalSeconds: uint32(interval),
+		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 60..86400 seconds.
 		UpdatedAt:                 s.now().UTC(),
 		ID:                        bin(portfolioID),
 		UserID:                    bin(userID),

@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -8,7 +9,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"io"
 	"log/slog"
 	"math/big"
 	"net"
@@ -24,14 +24,18 @@ func TestDefaultHTTPServesHealthAPIAndShell(t *testing.T) {
 	t.Parallel()
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 	})
 	ts := httptest.NewServer(engine)
 	t.Cleanup(ts.Close)
 
 	for _, path := range []string{"/health/live", "/login", "/api/v1/auth/csrf"} {
-		res, err := ts.Client().Get(ts.URL + path)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := ts.Client().Do(req)
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
@@ -71,7 +75,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 	})
 	ts := httptest.NewUnstartedServer(engine)
@@ -85,19 +89,19 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	}
 	host := ts.Listener.Addr().String()
 
-	tls12, err := tls.Dial("tcp", host, &tls.Config{
+	tls12, err := (&tls.Dialer{Config: &tls.Config{ // #nosec G402 -- Verify that the server rejects TLS 1.2.
 		RootCAs:            roots,
 		InsecureSkipVerify: false,
 		MinVersion:         tls.VersionTLS12,
 		MaxVersion:         tls.VersionTLS12,
 		ServerName:         "127.0.0.1",
-	})
+	}}).DialContext(t.Context(), "tcp", host)
 	if err == nil {
 		_ = tls12.Close()
 		t.Fatal("TLS 1.2 should be rejected")
 	}
 
-	conn, err := tls.Dial("tcp", host, &tls.Config{
+	conn, err := (&tls.Dialer{Config: &tls.Config{
 		RootCAs:    roots,
 		MinVersion: tls.VersionTLS13,
 		ServerName: "127.0.0.1",
@@ -108,12 +112,12 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 			}
 			return &cert, nil
 		},
-	})
+	}}).DialContext(t.Context(), "tcp", host)
 	if err != nil {
 		t.Fatalf("tls 1.3 dial: %v", err)
 	}
-	if conn.ConnectionState().Version != tls.VersionTLS13 {
-		t.Fatalf("negotiated 0x%x", conn.ConnectionState().Version)
+	if conn.(*tls.Conn).ConnectionState().Version != tls.VersionTLS13 {
+		t.Fatalf("negotiated 0x%x", conn.(*tls.Conn).ConnectionState().Version)
 	}
 	_ = conn.Close()
 
@@ -132,7 +136,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 
 	paths := []string{"/health/live", "/login", "/api/v1/auth/csrf"}
 	for _, path := range paths {
-		status, err := tlsRequest(ts.URL+path, &tls.Config{
+		status, err := tlsRequest(t.Context(), ts.URL+path, &tls.Config{
 			RootCAs:    roots,
 			MinVersion: tls.VersionTLS13,
 			ServerName: "127.0.0.1",
@@ -147,14 +151,14 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 			t.Fatalf("valid mTLS %s status %d", path, status)
 		}
 
-		if _, err := tlsRequest(ts.URL+path, &tls.Config{
+		if _, err := tlsRequest(t.Context(), ts.URL+path, &tls.Config{
 			RootCAs:    roots,
 			MinVersion: tls.VersionTLS13,
 			ServerName: "127.0.0.1",
 		}); err == nil {
 			t.Fatalf("missing client cert should fail %s", path)
 		}
-		if _, err := tlsRequest(ts.URL+path, &tls.Config{
+		if _, err := tlsRequest(t.Context(), ts.URL+path, &tls.Config{
 			RootCAs:      roots,
 			MinVersion:   tls.VersionTLS13,
 			ServerName:   "127.0.0.1",
@@ -162,7 +166,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 		}); err == nil {
 			t.Fatalf("expired client cert should fail %s", path)
 		}
-		if _, err := tlsRequest(ts.URL+path, &tls.Config{
+		if _, err := tlsRequest(t.Context(), ts.URL+path, &tls.Config{
 			RootCAs:      roots,
 			MinVersion:   tls.VersionTLS13,
 			ServerName:   "127.0.0.1",
@@ -173,11 +177,16 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	}
 }
 
-func tlsRequest(url string, tlsCfg *tls.Config) (int, error) {
+func tlsRequest(ctx context.Context, url string, tlsCfg *tls.Config) (int, error) {
 	client := &http.Client{
 		Transport: &http.Transport{TLSClientConfig: tlsCfg},
 	}
-	res, err := client.Get(url)
+	defer client.CloseIdleConnections()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, err
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -219,13 +228,14 @@ func mustCertificate(t *testing.T, parentPEM, parentKeyPEM []byte, notBefore, no
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 		DNSNames:              []string{"localhost", "127.0.0.1"},
 	}
-	if isCA {
+	switch {
+	case isCA:
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign
 		template.ExtKeyUsage = nil
-	} else if client {
+	case client:
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-	} else {
+	default:
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	}
 

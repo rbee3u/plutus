@@ -192,14 +192,6 @@ func (r *replay) once(path string, f fixture.File) {
 	r.queue[path] = append(r.queue[path], f)
 }
 
-// tolerateRefusals answers a badly signed request with its refusal without failing the test; the
-// only explicitly selected offline authentication tests provoke those.
-func (r *replay) tolerateRefusals() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.lenient = true
-}
-
 func (r *replay) paths() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -494,10 +486,10 @@ func TestMarginModeMustBeKnown(t *testing.T) {
 }
 
 // earnAnswers are invented Earn answers, so a test controls every product.
-func earnAnswers(flexible, fixedTerm, overviewUSD string) map[string]string {
+func earnAnswers(flexible, overviewUSD string) map[string]string {
 	return map[string]string{
 		epFlexible.path:      `{"retCode":0,"result":{"list":[` + flexible + `]}}`,
-		epFixedTerm.path:     `{"retCode":0,"result":{"list":[` + fixedTerm + `]}}`,
+		epFixedTerm.path:     `{"retCode":0,"result":{"list":[]}}`,
 		epDualAssets.path:    `{"retCode":0,"result":{"list":[]}}`,
 		epAssetOverview.path: `{"retCode":0,"result":{"list":[{"accountType":"Earn","totalEquity":"` + overviewUSD + `","valuationCurrency":"USD"}]}}`,
 	}
@@ -524,7 +516,7 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 	buyLow := `{"positionId":"1","category":"DualAssets","investCoin":"USDT","amount":"100","direction":"BuyLow","status":"Active"}`
 	redeeming := `{"positionId":"2","category":"DualAssets","investCoin":"USDC","amount":"30","direction":"BuyLow","status":"Redeeming"}`
 
-	answers := earnAnswers("", "", "130")
+	answers := earnAnswers("", "130")
 	answers[first] = page(redeeming, "page2")
 	answers[second] = page(buyLow, "")
 	r := newReplay(t, "", answers)
@@ -544,7 +536,7 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 		"missing coin":    {page(strings.Replace(buyLow, `"USDT"`, `""`, 1), ""), page("", "")},
 	} {
 		t.Run(name, func(t *testing.T) {
-			answers := earnAnswers("", "", "0")
+			answers := earnAnswers("", "0")
 			answers[first], answers[second] = pages[0], pages[1]
 			r := newReplay(t, "", answers)
 			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeFunding, TypeDualInvestment})
@@ -577,7 +569,7 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 
 func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 	savings := `{"coin":"USDT","amount":"20","claimableYield":"0.5"}`
-	r := newReplay(t, "", earnAnswers(savings, "", "500"))
+	r := newReplay(t, "", earnAnswers(savings, "500"))
 	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
 	if err != nil {
 		t.Fatal(err)
@@ -592,8 +584,8 @@ func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 	}
 
 	for name, answers := range map[string]map[string]string{
-		"within tolerance": earnAnswers(savings, "", "20.9"),
-		"unpriced coin":    earnAnswers(`{"coin":"NOPRICE","amount":"5"}`, "", "500"),
+		"within tolerance": earnAnswers(savings, "20.9"),
+		"unpriced coin":    earnAnswers(`{"coin":"NOPRICE","amount":"5"}`, "500"),
 		"no Earn bucket":   {epFlexible.path: `{"retCode":0,"result":{"list":[` + savings + `]}}`, epFixedTerm.path: `{"retCode":0,"result":{"list":[]}}`, epAssetOverview.path: `{"retCode":0,"result":{"list":[]}}`},
 	} {
 		t.Run(name, func(t *testing.T) {

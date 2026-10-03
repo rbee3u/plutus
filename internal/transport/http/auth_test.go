@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -28,13 +27,13 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 		Auth:   svc,
 	})
 
 	csrf := httptest.NewRecorder()
-	engine.ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if csrf.Code != http.StatusOK {
 		t.Fatalf("csrf %d %s", csrf.Code, csrf.Body.String())
 	}
@@ -50,13 +49,13 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	missing := httptest.NewRecorder()
-	engine.ServeHTTP(missing, httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"username":"x","password":"correct horse battery staple"}`)))
+	engine.ServeHTTP(missing, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/register", bytes.NewBufferString(`{"username":"x","password":"correct horse battery staple"}`)))
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("register missing %d %s", missing.Code, missing.Body.String())
 	}
 
 	missingCSRF := httptest.NewRecorder()
-	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
+	loginReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
 	loginReq.Header.Set("Content-Type", "application/json")
 	engine.ServeHTTP(missingCSRF, loginReq)
 	if missingCSRF.Code != http.StatusForbidden {
@@ -64,9 +63,9 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	login := httptest.NewRecorder()
-	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
+	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
-	okReq.Header.Set("X-CSRF-Token", csrfBody.Token)
+	okReq.Header.Set("X-Csrf-Token", csrfBody.Token)
 	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
 	engine.ServeHTTP(login, okReq)
 	if login.Code != http.StatusOK {
@@ -82,7 +81,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	me := httptest.NewRecorder()
-	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
 	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	engine.ServeHTTP(me, meReq)
 	if me.Code != http.StatusOK {
@@ -90,8 +89,8 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	logout := httptest.NewRecorder()
-	outReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
-	outReq.Header.Set("X-CSRF-Token", sessionCSRF)
+	outReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/logout", nil)
+	outReq.Header.Set("X-Csrf-Token", sessionCSRF)
 	outReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	outReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(logout, outReq)
@@ -100,7 +99,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	after := httptest.NewRecorder()
-	afterReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	afterReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
 	afterReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	engine.ServeHTTP(after, afterReq)
 	if after.Code != http.StatusUnauthorized {
@@ -112,12 +111,12 @@ func TestLoginRateLimit(t *testing.T) {
 	db := mysql.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 		Auth:   svc,
 	})
 	csrf := httptest.NewRecorder()
-	engine.ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	var csrfBody struct {
 		Token string `json:"token"`
 	}
@@ -128,9 +127,9 @@ func TestLoginRateLimit(t *testing.T) {
 	var last *httptest.ResponseRecorder
 	for i := 0; i < 6; i++ {
 		last = httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"wrong password!!"}`))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"wrong password!!"}`))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-CSRF-Token", csrfBody.Token)
+		req.Header.Set("X-Csrf-Token", csrfBody.Token)
 		req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
 		req.RemoteAddr = "10.20.30.40:1234"
 		engine.ServeHTTP(last, req)
@@ -153,7 +152,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:            slog.New(slog.DiscardHandler),
 		Ready:             StaticReady{},
 		Auth:              svc,
 		SessionCookieName: "plutus_session_agent",
@@ -161,7 +160,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	})
 
 	csrf := httptest.NewRecorder()
-	engine.ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if cookieValue(csrf, auth.CSRFCookieName) != "" {
 		t.Fatal("default csrf cookie should be absent")
 	}
@@ -174,9 +173,9 @@ func TestConfiguredCookieNames(t *testing.T) {
 	}
 
 	login := httptest.NewRecorder()
-	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
+	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
-	okReq.Header.Set("X-CSRF-Token", csrfBody.Token)
+	okReq.Header.Set("X-Csrf-Token", csrfBody.Token)
 	okReq.AddCookie(&http.Cookie{Name: "plutus_csrf_agent", Value: csrfCookie})
 	engine.ServeHTTP(login, okReq)
 	if login.Code != http.StatusOK {
@@ -191,7 +190,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	}
 
 	me := httptest.NewRecorder()
-	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
 	meReq.AddCookie(&http.Cookie{Name: "plutus_session_agent", Value: sessionCookie})
 	engine.ServeHTTP(me, meReq)
 	if me.Code != http.StatusOK {
@@ -223,13 +222,13 @@ func TestPutAuthPassword(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 		Auth:   svc,
 	})
 
 	csrf := httptest.NewRecorder()
-	engine.ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	csrfCookie := cookieValue(csrf, auth.CSRFCookieName)
 	var csrfBody struct {
 		Token string `json:"token"`
@@ -237,9 +236,9 @@ func TestPutAuthPassword(t *testing.T) {
 	_ = json.Unmarshal(csrf.Body.Bytes(), &csrfBody)
 
 	login := httptest.NewRecorder()
-	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+oldPassword+`"}`))
+	loginReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+oldPassword+`"}`))
 	loginReq.Header.Set("Content-Type", "application/json")
-	loginReq.Header.Set("X-CSRF-Token", csrfBody.Token)
+	loginReq.Header.Set("X-Csrf-Token", csrfBody.Token)
 	loginReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
 	engine.ServeHTTP(login, loginReq)
 	if login.Code != http.StatusOK {
@@ -250,9 +249,9 @@ func TestPutAuthPassword(t *testing.T) {
 
 	// Weak password rejected
 	weakRec := httptest.NewRecorder()
-	weakReq := httptest.NewRequest(http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"simplepassword"}`))
+	weakReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"simplepassword"}`))
 	weakReq.Header.Set("Content-Type", "application/json")
-	weakReq.Header.Set("X-CSRF-Token", sessionCSRF)
+	weakReq.Header.Set("X-Csrf-Token", sessionCSRF)
 	weakReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	weakReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(weakRec, weakReq)
@@ -262,9 +261,9 @@ func TestPutAuthPassword(t *testing.T) {
 
 	// Same password rejected
 	sameRec := httptest.NewRecorder()
-	sameReq := httptest.NewRequest(http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+oldPassword+`"}`))
+	sameReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+oldPassword+`"}`))
 	sameReq.Header.Set("Content-Type", "application/json")
-	sameReq.Header.Set("X-CSRF-Token", sessionCSRF)
+	sameReq.Header.Set("X-Csrf-Token", sessionCSRF)
 	sameReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	sameReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(sameRec, sameReq)
@@ -274,9 +273,9 @@ func TestPutAuthPassword(t *testing.T) {
 
 	// Wrong current password rejected
 	wrongRec := httptest.NewRecorder()
-	wrongReq := httptest.NewRequest(http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"wrong password","newPassword":"`+newPassword+`"}`))
+	wrongReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"wrong password","newPassword":"`+newPassword+`"}`))
 	wrongReq.Header.Set("Content-Type", "application/json")
-	wrongReq.Header.Set("X-CSRF-Token", sessionCSRF)
+	wrongReq.Header.Set("X-Csrf-Token", sessionCSRF)
 	wrongReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	wrongReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(wrongRec, wrongReq)
@@ -286,9 +285,9 @@ func TestPutAuthPassword(t *testing.T) {
 
 	// Successful password change
 	okRec := httptest.NewRecorder()
-	okReq := httptest.NewRequest(http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+newPassword+`"}`))
+	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+newPassword+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
-	okReq.Header.Set("X-CSRF-Token", sessionCSRF)
+	okReq.Header.Set("X-Csrf-Token", sessionCSRF)
 	okReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(okRec, okReq)
@@ -304,7 +303,7 @@ func TestPutAuthPassword(t *testing.T) {
 
 	// Old session is now unauthenticated
 	meRec := httptest.NewRecorder()
-	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
 	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	engine.ServeHTTP(meRec, meReq)
 	if meRec.Code != http.StatusUnauthorized {

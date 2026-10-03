@@ -268,7 +268,7 @@ func ValidVariant(value string) bool {
 		return true
 	}
 	for _, c := range value {
-		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_') {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '_' {
 			return false
 		}
 	}

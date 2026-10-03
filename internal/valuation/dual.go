@@ -115,6 +115,7 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 		all = append(all, row)
 		out.Issues = append(out.Issues, dualIssues(&row)...)
 	}
+	sortDualPositions(all, accountRanks(accounts))
 	out.Total = len(all)
 	if offset < len(all) {
 		out.Items = all[offset:min(offset+limit, len(all))]

@@ -29,7 +29,8 @@ WHERE (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
       SELECT 1 FROM portfolio_listing_exclusions e
       WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.listing_id = asset_listings.id AND e.ignored = TRUE
   ))
-ORDER BY platform ASC, symbol ASC
+ORDER BY FIND_IN_SET(platform, sqlc.arg(platform_order)) = 0,
+         FIND_IN_SET(platform, sqlc.arg(platform_order)), platform, symbol, id
 LIMIT ? OFFSET ?;
 
 -- name: CountAssetListings :one
@@ -81,7 +82,8 @@ SELECT id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol,
 FROM instruments
 WHERE (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
   AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query))
-ORDER BY platform ASC, symbol ASC
+ORDER BY FIND_IN_SET(platform, sqlc.arg(platform_order)) = 0,
+         FIND_IN_SET(platform, sqlc.arg(platform_order)), platform, symbol, id
 LIMIT ? OFFSET ?;
 
 -- name: CountInstruments :one

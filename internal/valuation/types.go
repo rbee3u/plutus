@@ -115,6 +115,7 @@ type AccountValuation struct {
 	UnifiedMarginRatio     *string
 	Omitted                []Omitted
 	valueRat               *big.Rat
+	accountStructure       string
 }
 
 // Completeness returns complete or incomplete for the account.

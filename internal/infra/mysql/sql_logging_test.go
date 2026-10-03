@@ -192,6 +192,7 @@ func TestDriverLoggingPreservesFallbackAndInterfaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = rows.Close() }()
 	columns, err := rows.ColumnTypes()
 	if err != nil {
 		_ = rows.Close()
@@ -234,7 +235,8 @@ func TestDriverLoggingPreservesFallbackAndInterfaces(t *testing.T) {
 	if _, err := db.ExecContext(ctx, "fail"); err == nil {
 		t.Fatal("execution failure changed")
 	}
-	if _, err := db.PrepareContext(ctx, "bad prepare"); err == nil {
+	if unexpected, err := db.PrepareContext(ctx, "bad prepare"); err == nil {
+		defer func() { _ = unexpected.Close() }()
 		t.Fatal("prepare failure changed")
 	}
 	if !conn.checked || !conn.reset || !conn.pinged || conn.prepares != 3 {
@@ -297,6 +299,7 @@ func TestLoggedMySQLExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = stmt.Close() }()
 	if err := stmt.QueryRowContext(ctx, uint64(math.MaxUint64)).Scan(&number); err != nil {
 		_ = stmt.Close()
 		t.Fatal(err)

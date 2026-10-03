@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,12 +69,6 @@ type fixtures struct {
 
 func failureKey(endpoint, scenario string) string { return endpoint + " " + scenario }
 
-// pathOf returns the path of an endpoint name such as "GET /derivatives/api/v3/tickers".
-func pathOf(endpoint string) string {
-	_, path, _ := strings.Cut(endpoint, " ")
-	return path
-}
-
 // loadFixtures reads the explicitly selected flat samples and error responses.
 func loadFixtures(t *testing.T, scenario string) fixtures {
 	t.Helper()
@@ -113,27 +106,6 @@ func loadFixtures(t *testing.T, scenario string) fixtures {
 		out.failures[failureKey(epFuturesKey.String(), variant)] = f
 	}
 	return out
-}
-
-func fixturePaths(t *testing.T, dir string) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no fixtures in %s", dir)
-	}
-	return paths
-}
-
-func readFixture(t *testing.T, path string) fixture.File {
-	t.Helper()
-	f, err := fixture.ReadSynthetic(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if f.Request.Service == "" {
-		t.Fatalf("%s: the header names no Kraken endpoint", path)
-	}
-	return f
 }
 
 // readDocumented reads a documentation-derived fixture (ADR 0009): it names

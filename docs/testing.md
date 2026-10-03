@@ -35,6 +35,30 @@ follow in the same order:
 make style && make web && make build && make test && make lint
 ```
 
+Go lint uses a reviewed allowlist focused on correctness, security, and resource
+lifetimes, including test files. Staticcheck runs `SA*` except the `SA6*`
+performance checks. Gocritic retains behavior diagnostics while excluding style,
+performance, comment, builtin-naming, and simplification preferences. Govet also
+runs `nilness` and `unusedwrite` to check nil dereferences, redundant nil
+comparisons, and writes to struct or array copies that are never read.
+Formatting is checked separately; general API-shape preferences and speculative
+micro-optimizations are not lint gates.
+
+Narrowly scoped exclusions allow fixture type assertions, invented credentials,
+and test-owned paths. The SQL compatibility wrapper, incoming test cookies, and
+forbidden network probes have documented file-specific exceptions in
+`.golangci.yml`. Suppressions must name the linter and explain the exception;
+unused suppressions fail lint. Explicitly discarded errors still require review:
+the default errcheck settings allow assignments to `_`.
+
+G115 integer-conversion checks and strict enum exhaustiveness apply across the
+project. Validate externally supplied narrowing conversions before casting.
+Rule-specific `#nosec G115` comments document established bounds or intentional
+signed-bit encodings; revisit those assumptions when changing the caller or
+storage contract. Platform-specific switches may explicitly suppress
+`exhaustive` when they intentionally handle only a subset of shared Account
+Types. Such exceptions never expand supported Accounts.
+
 The optional Chromium check uses a loopback-only Vite server and mocked API
 responses, so it needs no database. It covers mobile navigation behavior that
 DOM-only checks cannot verify. Install the bundled browser once, then run:

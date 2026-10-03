@@ -96,9 +96,9 @@ func (s *Service) WritePoint(ctx context.Context, portfolioID, jobID uuid.UUID, 
 		JobID:                   jobID[:],
 		EvaluatedAt:             evaluatedAt,
 		TotalUsd:                point.TotalUSD,
-		AccountCount:            uint32(point.AccountCount),
-		StaleAccountCount:       uint32(point.StaleAccountCount),
-		IncompleteAccountCount:  uint32(point.IncompleteAccountCount),
+		AccountCount:            uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
+		StaleAccountCount:       uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
+		IncompleteAccountCount:  uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory Account slice.
 		BoundaryContributionUsd: point.BoundaryContributionUSD,
 		BoundaryWithdrawalUsd:   point.BoundaryWithdrawalUSD,
 		BoundaryJson:            boundaryJSON,
@@ -230,6 +230,7 @@ func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 		}
 		out = append(out, item)
 	}
+	sortAccounts(out)
 	return out, nil
 }
 
@@ -409,7 +410,7 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 			}
 		}
 		if previous != nil {
-			if _, existed := previous[a.AccountID]; !existed && !(transitions[a.IdentityID] && a.AccountType == "dual_investment") {
+			if _, existed := previous[a.AccountID]; !existed && (!transitions[a.IdentityID] || a.AccountType != "dual_investment") {
 				event := BoundaryEvent{AccountID: a.AccountID, AccountName: a.AccountName, IdentityID: a.IdentityID, IdentityName: a.IdentityName, Platform: a.Platform, Direction: DirectionContribution, Method: a.Method, ValueUSD: a.ValueUSD, valueRat: a.valueRat}
 				point.BoundaryEvents = append(point.BoundaryEvents, event)
 				if a.valueRat != nil {
@@ -531,6 +532,7 @@ func accountFromRow(row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) 
 		AccountID:        accountID,
 		AccountName:      row.AccountName,
 		AccountType:      row.AccountType,
+		accountStructure: row.AccountStructure,
 		Selected:         row.Selected,
 		IdentityID:       identityID,
 		IdentityName:     row.IdentityName,

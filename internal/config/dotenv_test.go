@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/base64"
 	"path/filepath"
 	"testing"
@@ -362,7 +363,7 @@ func TestLoadPrefersProcessEnvOverDotEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(cfg.Crypto.MasterKey) != string(fromEnv) {
+	if !bytes.Equal(cfg.Crypto.MasterKey, fromEnv) {
 		t.Fatal("process environment should win over config/local.env")
 	}
 }

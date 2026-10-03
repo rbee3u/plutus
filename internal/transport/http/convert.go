@@ -20,7 +20,7 @@ func toAPIPortfolio(item *portfolio.Portfolio) api.Portfolio {
 		Timezone:                  item.Timezone,
 		CollectionIntervalSeconds: item.CollectionIntervalSeconds,
 		Undeletable:               item.Undeletable,
-		Version:                   int(item.Version),
+		Version:                   int(item.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 		CreatedAt:                 item.CreatedAt,
 		UpdatedAt:                 item.UpdatedAt,
 	}
@@ -51,7 +51,7 @@ func toAPIIdentity(item *identity.Identity) api.Identity {
 			LastErrorDetail:       item.Connection.LastErrorDetail,
 		},
 		Accounts:  accounts,
-		Version:   int(item.Version),
+		Version:   int(item.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 		CreatedAt: item.CreatedAt,
 		UpdatedAt: item.UpdatedAt,
 	}
@@ -64,7 +64,7 @@ func toAPIAccount(item *identity.Account) api.Account {
 		AccountType: string(item.AccountType),
 		DisplayName: item.DisplayName,
 		Selected:    item.Selected,
-		Version:     int(item.Version),
+		Version:     int(item.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 	}
 }
 
@@ -246,15 +246,15 @@ func toAPIFlow(f *capital.Flow) api.CapitalFlow {
 	return api.CapitalFlow{
 		Id: f.ID, PortfolioId: f.PortfolioID, Direction: api.CapitalFlowDirection(f.Direction), AssetSymbol: f.AssetSymbol,
 		Quantity: f.Quantity, ValueUsd: f.ValueUSD, EffectiveAt: f.EffectiveAt, AccountId: f.AccountID, AccountName: f.AccountName,
-		Note: f.Note, Version: int(f.Version), CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
+		Note: f.Note, Version: int(f.Version), CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt, // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 	}
 }
 
 func toAPIListing(l *catalog.Listing) api.AssetListing {
 	return api.AssetListing{
 		Id: l.ID, Platform: l.Platform, Symbol: l.Symbol, AssetSymbol: l.AssetSymbol, Name: l.Name,
-		MappingSource: api.AssetListingMappingSource(l.MappingSource), FirstSeenAt: l.FirstSeenAt, LastSeenAt: l.LastSeenAt, Version: int(l.Version),
-		Ignored: l.Ignored, IgnoreReason: l.IgnoreReason, IgnoredAt: l.IgnoredAt, ExclusionVersion: int(l.ExclusionVersion),
+		MappingSource: api.AssetListingMappingSource(l.MappingSource), FirstSeenAt: l.FirstSeenAt, LastSeenAt: l.LastSeenAt, Version: int(l.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
+		Ignored: l.Ignored, IgnoreReason: l.IgnoreReason, IgnoredAt: l.IgnoredAt, ExclusionVersion: int(l.ExclusionVersion), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 	}
 }
 

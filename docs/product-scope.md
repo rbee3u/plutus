@@ -25,12 +25,12 @@ and Account Types. Offered scope is distinct from exchange-app validation; see
 
 | Platform | Account Structure (declared) | Margin Modes (observed)                                          | Account Types                                                                                       |
 | -------- | ---------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Binance  | Classic Trading              | none                                                             | spot, funding, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, earn, dual investment |
-| Binance  | Portfolio Margin             | none                                                             | portfolio margin, spot, funding, earn, dual investment                                              |
+| Binance  | Classic Trading              | none                                                             | spot, cross margin, isolated margin, USDⓈ-M futures, COIN-M futures, funding, earn, dual investment |
+| Binance  | Portfolio Margin             | none                                                             | spot, portfolio margin, funding, earn, dual investment                                              |
 | OKX      | Unified account              | Spot mode, Futures mode, Multi-currency margin, Portfolio margin | trading, funding, earn, dual investment                                                             |
 | Bybit    | Unified Trading Account 2.0  | Isolated Margin, Cross Margin, Portfolio Margin                  | unified, funding, earn, dual investment                                                             |
-| Kraken   | Separate wallets             | none                                                             | main, earn, multi-m, coin-m, derivatives holding                                                    |
-| Kraken   | Unified Wallet               | none                                                             | main, earn, coin-m, derivatives holding                                                             |
+| Kraken   | Separate wallets             | none                                                             | main, multi-m, coin-m, derivatives holding, earn                                                    |
+| Kraken   | Unified Wallet               | none                                                             | main, coin-m, derivatives holding, earn                                                             |
 
 ## Product boundaries
 

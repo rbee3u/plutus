@@ -88,8 +88,8 @@ func TestAccessRecoveryAndContextLogging(t *testing.T) {
 		{http.MethodGet, "/context", 200},
 		{http.MethodGet, "/", 200},
 	} {
-		req := httptest.NewRequest(tc.method, tc.path+"?hidden-query", nil)
-		req.Header.Set("X-Request-Id", "test-request")
+		req := httptest.NewRequestWithContext(t.Context(), tc.method, tc.path+"?hidden-query", nil)
+		req.Header.Set("X-Request-ID", "test-request")
 		req.Header.Set("Cookie", "sensitive-cookie-value")
 		if tc.method == http.MethodPost {
 			req.Header.Set("Origin", "https://untrusted.example")
@@ -99,7 +99,7 @@ func TestAccessRecoveryAndContextLogging(t *testing.T) {
 		if response.Code != tc.status {
 			t.Fatalf("%s: status %d, want %d", tc.path, response.Code, tc.status)
 		}
-		if response.Header().Get("X-Request-Id") != "test-request" {
+		if response.Header().Get("X-Request-ID") != "test-request" {
 			t.Fatal("request id not echoed")
 		}
 	}
@@ -133,13 +133,13 @@ func TestAccessRecoveryAndContextLogging(t *testing.T) {
 func TestGeneratedHandlersCarryRequestCancellation(t *testing.T) {
 	t.Parallel()
 	var observed error
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Ready: FuncReady(func(ctx context.Context) error {
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: FuncReady(func(ctx context.Context) error {
 		observed = ctx.Err()
 		return nil
 	})})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	request := httptest.NewRequest(http.MethodGet, "/health/ready", nil).WithContext(ctx)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil).WithContext(ctx)
 	engine.ServeHTTP(httptest.NewRecorder(), request)
 	if !errors.Is(observed, context.Canceled) {
 		t.Fatal("generated API lost request cancellation")
@@ -148,13 +148,13 @@ func TestGeneratedHandlersCarryRequestCancellation(t *testing.T) {
 
 func TestRequestIDValidation(t *testing.T) {
 	t.Parallel()
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler)})
 	for _, value := range []string{"", "has spaces", "非ASCII", strings.Repeat("x", 129), "contains\nnewline", "valid.ID_42-foo", strings.Repeat("x", 128)} {
-		request := httptest.NewRequest(http.MethodGet, "/health/live", nil)
-		request.Header.Set("X-Request-Id", value)
+		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
+		request.Header.Set("X-Request-ID", value)
 		response := httptest.NewRecorder()
 		engine.ServeHTTP(response, request)
-		id := response.Header().Get("X-Request-Id")
+		id := response.Header().Get("X-Request-ID")
 		if validTraceID(value) {
 			if id != value {
 				t.Fatalf("valid id changed: %q", id)

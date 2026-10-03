@@ -76,7 +76,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, in *ListFilte
 		HasCursor:          0,
 		CursorOccurredAt:   time.Time{},
 		CursorID:           make([]byte, 16),
-		Limit:              int32(limit + 1),
+		Limit:              int32(limit + 1), // #nosec G115 -- normalizeLimit bounds the page size before adding the lookahead row.
 	}
 	if in.Cursor != "" {
 		decoded, err := decodeCursor(in.Cursor, portfolioID)

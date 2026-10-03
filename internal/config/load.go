@@ -74,7 +74,7 @@ type fileConfig struct {
 // in the working directory or Go module root is used. Existing process environment values win
 // over the env file. A missing default env file is ignored. The nearest `config/local.env` wins
 // when walking. `go test` reads `PLUTUS_GOTEST_*` from `config/gotest.env` through Lookup instead.
-func Load(opts Options) (Config, error) { //nolint:gocritic // Options is a process-boundary parameter object.
+func Load(opts Options) (Config, error) {
 	if opts.LookupEnv == nil {
 		opts.LookupEnv = os.LookupEnv
 	}

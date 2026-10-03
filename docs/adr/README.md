@@ -23,6 +23,7 @@ identifies a record, not an implementation priority or proof of completion.
 | [0008](./0008-environments-and-migrations.md)     | Environment isolation and populated-database migrations                |
 | [0009](./0009-adapter-verification.md)            | Independent synthetic tests, recorded evidence, and validation claims  |
 | [0010](./0010-process-logging.md)                 | Unified process logging, SQL visibility, and rotation ownership        |
+| [0011](./0011-display-ordering.md)                | Shared business ordering and stable holdings pagination                |
 
 ## Maintenance
 

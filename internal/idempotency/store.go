@@ -108,7 +108,7 @@ INSERT INTO idempotency_records (
     response_headers_json, response_body_json, created_at, expires_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		idBytes, userBytes, nullableBytes(portfolioBytes), key, method, path, requestHash,
-		uint16(rec.Status), headers, rec.Body, now, now.Add(s.ttl),
+		rec.Status, headers, rec.Body, now, now.Add(s.ttl),
 	)
 	if mysql.IsDuplicate(err) {
 		return nil

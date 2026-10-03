@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -60,7 +61,7 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 		t.Fatalf("username %q", user.Username)
 	}
 
-	if _, _, err := svc.Login(ctx, username, "wrong password!!", "127.0.0.1", "test"); err != ErrInvalidCredentials {
+	if _, _, err := svc.Login(ctx, username, "wrong password!!", "127.0.0.1", "test"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("wrong password: %v", err)
 	}
 
@@ -77,7 +78,7 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 		t.Fatalf("authenticate: user=%+v session=%+v err=%v", authed, loaded, err)
 	}
 
-	if err := svc.ChangePassword(ctx, user.ID, session.ID, password, password); err != ErrSamePassword {
+	if err := svc.ChangePassword(ctx, user.ID, session.ID, password, password); !errors.Is(err, ErrSamePassword) {
 		t.Fatalf("expected ErrSamePassword, got: %v", err)
 	}
 
@@ -85,12 +86,12 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	if err := svc.ChangePassword(ctx, user.ID, session.ID, password, newPassword); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := svc.Login(ctx, username, password, "10.0.0.2", "old"); err != ErrInvalidCredentials {
+	if _, _, err := svc.Login(ctx, username, password, "10.0.0.2", "old"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("old password still worked: %v", err)
 	}
 
 	// Password change revokes all sessions, including the current one.
-	if _, _, err := svc.Authenticate(ctx, session.Token); err != ErrUnauthenticated {
+	if _, _, err := svc.Authenticate(ctx, session.Token); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("current session should be revoked, got: %v", err)
 	}
 
@@ -102,7 +103,7 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	if err := svc.DisableUser(ctx, username); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := svc.Authenticate(ctx, newSession.Token); err != ErrUserDisabled && err != ErrUnauthenticated {
+	if _, _, err := svc.Authenticate(ctx, newSession.Token); !errors.Is(err, ErrUserDisabled) && !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("disabled session: %v", err)
 	}
 }

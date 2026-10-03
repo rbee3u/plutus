@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/audit"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/ordering"
 	"github.com/rbee3u/plutus/internal/secret"
 )
 
@@ -194,8 +196,10 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, 
 		if item.Accounts == nil {
 			item.Accounts = []Account{}
 		}
+		sortIdentityAccounts(&item, item.Accounts)
 		out = append(out, item)
 	}
+	slices.SortFunc(out, func(a, b Identity) int { return ordering.CompareIdentities(identityOrder(&a), identityOrder(&b)) })
 	return out, nil
 }
 
@@ -224,6 +228,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity,
 		}
 		item.Accounts = append(item.Accounts, account)
 	}
+	sortIdentityAccounts(&item, item.Accounts)
 	return item, nil
 }
 
@@ -349,7 +354,7 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 			return Identity{}, err
 		}
 		if err := adapters.CheckCredentials(current.Platform, current.AccountStructure, selectedTypes(accounts), creds); err != nil {
-			return Identity{}, fmt.Errorf("%w: %w Disable the Connection to change Accounts before replacing credentials.", ErrInvalid, err)
+			return Identity{}, fmt.Errorf("%w: %w Disable the Connection to change Accounts before replacing credentials", ErrInvalid, err)
 		}
 	}
 	now := s.now().UTC()
@@ -783,9 +788,13 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 			}
 			item.Accounts = append(item.Accounts, account)
 		}
+		sortIdentityAccounts(&item.Identity, item.Accounts)
 		item.Credentials, item.OpenError = s.open(id, portfolioID, rows[i].CredentialKeyVersion, rows[i].CredentialsCiphertext, rows[i].CredentialsNonce)
 		out = append(out, item)
 	}
+	slices.SortFunc(out, func(a, b Collectable) int {
+		return ordering.CompareIdentities(identityOrder(&a.Identity), identityOrder(&b.Identity))
+	})
 	return out, nil
 }
 
@@ -861,6 +870,7 @@ type BoundaryAccount struct {
 	Platform         adapters.Platform
 	IdentityName     string
 	ConnectionStatus string
+	accountStructure adapters.AccountStructure
 }
 
 // ListBoundary returns every selected Account of enabled Identities.
@@ -875,8 +885,15 @@ func (s *Service) ListBoundary(ctx context.Context, portfolioID uuid.UUID) ([]Bo
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, BoundaryAccount{Account: account, Platform: adapters.Platform(rows[i].Platform), IdentityName: rows[i].IdentityName, ConnectionStatus: rows[i].ConnectionStatus})
+		out = append(out, BoundaryAccount{Account: account, Platform: adapters.Platform(rows[i].Platform), IdentityName: rows[i].IdentityName, ConnectionStatus: rows[i].ConnectionStatus, accountStructure: adapters.AccountStructure(rows[i].AccountStructure)})
 	}
+	slices.SortFunc(out, func(a, b BoundaryAccount) int {
+		key := func(item BoundaryAccount) ordering.Account {
+			return ordering.Account{Identity: ordering.Identity{Platform: string(item.Platform), Name: item.IdentityName, ID: item.IdentityID}, Structure: item.accountStructure, Type: item.AccountType, ID: item.ID}
+		}
+		ka, kb := key(a), key(b)
+		return ordering.CompareAccounts(&ka, &kb)
+	})
 	return out, nil
 }
 

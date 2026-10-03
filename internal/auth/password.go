@@ -72,7 +72,7 @@ func VerifyPassword(password, encoded string) (bool, bool, error) {
 	if err != nil {
 		return false, false, err
 	}
-	computed := argon2.IDKey([]byte(password), salt, params.time, params.memory, params.threads, uint32(len(hash)))
+	computed := argon2.IDKey([]byte(password), salt, params.time, params.memory, params.threads, uint32(len(hash))) // #nosec G115 -- The decoded digest comes from a stored PHC hash in VARCHAR(255).
 	ok := subtle.ConstantTimeCompare(hash, computed) == 1
 	rehash := params.time != argonTime || params.memory != argonMemoryKiB || params.threads != argonThreads || len(hash) != argonKeyLen
 	return ok, rehash, nil
@@ -110,8 +110,14 @@ func decodePHC(encoded string) (argonParams, []byte, []byte, error) {
 		case "t":
 			params.time = uint32(n)
 		case "p":
+			if n == 0 || n > 255 {
+				return argonParams{}, nil, nil, errors.New("invalid password hash parallelism")
+			}
 			params.threads = uint8(n)
 		}
+	}
+	if params.time == 0 || params.threads == 0 {
+		return argonParams{}, nil, nil, errors.New("invalid password hash parameters")
 	}
 	b64 := base64.RawStdEncoding
 	salt, err := b64.DecodeString(parts[4])

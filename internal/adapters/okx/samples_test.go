@@ -1,7 +1,6 @@
 package okx
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -50,14 +49,6 @@ func sampleNames(selection string) []string {
 		names[i] += ".json"
 	}
 	return names
-}
-
-func rowsOf[T any](ep endpoint, body []byte) ([]T, error) {
-	var env struct {
-		Data []T `json:"data"`
-	}
-	err := json.Unmarshal(body, &env)
-	return env.Data, err
 }
 
 func TestFlatSamples(t *testing.T) {

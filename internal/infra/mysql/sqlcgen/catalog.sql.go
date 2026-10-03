@@ -169,7 +169,8 @@ WHERE (? = 0 OR platform = ?)
       SELECT 1 FROM portfolio_listing_exclusions e
       WHERE e.portfolio_id = ? AND e.listing_id = asset_listings.id AND e.ignored = TRUE
   ))
-ORDER BY platform ASC, symbol ASC
+ORDER BY FIND_IN_SET(platform, ?) = 0,
+         FIND_IN_SET(platform, ?), platform, symbol, id
 LIMIT ? OFFSET ?
 `
 
@@ -180,6 +181,7 @@ type ListAssetListingsParams struct {
 	Query          string
 	IgnoredOnly    interface{}
 	PortfolioID    []byte
+	PlatformOrder  string
 	Limit          int32
 	Offset         int32
 }
@@ -193,6 +195,8 @@ func (q *Queries) ListAssetListings(ctx context.Context, arg ListAssetListingsPa
 		arg.Query,
 		arg.IgnoredOnly,
 		arg.PortfolioID,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -235,7 +239,8 @@ SELECT id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol,
 FROM instruments
 WHERE (? = 0 OR platform = ?)
   AND (? = 0 OR symbol LIKE ?)
-ORDER BY platform ASC, symbol ASC
+ORDER BY FIND_IN_SET(platform, ?) = 0,
+         FIND_IN_SET(platform, ?), platform, symbol, id
 LIMIT ? OFFSET ?
 `
 
@@ -244,6 +249,7 @@ type ListInstrumentsParams struct {
 	Platform       string
 	FilterQuery    interface{}
 	Query          string
+	PlatformOrder  string
 	Limit          int32
 	Offset         int32
 }
@@ -254,6 +260,8 @@ func (q *Queries) ListInstruments(ctx context.Context, arg ListInstrumentsParams
 		arg.Platform,
 		arg.FilterQuery,
 		arg.Query,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
 		arg.Limit,
 		arg.Offset,
 	)

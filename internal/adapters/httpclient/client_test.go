@@ -20,7 +20,7 @@ func TestNewIPv4ConnectsToIPv4AndRejectsIPv6(t *testing.T) {
 	defer server4.Close()
 
 	client := NewIPv4(time.Second)
-	response, err := client.Get(server4.URL)
+	response, err := testGet(t, client, server4.URL)
 	if err != nil {
 		t.Fatalf("IPv4 request: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestNewIPv4ConnectsToIPv4AndRejectsIPv6(t *testing.T) {
 		t.Fatalf("IPv4 status = %d, want %d", response.StatusCode, http.StatusNoContent)
 	}
 
-	listener6, err := net.Listen("tcp6", "[::1]:0")
+	listener6, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp6", "[::1]:0")
 	if err != nil {
 		t.Skipf("IPv6 loopback is unavailable: %v", err)
 	}
@@ -40,9 +40,18 @@ func TestNewIPv4ConnectsToIPv4AndRejectsIPv6(t *testing.T) {
 	server6.Start()
 	defer server6.Close()
 
-	response, err = client.Get(server6.URL)
+	response, err = testGet(t, client, server6.URL)
 	if err == nil {
 		_ = response.Body.Close()
 		t.Fatal("IPv6 request succeeded; the default adapter client must use IPv4 only")
 	}
+}
+
+func testGet(t *testing.T, client *http.Client, url string) (*http.Response, error) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return client.Do(req)
 }

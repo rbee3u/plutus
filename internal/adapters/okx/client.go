@@ -294,10 +294,10 @@ func classOf(status int, code string) string {
 		// 50004 means OKX does not know whether the request succeeded; a read is safe to retry.
 		return adapters.ClassTemporary
 	}
-	switch {
-	case status == http.StatusUnauthorized:
+	switch status {
+	case http.StatusUnauthorized:
 		return adapters.ClassAuthentication
-	case status == http.StatusTooManyRequests:
+	case http.StatusTooManyRequests:
 		return adapters.ClassRateLimited
 	default:
 		return adapters.ClassTemporary

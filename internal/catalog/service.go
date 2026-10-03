@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/ordering"
 )
 
 const (
@@ -236,14 +238,15 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 	}
 	query := likePattern(in.Query)
 	rows, err := s.q.ListAssetListings(ctx, sqlcgen.ListAssetListingsParams{
+		PlatformOrder:  ordering.PlatformsCSV(),
 		PortfolioID:    in.PortfolioID[:],
 		IgnoredOnly:    flag(in.IgnoredOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
 		Query:          query,
-		Limit:          int32(limit),
-		Offset:         int32(offset),
+		Limit:          int32(limit),  // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
+		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
 	if err != nil {
 		return Page[Listing]{}, err
@@ -380,12 +383,13 @@ func (s *Service) ListInstruments(ctx context.Context, in ListFilter) (Page[Inst
 	}
 	query := likePattern(in.Query)
 	rows, err := s.q.ListInstruments(ctx, sqlcgen.ListInstrumentsParams{
+		PlatformOrder:  ordering.PlatformsCSV(),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
 		Query:          query,
-		Limit:          int32(limit),
-		Offset:         int32(offset),
+		Limit:          int32(limit),  // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
+		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
 	if err != nil {
 		return Page[Instrument]{}, err
@@ -473,7 +477,7 @@ func normalizePage(limit, offset int) (int, int, error) {
 	if limit == 0 {
 		limit = defaultLimit
 	}
-	if limit < minLimit || limit > maxLimit || offset < 0 {
+	if limit < minLimit || limit > maxLimit || offset < 0 || offset > math.MaxInt32 {
 		return 0, 0, ErrInvalid
 	}
 	return limit, offset, nil

@@ -159,7 +159,8 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 	if !adapters.ValidAccountType(structure, accountType) {
 		return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBinance, structure, accountType)
 	}
-	switch accountType {
+	// Earn and Dual Investment are collected together before this helper is called.
+	switch accountType { //nolint:exhaustive // Shared product Accounts are handled by earnPair.
 	case TypeSpot:
 		return a.wallet(ctx, c, TypeSpot, epUserAsset)
 	case TypeFunding:

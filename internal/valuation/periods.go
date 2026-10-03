@@ -390,7 +390,7 @@ func joinDays(days []time.Time) string {
 	var out strings.Builder
 	for i, d := range days {
 		if i == 5 {
-			out.WriteString(fmt.Sprintf(", +%d more", len(days)-5))
+			fmt.Fprintf(&out, ", +%d more", len(days)-5)
 			break
 		}
 		if i > 0 {

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -64,13 +65,13 @@ func TestOpenRejectsWrongAAD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := box.Open(other, port, CurrentKeyVersion(), ct, nonce); err != ErrOpenFailed {
+	if _, err := box.Open(other, port, CurrentKeyVersion(), ct, nonce); !errors.Is(err, ErrOpenFailed) {
 		t.Fatalf("connection AAD: %v", err)
 	}
-	if _, err := box.Open(conn, other, CurrentKeyVersion(), ct, nonce); err != ErrOpenFailed {
+	if _, err := box.Open(conn, other, CurrentKeyVersion(), ct, nonce); !errors.Is(err, ErrOpenFailed) {
 		t.Fatalf("portfolio AAD: %v", err)
 	}
-	if _, err := box.Open(conn, port, CurrentKeyVersion()+1, ct, nonce); err != ErrOpenFailed {
+	if _, err := box.Open(conn, port, CurrentKeyVersion()+1, ct, nonce); !errors.Is(err, ErrOpenFailed) {
 		t.Fatalf("key version AAD: %v", err)
 	}
 }
@@ -79,17 +80,17 @@ func TestSealRejectsEmptyFields(t *testing.T) {
 	t.Parallel()
 	box := testBox(t)
 	id := uuid.Must(uuid.NewV7())
-	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: " ", APISecret: "secret"}); err != ErrInvalidCredentials {
+	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: " ", APISecret: "secret"}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("empty api key: %v", err)
 	}
-	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: "key", APISecret: ""}); err != ErrInvalidCredentials {
+	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: "key", APISecret: ""}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("empty api secret: %v", err)
 	}
 }
 
 func TestNewBoxRejectsWrongKeySize(t *testing.T) {
 	t.Parallel()
-	if _, err := NewBox([]byte("short")); err != ErrInvalidKey {
+	if _, err := NewBox([]byte("short")); !errors.Is(err, ErrInvalidKey) {
 		t.Fatalf("short key: %v", err)
 	}
 }
@@ -152,7 +153,7 @@ func TestCredentialGroupsAndOldDocumentCompatibility(t *testing.T) {
 		t.Fatal("existing credential document no longer decrypts")
 	}
 	for _, creds := range []Credentials{{FuturesAPIKey: "half"}, {APIKey: "spot", APISecret: "secret", FuturesAPISecret: "half"}} {
-		if _, _, err := box.Seal(id, id, CurrentKeyVersion(), creds); err != ErrInvalidCredentials {
+		if _, _, err := box.Seal(id, id, CurrentKeyVersion(), creds); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatal("accepted an incomplete key pair")
 		}
 	}

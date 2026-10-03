@@ -213,20 +213,20 @@ func (r *replay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *replay) checkSigned(req *http.Request) string {
-	if req.Header.Get("OK-ACCESS-KEY") != testKey {
+	if req.Header.Get("Ok-Access-Key") != testKey {
 		return "missing or wrong OK-ACCESS-KEY header"
 	}
-	if req.Header.Get("OK-ACCESS-PASSPHRASE") != testPassphrase {
+	if req.Header.Get("Ok-Access-Passphrase") != testPassphrase {
 		return "missing or wrong OK-ACCESS-PASSPHRASE header"
 	}
-	stamp := req.Header.Get("OK-ACCESS-TIMESTAMP")
+	stamp := req.Header.Get("Ok-Access-Timestamp")
 	at, err := time.Parse(timestampLayout, stamp)
 	if err != nil {
 		return "OK-ACCESS-TIMESTAMP is not ISO 8601 UTC with milliseconds: " + stamp
 	}
 	mac := hmac.New(sha256.New, []byte(testSecret))
 	_, _ = mac.Write([]byte(stamp + req.Method + req.URL.RequestURI()))
-	if req.Header.Get("OK-ACCESS-SIGN") != base64.StdEncoding.EncodeToString(mac.Sum(nil)) {
+	if req.Header.Get("Ok-Access-Sign") != base64.StdEncoding.EncodeToString(mac.Sum(nil)) {
 		return "signature does not match"
 	}
 	expected := r.serverTime + time.Since(r.started).Milliseconds()
@@ -306,7 +306,7 @@ func TestFixturesHaveNoCredentialOrIdentityEcho(t *testing.T) {
 		t.Fatalf("no fixtures in testdata: %v", err)
 	}
 	for _, path := range paths {
-		raw, err := os.ReadFile(path) //nolint:gosec // committed fixture
+		raw, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1267,7 +1267,7 @@ func (r *replay) earnWithout() {
 func dcdOrders(state, ccy string, ids ...int) string {
 	rows := make([]string, 0, len(ids))
 	for _, id := range ids {
-		rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":"%s","notionalSz":"1","notionalCcy":"%s"}`, id, state, ccy))
+		rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":%q,"notionalSz":"1","notionalCcy":%q}`, id, state, ccy))
 	}
 	return "[" + strings.Join(rows, ",") + "]"
 }
@@ -1326,7 +1326,7 @@ func TestDualInvestmentStates(t *testing.T) {
 	var rows []string
 	for state := range dcdInvested {
 		for _, form := range []string{state, strings.ToUpper(state), strings.ToUpper(state[:1]) + state[1:]} {
-			rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":"%s","notionalSz":"1","notionalCcy":"%s"}`,
+			rows = append(rows, fmt.Sprintf(`{"ordId":"%d","state":%q,"notionalSz":"1","notionalCcy":%q}`,
 				1000-len(rows), form, strings.ToUpper(strings.ReplaceAll(state, "_", ""))))
 		}
 	}

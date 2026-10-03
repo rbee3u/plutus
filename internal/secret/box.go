@@ -77,8 +77,6 @@ func CurrentKeyVersion() uint16 {
 }
 
 // Seal encrypts credentials. AAD binds Connection ID, Portfolio ID, document version, and key version.
-//
-//nolint:gocritic // Credential bundles intentionally follow the existing value-based port.
 func (b *Box) Seal(connectionID, portfolioID [16]byte, keyVersion uint16, cred Credentials) (ciphertext, nonce []byte, err error) {
 	if b == nil {
 		return nil, nil, ErrInvalidKey

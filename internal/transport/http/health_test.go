@@ -3,7 +3,6 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -19,11 +18,11 @@ import (
 func TestLiveAndReady(t *testing.T) {
 	t.Parallel()
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 	engine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: errors.New("down")}})
 
 	live := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
 	engine.ServeHTTP(live, req)
 	if live.Code != http.StatusOK {
 		t.Fatalf("live status %d", live.Code)
@@ -33,7 +32,7 @@ func TestLiveAndReady(t *testing.T) {
 	}
 
 	ready := httptest.NewRecorder()
-	engine.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	engine.ServeHTTP(ready, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil))
 	if ready.Code != http.StatusServiceUnavailable {
 		t.Fatalf("ready status %d", ready.Code)
 	}
@@ -47,14 +46,14 @@ func TestLiveAndReady(t *testing.T) {
 
 	okEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}})
 	okReady := httptest.NewRecorder()
-	okEngine.ServeHTTP(okReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	okEngine.ServeHTTP(okReady, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil))
 	if okReady.Code != http.StatusOK {
 		t.Fatalf("ready ok status %d", okReady.Code)
 	}
 
 	schemaEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: mysql.ErrSchemaMismatch}})
 	schemaReady := httptest.NewRecorder()
-	schemaEngine.ServeHTTP(schemaReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	schemaEngine.ServeHTTP(schemaReady, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil))
 	if schemaReady.Code != http.StatusServiceUnavailable {
 		t.Fatalf("schema ready status %d", schemaReady.Code)
 	}
@@ -68,7 +67,7 @@ func TestLiveAndReady(t *testing.T) {
 
 	workerEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: worker.ErrUnavailable}})
 	workerReady := httptest.NewRecorder()
-	workerEngine.ServeHTTP(workerReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	workerEngine.ServeHTTP(workerReady, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil))
 	if workerReady.Code != http.StatusServiceUnavailable {
 		t.Fatalf("worker ready status %d", workerReady.Code)
 	}
@@ -82,7 +81,7 @@ func TestLiveAndReady(t *testing.T) {
 
 	keyEngine := Engine(&EngineOptions{Logger: logger, Ready: StaticReady{Err: mysql.ErrMasterKeyRequired}})
 	keyReady := httptest.NewRecorder()
-	keyEngine.ServeHTTP(keyReady, httptest.NewRequest(http.MethodGet, "/health/ready", nil))
+	keyEngine.ServeHTTP(keyReady, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/ready", nil))
 	if keyReady.Code != http.StatusServiceUnavailable {
 		t.Fatalf("master key ready status %d", keyReady.Code)
 	}
@@ -95,13 +94,13 @@ func TestLiveAndReady(t *testing.T) {
 	}
 
 	csrf := httptest.NewRecorder()
-	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}}).ServeHTTP(csrf, httptest.NewRequest(http.MethodGet, "/api/v1/auth/csrf", nil))
+	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}}).ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if csrf.Code != http.StatusOK {
 		t.Fatalf("csrf %d %s", csrf.Code, csrf.Body.String())
 	}
 
 	me := httptest.NewRecorder()
-	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}}).ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
+	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}}).ServeHTTP(me, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil))
 	if me.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated me %d %s", me.Code, me.Body.String())
 	}
@@ -111,12 +110,12 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	t.Parallel()
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 		Ready:  StaticReady{},
 	})
 
 	login := httptest.NewRecorder()
-	engine.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/login", nil))
+	engine.ServeHTTP(login, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/login", nil))
 	if login.Code != http.StatusOK {
 		t.Fatalf("login spa status %d", login.Code)
 	}
@@ -128,7 +127,7 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	}
 
 	account := httptest.NewRecorder()
-	engine.ServeHTTP(account, httptest.NewRequest(http.MethodGet, "/account/security", nil))
+	engine.ServeHTTP(account, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/account/security", nil))
 	if account.Code != http.StatusOK {
 		t.Fatalf("account spa status %d", account.Code)
 	}
@@ -145,7 +144,7 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	}
 	assetPath := "/assets/" + entries[0].Name()
 	asset := httptest.NewRecorder()
-	engine.ServeHTTP(asset, httptest.NewRequest(http.MethodGet, assetPath, nil))
+	engine.ServeHTTP(asset, httptest.NewRequestWithContext(t.Context(), http.MethodGet, assetPath, nil))
 	if asset.Code != http.StatusOK {
 		t.Fatalf("asset status %d, want 200", asset.Code)
 	}
@@ -154,7 +153,7 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	}
 
 	unknownAPI := httptest.NewRecorder()
-	engine.ServeHTTP(unknownAPI, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
+	engine.ServeHTTP(unknownAPI, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/nope", nil))
 	if unknownAPI.Code != http.StatusNotFound {
 		t.Fatalf("unknown api status %d", unknownAPI.Code)
 	}

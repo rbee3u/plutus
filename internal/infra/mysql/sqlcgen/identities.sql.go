@@ -276,7 +276,7 @@ SELECT id, portfolio_id, platform, display_name, account_structure, margin_mode,
        credentials_ciphertext, credentials_nonce, credential_key_version
 FROM identities
 WHERE portfolio_id = ? AND status = 'enabled' AND connection_status = 'enabled'
-ORDER BY platform ASC, created_at ASC, id ASC
+ORDER BY id
 `
 
 type ListCollectableIdentitiesRow struct {
@@ -333,7 +333,7 @@ SELECT id, portfolio_id, platform, display_name, account_structure, margin_mode,
        version, created_at, updated_at
 FROM identities
 WHERE portfolio_id = ?
-ORDER BY platform ASC, created_at ASC, id ASC
+ORDER BY id
 `
 
 type ListIdentitiesByPortfolioRow struct {

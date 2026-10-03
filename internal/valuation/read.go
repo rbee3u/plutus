@@ -106,6 +106,7 @@ func (s *Service) Accounts(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 		}
 		out = append(out, item)
 	}
+	sortAccounts(out)
 	return out, nil
 }
 
@@ -325,6 +326,7 @@ func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, acco
 		}
 		view.Positions = append(view.Positions, row)
 	}
+	sortPositions(view.Positions, nil)
 	return view, nil
 }
 
@@ -533,6 +535,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	}
 	out.TotalUSD = decimal.FormatPtr(total)
 	out.Total = len(all)
+	sortBalances(all, accountRanks(accounts))
 	out.Groups = groupBalances(all, f.GroupBy)
 	end := min(offset+limit, len(all))
 	if offset < len(all) {
@@ -582,9 +585,14 @@ func groupBalances(rows []BalanceRow, groupBy string) []GroupTotal {
 		g.ValueUSD = decimal.FormatPtr(sums[key])
 		out = append(out, *g)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		return decimal.MustParse(*out[i].ValueUSD).Cmp(decimal.MustParse(*out[j].ValueUSD)) > 0
-	})
+	if groupBy == "asset" {
+		sort.Slice(out, func(i, j int) bool {
+			if c := decimal.MustParse(*out[i].ValueUSD).Cmp(decimal.MustParse(*out[j].ValueUSD)); c != 0 {
+				return c > 0
+			}
+			return out[i].Key < out[j].Key
+		})
+	}
 	return out
 }
 
@@ -636,6 +644,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 	}
 	out.TotalUSD = decimal.FormatPtr(total)
 	out.Total = len(all)
+	sortPositions(all, accountRanks(accounts))
 	end := min(offset+limit, len(all))
 	if offset < len(all) {
 		out.Items = all[offset:end]

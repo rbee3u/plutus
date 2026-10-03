@@ -66,7 +66,7 @@ JOIN dual_positions p ON p.report_id = src.id
 JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = ? AND cur.job_id = ?
-ORDER BY p.expiry_at IS NULL, p.expiry_at, i.platform, i.id, a.id, p.platform_position_ref
+ORDER BY cur.account_id, p.platform_position_ref
 `
 
 type ListDualPositionsByJobParams struct {

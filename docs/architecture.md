@@ -154,6 +154,14 @@ idempotency keys for supported mutations, and cursor pagination where specified
 by OpenAPI. Browser ownership checks scope access to the authenticated User and
 their Portfolios.
 
+Display ordering is shared by application reads through `internal/ordering`.
+Platform ranks and Account Type ranks come from the Adapter capability catalog.
+Valuation reads sort Accounts first, then order flat holdings by those Account
+ranks before grouping or pagination; Account-detail futures use the same
+contract comparator. Catalog queries receive the shared Platform order and apply
+it in SQL before `LIMIT` and `OFFSET`. The SPA preserves API ordering in lists
+and selectors. See [ADR 0011](./adr/0011-display-ordering.md).
+
 Financial arithmetic uses exact rationals behind `internal/decimal`; storage
 uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values with at
 most 30 fractional digits. JSON financial values are strings; null means unknown

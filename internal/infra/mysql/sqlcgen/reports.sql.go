@@ -79,7 +79,7 @@ SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, 
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
-       i.status AS identity_status, i.connection_status,
+       i.status AS identity_status, i.connection_status, i.account_structure,
        src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
        src.available_equity AS source_available_equity, src.initial_margin_ratio AS source_initial_margin_ratio,
        src.maintenance_margin_ratio AS source_maintenance_margin_ratio, src.unified_margin_ratio AS source_unified_margin_ratio
@@ -124,6 +124,7 @@ type GetReportRow struct {
 	IdentityName                 string
 	IdentityStatus               string
 	ConnectionStatus             string
+	AccountStructure             string
 	SourceObservedAt             sql.NullTime
 	SourceEquity                 sql.NullString
 	SourceAdjustedEquity         sql.NullString
@@ -165,6 +166,7 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (GetReport
 		&i.IdentityName,
 		&i.IdentityStatus,
 		&i.ConnectionStatus,
+		&i.AccountStructure,
 		&i.SourceObservedAt,
 		&i.SourceEquity,
 		&i.SourceAdjustedEquity,
@@ -343,7 +345,7 @@ INNER JOIN asset_listings l ON l.id = b.listing_id
 INNER JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = ? AND cur.job_id = ?
-ORDER BY l.asset_symbol ASC, i.platform ASC, i.created_at ASC, a.account_type ASC
+ORDER BY cur.account_id, b.listing_id
 `
 
 type ListBalancesByJobParams struct {
@@ -485,7 +487,7 @@ INNER JOIN instruments n ON n.id = p.instrument_id
 INNER JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = ? AND cur.job_id = ?
-ORDER BY n.symbol ASC, i.platform ASC, i.created_at ASC, a.account_type ASC, p.side ASC
+ORDER BY cur.account_id, p.platform_position_ref
 `
 
 type ListPositionsByJobParams struct {
@@ -579,7 +581,7 @@ SELECT p.report_id, p.platform_position_ref, p.instrument_id, p.side, p.quantity
 FROM positions p
 INNER JOIN instruments n ON n.id = p.instrument_id
 WHERE p.report_id = ?
-ORDER BY n.symbol ASC, p.side ASC, p.platform_position_ref ASC
+ORDER BY p.platform_position_ref
 `
 
 type ListPositionsByReportRow struct {
@@ -654,7 +656,7 @@ SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, 
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
-       i.status AS identity_status, i.connection_status,
+       i.status AS identity_status, i.connection_status, i.account_structure,
        src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
        src.available_equity AS source_available_equity, src.initial_margin_ratio AS source_initial_margin_ratio,
        src.maintenance_margin_ratio AS source_maintenance_margin_ratio, src.unified_margin_ratio AS source_unified_margin_ratio
@@ -663,7 +665,7 @@ INNER JOIN accounts a ON a.portfolio_id = r.portfolio_id AND a.id = r.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 LEFT JOIN account_reports src ON src.portfolio_id = r.portfolio_id AND src.id = r.source_report_id
 WHERE r.portfolio_id = ? AND r.job_id = ?
-ORDER BY i.platform ASC, i.created_at ASC, a.account_type ASC
+ORDER BY r.id
 `
 
 type ListReportsByJobParams struct {
@@ -700,6 +702,7 @@ type ListReportsByJobRow struct {
 	IdentityName                 string
 	IdentityStatus               string
 	ConnectionStatus             string
+	AccountStructure             string
 	SourceObservedAt             sql.NullTime
 	SourceEquity                 sql.NullString
 	SourceAdjustedEquity         sql.NullString
@@ -747,6 +750,7 @@ func (q *Queries) ListReportsByJob(ctx context.Context, arg ListReportsByJobPara
 			&i.IdentityName,
 			&i.IdentityStatus,
 			&i.ConnectionStatus,
+			&i.AccountStructure,
 			&i.SourceObservedAt,
 			&i.SourceEquity,
 			&i.SourceAdjustedEquity,

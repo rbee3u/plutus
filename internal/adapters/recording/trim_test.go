@@ -27,10 +27,10 @@ func TestExchangeInfoKeepsWhitelistedContractsBeyondFirstType(t *testing.T) {
 	}
 	var body struct {
 		Symbols []struct {
-			Symbol       string
-			ContractSize int
-			DeliveryDate int64
-		}
+			Symbol       string `json:"symbol"`
+			ContractSize int    `json:"contractSize"`
+			DeliveryDate int64  `json:"deliveryDate"`
+		} `json:"symbols"`
 	}
 	if err := json.Unmarshal(f.Body, &body); err != nil {
 		t.Fatal(err)
@@ -70,8 +70,8 @@ func TestMarketSelectionPreservesPreparedProductsAndNewShapes(t *testing.T) {
 		t.Fatal(err)
 	}
 	var body struct {
-		Total   int
-		Symbols []map[string]any
+		Total   int              `json:"total"`
+		Symbols []map[string]any `json:"symbols"`
 	}
 	if err := json.Unmarshal(f.Body, &body); err != nil {
 		t.Fatal(err)

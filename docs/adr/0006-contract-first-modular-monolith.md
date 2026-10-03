@@ -24,6 +24,11 @@ contain exchange-specific parsing. Persistent jobs and leases permit recovery
 but do not provide multi-instance coordination or exactly-once collection.
 Package separation is not exclusive table ownership.
 
+Static analysis prioritizes correctness, security, and resource lifetimes
+through a reviewed linter allowlist. This accepted tooling choice keeps general
+style, API-shape preferences, and speculative micro-optimizations out of lint
+gates. Standard formatting remains a separate tooling step.
+
 [Architecture](../architecture.md) describes the current runtime mechanisms.
 Schema and API details are maintained in migrations and OpenAPI, rather than
 parallel handwritten catalogs.
