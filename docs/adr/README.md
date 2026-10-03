@@ -27,6 +27,7 @@ identifies a record, not an implementation priority or proof of completion.
 | [0012](./0012-position-presentation.md)           | Contract columns, normalized Size, margin provenance, and Observed      |
 | [0013](./0013-numeric-presentation.md)            | Shared numeric precision, zero-count shorthand, and chart exceptions    |
 | [0014](./0014-holdings-header-filters.md)         | Linked header filters, substring search, and retired flat-list grouping |
+| [0015](./0015-mobile-native-refresh.md)           | Native mobile browser refresh and isolated overlay scrolling            |
 
 ## Maintenance
 

@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import { iconSize } from "@/shared/icons/iconSizes";
+import { useMobileScrollLock } from "@/shared/lib/useMobileScrollLock";
 import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/shared/ui/Dialog.module.css";
 
@@ -20,22 +21,24 @@ export function Dialog({
   const titleId = useId();
   const bodyId = useId();
 
+  useMobileScrollLock(open);
+
   useEffect(() => {
     const node = dialogRef.current;
     if (!node) {
       return;
     }
     if (open) {
-      if (document.activeElement instanceof HTMLElement) {
-        restoreRef.current = document.activeElement;
-      }
       if (!node.open) {
+        if (document.activeElement instanceof HTMLElement) {
+          restoreRef.current = document.activeElement;
+        }
         node.showModal();
       }
       const focusable = node.querySelector<HTMLElement>(
         `[data-dialog-body] button, [data-dialog-body] [href], [data-dialog-body] input, [data-dialog-body] select, [data-dialog-body] textarea, [data-dialog-body] [tabindex]:not([tabindex="-1"])`,
       );
-      (focusable ?? node.querySelector<HTMLElement>("button"))?.focus();
+      (focusable ?? node.querySelector<HTMLElement>("button"))?.focus({ preventScroll: true });
       return;
     }
     if (node.open) {
@@ -54,7 +57,7 @@ export function Dialog({
         onClose();
       }}
       onClose={() => {
-        restoreRef.current?.focus();
+        restoreRef.current?.focus({ preventScroll: true });
         restoreRef.current = null;
         if (open) {
           onClose();

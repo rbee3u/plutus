@@ -8,6 +8,7 @@ const archived = "00000000-0000-7000-8000-000000000004";
 async function fixture(page: Page) {
   const state = {
     requests: [] as URL[],
+    mutations: [] as string[],
     failCandidates: false,
     failRows: false,
     noPoint: false,
@@ -16,6 +17,7 @@ async function fixture(page: Page) {
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+    if (route.request().method() !== "GET") state.mutations.push(path);
     if (path.endsWith("/auth/me"))
       return route.fulfill({
         json: { user: { id: "user", username: "filters", status: "active" }, sessionCount: 1 },
@@ -98,6 +100,32 @@ async function fixture(page: Page) {
   });
   return state;
 }
+
+test("reload preserves mobile holdings filters and pagination without collection", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const path = `/p/${portfolioId}/holdings/balances?platform=binance&identityId=${bn}&symbol=btc&offset=50`;
+  await page.goto(path);
+  await expect(page.getByRole("button", { name: "Filter Symbol: btc" })).toBeVisible();
+  await expect.poll(() => state.requests.length).toBeGreaterThan(0);
+  state.requests.length = 0;
+  await page.reload();
+  await expect(page).toHaveURL(path);
+  await expect
+    .poll(() =>
+      state.requests.some(
+        (url) =>
+          url.searchParams.get("platform") === "binance" &&
+          url.searchParams.get("identityId") === bn &&
+          url.searchParams.get("symbol") === "btc" &&
+          url.searchParams.get("offset") === "50",
+      ),
+    )
+    .toBe(true);
+  expect(state.mutations).toHaveLength(0);
+});
 
 test("column filters link configured candidates and clear independently", async ({ page }) => {
   await fixture(page);

@@ -8,6 +8,7 @@ import {
 import type { AccountStructure, Identity, Platform } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { identityEtag } from "@/features/data/useIdentities";
+import { marginModeLabel, structureLabel } from "@/features/data/usePlatforms";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
@@ -216,7 +217,7 @@ function CreateForm({
           ) : null}
           {(platform?.accountStructures ?? []).map((item) => (
             <option key={item.id} value={item.id}>
-              {item.name}
+              {structureLabel(platforms, platformId, item.id)}
             </option>
           ))}
         </Select>
@@ -226,7 +227,7 @@ function CreateForm({
           The structure decides the Account Types and cannot be changed later: after switching it on{" "}
           {platform.name}, create a new Identity and archive this one.
           {structure && structure.marginModes.length > 0
-            ? ` The margin mode (${structure.marginModes.map((item) => item.name).join(", ")}) is read from ${platform.name} at every validation and collection.`
+            ? ` The margin mode (${structure.marginModes.map((item) => marginModeLabel(platforms, platform.id, structure.id, item.id)).join(", ")}) is read from ${platform.name} at every validation and collection.`
             : ""}
         </p>
       ) : null}

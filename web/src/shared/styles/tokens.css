@@ -94,6 +94,7 @@
   --sidebar-width: 232px;
   --sidebar-width-collapsed: 56px;
   /* Stacking order for surfaces that escape their own layout. */
+  --layer-header: 10;
   --layer-scrim: 19;
   --layer-sidebar: 20;
   --layer-portal-menu: 100;
@@ -259,6 +260,19 @@ textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Mobile browser refresh belongs to the document, rather than an inner pane. */
+@media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
 }
 
 @media (pointer: coarse) {

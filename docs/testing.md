@@ -68,7 +68,25 @@ npm --prefix web exec playwright install chromium
 npm --prefix web run test:chromium
 ```
 
-It is separate from `make test`, which remains the routine offline gate.
+It is separate from `make test`, which remains the routine offline gate. Put
+Playwright output in a unique directory under `/tmp/plutus`, for example by
+adding `-- --output=/tmp/plutus/<session>/playwright` to the test command.
+
+Mobile scroll regressions cover long and short pages, portrait and landscape,
+sticky navigation, horizontal tables, external-scroll menu dismissal, reload
+with URL filters, and transitions back to desktop pane scrolling. A dedicated
+Vite-only fixture exercises overlapping native Dialogs, Strict Mode, component
+unmount, pre-existing inline styles, and breakpoint-dependent lock cleanup.
+These fixtures are test sources and are not included in the embedded SPA.
+
+Chromium automation does not prove native iPhone Safari or Android Chrome
+pull-to-refresh or its browser indicator. Check ordinary tabs on actual devices
+with short and long pages, toolbars expanded and collapsed, and drawers/dialogs
+open and closed. Confirm that a pull at the page top reloads the same URL, reads
+existing data, and does not request a Collection Cycle. Record device/browser
+versions and outcomes separately; report this coverage as outstanding until it
+has been observed. Embedded browsers and home-screen mode are outside this
+delivery's acceptance scope.
 
 `make generate` regenerates the sqlc queries, the Go strict server, and the
 TypeScript client; the tree must be unchanged afterwards.

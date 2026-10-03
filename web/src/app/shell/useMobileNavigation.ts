@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const MOBILE_LAYOUT_QUERY = "(max-width: 900px)";
+import { MOBILE_LAYOUT_QUERY, useMobileScrollLock } from "@/shared/lib/useMobileScrollLock";
 
 export function useMobileNavigation() {
   const [open, setOpen] = useState(false);
@@ -9,6 +8,8 @@ export function useMobileNavigation() {
   );
   const sidebarRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useMobileScrollLock(mobileLayout && open);
 
   useEffect(() => {
     if (!window.matchMedia) return;
@@ -24,7 +25,8 @@ export function useMobileNavigation() {
 
   const close = useCallback((restoreFocus = true) => {
     setOpen(false);
-    if (restoreFocus) window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+    if (restoreFocus)
+      window.requestAnimationFrame(() => menuButtonRef.current?.focus({ preventScroll: true }));
   }, []);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function useMobileNavigation() {
         focusFrame = window.requestAnimationFrame(focusWhenVisible);
         return;
       }
-      target.focus();
+      target.focus({ preventScroll: true });
     };
     focusFrame = window.requestAnimationFrame(focusWhenVisible);
     const onKeyDown = (event: KeyboardEvent) => {

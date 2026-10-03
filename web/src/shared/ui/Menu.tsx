@@ -34,7 +34,7 @@ export function useMenu(placement: MenuPlacement = "bottom-end") {
     (restoreFocus = false) => {
       setOpen(false);
       if (restoreFocus) {
-        anchor?.focus();
+        anchor?.focus({ preventScroll: true });
       }
     },
     [anchor],
@@ -70,7 +70,7 @@ export function useMenu(placement: MenuPlacement = "bottom-end") {
         list.find((item) => item.getAttribute("aria-checked") === "true") ??
         list.find((item) => item.getAttribute("aria-selected") === "true") ??
         list[0]
-      )?.focus();
+      )?.focus({ preventScroll: true });
     });
     const onPointer = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -107,12 +107,17 @@ export function useMenu(placement: MenuPlacement = "bottom-end") {
       event.preventDefault();
       list[next]?.focus();
     };
+    const onScroll = (event: Event) => {
+      if (!panel.contains(event.target as Node)) close();
+    };
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("scroll", onScroll, true);
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [anchor, close, open, panel]);
 

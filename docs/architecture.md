@@ -249,6 +249,34 @@ references with compatible stored direction. Legacy Bybit margin is marked as an
 initial requirement; missing Report modes and other absent margin provenance
 remain null. The baseline and source financial amounts are retained.
 
+## Mobile browser scrolling
+
+At the existing 900px layout breakpoint, the document owns vertical scrolling.
+The root, shell, workspace, and main content grow with their contents rather
+than clipping a viewport-sized inner pane. Vertical overscroll uses the browser
+default, allowing native pull-to-refresh in ordinary mobile browser tabs. The
+mobile top bar is sticky below navigation overlays and portal menus; table
+wrappers retain horizontal scrolling. Sign-in and startup screens use viewport
+minimum heights. Desktop retains its fixed-height shell and scrolling main pane.
+The mobile main pane clips only horizontal overflow, containing chart tooltips
+left at an old position after a viewport resize without adding a vertical scroll
+container. Its stacking context keeps chart content below the sticky header and
+navigation overlays, while body-portal menus retain their own overlay layer.
+
+Navigation drawers and shared Dialogs acquire a reference-counted mobile
+document lock before moving focus. The first lock records the scroll offset and
+affected inline styles, then fixes the body at the saved offset and locks root
+scrolling. The last release restores those styles and the scroll offset. Effect
+cleanup and layout-breakpoint changes release locks; focus restoration does not
+scroll the document. Drawer and dialog scrollers contain overscroll, while their
+backgrounds remain fixed. Shared menus dismiss on external scroll and preserve
+internal menu scrolling.
+
+Reload keeps the current URL, rereads existing data, and resets transient React
+state. It does not enqueue a Collection Cycle. The accepted user-facing behavior
+and browser coverage boundary are recorded in
+[ADR 0015](./adr/0015-mobile-native-refresh.md).
+
 ## Authentication and secrets
 
 Users are provisioned through the CLI. Argon2id password hashes belong to Users.

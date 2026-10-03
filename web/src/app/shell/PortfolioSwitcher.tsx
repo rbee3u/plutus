@@ -115,7 +115,7 @@ export function PortfolioSwitcher({
         <MenuItem
           icon={<Plus size={iconSize.sm} />}
           onClick={() => {
-            menu.close();
+            menu.close(true);
             setCreateOpen(true);
           }}
         >

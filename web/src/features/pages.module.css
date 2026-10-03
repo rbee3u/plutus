@@ -641,6 +641,11 @@
 }
 
 @media (max-width: 900px) {
+  .auth {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
   .page,
   .wide {
     padding: var(--space-xl) var(--space-lg);
