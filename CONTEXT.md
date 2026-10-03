@@ -102,6 +102,21 @@ for its equity measure.
 side, size, prices, and margin measures. Opposing long and short holdings remain
 separate. A Position is not another Balance to add to Account equity.
 
+**Position Mode**: Whether a contract Position is one-way (opposing trades net
+against it) or hedged (separate long and short holdings). It is distinct from
+the Position's direction and from Account Margin Mode.
+
+**Position Margin Setting**: Whether a Position uses cross collateral or
+isolated funds. Portfolio Margin is an Account regime, not a third
+cross/isolated setting.
+
+**Position Size**: Base quantity for a linear contract or Quote face amount for
+an inverse contract. Contract counts require the Instrument's per-contract size.
+
+**Position Margin**: The position initial requirement excluding orders for cross
+positions, or allocated funds excluding unrealized PnL for isolated positions.
+Source amounts have a currency and basis; unavailable allocation stays unknown.
+
 **Complete Set**: A successful Account Report contains all of that Account's
 Balances, Positions, and Dual Positions; anything absent is no longer held. A
 failure cannot clear holdings.

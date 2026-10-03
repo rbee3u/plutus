@@ -104,9 +104,9 @@ Earn is the same Account in both structures.
   Plutus does not support Kraken credit.
 - Not stored: `flex_futures` `balance_value`, `collateral_value`, `pnl`,
   `unrealized_funding`, `total_unrealized`, `total_unrealized_as_margin`,
-  `initial_margin_without_orders`, `total_position_size`, `isolated`,
-  `isolated_list`, and `cross`; the snapshot's `futures_cash_value`;
-  TradeBalance fields other than `n`.
+  `initial_margin_without_orders` at wallet level, `total_position_size`,
+  `isolated_list`, and `cross`; isolated position allocation is mapped below;
+  the snapshot's `futures_cash_value`; TradeBalance fields other than `n`.
 
 ## Balance
 
@@ -151,15 +151,15 @@ contracts, belong to the multi-collateral wallet: `main` in Unified Wallet,
 `multi_m` in Separate wallets. Inverse and vanilla futures belong to `coin_m`;
 routing uses the instrument type, not its symbol prefix or expiry.
 
-| Plutus column                             | Source                                                                                                                                                                           |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_position_ref`                   | `<symbol>:<side>`, such as `PF_DOGEUSD:long`                                                                                                                                     |
-| `side`                                    | `side`, `long` or `short`                                                                                                                                                        |
-| `quantity`, `quantity_unit`               | `abs(size)` in contracts                                                                                                                                                         |
-| `entry_price`                             | `price`                                                                                                                                                                          |
-| `mark_price`                              | `markPrice` from Futures tickers                                                                                                                                                 |
-| `unrealized_pnl`                          | `unrealizedPnl` when `pnlCurrency` is the settlement coin, or a USD equivalent for a USD-settled contract; a flexible position without `pnlCurrency` reports USD. Null otherwise |
-| `liquidation_price`, `leverage`, `margin` | not mapped                                                                                                                                                                       |
+| Plutus column                   | Source                                                                                                                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `platform_position_ref`         | `<symbol>:<side>`, such as `PF_DOGEUSD:long`                                                                                                                                     |
+| `side`                          | `side`, `long` or `short`                                                                                                                                                        |
+| `quantity`, `quantity_unit`     | `abs(size)` in contracts                                                                                                                                                         |
+| `entry_price`                   | `price`                                                                                                                                                                          |
+| `mark_price`                    | `markPrice` from Futures tickers                                                                                                                                                 |
+| `unrealized_pnl`                | `unrealizedPnl` when `pnlCurrency` is the settlement coin, or a USD equivalent for a USD-settled contract; a flexible position without `pnlCurrency` reports USD. Null otherwise |
+| `liquidation_price`, `leverage` | not mapped                                                                                                                                                                       |
 
 - Rows with `size = 0` are dropped.
 - An open option position fails the multi-collateral report with
@@ -214,3 +214,14 @@ matched error name ("Invalid key.", or "API key not found." for the key check's
 401), never Kraken's text, which can echo the request. On a 401, 403, 429, or
 5xx the status decides the class, and a documented error name in the body only
 sharpens the detail.
+
+### Position presentation provenance
+
+Kraken contracts are one-way; opposing trades net against the same contract.
+Coin-M is Cross. For Multi-M/Unified Main, an explicit isolated map entry
+identifies Isolated, and `initial_margin_without_orders` supplies the USD funds
+set aside for that contract, excluding order reservations and PnL. Kraken
+defines this isolated initial amount as allocated funds; this platform-specific
+meaning is distinct from a generic initial requirement. A returned complete
+empty map identifies Cross; an absent map leaves the setting unknown. Cross
+wallet totals are not split among positions. No new requests are added.

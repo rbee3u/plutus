@@ -157,3 +157,14 @@ local sing-box entry point may forward through SS to an allowlisted exit; Plutus
 does not implement SS or fall back to direct access. Verify the actual exit IPv4
 and successful Account Reports separately from readiness. When moving an
 existing database, retain its original credential encryption master key.
+
+### Position presentation upgrade
+
+Stop the service and apply
+[20261003010000_position_presentation.sql](../db/migrations/20261003010000_position_presentation.sql)
+with `migrate up` before running the new binary. This adds nullable provenance
+fields on populated databases and preserves original quantities and amounts.
+Exact canonical Position references restore one-way/hedged mode; noncanonical
+references, contradictory directions, and unrecorded historical Report Margin
+Modes remain unknown. New successful collection supplies the new provenance;
+stale fallback keeps the old Report's known fields and observation time.

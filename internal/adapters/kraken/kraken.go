@@ -316,6 +316,7 @@ func (s *snapshot) observedAt(now time.Time) time.Time {
 
 // multiWallet is the multi-collateral wallet: Multi-M in Separate wallets, Main in Unified Wallet.
 type multiWallet struct {
+	Isolated          map[string]isolatedWallet     `json:"isolated"`
 	UnifiedBalances   *bool                         `json:"unified_balances"`
 	Currencies        map[string]collateralCurrency `json:"currencies"`
 	PortfolioValue    number                        `json:"portfolio_value"`
@@ -323,6 +324,10 @@ type multiWallet struct {
 	AvailableMargin   number                        `json:"available_margin"`
 	InitialMargin     number                        `json:"initial_margin"`
 	MaintenanceMargin number                        `json:"maintenance_margin"`
+}
+
+type isolatedWallet struct {
+	InitialWithoutOrders number `json:"initial_margin_without_orders"`
 }
 
 // collateralCurrency is one currency of the multi-collateral wallet.

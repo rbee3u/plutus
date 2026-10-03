@@ -736,7 +736,8 @@ func TestClockResynchronizesOnceAfterATimestampRefusal(t *testing.T) {
 
 func TestPositionMapping(t *testing.T) {
 	delivery := instrument{Symbol: "BTCUSDZ26", ContractType: "InverseFutures", BaseCoin: "BTC", QuoteCoin: "USD", SettleCoin: "BTC", DeliveryTime: "1798761600000"}
-	row := openPosition{Symbol: delivery.Symbol, PositionIdx: 2, Side: "Sell", Size: "300", AvgPrice: "30000", MarkPrice: "29000", Leverage: "5", PositionIM: "0.002", LiqPrice: "0"}
+	index := 2
+	row := openPosition{Symbol: delivery.Symbol, PositionIdx: &index, Side: "Sell", Size: "300", AvgPrice: "30000", MarkPrice: "29000", Leverage: "5", PositionIM: "0.002", LiqPrice: "0"}
 	position, err := mapPosition(&row, big.NewRat(300, 1), &delivery, adapters.MarginBybitCross)
 	if err != nil {
 		t.Fatal(err)

@@ -146,6 +146,16 @@ func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.P
 		if err != nil {
 			return nil, err
 		}
+		if multiCollateral {
+			if isolated, exists := r.snapshot.Flex.Isolated[row.Symbol]; exists {
+				position.MarginMode, position.MarginBasis, position.MarginCurrency = "isolated", "allocated", "USD"
+				position.Margin = adapters.Plain(string(isolated.InitialWithoutOrders))
+			} else if r.snapshot.Flex.Isolated != nil {
+				position.MarginMode = "cross"
+			}
+		} else {
+			position.MarginMode = "cross"
+		}
 		if seen[position.PlatformPositionRef] {
 			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: position %s appears twice.", where, position.PlatformPositionRef))
 		}
@@ -227,6 +237,7 @@ func mapPosition(row *openPosition, contract *instrument, ticker *futuresTicker,
 			ContractSize:     contractSize,
 		},
 		Side:         side,
+		PositionMode: "one_way",
 		Quantity:     decimal.Format(decimal.Abs(size)),
 		QuantityUnit: adapters.UnitContracts,
 		EntryPrice:   adapters.Plain(string(row.Price)),

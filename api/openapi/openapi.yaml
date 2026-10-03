@@ -729,10 +729,15 @@ paths:
     get:
       operationId: listAccountPositions
       tags: [holdings]
-      summary: Positions of an account's current report
+      summary: Positions of an account at the latest or a specified Valuation Point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AccountID"
+        - name: pointId
+          in: query
+          description: Historical Valuation Point; omitted for the latest point.
+          schema:
+            $ref: "#/components/schemas/UUID"
       responses:
         "200":
           description: Account positions.
@@ -2331,7 +2336,7 @@ components:
     PositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, instrumentId, symbol, kind, side, quantity, quantityUnit, freshness]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, instrumentId, symbol, kind, side, quantity, quantityUnit, freshness, issues]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2367,6 +2372,31 @@ components:
         side:
           type: string
           enum: [long, short]
+        positionMode:
+          type: [string, "null"]
+          enum: [one_way, hedged, null]
+        marginMode:
+          type: [string, "null"]
+          enum: [cross, isolated, null]
+        marginCurrency:
+          type: [string, "null"]
+        marginBasis:
+          type: [string, "null"]
+          enum: [initial, allocated, null]
+        portfolioMargin:
+          type: [boolean, "null"]
+        size:
+          description: Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
+          $ref: "#/components/schemas/NullableDecimal"
+        sizeSymbol:
+          type: [string, "null"]
+        settleMargin:
+          description: Margin in settlement currency, using the position's cross or isolated display basis.
+          $ref: "#/components/schemas/NullableDecimal"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
         quantity:
           $ref: "#/components/schemas/Decimal"
         quantityUnit:
@@ -2533,6 +2563,7 @@ components:
         page:
           $ref: "#/components/schemas/OffsetPage"
         totalNotionalUsd:
+          description: Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
           $ref: "#/components/schemas/NullableDecimal"
         completeness:
           $ref: "#/components/schemas/Completeness"

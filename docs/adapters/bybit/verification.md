@@ -297,7 +297,8 @@ and preparation deferrals are listed above.
    empty liquidation fields remain null.
 6. **Isolated Margin**: the account figures are empty, and the value is
    calculated from the Balances. Each position shows its own liquidation price,
-   leverage, and margin.
+   leverage, and an unknown allocated Margin when only `positionIM` is returned.
+   Its hover identifies the retained initial requirement.
 7. **Positions**: every open linear and inverse position appears with the same
    side, size (linear in coins, inverse in USD), entry price, and mark price.
    Portfolio Margin positions show no leverage, margin, or liquidation price.

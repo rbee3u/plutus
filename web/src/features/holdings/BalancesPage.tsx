@@ -1,3 +1,4 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { listBalances } from "@/api/generated/sdk.gen";
@@ -5,7 +6,7 @@ import type { BalanceList, GroupTotal } from "@/api/generated/types.gen";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
 import { BALANCE_COLUMNS, balanceRow } from "@/features/holdings/AccountDetail";
 import { HoldingsFilters } from "@/features/holdings/HoldingsFilters";
-import { formatAmount, formatUsd } from "@/shared/lib/amount";
+import { formatAmount, formatUsd, formatCount } from "@/shared/lib/amount";
 import { readChoice, readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { capitalize, NO_POINT } from "@/shared/lib/text";
@@ -102,7 +103,9 @@ export function BalancesPage() {
           <ContextSummary context={data.context} />
           <p className={styles.totalRow}>
             <span>Total</span>
-            <span className={styles.totalValue}>{formatUsd(data.totalUsd)}</span>
+            <span className={styles.totalValue}>
+              <NumericText>{formatUsd(data.totalUsd)}</NumericText>
+            </span>
             <CompletenessBadge value={data.completeness} />
           </p>
           {groupBy ? (
@@ -159,8 +162,8 @@ function groupRow(group: GroupTotal): DataRow {
     id: group.key,
     label: group.label,
     valueUsd: formatAmount(group.valueUsd),
-    accountCount: String(group.accountCount),
-    rowCount: String(group.rowCount),
+    accountCount: formatCount(group.accountCount),
+    rowCount: formatCount(group.rowCount),
     completeness: <CompletenessBadge value={group.completeness} />,
   };
 }

@@ -1,3 +1,4 @@
+import { formatCount } from "@/shared/lib/amount";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
 import { useRef, useState } from "react";
@@ -254,7 +255,7 @@ export function IdentitiesPage() {
       />
       <div className={styles.toolbar}>
         <Toggle checked={showArchived} onCheckedChange={setShowArchived}>
-          Show archived ({String(archivedCount)})
+          Show archived ({formatCount(archivedCount)})
         </Toggle>
       </div>
       <DataTable
@@ -316,7 +317,7 @@ export function IdentitiesPage() {
                 </span>
               </span>
             ),
-            accounts: `${String(selectedCount)}/${String(item.accounts.length)} selected`,
+            accounts: `${formatCount(selectedCount)}/${formatCount(item.accounts.length)} selected`,
             lastValidatedAt: formatInstant(connection.lastValidatedAt, timezone),
             lastCollectedAt: formatInstant(connection.lastCollectedAt, timezone),
             lastError: connection.lastErrorClass ? (

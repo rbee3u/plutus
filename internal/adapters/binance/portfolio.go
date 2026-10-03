@@ -136,14 +136,18 @@ func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
 // /papi/v1/cm/positionRisk in Portfolio Margin, /fapi/v3/positionRisk and /dapi/v1/positionRisk in
 // Classic Trading. /fapi/v3/positionRisk has no leverage; withLeverage fills it in.
 type positionRisk struct {
-	Symbol           string `json:"symbol"`
-	PositionAmt      string `json:"positionAmt"`
-	PositionSide     string `json:"positionSide"`
-	EntryPrice       string `json:"entryPrice"`
-	MarkPrice        string `json:"markPrice"`
-	LiquidationPrice string `json:"liquidationPrice"`
-	UnRealizedProfit string `json:"unRealizedProfit"`
-	Leverage         string `json:"leverage"`
+	Symbol                string `json:"symbol"`
+	PositionAmt           string `json:"positionAmt"`
+	PositionSide          string `json:"positionSide"`
+	EntryPrice            string `json:"entryPrice"`
+	MarkPrice             string `json:"markPrice"`
+	LiquidationPrice      string `json:"liquidationPrice"`
+	UnRealizedProfit      string `json:"unRealizedProfit"`
+	Leverage              string `json:"leverage"`
+	MarginType            string `json:"marginType"`
+	MarginAsset           string `json:"marginAsset"`
+	PositionInitialMargin string `json:"positionInitialMargin"`
+	IsolatedWallet        string `json:"isolatedWallet"`
 }
 
 // positionSource is the rows of one position endpoint and the market they trade in.
@@ -191,6 +195,7 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 	if _, _, err := amounts(ep.String(), map[string]string{
 		"entryPrice": row.EntryPrice, "markPrice": row.MarkPrice, "liquidationPrice": row.LiquidationPrice,
 		"unRealizedProfit": row.UnRealizedProfit, "leverage": row.Leverage,
+		"positionInitialMargin": row.PositionInitialMargin, "isolatedWallet": row.IsolatedWallet,
 	}); err != nil {
 		return adapters.Position{}, err
 	}
@@ -199,15 +204,22 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 	case "SHORT":
 		side = adapters.SideShort
 	case "LONG":
-	default:
+	case "BOTH":
 		if amount.Sign() < 0 {
 			side = adapters.SideShort
 		}
+	default:
+		return adapters.Position{}, adapters.Malformed(ep.String(), "positionSide of "+row.Symbol)
 	}
-	return adapters.Position{
+	mode := "hedged"
+	if strings.EqualFold(row.PositionSide, "BOTH") {
+		mode = "one_way"
+	}
+	out := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%s:%s", m, row.Symbol, strings.ToUpper(row.PositionSide)),
 		Instrument:          *instrument,
 		Side:                side,
+		PositionMode:        mode,
 		Quantity:            decimal.Format(decimal.Abs(amount)),
 		QuantityUnit:        unit,
 		EntryPrice:          adapters.Plain(row.EntryPrice),
@@ -215,5 +227,21 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 		LiquidationPrice:    adapters.NonZero(row.LiquidationPrice),
 		UnrealizedPnl:       adapters.Plain(row.UnRealizedProfit),
 		Leverage:            adapters.Plain(row.Leverage),
-	}, nil
+	}
+	if ep == epUMPositionRisk || ep == epCMPositionRisk {
+		out.MarginMode = strings.ToLower(strings.TrimSpace(row.MarginType))
+		switch out.MarginMode {
+		case "cross":
+			out.Margin, out.MarginBasis = adapters.Plain(row.PositionInitialMargin), "initial"
+		case "isolated":
+			out.Margin, out.MarginBasis = adapters.Plain(row.IsolatedWallet), "allocated"
+		default:
+			out.MarginMode = ""
+		}
+		out.MarginCurrency = strings.TrimSpace(row.MarginAsset)
+		if m == marketCM && out.MarginCurrency == "" {
+			out.MarginCurrency = instrument.SettlementSymbol
+		}
+	}
+	return out, nil
 }

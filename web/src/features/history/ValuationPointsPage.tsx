@@ -1,7 +1,8 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import type { EChartsCoreOption } from "echarts/core";
 import { ChevronRight } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { getValuationPoint, listPeriodCloses, listValuationPoints } from "@/api/generated/sdk.gen";
 import type {
@@ -12,7 +13,13 @@ import type {
   Platform,
   ValuationPointSummary,
 } from "@/api/generated/types.gen";
-import { chartNumber, formatAmount, formatBoundaryFlows, isZeroDecimal } from "@/shared/lib/amount";
+import {
+  chartNumber,
+  formatAmount,
+  formatBoundaryFlows,
+  isZeroDecimal,
+  formatCount,
+} from "@/shared/lib/amount";
 import { formatInstant, isoFromLocalInput } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { readChoice, useSearchState } from "@/shared/lib/searchParams";
@@ -27,6 +34,7 @@ import { IconButton } from "@/shared/ui/IconButton";
 import { IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
+import { HistoricalPositions } from "@/features/holdings/HistoricalPositions";
 import styles from "@/features/pages.module.css";
 
 const GRANULARITIES = ["raw", "hour", "day"] as const;
@@ -91,6 +99,10 @@ export function ValuationPointsPage() {
           type: "line",
           name: "Total value",
           data: items.map((item) => chartNumber(item.totalUsd)),
+          tooltip: {
+            valueFormatter: (_value: unknown, index: number) =>
+              formatAmount(items[index]?.totalUsd),
+          },
         },
       ],
     };
@@ -150,7 +162,7 @@ export function ValuationPointsPage() {
           <p className={styles.muted}>
             {formatInstant(series.from, timezone)} – {formatInstant(series.to, timezone)} in{" "}
             {series.context.timezone}, {series.granularity} granularity,{" "}
-            {String(series.items.length)} {series.items.length === 1 ? "point" : "points"}.
+            {formatCount(series.items.length)} {series.items.length === 1 ? "point" : "points"}.
           </p>
           <ChartBlock
             title="Portfolio value"
@@ -284,7 +296,7 @@ function pointRow(
     // A known zero on both sides is one quiet figure, not a signed pair.
     boundary:
       isZeroDecimal(item.boundaryContributionUsd) && isZeroDecimal(item.boundaryWithdrawalUsd) ? (
-        <span className={styles.cellMeta}>0.00</span>
+        <span className={styles.cellMeta}>{formatAmount(item.boundaryContributionUsd)}</span>
       ) : (
         `+${formatAmount(item.boundaryContributionUsd)} / −${formatAmount(item.boundaryWithdrawalUsd)}`
       ),
@@ -376,6 +388,8 @@ export function boundaryEventRow(
 }
 
 function PointDetail({ detail, timezone }: { detail: ValuationPointDetail; timezone?: string }) {
+  const { portfolioId = "" } = useParams();
+  const [openAccount, setOpenAccount] = useState<string | undefined>();
   const platforms = usePlatforms();
   const point = detail.point;
   return (
@@ -383,7 +397,9 @@ function PointDetail({ detail, timezone }: { detail: ValuationPointDetail; timez
       <dl className={styles.metaList}>
         <div>
           <dt>Boundary flows</dt>
-          <dd>{formatBoundaryFlows(point)}</dd>
+          <dd>
+            <NumericText>{formatBoundaryFlows(point)}</NumericText>
+          </dd>
         </div>
         <div>
           <dt>Collection Cycle</dt>
@@ -397,12 +413,40 @@ function PointDetail({ detail, timezone }: { detail: ValuationPointDetail; timez
         ) : null}
       </dl>
       <h3>Accounts</h3>
+      <p className={styles.muted}>
+        Select an Account to view its contract positions at this point.
+      </p>
       <DataTable
         caption="Account valuations at this point"
-        columns={ACCOUNT_VALUATION_COLUMNS}
-        rows={detail.accounts.map((item) =>
-          accountValuationRow(item, timezone, platforms.data?.items),
+        onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
+        openKey={openAccount}
+        detailId={`historical-positions-${point.id}`}
+        renderDetail={(row) => (
+          <HistoricalPositions
+            portfolioId={portfolioId}
+            accountId={typeof row.id === "string" ? row.id : ""}
+            pointId={point.id}
+          />
         )}
+        columns={ACCOUNT_VALUATION_COLUMNS}
+        rows={detail.accounts.map((item) => ({
+          ...accountValuationRow(item, timezone, platforms.data?.items),
+          account: (
+            <button
+              type="button"
+              className={styles.inlineButton}
+              aria-expanded={openAccount === item.accountId}
+              aria-controls={`historical-positions-${point.id}`}
+              onClick={() =>
+                setOpenAccount((current) =>
+                  current === item.accountId ? undefined : item.accountId,
+                )
+              }
+            >
+              {item.identityName} / {item.accountName}
+            </button>
+          ),
+        }))}
         empty="No accounts were inside the boundary at this point."
       />
       <h3>Boundary Events</h3>

@@ -491,8 +491,9 @@ account.
 3. **Portfolio Margin balances**: each coin's equity matches the app's per-asset
    balance including unrealized PnL. A coin with a COIN-M loss can be negative.
 4. **Positions**: every open USDⓈ-M and COIN-M position appears with the same
-   side, size (USDⓈ-M in coins, COIN-M in contracts), entry price, and leverage.
-   Liquidation prices agree within rounding.
+   direction, normalized Size (USDⓈ-M in Base coins, COIN-M in Quote face
+   currency), entry price, and leverage. Liquidation prices agree within
+   rounding.
 5. **Classic margin**: each Cross Margin coin's equity equals its net asset and
    its liability equals its borrowed amount, and the margin level matches the
    app's. Isolated Margin shows each coin once, summed over its pairs. A User
@@ -501,7 +502,8 @@ account.
    wallet. In Multi-Assets Mode, `AdjEq` equals the margin balance and the
    maintenance margin ratio equals the Margin Ratio of the futures page. In
    Single-Asset Mode, those figures are empty. COIN-M balances are per coin, and
-   positions are in contracts.
+   source position quantities are in contracts; displayed Size is Quote face
+   amount.
 7. **Spot, funding, and Earn**: coin amounts match the Spot and Funding wallets,
    and flexible-earn receipts do not appear under spot. Simple Earn flexible and
    locked amounts match the Earn page. Each running dual investment position

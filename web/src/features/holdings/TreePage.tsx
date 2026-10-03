@@ -1,3 +1,4 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { Fragment, useState } from "react";
@@ -5,7 +6,7 @@ import { useParams } from "react-router";
 import { getHoldingsTree } from "@/api/generated/sdk.gen";
 import type { AccountValuation } from "@/api/generated/types.gen";
 import { AccountDetail } from "@/features/holdings/AccountDetail";
-import { formatAmount, formatUsd } from "@/shared/lib/amount";
+import { formatAmount, formatUsd, formatCount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
@@ -21,7 +22,7 @@ import styles from "@/features/pages.module.css";
 const COLUMN_COUNT = 5;
 
 function count(n: number, singular: string, plural: string): string {
-  return `${String(n)} ${n === 1 ? singular : plural}`;
+  return `${formatCount(n)} ${n === 1 ? singular : plural}`;
 }
 
 export function TreePage() {
@@ -71,7 +72,9 @@ export function TreePage() {
           <ContextSummary context={tree.context} />
           <p className={styles.totalRow}>
             <span>Total</span>
-            <span className={styles.totalValue}>{formatUsd(tree.totalUsd)}</span>
+            <span className={styles.totalValue}>
+              <NumericText>{formatUsd(tree.totalUsd)}</NumericText>
+            </span>
             {tree.completeness === "incomplete" ? (
               <CompletenessBadge value={tree.completeness} />
             ) : null}
@@ -117,7 +120,9 @@ export function TreePage() {
                           ) : null}
                         </span>
                       </td>
-                      <td className={styles.numeric}>{formatAmount(platform.valueUsd)}</td>
+                      <td className={styles.numeric}>
+                        <NumericText>{formatAmount(platform.valueUsd)}</NumericText>
+                      </td>
                       <td colSpan={COLUMN_COUNT - 2} />
                     </tr>
                     {platform.identities.map((identity) => (
@@ -145,7 +150,9 @@ export function TreePage() {
                               </span>
                             </span>
                           </td>
-                          <td className={styles.numeric}>{formatAmount(identity.valueUsd)}</td>
+                          <td className={styles.numeric}>
+                            <NumericText>{formatAmount(identity.valueUsd)}</NumericText>
+                          </td>
                           <td colSpan={COLUMN_COUNT - 2} />
                         </tr>
                         {identity.accounts.map((account) => (
@@ -211,7 +218,9 @@ function AccountRows({
             {account.selected ? null : <span className={styles.cellMeta}>not selected</span>}
           </span>
         </td>
-        <td className={styles.numeric}>{formatAmount(account.valueUsd)}</td>
+        <td className={styles.numeric}>
+          <NumericText>{formatAmount(account.valueUsd)}</NumericText>
+        </td>
         <td>{account.method}</td>
         <td>{formatInstant(account.reportObservedAt, timezone)}</td>
         <td>

@@ -190,7 +190,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		switch accountType {
 		case TypeTrading:
-			return a.trading(ctx, c)
+			return a.trading(ctx, c, mode)
 		case TypeFunding:
 			return a.funding(ctx, c)
 		case TypeEarn, TypeDualInvestment:
@@ -235,7 +235,7 @@ type tradingBalance struct {
 // Margin Modes: OKX returns "" for every field that does not apply to the
 // account's level (docs/adapters/okx/mapping.md lists them per mode), and an
 // empty field stays unknown rather than becoming zero.
-func (a *Adapter) trading(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) trading(ctx context.Context, c *client, mode adapters.MarginMode) (adapters.AccountReport, error) {
 	var rows []tradingAccount
 	if err := c.call(ctx, epBalance, &rows); err != nil {
 		return adapters.AccountReport{}, err
@@ -252,7 +252,7 @@ func (a *Adapter) trading(ctx context.Context, c *client) (adapters.AccountRepor
 	if report.Balances, err = mapTradingBalances(account.Details); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	if report.Positions, err = a.positions(ctx, c); err != nil {
+	if report.Positions, err = a.positions(ctx, c, mode); err != nil {
 		return adapters.AccountReport{}, err
 	}
 	return report, nil
@@ -494,12 +494,14 @@ type openPosition struct {
 	Upl      string `json:"upl"`
 	Lever    string `json:"lever"`
 	Margin   string `json:"margin"`
+	IMR      string `json:"imr"`
+	Ccy      string `json:"ccy"`
 }
 
 // positions maps the open contract positions of the trading account. MARGIN rows are skipped:
 // they are borrow-backed spot exposure whose value is already in the Balances' equity. An
 // instrument kind Plutus cannot store fails the Account instead of disappearing.
-func (a *Adapter) positions(ctx context.Context, c *client) ([]adapters.Position, error) {
+func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.MarginMode) ([]adapters.Position, error) {
 	var rows []openPosition
 	if err := c.call(ctx, epPositions, &rows); err != nil {
 		return nil, err
@@ -532,6 +534,9 @@ func (a *Adapter) positions(ctx context.Context, c *client) ([]adapters.Position
 		if err != nil {
 			return nil, err
 		}
+		if mode == adapters.MarginOKXPM && position.MarginMode == "cross" {
+			position.Margin, position.MarginBasis, position.MarginCurrency = nil, "", ""
+		}
 		out = append(out, position)
 	}
 	return out, nil
@@ -540,7 +545,7 @@ func (a *Adapter) positions(ctx context.Context, c *client) ([]adapters.Position
 func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instrument) (adapters.Position, error) {
 	if _, err := optionalFields(epPositions.String(), row.InstID,
 		field{"avgPx", row.AvgPx}, field{"markPx", row.MarkPx}, field{"liqPx", row.LiqPx},
-		field{"upl", row.Upl}, field{"lever", row.Lever}, field{"margin", row.Margin}); err != nil {
+		field{"upl", row.Upl}, field{"lever", row.Lever}, field{"margin", row.Margin}, field{"imr", row.IMR}); err != nil {
 		return adapters.Position{}, err
 	}
 	// In net mode one row carries the netted position and its direction is the sign of pos; in
@@ -550,15 +555,22 @@ func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instru
 	case "short":
 		side = adapters.SideShort
 	case "long":
-	default:
+	case "net":
 		if amount.Sign() < 0 {
 			side = adapters.SideShort
 		}
+	default:
+		return adapters.Position{}, adapters.Malformed(epPositions.String(), "posSide of "+row.InstID)
 	}
-	return adapters.Position{
+	mode := "hedged"
+	if strings.EqualFold(strings.TrimSpace(row.PosSide), "net") {
+		mode = "one_way"
+	}
+	out := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%s", row.InstID, strings.ToLower(strings.TrimSpace(row.PosSide))),
 		Instrument:          *instrument,
 		Side:                side,
+		PositionMode:        mode,
 		Quantity:            decimal.Format(decimal.Abs(amount)),
 		QuantityUnit:        adapters.UnitContracts,
 		EntryPrice:          adapters.Plain(row.AvgPx),
@@ -567,9 +579,14 @@ func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instru
 		UnrealizedPnl:       adapters.Plain(row.Upl),
 		// Portfolio margin reports no leverage for cross positions and fills the field with "0".
 		Leverage: adapters.NonZero(row.Lever),
-		// Only isolated positions carry their own margin; cross positions leave it empty.
-		Margin: adapters.Plain(row.Margin),
-	}, nil
+	}
+	switch row.MgnMode {
+	case "cross":
+		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "cross", "initial", "USD", adapters.Plain(row.IMR)
+	case "isolated":
+		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
+	}
+	return out, nil
 }
 
 // tickers returns a lookup of every spot last price and the time it was read. A failure yields

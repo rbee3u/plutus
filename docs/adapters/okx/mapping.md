@@ -268,7 +268,7 @@ Balances are priced in.
 | `unrealized_pnl`            | `upl`, in the settlement coin                                                                    |
 | `liquidation_price`         | `liqPx`. Null when empty or `0` (portfolio margin cross positions report none).                  |
 | `leverage`                  | `lever`. Null when empty or `0` (portfolio margin reports no leverage and fills `0`).            |
-| `margin`                    | `margin`, isolated positions only. Null for cross.                                               |
+| `margin`                    | Isolated `margin`; non-Portfolio Cross `imr` in USD; see provenance below.                       |
 
 - **Zero rows.** Rows with `pos = 0` are dropped: OKX leaves them behind after
   an isolated-margin transfer.
@@ -336,3 +336,14 @@ status and the code decide. `code` may be a string or a number. A compound code
 such as `51008_1000` is classified by its main code. Error details name the
 endpoint and OKX's code and message, cut to 200 characters, never a body or a
 key.
+
+### Position presentation provenance
+
+`posSide=net` retains one-way mode; long/short retains hedged mode. `mgnMode`
+retains the cross/isolated setting. Cross `imr` is a position initial
+requirement in USD, converted to Settle only by the accepted explicit conversion
+policy. Under Portfolio Margin, risk-unit `imr` can repeat across member
+positions and is not retained as a position allocation. Isolated `margin` is
+allocated funds; `ccy` retains its source currency for validation. Effective
+Contract Size remains `ctVal × ctMult`, with Base units for linear and Quote
+units for inverse.

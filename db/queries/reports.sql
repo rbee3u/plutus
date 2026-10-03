@@ -1,10 +1,10 @@
 -- name: InsertAccountReport :exec
 INSERT INTO account_reports (
-    id, portfolio_id, job_id, account_id, scope_version, status, observed_at, error_class, error_detail,
+    id, portfolio_id, job_id, account_id, scope_version, margin_mode, status, observed_at, error_class, error_detail,
     equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio,
     value_usd, method, source_report_id, omitted_json, created_at
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(scope_version), sqlc.arg(status),
+    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(scope_version), sqlc.narg(margin_mode), sqlc.arg(status),
     sqlc.narg(observed_at), sqlc.narg(error_class), sqlc.narg(error_detail),
     sqlc.narg(equity), sqlc.narg(adjusted_equity), sqlc.narg(available_equity), sqlc.narg(initial_margin_ratio),
     sqlc.narg(maintenance_margin_ratio), sqlc.narg(unified_margin_ratio),
@@ -30,20 +30,22 @@ INSERT INTO balances (
 -- name: InsertPosition :exec
 INSERT INTO positions (
     report_id, portfolio_id, platform_position_ref, instrument_id, side, quantity, quantity_unit,
-    entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin
+    entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin,
+    position_mode, margin_mode, margin_currency, margin_basis
 ) VALUES (
     sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(platform_position_ref), sqlc.arg(instrument_id), sqlc.arg(side),
     sqlc.arg(quantity), sqlc.arg(quantity_unit), sqlc.narg(entry_price), sqlc.narg(mark_price), sqlc.narg(liquidation_price),
-    sqlc.narg(unrealized_pnl), sqlc.narg(leverage), sqlc.narg(margin)
+    sqlc.narg(unrealized_pnl), sqlc.narg(leverage), sqlc.narg(margin),
+    sqlc.narg(position_mode), sqlc.narg(margin_mode), sqlc.narg(margin_currency), sqlc.narg(margin_basis)
 );
 
 -- name: ListReportsByJob :many
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.margin_mode, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
        i.status AS identity_status, i.connection_status, i.account_structure,
-       src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
+       src.margin_mode AS source_margin_mode, src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
        src.available_equity AS source_available_equity, src.initial_margin_ratio AS source_initial_margin_ratio,
        src.maintenance_margin_ratio AS source_maintenance_margin_ratio, src.unified_margin_ratio AS source_unified_margin_ratio
 FROM account_reports r
@@ -54,12 +56,12 @@ WHERE r.portfolio_id = sqlc.arg(portfolio_id) AND r.job_id = sqlc.arg(job_id)
 ORDER BY r.id;
 
 -- name: GetReport :one
-SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.status, r.observed_at, r.error_class, r.error_detail,
+SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.margin_mode, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
        r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
        i.status AS identity_status, i.connection_status, i.account_structure,
-       src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
+       src.margin_mode AS source_margin_mode, src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
        src.available_equity AS source_available_equity, src.initial_margin_ratio AS source_initial_margin_ratio,
        src.maintenance_margin_ratio AS source_maintenance_margin_ratio, src.unified_margin_ratio AS source_unified_margin_ratio
 FROM account_reports r
@@ -73,7 +75,7 @@ SELECT id FROM account_reports
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND job_id = sqlc.arg(job_id) AND account_id = sqlc.arg(account_id);
 
 -- name: GetLatestOkReportForAccount :one
-SELECT id, portfolio_id, job_id, account_id, scope_version, status, observed_at, equity, adjusted_equity, available_equity,
+SELECT id, portfolio_id, job_id, account_id, scope_version, margin_mode, status, observed_at, equity, adjusted_equity, available_equity,
        initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, created_at
 FROM account_reports
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND scope_version = sqlc.arg(scope_version) AND status = 'ok'
@@ -91,7 +93,7 @@ ORDER BY l.asset_symbol ASC, l.symbol ASC;
 
 -- name: ListPositionsByReport :many
 SELECT p.report_id, p.platform_position_ref, p.instrument_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin,
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_currency, p.margin_basis,
        n.platform, n.symbol, n.kind, n.base_symbol, n.quote_symbol, n.settlement_symbol, n.expiry_at, n.contract_size
 FROM positions p
 INNER JOIN instruments n ON n.id = p.instrument_id
@@ -115,7 +117,7 @@ ORDER BY cur.account_id, b.listing_id;
 -- name: ListPositionsByJob :many
 SELECT cur.account_id, cur.source_report_id AS report_id, src.observed_at,
        p.platform_position_ref, p.instrument_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin,
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_currency, p.margin_basis,
        n.platform, n.symbol, n.kind, n.base_symbol, n.quote_symbol, n.settlement_symbol, n.expiry_at, n.contract_size,
        a.identity_id, a.account_type, a.display_name AS account_name, i.display_name AS identity_name
 FROM account_reports cur

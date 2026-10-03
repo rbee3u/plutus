@@ -133,11 +133,21 @@ func (t *marginTotals) balances() []adapters.Balance {
 
 // futuresAccount is /fapi/v3/account or /dapi/v1/account. Only USDⓈ-M reports the totals.
 type futuresAccount struct {
-	TotalInitialMargin string         `json:"totalInitialMargin"`
-	TotalMaintMargin   string         `json:"totalMaintMargin"`
-	TotalMarginBalance string         `json:"totalMarginBalance"`
-	AvailableBalance   string         `json:"availableBalance"`
-	Assets             []futuresAsset `json:"assets"`
+	TotalInitialMargin string                   `json:"totalInitialMargin"`
+	TotalMaintMargin   string                   `json:"totalMaintMargin"`
+	TotalMarginBalance string                   `json:"totalMarginBalance"`
+	AvailableBalance   string                   `json:"availableBalance"`
+	Assets             []futuresAsset           `json:"assets"`
+	Positions          []futuresAccountPosition `json:"positions"`
+}
+
+type futuresAccountPosition struct {
+	Symbol                string `json:"symbol"`
+	PositionSide          string `json:"positionSide"`
+	PositionAmt           string `json:"positionAmt"`
+	PositionInitialMargin string `json:"positionInitialMargin"`
+	IsolatedWallet        string `json:"isolatedWallet"`
+	Isolated              *bool  `json:"isolated"`
 }
 
 type futuresAsset struct {
@@ -225,6 +235,7 @@ func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapters.AccountRep
 	if err := c.call(ctx, epCMPositionRisk, nil, &rows); err != nil {
 		return adapters.AccountReport{}, err
 	}
+	withCMRequirements(rows, account.Positions)
 	report := adapters.AccountReport{AccountType: TypeCMFutures, Status: adapters.StatusOK, ObservedAt: a.now()}
 	var err error
 	if report.Balances, err = mapFuturesAssets(epCMAccount, account.Assets); err != nil {
@@ -290,20 +301,60 @@ func withLeverage(ctx context.Context, c *client, rows []positionRisk) error {
 		return nil
 	}
 	var configs []struct {
-		Symbol   string      `json:"symbol"`
-		Leverage json.Number `json:"leverage"`
+		Symbol     string      `json:"symbol"`
+		Leverage   json.Number `json:"leverage"`
+		MarginType string      `json:"marginType"`
 	}
 	if err := c.call(ctx, epUMSymbolConfig, nil, &configs); err != nil {
 		return err
 	}
 	leverage := make(map[string]string, len(configs))
+	modes := make(map[string]string, len(configs))
 	for _, config := range configs {
 		leverage[config.Symbol] = config.Leverage.String()
+		modes[config.Symbol] = config.MarginType
 	}
 	for i := range rows {
+		rows[i].MarginType = modes[rows[i].Symbol]
 		if rows[i].Leverage == "" {
 			rows[i].Leverage = leverage[rows[i].Symbol]
 		}
 	}
 	return nil
+}
+
+// withCMRequirements aligns only an unambiguous account row with the risk row.
+// Different sizes may reflect a non-atomic read; they cannot supply this margin.
+func withCMRequirements(rows []positionRisk, account []futuresAccountPosition) {
+	for i := range rows {
+		row := &rows[i]
+		row.PositionInitialMargin = ""
+		var match *futuresAccountPosition
+		count := 0
+		for j := range account {
+			candidate := &account[j]
+			if candidate.Symbol == row.Symbol && candidate.PositionSide == row.PositionSide {
+				match = candidate
+				count++
+			}
+		}
+		if count != 1 {
+			continue
+		}
+		qty, valid := decimal.Parse(row.PositionAmt)
+		other, compatible := decimal.Parse(match.PositionAmt)
+		if !valid || !compatible || qty.Cmp(other) != 0 {
+			continue
+		}
+		row.PositionInitialMargin = match.PositionInitialMargin
+		if row.IsolatedWallet == "" {
+			row.IsolatedWallet = match.IsolatedWallet
+		}
+		if row.MarginType == "" && match.Isolated != nil {
+			row.MarginType = "cross"
+			if *match.Isolated {
+				row.MarginType = "isolated"
+			}
+		}
+	}
 }

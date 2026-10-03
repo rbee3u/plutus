@@ -44,6 +44,7 @@ type AccountReport struct {
 	OmittedJson            sqljson.Column
 	CreatedAt              time.Time
 	ScopeVersion           uint16
+	MarginMode             sql.NullString
 }
 
 type AssetListing struct {
@@ -246,6 +247,10 @@ type Position struct {
 	UnrealizedPnl       sql.NullString
 	Leverage            sql.NullString
 	Margin              sql.NullString
+	PositionMode        sql.NullString
+	MarginMode          sql.NullString
+	MarginCurrency      sql.NullString
+	MarginBasis         sql.NullString
 }
 
 type Price struct {

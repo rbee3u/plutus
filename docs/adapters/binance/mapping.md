@@ -116,8 +116,8 @@ Binance keeps coins that were once held.
 | `liability`             | `crossMarginBorrowed`                                                                                                 | null                                   | `borrowed`                                                          | null                                                                  | null                                  |
 | `interest`              | `crossMarginInterest`                                                                                                 | null                                   | `interest`                                                          | null                                                                  | null                                  |
 | `unrealized_pnl`        | `umUnrealizedPNL + cmUnrealizedPNL`                                                                                   | null                                   | null                                                                | `unrealizedProfit`                                                    | null                                  |
-| `available_to_trade`    | not mapped yet                                                                                                        | `free`                                 | not mapped                                                          | `availableBalance`                                                    | null                                  |
-| `available_to_withdraw` | not mapped yet                                                                                                        | `free`                                 | not mapped                                                          | `maxWithdrawAmount`                                                   | null                                  |
+| `available_to_trade`    | see Position presentation provenance                                                                                  | `free`                                 | not mapped                                                          | `availableBalance`                                                    | null                                  |
+| `available_to_withdraw` | see Position presentation provenance                                                                                  | `free`                                 | not mapped                                                          | `maxWithdrawAmount`                                                   | null                                  |
 
 - PM `totalWalletBalance` already equals
   `crossMarginFree + crossMarginLocked + umWalletBalance + cmWalletBalance`.
@@ -204,7 +204,7 @@ in Classic Trading.
 | `entry_price`, `mark_price`, `unrealized_pnl` | `entryPrice`, `markPrice`, `unRealizedProfit`                                                                                                                                                            |
 | `leverage`                                    | `leverage`; `/fapi/v3/positionRisk` has none, so Classic USDⓈ-M reads `leverage` from `/fapi/v1/symbolConfig`, once per run and only with an open position. A symbol missing there keeps a null leverage |
 | `liquidation_price`                           | `liquidationPrice`; null when `0`                                                                                                                                                                        |
-| `margin`                                      | not mapped yet                                                                                                                                                                                           |
+| `margin`                                      | see Position presentation provenance                                                                                                                                                                     |
 
 | Instrument column                                  | Source (`exchangeInfo`)                                                                                                                                                |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -252,3 +252,19 @@ a key.
 - `/sapi/v1/asset/wallet/balance` also lists Options, Trading Bots, and Copy
   Trading wallets. No Account Type collects them, and the Earn check covers only
   the Earn wallet, so value held there is not reported and nothing flags it.
+
+### Position presentation provenance
+
+`positionSide=BOTH` retains one-way mode; LONG/SHORT retains hedged mode.
+Classic USDⓈ-M reads the already requested Symbol Config for `marginType`; Cross
+uses `positionInitialMargin`, while Isolated uses `isolatedWallet`, excluding
+PnL. Validate the `marginAsset` currency before settlement display. COIN-M joins
+an unambiguous Account position by exact Symbol, positionSide, and quantity for
+its initial requirement; optional `isolatedWallet` is used only when returned.
+Missing or contradictory joins stay unknown. Portfolio Margin risk responses
+supply no per-position allocation. No new requests are added.
+
+COIN-M Account and position-risk reads are not atomic. A mismatched quantity or
+ambiguous Symbol/side join leaves the Account-derived requirement unknown. An
+actually returned `isolatedWallet` may come from the risk row or the exact,
+quantity-compatible Account position; no isolated amount is synthesized.

@@ -24,6 +24,8 @@ identifies a record, not an implementation priority or proof of completion.
 | [0009](./0009-adapter-verification.md)            | Independent synthetic tests, recorded evidence, and validation claims  |
 | [0010](./0010-process-logging.md)                 | Unified process logging, SQL visibility, and rotation ownership        |
 | [0011](./0011-display-ordering.md)                | Shared business ordering and stable holdings pagination                |
+| [0012](./0012-position-presentation.md)           | Contract columns, normalized Size, margin provenance, and Observed     |
+| [0013](./0013-numeric-presentation.md)            | Shared numeric precision, zero-count shorthand, and chart exceptions   |
 
 ## Maintenance
 

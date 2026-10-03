@@ -1,3 +1,4 @@
+import { formatCount } from "@/shared/lib/amount";
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -102,7 +103,7 @@ function SettingsForms({
     const seconds = Number(interval);
     if (!Number.isInteger(seconds) || seconds < MIN_INTERVAL || seconds > MAX_INTERVAL) {
       setError(
-        `The collection interval must be a whole number of seconds between ${String(MIN_INTERVAL)} and ${String(MAX_INTERVAL)}.`,
+        `The collection interval must be a whole number of seconds between ${formatCount(MIN_INTERVAL)} and ${formatCount(MAX_INTERVAL)}.`,
       );
       return;
     }
@@ -223,8 +224,8 @@ function SettingsForms({
             required
           />
           <span className={styles.muted}>
-            Between {String(MIN_INTERVAL)} seconds and {String(MAX_INTERVAL)} seconds (one day). The
-            schedule applies from the next cycle.
+            Between {formatCount(MIN_INTERVAL)} seconds and {formatCount(MAX_INTERVAL)} seconds (one
+            day). The schedule applies from the next cycle.
           </span>
         </label>
         <div className={styles.actions}>

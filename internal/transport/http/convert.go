@@ -202,6 +202,9 @@ func toAPIPositionRows(rows []valuation.PositionRow) []api.PositionRow {
 			PlatformPositionRef: r.PlatformPositionRef, InstrumentId: r.InstrumentID, Symbol: r.Symbol, Kind: r.Kind,
 			BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, SettlementSymbol: r.SettlementSymbol,
 			ExpiryAt: r.ExpiryAt, ContractSize: r.ContractSize,
+			PositionMode: enumPtr[api.PositionRowPositionMode](r.PositionMode), MarginMode: enumPtr[api.PositionRowMarginMode](r.MarginMode),
+			MarginCurrency: r.MarginCurrency, MarginBasis: enumPtr[api.PositionRowMarginBasis](r.MarginBasis),
+			PortfolioMargin: r.PortfolioMargin, Size: r.Size, SizeSymbol: r.SizeSymbol, SettleMargin: r.SettleMargin, Issues: toAPIIssues(r.Issues),
 			Side: api.PositionRowSide(r.Side), Quantity: r.Quantity, QuantityUnit: api.PositionRowQuantityUnit(r.QuantityUnit),
 			EntryPrice: r.EntryPrice, MarkPrice: r.MarkPrice, LiquidationPrice: r.LiquidationPrice,
 			UnrealizedPnl: r.UnrealizedPnl, Leverage: r.Leverage, Margin: r.Margin, NotionalUsd: r.NotionalUSD,
@@ -325,4 +328,12 @@ func toAPIDualPositionRows(rows []valuation.DualPositionRow) []api.DualPositionR
 		out = append(out, api.DualPositionRow{AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType, IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform, PlatformPositionRef: r.PlatformPositionRef, ProductRef: r.ProductRef, OrderRef: r.OrderRef, BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, InvestSymbol: r.InvestSymbol, Principal: r.Principal, Direction: r.Direction, TargetPrice: r.TargetPrice, ExpiryAt: r.ExpiryAt, AnnualizedRate: r.AnnualizedRate, RateKind: r.RateKind, Status: r.Status, Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt, SubscribedAt: r.SubscribedAt})
 	}
 	return out
+}
+
+func enumPtr[T ~string](value *string) *T {
+	if value == nil {
+		return nil
+	}
+	out := T(*value)
+	return &out
 }

@@ -1,3 +1,4 @@
+import { formatCount } from "@/shared/lib/amount";
 import { useQuery } from "@tanstack/react-query";
 import { listJobs } from "@/api/generated/sdk.gen";
 import type { JobKind } from "@/api/generated/types.gen";
@@ -115,7 +116,7 @@ function JobsTable({
           kind: JOB_KIND_LABELS[item.kind],
           status: <StatusBadge value={item.status} />,
           trigger: capitalize(item.trigger),
-          attempts: `${String(item.attemptCount)}/${String(item.maxAttempts)}`,
+          attempts: `${formatCount(item.attemptCount)}/${formatCount(item.maxAttempts)}`,
           startedAt: formatInstant(item.startedAt, timezone),
           finishedAt: formatInstant(item.finishedAt, timezone),
           outcome:

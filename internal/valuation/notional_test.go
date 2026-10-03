@@ -39,9 +39,14 @@ func TestPositionNotionalPerContractKind(t *testing.T) {
 		{"linear delivery", adapters.KindLinearDeliv, "USDT", "contracts", "1", "0.01", "62000", "620"},
 		{"linear without a mark price", adapters.KindLinearPerp, "USDT", "contracts", "2", "1000", "", ""},
 		{"linear without a USD quote", adapters.KindLinearPerp, "BTC", "contracts", "2", "1000", "0.0934", ""},
+		{"missing quote", adapters.KindInversePerp, "", "contracts", "2", "100", "50000", ""},
+		{"zero mark", adapters.KindLinearPerp, "USDT", "base", "2", "", "0", ""},
+		{"negative mark", adapters.KindLinearPerp, "USDT", "base", "2", "", "-2", ""},
 		// Binance USDⓈ-M reports base units instead of contracts.
 		{"base units", adapters.KindLinearPerp, "USDT", "base", "0.5", "", "62000", "31000"},
-		{"quote units", adapters.KindLinearPerp, "USDT", "quote", "150", "", "62000", "150"},
+		{"inverse quote units", adapters.KindInversePerp, "USD", "quote", "150", "100", "", "150"},
+		{"incompatible linear quote units", adapters.KindLinearPerp, "USDT", "quote", "150", "", "62000", ""},
+		{"incompatible inverse base units", adapters.KindInversePerp, "USD", "base", "2", "", "62000", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

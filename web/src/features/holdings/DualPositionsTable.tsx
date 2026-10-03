@@ -1,6 +1,6 @@
 import type { DualPositionRow } from "@/api/generated/types.gen";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
-import { formatDecimal, parseDecimal } from "@/shared/lib/amount";
+import { formatDecimal, formatPercent, formatPrice } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -46,17 +46,14 @@ export function DualPositionsTable({
         strike:
           item.targetPrice == null
             ? "—"
-            : `${formatDecimal(item.targetPrice)} ${item.quoteSymbol ?? ""}`.trim(),
+            : `${formatPrice(item.targetPrice)} ${item.quoteSymbol ?? ""}`.trim(),
         direction:
           item.direction === "buy_low"
             ? "Buy Low"
             : item.direction === "sell_high"
               ? "Sell High"
               : "—",
-        apy:
-          item.annualizedRate == null
-            ? "—"
-            : `${formatDecimal(parseDecimal(item.annualizedRate)?.times(100).toString())}%`,
+        apy: formatPercent(item.annualizedRate),
         principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
         status: (

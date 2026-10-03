@@ -26,6 +26,9 @@ Implemented capabilities include:
   [logging configuration](./docs/development.md#logging).
 - Holdings, historical Valuation Points, Period Closes, and Value Changes, with
   manual Capital Flows and derived Boundary Events.
+- Shared contract position columns, normalized Size, margin provenance, and
+  observation badges in current and historical holdings; see
+  [the delivery report](./docs/adapters/position-presentation-delivery.md).
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
   audit views, and deterministic development seed profiles.
 

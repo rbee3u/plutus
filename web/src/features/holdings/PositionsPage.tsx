@@ -1,9 +1,10 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { listPositions } from "@/api/generated/sdk.gen";
 import type { PositionList } from "@/api/generated/types.gen";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
-import { POSITION_COLUMNS, positionRow } from "@/features/holdings/AccountDetail";
+import { POSITION_COLUMNS, positionRow } from "@/features/holdings/PositionsTable";
 import { HoldingsFilters } from "@/features/holdings/HoldingsFilters";
 import { formatUsd } from "@/shared/lib/amount";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
@@ -55,8 +56,9 @@ function FuturesPositionsPage() {
   return (
     <>
       <p className={styles.lead}>
-        Open positions inside the boundary at the latest Valuation Point. A position without a mark
-        price stays unvalued, never zero.
+        Open positions inside the boundary at the latest Valuation Point. Unknown Size or USD
+        notional stays unknown. Total notional covers all positions in the boundary and identifies
+        omissions.
       </p>
       <QueryRecovery
         error={query.error}
@@ -79,25 +81,24 @@ function FuturesPositionsPage() {
           <ContextSummary context={data.context} />
           <p className={styles.totalRow}>
             <span>Total notional</span>
-            <span className={styles.totalValue}>{formatUsd(data.totalNotionalUsd)}</span>
+            <span className={styles.totalValue}>
+              <NumericText>{formatUsd(data.totalNotionalUsd)}</NumericText>
+            </span>
             <CompletenessBadge value={data.completeness} />
           </p>
           <DataTable
             caption="Positions at the latest Valuation Point"
             columns={[
               { key: "platform", header: "Platform", nowrap: true },
+              { key: "identityName", header: "Identity", nowrap: true },
               { key: "accountName", header: "Account", nowrap: true },
               ...POSITION_COLUMNS,
             ]}
             rows={data.items.map((item) => ({
-              ...positionRow(item),
+              ...positionRow(item, data.context.timezone),
               platform: platformLabel(platforms.data?.items, item.platform),
-              accountName: (
-                <span className={styles.cellStack}>
-                  <span>{item.accountName}</span>
-                  <span className={styles.cellMeta}>{item.identityName}</span>
-                </span>
-              ),
+              identityName: item.identityName,
+              accountName: item.accountName,
             }))}
             empty="No positions match these filters at the latest Valuation Point."
           />

@@ -12,7 +12,7 @@ import (
 
 const getAccount = `-- name: GetAccount :one
 SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ? AND a.id = ?
@@ -24,18 +24,19 @@ type GetAccountParams struct {
 }
 
 type GetAccountRow struct {
-	ID             []byte
-	PortfolioID    []byte
-	IdentityID     []byte
-	AccountType    string
-	DisplayName    string
-	Selected       bool
-	Version        uint64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Platform       string
-	IdentityName   string
-	IdentityStatus string
+	ID               []byte
+	PortfolioID      []byte
+	IdentityID       []byte
+	AccountType      string
+	DisplayName      string
+	Selected         bool
+	Version          uint64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Platform         string
+	IdentityName     string
+	AccountStructure string
+	IdentityStatus   string
 }
 
 func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error) {
@@ -53,6 +54,7 @@ func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAcco
 		&i.UpdatedAt,
 		&i.Platform,
 		&i.IdentityName,
+		&i.AccountStructure,
 		&i.IdentityStatus,
 	)
 	return i, err
@@ -141,7 +143,7 @@ func (q *Queries) ListAccountsByIdentity(ctx context.Context, arg ListAccountsBy
 
 const listAccountsByPortfolio = `-- name: ListAccountsByPortfolio :many
 SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ?
@@ -149,18 +151,19 @@ ORDER BY a.id
 `
 
 type ListAccountsByPortfolioRow struct {
-	ID             []byte
-	PortfolioID    []byte
-	IdentityID     []byte
-	AccountType    string
-	DisplayName    string
-	Selected       bool
-	Version        uint64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Platform       string
-	IdentityName   string
-	IdentityStatus string
+	ID               []byte
+	PortfolioID      []byte
+	IdentityID       []byte
+	AccountType      string
+	DisplayName      string
+	Selected         bool
+	Version          uint64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Platform         string
+	IdentityName     string
+	AccountStructure string
+	IdentityStatus   string
 }
 
 func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error) {
@@ -184,6 +187,7 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byt
 			&i.UpdatedAt,
 			&i.Platform,
 			&i.IdentityName,
+			&i.AccountStructure,
 			&i.IdentityStatus,
 		); err != nil {
 			return nil, err

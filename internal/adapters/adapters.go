@@ -259,6 +259,10 @@ type Position struct {
 	PlatformPositionRef string
 	Instrument          Instrument
 	Side                string
+	PositionMode        string
+	MarginMode          string
+	MarginCurrency      string
+	MarginBasis         string
 	Quantity            string
 	QuantityUnit        string
 	EntryPrice          *string

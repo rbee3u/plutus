@@ -434,7 +434,7 @@ export const listAccountBalances = <ThrowOnError extends boolean = false>(option
 });
 
 /**
- * Positions of an account's current report
+ * Positions of an account at the latest or a specified Valuation Point
  */
 export const listAccountPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountPositionsData, ThrowOnError>): RequestResult<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError>({
     security: [{

@@ -281,9 +281,11 @@ minutes of a collection:
    initial and maintenance margin ÷ margin equity; each currency's quantity
    matches the wallet.
 4. **Positions**: every open flexible futures position, including delivery
-   contracts, appears under that wallet with the same side, size in contracts,
-   entry price, and mark price; inverse and vanilla contracts, perpetual or
-   delivery, appear under Coin-M.
+   contracts, appears under that wallet with Both and signed Base Size, entry
+   price, and mark price; inverse and vanilla contracts, perpetual or delivery,
+   appear under Coin-M with signed Quote face Size. Source quantities remain
+   contract counts. Isolated Margin excludes PnL and Cross wallet risk is not
+   assigned to individual Positions.
 5. **Coin-M**: each single-collateral wallet's balance in its own coin matches,
    and `Equity` equals their USD value with unrealized profit.
 6. **Derivatives Holding**: coin amounts match the holding wallet.

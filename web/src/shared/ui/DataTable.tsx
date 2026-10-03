@@ -1,4 +1,5 @@
 import { Fragment, type MouseEvent, type ReactNode } from "react";
+import { NumericText } from "./NumericText";
 import styles from "@/features/pages.module.css";
 
 export interface DataColumn {
@@ -103,7 +104,11 @@ export function DataTable({
                   <tr className={rowClasses(row)} onClick={rowClick(key)}>
                     {columns.map((column) => (
                       <td key={column.key} className={cellClass(column)}>
-                        {row[column.key] ?? "—"}
+                        {column.numeric && typeof row[column.key] === "string" ? (
+                          <NumericText>{row[column.key] as string}</NumericText>
+                        ) : (
+                          (row[column.key] ?? "—")
+                        )}
                       </td>
                     ))}
                   </tr>

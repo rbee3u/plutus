@@ -166,11 +166,48 @@ Financial arithmetic uses exact rationals behind `internal/decimal`; storage
 uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values with at
 most 30 fractional digits. JSON financial values are strings; null means unknown
 or inapplicable. The frontend uses `decimal.js`, converting to JavaScript
-numbers only for charts.
+numbers only for chart plotting.
+
+The shared numeric formatter selects a semantic type and explicit half-up
+rounding, then returns display text and its rounded ordinary decimal equivalent.
+Quantity and price wrappers share precision; USD, ratio, percentage, leverage,
+and count wrappers select their own policy. Percentage scaling uses a separate
+Decimal constructor with enough precision for stored values, without changing
+global arithmetic. Unicode subscript digits encode long fractional zero runs.
+`NumericText` exposes the rounded ordinary decimal to screen readers without
+adding a control; numeric table strings use it automatically. Pure numeric
+source-value overlays are removed, while business detail overlays remain.
+
+Chart series keep their source decimal strings in index-based tooltip closures.
+Plotted JavaScript numbers are not used for tooltip rounding. Axis formatting
+uses compact or scientific notation independently of tooltip precision. Inputs,
+API requests, diagnostic JSON, calculations, and ordering retain their existing
+precision. [ADR 0013](./adr/0013-numeric-presentation.md) owns the display
+policy.
 
 Application-generated UUIDv7 identifiers are stored in binary form. Database
 sessions use UTC; stored instants use microsecond precision and JSON uses
 RFC 3339. Portfolio timezones affect calendar queries, not stored instants.
+
+### Contract position presentation
+
+Account Reports retain the observed account Margin Mode; stale reads use the
+successful source Report rather than the Identity's latest mode. Positions
+retain direction, source quantity, position mode, margin setting, source margin
+currency, and initial/allocated basis. Exact decimal read calculations add Size,
+settlement-currency Margin, Portfolio context, and row issues to the API.
+[ADR 0012](./adr/0012-position-presentation.md) owns the display policy.
+
+The account Positions endpoint accepts an optional `pointId` scoped to the same
+Portfolio and Account. Historical expansion reads that point's source Report,
+never the latest report. Shared React cells provide the same columns and units
+in global, Account, and historical tables. Detail overlays render outside table
+scroll containers and support hover, focus, click, and Escape.
+
+The appended Position presentation migration restores only byte-exact canonical
+references with compatible stored direction. Legacy Bybit margin is marked as an
+initial requirement; missing Report modes and other absent margin provenance
+remain null. The baseline and source financial amounts are retained.
 
 ## Authentication and secrets
 

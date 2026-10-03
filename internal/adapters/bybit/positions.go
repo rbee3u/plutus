@@ -31,7 +31,7 @@ var contractKinds = map[string]string{
 
 type openPosition struct {
 	Symbol        string `json:"symbol"`
-	PositionIdx   int    `json:"positionIdx"`
+	PositionIdx   *int   `json:"positionIdx"`
 	Side          string `json:"side"`
 	Size          string `json:"size"`
 	AvgPrice      string `json:"avgPrice"`
@@ -154,12 +154,15 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 			return adapters.Position{}, err
 		}
 	}
+	if row.PositionIdx == nil {
+		return adapters.Position{}, adapters.Malformed(epPositions.String(), "positionIdx of "+row.Symbol)
+	}
 	unit := adapters.UnitBase
 	if kind == adapters.KindInversePerp || kind == adapters.KindInverseDlv {
 		unit = adapters.UnitQuote
 	}
 	position := adapters.Position{
-		PlatformPositionRef: fmt.Sprintf("%s:%d", row.Symbol, row.PositionIdx),
+		PlatformPositionRef: fmt.Sprintf("%s:%d", row.Symbol, *row.PositionIdx),
 		Instrument: adapters.Instrument{
 			Symbol:           info.Symbol,
 			Kind:             kind,
@@ -168,11 +171,18 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 			SettlementSymbol: info.SettleCoin,
 		},
 		Side:          side,
+		PositionMode:  "one_way",
 		Quantity:      decimal.Format(decimal.Abs(size)),
 		QuantityUnit:  unit,
 		EntryPrice:    adapters.Plain(row.AvgPrice),
 		MarkPrice:     adapters.Plain(row.MarkPrice),
 		UnrealizedPnl: adapters.Plain(row.UnrealisedPnl),
+	}
+	if *row.PositionIdx != 0 {
+		if (*row.PositionIdx != 1 || side != adapters.SideLong) && (*row.PositionIdx != 2 || side != adapters.SideShort) {
+			return adapters.Position{}, adapters.Malformed(epPositions.String(), "positionIdx and direction of "+row.Symbol)
+		}
+		position.PositionMode = "hedged"
 	}
 	if kind == adapters.KindLinearDeliv || kind == adapters.KindInverseDlv {
 		expiry, ok := parseMillis(info.DeliveryTime)
@@ -185,6 +195,11 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 		position.LiquidationPrice = adapters.NonZero(row.LiqPrice)
 		position.Leverage = adapters.NonZero(row.Leverage)
 		position.Margin = adapters.Plain(row.PositionIM)
+		position.MarginCurrency, position.MarginBasis = info.SettleCoin, "initial"
+		position.MarginMode = "cross"
+		if mode == adapters.MarginBybitIsolated {
+			position.MarginMode = "isolated"
+		}
 	}
 	return position, nil
 }

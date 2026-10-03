@@ -267,3 +267,12 @@ a U.S. IP. A failure of `/v5/account/info` fails the whole batch whatever its
 class, because no Account is read before the structure check. Error details name
 the endpoint, the HTTP status, and Bybit's code, never Bybit's message, which
 can echo request parameters, and never a body or a key.
+
+### Position presentation provenance
+
+`positionIdx=0` retains one-way mode; 1/2 retain hedged long/short mode and must
+agree with Buy/Sell. The Report retains the observed UTA Margin Mode.
+`positionIM` remains a source initial requirement in settlement currency. It
+serves the Cross display, but is not an allocated Isolated margin amount.
+Deprecated `positionBalance` is not used. Isolated allocation and Portfolio
+position margin remain unknown; legacy positionIM is never relabeled allocation.

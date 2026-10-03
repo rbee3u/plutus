@@ -1,3 +1,4 @@
+import { formatCount } from "@/shared/lib/amount";
 /** "month" -> "Month", for enum values shown as choices. */
 export function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -53,9 +54,9 @@ export function clientSummary(userAgent: string): string {
 
 /** "6", or "6 · 1 stale · 2 incomplete" when something is off. */
 export function accountSummary(total: number, stale: number, incomplete: number): string {
-  const parts = [String(total)];
-  if (stale > 0) parts.push(`${String(stale)} stale`);
-  if (incomplete > 0) parts.push(`${String(incomplete)} incomplete`);
+  const parts = [formatCount(total)];
+  if (stale > 0) parts.push(`${formatCount(stale)} stale`);
+  if (incomplete > 0) parts.push(`${formatCount(incomplete)} incomplete`);
   return parts.join(" · ");
 }
 

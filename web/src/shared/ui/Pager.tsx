@@ -1,3 +1,4 @@
+import { formatCount } from "@/shared/lib/amount";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import styles from "@/features/pages.module.css";
 
@@ -26,7 +27,7 @@ export function Pager({
       <span className={styles.muted}>
         {total === 0
           ? "0 rows"
-          : `${String(offset + 1)}–${String(Math.min(next, total))} of ${String(total)}`}
+          : `${formatCount(offset + 1)}–${formatCount(Math.min(next, total))} of ${formatCount(total)}`}
       </span>
       <ActionButton
         type="button"

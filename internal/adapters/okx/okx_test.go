@@ -1250,7 +1250,8 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 	}
 	swap := report.Positions[0]
 	if swap.Instrument.Symbol != "BTC-USDT-SWAP" || swap.PlatformPositionRef != "BTC-USDT-SWAP:long" || swap.Side != adapters.SideLong ||
-		swap.Quantity != "2" || deref(swap.Leverage) != "10" || deref(swap.LiquidationPrice) != "31012.5" || swap.Margin != nil {
+		swap.Quantity != "2" || deref(swap.Leverage) != "10" || deref(swap.LiquidationPrice) != "31012.5" ||
+		deref(swap.Margin) != "125.7838" || swap.MarginCurrency != "USD" || swap.MarginBasis != "initial" {
 		t.Fatalf("cross swap position %+v", swap)
 	}
 }

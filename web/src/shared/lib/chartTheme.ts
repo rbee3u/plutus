@@ -1,4 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
+import Decimal from "decimal.js";
+import { formatAmount, parseDecimal } from "./amount";
 
 export interface ChartTokens {
   ink: string;
@@ -34,15 +36,21 @@ export function readChartTokens(): ChartTokens {
   };
 }
 
-const tooltipNumber = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const axisNumber = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
+
+/** Axis ticks favor space; source-value tooltips use the financial display policy. */
+export function formatAxisNumber(value: number): string {
+  const amount = parseDecimal(value);
+  if (amount === null) return "—";
+  if (amount.isZero()) return "0";
+  if (amount.abs().gte(1)) return axisNumber.format(value);
+  const rounded = amount.toSignificantDigits(4, Decimal.ROUND_HALF_UP);
+  if (rounded.abs().gte(1)) return axisNumber.format(rounded.toNumber());
+  return rounded.abs().lt("0.0001") ? rounded.toExponential() : rounded.toFixed();
+}
 
 /**
  * Applies the design tokens to a chart option: quiet axes, a single-series
@@ -76,8 +84,7 @@ export function withChartTheme(option: EChartsCoreOption): EChartsCoreOption {
       padding: [6, 10],
       textStyle: { color: tokens.ink, fontFamily: tokens.font, fontSize: 12 },
       axisPointer: { type: "line", lineStyle: { color: tokens.line } },
-      valueFormatter: (value: unknown) =>
-        typeof value === "number" ? tooltipNumber.format(value) : "—",
+      valueFormatter: (value: unknown) => (typeof value === "number" ? formatAmount(value) : "—"),
       ...asRecord(option.tooltip),
     },
     legend: {
@@ -162,7 +169,7 @@ function styleAxis(axis: unknown, tokens: ChartTokens, which: "x" | "y"): Record
       fontFamily: tokens.mono,
       fontSize: 11,
       hideOverlap: true,
-      ...(which === "y" ? { formatter: (value: number) => axisNumber.format(value) } : {}),
+      ...(which === "y" ? { formatter: formatAxisNumber } : {}),
       ...label,
     },
     splitLine: {

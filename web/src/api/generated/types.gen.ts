@@ -397,6 +397,21 @@ export type PositionRow = {
     expiryAt?: string | null;
     contractSize?: NullableDecimal;
     side: 'long' | 'short';
+    positionMode?: 'one_way' | 'hedged' | null;
+    marginMode?: 'cross' | 'isolated' | null;
+    marginCurrency?: string | null;
+    marginBasis?: 'initial' | 'allocated' | null;
+    portfolioMargin?: boolean | null;
+    /**
+     * Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
+     */
+    size?: NullableDecimal;
+    sizeSymbol?: string | null;
+    /**
+     * Margin in settlement currency, using the position's cross or isolated display basis.
+     */
+    settleMargin?: NullableDecimal;
+    issues: Array<Issue>;
     quantity: Decimal;
     quantityUnit: 'contracts' | 'base' | 'quote';
     entryPrice?: NullableDecimal;
@@ -470,6 +485,9 @@ export type PositionList = {
     context: ReadContext;
     items: Array<PositionRow>;
     page: OffsetPage;
+    /**
+     * Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
+     */
     totalNotionalUsd: NullableDecimal;
     completeness: Completeness;
     issues: Array<Issue>;
@@ -1878,7 +1896,12 @@ export type ListAccountPositionsData = {
         portfolioId: Uuid;
         accountId: Uuid;
     };
-    query?: never;
+    query?: {
+        /**
+         * Historical Valuation Point; omitted for the latest point.
+         */
+        pointId?: Uuid;
+    };
     url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions';
 };
 

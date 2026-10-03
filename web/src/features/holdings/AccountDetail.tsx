@@ -1,17 +1,19 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import {
   listAccountBalances,
   listAccountPositions,
   listAccountDualPositions,
 } from "@/api/generated/sdk.gen";
-import type { AccountValuation, BalanceRow, PositionRow } from "@/api/generated/types.gen";
-import { formatAmount, formatDecimal } from "@/shared/lib/amount";
+import type { AccountValuation, BalanceRow } from "@/api/generated/types.gen";
+import { formatAmount, formatDecimal, formatRatio, formatPrice } from "@/shared/lib/amount";
 import { shortId } from "@/shared/lib/id";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { FreshnessBadge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
 import { DualPositionsTable } from "@/features/holdings/DualPositionsTable";
 import styles from "@/features/pages.module.css";
 
@@ -108,7 +110,9 @@ export function AccountDetail({
           <DataTable
             caption={`Positions of ${account.accountName}`}
             columns={POSITION_COLUMNS}
-            rows={(positions.data?.items ?? []).map(positionRow)}
+            rows={(positions.data?.items ?? []).map((item) =>
+              positionRow(item, positions.data?.context.timezone),
+            )}
             empty={
               positions.isPending
                 ? "Loading positions."
@@ -148,19 +152,19 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
       label: "IMR",
       title: "Initial margin ratio",
       value: account.initialMarginRatio,
-      format: formatDecimal,
+      format: formatRatio,
     },
     {
       label: "MMR",
       title: "Maintenance margin ratio",
       value: account.maintenanceMarginRatio,
-      format: formatDecimal,
+      format: formatRatio,
     },
     {
       label: "UniMMR",
       title: "Unified margin ratio",
       value: account.unifiedMarginRatio,
-      format: formatDecimal,
+      format: formatRatio,
     },
   ];
   // A calculated account carries none of these; six dashes would say less than one sentence.
@@ -178,7 +182,9 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
                   <abbr title={figure.title}>{figure.label}</abbr>
                 )}
               </dt>
-              <dd>{figure.format(figure.value)}</dd>
+              <dd>
+                <NumericText>{figure.format(figure.value)}</NumericText>
+              </dd>
             </div>
           ))}
         </dl>
@@ -204,7 +210,8 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
               {index > 0 ? "; " : ""}
               {item.symbol}
               {item.assetSymbol ? ` (mapped to ${item.assetSymbol})` : ""}{" "}
-              {formatAmount(item.equity)} <Codes values={[item.reason]} />
+              <NumericText>{formatDecimal(item.equity)}</NumericText>{" "}
+              <Codes values={[item.reason]} />
             </span>
           ))}
         </p>
@@ -246,52 +253,9 @@ export function balanceRow(item: BalanceRow): DataRow {
     priceUsd: item.noPrice ? (
       <span className={styles.cellMeta}>no price</span>
     ) : (
-      formatDecimal(item.priceUsd)
+      formatPrice(item.priceUsd)
     ),
     equityUsd: formatAmount(item.equityUsd),
-    freshness: <FreshnessBadge value={item.freshness} />,
-  };
-}
-
-export const POSITION_COLUMNS = [
-  { key: "symbol", header: "Symbol", nowrap: true },
-  { key: "quantity", header: "Quantity", numeric: true },
-  { key: "entryPrice", header: "Entry", numeric: true },
-  { key: "markPrice", header: "Mark", numeric: true },
-  { key: "liquidationPrice", header: "Liquidation", numeric: true },
-  { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true },
-  { key: "leverage", header: "Leverage", numeric: true },
-  { key: "margin", header: "Margin", numeric: true },
-  { key: "notionalUsd", header: "Notional (USD)", numeric: true },
-  { key: "freshness", header: "Freshness" },
-];
-
-/** The unit a position's quantity counts: the base or quote Asset, or contracts. */
-function quantityUnit(item: PositionRow): string {
-  if (item.quantityUnit === "base") return item.baseSymbol ?? "base";
-  if (item.quantityUnit === "quote") return item.quoteSymbol ?? "quote";
-  return "contracts";
-}
-
-export function positionRow(item: PositionRow): DataRow {
-  return {
-    id: `${item.accountId}-${item.instrumentId}-${item.platformPositionRef}`,
-    symbol: (
-      <span className={styles.cellStack}>
-        <span>{item.symbol}</span>
-        <span className={styles.cellMeta}>
-          {item.kind} · {item.side}
-        </span>
-      </span>
-    ),
-    quantity: `${formatDecimal(item.quantity)} ${quantityUnit(item)}`,
-    entryPrice: formatDecimal(item.entryPrice),
-    markPrice: formatDecimal(item.markPrice),
-    liquidationPrice: formatDecimal(item.liquidationPrice),
-    unrealizedPnl: formatDecimal(item.unrealizedPnl),
-    leverage: formatDecimal(item.leverage),
-    margin: formatDecimal(item.margin),
-    notionalUsd: formatAmount(item.notionalUsd),
     freshness: <FreshnessBadge value={item.freshness} />,
   };
 }

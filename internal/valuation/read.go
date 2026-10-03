@@ -306,11 +306,17 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 
 // AccountPositions returns the Positions of an Account's current report with USD notionals.
 func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
-	view, source, err := s.accountView(ctx, p, accountID)
+	return s.AccountPositionsAt(ctx, p, accountID, nil)
+}
+
+// AccountPositionsAt reads the selected point, retaining its compatible source Report.
+func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, pointID *uuid.UUID) (AccountView, error) {
+	view, source, err := s.positionView(ctx, p, accountID, pointID)
 	if err != nil {
 		return AccountView{}, err
 	}
 	view.Positions = []PositionRow{}
+	view.Issues = positionAccountIssues(&view.Account)
 	if source == nil {
 		return view, nil
 	}
@@ -324,6 +330,8 @@ func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, acco
 		if err != nil {
 			return AccountView{}, err
 		}
+		completePosition(&row, &view.Account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
 		view.Positions = append(view.Positions, row)
 	}
 	sortPositions(view.Positions, nil)
@@ -359,7 +367,8 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 	view.Account = AccountValuation{
 		AccountID: accountID, AccountName: account.DisplayName, AccountType: account.AccountType, Selected: account.Selected,
 		IdentityID: identityID, IdentityName: account.IdentityName, IdentityStatus: account.IdentityStatus, Platform: account.Platform,
-		Status: "failed", Method: MethodMissing, Freshness: FreshnessStale, Omitted: nil,
+		accountStructure: account.AccountStructure,
+		Status:           "failed", Method: MethodMissing, Freshness: FreshnessStale, Omitted: nil,
 	}
 	view.Issues = append(view.Issues, Issue{Code: "outside_boundary", AccountID: &accountID, AccountName: account.DisplayName, Detail: "The account is not part of the latest valuation point; the last successful report is shown without a value."})
 	src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: p.ID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(adapters.Platform(account.Platform), adapters.AccountType(account.AccountType)), Before: s.now().UTC().Add(time.Hour)})
@@ -377,6 +386,7 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 	view.Account.Status = "ok"
 	view.Account.SourceReportID = &sourceID
 	view.Account.ReportObservedAt = &observed
+	view.Account.sourceMarginMode = nullStr(src.MarginMode)
 	view.Account.Equity, view.Account.AdjustedEquity, view.Account.AvailableEquity = nullDecimal(src.Equity), nullDecimal(src.AdjustedEquity), nullDecimal(src.AvailableEquity)
 	view.Account.InitialMarginRatio, view.Account.MaintenanceMarginRatio, view.Account.UnifiedMarginRatio = nullDecimal(src.InitialMarginRatio), nullDecimal(src.MaintenanceMarginRatio), nullDecimal(src.UnifiedMarginRatio)
 	return view, &sourceID, nil
@@ -433,34 +443,20 @@ func positionRow(account *AccountValuation, instrumentID []byte, platform, symbo
 		t := expiry.Time
 		row.ExpiryAt = &t
 	}
-	qty, ok := decimal.Parse(quantity)
+	size, _ := normalizedPositionSize(&row)
+	if size == nil || !quote.Valid || !usdQuote(quote.String) {
+		return row, nil
+	}
+	qty, ok := decimal.Parse(*size)
 	if !ok {
 		return row, nil
 	}
-	quoteIsUSD := !quote.Valid || usdQuote(quote.String)
-	switch unit {
-	case "quote":
-		if quoteIsUSD {
-			row.NotionalUSD = decimal.FormatPtr(decimal.Abs(qty))
-		}
-	case "base":
-		if mark.Valid && quoteIsUSD {
-			if price, ok := decimal.Parse(mark.String); ok {
-				row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(qty, price)))
-			}
-		}
-	case "contracts":
-		// A linear contract's size is a quantity of the base Asset, converted with the mark price;
-		// an inverse contract's size is already a USD face value and needs no price.
-		if size, ok := decimal.Parse(contractSize.String); contractSize.Valid && ok {
-			switch {
-			case inverseKind(kind):
-				row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(qty, size)))
-			case mark.Valid && quoteIsUSD:
-				if price, okPrice := decimal.Parse(mark.String); okPrice {
-					row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(decimal.Mul(qty, size), price)))
-				}
-			}
+	if inverseKind(kind) {
+		// Inverse Size is already the Quote face value; no Mark is required.
+		row.NotionalUSD = decimal.FormatPtr(decimal.Abs(qty))
+	} else if mark.Valid {
+		if price, valid := decimal.Parse(mark.String); valid && price.Sign() > 0 {
+			row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(qty, price)))
 		}
 	}
 	return row, nil
@@ -611,8 +607,16 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		out.Issues = append(out.Issues, Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
 		return out, nil
 	}
-	out.Completeness = point.Completeness()
-	out.Issues = point.Issues
+	out.Completeness = CompletenessComplete
+	for i := range accounts {
+		account := &accounts[i]
+		if positionAccount(account) {
+			if account.Method == MethodMissing {
+				out.Completeness = CompletenessIncomplete
+			}
+			out.Issues = append(out.Issues, positionAccountIssues(account)...)
+		}
+	}
 	byAccount := map[uuid.UUID]*AccountValuation{}
 	for i := range accounts {
 		byAccount[accounts[i].AccountID] = &accounts[i]
@@ -630,15 +634,23 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 			return FlatList[PositionRow]{}, err
 		}
 		account, ok := byAccount[accountID]
-		if !ok || !matchesAccount(f, account) || (f.Symbol != "" && !strings.EqualFold(f.Symbol, r.Symbol)) {
+		if !ok {
 			continue
 		}
 		row, err := positionRow(account, r.InstrumentID, r.Platform, r.Symbol, r.Kind, r.BaseSymbol, r.QuoteSymbol, r.SettlementSymbol, r.ExpiryAt, r.ContractSize, r.PlatformPositionRef, r.Side, r.Quantity, r.QuantityUnit, r.EntryPrice, r.MarkPrice, r.LiquidationPrice, r.UnrealizedPnl, r.Leverage, r.Margin)
 		if err != nil {
 			return FlatList[PositionRow]{}, err
 		}
+		completePosition(&row, account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
+		if row.NotionalUSD == nil {
+			out.Completeness = CompletenessIncomplete
+		}
 		if row.NotionalUSD != nil {
 			total = decimal.Add(total, decimal.MustParse(*row.NotionalUSD))
+		}
+		if !matchesAccount(f, account) || (f.Symbol != "" && !strings.EqualFold(f.Symbol, r.Symbol)) {
+			continue
 		}
 		all = append(all, row)
 	}
@@ -815,4 +827,22 @@ func normalizePage(limit, offset int) (int, int, error) {
 		return 0, 0, ErrInvalid
 	}
 	return limit, offset, nil
+}
+
+func (s *Service) positionView(ctx context.Context, p PortfolioContext, accountID uuid.UUID, pointID *uuid.UUID) (AccountView, *uuid.UUID, error) {
+	if pointID == nil {
+		return s.accountView(ctx, p, accountID)
+	}
+	detail, err := s.Detail(ctx, p, *pointID)
+	if err != nil {
+		return AccountView{}, nil, err
+	}
+	for i := range detail.Accounts {
+		account := &detail.Accounts[i]
+		if account.AccountID == accountID {
+			view := AccountView{Context: Context{PortfolioID: p.ID, Timezone: p.Timezone, PointID: &detail.Point.ID, JobID: &detail.Point.JobID, EvaluatedAt: &detail.Point.EvaluatedAt}, Account: *account, Issues: positionAccountIssues(account)}
+			return view, account.SourceReportID, nil
+		}
+	}
+	return AccountView{}, nil, ErrNotFound
 }

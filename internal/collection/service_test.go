@@ -2,6 +2,7 @@ package collection
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
@@ -37,9 +38,12 @@ type harness struct {
 
 // newHarness creates a fresh User and Portfolio in the shared test database and wires the
 // services around fake adapters with an instant retry policy.
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	t.Helper()
 	db := mysql.OpenTestDB(t)
+	if len(databases) > 0 {
+		db = databases[0]
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
 

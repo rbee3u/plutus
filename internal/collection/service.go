@@ -302,7 +302,7 @@ func (s *Service) storeBatch(ctx context.Context, portfolioID, jobID uuid.UUID, 
 			*failed++
 			continue
 		}
-		if err := s.insertOkReport(ctx, q, portfolioID, jobID, item.Identity.Platform, account.ID, report, batch.ObservedAt, now); err != nil {
+		if err := s.insertOkReport(ctx, q, portfolioID, jobID, item.Identity.Platform, account.ID, report, batch.MarginMode, batch.ObservedAt, now); err != nil {
 			return err
 		}
 		written[account.ID] = true
@@ -329,7 +329,7 @@ func (s *Service) insertFailedReport(ctx context.Context, q *sqlcgen.Queries, po
 	})
 }
 
-func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, jobID uuid.UUID, platform adapters.Platform, accountID uuid.UUID, report *adapters.AccountReport, batchObserved, now time.Time) error {
+func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, jobID uuid.UUID, platform adapters.Platform, accountID uuid.UUID, report *adapters.AccountReport, mode adapters.MarginMode, batchObserved, now time.Time) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return err
@@ -344,6 +344,7 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 	if err := q.InsertAccountReport(ctx, sqlcgen.InsertAccountReportParams{
 		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(platform, report.AccountType), Status: adapters.StatusOK,
 		ObservedAt:             sql.NullTime{Time: observed.UTC(), Valid: true},
+		MarginMode:             textColumn(string(mode)),
 		Equity:                 nullDecimal(report.Equity),
 		AdjustedEquity:         nullDecimal(report.AdjustedEquity),
 		AvailableEquity:        nullDecimal(report.AvailableEquity),
@@ -381,6 +382,8 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 		}
 		if err := q.InsertPosition(ctx, sqlcgen.InsertPositionParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: truncate(position.PlatformPositionRef, 128), InstrumentID: instrumentID[:],
+			PositionMode: textColumn(position.PositionMode), MarginMode: textColumn(position.MarginMode),
+			MarginCurrency: textColumn(position.MarginCurrency), MarginBasis: textColumn(position.MarginBasis),
 			Side: position.Side, Quantity: position.Quantity, QuantityUnit: position.QuantityUnit,
 			EntryPrice: nullDecimal(position.EntryPrice), MarkPrice: nullDecimal(position.MarkPrice), LiquidationPrice: nullDecimal(position.LiquidationPrice),
 			UnrealizedPnl: nullDecimal(position.UnrealizedPnl), Leverage: nullDecimal(position.Leverage), Margin: nullDecimal(position.Margin),
@@ -451,4 +454,8 @@ func dualString(value *string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: *value, Valid: true}
+}
+
+func textColumn(value string) sql.NullString {
+	return sql.NullString{String: value, Valid: value != ""}
 }

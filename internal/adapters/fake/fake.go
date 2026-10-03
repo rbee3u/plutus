@@ -206,6 +206,20 @@ func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.Ac
 	default:
 		// Structures without a Margin Mode keep the base report.
 	}
+	for i := range report.Positions {
+		position := &report.Positions[i]
+		position.PositionMode = "one_way"
+		if i > 0 {
+			position.PositionMode = "hedged"
+		}
+		position.MarginMode, position.MarginCurrency, position.MarginBasis = "cross", position.Instrument.SettlementSymbol, "initial"
+		if mode == adapters.MarginBybitIsolated {
+			position.MarginMode = "isolated"
+		}
+		if accountType == "portfolio_margin" || mode == adapters.MarginOKXPM || mode == adapters.MarginBybitPM {
+			position.Margin = nil
+		}
+	}
 	return report
 }
 

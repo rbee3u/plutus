@@ -3,6 +3,7 @@
 .page,
 .wide {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   max-width: var(--measure-text);
   padding: var(--space-2xl);
   gap: var(--space-xl);
@@ -331,6 +332,7 @@
 
 .panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-md);
 }
 
@@ -645,4 +647,20 @@
     left: 0;
     max-width: calc(100vw - 2 * var(--space-lg));
   }
+}
+
+.inlineButton {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline dotted var(--line-strong);
+  text-underline-offset: 4px;
+}
+.inlineButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }

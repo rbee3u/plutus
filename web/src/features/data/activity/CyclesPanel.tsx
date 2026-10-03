@@ -1,3 +1,4 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { getCollectionCycle, listCollectionCycles } from "@/api/generated/sdk.gen";
@@ -8,7 +9,7 @@ import {
   ACCOUNT_VALUATION_COLUMNS,
   accountValuationRow,
 } from "@/features/history/ValuationPointsPage";
-import { formatBoundaryFlows, formatUsd } from "@/shared/lib/amount";
+import { formatBoundaryFlows, formatUsd, formatCount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { accountSummary, capitalize } from "@/shared/lib/text";
@@ -124,7 +125,9 @@ function cycleRow(
     finishedAt: formatInstant(item.finishedAt, timezone),
     point: item.point ? (
       <span className={styles.cellStack}>
-        <span>{formatUsd(item.point.totalUsd)}</span>
+        <span>
+          <NumericText>{formatUsd(item.point.totalUsd)}</NumericText>
+        </span>
         <span>
           <CompletenessBadge value={item.point.completeness} />
         </span>
@@ -200,7 +203,7 @@ function CycleDetail({
             <div>
               <dt>Attempts</dt>
               <dd>
-                {String(cycle.attemptCount)}/{String(cycle.maxAttempts)}
+                {formatCount(cycle.attemptCount)}/{formatCount(cycle.maxAttempts)}
               </dd>
             </div>
             <div>
@@ -221,7 +224,9 @@ function CycleDetail({
             </div>
             <div>
               <dt>Boundary flows</dt>
-              <dd>{cycle.point ? formatBoundaryFlows(cycle.point) : "—"}</dd>
+              <dd>
+                <NumericText>{cycle.point ? formatBoundaryFlows(cycle.point) : "—"}</NumericText>
+              </dd>
             </div>
           </dl>
           {cycle.lastErrorClass ? (

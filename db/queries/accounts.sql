@@ -8,7 +8,7 @@ INSERT INTO accounts (
 
 -- name: ListAccountsByPortfolio :many
 SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = sqlc.arg(portfolio_id)
@@ -22,7 +22,7 @@ ORDER BY id;
 
 -- name: GetAccount :one
 SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.status AS identity_status
+       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.id = sqlc.arg(id);

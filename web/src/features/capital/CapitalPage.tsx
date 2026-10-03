@@ -1,3 +1,4 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useParams } from "react-router";
@@ -322,9 +323,11 @@ export function CapitalPage() {
         }}
       >
         <p className={styles.lead}>
-          {deleteTarget
-            ? `Delete the ${deleteTarget.direction} of ${formatDecimal(deleteTarget.quantity)} ${deleteTarget.assetSymbol} effective ${formatInstant(deleteTarget.effectiveAt, timezone)}? Value Changes over that period will no longer account for it.`
-            : ""}
+          <NumericText>
+            {deleteTarget
+              ? `Delete the ${deleteTarget.direction} of ${formatDecimal(deleteTarget.quantity)} ${deleteTarget.assetSymbol} effective ${formatInstant(deleteTarget.effectiveAt, timezone)}? Value Changes over that period will no longer account for it.`
+              : ""}
+          </NumericText>
         </p>
         <div className={styles.actions}>
           <ActionButton

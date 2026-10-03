@@ -116,6 +116,7 @@ type AccountValuation struct {
 	Omitted                []Omitted
 	valueRat               *big.Rat
 	accountStructure       string
+	sourceMarginMode       *string
 }
 
 // Completeness returns complete or incomplete for the account.
@@ -238,6 +239,15 @@ type PositionRow struct {
 	ExpiryAt            *time.Time
 	ContractSize        *string
 	Side                string
+	PositionMode        *string
+	MarginMode          *string
+	MarginCurrency      *string
+	MarginBasis         *string
+	PortfolioMargin     *bool
+	Size                *string
+	SizeSymbol          *string
+	SettleMargin        *string
+	Issues              []Issue
 	Quantity            string
 	QuantityUnit        string
 	EntryPrice          *string

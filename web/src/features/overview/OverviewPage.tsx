@@ -1,8 +1,15 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import type { EChartsCoreOption } from "echarts/core";
 import { useMemo } from "react";
 import { useParams } from "react-router";
 import type { CollectionCycle, GroupTotal, Overview } from "@/api/generated/types.gen";
-import { chartNumber, formatAmount, formatUsd, isZeroDecimal } from "@/shared/lib/amount";
+import {
+  chartNumber,
+  formatAmount,
+  formatUsd,
+  isZeroDecimal,
+  formatCount,
+} from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { NO_POINT } from "@/shared/lib/text";
@@ -39,6 +46,10 @@ export function OverviewPage() {
           type: "line",
           name: "Total value",
           data: points.map((point) => chartNumber(point.totalUsd)),
+          tooltip: {
+            valueFormatter: (_value: unknown, index: number) =>
+              formatAmount(points[index]?.totalUsd),
+          },
         },
       ],
     };
@@ -94,7 +105,7 @@ export function OverviewPage() {
               <article className={styles.metric}>
                 <h2>Total value</h2>
                 <p className={styles.metricValue}>
-                  {formatAmount(overview.totalUsd)}
+                  <NumericText>{formatAmount(overview.totalUsd)}</NumericText>
                   {overview.totalUsd ? <span className={styles.unit}>USD</span> : null}
                 </p>
                 <p className={styles.metricSub}>
@@ -103,7 +114,7 @@ export function OverviewPage() {
               </article>
               <article className={styles.metric}>
                 <h2>Accounts</h2>
-                <p className={styles.metricValue}>{String(overview.accountCount)}</p>
+                <p className={styles.metricValue}>{formatCount(overview.accountCount)}</p>
                 <p className={styles.metricSub}>{accountNote(overview)}</p>
               </article>
               <article className={styles.metric}>
@@ -115,7 +126,9 @@ export function OverviewPage() {
                   </span>
                 </p>
                 <p className={styles.metricSub}>
-                  {boundarySummary(point.boundaryContributionUsd, point.boundaryWithdrawalUsd)}
+                  <NumericText>
+                    {boundarySummary(point.boundaryContributionUsd, point.boundaryWithdrawalUsd)}
+                  </NumericText>
                 </p>
               </article>
             </div>
@@ -176,7 +189,7 @@ function groupRow(group: GroupTotal): DataRow {
     id: group.key,
     label: group.label,
     valueUsd: formatAmount(group.valueUsd),
-    accountCount: String(group.accountCount),
+    accountCount: formatCount(group.accountCount),
     completeness: <CompletenessBadge value={group.completeness} />,
   };
 }
@@ -184,9 +197,10 @@ function groupRow(group: GroupTotal): DataRow {
 /** What is off about the accounts, or where they stand when nothing is. */
 function accountNote(overview: Overview): string {
   const parts: string[] = [];
-  if (overview.staleAccountCount > 0) parts.push(`${String(overview.staleAccountCount)} stale`);
+  if (overview.staleAccountCount > 0)
+    parts.push(`${formatCount(overview.staleAccountCount)} stale`);
   if (overview.incompleteAccountCount > 0) {
-    parts.push(`${String(overview.incompleteAccountCount)} incomplete`);
+    parts.push(`${formatCount(overview.incompleteAccountCount)} incomplete`);
   }
   return parts.length > 0 ? parts.join(" · ") : "inside the boundary";
 }
@@ -210,9 +224,11 @@ function CycleNotice({ cycle, timezone }: { cycle: CollectionCycle; timezone?: s
       {finished
         ? `at ${formatInstant(cycle.finishedAt, timezone)}.`
         : "· this page refreshes when it finishes."}
-      {cycle.point
-        ? ` Point total ${formatUsd(cycle.point.totalUsd)} (${cycle.point.completeness}).`
-        : ""}
+      <NumericText>
+        {cycle.point
+          ? ` Point total ${formatUsd(cycle.point.totalUsd)} (${cycle.point.completeness}).`
+          : ""}
+      </NumericText>
       {cycle.lastErrorClass
         ? ` ${cycle.lastErrorClass}${cycle.lastDetail ? `: ${cycle.lastDetail}` : ""}`
         : ""}

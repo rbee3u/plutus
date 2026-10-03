@@ -251,6 +251,7 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 		observedAt = row.ObservedAt.Time
 		metrics = [6]sql.NullString{row.Equity, row.AdjustedEquity, row.AvailableEquity, row.InitialMarginRatio, row.MaintenanceMarginRatio, row.UnifiedMarginRatio}
 		item.Freshness = FreshnessFresh
+		item.sourceMarginMode = nullStr(row.MarginMode)
 	} else {
 		src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, ScopeVersion: row.ScopeVersion, Before: row.CreatedAt})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -268,6 +269,7 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 			return AccountValuation{}, err
 		}
 		observedAt = src.ObservedAt.Time
+		item.sourceMarginMode = nullStr(src.MarginMode)
 		metrics = [6]sql.NullString{src.Equity, src.AdjustedEquity, src.AvailableEquity, src.InitialMarginRatio, src.MaintenanceMarginRatio, src.UnifiedMarginRatio}
 		item.Freshness = FreshnessStale
 	}
@@ -547,6 +549,7 @@ func accountFromRow(row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) 
 		ValueUSD:         nullDecimal(row.ValueUsd),
 	}
 	if row.Status == "ok" {
+		item.sourceMarginMode = nullStr(row.MarginMode)
 		item.Freshness = FreshnessFresh
 		item.Equity, item.AdjustedEquity, item.AvailableEquity = nullDecimal(row.Equity), nullDecimal(row.AdjustedEquity), nullDecimal(row.AvailableEquity)
 		item.InitialMarginRatio, item.MaintenanceMarginRatio, item.UnifiedMarginRatio = nullDecimal(row.InitialMarginRatio), nullDecimal(row.MaintenanceMarginRatio), nullDecimal(row.UnifiedMarginRatio)
@@ -555,6 +558,7 @@ func accountFromRow(row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) 
 			item.ReportObservedAt = &t
 		}
 	} else {
+		item.sourceMarginMode = nullStr(row.SourceMarginMode)
 		item.Equity, item.AdjustedEquity, item.AvailableEquity = nullDecimal(row.SourceEquity), nullDecimal(row.SourceAdjustedEquity), nullDecimal(row.SourceAvailableEquity)
 		item.InitialMarginRatio, item.MaintenanceMarginRatio, item.UnifiedMarginRatio = nullDecimal(row.SourceInitialMarginRatio), nullDecimal(row.SourceMaintenanceMarginRatio), nullDecimal(row.SourceUnifiedMarginRatio)
 		if row.SourceObservedAt.Valid {

@@ -1,3 +1,4 @@
+import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import type { EChartsCoreOption } from "echarts/core";
 import { type FormEvent, useMemo, useState } from "react";
@@ -80,6 +81,10 @@ export function ValueChangesPage() {
           type: "bar",
           name: "Value change",
           data: items.map((item) => chartNumber(item.amountUsd)),
+          tooltip: {
+            valueFormatter: (_value: unknown, index: number) =>
+              formatAmount(items[index]?.amountUsd),
+          },
         },
       ],
     };
@@ -263,7 +268,9 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
         <div>
           <dt>Value change</dt>
-          <dd>{formatUsd(change.amountUsd)}</dd>
+          <dd>
+            <NumericText>{formatUsd(change.amountUsd)}</NumericText>
+          </dd>
         </div>
         <div>
           <dt>Start point</dt>
@@ -279,17 +286,21 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
         <div>
           <dt>Contributions</dt>
-          <dd>{formatUsd(change.contributionsUsd)}</dd>
+          <dd>
+            <NumericText>{formatUsd(change.contributionsUsd)}</NumericText>
+          </dd>
         </div>
         <div>
           <dt>Withdrawals</dt>
-          <dd>{formatUsd(change.withdrawalsUsd)}</dd>
+          <dd>
+            <NumericText>{formatUsd(change.withdrawalsUsd)}</NumericText>
+          </dd>
         </div>
         <div>
           <dt>Boundary in / out</dt>
           <dd>
-            {formatUsd(change.boundaryContributionsUsd)} /{" "}
-            {formatUsd(change.boundaryWithdrawalsUsd)}
+            <NumericText>{formatUsd(change.boundaryContributionsUsd)}</NumericText> /{" "}
+            <NumericText>{formatUsd(change.boundaryWithdrawalsUsd)}</NumericText>
           </dd>
         </div>
         <div>
@@ -319,7 +330,7 @@ function PointAt({ point, timezone }: { point: ValueChange["startPoint"]; timezo
   }
   return (
     <>
-      {formatUsd(point.totalUsd)} at{" "}
+      <NumericText>{formatUsd(point.totalUsd)}</NumericText> at{" "}
       <span className={styles.nowrap}>{formatInstant(point.evaluatedAt, timezone)}</span>
     </>
   );
