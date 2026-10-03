@@ -6,6 +6,12 @@ normalized Size, margin provenance, historical source context, and Observed
 badges. The existing business ordering remains in use. No exchange integration
 is declared complete.
 
+The subsequent [margin correction](./margin-presentation-delivery.md) supersedes
+this delivery's blanket Binance PM suppression and the original OKX USD unit
+assumption. Those initial synthetic assertions did not establish the correct
+exchange-app margin meaning. Original validation results below describe this
+delivery; the follow-up report records the corrected behavior and new checks.
+
 ## Automated verification
 
 The ordered gates passed on 2026-10-03:

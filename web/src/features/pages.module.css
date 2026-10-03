@@ -423,6 +423,11 @@
   font-size: var(--text-xs);
 }
 
+/* Margin keeps its content width instead of taking a share of spare table space. */
+.tableWrap td:has(> .positionMarginTrigger) {
+  width: 1%;
+}
+
 .staleTimestamp {
   display: inline-flex;
   align-items: center;

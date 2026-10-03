@@ -112,19 +112,15 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 			t.Fatal("Overview changed the Platform order")
 		}
 	}
-	balances, err := h.valuation.FlatBalances(h.ctx, pctx, &valuation.ListFilter{Limit: 500, GroupBy: "account"})
+	balances, err := h.valuation.FlatBalances(h.ctx, pctx, &valuation.ListFilter{Limit: 500})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var balanceAccounts, groupAccounts []uuid.UUID
+	var balanceAccounts []uuid.UUID
 	for _, row := range balances.Items {
 		balanceAccounts = append(balanceAccounts, row.AccountID)
 	}
-	for _, group := range balances.Groups {
-		groupAccounts = append(groupAccounts, uuid.MustParse(group.Key))
-	}
 	checkHierarchy("Balances", balanceAccounts)
-	checkHierarchy("Balance groups", groupAccounts)
 	positions, err := h.valuation.FlatPositions(h.ctx, pctx, &valuation.ListFilter{Limit: 500})
 	if err != nil || positions.Total == 0 {
 		t.Fatalf("Positions: %+v %v", positions, err)

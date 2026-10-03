@@ -205,6 +205,7 @@ func toAPIPositionRows(rows []valuation.PositionRow) []api.PositionRow {
 			PositionMode: enumPtr[api.PositionRowPositionMode](r.PositionMode), MarginMode: enumPtr[api.PositionRowMarginMode](r.MarginMode),
 			MarginCurrency: r.MarginCurrency, MarginBasis: enumPtr[api.PositionRowMarginBasis](r.MarginBasis),
 			PortfolioMargin: r.PortfolioMargin, Size: r.Size, SizeSymbol: r.SizeSymbol, SettleMargin: r.SettleMargin, Issues: toAPIIssues(r.Issues),
+			MarginSource: enumPtr[api.PositionRowMarginSource](r.MarginSource), MarginUnavailableReason: r.MarginUnavailableReason,
 			Side: api.PositionRowSide(r.Side), Quantity: r.Quantity, QuantityUnit: api.PositionRowQuantityUnit(r.QuantityUnit),
 			EntryPrice: r.EntryPrice, MarkPrice: r.MarkPrice, LiquidationPrice: r.LiquidationPrice,
 			UnrealizedPnl: r.UnrealizedPnl, Leverage: r.Leverage, Margin: r.Margin, NotionalUsd: r.NotionalUSD,

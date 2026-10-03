@@ -196,12 +196,12 @@ func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.Ac
 	case adapters.MarginBybitIsolated:
 		// Isolated Margin has no account-wide figures; the value is calculated from Balances.
 		report.Equity, report.AdjustedEquity, report.AvailableEquity, report.InitialMarginRatio, report.MaintenanceMarginRatio, report.UnifiedMarginRatio = nil, nil, nil, nil, nil, nil
-	case adapters.MarginBybitPM:
+	case adapters.MarginBybitPM, adapters.MarginOKXPM:
 		// Portfolio Margin positions carry no leverage, position margin, or liquidation price.
 		for i := range report.Positions {
 			report.Positions[i].Leverage, report.Positions[i].Margin, report.Positions[i].LiquidationPrice = nil, nil, nil
 		}
-	case adapters.MarginOKXSpot, adapters.MarginOKXMCM, adapters.MarginOKXPM, adapters.MarginBybitCross:
+	case adapters.MarginOKXSpot, adapters.MarginOKXMCM, adapters.MarginBybitCross:
 		// These Margin Modes report every figure.
 	default:
 		// Structures without a Margin Mode keep the base report.

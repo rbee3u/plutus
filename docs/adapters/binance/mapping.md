@@ -261,8 +261,21 @@ uses `positionInitialMargin`, while Isolated uses `isolatedWallet`, excluding
 PnL. Validate the `marginAsset` currency before settlement display. COIN-M joins
 an unambiguous Account position by exact Symbol, positionSide, and quantity for
 its initial requirement; optional `isolatedWallet` is used only when returned.
-Missing or contradictory joins stay unknown. Portfolio Margin risk responses
-supply no per-position allocation. No new requests are added.
+Missing or contradictory joins leave the source requirement unknown. Portfolio
+Margin risk responses supply no per-position allocation, but do retain Futures
+initial leverage. Supported retail PM futures are Cross. No new requests are
+added.
+
+The read model prefers verified source initial amounts. For Cross with no usable
+source, including retail PM, it calculates the documented Futures initial
+requirement: linear absolute Base Size times Mark divided by leverage; inverse
+Quote face Size divided by Mark and leverage in Base Settle. Specifications and
+currencies must be compatible, with positive Mark and initial leverage. The API
+marks this display as calculated; the stored margin is not filled or changed.
+This does not allocate shared collateral or PM risk. Old PM Reports can use
+their retained position facts; Classic rows without a known margin setting stay
+unknown. See
+[Binance's PM overview](https://www.binance.com/en/support/faq/detail/174861644e7049aaa64845f1db2e4376).
 
 COIN-M Account and position-risk reads are not atomic. A mismatched quantity or
 ambiguous Symbol/side join leaves the Account-derived requirement unknown. An

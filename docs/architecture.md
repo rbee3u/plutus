@@ -162,6 +162,19 @@ contract comparator. Catalog queries receive the shared Platform order and apply
 it in SQL before `LIMIT` and `OFFSET`. The SPA preserves API ordering in lists
 and selectors. See [ADR 0011](./adr/0011-display-ordering.md).
 
+The global Holdings tables keep their filter headers mounted independently of
+query results. Platform and Identity candidates derive from configured
+non-archived Identities; successful reads normalize obsolete URL choices.
+Interactive header content supplements a plain column name in `DataColumn`.
+Portal popovers measure their available viewport space and dismiss on external
+scroll, while preserving internal list scrolling and keyboard input. A shared
+URL controller debounces search by 250 ms, defers during IME composition, and
+flushes pending input on dismissal or a position-tab change. Server reads apply
+literal case-insensitive substring matching before pagination. Flat Account
+filters and Balance grouping are retired; Account details and Overview groups
+retain their existing paths. See
+[ADR 0014](./adr/0014-holdings-header-filters.md).
+
 Financial arithmetic uses exact rationals behind `internal/decimal`; storage
 uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values with at
 most 30 fractional digits. JSON financial values are strings; null means unknown
@@ -198,11 +211,38 @@ currency, and initial/allocated basis. Exact decimal read calculations add Size,
 settlement-currency Margin, Portfolio context, and row issues to the API.
 [ADR 0012](./adr/0012-position-presentation.md) owns the display policy.
 
+Margin reads prefer a verified source amount and expose `marginSource` as
+`reported` or `calculated`, plus `marginUnavailableReason` for unknown values.
+Binance Cross initial requirements can be calculated from the source Position's
+Size, Mark, and initial leverage, including supported retail PM. The immutable
+Binance PM structure establishes Cross for old Reports without margin metadata;
+no source amount or observation time changes. Other Platforms use their own
+reported measures rather than this fallback.
+
+OKX Cross reads retain the reported margin currency and verify non-PM inverse
+`imr` against both native and USD requirements using exact rational arithmetic
+and a relative `1e-8` tolerance. This also corrects earlier typed-USD reads when
+only the native candidate matches. Missing provenance, unsupported currencies,
+and ambiguous or mismatched candidates remain unknown. The source Report's
+regime determines eligibility; current Identity settings never establish it.
+
 The account Positions endpoint accepts an optional `pointId` scoped to the same
 Portfolio and Account. Historical expansion reads that point's source Report,
 never the latest report. Shared React cells provide the same columns and units
 in global, Account, and historical tables. Detail overlays render outside table
 scroll containers and support hover, focus, click, and Escape.
+
+Margin uses the numeric cell's right alignment, with no mode tag or reserved
+track. Its cell receives a content-sizing width hint so automatic table layout
+does not assign it spare space. The amount disclosure is one focusable control;
+mode and leverage share a short line in this overlay. Cross uses source
+leverage; Isolated divides absolute USD notional by allocated margin valued in
+USD. The shared display helper uses source decimals before formatting, with 1:1
+USD-equivalent conversion or compatible Base Settle times positive Mark.
+Incomplete inputs show the known mode alone. This derived display never changes
+source leverage or margin. Portfolio accounts show `portfolio margin` unless the
+Position has an actual Isolated setting. Symbol overlays contain contract
+specifications without leverage; margin diagnostics remain in the API.
 
 The appended Position presentation migration restores only byte-exact canonical
 references with compatible stored direction. Legacy Bybit margin is marked as an

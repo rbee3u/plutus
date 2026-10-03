@@ -2,6 +2,7 @@ package collection
 
 import (
 	"errors"
+	"math/big"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/adapters"
 	"github.com/rbee3u/plutus/internal/adapters/fake"
+	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
@@ -26,8 +28,7 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	if err != nil || full.Total != 2 || full.Completeness != "complete" {
 		t.Fatalf("full %+v %v", full, err)
 	}
-	cmAccount := h.accountsByType(first.Point.JobID, item.ID)["cm_futures"].AccountID
-	filtered, err := h.valuation.FlatPositions(h.ctx, pctx, &valuation.ListFilter{AccountID: &cmAccount, Limit: 1})
+	filtered, err := h.valuation.FlatPositions(h.ctx, pctx, &valuation.ListFilter{Symbol: "btcUsd_p", Limit: 1})
 	if err != nil || filtered.Total != 1 || *filtered.TotalUSD != *full.TotalUSD {
 		t.Fatalf("row filters changed boundary total: %+v %v", filtered, err)
 	}
@@ -114,6 +115,62 @@ func TestStalePositionsKeepSourceModeAndObservedTime(t *testing.T) {
 		if row.SettleMargin != nil {
 			t.Fatal("Portfolio risk allocated to a stale Position")
 		}
+	}
+}
+
+func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
+	h := newHarness(t)
+	item := h.createIdentity("Binance margin", adapters.PlatformBinance, adapters.StructureBinancePM, "portfolio_margin")
+	item = h.storeCredentials(item, "binance-margin-history")
+	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
+		t.Fatalf("enable %+v %v", result, err)
+	}
+	first, _ := h.runCycle()
+	pctx := valuation.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
+	accountID := h.accountsByType(first.Point.JobID, item.ID)["portfolio_margin"].AccountID
+	// Old PM rows retained size/Mark/leverage without margin provenance. Reads
+	// can establish Cross from the immutable supported PM structure.
+	if _, err := h.collection.db.ExecContext(h.ctx, `UPDATE positions p JOIN account_reports r ON r.id=p.report_id
+        SET p.margin_mode=NULL,p.margin_basis=NULL,p.margin_currency=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
+		t.Fatal(err)
+	}
+	before, err := h.valuation.AccountPositionsAt(h.ctx, pctx, accountID, &first.Point.ID)
+	if err != nil || len(before.Positions) != 2 {
+		t.Fatalf("historical %+v %v", before, err)
+	}
+	for _, row := range before.Positions {
+		if row.SettleMargin == nil || row.MarginSource == nil || *row.MarginSource != "calculated" || row.Margin != nil || row.MarginBasis != nil || row.MarginMode == nil || *row.MarginMode != "cross" {
+			t.Fatalf("historical PM margin %+v", row)
+		}
+		want := decimal.Format(new(big.Rat).Quo(decimal.MustParse(*row.NotionalUSD), decimal.MustParse(*row.Leverage)))
+		if *row.SettleMargin != want {
+			t.Fatalf("margin %s, want %s", *row.SettleMargin, want)
+		}
+	}
+	item, err = h.identities.Get(h.ctx, h.portfolioID, item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	broken := h.storeCredentials(item, "invalid-binance-margin-history")
+	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='enabled' WHERE id=?", broken.ID[:]); err != nil {
+		t.Fatal(err)
+	}
+	h.collection.now = func() time.Time { return first.Point.EvaluatedAt.Add(time.Minute) }
+	h.fakes[adapters.PlatformBinance].WithClock(h.collection.now)
+	h.runCycle()
+	stale, err := h.valuation.AccountPositions(h.ctx, pctx, accountID)
+	if err != nil || len(stale.Positions) != len(before.Positions) {
+		t.Fatalf("stale %+v %v", stale, err)
+	}
+	for i, row := range stale.Positions {
+		if row.Freshness != valuation.FreshnessStale || row.SettleMargin == nil || *row.SettleMargin != *before.Positions[i].SettleMargin || !row.ReportObservedAt.Equal(*before.Positions[i].ReportObservedAt) {
+			t.Fatal("stale margin used newer facts or changed source time")
+		}
+	}
+	var amountCount, modeCount int
+	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT SUM(p.margin IS NOT NULL),SUM(p.margin_mode IS NOT NULL)
+        FROM positions p JOIN account_reports r ON r.id=p.report_id WHERE r.portfolio_id=?`, h.portfolioID[:]).Scan(&amountCount, &modeCount); err != nil || amountCount != 0 || modeCount != 0 {
+		t.Fatalf("source facts rewritten by reads: %d %d %v", amountCount, modeCount, err)
 	}
 }
 

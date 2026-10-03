@@ -5,17 +5,21 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import styles from "@/features/pages.module.css";
+import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
+import type { HoldingsFilters } from "./useHoldingsFilters";
 
 export function DualPositionsTable({
   items,
   timezone,
   showAccount = false,
   loading = false,
+  filters,
 }: {
   items: DualPositionRow[];
   timezone?: string;
   showAccount?: boolean;
   loading?: boolean;
+  filters?: HoldingsFilters;
 }) {
   const platforms = usePlatforms();
   return (
@@ -24,11 +28,32 @@ export function DualPositionsTable({
       columns={[
         ...(showAccount
           ? [
-              { key: "platform", header: "Platform", nowrap: true },
-              { key: "identity", header: "Identity", nowrap: true },
+              {
+                key: "platform",
+                header: "Platform",
+                nowrap: true,
+                headerContent: filters ? (
+                  <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
+                ) : undefined,
+              },
+              {
+                key: "identity",
+                header: "Identity",
+                nowrap: true,
+                headerContent: filters ? (
+                  <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
+                ) : undefined,
+              },
             ]
           : []),
-        { key: "pair", header: "Pair", nowrap: true },
+        {
+          key: "pair",
+          header: "Pair",
+          nowrap: true,
+          headerContent: filters ? (
+            <HoldingsFilterHeader label="Pair" filterKey="symbol" filters={filters} />
+          ) : undefined,
+        },
         { key: "expiry", header: "Expiry", nowrap: true },
         { key: "strike", header: "Strike", numeric: true, nowrap: true },
         { key: "direction", header: "Direction", nowrap: true },

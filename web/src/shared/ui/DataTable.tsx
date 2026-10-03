@@ -5,6 +5,8 @@ import styles from "@/features/pages.module.css";
 export interface DataColumn {
   key: string;
   header: string;
+  /** Optional controls; header remains the plain column name. */
+  headerContent?: ReactNode;
   numeric?: boolean;
   /** Keeps timestamps and short codes on one line; the wrapper scrolls instead. */
   nowrap?: boolean;
@@ -83,8 +85,13 @@ export function DataTable({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col" className={cellClass(column)}>
-                {column.header}
+              <th
+                key={column.key}
+                scope="col"
+                className={cellClass(column)}
+                aria-label={column.headerContent ? column.header : undefined}
+              >
+                {column.headerContent ?? column.header}
               </th>
             ))}
           </tr>

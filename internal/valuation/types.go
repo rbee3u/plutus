@@ -223,42 +223,44 @@ type BalanceRow struct {
 
 // PositionRow is one Position with its USD notional.
 type PositionRow struct {
-	AccountID           uuid.UUID
-	AccountName         string
-	AccountType         string
-	IdentityID          uuid.UUID
-	IdentityName        string
-	Platform            string
-	PlatformPositionRef string
-	InstrumentID        uuid.UUID
-	Symbol              string
-	Kind                string
-	BaseSymbol          *string
-	QuoteSymbol         *string
-	SettlementSymbol    *string
-	ExpiryAt            *time.Time
-	ContractSize        *string
-	Side                string
-	PositionMode        *string
-	MarginMode          *string
-	MarginCurrency      *string
-	MarginBasis         *string
-	PortfolioMargin     *bool
-	Size                *string
-	SizeSymbol          *string
-	SettleMargin        *string
-	Issues              []Issue
-	Quantity            string
-	QuantityUnit        string
-	EntryPrice          *string
-	MarkPrice           *string
-	LiquidationPrice    *string
-	UnrealizedPnl       *string
-	Leverage            *string
-	Margin              *string
-	NotionalUSD         *string
-	Freshness           string
-	ReportObservedAt    *time.Time
+	AccountID               uuid.UUID
+	AccountName             string
+	AccountType             string
+	IdentityID              uuid.UUID
+	IdentityName            string
+	Platform                string
+	PlatformPositionRef     string
+	InstrumentID            uuid.UUID
+	Symbol                  string
+	Kind                    string
+	BaseSymbol              *string
+	QuoteSymbol             *string
+	SettlementSymbol        *string
+	ExpiryAt                *time.Time
+	ContractSize            *string
+	Side                    string
+	PositionMode            *string
+	MarginMode              *string
+	MarginCurrency          *string
+	MarginBasis             *string
+	PortfolioMargin         *bool
+	Size                    *string
+	SizeSymbol              *string
+	SettleMargin            *string
+	MarginSource            *string
+	MarginUnavailableReason *string
+	Issues                  []Issue
+	Quantity                string
+	QuantityUnit            string
+	EntryPrice              *string
+	MarkPrice               *string
+	LiquidationPrice        *string
+	UnrealizedPnl           *string
+	Leverage                *string
+	Margin                  *string
+	NotionalUSD             *string
+	Freshness               string
+	ReportObservedAt        *time.Time
 }
 
 // AccountView is one Account's current report with its Balances or Positions.
@@ -275,18 +277,15 @@ type AccountView struct {
 type ListFilter struct {
 	Platform   string
 	IdentityID *uuid.UUID
-	AccountID  *uuid.UUID
 	Symbol     string
-	GroupBy    string
 	Offset     int
 	Limit      int
 }
 
-// FlatList is an offset page of rows with backend group totals.
+// FlatList is an offset page of holdings with totals and completeness.
 type FlatList[T any] struct {
 	Context      Context
 	Items        []T
-	Groups       []GroupTotal
 	Offset       int
 	Limit        int
 	Total        int

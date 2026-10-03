@@ -35,7 +35,25 @@ recording keeps its separate process-environment proxy behavior. Migrations are
 explicit: freeze the baseline after prod's first migration and append migrations
 compatible with populated databases. Never reset prod.
 
+Dev has one deterministic walkthrough seed rather than selectable profiles.
+`db seed` loads it into an empty migrated database; `db reset --seed` resets and
+loads it, while bare `db reset` still leaves an empty database for remote test
+setup. The old `--profile` flag is removed without aliases. Seed data retains
+the normalized Position and Account Report source fields used by collection. Its
+latest point has one stale COIN-M Futures Account with one Position; other
+Accounts are healthy. Later normal fake collection recovers that Account.
+Historical failures remain available, and complex anomaly fixtures belong only
+to regression tests. Existing dev data is replaced by an explicit reset rather
+than rewritten through migrations or seed backfills.
+
 ## Reason and trade-offs
+
+A single seed makes dev startup predictable and keeps its financial source facts
+aligned with the fake Adapter. One recoverable stale example demonstrates
+failure handling without making every Position look defective. Keeping complex
+anomalies in tests preserves regression coverage without a second public data
+choice. Replacing seed history through reset is accepted for disposable dev
+data; it is not a policy for changing retained production Observations.
 
 Isolation protects production; appended migrations preserve observations and
 configuration. Minimal units inherit host defaults; weak MySQL dependencies

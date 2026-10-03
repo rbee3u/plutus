@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/decimal"
 )
 
 func TestPositionsGroupBaseBeforeContractKindAndExpiry(t *testing.T) {
@@ -75,18 +74,5 @@ func TestHoldingsHierarchyPrecedesAssetAndExpiry(t *testing.T) {
 	sortPositions(positions, ranks)
 	if positions[0].AccountID != first {
 		t.Fatal("Position Symbol sort crossed the Account hierarchy")
-	}
-}
-
-func TestBalanceHierarchyGroupsIgnoreValueChanges(t *testing.T) {
-	rows := []BalanceRow{
-		{Platform: "binance", IdentityID: uuid.New(), AccountID: uuid.New(), AssetSymbol: "BTC", equityUSDRat: decimal.MustParse("1")},
-		{Platform: "okx", IdentityID: uuid.New(), AccountID: uuid.New(), AssetSymbol: "ETH", equityUSDRat: decimal.MustParse("999")},
-	}
-	for _, groupBy := range []string{"platform", "identity", "account"} {
-		groups := groupBalances(rows, groupBy)
-		if groups[0].Platform != "binance" || groups[1].Platform != "okx" {
-			t.Fatalf("%s group sorted by value instead of hierarchy: %+v", groupBy, groups)
-		}
 	}
 }

@@ -31,6 +31,7 @@ const position: PositionRow = {
   marginCurrency: "USD",
   margin: "100",
   settleMargin: "0.002",
+  marginSource: "reported",
   portfolioMargin: false,
   freshness: "stale",
   reportObservedAt: "2026-10-03T00:00:00Z",
@@ -50,6 +51,67 @@ const delivery: PositionRow = {
   size: "200",
   unrealizedPnl: "0.0000000043485748",
   issues: [{ code: "position_mode_unknown", detail: "Position mode was not recorded." }],
+};
+
+const calculated: PositionRow = {
+  ...position,
+  symbol: "ZECUSDT",
+  kind: "linear_perpetual",
+  platform: "binance",
+  accountType: "portfolio_margin",
+  platformPositionRef: "um:ZECUSDT:BOTH",
+  instrumentId: "00000000-0000-7000-8000-000000000008",
+  baseSymbol: "ZEC",
+  quoteSymbol: "USDT",
+  settlementSymbol: "USDT",
+  quantity: "0.5",
+  quantityUnit: "base",
+  size: "-0.5",
+  sizeSymbol: "ZEC",
+  contractSize: null,
+  markPrice: "1317.81",
+  leverage: "3",
+  portfolioMargin: true,
+  settleMargin: "219.635",
+  margin: null,
+  marginCurrency: null,
+  marginBasis: null,
+  marginSource: "calculated",
+  freshness: "fresh",
+  issues: [],
+};
+
+const isolated: PositionRow = {
+  ...position,
+  symbol: "ETHUSDT",
+  kind: "linear_perpetual",
+  baseSymbol: "ETH",
+  quoteSymbol: "USDT",
+  quantityUnit: "base",
+  sizeSymbol: "ETH",
+  notionalUsd: "1880",
+  leverage: "10",
+  platformPositionRef: "um:ETHUSDT:LONG",
+  instrumentId: "00000000-0000-7000-8000-000000000009",
+  marginMode: "isolated",
+  marginBasis: "allocated",
+  margin: "1000",
+  marginCurrency: "USDT",
+  settlementSymbol: "USDT",
+  settleMargin: "1000",
+  portfolioMargin: true,
+};
+
+const unavailable: PositionRow = {
+  ...position,
+  symbol: "BTCUSDT",
+  platformPositionRef: "BTCUSDT:0",
+  instrumentId: "00000000-0000-7000-8000-000000000010",
+  settleMargin: null,
+  marginSource: null,
+  marginUnavailableReason:
+    "This Portfolio Margin regime does not provide an independent position initial requirement.",
+  portfolioMargin: true,
 };
 
 test("position details work with hover, keyboard, click, scroll, and narrow tables", async ({
@@ -94,11 +156,11 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
             timezone: "Asia/Shanghai",
             pointId: "00000000-0000-7000-8000-000000000006",
           },
-          items: [position, delivery],
-          totalNotionalUsd: "400",
+          items: [position, delivery, calculated, isolated, unavailable],
+          totalNotionalUsd: "1000",
           completeness: "complete",
           issues: position.issues,
-          page: { kind: "offset", limit: 50, offset: 0, total: 2 },
+          page: { kind: "offset", limit: 50, offset: 0, total: 5 },
         } satisfies PositionList,
       });
     throw new Error(`Unexpected request ${path}`);
@@ -107,17 +169,17 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
   await page.goto(`/p/${portfolioId}/holdings/positions`);
   const symbol = page.getByRole("button", { name: "Contract details for BTC-USD-SWAP" });
   await expect(page.getByRole("columnheader")).toHaveText([
-    "Platform",
-    "Identity",
+    /Platform\s*All/,
+    /Identity\s*All/,
     "Account",
-    "Symbol",
+    /Symbol\s*All/,
     "Side",
     "Size",
     "Entry Price",
     "Mark Price",
     "Liq. Price",
-    "Margin",
     "Unrealized PnL",
+    "Margin",
     "Notional (USD)",
     "Observed",
   ]);
@@ -126,6 +188,7 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
   await expect(details).toContainText("1 contract = 100 USD");
   await expect(details).toContainText("Inverse");
   await expect(details).toContainText("Perpetual");
+  await expect(details).not.toContainText("Leverage");
   await page.keyboard.press("Escape");
   await expect(details).toBeHidden();
   await symbol.focus();
@@ -145,8 +208,44 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
   await expect(details).toContainText("Position mode was not recorded.");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Margin details for BTC-USD-SWAP" }).click();
-  await expect(details).toContainText("Reported: 100 USD");
-  await expect(details).toContainText("using Mark Price");
+  await expect(details).toHaveText("3x cross");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Margin details for ZECUSDT" }).click();
+  await expect(details).toHaveText("portfolio margin");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Margin details for BTCUSDT" }).focus();
+  await expect(details).toHaveText("portfolio margin");
+  await page.keyboard.press("Escape");
+  const amounts = page.getByRole("button", { name: /^Margin details for/ });
+  const rightEdges = await amounts.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().right),
+  );
+  expect(Math.max(...rightEdges) - Math.min(...rightEdges)).toBeLessThan(0.5);
+  await expect(page.getByRole("button", { name: "Margin details for ZECUSDT" })).toHaveText(
+    "219.635 USDT",
+  );
+  await expect(page.getByRole("button", { name: "Margin details for ETHUSDT" })).toHaveText(
+    "1,000 USDT",
+  );
+  await expect(page.getByRole("button", { name: "Margin details for BTC-USD-SWAP" })).toHaveText(
+    "0.002 BTC",
+  );
+  await expect(page.getByRole("button", { name: "Margin details for BTCUSDT" })).toHaveText("—");
+  // The Margin column needs only its longest amount and the table's cell padding.
+  // This catches both an empty tag track and spare-width auto-layout expansion.
+  for (const width of [1280, 1920]) {
+    await page.setViewportSize({ width, height: 800 });
+    const widths = await amounts.evaluateAll((elements) => ({
+      longest: Math.max(...elements.map((element) => element.getBoundingClientRect().width)),
+      column: elements[0].parentElement!.getBoundingClientRect().width,
+      padding:
+        parseFloat(getComputedStyle(elements[0].parentElement!).paddingLeft) +
+        parseFloat(getComputedStyle(elements[0].parentElement!).paddingRight),
+    }));
+    expect(widths.column - widths.longest - widths.padding).toBeLessThan(2);
+  }
+  await page.getByRole("button", { name: "Margin details for ETHUSDT" }).click();
+  await expect(details).toHaveText("1.88x isolated");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Stale report for BTC-USD-SWAP" }).click();
   await expect(details).toContainText("Temporary collection failure");

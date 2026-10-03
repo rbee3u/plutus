@@ -7,10 +7,12 @@ export function HoverDetails({
   label,
   children,
   name,
+  className,
 }: {
   label: ReactNode;
   children: ReactNode;
   name: string;
+  className?: string;
 }) {
   const id = useId();
   const anchor = useRef<HTMLButtonElement>(null);
@@ -95,7 +97,7 @@ export function HoverDetails({
       <button
         ref={anchor}
         type="button"
-        className={styles.trigger}
+        className={`${styles.trigger}${className ? ` ${className}` : ""}`}
         aria-label={name}
         aria-describedby={open ? id : undefined}
         onPointerEnter={show}

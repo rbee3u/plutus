@@ -19,7 +19,7 @@ import (
 func newDatabaseCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "db",
-		Short: "Load a deterministic seed profile or reset a database",
+		Short: "Load deterministic development data or reset a database",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(newDBSeedCommand(), newDBResetCommand())
@@ -27,10 +27,9 @@ func newDatabaseCommand() *cobra.Command {
 }
 
 func newDBSeedCommand() *cobra.Command {
-	var profile string
 	cmd := &cobra.Command{
 		Use:   "seed",
-		Short: "Insert a deterministic seed profile and rebuild its Valuation Points",
+		Short: "Insert development data into an empty database and rebuild its Valuation Points",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			db, cfg, err := openConfiguredDB(cmd)
@@ -38,20 +37,19 @@ func newDBSeedCommand() *cobra.Command {
 				return err
 			}
 			defer func() { _ = db.Close() }()
-			return seedDatabase(cmd.Context(), db, &cfg, profile, cmd.OutOrStdout())
+			return seedDatabase(cmd.Context(), db, &cfg, cmd.OutOrStdout())
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", seeds.ProfileMinimal, "seed profile: minimal, edge-cases, or walkthrough")
 	return cmd
 }
 
 func newDBResetCommand() *cobra.Command {
-	var profile string
+	var seed bool
 	cmd := &cobra.Command{
 		Use:   "reset",
-		Short: "Drop every table, migrate, and optionally seed a profile and rebuild Valuation Points",
+		Short: "Drop every table, migrate, and optionally load development data",
 		Long: "db reset drops every table in the configured database and reapplies the migrations.\n" +
-			"With --profile it then inserts that deterministic seed (dev environments). Without --profile\n" +
+			"With --seed it then inserts deterministic development data. Without --seed\n" +
 			"the database is left empty and migrated, which is how the test environment is wiped before\n" +
 			"real read-only keys are configured through the UI. It refuses production-like database names.",
 		Args: cobra.NoArgs,
@@ -76,38 +74,35 @@ func newDBResetCommand() *cobra.Command {
 			if err := mysql.Up(db); err != nil {
 				return err
 			}
-			if profile == "" {
+			if !seed {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "migrated an empty database; create a user with `plutus user create`")
 				return nil
 			}
-			return seedDatabase(ctx, db, &cfg, profile, cmd.OutOrStdout())
+			return seedDatabase(ctx, db, &cfg, cmd.OutOrStdout())
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", "", "seed profile to load after migrating: minimal, edge-cases, or walkthrough (omit to leave the database empty)")
+	cmd.Flags().BoolVar(&seed, "seed", false, "load development data after migrating (omit to leave the database empty)")
 	return cmd
 }
 
-// seedDatabase runs the profile SQL, activates live Identities, and rebuilds every Valuation Point.
-func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, profileName string, out io.Writer) error {
-	profile, err := seeds.Build(profileName)
-	if err != nil {
+// seedDatabase runs the seed SQL, activates live Identities, and rebuilds every Valuation Point.
+func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Writer) error {
+	seed := seeds.Build()
+	if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
 		return err
 	}
-	if err := mysql.ExecSQLStatements(ctx, db, profile.SQL); err != nil {
-		return err
-	}
-	if err := activateSeedIdentities(ctx, db, cfg, profile.Live, out); err != nil {
+	if err := activateSeedIdentities(ctx, db, cfg, seed.Live, out); err != nil {
 		return err
 	}
 	svc := valuation.NewService(db)
-	for _, portfolioID := range profile.Portfolios {
+	for _, portfolioID := range seed.Portfolios {
 		count, err := svc.Rebuild(ctx, portfolioID)
 		if err != nil {
 			return fmt.Errorf("rebuild valuation points for %s: %w", portfolioID, err)
 		}
 		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points\n", portfolioID, count)
 	}
-	_, _ = fmt.Fprintf(out, "seeded %s profile\n", profile.Name)
+	_, _ = fmt.Fprintln(out, "loaded development seed")
 	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bob=123456")
 	return nil
 }

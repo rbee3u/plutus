@@ -20,7 +20,7 @@ func TestPositionMarginSourceAndMode(t *testing.T) {
 		t.Fatalf("isolated %+v %v", isolated, err)
 	}
 	portfolio, err := mapPosition(marketUM, epPMUMPositionRisk, &row, big.NewRat(-2, 1), &instrument)
-	if err != nil || portfolio.Margin != nil || portfolio.MarginMode != "" {
+	if err != nil || portfolio.Margin != nil || portfolio.MarginMode != "cross" {
 		t.Fatalf("portfolio %+v %v", portfolio, err)
 	}
 }

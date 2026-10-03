@@ -582,7 +582,7 @@ func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instru
 	}
 	switch row.MgnMode {
 	case "cross":
-		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "cross", "initial", "USD", adapters.Plain(row.IMR)
+		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "cross", "initial", strings.TrimSpace(row.Ccy), adapters.Plain(row.IMR)
 	case "isolated":
 		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
 	}

@@ -10,53 +10,28 @@ import (
 	"github.com/rbee3u/plutus/internal/adapters/fake"
 )
 
-// Seed profile names accepted by `plutus db seed --profile` and `plutus db reset --profile`.
-const (
-	// ProfileMinimal is the small happy-path profile: one live Identity and a short history.
-	ProfileMinimal = "minimal"
-	// ProfileEdgeCases exercises stale, missing, unpriced, boundary, gap, and unvalued-flow cases.
-	ProfileEdgeCases = "edge-cases"
-	// ProfileWalkthrough is the rich 40-day profile used by the walkthrough and Agent lanes.
-	ProfileWalkthrough = "walkthrough"
-)
-
-// Profiles lists every profile name.
-var Profiles = []string{ProfileMinimal, ProfileEdgeCases, ProfileWalkthrough}
-
-// Profile is one generated seed: the SQL to run and the Identities to activate afterwards.
-type Profile struct {
-	Name string
-	SQL  string
-	// Live Identities receive sealed credentials and are enabled after the SQL ran (needs a master key).
+// Seed contains the development SQL and the Identities to activate afterwards.
+type Seed struct {
+	SQL string
+	// Live Identities receive sealed credentials and are enabled after the SQL runs.
 	Live []LiveIdentity
-	// Portfolios lists every seeded Portfolio so the seed command can rebuild its Valuation Points.
+	// Portfolios lists every seeded Portfolio whose Valuation Points need rebuilding.
 	Portfolios []uuid.UUID
 }
 
-// Build generates a profile anchored at the current time.
-func Build(name string) (Profile, error) {
-	return BuildAt(name, time.Now())
+// Build generates the development seed anchored at the current time.
+func Build() Seed {
+	return BuildAt(time.Now())
 }
 
-// BuildAt generates a profile whose newest cycle precedes now.
-func BuildAt(name string, now time.Time) (Profile, error) {
+// BuildAt generates the development seed with its latest cycle at the rounded anchor.
+func BuildAt(now time.Time) Seed {
 	b := newBuilder()
-	b.comment("Deterministic seed profile: " + name)
+	b.comment("Deterministic development seed")
 	b.comment("Scratch logins: alice / Alice=123456 ; bob / Bob=123456")
 	b.comment("Account Reports are inserted without valuation columns; `plutus db seed` rebuilds every Valuation Point afterwards.")
-	anchor := now.UTC().Truncate(15 * time.Minute)
-	var portfolios []uuid.UUID
-	switch name {
-	case ProfileMinimal:
-		portfolios = minimal(b, anchor)
-	case ProfileEdgeCases:
-		portfolios = edgeCases(b, anchor)
-	case ProfileWalkthrough:
-		portfolios = walkthrough(b, anchor)
-	default:
-		return Profile{}, fmt.Errorf("unknown seed profile %q", name)
-	}
-	return Profile{Name: name, SQL: b.SQL(), Live: b.live, Portfolios: portfolios}, nil
+	portfolios := walkthrough(b, now.UTC().Truncate(15*time.Minute))
+	return Seed{SQL: b.SQL(), Live: b.live, Portfolios: portfolios}
 }
 
 const (
@@ -65,8 +40,6 @@ const (
 	keyAliceOKX            = "seed-alice-okx"
 	keyAliceBybit          = "seed-alice-bybit"
 	keyBobBinance          = "seed-bob-binance"
-	// keyAliceOKXInvalid makes the fake adapter reject validation, leaving the Connection invalid.
-	keyAliceOKXInvalid = "invalid-alice-okx"
 )
 
 // The Margin Modes the fake adapter reports for the seeded OKX and Bybit keys, so that seeded
@@ -93,10 +66,6 @@ func localMidnight(t time.Time, daysAgo int, loc *time.Location) time.Time {
 	return day.AddDate(0, 0, -daysAgo)
 }
 
-func (b *builder) users(now time.Time) {
-	b.usersWithInterval(now, 900)
-}
-
 func (b *builder) usersWithInterval(now time.Time, interval int) {
 	created := now.AddDate(0, 0, -60)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
@@ -113,7 +82,7 @@ func fakeReports(apiKey string, platform adapters.Platform, mode adapters.Margin
 	out := make([]reportSpec, 0, len(types))
 	for _, t := range types {
 		report := scenario.Report(mode, t, at.Add(2*time.Second), false)
-		out = append(out, reportSpec{Account: accounts[t], AccountType: t, Platform: platform, Report: &report})
+		out = append(out, reportSpec{Account: accounts[t], AccountType: t, Platform: platform, MarginMode: mode, Report: &report})
 	}
 	return out
 }
@@ -145,7 +114,7 @@ func selectedSet(types ...adapters.AccountType) map[adapters.AccountType]bool {
 	return out
 }
 
-// Account Type identifiers used by the profiles.
+// Account Type identifiers used by the seed.
 const (
 	typePortfolioMargin adapters.AccountType = "portfolio_margin"
 	typeSpot            adapters.AccountType = "spot"
@@ -173,79 +142,6 @@ var (
 	}
 )
 
-// minimal: alice's Binance Identity with two selected Accounts and three hours of 15-minute cycles.
-func minimal(b *builder, now time.Time) []uuid.UUID {
-	b.users(now)
-	created := now.AddDate(0, 0, -7)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-15 * time.Minute)})
-	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", CreatedAt: created})
-	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin), created)
-
-	for at := now.Add(-3 * time.Hour); !at.After(now.Add(-15 * time.Minute)); at = at.Add(15 * time.Minute) {
-		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
-		b.cycle(PortfolioAliceMain, at, fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot))
-	}
-	b.flow(&flowSpec{ID: FlowAliceUSDT, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "USDT", Quantity: "1000", ValueUSD: "1000", At: now.AddDate(0, 0, -2), Note: "Initial funding"})
-	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.create", ResourceType: "identity", ResourceID: IdentityAliceBinance, After: map[string]any{"displayName": "Binance main", "platform": "binance"}, At: created})
-	return []uuid.UUID{PortfolioAliceMain, PortfolioAliceTrading, PortfolioBobMain}
-}
-
-// edgeCases: stale, never-collected, unpriced, boundary change, a day without points, and an unvalued flow.
-func edgeCases(b *builder, now time.Time) []uuid.UUID {
-	b.users(now)
-	created := now.AddDate(0, 0, -10)
-	b.identity(&identitySpec{ID: IdentityAliceBinance, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance main", APIKey: keyAliceBinance, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour)})
-	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeFunding), created)
-	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX revoked key", APIKey: keyAliceOKXInvalid, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassAuthentication, LastDetail: "The platform rejected the API key."})
-	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading), created)
-	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit never collected", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: now.Add(-2 * time.Hour), LastError: adapters.ClassTemporary, LastDetail: "The platform returned a temporary error."})
-	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
-	b.identity(&identitySpec{ID: IdentityBobBinance, Portfolio: PortfolioBobMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance", CreatedAt: created})
-	b.accounts(IdentityBobBinance, bobBinanceAccounts, selectedSet(typePortfolioMargin), created)
-
-	// Local-day phases: A = D-7..D-5, gap = D-4, B = D-3, C = D-2..now-2h.
-	phaseA := localMidnight(now, 7, shanghai)
-	gapStart := localMidnight(now, 4, shanghai)
-	phaseB := localMidnight(now, 3, shanghai)
-	phaseC := localMidnight(now, 2, shanghai)
-	end := now.Add(-2 * time.Hour)
-	for at := phaseA; !at.After(end); at = at.Add(2 * time.Hour) {
-		if !at.Before(gapStart) && at.Before(phaseB) {
-			continue
-		}
-		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
-		b.fakePrices(keyAliceOKX, adapters.PlatformOKX, at)
-		var reports []reportSpec
-		switch {
-		case at.Before(phaseB):
-			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot)
-			// A wrapped coin the catalog maps manually to BTC, and TOKENX with no price.
-			reports[1].Report.Balances = append(reports[1].Report.Balances, adapters.Balance{Symbol: "WBTC", Name: "Wrapped Bitcoin", Equity: "0.05"}, fake.UnpricedBalance(1))
-		default:
-			reports = fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeFunding)
-		}
-		if at.Before(phaseC) {
-			reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading)...)
-		} else {
-			reports = append(reports, failedReports(adapters.PlatformOKX, adapters.ClassAuthentication, "The platform rejected the API key.", aliceOKXAccounts, typeTrading)...)
-		}
-		reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassTemporary, "The platform returned a temporary error.", aliceBybitAccounts, typeUnified)...)
-		b.cycle(PortfolioAliceMain, at, reports)
-	}
-	b.mapListing(adapters.PlatformBinance, "WBTC", "BTC")
-
-	btcAt := phaseA.AddDate(0, 0, 1).Add(12 * time.Hour)
-	b.flow(&flowSpec{ID: FlowAliceBTC, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "BTC", Quantity: "0.1", ValueUSD: scale(fakePrice(keyAliceBinance, "BTC", btcAt), 0.1), At: btcAt, Note: "Deposit from cold wallet"})
-	funding := AccountAliceBinanceFunding
-	b.flow(&flowSpec{ID: FlowAliceUSDT, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "withdrawal", Asset: "USDT", Quantity: "500", ValueUSD: "500", At: phaseB.Add(12 * time.Hour), Account: &funding, Note: "Rent"})
-	b.flow(&flowSpec{ID: FlowAliceTOKENX, Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "TOKENX", Quantity: "1000", At: phaseC.Add(12 * time.Hour), Note: "Airdrop with no market price"})
-	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.create", ResourceType: "identity", ResourceID: IdentityAliceBinance, After: map[string]any{"displayName": "Binance main", "platform": "binance"}, At: created})
-	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "identity.update", ResourceType: "identity", ResourceID: IdentityAliceBinance, After: map[string]any{"accounts": map[string]bool{"spot": false, "funding": true}}, At: phaseB})
-	b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "catalog.listing.map", ResourceType: "asset_listing", ResourceID: uuid.Nil, After: map[string]any{"symbol": "WBTC", "assetSymbol": "BTC"}, At: phaseA})
-	return []uuid.UUID{PortfolioAliceMain, PortfolioAliceTrading, PortfolioBobMain}
-}
-
 // walkthrough: forty days of two-hour cycles across three Platforms, one stale day, flows, and an archived Identity.
 func walkthrough(b *builder, now time.Time) []uuid.UUID {
 	b.usersWithInterval(now, 7200)
@@ -255,7 +151,7 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 	b.accounts(IdentityAliceBinance, aliceBinanceAccounts, selectedSet(typePortfolioMargin, typeSpot, typeFunding), created)
 	b.identity(&identitySpec{ID: IdentityAliceOKX, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformOKX, Structure: adapters.StructureOKXUnified, MarginMode: modeAliceOKX, Name: "OKX main", APIKey: keyAliceOKX, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityAliceOKX, aliceOKXAccounts, selectedSet(typeTrading, typeFunding, typeEarn, typeDual), created)
-	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: end, LastError: adapters.ClassRateLimited, LastDetail: "The platform rate limit was exceeded."})
+	b.identity(&identitySpec{ID: IdentityAliceBybit, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBybit, Structure: adapters.StructureBybitUTA2, MarginMode: modeAliceBybit, Name: "Bybit main", APIKey: keyAliceBybit, CreatedAt: created, CollectedAt: end})
 	b.accounts(IdentityAliceBybit, aliceBybitAccounts, selectedSet(typeUnified), created)
 	b.identity(&identitySpec{ID: IdentityAliceBinanceOld, Portfolio: PortfolioAliceMain, Platform: adapters.PlatformBinance, Structure: adapters.StructureBinancePM, Name: "Binance old sub-account", Archived: true, ArchivedAt: now.AddDate(0, 0, -30), CreatedAt: created})
 	b.accounts(IdentityAliceBinanceOld, aliceOldAccounts, selectedSet(), created)
@@ -285,7 +181,7 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 		b.cycle(PortfolioAliceMain, at, reports)
 	}
 
-	// Latest cycle at end: contains injected anomalies for walkthrough and inspection.
+	// The latest cycle keeps exactly one stale Futures row; later fake collection recovers it.
 	{
 		at := end
 		b.fakePrices(keyAliceBinance, adapters.PlatformBinance, at)
@@ -293,12 +189,10 @@ func walkthrough(b *builder, now time.Time) []uuid.UUID {
 		b.fakePrices(keyAliceBybit, adapters.PlatformBybit, at)
 		reports := fakeReports(keyAliceBinance, adapters.PlatformBinance, "", at, aliceBinanceAccounts, typePortfolioMargin, typeSpot, typeFunding)
 		reports = append(reports, fakeReports(keyAliceOKX, adapters.PlatformOKX, modeAliceOKX, at, aliceOKXAccounts, typeTrading, typeFunding, typeEarn, typeDual)...)
-		reports = append(reports, failedReports(adapters.PlatformBybit, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceBybitAccounts, typeUnified)...)
+		reports = append(reports, fakeReports(keyAliceBybit, adapters.PlatformBybit, modeAliceBybit, at, aliceBybitAccounts, typeUnified)...)
 		b.fakePrices(keyAliceBinanceClassic, adapters.PlatformBinance, at)
-		classicReports := fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures, typeCMFutures)
-		last := len(classicReports) - 1
-		classicReports[last].Report.Balances = append(classicReports[last].Report.Balances, fake.UnpricedBalance(1))
-		reports = append(reports, classicReports...)
+		reports = append(reports, fakeReports(keyAliceBinanceClassic, adapters.PlatformBinance, "", at, aliceClassicAccounts, typeCrossMargin, typeIsolatedMargin, typeUMFutures)...)
+		reports = append(reports, failedReports(adapters.PlatformBinance, adapters.ClassRateLimited, "The platform rate limit was exceeded.", aliceClassicAccounts, typeCMFutures)...)
 		b.cycle(PortfolioAliceMain, at, reports)
 	}
 	bobStart := localMidnight(now, 3, mustLocation("Europe/Berlin"))

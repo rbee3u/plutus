@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
-	"sort"
 	"strings"
 	"time"
 
@@ -468,14 +467,11 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	if err != nil {
 		return FlatList[BalanceRow]{}, err
 	}
-	if f.GroupBy != "" && f.GroupBy != "asset" && f.GroupBy != "platform" && f.GroupBy != "identity" && f.GroupBy != "account" {
-		return FlatList[BalanceRow]{}, ErrInvalid
-	}
 	c, point, accounts, err := s.latestContext(ctx, p)
 	if err != nil {
 		return FlatList[BalanceRow]{}, err
 	}
-	out := FlatList[BalanceRow]{Context: c, Items: []BalanceRow{}, Groups: []GroupTotal{}, Offset: offset, Limit: limit, Completeness: CompletenessIncomplete, Issues: []Issue{}}
+	out := FlatList[BalanceRow]{Context: c, Items: []BalanceRow{}, Offset: offset, Limit: limit, Completeness: CompletenessIncomplete, Issues: []Issue{}}
 	if point == nil {
 		out.Issues = append(out.Issues, Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
 		return out, nil
@@ -506,7 +502,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		if !ok {
 			continue
 		}
-		if !matchesAccount(f, account) || (f.Symbol != "" && !strings.EqualFold(f.Symbol, rows[i].AssetSymbol) && !strings.EqualFold(f.Symbol, rows[i].Symbol)) {
+		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, rows[i].AssetSymbol, rows[i].Symbol) {
 			continue
 		}
 		listingID, err := uuid.FromBytes(rows[i].ListingID)
@@ -532,64 +528,11 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	out.TotalUSD = decimal.FormatPtr(total)
 	out.Total = len(all)
 	sortBalances(all, accountRanks(accounts))
-	out.Groups = groupBalances(all, f.GroupBy)
 	end := min(offset+limit, len(all))
 	if offset < len(all) {
 		out.Items = all[offset:end]
 	}
 	return out, nil
-}
-
-func groupBalances(rows []BalanceRow, groupBy string) []GroupTotal {
-	if groupBy == "" {
-		return []GroupTotal{}
-	}
-	order := []string{}
-	groups := map[string]*GroupTotal{}
-	sums := map[string]*big.Rat{}
-	for i := range rows {
-		r := &rows[i]
-		var key, label string
-		switch groupBy {
-		case "asset":
-			key, label = r.AssetSymbol, r.AssetSymbol
-		case "platform":
-			key, label = r.Platform, adapters.PlatformName(adapters.Platform(r.Platform))
-		case "identity":
-			key, label = r.IdentityID.String(), r.IdentityName
-		default:
-			key, label = r.AccountID.String(), r.IdentityName+" / "+r.AccountName
-		}
-		g, ok := groups[key]
-		if !ok {
-			g = &GroupTotal{Key: key, Label: label, Platform: r.Platform, Completeness: CompletenessComplete}
-			groups[key] = g
-			sums[key] = decimal.Zero()
-			order = append(order, key)
-		}
-		g.RowCount++
-		if r.equityUSDRat != nil {
-			sums[key] = decimal.Add(sums[key], r.equityUSDRat)
-		}
-		if r.NoPrice {
-			g.Completeness = CompletenessIncomplete
-		}
-	}
-	out := make([]GroupTotal, 0, len(order))
-	for _, key := range order {
-		g := groups[key]
-		g.ValueUSD = decimal.FormatPtr(sums[key])
-		out = append(out, *g)
-	}
-	if groupBy == "asset" {
-		sort.Slice(out, func(i, j int) bool {
-			if c := decimal.MustParse(*out[i].ValueUSD).Cmp(decimal.MustParse(*out[j].ValueUSD)); c != 0 {
-				return c > 0
-			}
-			return out[i].Key < out[j].Key
-		})
-	}
-	return out
 }
 
 // FlatPositions lists every Position in the boundary at the latest point.
@@ -602,7 +545,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 	if err != nil {
 		return FlatList[PositionRow]{}, err
 	}
-	out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Groups: []GroupTotal{}, Offset: offset, Limit: limit, Completeness: CompletenessIncomplete, Issues: []Issue{}}
+	out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: CompletenessIncomplete, Issues: []Issue{}}
 	if point == nil {
 		out.Issues = append(out.Issues, Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
 		return out, nil
@@ -649,7 +592,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		if row.NotionalUSD != nil {
 			total = decimal.Add(total, decimal.MustParse(*row.NotionalUSD))
 		}
-		if !matchesAccount(f, account) || (f.Symbol != "" && !strings.EqualFold(f.Symbol, r.Symbol)) {
+		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.Symbol) {
 			continue
 		}
 		all = append(all, row)
@@ -671,10 +614,21 @@ func matchesAccount(f *ListFilter, a *AccountValuation) bool {
 	if f.IdentityID != nil && *f.IdentityID != a.IdentityID {
 		return false
 	}
-	if f.AccountID != nil && *f.AccountID != a.AccountID {
-		return false
-	}
 	return true
+}
+
+// matchesSymbol applies a literal, case-insensitive substring search.
+func matchesSymbol(query string, symbols ...string) bool {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return true
+	}
+	for _, symbol := range symbols {
+		if strings.Contains(strings.ToLower(symbol), query) {
+			return true
+		}
+	}
+	return false
 }
 
 // Points returns the series between from and to, sampled by granularity (raw, hour, day).

@@ -109,7 +109,7 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 			continue
 		}
 		row := dualPositionRow(account, &r.DualPosition)
-		if f.Symbol != "" && !strings.EqualFold(f.Symbol, row.InvestSymbol) && (row.BaseSymbol == nil || !strings.EqualFold(f.Symbol, *row.BaseSymbol)) && (row.QuoteSymbol == nil || !strings.EqualFold(f.Symbol, *row.QuoteSymbol)) {
+		if !matchesSymbol(f.Symbol, row.InvestSymbol, optionalSymbol(row.BaseSymbol), optionalSymbol(row.QuoteSymbol)) {
 			continue
 		}
 		all = append(all, row)
@@ -121,4 +121,11 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 		out.Items = all[offset:min(offset+limit, len(all))]
 	}
 	return out, nil
+}
+
+func optionalSymbol(symbol *string) string {
+	if symbol == nil {
+		return ""
+	}
+	return *symbol
 }

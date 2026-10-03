@@ -1,10 +1,11 @@
 import type { PositionRow } from "@/api/generated/types.gen";
+import Decimal from "decimal.js";
 import {
   presentNumber,
   formatDecimal,
-  formatPrice,
   formatLeverage,
   formatCount,
+  parseDecimal,
   plainNumberText,
   type NumberKind,
 } from "@/shared/lib/amount";
@@ -22,8 +23,8 @@ export const POSITION_COLUMNS = [
   { key: "entryPrice", header: "Entry Price", numeric: true, nowrap: true },
   { key: "markPrice", header: "Mark Price", numeric: true, nowrap: true },
   { key: "liquidationPrice", header: "Liq. Price", numeric: true, nowrap: true },
-  { key: "margin", header: "Margin", numeric: true, nowrap: true },
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, nowrap: true },
+  { key: "margin", header: "Margin", numeric: true, nowrap: true },
   { key: "notionalUsd", header: "Notional (USD)", numeric: true, nowrap: true },
   { key: "observed", header: "Observed", nowrap: true },
 ];
@@ -39,36 +40,47 @@ function amountCell(
   return <NumericText>{`${presentNumber(value, kind).text}${unit}`}</NumericText>;
 }
 
-function unavailableMargin(item: PositionRow): string {
-  if (item.portfolioMargin && item.marginMode !== "isolated")
-    return "Portfolio risk is not allocated to individual positions.";
-  if (!item.marginMode) return "The position's Cross or Isolated setting was not recorded.";
-  if (item.marginMode === "isolated" && item.marginBasis !== "allocated")
-    return "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.";
-  if (item.marginMode === "cross" && item.marginBasis !== "initial")
-    return "A position initial requirement excluding orders was not recorded.";
-  if (item.marginMode === "cross" && item.portfolioMargin == null)
-    return "The source Report's Account Margin Mode is unknown, so individual cross risk cannot be verified.";
-  if (item.margin == null) return "The Platform did not provide this position margin amount.";
-  if (!item.marginCurrency || !item.settlementSymbol)
-    return "The reported margin currency or Settle currency is unknown.";
-  return "The reported amount cannot be converted to Settle: conversion requires compatible currencies and, for a Base-settled contract, a positive Mark Price with a USD-equivalent Quote.";
+// Keep source-decimal multiplication and division ahead of display rounding.
+const MarginDecimal = Decimal.clone({ precision: 200 });
+
+function usdEquivalent(currency: string | null | undefined): boolean {
+  return currency === "USD" || currency === "USDT" || currency === "USDC";
+}
+
+export function positionMarginDescription(item: PositionRow): string {
+  if (item.marginMode === "isolated") {
+    const margin = parseDecimal(item.settleMargin);
+    const notional = parseDecimal(item.notionalUsd);
+    if (!margin || margin.lte(0) || !notional || !item.settlementSymbol) return "isolated";
+    let marginUsd = new MarginDecimal(margin);
+    if (!usdEquivalent(item.settlementSymbol)) {
+      const mark = parseDecimal(item.markPrice);
+      if (
+        item.settlementSymbol !== item.baseSymbol ||
+        !usdEquivalent(item.quoteSymbol) ||
+        !mark ||
+        mark.lte(0)
+      )
+        return "isolated";
+      marginUsd = marginUsd.times(mark);
+    }
+    const leverage = new MarginDecimal(notional).abs().div(marginUsd);
+    return `${formatLeverage(leverage.toString())} isolated`;
+  }
+  if (item.portfolioMargin) return "portfolio margin";
+  if (item.marginMode === "cross") {
+    const leverage = parseDecimal(item.leverage);
+    return leverage && leverage.gt(0) ? `${formatLeverage(item.leverage)} cross` : "cross";
+  }
+  return "margin mode unavailable";
 }
 
 export function positionRow(item: PositionRow, timezone?: string): DataRow {
   const inverse = item.kind.startsWith("inverse_");
   const delivery = item.kind.endsWith("_delivery");
   const factorUnit = inverse ? item.quoteSymbol : item.baseSymbol;
-  const mode =
-    item.marginMode === "cross" ? "Cross" : item.marginMode === "isolated" ? "Isolated" : null;
   const anomalies = (item.issues ?? []).filter((issue) => issue.code !== "stale");
   const stale = (item.issues ?? []).find((issue) => issue.code === "stale");
-  const basis =
-    item.marginBasis === "allocated"
-      ? "Allocated margin, excluding PnL"
-      : item.marginBasis === "initial"
-        ? "Position initial requirement, excluding orders"
-        : "Margin basis is unavailable";
   const marginLabel =
     item.settleMargin != null && item.settlementSymbol
       ? `${formatDecimal(item.settleMargin)} ${item.settlementSymbol}`
@@ -89,12 +101,6 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
           <div>
             <dt>Settle</dt>
             <dd>{item.settlementSymbol ?? "—"}</dd>
-          </div>
-          <div>
-            <dt>Leverage</dt>
-            <dd>
-              <NumericText>{formatLeverage(item.leverage)}</NumericText>
-            </dd>
           </div>
           {item.contractSize ? (
             <div>
@@ -130,40 +136,15 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
     markPrice: amountCell(item.markPrice, undefined, "price"),
     liquidationPrice: amountCell(item.liquidationPrice, undefined, "price"),
     margin: (
-      <span className={styles.cellStack}>
-        <HoverDetails
-          label={<NumericText>{marginLabel}</NumericText>}
-          name={`Margin details for ${item.symbol}: ${plainNumberText(marginLabel)}`}
-        >
-          <p>{basis}</p>
-          <p>
-            Reported: <NumericText>{formatDecimal(item.margin)}</NumericText>{" "}
-            {item.marginCurrency ?? "(currency unavailable)"}
-          </p>
-          {item.settleMargin != null ? (
-            <p>
-              Displayed: <NumericText>{formatDecimal(item.settleMargin)}</NumericText>{" "}
-              {item.settlementSymbol}
-            </p>
-          ) : (
-            <p>{unavailableMargin(item)}</p>
-          )}
-          {item.settleMargin != null && item.marginCurrency !== item.settlementSymbol ? (
-            <p>
-              Converted {item.marginCurrency} to {item.settlementSymbol}
-              {["USD", "USDT", "USDC"].includes(item.settlementSymbol ?? "") ? (
-                " at 1:1."
-              ) : (
-                <NumericText>{` using Mark Price ${formatPrice(item.markPrice)} ${item.quoteSymbol}/${item.baseSymbol}.`}</NumericText>
-              )}
-            </p>
-          ) : null}
-        </HoverDetails>
-        <span className={styles.statusGroup}>
-          {mode ? <Badge>{mode}</Badge> : null}
-          {item.portfolioMargin ? <Badge>Portfolio</Badge> : null}
-        </span>
-      </span>
+      <HoverDetails
+        className={styles.positionMarginTrigger}
+        label={<NumericText>{marginLabel}</NumericText>}
+        name={`Margin details for ${item.symbol}: ${plainNumberText(marginLabel)}`}
+      >
+        <p>
+          <NumericText>{positionMarginDescription(item)}</NumericText>
+        </p>
+      </HoverDetails>
     ),
     unrealizedPnl: amountCell(item.unrealizedPnl, item.settlementSymbol ?? null),
     notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),

@@ -21,7 +21,7 @@ echo "Resetting plutus_agent with the walkthrough seed, then serving on :8081."
 echo
 
 make web
-make run ARGS="--config $config --env-file $envfile db reset --profile walkthrough"
+make run ARGS="--config $config --env-file $envfile db reset --seed"
 
 echo
 echo "Seed logins:"

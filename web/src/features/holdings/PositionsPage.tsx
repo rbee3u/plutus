@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { listPositions } from "@/api/generated/sdk.gen";
 import type { PositionList } from "@/api/generated/types.gen";
-import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
+import { platformLabel } from "@/features/data/usePlatforms";
 import { POSITION_COLUMNS, positionRow } from "@/features/holdings/PositionsTable";
-import { HoldingsFilters } from "@/features/holdings/HoldingsFilters";
+import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
+import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
+import { useHoldingsFilters, type HoldingsFilters } from "./useHoldingsFilters";
 import { formatUsd } from "@/shared/lib/amount";
-import { readOffset, useSearchState } from "@/shared/lib/searchParams";
+import { useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
@@ -22,19 +24,15 @@ import styles from "@/features/pages.module.css";
 
 const PAGE_SIZE = 50;
 
-function FuturesPositionsPage() {
+function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
   const { portfolioId = "" } = useParams();
   const { userId, redirect } = useSessionScope();
-  const { params, update } = useSearchState();
-  const platforms = usePlatforms();
-  const platform = params.get("platform") ?? "";
-  const identityId = params.get("identityId") ?? "";
-  const accountId = params.get("accountId") ?? "";
-  const symbol = params.get("symbol") ?? "";
-  const offset = readOffset(params);
+  const platforms = filters.platforms;
+  const { platform, identityId, symbol } = filters.values;
+  const offset = filters.offset;
   const query = useQuery({
-    queryKey: ["positions", userId, portfolioId, platform, identityId, accountId, symbol, offset],
-    enabled: Boolean(userId && portfolioId),
+    queryKey: ["positions", userId, portfolioId, platform, identityId, symbol, offset],
+    enabled: Boolean(userId && portfolioId && filters.ready),
     queryFn: async (): Promise<PositionList> =>
       unwrapOrRedirect(
         await listPositions({
@@ -42,7 +40,6 @@ function FuturesPositionsPage() {
           query: {
             platform: platform || undefined,
             identityId: identityId || undefined,
-            accountId: accountId || undefined,
             symbol: symbol || undefined,
             offset,
             limit: PAGE_SIZE,
@@ -69,12 +66,7 @@ function FuturesPositionsPage() {
           void query.refetch();
         }}
       />
-      <HoldingsFilters
-        portfolioId={portfolioId}
-        values={{ platform, identityId, accountId, symbol }}
-        onChange={(next) => update(next)}
-      />
-      {query.isPending && !data ? <p className={styles.muted}>Loading positions.</p> : null}
+      <HoldingsFilterRecovery filters={filters} />
       {data && !data.context.pointId ? <p className={styles.notice}>{NO_POINT}</p> : null}
       {data?.context.pointId ? (
         <>
@@ -86,31 +78,66 @@ function FuturesPositionsPage() {
             </span>
             <CompletenessBadge value={data.completeness} />
           </p>
-          <DataTable
-            caption="Positions at the latest Valuation Point"
-            columns={[
-              { key: "platform", header: "Platform", nowrap: true },
-              { key: "identityName", header: "Identity", nowrap: true },
-              { key: "accountName", header: "Account", nowrap: true },
-              ...POSITION_COLUMNS,
-            ]}
-            rows={data.items.map((item) => ({
-              ...positionRow(item, data.context.timezone),
-              platform: platformLabel(platforms.data?.items, item.platform),
-              identityName: item.identityName,
-              accountName: item.accountName,
-            }))}
-            empty="No positions match these filters at the latest Valuation Point."
-          />
+        </>
+      ) : null}
+      <DataTable
+        caption="Positions at the latest Valuation Point"
+        columns={[
+          {
+            key: "platform",
+            header: "Platform",
+            nowrap: true,
+            headerContent: (
+              <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
+            ),
+          },
+          {
+            key: "identityName",
+            header: "Identity",
+            nowrap: true,
+            headerContent: (
+              <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
+            ),
+          },
+          { key: "accountName", header: "Account", nowrap: true },
+          ...POSITION_COLUMNS.map((column) =>
+            column.key === "symbol"
+              ? {
+                  ...column,
+                  headerContent: (
+                    <HoldingsFilterHeader label="Symbol" filterKey="symbol" filters={filters} />
+                  ),
+                }
+              : column,
+          ),
+        ]}
+        rows={(data?.items ?? []).map((item) => ({
+          ...positionRow(item, data?.context.timezone),
+          platform: platformLabel(platforms.data?.items, item.platform),
+          identityName: item.identityName,
+          accountName: item.accountName,
+        }))}
+        empty={
+          query.isPending
+            ? "Loading positions."
+            : query.isError && !data
+              ? "Positions could not be loaded. Retry above."
+              : !data?.context.pointId
+                ? NO_POINT
+                : "No positions match these filters at the latest Valuation Point."
+        }
+      />
+      <HoldingsFilterFooter filters={filters}>
+        {data ? (
           <Pager
             offset={data.page.offset}
             limit={data.page.limit}
             total={data.page.total}
-            onChange={(next) => update({ offset: next > 0 ? String(next) : "" })}
+            onChange={filters.page}
           />
-          <IssuesPanel issues={data.issues} empty="No issues for these positions." />
-        </>
-      ) : null}
+        ) : null}
+      </HoldingsFilterFooter>
+      {data ? <IssuesPanel issues={data.issues} empty="No issues for these positions." /> : null}
     </>
   );
 }
@@ -121,7 +148,9 @@ const POSITION_TYPES = [
 ] as const;
 
 export function PositionsPage() {
-  const { params, update } = useSearchState();
+  const { params } = useSearchState();
+  const { portfolioId = "" } = useParams();
+  const filters = useHoldingsFilters(portfolioId);
   const dual = params.get("kind") === "dual_investment";
   const activeTab = dual ? "dual_investment" : "futures";
 
@@ -131,16 +160,11 @@ export function PositionsPage() {
         <SegmentedControl
           label="Position type"
           value={activeTab}
-          onChange={(next) =>
-            update({
-              kind: next === "dual_investment" ? "dual_investment" : "",
-              offset: "",
-            })
-          }
+          onChange={filters.switchKind}
           options={POSITION_TYPES}
         />
       </div>
-      {dual ? <DualPositionsPage /> : <FuturesPositionsPage />}
+      {dual ? <DualPositionsPage filters={filters} /> : <FuturesPositionsPage filters={filters} />}
     </section>
   );
 }

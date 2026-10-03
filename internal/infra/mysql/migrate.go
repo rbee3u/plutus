@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 
@@ -104,11 +105,15 @@ func (l *migrationLogger) Fatalf(format string, values ...any) {
 }
 
 func (l *writerLogger) Fatalf(format string, v ...any) {
-	_, _ = fmt.Fprintf(l.w, format, v...)
+	l.Printf(format, v...)
 }
 
 func (l *writerLogger) Printf(format string, v ...any) {
-	_, _ = fmt.Fprintf(l.w, format, v...)
+	message := fmt.Sprintf(format, v...)
+	if !strings.HasSuffix(message, "\n") {
+		message += "\n"
+	}
+	_, _ = io.WriteString(l.w, message)
 }
 
 // A stopped worker may leave a partially collected cycle. It must be drained

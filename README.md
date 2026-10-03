@@ -26,11 +26,14 @@ Implemented capabilities include:
   [logging configuration](./docs/development.md#logging).
 - Holdings, historical Valuation Points, Period Closes, and Value Changes, with
   manual Capital Flows and derived Boundary Events.
+- Linked Platform and Identity filters and substring symbol search in Holdings
+  table headers; Balances has a separate Identity column and no grouping view.
 - Shared contract position columns, normalized Size, margin provenance, and
   observation badges in current and historical holdings; see
-  [the delivery report](./docs/adapters/position-presentation-delivery.md).
+  [the delivery report](./docs/adapters/position-presentation-delivery.md) and
+  [the margin correction](./docs/adapters/margin-presentation-delivery.md).
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
-  audit views, and deterministic development seed profiles.
+  audit views, and one deterministic development walkthrough dataset.
 
 Remaining work is exchange-app reconciliation and validation of unexercised
 Account Structures, Margin Modes, and products. Synthetic tests and reviewed

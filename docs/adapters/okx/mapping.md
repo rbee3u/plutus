@@ -259,16 +259,16 @@ Balances are priced in.
 
 `account/positions`, every instrument type in one call.
 
-| Plutus column               | Source                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `platform_position_ref`     | `<instId>:<posSide>`, such as `DOGE-USDT-SWAP:net`                                               |
-| `side`                      | `posSide` `long` / `short` in long/short mode. In net mode (`posSide = net`), the sign of `pos`. |
-| `quantity`, `quantity_unit` | `abs(pos)` in contracts                                                                          |
-| `entry_price`, `mark_price` | `avgPx`, `markPx`                                                                                |
-| `unrealized_pnl`            | `upl`, in the settlement coin                                                                    |
-| `liquidation_price`         | `liqPx`. Null when empty or `0` (portfolio margin cross positions report none).                  |
-| `leverage`                  | `lever`. Null when empty or `0` (portfolio margin reports no leverage and fills `0`).            |
-| `margin`                    | Isolated `margin`; non-Portfolio Cross `imr` in USD; see provenance below.                       |
+| Plutus column               | Source                                                                                             |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `platform_position_ref`     | `<instId>:<posSide>`, such as `DOGE-USDT-SWAP:net`                                                 |
+| `side`                      | `posSide` `long` / `short` in long/short mode. In net mode (`posSide = net`), the sign of `pos`.   |
+| `quantity`, `quantity_unit` | `abs(pos)` in contracts                                                                            |
+| `entry_price`, `mark_price` | `avgPx`, `markPx`                                                                                  |
+| `unrealized_pnl`            | `upl`, in the settlement coin                                                                      |
+| `liquidation_price`         | `liqPx`. Null when empty or `0` (portfolio margin cross positions report none).                    |
+| `leverage`                  | `lever`. Null when empty or `0` (portfolio margin reports no leverage and fills `0`).              |
+| `margin`                    | Isolated `margin`; non-Portfolio Cross source `imr`, with verified currency; see provenance below. |
 
 - **Zero rows.** Rows with `pos = 0` are dropped: OKX leaves them behind after
   an isolated-margin transfer.
@@ -340,10 +340,31 @@ key.
 ### Position presentation provenance
 
 `posSide=net` retains one-way mode; long/short retains hedged mode. `mgnMode`
-retains the cross/isolated setting. Cross `imr` is a position initial
-requirement in USD, converted to Settle only by the accepted explicit conversion
-policy. Under Portfolio Margin, risk-unit `imr` can repeat across member
-positions and is not retained as a position allocation. Isolated `margin` is
-allocated funds; `ccy` retains its source currency for validation. Effective
-Contract Size remains `ctVal × ctMult`, with Base units for linear and Quote
-units for inverse.
+retains the cross/isolated setting. Non-Portfolio Cross `imr` is a position
+initial requirement; `ccy` is retained rather than universally labeling it USD.
+Under Portfolio Margin, risk-unit `imr` can repeat across member positions and
+is not retained as a position allocation. Isolated `margin` is allocated funds;
+`ccy` retains its source currency for validation. Effective Contract Size
+remains `ctVal × ctMult`, with Base units for linear and Quote units for
+inverse.
+
+The current
+[REST guide](https://app.okx.com/docs-v5/en/#rest-api-trading-account-get-positions)
+describes position `imr` as USD, but reviewed Futures and Multi-currency inverse
+responses match native settlement amounts. The
+[official margin rules](https://www.okx.com/en-sg/help/futures-margin-calculation-rules)
+also define crypto Cross initial requirements in settlement coin. For example,
+two USD 10 ETH contracts at Mark 2,687.06 and leverage 3 report
+`imr=0.0024810263509809`, matching ETH rather than USD. The old USD mapping
+would divide this amount by Mark a second time.
+
+Non-PM inverse reads validate Base=Settle, USD-equivalent Quote, positive size,
+Contract Size, Mark, and initial leverage. They compare the source amount to
+both native and USD initial requirements within relative `1e-8` rounding
+tolerance. A native-only match uses Settle; a USD-only match uses USD and
+explicit conversion. Ambiguous or unmatched amounts have unknown currency.
+Linear USD-equivalent currencies follow the existing 1:1 policy; incompatible or
+missing currency remains unknown. This validation applies to earlier typed-USD
+Reports with known non-PM regime and provenance without changing persisted
+amounts or using the Identity's latest mode. No generic calculated fallback
+replaces OKX reported hedge or risk-unit treatment.

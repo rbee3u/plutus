@@ -1,4 +1,4 @@
-// Package seeds generates deterministic development data for every seed profile.
+// Package seeds generates deterministic development walkthrough data.
 package seeds
 
 import (
@@ -34,7 +34,7 @@ func SeedID(kind uint16, n uint64) uuid.UUID {
 	return id
 }
 
-// Well-known IDs shared by profiles, tests, and walkthroughs.
+// Well-known IDs shared by the seed, tests, and walkthroughs.
 var (
 	UserAlice = SeedID(kindUser, 1)
 	UserBob   = SeedID(kindUser, 2)

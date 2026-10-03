@@ -115,7 +115,18 @@ an inverse contract. Contract counts require the Instrument's per-contract size.
 
 **Position Margin**: The position initial requirement excluding orders for cross
 positions, or allocated funds excluding unrealized PnL for isolated positions.
-Source amounts have a currency and basis; unavailable allocation stays unknown.
+Initial requirements follow the Platform's convention, including fees or hedge
+treatment when reported. A documented initial-leverage calculation can supply an
+otherwise unavailable requirement; it is not an allocation of shared collateral.
+Source and calculated amounts remain distinct, with a known currency and basis.
+Unavailable allocation stays unknown. Portfolio Margin does not by itself imply
+that an individual initial requirement is unavailable.
+
+Displayed Position leverage belongs with Position Margin: cross uses the
+reported Position leverage, while isolated uses absolute USD notional divided by
+the USD value of its allocated margin. It does not overwrite source leverage or
+margin. Portfolio Margin is displayed as the Account regime without a position
+leverage multiplier.
 
 **Complete Set**: A successful Account Report contains all of that Account's
 Balances, Positions, and Dual Positions; anything absent is no longer held. A

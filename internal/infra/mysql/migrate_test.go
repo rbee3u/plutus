@@ -1,9 +1,13 @@
 package mysql
 
 import (
+	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/rbee3u/plutus/db/migrations"
 )
 
 func TestMigrateUpAndSeeds(t *testing.T) {
@@ -33,5 +37,35 @@ func TestMigrateUpAndSeeds(t *testing.T) {
 	}
 	if tables != 19 {
 		t.Fatalf("base tables %d, want 19", tables)
+	}
+}
+
+func TestMigrateStatusOutput(t *testing.T) {
+	db := OpenTestDB(t)
+	var output bytes.Buffer
+	t.Cleanup(func() { SetMigrationLogger(nil) })
+	if err := Status(db, &output); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+
+	result := output.String()
+	if !strings.HasSuffix(result, "\n") {
+		t.Fatalf("status must end with a newline: %q", result)
+	}
+	lines := strings.Split(strings.TrimSuffix(result, "\n"), "\n")
+	entries, err := migrations.FS.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lines) != len(entries)+2 {
+		t.Fatalf("got %d lines, want two header lines and %d migration rows: %q", len(lines), len(entries), result)
+	}
+	if !strings.Contains(lines[0], "Applied At") || !strings.Contains(lines[0], "Migration") || !strings.HasPrefix(strings.TrimSpace(lines[1]), "===") {
+		t.Fatalf("unexpected status header: %q", lines[:2])
+	}
+	for i, entry := range entries {
+		if !strings.HasSuffix(lines[i+2], " -- "+entry.Name()) {
+			t.Errorf("migration row %d: got %q, want %s", i, lines[i+2], entry.Name())
+		}
 	}
 }

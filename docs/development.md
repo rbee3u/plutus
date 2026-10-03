@@ -264,30 +264,38 @@ mechanisms, not deployment policies.
 ## Seeds and collection
 
 `db reset` drops every table in the connected database and reapplies the
-migration. With `--profile` it then inserts the chosen seed, seals and enables
-the profile's live Identities through the fake Adapter, and rebuilds every
-Valuation Point with the real valuation code; without `--profile` it leaves an
-empty migrated database (how the test environment is wiped). It requires
+migration. With `--seed` it then inserts the development seed, seals and enables
+its live Identities through the fake Adapter, and rebuilds every Valuation Point
+with the real valuation code; without `--seed` it leaves an empty migrated
+database (how the test environment is wiped). It requires
 `[database].allow_reset = true` in the selected TOML and a database name
 matching `plutus` or `plutus_<suffix>` that does not contain `prod`. `serve`
-never migrates or seeds automatically. Use `--profile walkthrough` for the rich
-UI dataset (forty days across Binance Portfolio Margin, OKX, and Bybit, twenty
-days of a Binance Classic Trading Identity, one rate-limited day, an archived
-Identity, Capital Flows), `--profile minimal` for the small happy path, and
-`--profile edge-cases` for the stale, missing, unpriced, boundary, gap, and
-unvalued-flow cases.
+never migrates or seeds automatically.
+
+There is one walkthrough dataset: forty days across Binance Portfolio Margin,
+OKX, and Bybit, twenty days of Binance Classic Trading, an archived Identity,
+and Capital Flows. Position modes and margin provenance are retained with each
+source report. The latest point has eight Futures: seven fresh and one stale
+COIN-M Futures Position, with complete known notional. The next successful fake
+cycle recovers it. A historical Bybit rate-limited day remains; missing,
+unpriced, boundary, gap, and unvalued-flow fixtures are test-only.
+
+`db seed` loads this data into an empty migrated database. It does not update
+existing seed data: fixed IDs would conflict. Use the dev wipe-and-serve script
+or `db reset --seed` to replace old data. The former `--profile` flag is no
+longer accepted. See [ADR 0008](./adr/0008-environments-and-migrations.md).
 
 Equivalent commands without dropping the database:
 
 ```sh
 make web
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env migrate up
-go run ./cmd/plutus --config config/local.toml --env-file config/local.env db seed --profile walkthrough
+go run ./cmd/plutus --config config/local.toml --env-file config/local.env db seed
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env serve
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env collect --portfolio <uuid>
 ```
 
-Scratch logins from every seed profile:
+Scratch logins from the development seed:
 
 | Username | Password       |
 | -------- | -------------- |

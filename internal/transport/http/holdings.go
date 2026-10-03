@@ -104,13 +104,9 @@ func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestO
 	filter := valuation.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		AccountID:  request.Params.AccountId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
-	}
-	if request.Params.GroupBy != nil {
-		filter.GroupBy = string(*request.Params.GroupBy)
 	}
 	list, err := a.Valuation.FlatBalances(ctx, sc.valuation(), &filter)
 	if err != nil {
@@ -119,7 +115,6 @@ func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestO
 	return api.ListBalances200JSONResponse{
 		Context:      toAPIContext(&list.Context),
 		Items:        toAPIBalanceRows(list.Items),
-		Groups:       toAPIGroupTotals(list.Groups),
 		Page:         toOffsetPage(list.Offset, list.Limit, list.Total),
 		TotalUsd:     list.TotalUSD,
 		Completeness: api.Completeness(list.Completeness),
@@ -138,7 +133,6 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 	filter := valuation.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		AccountID:  request.Params.AccountId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
@@ -183,7 +177,6 @@ func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositio
 	filter := valuation.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		AccountID:  request.Params.AccountId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),

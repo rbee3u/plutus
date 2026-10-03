@@ -784,20 +784,11 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: accountId
-          in: query
-          schema:
-            type: string
-            format: uuid
         - name: symbol
           in: query
+          description: Case-insensitive literal substring of the native listing or mapped Asset Symbol.
           schema:
             type: string
-        - name: groupBy
-          in: query
-          schema:
-            type: string
-            enum: [asset, platform, identity, account]
         - name: offset
           in: query
           schema:
@@ -840,13 +831,9 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: accountId
-          in: query
-          schema:
-            type: string
-            format: uuid
         - name: symbol
           in: query
+          description: Case-insensitive literal substring of the native contract Symbol.
           schema:
             type: string
         - name: offset
@@ -891,13 +878,9 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: accountId
-          in: query
-          schema:
-            type: string
-            format: uuid
         - name: symbol
           in: query
+          description: Case-insensitive literal substring of the invested, Base, or Quote Symbol.
           schema:
             type: string
         - name: offset
@@ -2393,6 +2376,13 @@ components:
         settleMargin:
           description: Margin in settlement currency, using the position's cross or isolated display basis.
           $ref: "#/components/schemas/NullableDecimal"
+        marginSource:
+          description: Provenance of the displayed settlement Margin; source amounts remain unchanged.
+          type: [string, "null"]
+          enum: [reported, calculated, null]
+        marginUnavailableReason:
+          description: Why settlement Margin is unknown; optional Margin omissions do not affect notional completeness.
+          type: [string, "null"]
         issues:
           type: array
           items:
@@ -2527,7 +2517,7 @@ components:
     BalanceList:
       type: object
       additionalProperties: false
-      required: [context, items, groups, page, totalUsd, completeness, issues]
+      required: [context, items, page, totalUsd, completeness, issues]
       properties:
         context:
           $ref: "#/components/schemas/ReadContext"
@@ -2535,10 +2525,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BalanceRow"
-        groups:
-          type: array
-          items:
-            $ref: "#/components/schemas/GroupTotal"
         page:
           $ref: "#/components/schemas/OffsetPage"
         totalUsd:

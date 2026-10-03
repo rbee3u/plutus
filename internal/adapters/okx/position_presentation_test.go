@@ -11,7 +11,7 @@ func TestPositionMarginUnitAndMode(t *testing.T) {
 	instrument := adapters.Instrument{Symbol: "BTC-USD-SWAP", Kind: adapters.KindInversePerp, SettlementSymbol: "BTC"}
 	row := openPosition{InstID: instrument.Symbol, PosSide: " NET ", MgnMode: "cross", IMR: "100", Margin: "0.3", Ccy: "BTC"}
 	cross, err := mapPosition(&row, big.NewRat(-2, 1), &instrument)
-	if err != nil || cross.PositionMode != "one_way" || cross.Side != "short" || cross.Margin == nil || *cross.Margin != "100" || cross.MarginCurrency != "USD" || cross.MarginBasis != "initial" {
+	if err != nil || cross.PositionMode != "one_way" || cross.Side != "short" || cross.Margin == nil || *cross.Margin != "100" || cross.MarginCurrency != "BTC" || cross.MarginBasis != "initial" {
 		t.Fatalf("cross %+v %v", cross, err)
 	}
 	row.MgnMode, row.PosSide = "isolated", "long"

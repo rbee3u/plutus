@@ -43,9 +43,9 @@ var tableColumns = map[string]string{
 	"asset_listings":  "id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at",
 	"instruments":     "id, platform, symbol, kind, base_symbol, quote_symbol, settlement_symbol, expiry_at, contract_size, first_seen_at, last_seen_at, created_at, updated_at",
 	"jobs":            "id, portfolio_id, kind, status, `trigger`, dedupe_key, payload_json, requested_by_user_id, available_at, attempt_count, max_attempts, last_error_class, last_detail, created_at, updated_at, started_at, finished_at",
-	"account_reports": "id, portfolio_id, job_id, account_id, scope_version, status, observed_at, error_class, error_detail, equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, value_usd, method, source_report_id, omitted_json, created_at",
+	"account_reports": "id, portfolio_id, job_id, account_id, scope_version, margin_mode, status, observed_at, error_class, error_detail, equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, value_usd, method, source_report_id, omitted_json, created_at",
 	"balances":        "report_id, portfolio_id, listing_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl",
-	"positions":       "report_id, portfolio_id, platform_position_ref, instrument_id, side, quantity, quantity_unit, entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin",
+	"positions":       "report_id, portfolio_id, platform_position_ref, instrument_id, side, quantity, quantity_unit, entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin, position_mode, margin_mode, margin_currency, margin_basis",
 	"dual_positions":  "report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at",
 	"prices":          "platform, asset_symbol, observed_at, price, quote_symbol",
 	"capital_flows":   "id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note, created_by_user_id, version, created_at, updated_at",
@@ -323,15 +323,6 @@ func (b *builder) listing(platform adapters.Platform, symbol, name string, seenA
 	return row.id
 }
 
-// mapListing records a manual Asset override for one listing.
-func (b *builder) mapListing(platform adapters.Platform, symbol, asset string) {
-	key := string(platform) + "|" + symbol
-	if row, ok := b.listings[key]; ok {
-		row.asset = asset
-		row.source = catalog.MappingManual
-	}
-}
-
 func (b *builder) instrument(platform adapters.Platform, in *adapters.Instrument, seenAt time.Time) uuid.UUID {
 	key := string(platform) + "|" + in.Symbol
 	row, ok := b.instruments[key]
@@ -366,6 +357,7 @@ type reportSpec struct {
 	AccountType adapters.AccountType
 	Account     uuid.UUID
 	Platform    adapters.Platform
+	MarginMode  adapters.MarginMode
 	Report      *adapters.AccountReport // nil means a failed report
 	Class       string
 	Detail      string
@@ -386,7 +378,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 			if class == "" {
 				class = adapters.ClassTemporary
 			}
-			b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), q("failed"), "NULL", q(class), qn(r.Detail),
+			b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), "NULL", q("failed"), "NULL", q(class), qn(r.Detail),
 				"NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", q("missing"), "NULL", "NULL", ts(finished))
 			continue
 		}
@@ -395,7 +387,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 		if observed.IsZero() {
 			observed = at.Add(2 * time.Second)
 		}
-		b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), q("ok"), ts(observed), "NULL", "NULL",
+		b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(adapters.ReportScope(r.Platform, r.AccountType))), qn(string(r.MarginMode)), q("ok"), ts(observed), "NULL", "NULL",
 			decp(rep.Equity), decp(rep.AdjustedEquity), decp(rep.AvailableEquity), decp(rep.InitialMarginRatio), decp(rep.MaintenanceMarginRatio), decp(rep.UnifiedMarginRatio),
 			"NULL", q("missing"), "NULL", "NULL", ts(finished))
 		for j := range rep.Balances {
@@ -410,7 +402,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 		for j := range rep.Positions {
 			pos := &rep.Positions[j]
 			instrumentID := b.instrument(r.Platform, &pos.Instrument, observed)
-			b.add("positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), bin(instrumentID), q(pos.Side), pos.Quantity, q(pos.QuantityUnit), decp(pos.EntryPrice), decp(pos.MarkPrice), decp(pos.LiquidationPrice), decp(pos.UnrealizedPnl), decp(pos.Leverage), decp(pos.Margin))
+			b.add("positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), bin(instrumentID), q(pos.Side), pos.Quantity, q(pos.QuantityUnit), decp(pos.EntryPrice), decp(pos.MarkPrice), decp(pos.LiquidationPrice), decp(pos.UnrealizedPnl), decp(pos.Leverage), decp(pos.Margin), qn(pos.PositionMode), qn(pos.MarginMode), qn(pos.MarginCurrency), qn(pos.MarginBasis))
 		}
 	}
 }

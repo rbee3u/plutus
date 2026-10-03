@@ -242,6 +242,11 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 		if m == marketCM && out.MarginCurrency == "" {
 			out.MarginCurrency = instrument.SettlementSymbol
 		}
+	} else if ep == epPMUMPositionRisk || ep == epPMCMPositionRisk {
+		// Retail Portfolio Margin futures use Cross and retain initial leverage.
+		// These risk responses do not provide a position margin amount; the read
+		// model may derive its initial requirement without allocating collateral.
+		out.MarginMode = "cross"
 	}
 	return out, nil
 }

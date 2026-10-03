@@ -18,6 +18,11 @@ func completePosition(row *PositionRow, account *AccountValuation, metadata posi
 	row.PositionMode, row.MarginMode = nullStr(metadata.mode), nullStr(metadata.marginMode)
 	row.MarginCurrency, row.MarginBasis = nullStr(metadata.currency), nullStr(metadata.basis)
 	row.PortfolioMargin = portfolioMargin(account)
+	if row.Platform == string(adapters.PlatformBinance) && row.AccountType == "portfolio_margin" && row.PortfolioMargin != nil && *row.PortfolioMargin && row.MarginMode == nil {
+		// The supported retail PM structure only has Cross futures. This also
+		// establishes the setting for old PM Reports without rewriting them.
+		row.MarginMode = stringPointer("cross")
+	}
 	row.Issues = []Issue{}
 	if account.Freshness == FreshnessStale {
 		row.Issues = append(row.Issues, positionAccountIssues(account)...)
@@ -31,6 +36,9 @@ func completePosition(row *PositionRow, account *AccountValuation, metadata posi
 	}
 	if row.NotionalUSD == nil {
 		row.Issues = append(row.Issues, rowIssue(row, "position_notional_unknown", "USD notional cannot be determined: a required currency, Contract Size, or positive Mark Price is unavailable."))
+	}
+	if row.Platform == string(adapters.PlatformOKX) && row.MarginMode != nil && *row.MarginMode == "cross" && row.PortfolioMargin != nil && !*row.PortfolioMargin {
+		row.MarginCurrency = verifiedOKXMarginCurrency(row)
 	}
 	row.SettleMargin = settlePositionMargin(row)
 }
@@ -69,21 +77,52 @@ func normalizedPositionSize(row *PositionRow) (*string, *string) {
 }
 
 func settlePositionMargin(row *PositionRow) *string {
-	if row.Margin == nil || row.MarginCurrency == nil || row.MarginBasis == nil || row.MarginMode == nil || row.SettlementSymbol == nil {
-		return nil
+	row.MarginSource, row.MarginUnavailableReason = nil, nil
+	if row.MarginMode == nil {
+		return unavailablePositionMargin(row, "The position's Cross or Isolated setting was not recorded.")
 	}
 	if *row.MarginMode == "cross" {
-		if *row.MarginBasis != "initial" || row.PortfolioMargin == nil || *row.PortfolioMargin {
-			return nil
+		if row.PortfolioMargin == nil {
+			return unavailablePositionMargin(row, "The source Report's Account Margin Mode is unknown, so an individual initial requirement cannot be verified.")
 		}
-	} else if *row.MarginMode != "isolated" || *row.MarginBasis != "allocated" {
+		if *row.PortfolioMargin && !binanceCrossMargin(row) {
+			return unavailablePositionMargin(row, "This Portfolio Margin regime does not provide an independent position initial requirement. Portfolio risk is not allocated to individual positions.")
+		}
+	} else if *row.MarginMode != "isolated" {
+		return unavailablePositionMargin(row, "The position margin setting is unsupported.")
+	} else if row.MarginBasis == nil || *row.MarginBasis != "allocated" {
+		return unavailablePositionMargin(row, "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.")
+	}
+	if row.Margin != nil && row.MarginCurrency != nil && row.MarginBasis != nil && (*row.MarginMode != "cross" || *row.MarginBasis == "initial") {
+		amount, ok := decimal.Parse(*row.Margin)
+		if !ok || amount.Sign() < 0 {
+			return unavailablePositionMargin(row, "The reported position margin amount is invalid.")
+		}
+		if value := convertPositionMargin(row, amount, *row.MarginCurrency); value != nil {
+			row.MarginSource = stringPointer("reported")
+			return value
+		}
+	}
+	if binanceCrossMargin(row) {
+		return calculatedBinanceMargin(row)
+	}
+	if row.Margin == nil {
+		return unavailablePositionMargin(row, "The Platform did not provide this position margin amount.")
+	}
+	if row.MarginBasis == nil || *row.MarginMode == "cross" && *row.MarginBasis != "initial" {
+		return unavailablePositionMargin(row, "A position initial requirement excluding orders was not recorded.")
+	}
+	if row.MarginCurrency == nil || row.SettlementSymbol == nil {
+		return unavailablePositionMargin(row, "The source margin currency or Settle currency cannot be verified.")
+	}
+	return unavailablePositionMargin(row, "The reported amount cannot be converted to Settle: compatible currencies and any required positive Mark Price are unavailable.")
+}
+
+func convertPositionMargin(row *PositionRow, amount *big.Rat, from string) *string {
+	if row.SettlementSymbol == nil {
 		return nil
 	}
-	amount, ok := decimal.Parse(*row.Margin)
-	if !ok || amount.Sign() < 0 {
-		return nil
-	}
-	from, to := *row.MarginCurrency, *row.SettlementSymbol
+	to := *row.SettlementSymbol
 	switch {
 	case from == to, usdQuote(from) && usdQuote(to):
 		return decimal.FormatPtr(amount)
@@ -95,6 +134,111 @@ func settlePositionMargin(row *PositionRow) *string {
 	}
 	return nil
 }
+
+func binanceCrossMargin(row *PositionRow) bool {
+	if row.Platform != string(adapters.PlatformBinance) || row.MarginMode == nil || *row.MarginMode != "cross" || row.PortfolioMargin == nil {
+		return false
+	}
+	switch row.AccountType {
+	case "um_futures", "cm_futures", "portfolio_margin":
+		return true
+	default:
+		return false
+	}
+}
+
+// calculatedBinanceMargin follows Binance's documented initial requirement,
+// including retail PM. It never distributes shared collateral or order margin.
+func calculatedBinanceMargin(row *PositionRow) *string {
+	switch row.Kind {
+	case adapters.KindLinearPerp, adapters.KindLinearDeliv, adapters.KindInversePerp, adapters.KindInverseDlv:
+	default:
+		return unavailablePositionMargin(row, "Initial margin calculation requires a supported contract kind.")
+	}
+	size, _ := normalizedPositionSize(row)
+	if size == nil || row.QuoteSymbol == nil || !usdQuote(*row.QuoteSymbol) {
+		return unavailablePositionMargin(row, "Initial margin calculation requires a known Size and USD-equivalent Quote.")
+	}
+	mark, markOK := positivePositionNumber(row.MarkPrice)
+	leverage, leverageOK := positivePositionNumber(row.Leverage)
+	if !markOK || !leverageOK {
+		return unavailablePositionMargin(row, "Initial margin calculation requires a positive Mark Price and the position's positive initial Leverage.")
+	}
+	notional := decimal.Abs(decimal.MustParse(*size))
+	if inverseKind(row.Kind) {
+		if row.BaseSymbol == nil || row.SettlementSymbol == nil || *row.BaseSymbol != *row.SettlementSymbol {
+			return unavailablePositionMargin(row, "Inverse initial margin calculation requires Base to be the Settle currency.")
+		}
+	} else {
+		notional.Mul(notional, mark)
+	}
+	initial := new(big.Rat).Quo(notional, leverage)
+	value := convertPositionMargin(row, initial, *row.QuoteSymbol)
+	if value == nil {
+		return unavailablePositionMargin(row, "Calculated initial margin cannot be converted to Settle without compatible contract currencies.")
+	}
+	row.MarginSource = stringPointer("calculated")
+	return value
+}
+
+// OKX documents position imr as USD, but reviewed non-PM inverse responses
+// match native settlement IM exactly. Verify both documented candidates rather
+// than dividing a native amount by Mark again. Applies to old Reports too;
+// stored amounts, units and Report modes are not rewritten.
+func verifiedOKXMarginCurrency(row *PositionRow) *string {
+	if row.MarginCurrency == nil || row.MarginBasis == nil || *row.MarginBasis != "initial" || row.SettlementSymbol == nil {
+		return nil
+	}
+	from, settle := *row.MarginCurrency, *row.SettlementSymbol
+	if usdQuote(from) && usdQuote(settle) {
+		return row.MarginCurrency
+	}
+	if !inverseKind(row.Kind) || row.BaseSymbol == nil || *row.BaseSymbol != settle || row.QuoteSymbol == nil || !usdQuote(*row.QuoteSymbol) || from != settle && !usdQuote(from) {
+		return nil
+	}
+	actual, actualOK := positivePositionNumber(row.Margin)
+	if row.Margin != nil && decimal.MustParse(*row.Margin).Sign() == 0 && decimal.Valid(*row.Margin) {
+		return row.SettlementSymbol
+	}
+	size, _ := normalizedPositionSize(row)
+	mark, markOK := positivePositionNumber(row.MarkPrice)
+	leverage, leverageOK := positivePositionNumber(row.Leverage)
+	if !actualOK || size == nil || !markOK || !leverageOK {
+		return nil
+	}
+	usd := new(big.Rat).Quo(decimal.Abs(decimal.MustParse(*size)), leverage)
+	native := new(big.Rat).Quo(usd, mark)
+	nativeMatch, usdMatch := marginMatches(actual, native), marginMatches(actual, usd)
+	if nativeMatch && !usdMatch {
+		return row.SettlementSymbol
+	}
+	if usdMatch && !nativeMatch {
+		return stringPointer("USD")
+	}
+	return nil
+}
+
+func marginMatches(actual, expected *big.Rat) bool {
+	// The accepted observations differ by around 1e-14 relative rounding. The
+	// 1e-8 bound covers decimal rounding without using amount magnitude as a unit.
+	tolerance := new(big.Rat).Quo(decimal.Abs(expected), big.NewRat(100000000, 1))
+	return decimal.Abs(decimal.Sub(actual, expected)).Cmp(tolerance) <= 0
+}
+
+func positivePositionNumber(value *string) (*big.Rat, bool) {
+	if value == nil {
+		return nil, false
+	}
+	amount, valid := decimal.Parse(*value)
+	return amount, valid && amount.Sign() > 0
+}
+
+func unavailablePositionMargin(row *PositionRow, reason string) *string {
+	row.MarginUnavailableReason = stringPointer(reason)
+	return nil
+}
+
+func stringPointer(value string) *string { return &value }
 
 func portfolioMargin(account *AccountValuation) *bool {
 	var value bool

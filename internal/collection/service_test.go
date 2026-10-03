@@ -370,7 +370,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("reviewed TOKENX must not cause an omission: %+v %+v", second.Point, spot)
 	}
 	pctx := valuation.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
-	flat, err := h.valuation.FlatBalances(h.ctx, pctx, &valuation.ListFilter{GroupBy: "asset"})
+	flat, err := h.valuation.FlatBalances(h.ctx, pctx, &valuation.ListFilter{})
 	if err != nil {
 		t.Fatal(err)
 	}

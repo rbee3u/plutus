@@ -411,6 +411,14 @@ export type PositionRow = {
      * Margin in settlement currency, using the position's cross or isolated display basis.
      */
     settleMargin?: NullableDecimal;
+    /**
+     * Provenance of the displayed settlement Margin; source amounts remain unchanged.
+     */
+    marginSource?: 'reported' | 'calculated' | null;
+    /**
+     * Why settlement Margin is unknown; optional Margin omissions do not affect notional completeness.
+     */
+    marginUnavailableReason?: string | null;
     issues: Array<Issue>;
     quantity: Decimal;
     quantityUnit: 'contracts' | 'base' | 'quote';
@@ -474,7 +482,6 @@ export type AccountDualPositionList = {
 export type BalanceList = {
     context: ReadContext;
     items: Array<BalanceRow>;
-    groups: Array<GroupTotal>;
     page: OffsetPage;
     totalUsd: NullableDecimal;
     completeness: Completeness;
@@ -1967,9 +1974,10 @@ export type ListBalancesData = {
     query?: {
         platform?: string;
         identityId?: string;
-        accountId?: string;
+        /**
+         * Case-insensitive literal substring of the native listing or mapped Asset Symbol.
+         */
         symbol?: string;
-        groupBy?: 'asset' | 'platform' | 'identity' | 'account';
         offset?: number;
         limit?: number;
     };
@@ -2010,7 +2018,9 @@ export type ListPositionsData = {
     query?: {
         platform?: string;
         identityId?: string;
-        accountId?: string;
+        /**
+         * Case-insensitive literal substring of the native contract Symbol.
+         */
         symbol?: string;
         offset?: number;
         limit?: number;
@@ -2052,7 +2062,9 @@ export type ListDualPositionsData = {
     query?: {
         platform?: string;
         identityId?: string;
-        accountId?: string;
+        /**
+         * Case-insensitive literal substring of the invested, Base, or Quote Symbol.
+         */
         symbol?: string;
         offset?: number;
         limit?: number;
