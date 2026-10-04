@@ -113,11 +113,9 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
   await page.goto(`/p/${portfolioId}/overview`);
   const total = page
     .getByRole("article")
-    .filter({ has: page.getByRole("heading", { name: "Total value", exact: true }) });
-  await expect(total.locator('[aria-hidden="true"]')).toHaveText("0.0₅444");
-  await expect(total).toMatchAriaSnapshot(
-    '- article:\n  - heading "Total value" [level=2]\n  - paragraph: 0.00000444 USD\n  - paragraph: complete',
-  );
+    .filter({ has: page.getByRole("heading", { name: "Total Net Worth", exact: true }) });
+  await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.0₅444");
+  await expect(total).toContainText("0.00000444 USD");
   await expect(
     page
       .getByRole("button", { name: "Collapse OKX", exact: true })
@@ -126,11 +124,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
   await expect(
     page.getByRole("button", { name: "Collapse OKX", exact: true }),
   ).toHaveAccessibleDescription("$0.00000444");
-  await expect(
-    page
-      .getByRole("article")
-      .filter({ has: page.getByRole("heading", { name: "Accounts", exact: true }) }),
-  ).toContainText("1,234");
+  await expect(total).toContainText("1,234 accounts");
   const chart = page.getByRole("img", { name: "Recent Valuation Points" });
   await chart.scrollIntoViewIfNeeded();
   const bounds = await chart.boundingBox();
@@ -147,15 +141,12 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
     await expect
       .poll(async () => {
         const valueBox = await total.boundingBox();
-        const countBox = await page
-          .getByRole("article")
-          .filter({ has: page.getByRole("heading", { name: "Accounts", exact: true }) })
-          .boundingBox();
-        return valueBox != null && countBox != null && countBox.y >= valueBox.y + valueBox.height;
+        const chartBox = await chart.boundingBox();
+        return valueBox != null && chartBox != null && chartBox.y >= valueBox.y + valueBox.height;
       })
       .toBe(true);
     await total.scrollIntoViewIfNeeded();
-    await expect(total.locator('[aria-hidden="true"]')).toHaveText("0.0₅444");
+    await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.0₅444");
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);

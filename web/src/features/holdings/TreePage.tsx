@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { HoldingsTree as Tree } from "@/api/generated/types.gen";
 import { AccountDetail } from "@/features/holdings/AccountDetail";
-import { formatAmount } from "@/shared/lib/amount";
+import { formatAmount, parseDecimal } from "@/shared/lib/amount";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/features/pages.module.css";
@@ -10,6 +10,7 @@ import styles from "@/features/pages.module.css";
 export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree: Tree }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const titleId = useId();
+  const totalUsdDecimal = parseDecimal(tree.totalUsd);
 
   function toggle(key: string) {
     setExpanded((current) => {
@@ -23,9 +24,6 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
   return (
     <section className={styles.panel} aria-labelledby={titleId}>
       <h2 id={titleId}>Holdings tree</h2>
-      <p className={styles.muted}>
-        Expand an Identity to see its Accounts, then an Account for its Balances and positions.
-      </p>
       {tree.platforms.length === 0 ? (
         <p className={styles.muted}>
           No accounts inside the boundary yet. Add an Identity, select its account types, enable the
@@ -36,52 +34,60 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
           className={styles.holdingsTree}
           aria-label="Holdings tree at the latest Valuation Point"
         >
-          {tree.platforms.map((platform) => (
-            <TreeNode
-              key={platform.platform}
-              name={platform.label}
-              value={platform.valueUsd}
-              level="platform"
-              open={!expanded.has(`platform:${platform.platform}`)}
-              onToggle={() => toggle(`platform:${platform.platform}`)}
-            >
-              <ul className={styles.treeChildren}>
-                {platform.identities.map((identity) => (
-                  <TreeNode
-                    key={identity.id}
-                    name={identity.displayName}
-                    value={identity.valueUsd}
-                    level="identity"
-                    open={expanded.has(`identity:${identity.id}`)}
-                    onToggle={() => toggle(`identity:${identity.id}`)}
-                  >
-                    <ul className={styles.treeChildren}>
-                      {identity.accounts.map((account) => (
-                        <TreeNode
-                          key={account.accountId}
-                          name={account.accountName}
-                          actionName={`balances and positions for ${account.accountName}`}
-                          value={account.valueUsd}
-                          level="account"
-                          open={expanded.has(`account:${account.accountId}`)}
-                          onToggle={() => toggle(`account:${account.accountId}`)}
-                        >
-                          <div className={`${styles.treeChildren} ${styles.treeAccountDetail}`}>
-                            <AccountDetail
-                              portfolioId={portfolioId}
-                              account={account}
-                              pointId={tree.context.pointId ?? ""}
-                              timezone={tree.context.timezone}
-                            />
-                          </div>
-                        </TreeNode>
-                      ))}
-                    </ul>
-                  </TreeNode>
-                ))}
-              </ul>
-            </TreeNode>
-          ))}
+          {tree.platforms.map((platform) => {
+            const platformUsdDecimal = parseDecimal(platform.valueUsd);
+            const percent =
+              totalUsdDecimal && platformUsdDecimal && !totalUsdDecimal.isZero()
+                ? platformUsdDecimal.dividedBy(totalUsdDecimal).times(100).toNumber()
+                : 0;
+            return (
+              <TreeNode
+                key={platform.platform}
+                name={platform.label}
+                value={platform.valueUsd}
+                percent={percent}
+                level="platform"
+                open={!expanded.has(`platform:${platform.platform}`)}
+                onToggle={() => toggle(`platform:${platform.platform}`)}
+              >
+                <ul className={styles.treeChildren}>
+                  {platform.identities.map((identity) => (
+                    <TreeNode
+                      key={identity.id}
+                      name={identity.displayName}
+                      value={identity.valueUsd}
+                      level="identity"
+                      open={expanded.has(`identity:${identity.id}`)}
+                      onToggle={() => toggle(`identity:${identity.id}`)}
+                    >
+                      <ul className={styles.treeChildren}>
+                        {identity.accounts.map((account) => (
+                          <TreeNode
+                            key={account.accountId}
+                            name={account.accountName}
+                            actionName={`balances and positions for ${account.accountName}`}
+                            value={account.valueUsd}
+                            level="account"
+                            open={expanded.has(`account:${account.accountId}`)}
+                            onToggle={() => toggle(`account:${account.accountId}`)}
+                          >
+                            <div className={`${styles.treeChildren} ${styles.treeAccountDetail}`}>
+                              <AccountDetail
+                                portfolioId={portfolioId}
+                                account={account}
+                                pointId={tree.context.pointId ?? ""}
+                                timezone={tree.context.timezone}
+                              />
+                            </div>
+                          </TreeNode>
+                        ))}
+                      </ul>
+                    </TreeNode>
+                  ))}
+                </ul>
+              </TreeNode>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -93,6 +99,7 @@ function TreeNode({
   name,
   actionName = name,
   value,
+  percent,
   level,
   open,
   onToggle,
@@ -101,6 +108,7 @@ function TreeNode({
   name: string;
   actionName?: string;
   value: string | null | undefined;
+  percent?: number;
   level: "platform" | "identity" | "account";
   open: boolean;
   onToggle: () => void;
@@ -108,6 +116,8 @@ function TreeNode({
 }) {
   const contentId = useId();
   const amount = formatAmount(value);
+  const showPercent = level === "platform" && percent !== undefined && percent > 0;
+
   return (
     <li className={styles.treeNode}>
       <button
@@ -125,7 +135,20 @@ function TreeNode({
           className={open ? styles.chevronOpen : styles.chevron}
         />
         <span className={styles.treeNodeText}>
-          <span className={styles.treeNodeName}>{name}</span>
+          <span className={styles.treeNodeLeft}>
+            <span className={styles.treeNodeName}>{name}</span>
+            {showPercent ? (
+              <span className={styles.treeNodeBadge}>{percent.toFixed(1)}%</span>
+            ) : null}
+          </span>
+          {showPercent ? (
+            <i className={styles.treeBarTrack} aria-hidden="true">
+              <i
+                className={styles.treeBarFill}
+                style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+              />
+            </i>
+          ) : null}
           <span className={styles.treeNodeValue} id={`${contentId}-value`}>
             <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
           </span>

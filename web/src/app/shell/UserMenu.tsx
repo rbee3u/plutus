@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronDown, LogOut, ShieldCheck, User } from "lucide-react";
 import { useCurrentUser } from "@/shared/lib/session";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
@@ -19,6 +19,7 @@ export function UserMenu({ onSignOut }: { onSignOut: () => void }) {
         aria-expanded={menu.open}
         onClick={() => menu.setOpen((current) => !current)}
       >
+        <User size={iconSize.xs} aria-hidden="true" />
         <span className={styles.switcherName}>{username}</span>
         <ChevronDown size={iconSize.xs} aria-hidden="true" />
       </button>

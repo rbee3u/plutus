@@ -8,12 +8,13 @@ import {
 import type { AccountStructure, Identity, Platform } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { identityEtag } from "@/features/data/useIdentities";
-import { marginModeLabel, structureLabel } from "@/features/data/usePlatforms";
+import { structureLabel } from "@/features/data/usePlatforms";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Select, TextArea, TextInput, Toggle } from "@/shared/ui/FormControls";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import styles from "@/features/pages.module.css";
 
 const CONFLICT = "The identity changed in another session. The list was reloaded; open it again.";
@@ -173,10 +174,6 @@ function CreateForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
-      <p className={styles.lead}>
-        One Identity is one Platform login. Pick its Account Structure and the Account Types to
-        include; only selected accounts count toward the Portfolio.
-      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
@@ -222,15 +219,6 @@ function CreateForm({
           ))}
         </Select>
       </label>
-      {platform ? (
-        <p className={styles.muted}>
-          The structure decides the Account Types and cannot be changed later: after switching it on{" "}
-          {platform.name}, create a new Identity and archive this one.
-          {structure && structure.marginModes.length > 0
-            ? ` The margin mode (${structure.marginModes.map((item) => marginModeLabel(platforms, platform.id, structure.id, item.id)).join(", ")}) is read from ${platform.name} at every validation and collection.`
-            : ""}
-        </p>
-      ) : null}
       <fieldset className={styles.field}>
         <legend>
           <span>Account types</span>
@@ -331,10 +319,6 @@ function EditForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
-      <p className={styles.lead}>
-        Deselecting an account removes it from the boundary at the next Collection Cycle, which
-        records a Boundary Event; selecting one adds it back.
-      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
@@ -497,7 +481,7 @@ function CredentialsForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void onSubmit(event)} autoComplete="off">
-      <p className={styles.lead}>
+      <p className={styles.notice}>
         Read-only API keys only. Credentials are write-only: the server never returns them.
         {item.connection.credentialsConfigured
           ? " Saving replaces the stored credentials."
@@ -512,8 +496,7 @@ function CredentialsForm({
         <span>
           {kraken ? `Spot API key (${spotRequired ? "required" : "optional"})` : "API key"}
         </span>
-        <TextInput
-          type="password"
+        <PasswordInput
           autoComplete="off"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
@@ -539,8 +522,7 @@ function CredentialsForm({
             required={spotRequired || apiKey.trim() !== ""}
           />
         ) : (
-          <TextInput
-            type="password"
+          <PasswordInput
             autoComplete="off"
             value={apiSecret}
             onChange={(event) => setApiSecret(event.target.value)}
@@ -563,8 +545,7 @@ function CredentialsForm({
           </p>
           <label className={styles.field}>
             <span>Futures API key ({futuresRequired ? "required" : "optional"})</span>
-            <TextInput
-              type="password"
+            <PasswordInput
               autoComplete="off"
               value={futuresApiKey}
               onChange={(event) => setFuturesApiKey(event.target.value)}
@@ -573,8 +554,7 @@ function CredentialsForm({
           </label>
           <label className={styles.field}>
             <span>Futures API secret ({futuresRequired ? "required" : "optional"})</span>
-            <TextInput
-              type="password"
+            <PasswordInput
               autoComplete="off"
               value={futuresApiSecret}
               onChange={(event) => setFuturesApiSecret(event.target.value)}
@@ -585,8 +565,7 @@ function CredentialsForm({
       ) : !binance ? (
         <label className={styles.field}>
           <span>{passphraseRequired ? "Passphrase" : "Passphrase (optional)"}</span>
-          <TextInput
-            type="password"
+          <PasswordInput
             autoComplete="off"
             value={passphrase}
             onChange={(event) => setPassphrase(event.target.value)}

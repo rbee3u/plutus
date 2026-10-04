@@ -162,6 +162,7 @@ function ShellContent() {
           onThemeChange={setTheme}
           onToggleCollapsed={() => setCollapsed((value) => !value)}
           theme={theme}
+          onSignOut={() => void logout()}
         />
       </aside>
       {open && <div className={styles.scrim} aria-hidden="true" onClick={() => close()} />}

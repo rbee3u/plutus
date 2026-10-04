@@ -35,12 +35,8 @@ export function JobsPanel({
 }) {
   return (
     <>
-      <p className={styles.lead}>
-        Background work for this Portfolio: Collection Cycles and valuation recalculations, with
-        their attempts and outcomes.
-      </p>
-      <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field}>
+      <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
+        <label className={styles.field} style={{ minWidth: "200px" }}>
           <span>Kind</span>
           <Select value={kind} onChange={(event) => onKind(event.target.value)}>
             <option value="">All kinds</option>

@@ -4,8 +4,8 @@ import { listDualPositions } from "@/api/generated/sdk.gen";
 import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
 import type { HoldingsFilters } from "./useHoldingsFilters";
 import { DualPositionsTable } from "@/features/holdings/DualPositionsTable";
+import { formatInstant } from "@/shared/lib/datetime";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
-import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
@@ -37,10 +37,6 @@ export function DualPositionsPage({ filters }: { filters: HoldingsFilters }) {
   const data = query.data;
   return (
     <>
-      <p className={styles.lead}>
-        Outstanding Dual Investment subscriptions at the latest Valuation Point. Their principal is
-        already included in Balances; expected yield is not included.
-      </p>
       <QueryRecovery
         error={query.error}
         hasData={Boolean(data)}
@@ -51,7 +47,23 @@ export function DualPositionsPage({ filters }: { filters: HoldingsFilters }) {
         }}
       />
       <HoldingsFilterRecovery filters={filters} />
-      {data ? <ContextSummary context={data.context} /> : null}
+      {data?.context.pointId ? (
+        <div className={styles.holdingsSummaryBar}>
+          <div className={styles.holdingsSummaryAmount}>
+            <span className={styles.holdingsSummaryLabel}>Active Subscriptions</span>
+            <span className={styles.holdingsSummaryValue}>
+              {data.page.total ?? data.items.length}
+            </span>
+          </div>
+          <div className={styles.holdingsSummaryMeta}>
+            <span>
+              {data.context.evaluatedAt
+                ? `Evaluated ${formatInstant(data.context.evaluatedAt, data.context.timezone)} · ${data.context.timezone}`
+                : `Times in ${data.context.timezone}`}
+            </span>
+          </div>
+        </div>
+      ) : null}
       <DualPositionsTable
         items={data?.items ?? []}
         timezone={data?.context.timezone}
@@ -69,7 +81,9 @@ export function DualPositionsPage({ filters }: { filters: HoldingsFilters }) {
               onChange={filters.page}
             />
           </HoldingsFilterFooter>
-          <IssuesPanel issues={data.issues} empty="No issues for these dual positions." />
+          {data.context.pointId ? (
+            <IssuesPanel issues={data.issues} empty="No issues for these dual positions." />
+          ) : null}
         </>
       ) : (
         <HoldingsFilterFooter filters={filters} />

@@ -18,19 +18,13 @@ import type {
   Platform,
   ValuationPointSummary,
 } from "@/api/generated/types.gen";
-import {
-  chartNumber,
-  formatAmount,
-  formatBoundaryFlows,
-  isZeroDecimal,
-  formatCount,
-} from "@/shared/lib/amount";
+import { chartNumber, formatAmount, formatBoundaryFlows, isZeroDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { readChoice } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect } from "@/shared/lib/session";
 import { accountSummary, capitalize, reasonText } from "@/shared/lib/text";
-import { CompletenessBadge, FreshnessBadge, StatusBadge } from "@/shared/ui/Badge";
+import { CompletenessBadge, DirectionBadge, FreshnessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { Select } from "@/shared/ui/FormControls";
@@ -144,10 +138,6 @@ export function ValuationPointsPage() {
 
   return (
     <section className={styles.wide}>
-      <p className={styles.lead}>
-        One portfolio total per Collection Cycle. The chart groups long ranges; raw points remain
-        available below.
-      </p>
       <HistoryFilters state={history} />
       <QueryRecovery
         error={points.error}
@@ -163,15 +153,17 @@ export function ValuationPointsPage() {
       ) : null}
       {series ? (
         <>
-          <p className={styles.muted}>
-            {formatInstant(series.from, timezone)} – {formatInstant(series.to, timezone)} in{" "}
-            {series.context.timezone}, {series.granularity} granularity,{" "}
-            {formatCount(series.items.length)} chart{" "}
-            {series.items.length === 1 ? "point" : "points"}.
+          <p className={styles.historyMetaNotice}>
+            <span>
+              {formatInstant(series.from, timezone)} – {formatInstant(series.to, timezone)}
+            </span>
+            <span className={styles.bullet}>·</span>
+            <span>{series.context.timezone}</span>
+            <span className={styles.bullet}>·</span>
+            <span>{series.granularity} granularity</span>
           </p>
           <ChartBlock
             title="Portfolio value"
-            summary="Portfolio total across the selected window. Original Collection Cycle points and their details are listed below."
             option={chartOption}
             empty={
               series.items.length === 0
@@ -198,10 +190,6 @@ export function ValuationPointsPage() {
             </Select>
           </label>
         </div>
-        <p className={styles.muted}>
-          The last Valuation Point within each complete calendar period intersecting the selected
-          range. Periods are not clipped to From / To; missing points remain explicit.
-        </p>
         <QueryRecovery
           error={closes.error}
           hasData={Boolean(closes.data)}
@@ -239,7 +227,7 @@ export function ValuationPointsPage() {
                 <span className={styles.cellMeta}>no point</span>
               ),
               evaluatedAt: item.point ? formatInstant(item.point.evaluatedAt, timezone) : "—",
-              completeness: <CompletenessBadge value={item.completeness} />,
+              completeness: item.point ? <CompletenessBadge value={item.completeness} /> : "—",
               reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
             }))}
           empty={
@@ -257,10 +245,6 @@ export function ValuationPointsPage() {
       </section>
       <section className={styles.panel} aria-labelledby="raw-points-heading">
         <h2 id="raw-points-heading">Raw Valuation Points</h2>
-        <p className={styles.muted}>
-          Every Collection Cycle in the selected window, newest first. Open a point to see its
-          accounts and Boundary Events.
-        </p>
         <QueryRecovery
           error={records.error}
           hasData={Boolean(records.data)}
@@ -389,7 +373,7 @@ export function accountValuationRow(
     method: item.method,
     freshness: <FreshnessBadge value={item.freshness} />,
     completeness: <CompletenessBadge value={item.completeness} />,
-    status: <StatusBadge value={item.status} />,
+    status: <StatusBadge value={item.status} silentWhenHealthy />,
     error: item.errorClass
       ? `${item.errorClass}${item.errorDetail ? `: ${item.errorDetail}` : ""}`
       : "—",
@@ -421,9 +405,9 @@ export function boundaryEventRow(
       </span>
     ),
     platform: item.platform ? platformLabel(platforms, item.platform) : "—",
-    direction: capitalize(item.direction),
+    direction: <DirectionBadge value={item.direction} />,
     valueUsd: formatAmount(item.valueUsd),
-    method: item.method,
+    method: <StatusBadge value={item.method} />,
   };
 }
 
@@ -453,9 +437,6 @@ function PointDetail({ detail, timezone }: { detail: ValuationPointDetail; timez
         ) : null}
       </dl>
       <h3>Accounts</h3>
-      <p className={styles.muted}>
-        Select an Account to view its contract positions at this point.
-      </p>
       <DataTable
         caption="Account valuations at this point"
         onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}

@@ -1,18 +1,20 @@
 import { NumericText } from "@/shared/ui/NumericText";
 import type { EChartsCoreOption } from "echarts/core";
+import { ArrowRight, Layers, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
-import { useParams } from "react-router";
-import type { CollectionCycle, Overview } from "@/api/generated/types.gen";
+import { Link, useParams } from "react-router";
+import type { CollectionCycle } from "@/api/generated/types.gen";
 import {
   chartNumber,
   formatAmount,
+  formatCount,
   formatUsd,
   isZeroDecimal,
-  formatCount,
+  parseDecimal,
 } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
-import { NO_POINT } from "@/shared/lib/text";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
@@ -36,24 +38,99 @@ export function OverviewPage() {
       return null;
     }
     return {
+      grid: {
+        left: 8,
+        right: 12,
+        top: 20,
+        bottom: 24,
+        containLabel: true,
+      },
+      tooltip: {
+        trigger: "axis",
+        valueFormatter: (_value: unknown, index: number) =>
+          `${formatAmount(points[index]?.totalUsd)} USD`,
+      },
       xAxis: {
         type: "category",
+        boundaryGap: false,
         data: points.map((point) => formatInstant(point.evaluatedAt, timezone)),
+        axisLabel: {
+          hideOverlap: true,
+        },
       },
-      yAxis: { type: "value", scale: true },
+      yAxis: {
+        type: "value",
+        scale: true,
+        splitLine: {
+          lineStyle: {
+            opacity: 0.25,
+          },
+        },
+        axisLabel: {
+          formatter: (value: number) => {
+            if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+            if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+            return `${value}`;
+          },
+        },
+      },
       series: [
         {
           type: "line",
           name: "Total value",
+          smooth: true,
+          showSymbol: false,
           data: points.map((point) => chartNumber(point.totalUsd)),
-          tooltip: {
-            valueFormatter: (_value: unknown, index: number) =>
-              formatAmount(points[index]?.totalUsd),
+          areaStyle: {
+            opacity: 0.08,
           },
         },
       ],
     };
   }, [overview, timezone]);
+
+  const changeInsight = useMemo(() => {
+    const points = overview?.sparkline ?? [];
+    if (points.length < 2 || !overview?.totalUsd) return null;
+    const current = parseDecimal(overview.totalUsd);
+    if (!current) return null;
+
+    const latestTime = new Date(points[points.length - 1]?.evaluatedAt ?? 0).getTime();
+    const target24h = latestTime - 24 * 60 * 60 * 1000;
+
+    let baselinePoint = points[0];
+    let minDiff = Infinity;
+    for (const pt of points) {
+      const ptTime = new Date(pt.evaluatedAt).getTime();
+      const diff = Math.abs(ptTime - target24h);
+      if (diff < minDiff) {
+        minDiff = diff;
+        baselinePoint = pt;
+      }
+    }
+
+    if (!baselinePoint || baselinePoint === points[points.length - 1]) {
+      baselinePoint = points[0];
+    }
+
+    const baseline = parseDecimal(baselinePoint?.totalUsd);
+    if (!baseline || baseline.isZero()) return null;
+
+    const diff = current.minus(baseline);
+    const percent = diff.dividedBy(baseline).times(100);
+    const isPositive = diff.gt(0);
+    const isNegative = diff.lt(0);
+    const isZero = diff.isZero();
+
+    return {
+      diffUsd: formatAmount(diff.abs().toFixed()),
+      percent: percent.abs().toFixed(2),
+      isPositive,
+      isNegative,
+      isZero,
+      label: points.length > 2 ? "24h" : "cycle",
+    };
+  }, [overview]);
 
   if (query.isPending && !overview) {
     return (
@@ -64,25 +141,12 @@ export function OverviewPage() {
   }
 
   const point = overview?.point ?? null;
+  const boundaryText = point
+    ? boundarySummary(point.boundaryContributionUsd, point.boundaryWithdrawalUsd)
+    : null;
 
   return (
     <section className={styles.wide}>
-      <div className={styles.headingRow}>
-        <p className={styles.lead}>
-          The latest Valuation Point across every enabled Identity. Unknown values stay blank, never
-          zero.
-        </p>
-        <ActionButton
-          type="button"
-          tone="primary"
-          disabled={
-            collect.busy || Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status))
-          }
-          onClick={() => void collect.start()}
-        >
-          Collect now
-        </ActionButton>
-      </div>
       {collect.error ? (
         <p className={styles.alert} role="alert">
           {collect.error}
@@ -106,45 +170,138 @@ export function OverviewPage() {
       {overview ? (
         <>
           {point ? (
-            <div className={styles.cards}>
-              <article className={styles.metric}>
-                <h2>Total value</h2>
-                <p className={styles.metricValue}>
-                  <NumericText>{formatAmount(overview.totalUsd)}</NumericText>
-                  {overview.totalUsd ? <span className={styles.unit}>USD</span> : null}
-                </p>
-                <p className={styles.metricSub}>
-                  <CompletenessBadge value={overview.completeness} />
-                </p>
-              </article>
-              <article className={styles.metric}>
-                <h2>Accounts</h2>
-                <p className={styles.metricValue}>{formatCount(overview.accountCount)}</p>
-                <p className={styles.metricSub}>{accountNote(overview)}</p>
-              </article>
-              <article className={styles.metric}>
-                <h2>Last point</h2>
-                <p className={styles.metricValue}>{formatInstant(point.evaluatedAt, timezone)}</p>
-                <p className={styles.metricSub}>
-                  <span title={point.id}>
-                    Point {shortId(point.id)} · {overview.context.timezone}
+            <article className={styles.heroCard}>
+              <div className={styles.heroHeader}>
+                <div className={styles.heroMeta}>
+                  <h2 className={styles.heroTitle}>Total Net Worth</h2>
+                  <span
+                    className={`${styles.heroAccountsBadge} ${
+                      overview.staleAccountCount > 0 || overview.incompleteAccountCount > 0
+                        ? styles.heroAccountsBadgeAlert
+                        : ""
+                    }`}
+                  >
+                    {formatCount(overview.accountCount)} accounts
+                    {overview.staleAccountCount > 0
+                      ? ` · ${formatCount(overview.staleAccountCount)} stale`
+                      : ""}
+                    {overview.incompleteAccountCount > 0
+                      ? ` · ${formatCount(overview.incompleteAccountCount)} incomplete`
+                      : ""}
                   </span>
-                </p>
-                <p className={styles.metricSub}>
-                  <NumericText>
-                    {boundarySummary(point.boundaryContributionUsd, point.boundaryWithdrawalUsd)}
-                  </NumericText>
-                </p>
-              </article>
-            </div>
+                </div>
+                <div className={styles.heroSync}>
+                  <span className={styles.heroUpdatedTime}>
+                    Updated {formatInstant(point.evaluatedAt, timezone)}
+                  </span>
+                  <ActionButton
+                    type="button"
+                    tone="secondary"
+                    disabled={
+                      collect.busy ||
+                      Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status))
+                    }
+                    onClick={() => void collect.start()}
+                    className={styles.syncButton}
+                  >
+                    <RefreshCw
+                      size={iconSize.xs}
+                      aria-hidden="true"
+                      className={
+                        collect.busy ||
+                        Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status))
+                          ? styles.spin
+                          : ""
+                      }
+                    />
+                    Collect now
+                  </ActionButton>
+                </div>
+              </div>
+
+              <div className={styles.heroBody}>
+                <div className={styles.heroAmountRow}>
+                  <div className={styles.heroAmount}>
+                    <NumericText>{formatAmount(overview.totalUsd)}</NumericText>{" "}
+                    {overview.totalUsd ? <span className={styles.heroUnit}>USD</span> : null}
+                  </div>
+                  <div className={styles.heroBadges}>
+                    {changeInsight ? (
+                      <span
+                        className={
+                          changeInsight.isPositive
+                            ? styles.changePositive
+                            : changeInsight.isNegative
+                              ? styles.changeNegative
+                              : styles.changeNeutral
+                        }
+                      >
+                        {changeInsight.isPositive ? (
+                          <TrendingUp size={iconSize.xs} aria-hidden="true" />
+                        ) : changeInsight.isNegative ? (
+                          <TrendingDown size={iconSize.xs} aria-hidden="true" />
+                        ) : null}
+                        {changeInsight.isPositive ? "+" : changeInsight.isNegative ? "-" : ""}$
+                        {changeInsight.diffUsd} (
+                        {changeInsight.isPositive ? "+" : changeInsight.isNegative ? "-" : ""}
+                        {changeInsight.percent}%)
+                        <span className={styles.changeLabel}>{changeInsight.label}</span>
+                      </span>
+                    ) : null}
+                    <CompletenessBadge value={overview.completeness} />
+                  </div>
+                </div>
+                {boundaryText ? (
+                  <p className={styles.heroBoundaryNotice}>
+                    <NumericText>{boundaryText}</NumericText>
+                  </p>
+                ) : null}
+              </div>
+            </article>
           ) : (
-            <p className={styles.notice}>{NO_POINT}</p>
+            <div className={styles.emptyHero}>
+              <div className={styles.emptyHeroIcon}>
+                <Layers size={iconSize.lg} aria-hidden="true" />
+              </div>
+              <h2 className={styles.emptyHeroTitle}>No Valuation Data Yet</h2>
+              <p className={styles.emptyHeroText}>
+                This portfolio has no valuation history. Connect an exchange identity in Settings,
+                or run a collection cycle to record your first valuation point.
+              </p>
+              <div className={styles.emptyHeroActions}>
+                <ActionButton
+                  type="button"
+                  tone="primary"
+                  disabled={
+                    collect.busy ||
+                    Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status))
+                  }
+                  onClick={() => void collect.start()}
+                  className={styles.syncButton}
+                >
+                  <RefreshCw
+                    size={iconSize.xs}
+                    aria-hidden="true"
+                    className={
+                      collect.busy ||
+                      Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status))
+                        ? styles.spin
+                        : ""
+                    }
+                  />
+                  Collect now
+                </ActionButton>
+                <Link to={`/p/${portfolioId}/identities`} className={styles.emptyHeroLink}>
+                  Manage identities
+                  <ArrowRight size={iconSize.xs} aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
           )}
           {point ? (
             <>
               <ChartBlock
                 title="Recent Valuation Points"
-                summary="Portfolio total at each recent Valuation Point, incomplete points included as reported. History lists every point."
                 option={sparklineOption}
                 empty="Fewer than two Valuation Points so far. Each Collection Cycle adds one."
               />
@@ -163,18 +320,7 @@ export function OverviewPage() {
   );
 }
 
-/** What is off about the accounts, or where they stand when nothing is. */
-function accountNote(overview: Overview): string {
-  const parts: string[] = [];
-  if (overview.staleAccountCount > 0)
-    parts.push(`${formatCount(overview.staleAccountCount)} stale`);
-  if (overview.incompleteAccountCount > 0) {
-    parts.push(`${formatCount(overview.incompleteAccountCount)} incomplete`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : "inside the boundary";
-}
-
-function boundarySummary(contribution: string, withdrawal: string): string {
+function boundarySummary(contribution: string, withdrawal: string): string | null {
   const parts: string[] = [];
   if (!isZeroDecimal(contribution)) {
     parts.push(`boundary contribution ${formatUsd(contribution)}`);
@@ -182,7 +328,7 @@ function boundarySummary(contribution: string, withdrawal: string): string {
   if (!isZeroDecimal(withdrawal)) {
     parts.push(`boundary withdrawal ${formatUsd(withdrawal)}`);
   }
-  return parts.length > 0 ? parts.join(" · ") : "No Boundary Events at this point.";
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function CycleNotice({ cycle, timezone }: { cycle: CollectionCycle; timezone?: string }) {

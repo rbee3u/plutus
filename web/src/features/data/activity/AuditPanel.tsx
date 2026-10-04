@@ -32,11 +32,8 @@ export function AuditPanel({
 }) {
   return (
     <>
-      <p className={styles.lead}>
-        Portfolio mutations with their before and after payloads. Secret material is never shown.
-      </p>
-      <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field}>
+      <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
+        <label className={styles.field} style={{ flex: "1 1 200px" }}>
           <span>Action</span>
           <TextInput
             value={action}
@@ -44,7 +41,7 @@ export function AuditPanel({
             placeholder="e.g. identity.enable"
           />
         </label>
-        <label className={styles.field}>
+        <label className={styles.field} style={{ flex: "1 1 200px" }}>
           <span>Resource type</span>
           <TextInput
             value={resourceType}
@@ -110,12 +107,16 @@ function AuditResults({
       />
       <DataTable
         caption="Portfolio audit events"
+        onRowClick={(key) => {
+          const item = (query.data?.items ?? []).find((i) => i.id === key);
+          if (item) setDetail(item);
+        }}
         columns={[
           { key: "occurred", header: "Occurred", nowrap: true },
           { key: "action", header: "Action" },
           { key: "resource", header: "Resource" },
           { key: "actor", header: "Actor" },
-          { key: "actions", header: "" },
+          { key: "actions", header: "", nowrap: true },
         ]}
         rows={(query.data?.items ?? []).map((item) => ({
           id: item.id,
@@ -164,15 +165,26 @@ function AuditResults({
               {detail.resourceId ? ` · ${detail.resourceId}` : ""}
               {detail.requestId ? ` · request ${detail.requestId}` : ""}
             </p>
-            <h2>Before</h2>
-            <pre className={styles.jsonBlock}>{safeJson(detail.before ?? null)}</pre>
-            <h2>After</h2>
-            <pre className={styles.jsonBlock}>{safeJson(detail.after ?? null)}</pre>
+            {detail.before != null ? (
+              <>
+                <h2>Before</h2>
+                <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
+              </>
+            ) : null}
+            {detail.after != null ? (
+              <>
+                <h2>After</h2>
+                <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
+              </>
+            ) : null}
             {detail.metadata ? (
               <>
                 <h2>Metadata</h2>
                 <pre className={styles.jsonBlock}>{safeJson(detail.metadata)}</pre>
               </>
+            ) : null}
+            {detail.before == null && detail.after == null && !detail.metadata ? (
+              <p className={styles.muted}>No payload state recorded.</p>
             ) : null}
             <div className={styles.actions}>
               <ActionButton type="button" tone="ghost" onClick={() => setDetail(null)}>

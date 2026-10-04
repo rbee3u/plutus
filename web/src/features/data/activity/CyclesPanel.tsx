@@ -54,10 +54,6 @@ export function CyclesPanel({
 
   return (
     <>
-      <p className={styles.lead}>
-        Each Collection Cycle collects one Account Report per enabled connection and closes with one
-        Valuation Point. Open a cycle to see how each account was valued.
-      </p>
       <QueryRecovery
         error={query.error}
         hasData={Boolean(query.data)}

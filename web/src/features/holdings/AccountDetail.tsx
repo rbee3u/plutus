@@ -88,7 +88,7 @@ export function AccountDetail({
           void balances.refetch();
         }}
       />
-      <h3>Balances</h3>
+      <h3 className={styles.accountSectionTitle}>Balances</h3>
       <DataTable
         caption={`Balances of ${account.accountName}`}
         columns={BALANCE_COLUMNS}
@@ -115,7 +115,7 @@ export function AccountDetail({
               void dualPositions.refetch();
             }}
           />
-          <h3>Dual Investment</h3>
+          <h3 className={styles.accountSectionTitle}>Dual Investment</h3>
           {dualPositions.isError && !dualPositions.data ? (
             <p className={styles.muted}>Dual Investment could not be loaded. Retry above.</p>
           ) : (
@@ -138,7 +138,7 @@ export function AccountDetail({
               void positions.refetch();
             }}
           />
-          <h3>Futures</h3>
+          <h3 className={styles.accountSectionTitle}>Futures</h3>
           <DataTable
             caption={`Positions of ${account.accountName}`}
             columns={POSITION_COLUMNS}
@@ -157,7 +157,7 @@ export function AccountDetail({
       ) : null}
       {issues.length > 0 ? (
         <>
-          <h3>Issues</h3>
+          <h3 className={styles.accountSectionTitle}>Issues</h3>
           <IssueList issues={issues} />
         </>
       ) : null}
@@ -366,6 +366,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
     observed: (
       <span className={styles.statusGroup}>
         <span
+          className={styles.muted}
           title={`Account Report observed at ${item.reportObservedAt ?? "an unknown time"}; times in ${timezone ?? "the Portfolio timezone"}.`}
         >
           {formatInstant(item.reportObservedAt, timezone)}

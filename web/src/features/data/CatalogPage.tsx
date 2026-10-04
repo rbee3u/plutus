@@ -19,7 +19,7 @@ import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { capitalize } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { StatusBadge } from "@/shared/ui/Badge";
+import { Badge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
@@ -62,15 +62,13 @@ export function CatalogPage() {
 
   return (
     <section className={styles.wide}>
-      <p className={styles.lead}>
-        {tab === "listings"
-          ? "Every Platform symbol the collector has seen and the Asset symbol it merges into. Remap a listing when the Platform symbol does not name the canonical Asset. You can also review and ignore a Balance in this Portfolio for future calculated Account values."
-          : "Instruments seen on the connected Platforms, with the symbols and contract terms used to value positions."}
-      </p>
-      <form className={styles.filters} onSubmit={submitSearch}>
+      <form className={styles.filterBar} onSubmit={submitSearch}>
         <label className={styles.field}>
           <span>Platform</span>
-          <Select value={platform} onChange={(event) => update({ platform: event.target.value })}>
+          <Select
+            value={platform}
+            onChange={(event) => update({ platform: event.target.value, offset: "" })}
+          >
             <option value="">All platforms</option>
             {(platforms.data?.items ?? []).map((item) => (
               <option key={item.id} value={item.id}>
@@ -79,21 +77,16 @@ export function CatalogPage() {
             ))}
           </Select>
         </label>
-        <label className={styles.field}>
-          <span>Search</span>
-          <TextInput
-            value={draftQuery}
-            onChange={(event) => setDraftQuery(event.target.value)}
-            placeholder="Symbol or name"
-          />
-        </label>
         {tab === "listings" ? (
           <label className={styles.field}>
             <span>Treatment</span>
             <Select
               value={ignoredOnly ? "ignored" : "all"}
               onChange={(event) =>
-                update({ ignoredOnly: event.target.value === "ignored" ? "true" : "" })
+                update({
+                  ignoredOnly: event.target.value === "ignored" ? "true" : "",
+                  offset: "",
+                })
               }
             >
               <option value="all">All listings</option>
@@ -101,6 +94,14 @@ export function CatalogPage() {
             </Select>
           </label>
         ) : null}
+        <label className={styles.field} style={{ flex: "1 1 200px" }}>
+          <span>Search</span>
+          <TextInput
+            value={draftQuery}
+            onChange={(event) => setDraftQuery(event.target.value)}
+            placeholder="Symbol or name"
+          />
+        </label>
         <div className={styles.actions}>
           <ActionButton type="submit">Search</ActionButton>
           {q ? (
@@ -109,7 +110,7 @@ export function CatalogPage() {
               tone="ghost"
               onClick={() => {
                 setDraftQuery("");
-                update({ q: "" });
+                update({ q: "", offset: "" });
               }}
             >
               Clear
@@ -210,20 +211,27 @@ function ListingsTab({
         caption="Asset listings"
         columns={[
           { key: "platform", header: "Platform" },
-          { key: "symbol", header: "Platform symbol" },
-          { key: "assetSymbol", header: "Asset symbol" },
+          { key: "asset", header: "Asset" },
+          { key: "name", header: "Name" },
           { key: "mappingSource", header: "Mapping" },
           { key: "treatment", header: "Treatment" },
-          { key: "name", header: "Name" },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
-          { key: "actions", header: "" },
+          { key: "actions", header: "", nowrap: true },
         ]}
         rows={(query.data?.items ?? []).map((item) => ({
           id: item.id,
           platform: platformLabel(platforms.data?.items, item.platform),
-          symbol: item.symbol,
-          assetSymbol: <strong>{item.assetSymbol}</strong>,
-          mappingSource: <StatusBadge value={item.mappingSource} />,
+          asset: (
+            <span className={styles.cellStack}>
+              <strong>{item.assetSymbol}</strong>
+              {item.symbol !== item.assetSymbol ? (
+                <span className={styles.cellMeta}>Platform: {item.symbol}</span>
+              ) : null}
+            </span>
+          ),
+          name: item.name ?? "—",
+          mappingSource:
+            item.mappingSource === "auto" ? "—" : <Badge tone="info">{item.mappingSource}</Badge>,
           treatment: item.ignored ? (
             <span className={styles.cellStack}>
               <StatusBadge value="ignored" />
@@ -242,7 +250,6 @@ function ListingsTab({
           ) : (
             "Included"
           ),
-          name: item.name ?? "—",
           lastSeenAt: formatInstant(item.lastSeenAt, timezone),
           actions: (
             <span className={styles.rowActions}>

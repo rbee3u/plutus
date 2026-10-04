@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, Monitor, Moon, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Monitor, Moon, Sun, User } from "lucide-react";
 import type { ThemePreference } from "@/app/theme/usePersistentTheme";
+import { useCurrentUser } from "@/shared/lib/session";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { IconButton } from "@/shared/ui/IconButton";
 import { Menu, MenuItem, useMenu } from "@/shared/ui/Menu";
@@ -17,6 +18,7 @@ interface SidebarUtilitiesProps {
   onThemeChange: (theme: ThemePreference) => void;
   onToggleCollapsed: () => void;
   theme: ThemePreference;
+  onSignOut?: () => void;
 }
 
 export function SidebarUtilities({
@@ -25,9 +27,27 @@ export function SidebarUtilities({
   onThemeChange,
   onToggleCollapsed,
   theme,
+  onSignOut,
 }: SidebarUtilitiesProps) {
+  const user = useCurrentUser();
+  const username = user.data?.username;
+
   return (
     <footer className={styles.sidebarUtilities}>
+      {mobileLayout && username ? (
+        <div className={styles.mobileAccountSection}>
+          <div className={styles.mobileAccountInfo}>
+            <User size={iconSize.sm} />
+            <span>{username}</span>
+          </div>
+          {onSignOut ? (
+            <button type="button" className={styles.mobileSignOutButton} onClick={onSignOut}>
+              <LogOut size={iconSize.xs} />
+              <span>Sign out</span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <ThemeMenu collapsed={collapsed} onChange={onThemeChange} value={theme} />
       <div className={styles.sidebarMeta}>
         <span className={styles.sidebarVersion}>v0.1.0-dev</span>

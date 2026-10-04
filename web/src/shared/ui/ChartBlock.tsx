@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BarChart, LineChart } from "echarts/charts";
 import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
 import * as echarts from "echarts/core";
@@ -19,7 +19,8 @@ echarts.use([
 
 interface ChartBlockProps extends Partial<Omit<DataTableProps, "caption" | "empty">> {
   title: string;
-  summary: string;
+  summary?: string;
+  action?: ReactNode;
   option: EChartsCoreOption | null;
   /** Shown instead of the chart when there is nothing to draw. */
   empty: string;
@@ -30,6 +31,7 @@ interface ChartBlockProps extends Partial<Omit<DataTableProps, "caption" | "empt
 export function ChartBlock({
   title,
   summary,
+  action,
   option,
   empty,
   emptyRows,
@@ -65,8 +67,15 @@ export function ChartBlock({
 
   return (
     <section className={styles.panel}>
-      <h2>{title}</h2>
-      <p className={styles.muted}>{summary}</p>
+      {action ? (
+        <div className={styles.headingRow}>
+          <h2>{title}</h2>
+          {action}
+        </div>
+      ) : (
+        <h2>{title}</h2>
+      )}
+      {summary ? <p className={styles.muted}>{summary}</p> : null}
       {option ? (
         <div ref={hostRef} className={styles.chart} role="img" aria-label={title} />
       ) : (

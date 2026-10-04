@@ -1,4 +1,4 @@
-import { ChevronDown, Plus } from "lucide-react";
+import { Briefcase, ChevronDown, Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { useHoldingsNavigation } from "@/features/holdings/HoldingsNavigation";
@@ -98,6 +98,7 @@ export function PortfolioSwitcher({
         aria-expanded={menu.open}
         onClick={() => menu.setOpen((open) => !open)}
       >
+        <Briefcase size={iconSize.xs} aria-hidden="true" />
         <span className={styles.switcherName}>{current?.name ?? "Portfolio"}</span>
         <ChevronDown size={iconSize.xs} aria-hidden="true" />
       </button>
@@ -134,10 +135,6 @@ export function PortfolioSwitcher({
         }}
       >
         <form className={pageStyles.form} onSubmit={(event) => void onCreate(event)}>
-          <p className={pageStyles.lead}>
-            Valuation is USD-only. The timezone and collection interval can be changed later in
-            Settings.
-          </p>
           {error ? (
             <p className={pageStyles.alert} role="alert">
               {error}

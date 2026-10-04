@@ -452,7 +452,7 @@ for (const viewport of [
       const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
       await expect(tree.getByRole("table")).toHaveCount(0);
       await expect(tree.getByRole("button", { name: "Collapse Binance" })).toHaveText(
-        "Binance$100",
+        /^Binance(\d+\.\d+%)?\$100$/,
       );
       await expect(tree).not.toContainText(/\d+ (identities|accounts)|connection enabled/);
       await tree.getByRole("button", { name: `Expand ${state.ownerName}`, exact: true }).click();

@@ -151,6 +151,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
     observed: (
       <span className={styles.statusGroup}>
         <span
+          className={styles.muted}
           title={`Account Report observed at ${item.reportObservedAt ?? "an unknown time"}; times in ${timezone ?? "the Portfolio timezone"}.`}
         >
           {formatInstant(item.reportObservedAt, timezone)}

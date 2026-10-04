@@ -15,8 +15,8 @@ import styles from "@/features/pages.module.css";
 type WindowState = ReturnType<typeof useHistoryWindow>;
 export function HistoryFilters({ state }: { state: WindowState }) {
   return (
-    <>
-      <div className={styles.actions} role="group" aria-label="History time range">
+    <div className={styles.historyToolbar}>
+      <div className={styles.historyPresets} role="group" aria-label="History time range">
         {HISTORY_PRESETS.map((preset) => (
           <ActionButton
             key={preset}
@@ -25,6 +25,7 @@ export function HistoryFilters({ state }: { state: WindowState }) {
             aria-pressed={state.preset === preset}
             disabled={state.applying}
             onClick={() => state.selectPreset(preset)}
+            className={state.preset === preset ? styles.presetActive : styles.presetInactive}
           >
             {preset}
           </ActionButton>
@@ -46,7 +47,7 @@ export function HistoryFilters({ state }: { state: WindowState }) {
         onRetry={state.retry}
       />
       {state.busy && !state.window ? <p className={styles.muted}>Loading history window.</p> : null}
-    </>
+    </div>
   );
 }
 
@@ -61,8 +62,8 @@ function DateRangeForm({ state }: { state: WindowState }) {
   }
   return (
     <form className={styles.rangeForm} onSubmit={submit}>
-      <label className={styles.field}>
-        <span>From</span>
+      <label className={styles.rangeField}>
+        <span className={styles.rangeLabel}>From</span>
         <TextInput
           type="datetime-local"
           step="1"
@@ -71,8 +72,8 @@ function DateRangeForm({ state }: { state: WindowState }) {
           onChange={(event) => setFrom(event.target.value)}
         />
       </label>
-      <label className={styles.field}>
-        <span>To</span>
+      <label className={styles.rangeField}>
+        <span className={styles.rangeLabel}>To</span>
         <TextInput
           type="datetime-local"
           step="1"
@@ -81,10 +82,12 @@ function DateRangeForm({ state }: { state: WindowState }) {
           onChange={(event) => setTo(event.target.value)}
         />
       </label>
-      <ActionButton type="submit" tone="primary" disabled={state.applying}>
-        {state.applying ? "Applying" : "Apply"}
-      </ActionButton>
-      <span className={styles.muted}>Timezone: {timezone}</span>
+      <div className={styles.rangeActions}>
+        <ActionButton type="submit" tone="primary" disabled={state.applying}>
+          {state.applying ? "Applying" : "Apply"}
+        </ActionButton>
+        <span className={styles.rangeTimezone}>Timezone: {timezone}</span>
+      </div>
     </form>
   );
 }

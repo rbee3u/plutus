@@ -78,6 +78,7 @@ export function LoginPage() {
           <span>Username</span>
           <TextInput
             value={username}
+            placeholder="Enter username"
             autoComplete="username"
             onChange={(event) => setUsername(event.target.value)}
             required
@@ -88,19 +89,17 @@ export function LoginPage() {
           <TextInput
             type="password"
             value={password}
+            placeholder="Enter password"
             autoComplete="current-password"
             onChange={(event) => setPassword(event.target.value)}
             required
           />
         </label>
-        <div className={styles.actions}>
-          <ActionButton type="submit" tone="primary" disabled={busy}>
+        <div className={styles.authActions}>
+          <ActionButton type="submit" tone="primary" disabled={busy} className={styles.authSubmit}>
             Sign in
           </ActionButton>
         </div>
-        <p className={styles.muted}>
-          Users are created with the CLI: <code>plutus user create</code>.
-        </p>
       </form>
     </div>
   );

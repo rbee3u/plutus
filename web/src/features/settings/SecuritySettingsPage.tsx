@@ -186,16 +186,15 @@ export function SecuritySettingsPage() {
 
   return (
     <section className={styles.page}>
-      <p className={styles.lead}>
-        Changing your password will sign you out across all devices and require you to sign in
-        again.
-      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
         </p>
       ) : null}
-      <form className={styles.form} onSubmit={(event) => void onChangePassword(event)}>
+      <form
+        className={`${styles.form} ${styles.settingsCard}`}
+        onSubmit={(event) => void onChangePassword(event)}
+      >
         <h2>Change password</h2>
 
         <label className={styles.field}>
@@ -342,7 +341,7 @@ export function SecuritySettingsPage() {
         </div>
       </form>
 
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.settingsCard}`}>
         <h2>Sessions</h2>
         <ul className={styles.sessions}>
           {sessions.map((session) => (

@@ -220,20 +220,6 @@ export function IdentitiesPage() {
 
   return (
     <section className={styles.wide}>
-      <div className={styles.headingRow}>
-        <p className={styles.lead}>
-          One Identity per Platform login: store read-only credentials, validate them, then enable
-          the connection so its selected accounts join every Collection Cycle.
-        </p>
-        <ActionButton
-          type="button"
-          tone="primary"
-          disabled={busyId !== null}
-          onClick={() => open({ kind: "create" })}
-        >
-          New identity
-        </ActionButton>
-      </div>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
@@ -253,10 +239,18 @@ export function IdentitiesPage() {
           void identities.refetch();
         }}
       />
-      <div className={styles.toolbar}>
+      <div className={styles.panelHeader}>
         <Toggle checked={showArchived} onCheckedChange={setShowArchived}>
           Show archived ({formatCount(archivedCount)})
         </Toggle>
+        <ActionButton
+          type="button"
+          tone="primary"
+          disabled={busyId !== null}
+          onClick={() => open({ kind: "create" })}
+        >
+          New identity
+        </ActionButton>
       </div>
       <DataTable
         caption="Identities of this Portfolio"

@@ -8,11 +8,11 @@ import { POSITION_COLUMNS, positionRow } from "@/features/holdings/PositionsTabl
 import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
 import { useHoldingsFilters, type HoldingsFilters } from "./useHoldingsFilters";
+import { formatInstant } from "@/shared/lib/datetime";
 import { formatUsd } from "@/shared/lib/amount";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
 import { CompletenessBadge } from "@/shared/ui/Badge";
-import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { Pager } from "@/shared/ui/Pager";
@@ -50,11 +50,6 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
 
   return (
     <>
-      <p className={styles.lead}>
-        Open positions inside the boundary at the latest Valuation Point. Unknown Size or USD
-        notional stays unknown. Total notional covers all positions in the boundary and identifies
-        omissions.
-      </p>
       <QueryRecovery
         error={query.error}
         hasData={Boolean(data)}
@@ -65,18 +60,23 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
         }}
       />
       <HoldingsFilterRecovery filters={filters} />
-      {data && !data.context.pointId ? <p className={styles.notice}>{NO_POINT}</p> : null}
       {data?.context.pointId ? (
-        <>
-          <ContextSummary context={data.context} />
-          <p className={styles.totalRow}>
-            <span>Total notional</span>
-            <span className={styles.totalValue}>
+        <div className={styles.holdingsSummaryBar}>
+          <div className={styles.holdingsSummaryAmount}>
+            <span className={styles.holdingsSummaryLabel}>Total notional</span>
+            <span className={styles.holdingsSummaryValue}>
               <NumericText>{formatUsd(data.totalNotionalUsd)}</NumericText>
             </span>
             <CompletenessBadge value={data.completeness} />
-          </p>
-        </>
+          </div>
+          <div className={styles.holdingsSummaryMeta}>
+            <span>
+              {data.context.evaluatedAt
+                ? `Evaluated ${formatInstant(data.context.evaluatedAt, data.context.timezone)} · ${data.context.timezone}`
+                : `Times in ${data.context.timezone}`}
+            </span>
+          </div>
+        </div>
       ) : null}
       <DataTable
         caption="Positions at the latest Valuation Point"
@@ -135,7 +135,9 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
           />
         ) : null}
       </HoldingsFilterFooter>
-      {data ? <IssuesPanel issues={data.issues} empty="No issues for these positions." /> : null}
+      {data?.context.pointId ? (
+        <IssuesPanel issues={data.issues} empty="No issues for these positions." />
+      ) : null}
     </>
   );
 }

@@ -23,8 +23,8 @@ import { formatInstant, isoFromLocalInput } from "@/shared/lib/datetime";
 import { usePortfolio } from "@/shared/lib/portfolio";
 import { useSearchState } from "@/shared/lib/searchParams";
 import { readEtag, unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
-import { capitalize } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { DirectionBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
@@ -161,15 +161,6 @@ export function CapitalPage() {
 
   return (
     <section className={styles.wide}>
-      <div className={styles.headingRow}>
-        <p className={styles.lead}>
-          Manual Capital Flows and the Boundary Events derived when an account enters or leaves the
-          boundary. Both feed Value Change.
-        </p>
-        <ActionButton type="button" tone="primary" disabled={busy} onClick={openCreate}>
-          Record flow
-        </ActionButton>
-      </div>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
@@ -181,24 +172,36 @@ export function CapitalPage() {
         </p>
       ) : null}
       <section className={styles.panel}>
-        <h2>Capital Flows</h2>
-        <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.field}>
-            <span>From</span>
+        <div className={styles.panelHeader}>
+          <h2>Capital Flows</h2>
+          <ActionButton type="button" tone="primary" disabled={busy} onClick={openCreate}>
+            Record flow
+          </ActionButton>
+        </div>
+        <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={from}
               onChange={(event) => update({ from: event.target.value })}
             />
           </label>
-          <label className={styles.field}>
-            <span>To</span>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={to}
               onChange={(event) => update({ to: event.target.value })}
             />
           </label>
+          {from || to ? (
+            <div className={styles.rangeActions}>
+              <ActionButton type="button" tone="ghost" onClick={() => update({ from: "", to: "" })}>
+                Clear
+              </ActionButton>
+            </div>
+          ) : null}
         </form>
         <QueryRecovery
           error={flows.error}
@@ -224,7 +227,7 @@ export function CapitalPage() {
           rows={(flows.data?.items ?? []).map((item) => ({
             id: item.id,
             effectiveAt: formatInstant(item.effectiveAt, timezone),
-            direction: capitalize(item.direction),
+            direction: <DirectionBadge value={item.direction} />,
             assetSymbol: item.assetSymbol,
             quantity: formatDecimal(item.quantity),
             valueUsd: formatAmount(item.valueUsd),
@@ -259,28 +262,37 @@ export function CapitalPage() {
         />
       </section>
       <section className={styles.panel}>
-        <h2>Boundary Events</h2>
-        <p className={styles.muted}>
-          Derived from Valuation Points: an account entering the boundary counts as a contribution,
-          one leaving as a withdrawal. Leave the window empty for the last 90 days.
-        </p>
-        <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.field}>
-            <span>From</span>
+        <div className={styles.panelHeader}>
+          <h2>Boundary Events</h2>
+        </div>
+        <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={eventsFrom}
               onChange={(event) => update({ eventsFrom: event.target.value })}
             />
           </label>
-          <label className={styles.field}>
-            <span>To</span>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={eventsTo}
               onChange={(event) => update({ eventsTo: event.target.value })}
             />
           </label>
+          {eventsFrom || eventsTo ? (
+            <div className={styles.rangeActions}>
+              <ActionButton
+                type="button"
+                tone="ghost"
+                onClick={() => update({ eventsFrom: "", eventsTo: "" })}
+              >
+                Clear
+              </ActionButton>
+            </div>
+          ) : null}
         </form>
         <QueryRecovery
           error={events.error}

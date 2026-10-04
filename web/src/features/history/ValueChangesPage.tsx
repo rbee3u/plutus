@@ -111,30 +111,7 @@ export function ValueChangesPage() {
 
   return (
     <section className={styles.wide}>
-      <p className={styles.lead}>
-        Value Change = end − start − contributions + withdrawals, with Boundary Events as implicit
-        Capital Flows. A period missing a point stays blank, never zero.
-      </p>
       <HistoryFilters state={history} />
-      <div className={styles.filters}>
-        <label className={styles.field}>
-          <span>Period</span>
-          <Select
-            value={periodKind}
-            onChange={(event) => update({ periodKind: event.target.value, changesOffset: "" })}
-          >
-            {PERIOD_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {capitalize(option)}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </div>
-      <p className={styles.muted}>
-        Calendar periods intersecting the selected range are calculated in full, not clipped to From
-        / To.
-      </p>
       <QueryRecovery
         error={changes.error}
         hasData={Boolean(data)}
@@ -149,7 +126,23 @@ export function ValueChangesPage() {
         <>
           <ChartBlock
             title={`Value change per ${data.periodKind}`}
-            summary={`Periods close in ${data.context.timezone}. Incomplete or incomparable periods stay blank.`}
+            action={
+              <label className={`${styles.field} ${styles.toolbarField}`}>
+                <span>Period</span>
+                <Select
+                  value={periodKind}
+                  onChange={(event) =>
+                    update({ periodKind: event.target.value, changesOffset: "" })
+                  }
+                >
+                  {PERIOD_KINDS.map((option) => (
+                    <option key={option} value={option}>
+                      {capitalize(option)}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            }
             option={chartOption}
             empty="No comparable period yet. A bar appears once a period has a Valuation Point at both ends."
             emptyRows="No periods yet. Periods appear once the Portfolio has Valuation Points."

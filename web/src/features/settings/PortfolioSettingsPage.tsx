@@ -32,10 +32,6 @@ export function PortfolioSettingsPage() {
 
   return (
     <section className={styles.page}>
-      <p className={styles.lead}>
-        The name, the timezone that closes days, weeks, months, quarters, and years, and how often
-        Collection Cycles run. Valuation is always in USD.
-      </p>
       {conflict ? (
         <p className={styles.alert} role="alert">
           {conflict}
@@ -192,7 +188,11 @@ function SettingsForms({
           {error}
         </p>
       ) : null}
-      <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
+      <form
+        className={`${styles.form} ${styles.settingsCard}`}
+        onSubmit={(event) => void onSubmit(event)}
+      >
+        <h2>General settings</h2>
         <label className={styles.field}>
           <span>Name</span>
           <TextInput
@@ -224,8 +224,8 @@ function SettingsForms({
             required
           />
           <span className={styles.muted}>
-            Between {formatCount(MIN_INTERVAL)} seconds and {formatCount(MAX_INTERVAL)} seconds (one
-            day). The schedule applies from the next cycle.
+            Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day).
+            The schedule applies from the next cycle.
           </span>
         </label>
         <div className={styles.actions}>
@@ -235,15 +235,18 @@ function SettingsForms({
         </div>
       </form>
       {view.item.undeletable ? (
-        <p className={styles.notice}>
-          This portfolio was created with the account and cannot be deleted.
+        <p className={styles.muted}>
+          This default portfolio was created with the account and cannot be deleted.
         </p>
       ) : (
-        <form className={styles.form} onSubmit={(event) => void onDelete(event)}>
+        <form
+          className={`${styles.form} ${styles.dangerCard}`}
+          onSubmit={(event) => void onDelete(event)}
+        >
           <h2>Delete portfolio</h2>
-          <p className={styles.lead}>
-            This permanently deletes the workspace and every Identity, Collection Cycle, Valuation
-            Point, Capital Flow, and job scoped to it. Type the current name to confirm.
+          <p className={styles.muted}>
+            Permanently deletes this portfolio and every Identity, Collection Cycle, Valuation
+            Point, and Capital Flow scoped to it. Type the current name to confirm.
           </p>
           <label className={styles.field}>
             <span>Confirm name</span>

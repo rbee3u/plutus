@@ -7,11 +7,11 @@ import { BALANCE_COLUMNS, balanceRow } from "./AccountDetail";
 import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
 import { useHoldingsFilters } from "./useHoldingsFilters";
+import { formatInstant } from "@/shared/lib/datetime";
 import { formatUsd } from "@/shared/lib/amount";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
 import { CompletenessBadge } from "@/shared/ui/Badge";
-import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -48,10 +48,6 @@ export function BalancesPage() {
   const data = query.data;
   return (
     <section className={styles.wide}>
-      <p className={styles.lead}>
-        Balances inside the boundary at the latest Valuation Point. A balance without a USD price
-        stays unpriced, never zero.
-      </p>
       <QueryRecovery
         error={query.error}
         hasData={Boolean(data)}
@@ -62,18 +58,23 @@ export function BalancesPage() {
         }}
       />
       <HoldingsFilterRecovery filters={filters} />
-      {data && !data.context.pointId ? <p className={styles.notice}>{NO_POINT}</p> : null}
       {data?.context.pointId ? (
-        <>
-          <ContextSummary context={data.context} />
-          <p className={styles.totalRow}>
-            <span>Total</span>
-            <span className={styles.totalValue}>
+        <div className={styles.holdingsSummaryBar}>
+          <div className={styles.holdingsSummaryAmount}>
+            <span className={styles.holdingsSummaryLabel}>Total Balance</span>
+            <span className={styles.holdingsSummaryValue}>
               <NumericText>{formatUsd(data.totalUsd)}</NumericText>
             </span>
             <CompletenessBadge value={data.completeness} />
-          </p>
-        </>
+          </div>
+          <div className={styles.holdingsSummaryMeta}>
+            <span>
+              {data.context.evaluatedAt
+                ? `Evaluated ${formatInstant(data.context.evaluatedAt, data.context.timezone)} · ${data.context.timezone}`
+                : `Times in ${data.context.timezone}`}
+            </span>
+          </div>
+        </div>
       ) : null}
       <DataTable
         caption="Balances at the latest Valuation Point"
@@ -132,7 +133,9 @@ export function BalancesPage() {
           />
         ) : null}
       </HoldingsFilterFooter>
-      {data ? <IssuesPanel issues={data.issues} empty="No issues for these balances." /> : null}
+      {data?.context.pointId ? (
+        <IssuesPanel issues={data.issues} empty="No issues for these balances." />
+      ) : null}
     </section>
   );
 }

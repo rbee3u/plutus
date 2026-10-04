@@ -28,18 +28,39 @@ export function Badge({
   );
 }
 
-export function CompletenessBadge({ value }: { value: Completeness | null | undefined }) {
-  if (!value) {
-    return <span>—</span>;
+export function CompletenessBadge({
+  value,
+  silentWhenHealthy = true,
+}: {
+  value: Completeness | null | undefined;
+  silentWhenHealthy?: boolean;
+}) {
+  if (!value || (silentWhenHealthy && value === "complete")) {
+    return null;
   }
   return <Badge tone={value === "complete" ? "good" : "warn"}>{value}</Badge>;
 }
 
-export function FreshnessBadge({ value }: { value: Freshness | null | undefined }) {
-  if (!value) {
-    return <span>—</span>;
+export function FreshnessBadge({
+  value,
+  silentWhenHealthy = true,
+}: {
+  value: Freshness | null | undefined;
+  silentWhenHealthy?: boolean;
+}) {
+  if (!value || (silentWhenHealthy && value === "fresh")) {
+    return null;
   }
   return <Badge tone={value === "fresh" ? "good" : "warn"}>{value}</Badge>;
+}
+
+export function DirectionBadge({ value }: { value: string }) {
+  const isContribution = value.toLowerCase() === "contribution";
+  return (
+    <Badge tone={isContribution ? "good" : "warn"}>
+      {isContribution ? "+ Contribution" : "- Withdrawal"}
+    </Badge>
+  );
 }
 
 const STATUS_TONES: Record<string, BadgeTone> = {
@@ -62,9 +83,19 @@ const STATUS_TONES: Record<string, BadgeTone> = {
 };
 
 /** Badge for a server status word; unknown words render neutrally. */
-export function StatusBadge({ value }: { value: string | null | undefined }) {
-  if (!value) {
-    return <span>—</span>;
+export function StatusBadge({
+  value,
+  silentWhenHealthy = false,
+}: {
+  value: string | null | undefined;
+  silentWhenHealthy?: boolean;
+}) {
+  if (
+    !value ||
+    (silentWhenHealthy &&
+      (value === "ok" || value === "succeeded" || value === "complete" || value === "fresh"))
+  ) {
+    return null;
   }
   return <Badge tone={STATUS_TONES[value] ?? "neutral"}>{value}</Badge>;
 }

@@ -10,6 +10,7 @@ import { parseDecimal } from "@/shared/lib/amount";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import styles from "@/features/pages.module.css";
 
 export function flowEtag(item: CapitalFlow): string {
@@ -212,64 +213,64 @@ function FlowForm({
 
   return (
     <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
-      <p className={styles.lead}>
-        A manual contribution or withdrawal. The quantity keeps its Asset; the USD value is optional
-        and stays unknown when left empty.
-      </p>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
         </p>
       ) : null}
-      <label className={styles.field}>
+      <div className={styles.field}>
         <span>Direction</span>
-        <Select
+        <SegmentedControl<"contribution" | "withdrawal">
           value={form.direction}
-          onChange={(event) =>
-            set({ direction: event.target.value === "withdrawal" ? "withdrawal" : "contribution" })
-          }
-          required
-        >
-          <option value="contribution">Contribution</option>
-          <option value="withdrawal">Withdrawal</option>
-        </Select>
-      </label>
-      <label className={styles.field}>
-        <span>Asset symbol</span>
-        <TextInput
-          value={form.assetSymbol}
-          placeholder="USDT"
-          onChange={(event) => set({ assetSymbol: event.target.value })}
-          required
+          onChange={(direction) => set({ direction })}
+          label="Direction"
+          options={[
+            { value: "contribution", label: "+ Contribution" },
+            { value: "withdrawal", label: "- Withdrawal" },
+          ]}
         />
-      </label>
-      <label className={styles.field}>
-        <span>Quantity</span>
-        <TextInput
-          value={form.quantity}
-          inputMode="decimal"
-          onChange={(event) => set({ quantity: event.target.value })}
-          required
-        />
-      </label>
-      <label className={styles.field}>
-        <span>Value (USD, optional)</span>
-        <TextInput
-          value={form.valueUsd}
-          inputMode="decimal"
-          placeholder="Leave empty when unknown"
-          onChange={(event) => set({ valueUsd: event.target.value })}
-        />
-      </label>
-      <label className={styles.field}>
-        <span>Effective at</span>
-        <TextInput
-          type="datetime-local"
-          value={form.effectiveAt}
-          onChange={(event) => set({ effectiveAt: event.target.value })}
-          required
-        />
-      </label>
+      </div>
+      <div className={styles.formRow2}>
+        <label className={styles.field}>
+          <span>Asset symbol</span>
+          <TextInput
+            value={form.assetSymbol}
+            placeholder="USDT"
+            onChange={(event) => set({ assetSymbol: event.target.value })}
+            required
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Quantity</span>
+          <TextInput
+            value={form.quantity}
+            inputMode="decimal"
+            placeholder="0.00"
+            onChange={(event) => set({ quantity: event.target.value })}
+            required
+          />
+        </label>
+      </div>
+      <div className={styles.formRow2}>
+        <label className={styles.field}>
+          <span>Effective at</span>
+          <TextInput
+            type="datetime-local"
+            value={form.effectiveAt}
+            onChange={(event) => set({ effectiveAt: event.target.value })}
+            required
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Value (USD, optional)</span>
+          <TextInput
+            value={form.valueUsd}
+            inputMode="decimal"
+            placeholder="Leave empty when unknown"
+            onChange={(event) => set({ valueUsd: event.target.value })}
+          />
+        </label>
+      </div>
       <label className={styles.field}>
         <span>Account (optional)</span>
         <Select value={form.accountId} onChange={(event) => set({ accountId: event.target.value })}>
@@ -286,7 +287,8 @@ function FlowForm({
         <span>Note</span>
         <TextArea
           value={form.note}
-          rows={3}
+          rows={2}
+          placeholder="Optional notes"
           onChange={(event) => set({ note: event.target.value })}
         />
       </label>
