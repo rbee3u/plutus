@@ -641,15 +641,7 @@ func (s *Service) Points(ctx context.Context, p PortfolioContext, from, to time.
 	default:
 		return nil, ErrInvalid
 	}
-	rows, err := s.q.ListValuationPointsBetween(ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
-	if err != nil {
-		return nil, err
-	}
-	points, err := pointsFromRows(rows)
-	if err != nil {
-		return nil, err
-	}
-	return sample(points, granularity, p.location()), nil
+	return s.pointSeries(ctx, p, from, to, granularity)
 }
 
 func sample(points []Point, granularity string, loc *time.Location) []Point {

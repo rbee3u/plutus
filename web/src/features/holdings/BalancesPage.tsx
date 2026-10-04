@@ -100,14 +100,14 @@ export function BalancesPage() {
               ? {
                   ...column,
                   headerContent: (
-                    <HoldingsFilterHeader label="Symbol" filterKey="symbol" filters={filters} />
+                    <HoldingsFilterHeader label="Asset" filterKey="symbol" filters={filters} />
                   ),
                 }
               : column,
           ),
         ]}
         rows={(data?.items ?? []).map((item) => ({
-          ...balanceRow(item),
+          ...balanceRow(item, data?.context.timezone, data?.issues),
           platform: platformLabel(filters.platforms.data?.items, item.platform),
           identityName: item.identityName,
           accountName: item.accountName,

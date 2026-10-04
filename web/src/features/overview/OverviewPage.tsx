@@ -2,7 +2,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import type { EChartsCoreOption } from "echarts/core";
 import { useMemo } from "react";
 import { useParams } from "react-router";
-import type { CollectionCycle, GroupTotal, Overview } from "@/api/generated/types.gen";
+import type { CollectionCycle, Overview } from "@/api/generated/types.gen";
 import {
   chartNumber,
   formatAmount,
@@ -16,7 +16,7 @@ import { NO_POINT } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
-import { DataTable, type DataRow } from "@/shared/ui/DataTable";
+import { HoldingsTree } from "@/features/holdings/TreePage";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { useCollectNow, isTerminalStatus } from "@/features/overview/useCollectNow";
@@ -98,6 +98,11 @@ export function OverviewPage() {
           void query.refetch();
         }}
       />
+      {query.isFetching && overview ? (
+        <p className={styles.muted} role="status">
+          Updating the latest Valuation Point.
+        </p>
+      ) : null}
       {overview ? (
         <>
           {point ? (
@@ -137,37 +142,18 @@ export function OverviewPage() {
           )}
           {point ? (
             <>
-              <div className={styles.panelGrid}>
-                <section className={styles.panel}>
-                  <h2>By platform</h2>
-                  <DataTable
-                    caption="Value per Platform at the latest point"
-                    columns={GROUP_COLUMNS}
-                    rows={overview.byPlatform.map(groupRow)}
-                    empty="No Platform totals yet. Totals appear after the first Collection Cycle."
-                  />
-                </section>
-                <section className={styles.panel}>
-                  <h2>By identity</h2>
-                  <DataTable
-                    caption="Value per Identity at the latest point"
-                    columns={GROUP_COLUMNS}
-                    rows={overview.byIdentity.map(groupRow)}
-                    empty="No Identity totals yet. Add an Identity, enable its connection, and collect."
-                  />
-                </section>
-              </div>
               <ChartBlock
                 title="Recent Valuation Points"
                 summary="Portfolio total at each recent Valuation Point, incomplete points included as reported. History lists every point."
                 option={sparklineOption}
                 empty="Fewer than two Valuation Points so far. Each Collection Cycle adds one."
               />
+              <HoldingsTree portfolioId={portfolioId} tree={overview.tree} />
             </>
           ) : null}
           {point ? (
             <IssuesPanel
-              issues={overview.issues}
+              issues={overview.tree.issues}
               empty="No issues at the latest Valuation Point."
             />
           ) : null}
@@ -175,23 +161,6 @@ export function OverviewPage() {
       ) : null}
     </section>
   );
-}
-
-const GROUP_COLUMNS = [
-  { key: "label", header: "Group" },
-  { key: "valueUsd", header: "Value (USD)", numeric: true },
-  { key: "accountCount", header: "Accounts", numeric: true },
-  { key: "completeness", header: "Completeness" },
-];
-
-function groupRow(group: GroupTotal): DataRow {
-  return {
-    id: group.key,
-    label: group.label,
-    valueUsd: formatAmount(group.valueUsd),
-    accountCount: formatCount(group.accountCount),
-    completeness: <CompletenessBadge value={group.completeness} />,
-  };
 }
 
 /** What is off about the accounts, or where they stand when nothing is. */

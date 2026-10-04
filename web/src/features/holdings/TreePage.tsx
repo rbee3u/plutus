@@ -1,254 +1,137 @@
-import { NumericText } from "@/shared/ui/NumericText";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { Fragment, useState } from "react";
-import { useParams } from "react-router";
-import { getHoldingsTree } from "@/api/generated/sdk.gen";
-import type { AccountValuation } from "@/api/generated/types.gen";
+import { useId, useState, type ReactNode } from "react";
+import type { HoldingsTree as Tree } from "@/api/generated/types.gen";
 import { AccountDetail } from "@/features/holdings/AccountDetail";
-import { formatAmount, formatUsd, formatCount } from "@/shared/lib/amount";
-import { formatInstant } from "@/shared/lib/datetime";
+import { formatAmount } from "@/shared/lib/amount";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
-import { NO_POINT } from "@/shared/lib/text";
-import { AccountHealthBadges, CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
-import { ContextSummary } from "@/shared/ui/ContextSummary";
-import { IconButton } from "@/shared/ui/IconButton";
-import { isOwnControl } from "@/shared/ui/DataTable";
-import { IssuesPanel } from "@/shared/ui/IssueList";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/features/pages.module.css";
 
-const COLUMN_COUNT = 5;
-
-function count(n: number, singular: string, plural: string): string {
-  return `${formatCount(n)} ${n === 1 ? singular : plural}`;
-}
-
-export function TreePage() {
-  const { portfolioId = "" } = useParams();
-  const { userId, redirect } = useSessionScope();
+export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree: Tree }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const query = useQuery({
-    queryKey: ["holdings-tree", userId, portfolioId],
-    enabled: Boolean(userId && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(await getHoldingsTree({ path: { portfolioId } }), redirect),
-  });
-  const tree = query.data;
-  const timezone = tree?.context.timezone;
+  const titleId = useId();
 
-  function toggle(accountId: string) {
+  function toggle(key: string) {
     setExpanded((current) => {
       const next = new Set(current);
-      if (next.has(accountId)) {
-        next.delete(accountId);
-      } else {
-        next.add(accountId);
-      }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
 
   return (
-    <section className={styles.wide}>
-      <p className={styles.lead}>
-        Values at the latest Valuation Point. Expand an account for the balances and positions of
-        its current Account Report.
+    <section className={styles.panel} aria-labelledby={titleId}>
+      <h2 id={titleId}>Holdings tree</h2>
+      <p className={styles.muted}>
+        Expand an Identity to see its Accounts, then an Account for its Balances and positions.
       </p>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(tree)}
-        busy={query.isFetching}
-        fallback="Holdings could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
-      {query.isPending && !tree ? <p className={styles.muted}>Loading holdings.</p> : null}
-      {tree && !tree.context.pointId ? <p className={styles.notice}>{NO_POINT}</p> : null}
-      {tree?.context.pointId ? (
-        <>
-          <ContextSummary context={tree.context} />
-          <p className={styles.totalRow}>
-            <span>Total</span>
-            <span className={styles.totalValue}>
-              <NumericText>{formatUsd(tree.totalUsd)}</NumericText>
-            </span>
-            {tree.completeness === "incomplete" ? (
-              <CompletenessBadge value={tree.completeness} />
-            ) : null}
-          </p>
-          <div className={styles.tableWrap}>
-            <table>
-              <caption className={styles.srOnly}>
-                Holdings tree at the latest Valuation Point
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col" className={styles.numeric}>
-                    Value (USD)
-                  </th>
-                  <th scope="col">Method</th>
-                  <th scope="col">Report observed</th>
-                  <th scope="col">
-                    <span className={styles.srOnly}>Details</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tree.platforms.length === 0 ? (
-                  <tr>
-                    <td colSpan={COLUMN_COUNT}>
-                      No accounts inside the boundary yet. Add an Identity, select its account
-                      types, enable the connection, and run a Collection Cycle.
-                    </td>
-                  </tr>
-                ) : null}
-                {tree.platforms.map((platform) => (
-                  <Fragment key={platform.platform}>
-                    <tr className={styles.treePlatform}>
-                      <td>
-                        <span className={styles.nameHeader}>
-                          <span>{platform.label}</span>
-                          <span className={styles.cellMeta}>
-                            {count(platform.identities.length, "identity", "identities")}
-                          </span>
-                          {platform.completeness === "incomplete" ? (
-                            <CompletenessBadge value={platform.completeness} />
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className={styles.numeric}>
-                        <NumericText>{formatAmount(platform.valueUsd)}</NumericText>
-                      </td>
-                      <td colSpan={COLUMN_COUNT - 2} />
-                    </tr>
-                    {platform.identities.map((identity) => (
-                      <Fragment key={identity.id}>
-                        <tr className={styles.treeIdentity}>
-                          <td>
-                            <span className={styles.cellStack}>
-                              <span className={styles.nameHeader}>
-                                <strong>{identity.displayName}</strong>{" "}
-                                <span className={styles.cellMeta}>
-                                  {count(identity.accounts.length, "account", "accounts")}
-                                </span>
-                                {identity.completeness === "incomplete" ? (
-                                  <CompletenessBadge value={identity.completeness} />
-                                ) : null}
-                              </span>
-                              <span className={styles.cellMeta}>
-                                {identity.status === "archived" ? "archived · " : ""}
-                                connection{" "}
-                                {identity.connectionStatus === "enabled" ? (
-                                  "enabled"
-                                ) : (
-                                  <StatusBadge value={identity.connectionStatus} />
-                                )}
-                              </span>
-                            </span>
-                          </td>
-                          <td className={styles.numeric}>
-                            <NumericText>{formatAmount(identity.valueUsd)}</NumericText>
-                          </td>
-                          <td colSpan={COLUMN_COUNT - 2} />
-                        </tr>
-                        {identity.accounts.map((account) => (
-                          <AccountRows
-                            key={account.accountId}
-                            portfolioId={portfolioId}
-                            account={account}
-                            timezone={timezone}
-                            open={expanded.has(account.accountId)}
-                            onToggle={() => toggle(account.accountId)}
-                          />
-                        ))}
-                      </Fragment>
-                    ))}
-                  </Fragment>
+      {tree.platforms.length === 0 ? (
+        <p className={styles.muted}>
+          No accounts inside the boundary yet. Add an Identity, select its account types, enable the
+          connection, and run a Collection Cycle.
+        </p>
+      ) : (
+        <ul
+          className={styles.holdingsTree}
+          aria-label="Holdings tree at the latest Valuation Point"
+        >
+          {tree.platforms.map((platform) => (
+            <TreeNode
+              key={platform.platform}
+              name={platform.label}
+              value={platform.valueUsd}
+              level="platform"
+              open={!expanded.has(`platform:${platform.platform}`)}
+              onToggle={() => toggle(`platform:${platform.platform}`)}
+            >
+              <ul className={styles.treeChildren}>
+                {platform.identities.map((identity) => (
+                  <TreeNode
+                    key={identity.id}
+                    name={identity.displayName}
+                    value={identity.valueUsd}
+                    level="identity"
+                    open={expanded.has(`identity:${identity.id}`)}
+                    onToggle={() => toggle(`identity:${identity.id}`)}
+                  >
+                    <ul className={styles.treeChildren}>
+                      {identity.accounts.map((account) => (
+                        <TreeNode
+                          key={account.accountId}
+                          name={account.accountName}
+                          actionName={`balances and positions for ${account.accountName}`}
+                          value={account.valueUsd}
+                          level="account"
+                          open={expanded.has(`account:${account.accountId}`)}
+                          onToggle={() => toggle(`account:${account.accountId}`)}
+                        >
+                          <div className={`${styles.treeChildren} ${styles.treeAccountDetail}`}>
+                            <AccountDetail
+                              portfolioId={portfolioId}
+                              account={account}
+                              pointId={tree.context.pointId ?? ""}
+                              timezone={tree.context.timezone}
+                            />
+                          </div>
+                        </TreeNode>
+                      ))}
+                    </ul>
+                  </TreeNode>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <IssuesPanel issues={tree.issues} empty="No issues at the latest Valuation Point." />
-        </>
-      ) : null}
+              </ul>
+            </TreeNode>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
 
-function AccountRows({
-  portfolioId,
-  account,
-  timezone,
+/** Native disclosure buttons keep each level operable without ARIA tree navigation. */
+function TreeNode({
+  name,
+  actionName = name,
+  value,
+  level,
   open,
   onToggle,
+  children,
 }: {
-  portfolioId: string;
-  account: AccountValuation;
-  timezone?: string;
+  name: string;
+  actionName?: string;
+  value: string | null | undefined;
+  level: "platform" | "identity" | "account";
   open: boolean;
   onToggle: () => void;
+  children: ReactNode;
 }) {
-  const detailId = `account-detail-${account.accountId}`;
+  const contentId = useId();
+  const amount = formatAmount(value);
   return (
-    <>
-      <tr
-        className={`${styles.treeAccount} ${open ? styles.openRow : styles.clickRow}`}
-        onClick={(event) => {
-          if (!isOwnControl(event.target)) {
-            onToggle();
-          }
-        }}
+    <li className={styles.treeNode}>
+      <button
+        type="button"
+        className={`${styles.treeNodeButton} ${level === "platform" ? styles.treePlatform : level === "identity" ? styles.treeIdentity : ""}`}
+        aria-label={`${open ? "Collapse" : "Expand"} ${actionName}`}
+        aria-describedby={`${contentId}-value`}
+        aria-expanded={open}
+        aria-controls={open ? contentId : undefined}
+        onClick={onToggle}
       >
-        <td>
-          <span className={styles.cellStack}>
-            <span className={styles.nameHeader}>
-              <span>{account.accountName}</span>
-              <AccountHealthBadges
-                status={account.status}
-                freshness={account.freshness}
-                completeness={account.completeness}
-                errorClass={account.errorClass}
-                errorDetail={account.errorDetail}
-              />
-            </span>
-            {account.selected ? null : <span className={styles.cellMeta}>not selected</span>}
+        <ChevronRight
+          size={iconSize.sm}
+          aria-hidden="true"
+          className={open ? styles.chevronOpen : styles.chevron}
+        />
+        <span className={styles.treeNodeText}>
+          <span className={styles.treeNodeName}>{name}</span>
+          <span className={styles.treeNodeValue} id={`${contentId}-value`}>
+            <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
           </span>
-        </td>
-        <td className={styles.numeric}>
-          <NumericText>{formatAmount(account.valueUsd)}</NumericText>
-        </td>
-        <td>{account.method}</td>
-        <td>{formatInstant(account.reportObservedAt, timezone)}</td>
-        <td>
-          <IconButton
-            label={
-              open
-                ? `Collapse balances and positions for ${account.accountName}`
-                : `Expand balances and positions for ${account.accountName}`
-            }
-            aria-expanded={open}
-            aria-controls={open ? detailId : undefined}
-            onClick={onToggle}
-          >
-            <ChevronRight
-              size={iconSize.sm}
-              aria-hidden="true"
-              className={open ? styles.chevronOpen : styles.chevron}
-            />
-          </IconButton>
-        </td>
-      </tr>
-      {open ? (
-        <tr className={styles.detailRow} id={detailId}>
-          <td colSpan={COLUMN_COUNT}>
-            <AccountDetail portfolioId={portfolioId} account={account} />
-          </td>
-        </tr>
-      ) : null}
-    </>
+        </span>
+      </button>
+      {open ? <div id={contentId}>{children}</div> : null}
+    </li>
   );
 }

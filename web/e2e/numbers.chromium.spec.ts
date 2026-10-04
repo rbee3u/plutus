@@ -1,3 +1,4 @@
+import { overviewTreeFixture } from "./fixtures/overviewTree";
 import { expect, test, type Page } from "@playwright/test";
 import type {
   CapitalFlow,
@@ -30,7 +31,7 @@ const point: ValuationPointSummary = {
   boundaryWithdrawalUsd: "0",
 };
 const overview: Overview = {
-  context: { portfolioId, timezone: "UTC" },
+  context: { portfolioId, timezone: "UTC", pointId: point.id },
   point,
   totalUsd: point.totalUsd,
   completeness: "complete",
@@ -87,6 +88,7 @@ async function mockApi(page: Page) {
       return route.fulfill({ json: { csrfToken: "offline-check" } });
     if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
     if (path === `/api/v1/portfolios/${portfolioId}`) return route.fulfill({ json: portfolio });
+    if (path.endsWith("/tree")) return route.fulfill({ json: overviewTreeFixture(overview) });
     if (path.endsWith("/overview")) return route.fulfill({ json: overview });
     if (
       path === "/api/v1/platforms" ||
@@ -117,8 +119,13 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
     '- article:\n  - heading "Total value" [level=2]\n  - paragraph: 0.00000444 USD\n  - paragraph: complete',
   );
   await expect(
-    page.getByRole("table").first().getByRole("cell", { name: "0.00000444", exact: true }),
-  ).toHaveCount(1);
+    page
+      .getByRole("button", { name: "Collapse OKX", exact: true })
+      .locator('span[aria-hidden="true"]'),
+  ).toHaveText("$0.0₅444");
+  await expect(
+    page.getByRole("button", { name: "Collapse OKX", exact: true }),
+  ).toHaveAccessibleDescription("$0.00000444");
   await expect(
     page
       .getByRole("article")

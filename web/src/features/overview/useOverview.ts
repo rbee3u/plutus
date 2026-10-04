@@ -1,18 +1,32 @@
-import { getOverview } from "@/api/generated/sdk.gen";
-import type { Overview } from "@/api/generated/types.gen";
+import { getOverview, getHoldingsTree } from "@/api/generated/sdk.gen";
+import type { Overview, HoldingsTree } from "@/api/generated/types.gen";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { useQuery } from "@tanstack/react-query";
 
-const OVERVIEW_REFETCH_MS = 5000;
-
-/** The latest Valuation Point summary; polls so a finished Collection Cycle shows up. */
+/** Publish the summary and ownership tree only when they describe the same point. */
 export function useOverview(portfolioId: string) {
   const { userId, redirect } = useSessionScope();
   return useQuery({
     queryKey: ["overview", userId, portfolioId],
     enabled: Boolean(userId && portfolioId),
-    refetchInterval: OVERVIEW_REFETCH_MS,
-    queryFn: async (): Promise<Overview> =>
-      unwrapOrRedirect(await getOverview({ path: { portfolioId } }), redirect),
+    refetchOnReconnect: false,
+    queryFn: async (): Promise<Overview & { tree: HoldingsTree }> => {
+      const [overview, tree] = await Promise.all([
+        getOverview({ path: { portfolioId } }).then((result) => unwrapOrRedirect(result, redirect)),
+        getHoldingsTree({ path: { portfolioId } }).then((result) =>
+          unwrapOrRedirect(result, redirect),
+        ),
+      ]);
+      if (
+        (overview.context.pointId ?? null) !== (tree.context.pointId ?? null) ||
+        (overview.context.pointId &&
+          (overview.totalUsd !== tree.totalUsd || overview.completeness !== tree.completeness))
+      ) {
+        throw new Error(
+          "Overview and holdings changed while loading. Retry to read a consistent Valuation Point.",
+        );
+      }
+      return { ...overview, tree };
+    },
   });
 }

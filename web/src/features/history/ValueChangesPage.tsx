@@ -2,8 +2,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import type { EChartsCoreOption } from "echarts/core";
 import { type FormEvent, useMemo, useState } from "react";
-import { useParams } from "react-router";
-import { getCustomValueChange, listValueChanges } from "@/api/generated/sdk.gen";
+import { getCustomValueChange, listValueChanges, getHistoryWindow } from "@/api/generated/sdk.gen";
 import type { ValueChange } from "@/api/generated/types.gen";
 import {
   BOUNDARY_COLUMNS,
@@ -11,9 +10,9 @@ import {
   boundaryEventRow,
 } from "@/features/history/ValuationPointsPage";
 import { chartNumber, formatAmount, formatUsd } from "@/shared/lib/amount";
-import { formatInstant, fromDatetimeLocalValue, isoFromLocalInput } from "@/shared/lib/datetime";
-import { readChoice, useSearchState } from "@/shared/lib/searchParams";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { formatInstant } from "@/shared/lib/datetime";
+import { readChoice } from "@/shared/lib/searchParams";
+import { unwrapOrRedirect } from "@/shared/lib/session";
 import { capitalize, reasonText } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
@@ -21,6 +20,8 @@ import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { HistoryFilters, HistoryPager } from "./HistoryFilters";
+import { useHistoryWindow, useHistoryPager } from "./useHistoryWindow";
 import styles from "@/features/pages.module.css";
 
 interface CustomRange {
@@ -29,12 +30,11 @@ interface CustomRange {
 }
 
 export function ValueChangesPage() {
-  const { portfolioId = "" } = useParams();
-  const { userId, redirect } = useSessionScope();
-  const { params, update } = useSearchState();
-  const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, "month");
-  const from = params.get("from") ?? "";
-  const to = params.get("to") ?? "";
+  const history = useHistoryWindow();
+  const { portfolioId, userId, redirect, params, update, window } = history;
+  const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, history.defaultPeriod);
+  const from = window?.from;
+  const to = window?.to;
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
@@ -42,12 +42,12 @@ export function ValueChangesPage() {
 
   const changes = useQuery({
     queryKey: ["value-changes", userId, portfolioId, periodKind, from, to],
-    enabled: Boolean(userId && portfolioId),
+    enabled: Boolean(userId && portfolioId && window),
     queryFn: async () =>
       unwrapOrRedirect(
         await listValueChanges({
           path: { portfolioId },
-          query: { periodKind, from: isoFromLocalInput(from), to: isoFromLocalInput(to) },
+          query: { periodKind, from, to },
         }),
         redirect,
       ),
@@ -65,7 +65,9 @@ export function ValueChangesPage() {
       ),
   });
   const data = changes.data;
-  const timezone = data?.context.timezone;
+  const timezone = window?.context.timezone;
+  const changeItems = [...(data?.items ?? [])].reverse();
+  const pager = useHistoryPager("changes", changeItems.length);
 
   const chartOption = useMemo((): EChartsCoreOption | null => {
     const items = data?.items ?? [];
@@ -90,18 +92,17 @@ export function ValueChangesPage() {
     };
   }, [data]);
 
-  function submitCustom(event: FormEvent) {
+  async function submitCustom(event: FormEvent) {
     event.preventDefault();
     setCustomError(null);
     try {
-      const next = {
-        from: fromDatetimeLocalValue(customFrom),
-        to: fromDatetimeLocalValue(customTo),
-      };
-      if (next.from >= next.to) {
-        setCustomError("The end must be after the start.");
-        return;
-      }
+      const next = unwrapOrRedirect(
+        await getHistoryWindow({
+          path: { portfolioId },
+          query: { fromLocal: customFrom, toLocal: customTo },
+        }),
+        redirect,
+      );
       setRange(next);
     } catch (cause) {
       setCustomError(cause instanceof Error ? cause.message : "Enter a valid date and time.");
@@ -114,12 +115,13 @@ export function ValueChangesPage() {
         Value Change = end − start − contributions + withdrawals, with Boundary Events as implicit
         Capital Flows. A period missing a point stays blank, never zero.
       </p>
-      <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
+      <HistoryFilters state={history} />
+      <div className={styles.filters}>
         <label className={styles.field}>
           <span>Period</span>
           <Select
             value={periodKind}
-            onChange={(event) => update({ periodKind: event.target.value })}
+            onChange={(event) => update({ periodKind: event.target.value, changesOffset: "" })}
           >
             {PERIOD_KINDS.map((option) => (
               <option key={option} value={option}>
@@ -128,23 +130,11 @@ export function ValueChangesPage() {
             ))}
           </Select>
         </label>
-        <label className={styles.field}>
-          <span>From</span>
-          <TextInput
-            type="datetime-local"
-            value={from}
-            onChange={(event) => update({ from: event.target.value })}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>To</span>
-          <TextInput
-            type="datetime-local"
-            value={to}
-            onChange={(event) => update({ to: event.target.value })}
-          />
-        </label>
-      </form>
+      </div>
+      <p className={styles.muted}>
+        Calendar periods intersecting the selected range are calculated in full, not clipped to From
+        / To.
+      </p>
       <QueryRecovery
         error={changes.error}
         hasData={Boolean(data)}
@@ -164,7 +154,15 @@ export function ValueChangesPage() {
             empty="No comparable period yet. A bar appears once a period has a Valuation Point at both ends."
             emptyRows="No periods yet. Periods appear once the Portfolio has Valuation Points."
             columns={VALUE_CHANGE_COLUMNS}
-            rows={data.items.map((item) => valueChangeRow(item, timezone))}
+            rows={changeItems
+              .slice(pager.offset, pager.offset + pager.limit)
+              .map((item) => valueChangeRow(item, timezone))}
+          />
+          <HistoryPager
+            label="Value Changes"
+            pager={pager}
+            total={changeItems.length}
+            busy={changes.isFetching}
           />
         </>
       ) : null}
@@ -172,13 +170,19 @@ export function ValueChangesPage() {
         <h2>Custom range</h2>
         <p className={styles.muted}>
           Compares the last Valuation Point at or before each instant, with the Capital Flows and
-          Boundary Events between them.
+          Boundary Events between them. Dates use {timezone ?? "the Portfolio timezone"}.
         </p>
-        <form className={styles.rangeForm} onSubmit={submitCustom}>
+        <form
+          className={styles.rangeForm}
+          onSubmit={(event) => {
+            void submitCustom(event);
+          }}
+        >
           <label className={styles.field}>
             <span>From</span>
             <TextInput
               type="datetime-local"
+              step="1"
               value={customFrom}
               onChange={(event) => setCustomFrom(event.target.value)}
               required
@@ -188,6 +192,7 @@ export function ValueChangesPage() {
             <span>To</span>
             <TextInput
               type="datetime-local"
+              step="1"
               value={customTo}
               onChange={(event) => setCustomTo(event.target.value)}
               required

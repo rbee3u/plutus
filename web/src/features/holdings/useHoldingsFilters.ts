@@ -1,3 +1,5 @@
+import { useLocation } from "react-router";
+import { useHoldingsNavigation } from "./HoldingsNavigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Identity } from "@/api/generated/types.gen";
 import { useIdentities } from "@/features/data/useIdentities";
@@ -40,9 +42,11 @@ export function holdingsCandidates(values: HoldingsFilterValues, identities: Fil
   };
 }
 
-/** URL-backed filters with a search draft that survives requests and position tabs. */
+/** URL-backed filters with a search draft saved before internal navigation. */
 export function useHoldingsFilters(portfolioId: string) {
   const { params, update } = useSearchState();
+  const location = useLocation();
+  const navigation = useHoldingsNavigation();
   const identities = useIdentities(portfolioId);
   const platforms = usePlatforms();
   const values: HoldingsFilterValues = {
@@ -92,6 +96,30 @@ export function useHoldingsFilters(portfolioId: string) {
     return cancelTimer;
   }, [values.symbol, cancelTimer]);
 
+  const search = params.toString();
+  useEffect(
+    () =>
+      navigation.register({
+        pathname: location.pathname,
+        search: () => {
+          cancelTimer();
+          const next = new URLSearchParams(search);
+          if (pending.current !== null) {
+            const symbol = pending.current.trim();
+            if (symbol) next.set("symbol", symbol);
+            else next.delete("symbol");
+            next.delete("offset");
+          }
+          pending.current = null;
+          composing.current = false;
+          setOpen(null);
+          const value = next.toString();
+          return value ? `?${value}` : "";
+        },
+      }),
+    [cancelTimer, location.pathname, navigation, search],
+  );
+
   function editSymbol(value: string) {
     setDraft({ source: values.symbol, value });
     pending.current = value;
@@ -134,18 +162,6 @@ export function useHoldingsFilters(portfolioId: string) {
     toggle: (key: HoldingsFilterKey) => {
       flush();
       setOpen((current) => (current === key ? null : key));
-    },
-    switchKind: (kind: string) => {
-      cancelTimer();
-      const symbol = pending.current;
-      pending.current = null;
-      composing.current = false;
-      update({
-        ...(symbol === null ? {} : { symbol: symbol.trim() }),
-        kind: kind === "dual_investment" ? kind : "",
-        offset: "",
-      });
-      setOpen(null);
     },
     reset: () => change({ platform: "", identityId: "", symbol: "" }),
     hasFilters: Boolean(values.platform || values.identityId || values.symbol || symbolDraft),

@@ -7,11 +7,13 @@ export function Pager({
   limit,
   total,
   onChange,
+  busy = false,
 }: {
   offset: number;
   limit: number;
   total: number;
   onChange: (offset: number) => void;
+  busy?: boolean;
 }) {
   const next = offset + limit;
   return (
@@ -19,7 +21,7 @@ export function Pager({
       <ActionButton
         type="button"
         tone="ghost"
-        disabled={offset <= 0}
+        disabled={busy || offset <= 0}
         onClick={() => onChange(Math.max(0, offset - limit))}
       >
         Previous
@@ -32,7 +34,7 @@ export function Pager({
       <ActionButton
         type="button"
         tone="ghost"
-        disabled={next >= total}
+        disabled={busy || next >= total}
         onClick={() => onChange(next)}
       >
         Next

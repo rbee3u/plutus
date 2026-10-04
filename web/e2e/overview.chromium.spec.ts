@@ -1,0 +1,546 @@
+import { expect, test, type Page } from "@playwright/test";
+import type {
+  AccountValuation,
+  BalanceRow,
+  DualPositionRow,
+  Overview,
+  PositionRow,
+  HoldingsTree,
+} from "../src/api/generated/types.gen";
+
+const portfolioId = "00000000-0000-7000-8000-000000000001";
+const observed = "2026-10-04T00:00:00Z";
+async function fixture(page: Page) {
+  const state = {
+    point: "point-1" as string | null,
+    value: "100",
+    treePoint: undefined as string | undefined,
+    detailReport: undefined as string | undefined,
+    failTree: false,
+    failPositions: false,
+    holdPositions: false,
+    emptyTree: false,
+    stale: false,
+    unknown: false,
+    ownerName: "Owner",
+    requests: [] as string[],
+    positions: [] as PositionRow[],
+    dual: [] as DualPositionRow[],
+  };
+  const context = () => ({
+    portfolioId,
+    timezone: "UTC",
+    pointId: state.point,
+    evaluatedAt: observed,
+  });
+  const account = (dual = false): AccountValuation => ({
+    accountId: dual ? "dual" : "spot",
+    accountName: dual ? "Dual Account" : "Spot",
+    accountType: dual ? "dual_investment" : "spot",
+    reportId: `${state.point}-${dual ? "dual" : "spot"}`,
+    identityId: "owner",
+    identityName: state.ownerName,
+    platform: "binance",
+    selected: true,
+    status: state.stale || (state.unknown && !dual) ? "failed" : "ok",
+    method: state.unknown && !dual ? "missing" : "reported",
+    freshness: state.stale ? "stale" : "fresh",
+    completeness: state.unknown && !dual ? "incomplete" : "complete",
+    reportObservedAt: observed,
+    valueUsd: dual ? "0" : state.unknown ? null : state.value,
+    equity: dual ? "0" : state.unknown ? null : state.value,
+    omitted: [],
+  });
+  const overview = (): Overview => ({
+    context: context(),
+    point: state.point
+      ? {
+          id: state.point,
+          jobId: "job",
+          evaluatedAt: observed,
+          totalUsd: state.value,
+          completeness: "complete",
+          accountCount: 2,
+          staleAccountCount: 0,
+          incompleteAccountCount: 0,
+          boundaryContributionUsd: "0",
+          boundaryWithdrawalUsd: "0",
+        }
+      : null,
+    totalUsd: state.point ? state.value : null,
+    completeness: "complete",
+    accountCount: 2,
+    staleAccountCount: 0,
+    incompleteAccountCount: 0,
+    byPlatform: [],
+    byIdentity: [],
+    issues: [],
+    sparkline: [],
+  });
+  const tree = (): HoldingsTree => ({
+    context: { ...context(), pointId: state.treePoint ?? state.point },
+    totalUsd: state.point ? state.value : null,
+    completeness: state.point ? "complete" : "incomplete",
+    issues: [
+      {
+        code: "test_omission",
+        accountName: "Spot",
+        detail: "Named omission remains visible while Accounts are folded.",
+      },
+    ],
+    platforms: state.emptyTree
+      ? []
+      : [
+          {
+            platform: "binance",
+            label: "Binance",
+            valueUsd: state.value,
+            completeness: "complete",
+            identities: [
+              {
+                id: "owner",
+                displayName: state.ownerName,
+                status: "enabled",
+                connectionStatus: "enabled",
+                valueUsd: state.value,
+                completeness: "complete",
+                accounts: [account(), account(true)],
+              },
+            ],
+          },
+        ],
+  });
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    state.requests.push(`${request.method()} ${path}`);
+    if (path.endsWith("/auth/me"))
+      return route.fulfill({
+        json: { user: { id: "user", username: "overview", status: "active" }, sessionCount: 1 },
+      });
+    if (path.endsWith("/auth/csrf")) return route.fulfill({ json: { csrfToken: "test" } });
+    const portfolio = {
+      id: portfolioId,
+      name: "Overview check",
+      timezone: "UTC",
+      collectionIntervalSeconds: 3600,
+      undeletable: true,
+      version: 1,
+      createdAt: observed,
+      updatedAt: observed,
+    };
+    if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
+    if (path === `/api/v1/portfolios/${portfolioId}`)
+      return route.fulfill({ json: { item: portfolio } });
+    if (path.endsWith("/overview")) return route.fulfill({ json: overview() });
+    if (path.endsWith("/tree"))
+      return route.fulfill(
+        state.failTree ? { status: 503, json: { detail: "Tree unavailable" } } : { json: tree() },
+      );
+    if (path.includes("/accounts/")) {
+      const dual = path.includes("/accounts/dual/");
+      const a = account(dual);
+      if (state.detailReport) a.reportId = state.detailReport;
+      if (path.endsWith("/positions") || path.endsWith("/dual-positions")) {
+        if (state.holdPositions) await new Promise((resolve) => setTimeout(resolve, 500));
+        if (state.failPositions)
+          return route.fulfill({ status: 503, json: { detail: "Positions unavailable" } });
+        return route.fulfill({
+          json: {
+            context: context(),
+            account: a,
+            items: dual ? state.dual : state.positions,
+            issues: [],
+          },
+        });
+      }
+      const balance: BalanceRow = {
+        accountId: a.accountId,
+        accountName: a.accountName,
+        accountType: a.accountType,
+        identityId: "owner",
+        identityName: state.ownerName,
+        platform: "binance",
+        listingId: "usd",
+        symbol: "USD",
+        assetSymbol: "USD",
+        equity: a.equity!,
+        equityUsd: a.equity,
+        priceUsd: "1",
+        noPrice: false,
+        freshness: a.freshness,
+        reportObservedAt: observed,
+      };
+      return route.fulfill({
+        json: { context: context(), account: a, items: [balance], issues: [] },
+      });
+    }
+    const cycle = {
+      id: "cycle",
+      portfolioId,
+      trigger: "manual",
+      createdAt: observed,
+      startedAt: observed,
+      attempts: 1,
+    };
+    if (path.endsWith("/collection-cycles") && request.method() === "POST")
+      return route.fulfill({ status: 202, json: { ...cycle, status: "queued" } });
+    if (path.endsWith("/collection-cycles/cycle")) {
+      state.point = "point-2";
+      state.value = "200";
+      return route.fulfill({
+        json: {
+          cycle: { ...cycle, status: "succeeded", finishedAt: observed, point: overview().point },
+          runs: [],
+          issues: [],
+        },
+      });
+    }
+    return route.fulfill({
+      json: {
+        context: context(),
+        items: [],
+        page: { offset: 0, limit: 50, total: 0 },
+        totalUsd: "0",
+        completeness: "complete",
+        issues: [],
+      },
+    });
+  });
+  return state;
+}
+
+async function openSpot(page: Page) {
+  await page.getByRole("button", { name: "Expand Owner", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Expand balances and positions for Spot", exact: true })
+    .click();
+}
+
+test("Overview replaces groups with an Identity-depth Tree and accessible drilldown", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  await page.goto(`/p/${portfolioId}/overview`);
+  await expect(page.getByRole("heading", { name: /^By / })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Holdings tree", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Collapse Binance" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Expand Owner", exact: true })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await expect(
+    page.getByRole("button", { name: "Expand balances and positions for Spot" }),
+  ).toHaveCount(0);
+  expect(state.requests.filter((path) => path.includes("/accounts/"))).toHaveLength(0);
+  await expect(
+    page.getByText("Named omission remains visible while Accounts are folded."),
+  ).toBeVisible();
+  const identity = page.getByRole("button", { name: "Expand Owner", exact: true });
+  await identity.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("USD");
+  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Balances", exact: true })).toHaveCount(1);
+  await page.getByRole("button", { name: "Collapse Binance" }).click();
+  await expect(page.getByRole("button", { name: "Collapse Owner" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand Binance" }).click();
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Expand balances and positions for Dual Account" })
+    .click();
+  await expect
+    .poll(() => state.requests.some((path) => path.includes("/accounts/dual/dual-positions")))
+    .toBe(true);
+  await expect(page.getByRole("heading", { name: "Dual Investment", exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Holdings", exact: true }).click();
+  await expect(page).toHaveURL(`/p/${portfolioId}/holdings/balances`);
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Expand Owner", exact: true })).toBeVisible();
+});
+
+test("manual collection updates both totals and open details without display polling", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  await page.clock.install();
+  await page.goto(`/p/${portfolioId}/overview`);
+  await openSpot(page);
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("100");
+  const requests = state.requests.filter((path) => /\/(overview|tree)$/.test(path)).length;
+  await page.clock.runFor(16000);
+  expect(state.requests.filter((path) => /\/(overview|tree)$/.test(path))).toHaveLength(requests);
+  await page.getByRole("button", { name: "Collect now", exact: true }).click();
+  await page.clock.runFor(2500);
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("200");
+  await expect(page.getByRole("button", { name: "Collapse Owner", exact: true })).toBeVisible();
+  await expect(page.getByRole("article").first()).toContainText("200");
+  expect(state.requests.filter((path) => path.startsWith("POST"))).toHaveLength(1);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Expand Owner", exact: true })).toBeVisible();
+  expect(state.requests.filter((path) => path.startsWith("POST"))).toHaveLength(1);
+});
+
+test("a mismatched Tree is rejected and retry restores one consistent point", async ({ page }) => {
+  const state = await fixture(page);
+  state.treePoint = "other";
+  await page.goto(`/p/${portfolioId}/overview`);
+  await expect(page.getByRole("alert")).toContainText("changed while loading");
+  await expect(page.getByRole("article")).toHaveCount(0);
+  state.treePoint = undefined;
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Holdings tree", exact: true })).toBeVisible();
+  state.failTree = true;
+  await page.getByRole("button", { name: "Collect now", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Showing the last successful result");
+  await expect(page.getByRole("article").first()).toContainText("100");
+  await expect(page.getByRole("button", { name: "Collapse Binance" })).toContainText("100");
+  state.failTree = false;
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByRole("article").first()).toContainText("200");
+});
+
+test("empty, loading, failed and newer Account Reports are not treated as empty positions", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.holdPositions = true;
+  state.failPositions = true;
+  await page.goto(`/p/${portfolioId}/overview`);
+  await openSpot(page);
+  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
+  await expect(page.getByText("Loading positions.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Positions unavailable");
+  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
+  state.failPositions = false;
+  state.holdPositions = false;
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Collapse balances and positions for Spot" }).click();
+  state.detailReport = "newer-report";
+  await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
+  await expect(page.getByRole("alert").first()).toContainText("Reload the page");
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("100");
+  await expect(page.getByRole("alert").first()).toContainText("Showing the last successful result");
+});
+
+for (const noPoint of [false, true]) {
+  test(`Overview handles ${noPoint ? "no point" : "empty Tree"} without duplicate notices`, async ({
+    page,
+  }) => {
+    const state = await fixture(page);
+    state.emptyTree = true;
+    if (noPoint) state.point = null;
+    await page.goto(`/p/${portfolioId}/overview`);
+    await expect(page.getByRole("button", { name: "Collect now" })).toBeVisible();
+    if (noPoint) {
+      await expect(page.getByRole("alert")).toHaveCount(0);
+      await expect(page.getByRole("article")).toHaveCount(0);
+    } else
+      await expect(page.getByRole("region", { name: "Holdings tree", exact: true })).toContainText(
+        "No accounts inside the boundary yet.",
+      );
+  });
+}
+
+for (const tab of ["cycles", "jobs"]) {
+  test(`Activity ${tab} list does not poll`, async ({ page }) => {
+    const state = await fixture(page);
+    await page.clock.install();
+    await page.goto(`/p/${portfolioId}/data/activity?tab=${tab}`);
+    await expect(page.getByRole("table")).toBeVisible();
+    const path = tab === "cycles" ? "/collection-cycles" : "/jobs";
+    await expect
+      .poll(() => state.requests.filter((request) => request.endsWith(path)).length)
+      .toBe(1);
+    await page.clock.runFor(16000);
+    expect(state.requests.filter((request) => request.endsWith(path))).toHaveLength(1);
+  });
+}
+
+test("stale Futures and Dual Investment remain visible and a failed initial Balance read stays unknown", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.stale = true;
+  state.positions = [
+    {
+      accountId: "spot",
+      accountName: "Spot",
+      accountType: "spot",
+      identityId: "owner",
+      identityName: state.ownerName,
+      platform: "binance",
+      platformPositionRef: "btc",
+      instrumentId: "btc",
+      symbol: "BTCUSDT",
+      kind: "linear_perpetual",
+      side: "long",
+      quantity: "1",
+      quantityUnit: "base",
+      baseSymbol: "BTC",
+      quoteSymbol: "USDT",
+      size: "1",
+      sizeSymbol: "BTC",
+      freshness: "stale",
+      reportObservedAt: observed,
+      issues: [{ code: "stale", detail: "Earlier successful report retained." }],
+    },
+  ];
+  state.dual = [
+    {
+      accountId: "dual",
+      accountName: "Dual Account",
+      accountType: "dual_investment",
+      identityId: "owner",
+      identityName: state.ownerName,
+      platform: "binance",
+      platformPositionRef: "subscription",
+      baseSymbol: "BTC",
+      quoteSymbol: "USDT",
+      investSymbol: "USDT",
+      principal: "100",
+      direction: "buy_low",
+      status: "running",
+      freshness: "stale",
+      reportObservedAt: observed,
+    },
+  ];
+  await page.goto(`/p/${portfolioId}/overview`);
+  await openSpot(page);
+  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Positions of Spot" })).toContainText("BTCUSDT");
+  await expect(page.getByRole("table", { name: "Positions of Spot" })).toContainText(/stale/i);
+  await page
+    .getByRole("button", { name: "Expand balances and positions for Dual Account" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Dual Investment", exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Dual Investment positions" })).toContainText(
+    "stale",
+  );
+  await page.reload();
+  state.detailReport = "newer-report";
+  await openSpot(page);
+  await expect(page.getByRole("alert").first()).toContainText("Reload the page");
+  await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText(
+    "Balances could not be loaded. Retry above.",
+  );
+  await expect(
+    page
+      .getByRole("table", { name: "Balances of Spot" })
+      .getByRole("cell", { name: "USD", exact: true }),
+  ).toHaveCount(0);
+});
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 375, height: 812 },
+]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`nested Account details stay contained at ${viewport.width}px in ${theme} mode`, async ({
+      page,
+    }) => {
+      const state = await fixture(page);
+      state.ownerName = `Owner-${"x".repeat(60)}`;
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+      await page.goto(`/p/${portfolioId}/overview`);
+      const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
+      await expect(tree.getByRole("table")).toHaveCount(0);
+      await expect(tree.getByRole("button", { name: "Collapse Binance" })).toHaveText(
+        "Binance$100",
+      );
+      await expect(tree).not.toContainText(/\d+ (identities|accounts)|connection enabled/);
+      await tree.getByRole("button", { name: `Expand ${state.ownerName}`, exact: true }).click();
+      const account = tree.getByRole("button", {
+        name: "Expand balances and positions for Spot",
+        exact: true,
+      });
+      // Clicking the visible name exercises the whole native disclosure button.
+      await account.getByText("Spot", { exact: true }).click();
+      const open = tree.getByRole("button", {
+        name: "Collapse balances and positions for Spot",
+        exact: true,
+      });
+      await expect(open).toHaveAttribute("aria-expanded", "true");
+      const balances = tree.getByRole("table", { name: "Balances of Spot" });
+      await expect(balances).toContainText("USD");
+      await expect(tree.getByText("Equity", { exact: true }).first()).toBeVisible();
+      await expect(tree.getByText("AdjEq", { exact: true })).toHaveCount(0);
+      const source = tree.locator("details");
+      await expect(source).not.toHaveAttribute("open");
+      await expect(tree.getByText("reported", { exact: true })).toBeHidden();
+      await source.locator("summary").focus();
+      await page.keyboard.press("Enter");
+      await expect(source).toHaveAttribute("open");
+      await expect(source).toContainText("Account value uses equity reported by the Platform.");
+      await expect(source).toContainText("2026-10-04 00:00");
+      const bounds = await open.boundingBox();
+      const wrapper = balances.locator("..");
+      const tableBounds = await wrapper.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(tableBounds).not.toBeNull();
+      expect(tableBounds!.x).toBeGreaterThan(bounds!.x);
+      expect(tableBounds!.x + tableBounds!.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      if (viewport.width < 900) {
+        await wrapper.evaluate((element) => {
+          element.scrollLeft = 150;
+        });
+        expect(await wrapper.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        ).toBe(true);
+      }
+      await open.focus();
+      await page.keyboard.press("Space");
+      await expect(balances).toHaveCount(0);
+      await expect(
+        tree.getByRole("button", { name: "Expand balances and positions for Spot" }),
+      ).toBeFocused();
+    });
+  }
+}
+
+test("unknown and stale valuations keep exceptions inside Account details", async ({ page }) => {
+  const state = await fixture(page);
+  state.unknown = true;
+  await page.goto(`/p/${portfolioId}/overview`);
+  await page.getByRole("button", { name: "Expand Owner", exact: true }).click();
+  const spot = page.getByRole("button", {
+    name: "Expand balances and positions for Spot",
+    exact: true,
+  });
+  await expect(spot).toHaveText("Spot—");
+  await expect(spot).not.toContainText(/failed|stale|incomplete/);
+  await spot.click();
+  const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
+  await expect(tree.getByText("incomplete", { exact: true })).toBeVisible();
+  await expect(
+    tree.getByText("No compatible successful Account Report; value is unknown."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Named omission remains visible while Accounts are folded."),
+  ).toBeVisible();
+  state.unknown = false;
+  state.stale = true;
+  await page.reload();
+  await openSpot(page);
+  await expect(
+    tree.getByText("Earlier successful Account Report retained", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Collapse balances and positions for Spot" }),
+  ).toHaveText("Spot$100");
+  await page.getByRole("button", { name: "Collapse Owner", exact: true }).click();
+  await expect(tree.getByText("failed", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Named omission remains visible while Accounts are folded."),
+  ).toBeVisible();
+});

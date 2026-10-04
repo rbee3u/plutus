@@ -64,11 +64,11 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     icon: Layers,
     groupId: "portfolio",
     groupLabel: "Portfolio",
-    defaultPathSuffix: "/holdings",
+    defaultPathSuffix: "/holdings/balances",
     subviews: [
-      { label: "Tree", pathSuffix: "/holdings" },
       { label: "Balances", pathSuffix: "/holdings/balances" },
-      { label: "Positions", pathSuffix: "/holdings/positions" },
+      { label: "Futures", pathSuffix: "/holdings/futures" },
+      { label: "Dual Investment", pathSuffix: "/holdings/dual-investment" },
     ],
   },
   {

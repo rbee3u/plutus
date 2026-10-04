@@ -1,9 +1,10 @@
 import { Menu as MenuIcon, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
 import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
+import { HoldingsNavigationProvider, SessionLink } from "@/features/holdings/HoldingsNavigation";
 import { SidebarUtilities } from "@/app/shell/SidebarUtilities";
 import { UserMenu } from "@/app/shell/UserMenu";
 import {
@@ -22,6 +23,14 @@ import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/app/shell/Shell.module.css";
 
 export function Shell() {
+  return (
+    <HoldingsNavigationProvider>
+      <ShellContent />
+    </HoldingsNavigationProvider>
+  );
+}
+
+function ShellContent() {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -109,10 +118,10 @@ export function Shell() {
         aria-hidden={mobileLayout && !open ? "true" : undefined}
       >
         <div className={styles.brandRow}>
-          <Link className={styles.brand} to="/" title={collapsed ? "Plutus" : undefined}>
+          <SessionLink className={styles.brand} to="/" title={collapsed ? "Plutus" : undefined}>
             <PlutusIcon size={iconSize.lg} />
             <strong>Plutus</strong>
-          </Link>
+          </SessionLink>
           {mobileLayout ? (
             <IconButton
               className={styles.drawerCloseButton}
@@ -130,7 +139,7 @@ export function Shell() {
               {group.items.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link
+                  <SessionLink
                     key={item.to}
                     to={item.to}
                     title={collapsed ? item.label : undefined}
@@ -141,7 +150,7 @@ export function Shell() {
                   >
                     <Icon size={iconSize.sm} aria-hidden="true" />
                     <span>{item.label}</span>
-                  </Link>
+                  </SessionLink>
                 );
               })}
             </div>
@@ -176,9 +185,13 @@ export function Shell() {
           {heading.tabs.length > 0 ? (
             <nav className={styles.tabs} aria-label={`${heading.title} views`}>
               {heading.tabs.map((tab) => (
-                <Link key={tab.label} to={tab.to} aria-current={tab.active ? "page" : undefined}>
+                <SessionLink
+                  key={tab.label}
+                  to={tab.to}
+                  aria-current={tab.active ? "page" : undefined}
+                >
                   {tab.label}
-                </Link>
+                </SessionLink>
               ))}
             </nav>
           ) : null}

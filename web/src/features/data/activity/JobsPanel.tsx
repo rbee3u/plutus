@@ -71,7 +71,6 @@ function JobsTable({
   const query = useQuery({
     queryKey: ["jobs", userId, portfolioId, kind, pages.cursor],
     enabled: Boolean(userId && portfolioId),
-    refetchInterval: 5000,
     queryFn: async () =>
       unwrapOrRedirect(
         await listJobs({

@@ -194,3 +194,53 @@ func defaultSpanFor(kind string) time.Duration {
 		return 30 * 24 * time.Hour
 	}
 }
+
+func (a *API) GetHistoryWindow(ctx context.Context, request api.GetHistoryWindowRequestObject) (api.GetHistoryWindowResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	preset, fromLocal, toLocal := "", "", ""
+	if request.Params.Preset != nil {
+		preset = string(*request.Params.Preset)
+	}
+	if request.Params.FromLocal != nil {
+		fromLocal = *request.Params.FromLocal
+	}
+	if request.Params.ToLocal != nil {
+		toLocal = *request.Params.ToLocal
+	}
+	if (request.Params.FromLocal != nil || request.Params.ToLocal != nil) && (request.Params.Preset != nil || fromLocal == "" || toLocal == "") {
+		return nil, validationError("Supply both local endpoints without a preset.")
+	}
+	from, to, err := valuation.ResolveHistoryWindow(sc.portfolio.Timezone, preset, fromLocal, toLocal, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	return api.GetHistoryWindow200JSONResponse{Context: toAPIContext(&c), From: from, To: to}, nil
+}
+
+func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuationPointPageRequestObject) (api.ListValuationPointPageResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Valuation == nil {
+		return nil, ErrNotImplemented
+	}
+	from, to := timeRange(request.Params.From, request.Params.To, 7*24*time.Hour)
+	offset, limit := 0, 20
+	if request.Params.Offset != nil {
+		offset = *request.Params.Offset
+	}
+	if request.Params.Limit != nil {
+		limit = int(*request.Params.Limit)
+	}
+	page, err := a.Valuation.PointsPage(ctx, sc.valuation(), from, to, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	return api.ListValuationPointPage200JSONResponse{Context: toAPIContext(&c), From: from, To: to, Items: toAPIPoints(page.Items), Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+}

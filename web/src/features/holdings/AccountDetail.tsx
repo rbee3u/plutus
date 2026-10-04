@@ -5,12 +5,14 @@ import {
   listAccountPositions,
   listAccountDualPositions,
 } from "@/api/generated/sdk.gen";
-import type { AccountValuation, BalanceRow } from "@/api/generated/types.gen";
+import type { AccountValuation, BalanceRow, Issue, ReadContext } from "@/api/generated/types.gen";
 import { formatAmount, formatDecimal, formatRatio, formatPrice } from "@/shared/lib/amount";
+import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
-import { FreshnessBadge } from "@/shared/ui/Badge";
+import { AccountHealthBadges, Badge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
+import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
@@ -21,32 +23,51 @@ import styles from "@/features/pages.module.css";
 export function AccountDetail({
   portfolioId,
   account,
+  pointId,
+  timezone,
 }: {
   portfolioId: string;
   account: AccountValuation;
+  pointId: string;
+  timezone?: string;
 }) {
   const { userId, redirect } = useSessionScope();
   const accountId = account.accountId;
   const balances = useQuery({
-    queryKey: ["account-balances", userId, portfolioId, accountId],
+    queryKey: ["account-balances", userId, portfolioId, accountId, pointId, account.reportId],
     enabled: Boolean(userId && portfolioId && accountId),
     queryFn: async () =>
-      unwrapOrRedirect(await listAccountBalances({ path: { portfolioId, accountId } }), redirect),
+      checkAccountReport(
+        unwrapOrRedirect(await listAccountBalances({ path: { portfolioId, accountId } }), redirect),
+        account,
+        pointId,
+      ),
   });
   const isDual = account.accountType === "dual_investment";
   const positions = useQuery({
-    queryKey: ["account-positions", userId, portfolioId, accountId],
+    queryKey: ["account-positions", userId, portfolioId, accountId, pointId, account.reportId],
     enabled: Boolean(userId && portfolioId && accountId && !isDual),
     queryFn: async () =>
-      unwrapOrRedirect(await listAccountPositions({ path: { portfolioId, accountId } }), redirect),
+      checkAccountReport(
+        unwrapOrRedirect(
+          await listAccountPositions({ path: { portfolioId, accountId }, query: { pointId } }),
+          redirect,
+        ),
+        account,
+        pointId,
+      ),
   });
   const dualPositions = useQuery({
-    queryKey: ["account-dual-positions", userId, portfolioId, accountId],
+    queryKey: ["account-dual-positions", userId, portfolioId, accountId, pointId, account.reportId],
     enabled: Boolean(userId && portfolioId && isDual),
     queryFn: async () =>
-      unwrapOrRedirect(
-        await listAccountDualPositions({ path: { portfolioId, accountId } }),
-        redirect,
+      checkAccountReport(
+        unwrapOrRedirect(
+          await listAccountDualPositions({ path: { portfolioId, accountId } }),
+          redirect,
+        ),
+        account,
+        pointId,
       ),
   });
   const issues = [
@@ -55,8 +76,9 @@ export function AccountDetail({
   ];
 
   return (
-    <div className={styles.detail}>
+    <div className={styles.accountDetail}>
       <AccountMetrics account={account} />
+      <AccountFeedback account={account} timezone={timezone} />
       <QueryRecovery
         error={balances.error}
         hasData={Boolean(balances.data)}
@@ -70,14 +92,19 @@ export function AccountDetail({
       <DataTable
         caption={`Balances of ${account.accountName}`}
         columns={BALANCE_COLUMNS}
-        rows={(balances.data?.items ?? []).map(balanceRow)}
+        rows={(balances.data?.items ?? []).map((item) =>
+          balanceRow(item, balances.data?.context.timezone, balances.data?.issues),
+        )}
         empty={
           balances.isPending
             ? "Loading balances."
-            : "No balances in the current Account Report for this account."
+            : balances.isError && !balances.data
+              ? "Balances could not be loaded. Retry above."
+              : "No balances in the current Account Report for this account."
         }
       />
-      {isDual ? (
+      {isDual &&
+      (!dualPositions.isSuccess || dualPositions.data.items.length > 0 || dualPositions.isError) ? (
         <>
           <QueryRecovery
             error={dualPositions.error}
@@ -88,14 +115,19 @@ export function AccountDetail({
               void dualPositions.refetch();
             }}
           />
-          <h3>Dual Investment positions</h3>
-          <DualPositionsTable
-            items={dualPositions.data?.items ?? []}
-            timezone={dualPositions.data?.context.timezone}
-            loading={dualPositions.isPending}
-          />
+          <h3>Dual Investment</h3>
+          {dualPositions.isError && !dualPositions.data ? (
+            <p className={styles.muted}>Dual Investment could not be loaded. Retry above.</p>
+          ) : (
+            <DualPositionsTable
+              items={dualPositions.data?.items ?? []}
+              timezone={dualPositions.data?.context.timezone}
+              loading={dualPositions.isPending}
+            />
+          )}
         </>
-      ) : (
+      ) : !isDual &&
+        (!positions.isSuccess || positions.data.items.length > 0 || positions.isError) ? (
         <>
           <QueryRecovery
             error={positions.error}
@@ -106,7 +138,7 @@ export function AccountDetail({
               void positions.refetch();
             }}
           />
-          <h3>Positions</h3>
+          <h3>Futures</h3>
           <DataTable
             caption={`Positions of ${account.accountName}`}
             columns={POSITION_COLUMNS}
@@ -116,19 +148,62 @@ export function AccountDetail({
             empty={
               positions.isPending
                 ? "Loading positions."
-                : "No open positions in the current Account Report for this account."
+                : positions.isError && !positions.data
+                  ? "Futures could not be loaded. Retry above."
+                  : "No open positions in the current Account Report for this account."
             }
           />
         </>
-      )}
+      ) : null}
       {issues.length > 0 ? (
         <>
           <h3>Issues</h3>
           <IssueList issues={issues} />
         </>
       ) : null}
+      <details className={styles.reportDetails}>
+        <summary>Report details</summary>
+        <dl className={styles.metaList}>
+          <div>
+            <dt>Account Report</dt>
+            <dd title={account.reportId ?? undefined}>{shortId(account.reportId)}</dd>
+          </div>
+          <div>
+            <dt>Valuation method</dt>
+            <dd>{account.method}</dd>
+          </div>
+          <div>
+            <dt>Report observed</dt>
+            <dd>{formatInstant(account.reportObservedAt, timezone)}</dd>
+          </div>
+        </dl>
+        <p className={styles.muted}>
+          {account.method === "reported"
+            ? "Account value uses equity reported by the Platform."
+            : account.method === "calculated"
+              ? "Account value is calculated from Balance equity and prices."
+              : "Account value is unknown because no compatible successful Account Report is available."}
+        </p>
+      </details>
     </div>
   );
+}
+
+/** A newer latest-only response must not describe an older visible Account row. */
+function checkAccountReport<T extends { context: ReadContext; account: AccountValuation }>(
+  data: T,
+  account: AccountValuation,
+  pointId: string,
+): T {
+  if (
+    data.context.pointId !== pointId ||
+    (data.account.reportId ?? null) !== (account.reportId ?? null)
+  ) {
+    throw new Error(
+      "This Account changed since the displayed Valuation Point. Reload the page to read its latest Account Report.",
+    );
+  }
+  return data;
 }
 
 function AccountMetrics({ account }: { account: AccountValuation }) {
@@ -167,35 +242,68 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
       format: formatRatio,
     },
   ];
-  // A calculated account carries none of these; six dashes would say less than one sentence.
-  const reported = figures.some((figure) => figure.value != null);
+  const reported = figures.filter((figure) => figure.value != null);
+  if (reported.length === 0) return null;
+  return (
+    <dl className={`${styles.metaList} ${styles.metaListCased}`}>
+      {reported.map((figure) => (
+        <div key={figure.label}>
+          <dt>
+            {figure.label === figure.title ? (
+              figure.label
+            ) : (
+              <abbr title={figure.title}>{figure.label}</abbr>
+            )}
+          </dt>
+          <dd>
+            <NumericText>{figure.format(figure.value)}</NumericText>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function AccountFeedback({ account, timezone }: { account: AccountValuation; timezone?: string }) {
+  const exceptional =
+    account.status === "failed" ||
+    account.freshness === "stale" ||
+    account.completeness === "incomplete";
   return (
     <>
-      {reported ? (
-        <dl className={`${styles.metaList} ${styles.metaListCased}`}>
-          {figures.map((figure) => (
-            <div key={figure.label}>
-              <dt>
-                {figure.label === figure.title ? (
-                  figure.label
-                ) : (
-                  <abbr title={figure.title}>{figure.label}</abbr>
-                )}
-              </dt>
-              <dd>
-                <NumericText>{figure.format(figure.value)}</NumericText>
-              </dd>
-            </div>
-          ))}
-        </dl>
+      {exceptional ? (
+        <div className={styles.statusGroup}>
+          <AccountHealthBadges
+            status={account.status}
+            freshness={account.freshness}
+            completeness={account.completeness}
+            errorClass={account.errorClass}
+            errorDetail={account.errorDetail}
+          />
+          {account.freshness === "stale" ? (
+            <span className={styles.muted}>
+              Earlier successful Account Report retained, observed{" "}
+              {formatInstant(account.reportObservedAt, timezone)}
+              {timezone ? ` · ${timezone}` : ""}.
+            </span>
+          ) : account.method === "missing" ? (
+            <span className={styles.muted}>
+              No compatible successful Account Report; value is unknown.
+            </span>
+          ) : null}
+        </div>
       ) : null}
-      <p className={styles.muted}>
-        Account Report{" "}
-        <span title={account.reportId ?? undefined}>{shortId(account.reportId)}</span>
-        {reported
-          ? ", figures as reported by the Platform."
-          : " carries no equity or margin figures; the value is calculated from the balances below."}
-      </p>
+      {!account.selected ||
+      account.identityStatus === "archived" ||
+      (account.connectionStatus && account.connectionStatus !== "enabled") ? (
+        <p className={styles.notice}>
+          {!account.selected ? "Account is not selected. " : ""}
+          {account.identityStatus === "archived" ? "Identity is archived. " : ""}
+          {account.connectionStatus && account.connectionStatus !== "enabled"
+            ? `Connection is ${account.connectionStatus}.`
+            : ""}
+        </p>
+      ) : null}
       {account.errorClass ? (
         <p className={styles.alert} role="status">
           <Codes values={[account.errorClass]} />
@@ -221,18 +329,19 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
 }
 
 export const BALANCE_COLUMNS = [
-  { key: "symbol", header: "Symbol" },
+  { key: "symbol", header: "Asset" },
   { key: "equity", header: "Equity", numeric: true },
-  { key: "availableToWithdraw", header: "Withdrawable", numeric: true },
-  { key: "availableToTrade", header: "Tradable", numeric: true },
-  { key: "liability", header: "Liability", numeric: true },
-  { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true },
   { key: "priceUsd", header: "Price (USD)", numeric: true },
   { key: "equityUsd", header: "Equity (USD)", numeric: true },
-  { key: "freshness", header: "Freshness" },
+  { key: "liability", header: "Liability", numeric: true },
+  { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true },
+  { key: "observed", header: "Observed", nowrap: true },
 ];
 
-export function balanceRow(item: BalanceRow): DataRow {
+export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] = []): DataRow {
+  const stale = issues.find(
+    (issue) => issue.accountId === item.accountId && issue.code === "stale",
+  );
   return {
     id: `${item.accountId}-${item.listingId}`,
     // The Asset is the Symbol unless a listing remaps it; only the exception earns a second line.
@@ -246,8 +355,6 @@ export function balanceRow(item: BalanceRow): DataRow {
         item.symbol
       ),
     equity: formatDecimal(item.equity),
-    availableToWithdraw: formatDecimal(item.availableToWithdraw),
-    availableToTrade: formatDecimal(item.availableToTrade),
     liability: formatDecimal(item.liability),
     unrealizedPnl: formatDecimal(item.unrealizedPnl),
     priceUsd: item.noPrice ? (
@@ -256,6 +363,22 @@ export function balanceRow(item: BalanceRow): DataRow {
       formatPrice(item.priceUsd)
     ),
     equityUsd: formatAmount(item.equityUsd),
-    freshness: <FreshnessBadge value={item.freshness} />,
+    observed: (
+      <span className={styles.statusGroup}>
+        <span
+          title={`Account Report observed at ${item.reportObservedAt ?? "an unknown time"}; times in ${timezone ?? "the Portfolio timezone"}.`}
+        >
+          {formatInstant(item.reportObservedAt, timezone)}
+        </span>
+        {item.freshness === "stale" ? (
+          <HoverDetails
+            label={<Badge tone="warn">Stale</Badge>}
+            name={`Stale report for ${item.symbol}`}
+          >
+            <p>{stale?.detail ?? "An earlier successful Account Report is carried forward."}</p>
+          </HoverDetails>
+        ) : null}
+      </span>
+    ),
   };
 }

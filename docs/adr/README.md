@@ -11,23 +11,25 @@ This documentation reorganization numbers the current topic records from 0001.
 Old numbered citations must use the corresponding records below. A number
 identifies a record, not an implementation priority or proof of completion.
 
-| ADR                                               | Decision                                                                |
-| ------------------------------------------------- | ----------------------------------------------------------------------- |
-| [0001](./0001-ownership-and-accounts.md)          | Ownership, selected Accounts, and structure versus mode                 |
-| [0002](./0002-account-reports.md)                 | Aligned reports, Complete Set, and compatible stale values              |
-| [0003](./0003-valuation-and-catalog.md)           | USD valuation, reported equity, Asset mapping, and exclusions           |
-| [0004](./0004-capital-and-periods.md)             | Absolute Value Change, manual flows, and observed period endpoints      |
-| [0005](./0005-dual-investment.md)                 | Separate Dual Investment, shared completeness, and scope compatibility  |
-| [0006](./0006-contract-first-modular-monolith.md) | Contract-first modular monolith and typed boundaries                    |
-| [0007](./0007-authentication.md)                  | CLI-provisioned Users and write-only credentials                        |
-| [0008](./0008-environments-and-migrations.md)     | Environment isolation and populated-database migrations                 |
-| [0009](./0009-adapter-verification.md)            | Independent synthetic tests, recorded evidence, and validation claims   |
-| [0010](./0010-process-logging.md)                 | Unified process logging, SQL visibility, and rotation ownership         |
-| [0011](./0011-display-ordering.md)                | Shared business ordering and stable holdings pagination                 |
-| [0012](./0012-position-presentation.md)           | Contract columns, normalized Size, margin provenance, and Observed      |
-| [0013](./0013-numeric-presentation.md)            | Shared numeric precision, zero-count shorthand, and chart exceptions    |
-| [0014](./0014-holdings-header-filters.md)         | Linked header filters, substring search, and retired flat-list grouping |
-| [0015](./0015-mobile-native-refresh.md)           | Native mobile browser refresh and isolated overlay scrolling            |
+| ADR                                                | Decision                                                                      |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [0001](./0001-ownership-and-accounts.md)           | Ownership, selected Accounts, and structure versus mode                       |
+| [0002](./0002-account-reports.md)                  | Aligned reports, Complete Set, and compatible stale values                    |
+| [0003](./0003-valuation-and-catalog.md)            | USD valuation, reported equity, Asset mapping, and exclusions                 |
+| [0004](./0004-capital-and-periods.md)              | Absolute Value Change, manual flows, and observed period endpoints            |
+| [0005](./0005-dual-investment.md)                  | Separate Dual Investment, shared completeness, and scope compatibility        |
+| [0006](./0006-contract-first-modular-monolith.md)  | Contract-first modular monolith and typed boundaries                          |
+| [0007](./0007-authentication.md)                   | CLI-provisioned Users and write-only credentials                              |
+| [0008](./0008-environments-and-migrations.md)      | Environment isolation and populated-database migrations                       |
+| [0009](./0009-adapter-verification.md)             | Independent synthetic tests, recorded evidence, and validation claims         |
+| [0010](./0010-process-logging.md)                  | Unified process logging, SQL visibility, and rotation ownership               |
+| [0011](./0011-display-ordering.md)                 | Shared business ordering and stable holdings pagination                       |
+| [0012](./0012-position-presentation.md)            | Contract columns, normalized Size, margin provenance, and Observed            |
+| [0013](./0013-numeric-presentation.md)             | Shared numeric precision, zero-count shorthand, and chart exceptions          |
+| [0014](./0014-holdings-header-filters.md)          | Linked header filters, substring search, and retired flat-list grouping       |
+| [0015](./0015-mobile-native-refresh.md)            | Native mobile browser refresh and isolated overlay scrolling                  |
+| [0016](./0016-overview-and-holdings-navigation.md) | Overview ownership Tree, flat Holdings navigation, and manual display refresh |
+| [0017](./0017-history-windows-and-pagination.md)   | Explicit history windows and independent pagination                           |
 
 ## Maintenance
 

@@ -45,7 +45,7 @@ func periodsBetween(kind string, from, to time.Time, loc *time.Location) ([]peri
 		next := periodNext(kind, cursor)
 		out = append(out, period{label: periodLabel(kind, cursor), start: cursor, end: next})
 		if len(out) > maxPeriods {
-			return nil, ErrInvalid
+			return nil, fmt.Errorf("%w: at most 400 periods are supported; narrow the time range or select a larger period", ErrInvalid)
 		}
 		cursor = next
 	}

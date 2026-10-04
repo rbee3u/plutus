@@ -72,3 +72,28 @@ SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_a
        boundary_contribution_usd, boundary_withdrawal_usd, boundary_json, issues_json, recalculated_at, created_at
 FROM valuation_points
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND job_id = sqlc.arg(job_id);
+
+-- name: ListValuationPointSummariesBetween :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
+ORDER BY evaluated_at ASC;
+
+-- name: ListValuationPointHeadersBetween :many
+SELECT id, evaluated_at FROM valuation_points WHERE portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
+ORDER BY evaluated_at ASC;
+
+-- name: ListValuationPointSummariesByIDs :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = sqlc.arg(portfolio_id) AND id IN (sqlc.slice('ids'))
+ORDER BY evaluated_at ASC;
+
+-- name: ListValuationPointPage :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
+ORDER BY evaluated_at DESC LIMIT ? OFFSET ?;
+
+-- name: CountValuationPointsBetween :one
+SELECT COUNT(*) FROM valuation_points WHERE portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at);

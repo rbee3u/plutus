@@ -909,6 +909,74 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/history-window:
+    get:
+      operationId: getHistoryWindow
+      tags: [history]
+      summary: Resolve a relative or Portfolio-local history window
+      description: Use a preset (default 1w), or both local endpoints without a preset. Local endpoints use the Portfolio timezone; nonexistent and ambiguous times are rejected.
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: preset
+          in: query
+          schema:
+            type: string
+            enum: [1d, 3d, 1w, 2w, 1Month, 1Year]
+        - name: fromLocal
+          in: query
+          schema:
+            type: string
+        - name: toLocal
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: History results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryWindow"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/valuation-points/page:
+    get:
+      operationId: listValuationPointPage
+      tags: [history]
+      summary: Raw Valuation Points, newest first
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/TimeFrom"
+        - $ref: "#/components/parameters/TimeTo"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            enum: [10, 20, 50]
+            default: 20
+      responses:
+        "200":
+          description: History results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValuationPointPage"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/valuation-points:
     get:
       operationId: listValuationPoints
@@ -2576,6 +2644,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
+    HistoryWindow:
+      type: object
+      additionalProperties: false
+      required: [context, from, to]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+    ValuationPointPage:
+      type: object
+      additionalProperties: false
+      required: [context, items, page, from, to]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValuationPointSummary"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
     ValuationPointList:
       type: object
       additionalProperties: false

@@ -508,6 +508,20 @@ export type DualPositionList = {
     issues: Array<Issue>;
 };
 
+export type HistoryWindow = {
+    context: ReadContext;
+    from: string;
+    to: string;
+};
+
+export type ValuationPointPage = {
+    context: ReadContext;
+    items: Array<ValuationPointSummary>;
+    page: OffsetPage;
+    from: string;
+    to: string;
+};
+
 export type ValuationPointList = {
     context: ReadContext;
     items: Array<ValuationPointSummary>;
@@ -2097,6 +2111,88 @@ export type ListDualPositionsResponses = {
 };
 
 export type ListDualPositionsResponse = ListDualPositionsResponses[keyof ListDualPositionsResponses];
+
+export type GetHistoryWindowData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        preset?: '1d' | '3d' | '1w' | '2w' | '1Month' | '1Year';
+        fromLocal?: string;
+        toLocal?: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/history-window';
+};
+
+export type GetHistoryWindowErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetHistoryWindowError = GetHistoryWindowErrors[keyof GetHistoryWindowErrors];
+
+export type GetHistoryWindowResponses = {
+    /**
+     * History results.
+     */
+    200: HistoryWindow;
+};
+
+export type GetHistoryWindowResponse = GetHistoryWindowResponses[keyof GetHistoryWindowResponses];
+
+export type ListValuationPointPageData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        /**
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         */
+        from?: string;
+        to?: string;
+        offset?: number;
+        limit?: 10 | 20 | 50;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/page';
+};
+
+export type ListValuationPointPageErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListValuationPointPageError = ListValuationPointPageErrors[keyof ListValuationPointPageErrors];
+
+export type ListValuationPointPageResponses = {
+    /**
+     * History results.
+     */
+    200: ValuationPointPage;
+};
+
+export type ListValuationPointPageResponse = ListValuationPointPageResponses[keyof ListValuationPointPageResponses];
 
 export type ListValuationPointsData = {
     body?: never;

@@ -24,8 +24,11 @@ Implemented capabilities include:
   and explicit incomplete totals when some holdings cannot be valued.
 - Unified rotating application, HTTP access, and full-value SQL logs; see
   [logging configuration](./docs/development.md#logging).
-- Holdings, historical Valuation Points, Period Closes, and Value Changes, with
-  manual Capital Flows and derived Boundary Events.
+- Overview totals, recent-point chart, and an expandable ownership Tree;
+  separate Balances, Futures, and Dual Investment Holdings views.
+- Historical Valuation Points, Period Closes, and Value Changes, with explicit
+  time windows, automatically grouped curves, independent table pagination,
+  manual Capital Flows, and derived Boundary Events.
 - Linked Platform and Identity filters and substring symbol search in Holdings
   table headers; Balances has a separate Identity column and no grouping view.
 - Shared contract position columns, normalized Size, margin provenance, and

@@ -1,6 +1,7 @@
 import { ChevronDown, Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
+import { useHoldingsNavigation } from "@/features/holdings/HoldingsNavigation";
 import { createPortfolio } from "@/api/generated/sdk.gen";
 import type { Portfolio } from "@/api/generated/types.gen";
 import { problemMessage, refreshCsrf } from "@/api/http";
@@ -26,7 +27,7 @@ export function PortfolioSwitcher({
   portfolios: PortfolioOption[];
   onPortfolioRemembered?: (id: string) => void;
 }) {
-  const navigate = useNavigate();
+  const holdingsNavigation = useHoldingsNavigation();
   const location = useLocation();
   const menu = useMenu();
   const [createOpen, setCreateOpen] = useState(false);
@@ -51,7 +52,7 @@ export function PortfolioSwitcher({
       onPortfolioRemembered?.(next);
       return;
     }
-    void navigate(pathFor(next));
+    holdingsNavigation.go(pathFor(next));
   }
 
   async function onCreate(event: FormEvent) {
@@ -65,7 +66,7 @@ export function PortfolioSwitcher({
         body: { name },
       });
       if (result.response?.status === 401) {
-        void navigate("/login", { replace: true });
+        holdingsNavigation.go("/login");
         return;
       }
       if (result.error || !result.data) {
@@ -76,7 +77,7 @@ export function PortfolioSwitcher({
       setName("");
       setCreateOpen(false);
       storePreference(LAST_PORTFOLIO_KEY, result.data.id);
-      void navigate(pathFor(result.data.id));
+      holdingsNavigation.go(pathFor(result.data.id));
     } catch (cause) {
       setError(
         problemMessage(cause, "The portfolio could not be created. Check the network and retry."),

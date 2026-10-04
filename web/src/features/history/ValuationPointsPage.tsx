@@ -1,10 +1,15 @@
+import { useParams } from "react-router";
 import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import type { EChartsCoreOption } from "echarts/core";
 import { ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useParams } from "react-router";
-import { getValuationPoint, listPeriodCloses, listValuationPoints } from "@/api/generated/sdk.gen";
+import { useMemo, useState, useEffect } from "react";
+import {
+  getValuationPoint,
+  listPeriodCloses,
+  listValuationPoints,
+  listValuationPointPage,
+} from "@/api/generated/sdk.gen";
 import type {
   AccountValuation,
   BoundaryEvent,
@@ -20,51 +25,78 @@ import {
   isZeroDecimal,
   formatCount,
 } from "@/shared/lib/amount";
-import { formatInstant, isoFromLocalInput } from "@/shared/lib/datetime";
+import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
-import { readChoice, useSearchState } from "@/shared/lib/searchParams";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { readChoice } from "@/shared/lib/searchParams";
+import { unwrapOrRedirect } from "@/shared/lib/session";
 import { accountSummary, capitalize, reasonText } from "@/shared/lib/text";
 import { CompletenessBadge, FreshnessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
-import { Select, TextInput } from "@/shared/ui/FormControls";
+import { Select } from "@/shared/ui/FormControls";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { IconButton } from "@/shared/ui/IconButton";
 import { IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
 import { HistoricalPositions } from "@/features/holdings/HistoricalPositions";
+import { HistoryFilters, HistoryPager } from "./HistoryFilters";
+import { useHistoryWindow, useHistoryPager, historyGranularity } from "./useHistoryWindow";
 import styles from "@/features/pages.module.css";
 
-const GRANULARITIES = ["raw", "hour", "day"] as const;
 export const PERIOD_KINDS: readonly PeriodKind[] = ["day", "week", "month", "quarter", "year"];
 const NO_POINT =
   "No Valuation Point in this window. Enable a connection and run a Collection Cycle.";
 const POINT_DETAIL_ID = "valuation-point-detail";
 
 export function ValuationPointsPage() {
-  const { portfolioId = "" } = useParams();
-  const { userId, redirect } = useSessionScope();
-  const { params, update } = useSearchState();
-  const from = params.get("from") ?? "";
-  const to = params.get("to") ?? "";
-  const granularity = readChoice(params.get("granularity"), GRANULARITIES, "raw");
-  const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, "month");
+  const history = useHistoryWindow();
+  const { portfolioId, userId, redirect, params, update, window } = history;
+  const from = window?.from;
+  const to = window?.to;
+  const granularity = from && to ? historyGranularity(from, to) : "hour";
+  const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, history.defaultPeriod);
   const pointId = params.get("point") ?? "";
+  const pointPager = useHistoryPager("points");
 
   const points = useQuery({
     queryKey: ["valuation-points", userId, portfolioId, from, to, granularity],
-    enabled: Boolean(userId && portfolioId),
+    enabled: Boolean(userId && portfolioId && window),
     queryFn: async () =>
       unwrapOrRedirect(
         await listValuationPoints({
           path: { portfolioId },
-          query: { from: isoFromLocalInput(from), to: isoFromLocalInput(to), granularity },
+          query: { from, to, granularity },
         }),
         redirect,
       ),
   });
+  const records = useQuery({
+    queryKey: [
+      "valuation-point-page",
+      userId,
+      portfolioId,
+      from,
+      to,
+      pointPager.offset,
+      pointPager.limit,
+    ],
+    enabled: Boolean(userId && portfolioId && window),
+    queryFn: async () =>
+      unwrapOrRedirect(
+        await listValuationPointPage({
+          path: { portfolioId },
+          query: { from, to, offset: pointPager.offset, limit: pointPager.limit },
+        }),
+        redirect,
+      ),
+  });
+  useEffect(() => {
+    const total = records.data?.page.total;
+    if (total !== undefined && pointPager.offset > 0 && pointPager.offset >= total) {
+      pointPager.onChange(Math.max(0, Math.ceil(total / pointPager.limit) - 1) * pointPager.limit);
+    }
+  }, [records.data, pointPager]);
   const detail = useQuery({
     queryKey: ["valuation-point", userId, portfolioId, pointId],
     enabled: Boolean(userId && portfolioId && pointId),
@@ -72,16 +104,18 @@ export function ValuationPointsPage() {
       unwrapOrRedirect(await getValuationPoint({ path: { portfolioId, pointId } }), redirect),
   });
   const closes = useQuery({
-    queryKey: ["period-closes", userId, portfolioId, periodKind],
-    enabled: Boolean(userId && portfolioId),
+    queryKey: ["period-closes", userId, portfolioId, periodKind, from, to],
+    enabled: Boolean(userId && portfolioId && window),
     queryFn: async () =>
       unwrapOrRedirect(
-        await listPeriodCloses({ path: { portfolioId }, query: { periodKind } }),
+        await listPeriodCloses({ path: { portfolioId }, query: { periodKind, from, to } }),
         redirect,
       ),
   });
   const series = points.data;
-  const timezone = series?.context.timezone;
+  const timezone = window?.context.timezone;
+  const closeItems = [...(closes.data?.items ?? [])].reverse();
+  const closePager = useHistoryPager("closes", closeItems.length);
 
   const chartOption = useMemo((): EChartsCoreOption | null => {
     const items = series?.items ?? [];
@@ -111,40 +145,10 @@ export function ValuationPointsPage() {
   return (
     <section className={styles.wide}>
       <p className={styles.lead}>
-        One portfolio total per Collection Cycle. An empty window shows the last seven days; hour
-        and day granularity keep the last point of each bucket.
+        One portfolio total per Collection Cycle. The chart groups long ranges; raw points remain
+        available below.
       </p>
-      <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field}>
-          <span>From</span>
-          <TextInput
-            type="datetime-local"
-            value={from}
-            onChange={(event) => update({ from: event.target.value })}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>To</span>
-          <TextInput
-            type="datetime-local"
-            value={to}
-            onChange={(event) => update({ to: event.target.value })}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>Granularity</span>
-          <Select
-            value={granularity}
-            onChange={(event) => update({ granularity: event.target.value })}
-          >
-            {GRANULARITIES.map((option) => (
-              <option key={option} value={option}>
-                {capitalize(option)}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </form>
+      <HistoryFilters state={history} />
       <QueryRecovery
         error={points.error}
         hasData={Boolean(series)}
@@ -162,46 +166,18 @@ export function ValuationPointsPage() {
           <p className={styles.muted}>
             {formatInstant(series.from, timezone)} – {formatInstant(series.to, timezone)} in{" "}
             {series.context.timezone}, {series.granularity} granularity,{" "}
-            {formatCount(series.items.length)} {series.items.length === 1 ? "point" : "points"}.
+            {formatCount(series.items.length)} chart{" "}
+            {series.items.length === 1 ? "point" : "points"}.
           </p>
           <ChartBlock
             title="Portfolio value"
-            summary="Total value at each Valuation Point in the window. Open a point to see its accounts and Boundary Events."
+            summary="Portfolio total across the selected window. Original Collection Cycle points and their details are listed below."
             option={chartOption}
             empty={
               series.items.length === 0
                 ? NO_POINT
                 : "Only one Valuation Point in this window; the chart needs two."
             }
-            emptyRows={NO_POINT}
-            rowClassName={(row) => (row.id === pointId ? styles.openRow : undefined)}
-            openKey={pointId}
-            onRowClick={(key) => update({ point: key === pointId ? "" : key })}
-            detailId={POINT_DETAIL_ID}
-            renderDetail={() => (
-              <>
-                <QueryRecovery
-                  error={detail.error}
-                  hasData={Boolean(detail.data)}
-                  busy={detail.isFetching}
-                  fallback="The Valuation Point could not be loaded."
-                  onRetry={() => {
-                    void detail.refetch();
-                  }}
-                />
-                {detail.data ? <PointDetail detail={detail.data} timezone={timezone} /> : null}
-                {detail.isPending ? <p className={styles.muted}>Loading the point.</p> : null}
-              </>
-            )}
-            columns={[
-              { key: "evaluatedAt", header: "Evaluated at", nowrap: true },
-              { key: "totalUsd", header: "Total (USD)", numeric: true },
-              { key: "completeness", header: "Completeness" },
-              { key: "accounts", header: "Accounts" },
-              { key: "boundary", header: "Boundary (USD)", numeric: true },
-              { key: "actions", header: "" },
-            ]}
-            rows={series.items.map((item) => pointRow(item, timezone, pointId, update))}
           />
         </>
       ) : null}
@@ -212,7 +188,7 @@ export function ValuationPointsPage() {
             <span>Period</span>
             <Select
               value={periodKind}
-              onChange={(event) => update({ periodKind: event.target.value })}
+              onChange={(event) => update({ periodKind: event.target.value, closesOffset: "" })}
             >
               {PERIOD_KINDS.map((option) => (
                 <option key={option} value={option}>
@@ -223,8 +199,8 @@ export function ValuationPointsPage() {
           </label>
         </div>
         <p className={styles.muted}>
-          The last Valuation Point at or before the end of each period. A period without a point
-          says so instead of carrying a value.
+          The last Valuation Point within each complete calendar period intersecting the selected
+          range. Periods are not clipped to From / To; missing points remain explicit.
         </p>
         <QueryRecovery
           error={closes.error}
@@ -244,31 +220,95 @@ export function ValuationPointsPage() {
             { key: "completeness", header: "Completeness" },
             { key: "reasons", header: "Missing" },
           ]}
-          rows={(closes.data?.items ?? []).map((item) => ({
-            id: `${item.periodKind}-${item.periodStart}`,
-            label: (
-              <span className={styles.cellStack}>
-                <span>{item.label}</span>
-                <span className={`${styles.cellMeta} ${styles.nowrap}`}>
-                  {formatInstant(item.periodStart, timezone)} –{" "}
-                  {formatInstant(item.periodEnd, timezone)}
+          rows={closeItems
+            .slice(closePager.offset, closePager.offset + closePager.limit)
+            .map((item) => ({
+              id: `${item.periodKind}-${item.periodStart}`,
+              label: (
+                <span className={styles.cellStack}>
+                  <span>{item.label}</span>
+                  <span className={`${styles.cellMeta} ${styles.nowrap}`}>
+                    {formatInstant(item.periodStart, timezone)} –{" "}
+                    {formatInstant(item.periodEnd, timezone)}
+                  </span>
                 </span>
-              </span>
-            ),
-            totalUsd: item.point ? (
-              formatAmount(item.point.totalUsd)
-            ) : (
-              <span className={styles.cellMeta}>no point</span>
-            ),
-            evaluatedAt: item.point ? formatInstant(item.point.evaluatedAt, timezone) : "—",
-            completeness: <CompletenessBadge value={item.completeness} />,
-            reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
-          }))}
+              ),
+              totalUsd: item.point ? (
+                formatAmount(item.point.totalUsd)
+              ) : (
+                <span className={styles.cellMeta}>no point</span>
+              ),
+              evaluatedAt: item.point ? formatInstant(item.point.evaluatedAt, timezone) : "—",
+              completeness: <CompletenessBadge value={item.completeness} />,
+              reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
+            }))}
           empty={
             closes.isPending
               ? "Loading period closes."
               : "No periods yet. Periods appear once the Portfolio has a Valuation Point."
           }
+        />
+        <HistoryPager
+          label="Period closes"
+          pager={closePager}
+          total={closeItems.length}
+          busy={closes.isFetching}
+        />
+      </section>
+      <section className={styles.panel} aria-labelledby="raw-points-heading">
+        <h2 id="raw-points-heading">Raw Valuation Points</h2>
+        <p className={styles.muted}>
+          Every Collection Cycle in the selected window, newest first. Open a point to see its
+          accounts and Boundary Events.
+        </p>
+        <QueryRecovery
+          error={records.error}
+          hasData={Boolean(records.data)}
+          busy={records.isFetching}
+          fallback="Raw Valuation Points could not be loaded."
+          onRetry={() => {
+            void records.refetch();
+          }}
+        />
+        <DataTable
+          caption="Raw Valuation Points"
+          empty={records.isPending ? "Loading raw Valuation Points." : NO_POINT}
+          rowClassName={(row) => (row.id === pointId ? styles.openRow : undefined)}
+          openKey={pointId}
+          onRowClick={(key) => update({ point: key === pointId ? "" : key })}
+          detailId={POINT_DETAIL_ID}
+          renderDetail={() => (
+            <>
+              <QueryRecovery
+                error={detail.error}
+                hasData={Boolean(detail.data)}
+                busy={detail.isFetching}
+                fallback="The Valuation Point could not be loaded."
+                onRetry={() => {
+                  void detail.refetch();
+                }}
+              />
+              {detail.data ? <PointDetail detail={detail.data} timezone={timezone} /> : null}
+              {detail.isPending ? <p className={styles.muted}>Loading the point.</p> : null}
+            </>
+          )}
+          columns={[
+            { key: "evaluatedAt", header: "Evaluated at", nowrap: true },
+            { key: "totalUsd", header: "Total (USD)", numeric: true },
+            { key: "completeness", header: "Completeness" },
+            { key: "accounts", header: "Accounts" },
+            { key: "boundary", header: "Boundary (USD)", numeric: true },
+            { key: "actions", header: "" },
+          ]}
+          rows={(records.data?.items ?? []).map((item) =>
+            pointRow(item, timezone, pointId, update),
+          )}
+        />
+        <HistoryPager
+          label="Raw Valuation Points"
+          pager={pointPager}
+          total={records.data?.page.total ?? 0}
+          busy={records.isFetching}
         />
       </section>
     </section>

@@ -42,7 +42,6 @@ export function CyclesPanel({
   const query = useQuery({
     queryKey: ["collection-cycles", userId, portfolioId, pages.cursor],
     enabled: Boolean(userId && portfolioId),
-    refetchInterval: 5000,
     queryFn: async () =>
       unwrapOrRedirect(
         await listCollectionCycles({

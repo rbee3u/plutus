@@ -39,10 +39,10 @@ such as SHIB and 1000SHIB.
 Balances inside an Account use Asset Symbol, native listing Symbol, and listing
 ID. Dual Positions inside an Account use expiry, missing expiry last, and
 Position reference. Account hierarchy groups retain that order regardless of
-their value. Overview's Platform and Identity totals follow the ownership
-hierarchy. Flat Balance grouping is retired by ADR 0014. History and Activity
-timelines retain their time order; their Account detail lists use the shared
-hierarchy.
+their value. Overview's Tree presents Platform and Identity totals in the
+ownership hierarchy. Flat Balance grouping is retired by ADR 0014. History and
+Activity timelines retain their time order; their Account detail lists use the
+shared hierarchy.
 
 Ordering happens before pagination and does not use financial measures,
 freshness, or collection arrival order. The global and Account-detail futures

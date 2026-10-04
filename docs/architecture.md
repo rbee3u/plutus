@@ -169,11 +169,38 @@ Interactive header content supplements a plain column name in `DataColumn`.
 Portal popovers measure their available viewport space and dismiss on external
 scroll, while preserving internal list scrolling and keyboard input. A shared
 URL controller debounces search by 250 ms, defers during IME composition, and
-flushes pending input on dismissal or a position-tab change. Server reads apply
-literal case-insensitive substring matching before pagination. Flat Account
-filters and Balance grouping are retired; Account details and Overview groups
-retain their existing paths. See
+flushes pending input on dismissal. Before internal navigation, the shared Shell
+controller saves pending input in the outgoing Holdings view without updating
+the destination URL. Server reads apply literal case-insensitive substring
+matching before pagination. Flat Account filters and Balance grouping are
+retired. Balances, Futures, and Dual Investment use separate top-level routes
+and session-memory state keyed by User, Portfolio, and view. Internal links
+restore the target view's filters, search, and page; explicit URLs, reloads, and
+browser history remain authoritative. See
 [ADR 0014](./adr/0014-holdings-header-filters.md).
+
+Overview reads its summary and ownership Tree in one frontend query. The result
+is published only when the Valuation Point, total, and completeness agree; query
+retries and recovery retain the last successful pair. With no Valuation Point,
+only matching absent point IDs are required. Expanded Account queries are keyed
+by point and report, and validate both against the visible Account. A newer
+latest-only response produces a recovery notice instead of mixing reports.
+
+The ownership Tree uses nested lists and native disclosure buttons rather than a
+table or an ARIA tree widget. Buttons span each node row and expose expanded
+state. Names and USD values reflow inside the row; child containers add
+indentation and a vertical guide. Account detail grids use shrinkable columns
+and local table wrappers, so their width never expands the ancestor Tree. Report
+measures render only when present. Provenance lives in a native Report details
+disclosure; exception feedback remains inside Account details, with page-level
+Issues independent of expansion.
+
+Overview and the Activity Cycles/Jobs lists have no periodic display polling.
+Page navigation and browser reload read existing data. Explicit mutations still
+invalidate dependent queries, and running Collection details retain status
+polling until completion. Collect now updates the paired Overview read and open
+Account details on completion. Browser refresh does not request collection. See
+[ADR 0016](./adr/0016-overview-and-holdings-navigation.md).
 
 Financial arithmetic uses exact rationals behind `internal/decimal`; storage
 uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values with at
@@ -302,6 +329,28 @@ credentials exist without a key. Runtime, automated-test, and recording
 credentials use separate configuration sources. See
 [development](./development.md#configuration) and
 [testing](./testing.md#test-configuration) for operational setup.
+
+## History windows and tables
+
+History shares a resolved UTC window across series, raw point pages, and
+calendar reads. The read-only `history-window` endpoint resolves shortcuts or
+Portfolio-local wall times; invalid, ambiguous, and nonexistent manual times
+fail explicitly. Browser URLs retain relative presets or absolute custom
+endpoints. Pagination and recovery reuse the applied window.
+
+The `valuation-points/page` endpoint reads scalar summaries in descending order
+with SQL LIMIT/OFFSET and an indexed range count in one transaction. It reuses
+OffsetPage metadata. The existing ascending series interface remains compatible.
+Raw series read scalar summaries; Hour/Day scan only IDs and evaluation times,
+apply the existing timezone sampler, and fetch selected summaries in batches.
+Series reads avoid detail JSON, but the header scan still grows with the
+selected range. No migration, preaggregation, or retention policy is introduced.
+
+Period closes and Value Changes retain complete intersecting calendar periods
+and the 400-period ceiling. Their full results feed charts while table display
+reverses and paginates independently. Separate URL pagination keys prevent point
+expansion or an unrelated period selector from resetting a table. See
+[ADR 0017](./adr/0017-history-windows-and-pagination.md).
 
 ## Operations and limits
 

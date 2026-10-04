@@ -17,6 +17,33 @@ Two questions, in priority order:
    quarter, and year, after subtracting manual Capital Flows and derived
    Boundary Events.
 
+## Portfolio presentation
+
+Overview presents the latest total, recent Valuation Points, and the ownership
+Tree. Each node presents a name and adjacent USD value without repeated counts
+or status badges. Its default rows show Platform and Identity; expanding an
+Identity shows Accounts, and expanding an Account shows report measures and
+holding details. Balances remain visible even when empty. Futures and Dual
+Investment details appear when held; loading and collection failures remain
+explicit inside Account details. Report provenance is available in a folded
+Report details section. Page-level Issues explain omissions even when Accounts
+are folded.
+
+Holdings presents separate Balances, Futures, and Dual Investment tables, each
+with independent view filters. Balances is the default view. Dedicated Options
+and Earn views are not offered in this delivery; existing Earn Account
+collection and valuation remain supported.
+
+## History presentation
+
+History defaults to an explicit rolling seven-day window, with shorter and
+longer presets and Portfolio-timezone custom endpoints. Valuation Points shows
+an automatically grouped full-window curve, Period closes, and independently
+paginated raw points. Value Changes shows complete calendar results in the same
+selected window and retains its independent custom comparison. All three tables
+show newest records first, default to 20 rows, and offer 10/20/50 rows per page.
+See [ADR 0017](./adr/0017-history-windows-and-pagination.md).
+
 ## Supported Accounts
 
 The implemented Adapters offer the following Account Structures, Margin Modes,

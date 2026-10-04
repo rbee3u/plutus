@@ -9,10 +9,8 @@ import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
 import { useHoldingsFilters, type HoldingsFilters } from "./useHoldingsFilters";
 import { formatUsd } from "@/shared/lib/amount";
-import { useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
-import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { ContextSummary } from "@/shared/ui/ContextSummary";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -142,28 +140,11 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
   );
 }
 
-const POSITION_TYPES = [
-  { value: "futures", label: "Futures" },
-  { value: "dual_investment", label: "Dual Investment" },
-] as const;
-
-export function PositionsPage() {
-  const { params } = useSearchState();
+export function PositionsPage({ dual = false }: { dual?: boolean }) {
   const { portfolioId = "" } = useParams();
   const filters = useHoldingsFilters(portfolioId);
-  const dual = params.get("kind") === "dual_investment";
-  const activeTab = dual ? "dual_investment" : "futures";
-
   return (
     <section className={styles.wide}>
-      <div className={styles.viewHeader}>
-        <SegmentedControl
-          label="Position type"
-          value={activeTab}
-          onChange={filters.switchKind}
-          options={POSITION_TYPES}
-        />
-      </div>
       {dual ? <DualPositionsPage filters={filters} /> : <FuturesPositionsPage filters={filters} />}
     </section>
   );

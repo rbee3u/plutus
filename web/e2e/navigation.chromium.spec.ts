@@ -1,3 +1,4 @@
+import { overviewTreeFixture } from "./fixtures/overviewTree";
 import { expect, test, type Page } from "@playwright/test";
 import type { CurrentUser, Overview, Portfolio } from "../src/api/generated/types.gen";
 
@@ -34,6 +35,7 @@ async function mockShell(page: Page, long = false) {
   const data: Overview = long
     ? {
         ...overview,
+        context: { ...overview.context, pointId: portfolioId },
         totalUsd: "40",
         accountCount: 40,
         point: {
@@ -81,6 +83,8 @@ async function mockShell(page: Page, long = false) {
           ],
         },
       });
+    } else if (path === `/api/v1/portfolios/${portfolioId}/tree`) {
+      await route.fulfill({ json: overviewTreeFixture(data) });
     } else if (path === `/api/v1/portfolios/${portfolioId}/overview`) {
       await route.fulfill({ json: data });
     } else {
@@ -135,8 +139,8 @@ for (const viewport of [
     await mockShell(page, true);
     await page.setViewportSize(viewport);
     await page.goto(`/p/${portfolioId}/overview`);
-    const table = page.getByRole("table", { name: "Value per Identity at the latest point" });
-    await expect(table.getByRole("row")).toHaveCount(41);
+    const tree = page.getByRole("list", { name: "Holdings tree at the latest Valuation Point" });
+    await expect(tree.getByRole("button")).toHaveCount(41);
     await page.mouse.move(viewport.width - 20, viewport.height - 40);
     await page.mouse.wheel(0, 600);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
@@ -150,21 +154,21 @@ for (const viewport of [
     ).toBe(true);
 
     const position = await page.evaluate(() => window.scrollY);
-    const tableTop = await table.evaluate((element) => element.getBoundingClientRect().top);
+    const treeTop = await tree.evaluate((element) => element.getBoundingClientRect().top);
     const open = page.getByRole("button", { name: "Open navigation" });
     await open.click();
     await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeFocused();
     await expect
-      .poll(() => table.evaluate((element) => element.getBoundingClientRect().top))
-      .toBe(tableTop);
+      .poll(() => tree.evaluate((element) => element.getBoundingClientRect().top))
+      .toBe(treeTop);
     await expect
       .poll(() => header.evaluate((element) => element.getBoundingClientRect().top))
       .toBe(0);
     await page.mouse.move(viewport.width - 20, viewport.height - 40);
     await page.mouse.wheel(0, 500);
     await expect
-      .poll(() => table.evaluate((element) => element.getBoundingClientRect().top))
-      .toBe(tableTop);
+      .poll(() => tree.evaluate((element) => element.getBoundingClientRect().top))
+      .toBe(treeTop);
     if (viewport.height < 480) {
       const sidebar = page.locator("aside");
       await sidebar.evaluate((element) => {
@@ -188,8 +192,8 @@ for (const viewport of [
     const dialog = page.getByRole("dialog", { name: "New portfolio" });
     await expect(dialog).toBeVisible();
     await expect
-      .poll(() => table.evaluate((element) => element.getBoundingClientRect().top))
-      .toBe(tableTop);
+      .poll(() => tree.evaluate((element) => element.getBoundingClientRect().top))
+      .toBe(treeTop);
     await dialog.getByRole("textbox", { name: "Name", exact: true }).fill("Unsaved draft");
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(position);
@@ -200,11 +204,8 @@ for (const viewport of [
     await page.evaluate(() => window.scrollBy(0, 100));
     await expect(menu).toBeHidden();
 
-    const wrapper = table.locator("..");
-    await wrapper.evaluate((element) => {
-      element.scrollLeft = 150;
-    });
-    await expect.poll(() => wrapper.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    // Long Identity names reflow in the Tree instead of creating a wide outer table.
+    expect(await tree.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);

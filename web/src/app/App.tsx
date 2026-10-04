@@ -14,7 +14,6 @@ import { ValuationPointsPage } from "@/features/history/ValuationPointsPage";
 import { ValueChangesPage } from "@/features/history/ValueChangesPage";
 import { BalancesPage } from "@/features/holdings/BalancesPage";
 import { PositionsPage } from "@/features/holdings/PositionsPage";
-import { TreePage } from "@/features/holdings/TreePage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
 import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
@@ -33,9 +32,6 @@ configureApiClient();
 
 /** Old bookmarks from the projection-era information architecture. */
 const LEGACY_PATHS: readonly { from: string; to: string }[] = [
-  { from: "portfolio/balances", to: "holdings/balances" },
-  { from: "portfolio/positions", to: "holdings/positions" },
-  { from: "portfolio/exposure", to: "holdings" },
   { from: "history/valuations", to: "history" },
   { from: "capital/baseline", to: "capital" },
   { from: "capital/flows", to: "capital" },
@@ -55,9 +51,10 @@ export function App() {
             <Route path="account/security" element={<SecuritySettingsPage />} />
             <Route path="p/:portfolioId">
               <Route path="overview" element={<OverviewPage />} />
-              <Route path="holdings" element={<TreePage />} />
+              <Route path="holdings" element={<Navigate to="balances" replace />} />
               <Route path="holdings/balances" element={<BalancesPage />} />
-              <Route path="holdings/positions" element={<PositionsPage />} />
+              <Route path="holdings/futures" element={<PositionsPage />} />
+              <Route path="holdings/dual-investment" element={<PositionsPage key="dual" dual />} />
               <Route path="history" element={<ValuationPointsPage />} />
               <Route path="history/value-changes" element={<ValueChangesPage />} />
               <Route path="capital" element={<CapitalPage />} />

@@ -166,7 +166,7 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
     throw new Error(`Unexpected request ${path}`);
   });
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`/p/${portfolioId}/holdings/positions`);
+  await page.goto(`/p/${portfolioId}/holdings/futures`);
   const symbol = page.getByRole("button", { name: "Contract details for BTC-USD-SWAP" });
   await expect(page.getByRole("columnheader")).toHaveText([
     /Platform\s*All/,

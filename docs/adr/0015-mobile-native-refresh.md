@@ -11,10 +11,14 @@ ordinary iPhone Safari and Android Chrome tabs. The gesture reloads the current
 URL and reads existing Plutus data. It does not request a Collection Cycle;
 `Collect now` remains the explicit manual collection action.
 
-This applies to all mobile pages, including sign-in and settings. URL-backed
-filters and pagination survive reload. Unsaved inputs and other transient page
-state follow ordinary full-page reload behavior, without additional draft
-storage or refresh interception.
+This applies to all mobile pages, including sign-in and settings. Desktop users
+use the browser reload button or shortcut. No page-specific refresh buttons are
+added. Overview and Activity lists no longer poll periodically for display;
+explicit action progress and post-action reads remain, as accepted in
+[ADR 0016](./0016-overview-and-holdings-navigation.md). URL-backed filters and
+pagination survive reload. Unsaved inputs and other transient page state follow
+ordinary full-page reload behavior, without additional draft storage or refresh
+interception.
 
 The page title and navigation controls remain visible during scrolling. Open
 navigation drawers and modal dialogs isolate background scrolling and restore

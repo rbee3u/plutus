@@ -488,30 +488,132 @@
 }
 
 /* Sub-sections of an expanded row: a quiet label sitting close to its table. */
-.detail h3 {
+.detail h3,
+.accountDetail h3 {
   margin: var(--space-xs) 0 calc(-1 * var(--space-sm));
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   line-height: var(--line-height-sm);
 }
 
-/* Holdings tree rows: platform > identity > account. */
-.treePlatform > td {
-  background: var(--surface-inset);
+/* Ownership disclosures keep Account details inside the same hierarchy. */
+.holdingsTree,
+.treeChildren {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.holdingsTree > .treeNode + .treeNode {
+  margin-top: var(--space-md);
+}
+
+.treeChildren {
+  margin-left: var(--space-lg);
+  padding-left: var(--space-lg);
+  border-left: 1px solid var(--line-soft);
+}
+
+.treeNode {
+  min-width: 0;
+}
+
+.treeNodeButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--transition-fast);
+}
+
+.treeNodeButton:hover,
+.treeNodeButton:active {
+  background: var(--surface-selected);
+}
+
+.treeNodeButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.treeNodeButton > svg {
+  flex-shrink: 0;
+}
+
+.treePlatform,
+.treeIdentity {
   font-weight: var(--weight-semibold);
 }
 
-.treePlatform > td:first-child,
-.treeIdentity > td:first-child {
+.treeNodeText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-md);
+  min-width: 0;
+}
+
+.treeNodeName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.treeNodeValue {
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-regular);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.treeIdentity > td:first-child {
-  padding-left: calc(var(--space-lg) + var(--space-2xl));
+.treeAccountDetail {
+  padding-top: var(--space-lg);
+  padding-right: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  margin-bottom: var(--space-sm);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--surface-inset);
 }
 
-.treeAccount > td:first-child {
-  padding-left: calc(var(--space-lg) + 2 * var(--space-2xl));
+.accountDetail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.reportDetails {
+  min-width: 0;
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+}
+
+.reportDetails > summary {
+  width: fit-content;
+  min-height: 44px;
+  padding: var(--space-sm) 0;
+  cursor: pointer;
+}
+
+.reportDetails > summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.reportDetails > .metaList {
+  margin-top: var(--space-sm);
 }
 
 .archivedRow > td {
@@ -656,6 +758,11 @@
     position: sticky;
     left: 0;
     max-width: calc(100vw - 2 * var(--space-lg));
+  }
+
+  .treeChildren {
+    margin-left: var(--space-md);
+    padding-left: var(--space-md);
   }
 }
 

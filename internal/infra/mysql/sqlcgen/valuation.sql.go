@@ -7,6 +7,8 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
@@ -18,6 +20,23 @@ SELECT COUNT(*) FROM valuation_points WHERE portfolio_id = ?
 
 func (q *Queries) CountValuationPoints(ctx context.Context, portfolioID []byte) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countValuationPoints, portfolioID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countValuationPointsBetween = `-- name: CountValuationPointsBetween :one
+SELECT COUNT(*) FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+`
+
+type CountValuationPointsBetweenParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+func (q *Queries) CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countValuationPointsBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -223,6 +242,255 @@ func (q *Queries) GetValuationPointByJob(ctx context.Context, arg GetValuationPo
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listValuationPointHeadersBetween = `-- name: ListValuationPointHeadersBetween :many
+SELECT id, evaluated_at FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+ORDER BY evaluated_at ASC
+`
+
+type ListValuationPointHeadersBetweenParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListValuationPointHeadersBetweenRow struct {
+	ID          []byte
+	EvaluatedAt time.Time
+}
+
+func (q *Queries) ListValuationPointHeadersBetween(ctx context.Context, arg ListValuationPointHeadersBetweenParams) ([]ListValuationPointHeadersBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listValuationPointHeadersBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListValuationPointHeadersBetweenRow{}
+	for rows.Next() {
+		var i ListValuationPointHeadersBetweenRow
+		if err := rows.Scan(&i.ID, &i.EvaluatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listValuationPointPage = `-- name: ListValuationPointPage :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+ORDER BY evaluated_at DESC LIMIT ? OFFSET ?
+`
+
+type ListValuationPointPageParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+	Limit       int32
+	Offset      int32
+}
+
+type ListValuationPointPageRow struct {
+	ID                      []byte
+	PortfolioID             []byte
+	JobID                   []byte
+	EvaluatedAt             time.Time
+	TotalUsd                string
+	AccountCount            uint32
+	StaleAccountCount       uint32
+	IncompleteAccountCount  uint32
+	BoundaryContributionUsd string
+	BoundaryWithdrawalUsd   string
+	RecalculatedAt          sql.NullTime
+	CreatedAt               time.Time
+}
+
+func (q *Queries) ListValuationPointPage(ctx context.Context, arg ListValuationPointPageParams) ([]ListValuationPointPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listValuationPointPage,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListValuationPointPageRow{}
+	for rows.Next() {
+		var i ListValuationPointPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.JobID,
+			&i.EvaluatedAt,
+			&i.TotalUsd,
+			&i.AccountCount,
+			&i.StaleAccountCount,
+			&i.IncompleteAccountCount,
+			&i.BoundaryContributionUsd,
+			&i.BoundaryWithdrawalUsd,
+			&i.RecalculatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listValuationPointSummariesBetween = `-- name: ListValuationPointSummariesBetween :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+ORDER BY evaluated_at ASC
+`
+
+type ListValuationPointSummariesBetweenParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListValuationPointSummariesBetweenRow struct {
+	ID                      []byte
+	PortfolioID             []byte
+	JobID                   []byte
+	EvaluatedAt             time.Time
+	TotalUsd                string
+	AccountCount            uint32
+	StaleAccountCount       uint32
+	IncompleteAccountCount  uint32
+	BoundaryContributionUsd string
+	BoundaryWithdrawalUsd   string
+	RecalculatedAt          sql.NullTime
+	CreatedAt               time.Time
+}
+
+func (q *Queries) ListValuationPointSummariesBetween(ctx context.Context, arg ListValuationPointSummariesBetweenParams) ([]ListValuationPointSummariesBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listValuationPointSummariesBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListValuationPointSummariesBetweenRow{}
+	for rows.Next() {
+		var i ListValuationPointSummariesBetweenRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.JobID,
+			&i.EvaluatedAt,
+			&i.TotalUsd,
+			&i.AccountCount,
+			&i.StaleAccountCount,
+			&i.IncompleteAccountCount,
+			&i.BoundaryContributionUsd,
+			&i.BoundaryWithdrawalUsd,
+			&i.RecalculatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listValuationPointSummariesByIDs = `-- name: ListValuationPointSummariesByIDs :many
+SELECT id, portfolio_id, job_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
+       boundary_contribution_usd, boundary_withdrawal_usd, recalculated_at, created_at
+FROM valuation_points WHERE portfolio_id = ? AND id IN (/*SLICE:ids*/?)
+ORDER BY evaluated_at ASC
+`
+
+type ListValuationPointSummariesByIDsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+type ListValuationPointSummariesByIDsRow struct {
+	ID                      []byte
+	PortfolioID             []byte
+	JobID                   []byte
+	EvaluatedAt             time.Time
+	TotalUsd                string
+	AccountCount            uint32
+	StaleAccountCount       uint32
+	IncompleteAccountCount  uint32
+	BoundaryContributionUsd string
+	BoundaryWithdrawalUsd   string
+	RecalculatedAt          sql.NullTime
+	CreatedAt               time.Time
+}
+
+func (q *Queries) ListValuationPointSummariesByIDs(ctx context.Context, arg ListValuationPointSummariesByIDsParams) ([]ListValuationPointSummariesByIDsRow, error) {
+	query := listValuationPointSummariesByIDs
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListValuationPointSummariesByIDsRow{}
+	for rows.Next() {
+		var i ListValuationPointSummariesByIDsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PortfolioID,
+			&i.JobID,
+			&i.EvaluatedAt,
+			&i.TotalUsd,
+			&i.AccountCount,
+			&i.StaleAccountCount,
+			&i.IncompleteAccountCount,
+			&i.BoundaryContributionUsd,
+			&i.BoundaryWithdrawalUsd,
+			&i.RecalculatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listValuationPointsBetween = `-- name: ListValuationPointsBetween :many
