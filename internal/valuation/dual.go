@@ -22,6 +22,7 @@ type DualPositionRow struct {
 	Platform         string
 	Freshness        string
 	ReportObservedAt *time.Time
+	Issues           []Issue
 }
 
 func dualPositionRow(account *AccountValuation, p *sqlcgen.DualPosition) DualPositionRow {
@@ -38,6 +39,10 @@ func dualPositionRow(account *AccountValuation, p *sqlcgen.DualPosition) DualPos
 	if p.SubscribedAt.Valid {
 		subscribed := p.SubscribedAt.Time
 		row.SubscribedAt = &subscribed
+	}
+	row.Issues = dualIssues(&row)
+	if account.Freshness == FreshnessStale {
+		row.Issues = append(row.Issues, earnStaleIssue(account))
 	}
 	return row
 }

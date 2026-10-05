@@ -26,7 +26,6 @@ make run ARGS="--config $config --env-file $envfile db reset --seed"
 echo
 echo "Seed logins:"
 echo "  alice / Alice=123456"
-echo "  bob / Bob=123456"
 echo "Open http://127.0.0.1:8081 (not :8080)."
 echo "The next run of this script will reset plutus_agent again; agent-serve.sh keeps the data."
 echo

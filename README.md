@@ -25,7 +25,7 @@ Implemented capabilities include:
 - Unified rotating application, HTTP access, and full-value SQL logs; see
   [logging configuration](./docs/development.md#logging).
 - Overview totals, recent-point chart, and an expandable ownership Tree;
-  separate Balances, Futures, and Dual Investment Holdings views.
+  separate Balances, Futures, Earn, and Dual Investment Holdings views.
 - Historical Valuation Points, Period Closes, and Value Changes, with explicit
   time windows, automatically grouped curves, independent table pagination,
   manual Capital Flows, and derived Boundary Events.
@@ -35,8 +35,13 @@ Implemented capabilities include:
   observation badges in current and historical holdings; see
   [the delivery report](./docs/adapters/position-presentation-delivery.md) and
   [the margin correction](./docs/adapters/margin-presentation-delivery.md).
+- Earn product details and source-aware rates/rewards, with shared Earn and Dual
+  Investment observation badges; see
+  [the delivery report](./docs/adapters/earn-presentation-delivery.md).
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
-  audit views, and one deterministic development walkthrough dataset.
+  audit views, and one deterministic Alice development dataset with healthy,
+  edge-case, large-list and empty Portfolios. See the
+  [seed scenarios](./docs/seeds.md).
 
 Remaining work is exchange-app reconciliation and validation of unexercised
 Account Structures, Margin Modes, and products. Synthetic tests and reviewed
@@ -45,6 +50,10 @@ Platform coverage notes: [Binance](./docs/adapters/binance/verification.md),
 [OKX](./docs/adapters/okx/verification.md),
 [Bybit](./docs/adapters/bybit/verification.md), and
 [Kraken](./docs/adapters/kraken/verification.md).
+
+Kraken Dual Investment remains unsupported: the public API review has not found
+a documented read-only holdings contract. See the
+[contract review](./docs/adapters/kraken/verification.md#dual-investment-contract-review).
 
 The implementation also has an unresolved
 [same-Platform pricing discrepancy](./docs/architecture.md#known-implementation-discrepancy).

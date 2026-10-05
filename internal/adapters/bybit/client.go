@@ -59,6 +59,7 @@ var (
 	epWallet        = endpoint{"/v5/account/wallet-balance", "accountType=UNIFIED", true}
 	epPositions     = endpoint{"/v5/position/list", "limit=200", true}
 	epFunding       = endpoint{"/v5/asset/transfer/query-account-coins-balance", "accountType=FUND", true}
+	epEarnProduct   = endpoint{"/v5/earn/product", "category=FlexibleSaving", false}
 	epFlexible      = endpoint{"/v5/earn/position", "category=FlexibleSaving", true}
 	epFixedTerm     = endpoint{"/v5/earn/fixed-term/position", "category=FixedTermSaving", true}
 	epDualAssets    = endpoint{"/v5/earn/advance/position", "category=DualAssets&limit=20", true}

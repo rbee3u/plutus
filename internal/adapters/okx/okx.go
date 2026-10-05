@@ -388,18 +388,6 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 	return adapters.AccountReport{AccountType: TypeFunding, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
 }
 
-type savingsBalance struct {
-	Ccy string `json:"ccy"`
-	Amt string `json:"amt"`
-}
-
-type stakingOrder struct {
-	InvestData []struct {
-		Ccy string `json:"ccy"`
-		Amt string `json:"amt"`
-	} `json:"investData"`
-}
-
 // earn maps the Earn bucket, one Balance per coin: Simple Earn flexible
 // balances, the principal of active on-chain earn orders, and the principal of
 // dual investment orders still invested. An empty amount fails the Account.
@@ -410,6 +398,7 @@ type stakingOrder struct {
 // fails selected Earn and Dual Accounts instead of vanishing.
 func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
+	earnPositions := []adapters.EarnPosition{}
 	var savings []savingsBalance
 	if err := c.call(ctx, epSavings, &savings); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
@@ -422,12 +411,16 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 		if err := totals.Add(epSavings.String(), savings[i].Ccy, amount); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
+		if amount.Sign() != 0 {
+			earnPositions = append(earnPositions, savings[i].position(decimal.Format(amount)))
+		}
 	}
 	var staking []stakingOrder
 	if err := c.call(ctx, epStaking, &staking); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	for i := range staking {
+		p := staking[i].position()
 		for _, invested := range staking[i].InvestData {
 			amount, err := adapters.Decimal(epStaking.String(), "investData.amt of "+invested.Ccy, invested.Amt)
 			if err != nil {
@@ -436,6 +429,12 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 			if err := totals.Add(epStaking.String(), invested.Ccy, amount); err != nil {
 				return adapters.AccountReport{}, adapters.AccountReport{}, err
 			}
+			if amount.Sign() != 0 {
+				p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: invested.Ccy, Amount: decimal.Format(amount)})
+			}
+		}
+		if len(p.Assets) > 0 {
+			earnPositions = append(earnPositions, p)
 		}
 	}
 	orders, err := a.dualInvestmentOrders(ctx, c)
@@ -447,6 +446,9 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	balances := totals.Balances()
+	if err := adapters.CheckEarnPositions(earnPositions, balances); err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
+	}
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
@@ -463,7 +465,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	if err := adapters.CheckEarnComplete(adapters.PlatformOKX, valuation, combined, usdPrice); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // earnValuation reads OKX's own valuation of the Earn bucket in USDT, which Plutus counts as USD.

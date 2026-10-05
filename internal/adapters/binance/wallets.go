@@ -106,12 +106,8 @@ func walletValueQuery() url.Values {
 }
 
 type earnPage struct {
-	Total int `json:"total"`
-	Rows  []struct {
-		Asset       string `json:"asset"`
-		TotalAmount string `json:"totalAmount"`
-		Amount      string `json:"amount"`
-	} `json:"rows"`
+	Total int           `json:"total"`
+	Rows  []earnHolding `json:"rows"`
 }
 
 type dualInvestmentPage struct {
@@ -137,7 +133,8 @@ type dualInvestmentPosition struct {
 // principal against Binance's Earn wallet valuation (ADR 0005).
 func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
-	if err := simpleEarn(ctx, c, totals); err != nil {
+	earnPositions, err := simpleEarn(ctx, c, totals)
+	if err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	positions, err := dualInvestment(ctx, c)
@@ -157,11 +154,12 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	if err := checkEarn(ctx, c, combined, prices); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // simpleEarn adds flexible (totalAmount) and locked (amount) positions, paged by 100.
-func simpleEarn(ctx context.Context, c *client, totals adapters.Totals) error {
+func simpleEarn(ctx context.Context, c *client, totals adapters.Totals) ([]adapters.EarnPosition, error) {
+	out := []adapters.EarnPosition{}
 	for _, product := range []struct {
 		ep    endpoint
 		field string
@@ -170,7 +168,7 @@ func simpleEarn(ctx context.Context, c *client, totals adapters.Totals) error {
 		for current, seen := 1, 0; ; current++ {
 			var page earnPage
 			if err := c.call(ctx, product.ep, simpleEarnQuery(current), &page); err != nil {
-				return err
+				return nil, err
 			}
 			for _, row := range page.Rows {
 				value := row.TotalAmount
@@ -179,14 +177,19 @@ func simpleEarn(ctx context.Context, c *client, totals adapters.Totals) error {
 				}
 				amount, err := adapters.Decimal(where, product.field, value)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if amount.Sign() == 0 {
 					continue
 				}
 				if err := totals.Add(where, row.Asset, amount); err != nil {
-					return err
+					return nil, err
 				}
+				p, err := row.position(product.field, decimal.Format(amount))
+				if err != nil {
+					return nil, err
+				}
+				out = append(out, p)
 			}
 			seen += len(page.Rows)
 			if len(page.Rows) == 0 || seen >= page.Total {
@@ -194,7 +197,7 @@ func simpleEarn(ctx context.Context, c *client, totals adapters.Totals) error {
 			}
 		}
 	}
-	return nil
+	return out, adapters.CheckEarnPositions(out, totals.Balances())
 }
 
 // dualInvestment adds the principal of every running dual investment position: subscriptionAmount

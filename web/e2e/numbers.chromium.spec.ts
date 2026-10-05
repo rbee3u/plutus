@@ -88,6 +88,24 @@ async function mockApi(page: Page) {
       return route.fulfill({ json: { csrfToken: "offline-check" } });
     if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
     if (path === `/api/v1/portfolios/${portfolioId}`) return route.fulfill({ json: portfolio });
+    if (path.endsWith("/history-window"))
+      return route.fulfill({
+        json: {
+          context: overview.context,
+          from: "2026-09-30T00:00:00Z",
+          to: "2026-10-03T00:00:00Z",
+        },
+      });
+    if (path.endsWith("/valuation-points"))
+      return route.fulfill({
+        json: {
+          context: overview.context,
+          from: "2026-09-30T00:00:00Z",
+          to: "2026-10-03T00:00:00Z",
+          granularity: "raw",
+          items: overview.sparkline,
+        },
+      });
     if (path.endsWith("/tree")) return route.fulfill({ json: overviewTreeFixture(overview) });
     if (path.endsWith("/overview")) return route.fulfill({ json: overview });
     if (
@@ -115,7 +133,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Total Net Worth", exact: true }) });
   await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.0₅444");
-  await expect(total).toContainText("0.00000444 USD");
+  await expect(total).toContainText("0.00000444");
   await expect(
     page
       .getByRole("button", { name: "Collapse OKX", exact: true })

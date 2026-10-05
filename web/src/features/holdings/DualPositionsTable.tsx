@@ -2,9 +2,9 @@ import type { DualPositionRow } from "@/api/generated/types.gen";
 import { platformLabel, usePlatforms } from "@/features/data/usePlatforms";
 import { formatDecimal, formatPercent, formatPrice } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { Badge } from "@/shared/ui/Badge";
+import { ObservedCell } from "./ObservedCell";
+import { NumericText } from "@/shared/ui/NumericText";
 import { DataTable } from "@/shared/ui/DataTable";
-import styles from "@/features/pages.module.css";
 import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import type { HoldingsFilters } from "./useHoldingsFilters";
 
@@ -57,10 +57,11 @@ export function DualPositionsTable({
         { key: "expiry", header: "Expiry", nowrap: true },
         { key: "strike", header: "Strike", numeric: true, nowrap: true },
         { key: "direction", header: "Direction", nowrap: true },
-        { key: "apy", header: "APY", numeric: true, nowrap: true },
+        { key: "rate", header: "Rate", numeric: true, nowrap: true },
         { key: "principal", header: "Principal", numeric: true, nowrap: true },
         { key: "subscribed", header: "Subscribed", nowrap: true },
         { key: "status", header: "Status" },
+        { key: "observed", header: "Observed", nowrap: true },
       ]}
       rows={items.map((item) => ({
         id: `${item.accountId}-${item.platformPositionRef}`,
@@ -78,18 +79,24 @@ export function DualPositionsTable({
             : item.direction === "sell_high"
               ? "Sell High"
               : "—",
-        apy: formatPercent(item.annualizedRate),
+        rate: (
+          <NumericText>
+            {item.annualizedRate == null
+              ? "—"
+              : `${formatPercent(item.annualizedRate)}${item.rateKind === "apr" ? " APR" : item.rateKind === "apy" ? " APY" : item.rateKind === "annualized_yield" ? " annualized" : ""}`}
+          </NumericText>
+        ),
         principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
-        status: (
-          <span className={styles.statusGroup}>
-            <span>{item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span>
-            {item.freshness === "stale" ? (
-              <Badge tone="warn" title="Report carried forward (stale)">
-                stale
-              </Badge>
-            ) : null}
-          </span>
+        status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
+        observed: (
+          <ObservedCell
+            observedAt={item.reportObservedAt}
+            freshness={item.freshness}
+            issues={item.issues}
+            name={`Dual ${item.platformPositionRef}`}
+            timezone={timezone}
+          />
         ),
       }))}
       empty={

@@ -65,7 +65,6 @@ export function BalancesPage() {
             <span className={styles.holdingsSummaryValue}>
               {data.totalUsd ? <span className={styles.holdingsSummaryCurrency}>$</span> : null}
               <NumericText>{formatAmount(data.totalUsd)}</NumericText>
-              {data.totalUsd ? <span className={styles.holdingsSummaryUnit}>USD</span> : null}
             </span>
             <CompletenessBadge value={data.completeness} />
           </div>

@@ -173,7 +173,8 @@ Mapping rules:
     `accAvgPx`, `openAvgPx`, `maxLoan`, `rewardBal`, `fixedBal`, `autoLendAmt`,
     `twap`, `stgyEq`, and Futures mode's per-coin `mgnRatio`, `imr`, `mmr`,
     `notionalLever`;
-  - Earn: `earnings`, `rate`, `loanAmt`, `pendingAmt`;
+  - Earn Balance columns remain null; these fields are retained as descriptive
+    Earn metadata, not additional equity;
   - dual investment: expected payout and settlement amounts; the annualized rate
     is descriptive only.
 
@@ -242,6 +243,18 @@ Platform-specific fields map as follows:
 | Pair and direction    | `baseCcy` / `quoteCcy`; investing base means Sell High, investing quote means Buy Low                                                                                                                              |
 | Target, expiry        | `strike`, scheduled `settleTime` milliseconds. The older documentation example has `expTime` instead, which is used when `settleTime` is empty. `settledTime` is the actual payout time, not the scheduled expiry. |
 | Annualized rate       | `annualizedYield`, tagged Annualized Yield                                                                                                                                                                         |
+
+## Earn Position descriptions
+
+Savings rows remain coin aggregates. `amt` is total holding Amount; `rate` is a
+minimum lending preference kept in details, not an actual return. Earnings with
+unspecified accumulation scope remain Reported rewards in details. On-chain
+orders retain all nonzero invested currencies in one row, Estimated APY,
+purchase time, and native stage. `earningType` distinguishes Estimated and
+Cumulative rewards; unknown scopes remain Reported rewards. Estimated redemption
+settlement time is a detail, never Maturity. These facts describe existing
+Balance equity and do not change the shared completeness check. See
+[ADR 0018](../../adr/0018-earn-position-presentation.md).
 
 ## Earn check
 

@@ -78,8 +78,8 @@ environment. When `--env-file` is set, that file is the only env file loaded; it
 does not merge with `config/local.env`. The MySQL DSN comes only from
 `PLUTUS_DSN` or `PLUTUS_DSN_FILE`, never TOML. The credential encryption master
 key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear
-in TOML. Without a key, credential writes, validation, and enabling return 503
-and seeded Identities stay `unconfigured`.
+in TOML. Without a key, credential writes, validation, and enabling return 503.
+Seed commands require a master key.
 
 The environment examples contain deployment differences and explicit environment
 permissions, rather than every default. Keep their listener, port, cookie
@@ -272,13 +272,19 @@ database (how the test environment is wiped). It requires
 matching `plutus` or `plutus_<suffix>` that does not contain `prod`. `serve`
 never migrates or seeds automatically.
 
-There is one walkthrough dataset: forty days across Binance Portfolio Margin,
-OKX, and Bybit, twenty days of Binance Classic Trading, an archived Identity,
-and Capital Flows. Position modes and margin provenance are retained with each
-source report. The latest point has eight Futures: seven fresh and one stale
-COIN-M Futures Position, with complete known notional. The next successful fake
-cycle recovers it. A historical Bybit rate-limited day remains; missing,
-unpriced, boundary, gap, and unvalued-flow fixtures are test-only.
+There is one walkthrough dataset owned only by Alice. Its four Portfolios are
+`default` (Asia/Shanghai, 400 days), `edge-cases` (Europe/Berlin, 400 days),
+`large` (UTC, seven days), and `empty` (Asia/Shanghai, no history). The healthy
+Portfolio covers all six supported Account Structures. Other Margin Modes,
+persistent anomalies, legacy reports and pagination are available in the other
+Portfolios. See the [scenario index](./seeds.md) for exact events, expected
+results and walkthrough instructions.
+
+Seeding requires `[collection].fake_adapter = true` and a configured master key.
+It rejects missing prerequisites before inserting data. Source Account Reports
+retain Positions and product descriptions; real valuation code rebuilds the
+derived results. Later fake collection uses the same original time anchor, so
+the data remains coherent after process restarts.
 
 `db seed` loads this data into an empty migrated database. It does not update
 existing seed data: fixed IDs would conflict. Use the dev wipe-and-serve script
@@ -300,14 +306,11 @@ Scratch logins from the development seed:
 | Username | Password       |
 | -------- | -------------- |
 | `alice`  | `Alice=123456` |
-| `bob`    | `Bob=123456`   |
 
-Alice owns Portfolios `default` (Asia/Shanghai, undeletable) and `trading`. Bob
-owns `default` in Europe/Berlin. Once `serve` runs, the scheduler keeps
-collecting every enabled Identity at the Portfolio interval; the fake Adapter
-continues the seeded series, so Overview, Holdings, History, and Capital stay
-live. `Collect now` on the Overview page and `plutus collect --portfolio <uuid>`
-trigger one cycle immediately.
+Alice's `default` Portfolio is undeletable. Once `serve` runs, the scheduler
+collects enabled Connections every 15 minutes. `Collect now` on Overview and
+`plutus collect --portfolio <uuid>` trigger a cycle immediately. The empty
+Portfolio has no enabled Connection and is not scheduled.
 
 Public registration is not offered. Create Users with `plutus user create`.
 Passwords must be 8 to 128 characters.

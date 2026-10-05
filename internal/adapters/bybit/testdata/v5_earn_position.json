@@ -19,7 +19,8 @@
           "category": "FlexibleSaving",
           "coin": "USDT",
           "amount": "20",
-          "claimableYield": "0"
+          "claimableYield": "0",
+          "productId": "flex-USDT"
         }
       ],
       "nextPageCursor": ""

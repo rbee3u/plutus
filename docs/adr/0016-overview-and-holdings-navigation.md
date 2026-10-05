@@ -30,18 +30,18 @@ Report details disclosure.
 Platforms start expanded, Identities start collapsed, and Account details start
 collapsed. Each level has a keyboard-operable expansion control. Data updates
 preserve expansion; entering Overview again or changing Portfolio resets it.
-Balances always appear in Account details. Futures and Dual Investment sections
-are hidden only after a successful empty read. Loading, failed reads, and stale
-holdings remain explicit rather than being treated as empty.
+Balances always appear in Account details. Futures, Earn, and Dual Investment
+sections are hidden only after a successful empty read. Loading, failed reads,
+and stale holdings remain explicit rather than being treated as empty.
 
-Holdings offers Balances, Futures, and Dual Investment as top-level views, with
-Balances as its default. Options and a dedicated Earn view are deferred without
-placeholder tabs or changes to offered Accounts. Each view remembers its own
-Platform, Identity, search, and pagination during the application session,
-scoped by User and Portfolio. Pending searches belong to the outgoing view.
-Explicit URLs, reload, and browser history take precedence over that memory. The
-new browser paths match the view names; old Positions paths are not retained
-because the project has not been released.
+Holdings offers Balances, Futures, Earn, and Dual Investment as top-level views,
+with Balances as its default. Options remains deferred without placeholder tabs
+or changes to offered Accounts. Earn detail behavior follows ADR 0018. Each view
+remembers its own Platform, Identity, search, and pagination during the
+application session, scoped by User and Portfolio. Pending searches belong to
+the outgoing view. Explicit URLs, reload, and browser history take precedence
+over that memory. The new browser paths match the view names; old Positions
+paths are not retained because the project has not been released.
 
 Display refresh follows the native browser behavior accepted in ADR 0015.
 Overview and Activity list polling is removed; there are no per-page reload

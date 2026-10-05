@@ -115,8 +115,10 @@ export function OverviewPage() {
       },
       tooltip: {
         trigger: "axis",
-        valueFormatter: (_value: unknown, index: number) =>
-          `${formatAmount(points[index]?.totalUsd)} USD`,
+        valueFormatter: (_value: unknown, index: number) => {
+          const amt = formatAmount(points[index]?.totalUsd);
+          return amt === "—" ? amt : `$${amt}`;
+        },
       },
       xAxis: {
         type: "category",
@@ -278,8 +280,7 @@ export function OverviewPage() {
                   <div className={styles.heroAmountRow}>
                     <div className={styles.heroAmount}>
                       <span className={styles.heroCurrencySymbol}>$</span>
-                      <NumericText>{formatAmount(overview.totalUsd)}</NumericText>{" "}
-                      {overview.totalUsd ? <span className={styles.heroUnit}>USD</span> : null}
+                      <NumericText>{formatAmount(overview.totalUsd)}</NumericText>
                     </div>
                     <div className={styles.heroBadges}>
                       {changeInsight ? (

@@ -25,7 +25,6 @@ make run ARGS="--config $config --env-file $envfile db reset --seed"
 echo
 echo "Seed logins:"
 echo "  alice / Alice=123456"
-echo "  bob / Bob=123456"
 echo "This machine: http://127.0.0.1:8080"
 lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 if [[ -n "$lan_ip" ]]; then

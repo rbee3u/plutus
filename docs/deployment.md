@@ -168,3 +168,14 @@ Exact canonical Position references restore one-way/hedged mode; noncanonical
 references, contradictory directions, and unrecorded historical Report Margin
 Modes remain unknown. New successful collection supplies the new provenance;
 stale fallback keeps the old Report's known fields and observation time.
+
+### Earn presentation upgrade
+
+Stop the service and apply
+[20261005010000_earn_positions.sql](../db/migrations/20261005010000_earn_positions.sql)
+with `migrate up` before running the new binary. Existing populated reports
+retain their financial values and original observation times. The new collection
+flag starts false for history: the UI shows separate Balance summaries until a
+new successful Earn report supplies normalized descriptions. No scope
+reclassification, historical product reconstruction, or database reset is
+required. See [ADR 0018](./adr/0018-earn-position-presentation.md).

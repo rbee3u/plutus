@@ -3,6 +3,7 @@ package seeds
 import (
 	"context"
 	"database/sql"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -10,192 +11,382 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/decimal"
+	"github.com/rbee3u/plutus/internal/adapters/fake"
+	"github.com/rbee3u/plutus/internal/adapters/offline"
+	"github.com/rbee3u/plutus/internal/audit"
+	"github.com/rbee3u/plutus/internal/catalog"
+	"github.com/rbee3u/plutus/internal/collection"
+	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
 
+func TestMain(m *testing.M) { offline.Install(); mysql.RunTestMain(m) }
+
 func TestBuild(t *testing.T) {
-	t.Parallel()
 	anchor := time.Date(2026, 9, 22, 10, 7, 0, 0, time.UTC)
-	seed := BuildAt(anchor)
-	if !strings.Contains(seed.SQL, "'alice'") || !strings.Contains(seed.SQL, "'bob'") {
-		t.Fatal("both users must be seeded")
+	seed, err := BuildAt(anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(seed.SQL, "'alice'") || strings.Contains(seed.SQL, "'bob'") {
+		t.Fatal("only Alice must be seeded")
+	}
+	if len(seed.Portfolios) != 4 {
+		t.Fatal("expected four theme Portfolios")
 	}
 	if strings.Contains(seed.SQL, "INSERT INTO valuation_points") {
-		t.Fatal("seeds must not write Valuation Points")
+		t.Fatal("seeds must not write derived points")
 	}
-	if len(seed.Live) != 5 || len(seed.Portfolios) != 3 {
-		t.Fatalf("expected five live Identities and three Portfolios, got %d and %d", len(seed.Live), len(seed.Portfolios))
+	again, err := BuildAt(anchor)
+	if err != nil || again.SQL != seed.SQL {
+		t.Fatalf("non-deterministic seed: %v", err)
 	}
-	if again := BuildAt(anchor); again.SQL != seed.SQL {
-		t.Fatal("seed is not deterministic")
+	if UserAlice != SeedID(kindUser, 1) || PortfolioAliceMain.String() != "01a0bdfc-2b00-7002-8000-000000000001" {
+		t.Fatal("retained IDs changed")
+	}
+	for _, plan := range seed.Live {
+		if plan.Credentials.APIKey == "" || plan.Status == "" {
+			t.Fatal("incomplete activation plan")
+		}
 	}
 }
 
-func TestSeedIDIsStable(t *testing.T) {
-	t.Parallel()
-	if SeedID(kindUser, 1).String() != "01a0bdfc-2b00-7001-8000-000000000001" {
-		t.Fatalf("unexpected id %s", SeedID(kindUser, 1))
+func TestDefinitionFailures(t *testing.T) {
+	if _, err := BuildAt(time.Time{}); err == nil {
+		t.Fatal("zero anchor accepted")
+	}
+	b := newBuilder()
+	b.jsonLiteral(make(chan int))
+	if b.err == nil {
+		t.Fatal("serialization failure silently discarded")
+	}
+	b = newBuilder()
+	b.add("prices", "'binance'", "'BTC'", "'2026-01-01'", "oops", "'USDT'")
+	if b.err == nil {
+		t.Fatal("invalid decimal accepted")
+	}
+	b = newBuilder()
+	b.accounts(uuid.New(), nil, nil, time.Now())
+	if b.err == nil {
+		t.Fatal("unknown Identity accepted")
+	}
+	r := adapters.AccountReport{Status: adapters.StatusOK, ObservedAt: time.Now(), Balances: []adapters.Balance{{Symbol: "BTC", Equity: ""}}}
+	if validateReport(&r) == nil {
+		t.Fatal("unknown Balance equity accepted")
 	}
 }
 
-func TestMain(m *testing.M) {
-	mysql.RunTestMain(m)
-}
-
-// Database cases run sequentially because each replaces the package's throwaway data.
-func TestSeedsApplyAndRebuild(t *testing.T) {
-	db := mysql.OpenTestDB(t)
-	// D-4 is mid-week, giving the gap fixture a surrounding weekly start point.
-	now := time.Date(2026, 9, 13, 10, 7, 0, 0, time.UTC)
-	for _, tc := range []struct {
-		name  string
-		build func(time.Time) Seed
-		check func(context.Context, *testing.T, *sql.DB, time.Time)
-	}{
-		{"development", BuildAt, assertDevelopmentSeed},
-		{"anomaly fixture", buildEdgeCases, assertEdgeCases},
+func TestCalendarTimeline(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, anchor := range []time.Time{
+		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 3, 30, 10, 0, 0, 0, time.UTC),
+		time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC),
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			if err := mysql.DropAllTables(ctx, db); err != nil {
-				t.Fatal(err)
+		points := cycleTimes(anchor, berlin, false)
+		days := map[string]bool{}
+		for i, at := range points {
+			if i > 0 && !at.After(points[i-1]) {
+				t.Fatal("unordered or duplicate timeline")
 			}
-			if err := mysql.Up(db); err != nil {
-				t.Fatal(err)
+			if at.After(anchor) {
+				t.Fatal("future seed event")
 			}
-			seed := tc.build(now)
-			if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
-				t.Fatalf("apply: %v", err)
+			days[at.In(berlin).Format("2006-01-02")] = true
+		}
+		if len(days) != 401 {
+			t.Fatalf("expected 401 local days including today, got %d", len(days))
+		}
+		if !points[len(points)-1].Equal(anchor) {
+			t.Fatal("latest cycle does not equal anchor")
+		}
+	}
+}
+
+func TestSeedsApplyRebuildAndCollect(t *testing.T) {
+	db := mysql.OpenTestDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+	anchor := time.Now().UTC().Truncate(15 * time.Minute)
+	seed, err := BuildAt(anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	registry := adapters.NewRegistry()
+	clock := anchor.Add(time.Minute)
+	for _, platform := range adapters.OfferedPlatforms() {
+		registry.Register(platform, fake.New(platform).WithClock(func() time.Time { return clock }))
+	}
+	ids, err := identity.NewService(db, identity.Options{MasterKey: []byte("0123456789abcdef0123456789abcdef"), Adapters: registry})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ActivateConnections(ctx, ids, seed.Live, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	v := valuation.NewService(db)
+	for _, p := range seed.Portfolios {
+		if _, err := v.Rebuild(ctx, p); err != nil {
+			t.Fatalf("rebuild %s: %v", p, err)
+		}
+	}
+	assertWalkthroughReads(ctx, t, db, anchor)
+	queue := jobs.NewService(db)
+	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: catalog.NewService(db), Valuation: v, RetryDelays: []time.Duration{}})
+	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge, PortfolioAliceLarge} {
+		job, _, err := queue.EnqueueCycle(ctx, p, jobs.TriggerManual, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		claimed, ok, err := queue.ClaimOne(ctx, "seed-test", time.Minute)
+		if err != nil || !ok || claimed.ID != job.ID {
+			t.Fatalf("claim: %v %v", ok, err)
+		}
+		summary, err := runner.RunCycle(ctx, p, job.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := queue.Finish(ctx, &claimed, jobs.Result{OK: true, Detail: summary.String()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertWalkthroughReads(ctx, t, db, anchor)
+	for _, d := range fake.DemoIdentities() {
+		stored, err := ids.Get(ctx, portfolioID(d.Portfolio), identityID(d.ID))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if stored.Connection.Status != d.Connection {
+			t.Fatalf("%s Connection: %s instead of %s", d.ID, stored.Connection.Status, d.Connection)
+		}
+	}
+	scheduled, err := queue.ListForScheduling(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range scheduled {
+		if p.PortfolioID == PortfolioAliceEmpty {
+			t.Fatal("empty Portfolio must not start collecting")
+		}
+	}
+}
+
+func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, anchor time.Time) {
+	t.Helper()
+	v := valuation.NewService(db)
+	main := valuation.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
+	edge := valuation.PortfolioContext{ID: PortfolioAliceEdge, Timezone: "Europe/Berlin"}
+	large := valuation.PortfolioContext{ID: PortfolioAliceLarge, Timezone: "UTC"}
+	overview, err := v.Overview(ctx, main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if overview.Point == nil || overview.Completeness != valuation.CompletenessComplete || overview.StaleAccountCount != 0 {
+		t.Fatalf("daily combination must be healthy: %+v", overview)
+	}
+	incomplete, err := v.Overview(ctx, edge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if incomplete.Completeness != valuation.CompletenessIncomplete || incomplete.StaleAccountCount == 0 {
+		t.Fatalf("edge combination lost missing/stale states: %+v", incomplete)
+	}
+	earn, err := v.FlatEarnPositions(ctx, edge, &valuation.ListFilter{Limit: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if earn.DetailsComplete || len(earn.BalanceSummaries) == 0 {
+		t.Fatal("legacy Earn summary lost")
+	}
+	empty, err := v.Overview(ctx, valuation.PortfolioContext{ID: PortfolioAliceEmpty, Timezone: "Asia/Shanghai"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty.Point != nil {
+		t.Fatal("empty Portfolio must have no point")
+	}
+	assertLargePages(ctx, t, db, large)
+	closes, err := v.PeriodCloses(ctx, edge, valuation.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loc, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gap := anchor.AddDate(0, 0, -4).In(loc).Format("2006-01-02")
+	found := false
+	for _, close := range closes {
+		if close.Label == gap {
+			found = true
+			if close.Point != nil {
+				t.Fatal("intentional empty day gained a point")
 			}
-			svc := valuation.NewService(db)
-			total := 0
-			for _, portfolioID := range seed.Portfolios {
-				n, err := svc.Rebuild(ctx, portfolioID)
-				if err != nil {
-					t.Fatalf("rebuild %s: %v", portfolioID, err)
+		}
+	}
+	if !found {
+		t.Fatal("empty calendar day missing from query")
+	}
+	events, err := v.BoundaryEvents(ctx, edge, anchor.AddDate(0, 0, -7), anchor.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, exits := 0, 0
+	for _, event := range events {
+		if event.Direction == "contribution" {
+			entries++
+		}
+		if event.Direction == "withdrawal" {
+			exits++
+		}
+	}
+	if entries == 0 || exits == 0 {
+		t.Fatal("boundary entry/exit lost")
+	}
+	change, err := v.CustomValueChange(ctx, edge, anchor.AddDate(0, 0, -7), anchor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if change.Completeness != valuation.CompletenessIncomplete {
+		t.Fatal("unvalued flow comparison must be incomplete")
+	}
+	reasons := strings.Join(change.Reasons, "\n")
+	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "account_scope_changed:", "listing_exclusion_changed:"} {
+		if !strings.Contains(reasons, reason) {
+			t.Fatalf("missing comparison reason %s: %v", reason, change.Reasons)
+		}
+	}
+	for _, tc := range []struct {
+		name, kind, freshness, method string
+		incomplete                    bool
+	}{
+		{"edge-stale", "cm_futures", valuation.FreshnessStale, valuation.MethodCalculated, false},
+		{"edge-stale-incomplete", "spot", valuation.FreshnessStale, valuation.MethodCalculated, true},
+		{"edge-unpriced", "spot", valuation.FreshnessFresh, valuation.MethodCalculated, true},
+		{"edge-missing", "unified", valuation.FreshnessFresh, valuation.MethodMissing, true},
+	} {
+		row, err := v.AccountBalances(ctx, edge, accountID(tc.name, tc.kind))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if row.Account.Method != tc.method || (row.Account.Completeness() == valuation.CompletenessIncomplete) != tc.incomplete {
+			t.Fatalf("%s lost expected valuation state: %+v", tc.name, row.Account)
+		}
+		if tc.method != valuation.MethodMissing && row.Account.Freshness != tc.freshness {
+			t.Fatalf("%s freshness changed", tc.name)
+		}
+		if tc.freshness == valuation.FreshnessStale && (row.Account.ReportObservedAt == nil || !row.Account.ReportObservedAt.Before(anchor.AddDate(0, 0, -2))) {
+			t.Fatalf("%s stale observation time changed", tc.name)
+		}
+	}
+	count := 0
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil || count != 1 {
+		t.Fatalf("Alice-only ownership: %d %v", count, err)
+	}
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports WHERE scope_version=1 AND account_id=?", accountBytes("edge-scope", "earn")).Scan(&count); err != nil || count == 0 {
+		t.Fatalf("legacy scope: %d %v", count, err)
+	}
+}
+
+func accountBytes(name, kind string) []byte { id := accountID(name, kind); return id[:] }
+
+func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p valuation.PortfolioContext) {
+	t.Helper()
+	v := valuation.NewService(db)
+	seenPages := map[int]map[string]bool{}
+	for _, offset := range []int{0, 50} {
+		f := &valuation.ListFilter{Limit: 50, Offset: offset}
+		b, err := v.FlatBalances(ctx, p, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := v.FlatPositions(ctx, p, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e, err := v.FlatEarnPositions(ctx, p, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, err := v.FlatDualPositions(ctx, p, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := catalog.NewService(db)
+		l, err := c.ListListings(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
+		if err != nil {
+			t.Fatal(err)
+		}
+		i, err := c.ListInstruments(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
+		if err != nil {
+			t.Fatal(err)
+		}
+		totals := []int{b.Total, s.Total, e.Total, d.Total, l.Total, i.Total}
+		lengths := []int{len(b.Items), len(s.Items), len(e.Items), len(d.Items), len(l.Items), len(i.Items)}
+		keys := make([][]string, 6)
+		for _, r := range b.Items {
+			keys[0] = append(keys[0], r.AccountID.String()+"/"+r.ListingID.String())
+		}
+		for _, r := range s.Items {
+			keys[1] = append(keys[1], r.AccountID.String()+"/"+r.PlatformPositionRef)
+		}
+		for _, r := range e.Items {
+			keys[2] = append(keys[2], r.AccountID.String()+"/"+r.PlatformPositionRef)
+		}
+		for _, r := range d.Items {
+			keys[3] = append(keys[3], r.AccountID.String()+"/"+r.PlatformPositionRef)
+		}
+		for _, r := range l.Items {
+			keys[4] = append(keys[4], r.ID.String())
+		}
+		for _, r := range i.Items {
+			keys[5] = append(keys[5], r.ID.String())
+		}
+		for n, rows := range keys {
+			if seenPages[n] == nil {
+				seenPages[n] = map[string]bool{}
+			}
+			for _, key := range rows {
+				if seenPages[n][key] {
+					t.Fatalf("table %d repeated row across pages", n)
 				}
-				total += n
+				seenPages[n][key] = true
 			}
-			var points, unvalued int
-			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM valuation_points").Scan(&points); err != nil {
-				t.Fatal(err)
-			}
-			if points != total || points == 0 {
-				t.Fatalf("rebuilt %d points but stored %d", total, points)
-			}
-			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports WHERE method = 'missing' AND status = 'ok'").Scan(&unvalued); err != nil {
-				t.Fatal(err)
-			}
-			if unvalued != 0 {
-				t.Fatalf("%d successful reports were not valued", unvalued)
-			}
-			tc.check(ctx, t, db, now.UTC().Truncate(15*time.Minute))
-		})
-	}
-}
+		}
 
-func assertDevelopmentSeed(ctx context.Context, t *testing.T, db *sql.DB, now time.Time) {
-	t.Helper()
-	svc := valuation.NewService(db)
-	p := valuation.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
-	overview, err := svc.Overview(ctx, p)
+		for n, total := range totals {
+			if total < 60 || lengths[n] < 10 || offset == 0 && lengths[n] != 50 {
+				t.Fatalf("table %d offset %d: total=%d rows=%d", n, offset, total, lengths[n])
+			}
+		}
+	}
+	a := audit.NewService(db)
+	first, err := a.List(ctx, p.ID, &audit.ListFilter{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if overview.Point == nil || overview.StaleAccountCount != 1 || overview.IncompleteAccountCount != 0 || overview.Completeness != valuation.CompletenessComplete {
-		t.Fatalf("latest point must be complete with one stale Account: %+v", overview)
+	if !first.HasMore || first.NextCursor == nil || len(first.Items) != 50 {
+		t.Fatal("audit second page unavailable")
 	}
-	assertOnlyStaleIssue(t, overview.Issues, AccountAliceClassicCMFutures)
-	positions, err := svc.FlatPositions(ctx, p, &valuation.ListFilter{})
-	if err != nil {
-		t.Fatal(err)
+	second, err := a.List(ctx, p.ID, &audit.ListFilter{Limit: 50, Cursor: *first.NextCursor})
+	if err != nil || len(second.Items) == 0 {
+		t.Fatalf("audit second page: %v", err)
 	}
-	if positions.Total != 8 || len(positions.Items) != 8 || positions.Completeness != valuation.CompletenessComplete {
-		t.Fatalf("expected eight known Futures: %+v", positions)
+	seen := map[uuid.UUID]bool{}
+	for _, row := range first.Items {
+		seen[row.ID] = true
 	}
-	assertOnlyStaleIssue(t, positions.Issues, AccountAliceClassicCMFutures)
-	stale := 0
-	total := decimal.Zero()
-	for _, row := range positions.Items {
-		if row.Size == nil || row.SizeSymbol == nil || row.NotionalUSD == nil || row.ReportObservedAt == nil {
-			t.Fatalf("%s: Size, notional, or observed time lost", row.Symbol)
-		}
-		total = decimal.Add(total, decimal.MustParse(*row.NotionalUSD))
-		mode := "one_way"
-		if row.Symbol == "ETHUSDT" {
-			mode = "hedged"
-		}
-		if stringValue(row.PositionMode) != mode || stringValue(row.MarginMode) != "cross" || stringValue(row.MarginBasis) != "initial" || stringValue(row.MarginCurrency) != stringValue(row.SettlementSymbol) {
-			t.Fatalf("%s/%s: source mode or margin provenance lost: %+v", row.AccountName, row.Symbol, row)
-		}
-		portfolio := row.AccountID == AccountAliceBinancePM
-		if row.PortfolioMargin == nil || *row.PortfolioMargin != portfolio {
-			t.Fatalf("%s: source Account Report Margin Mode lost", row.AccountName)
-		}
-		source := "reported"
-		if portfolio || row.AccountID == AccountAliceClassicCMFutures {
-			source = "calculated"
-		}
-		if row.SettleMargin == nil || stringValue(row.MarginSource) != source || row.MarginUnavailableReason != nil {
-			t.Fatalf("%s/%s: incorrect margin source: %+v", row.AccountName, row.Symbol, row)
-		}
-		if decimal.MustParse(*row.Size).Sign() < 0 != (mode == "one_way" && row.Side == adapters.SideShort) || decimal.MustParse(row.Quantity).Sign() <= 0 {
-			t.Fatalf("%s: source direction or Size sign changed", row.Symbol)
-		}
-		if row.AccountID == AccountAliceClassicCMFutures {
-			stale++
-			if row.Freshness != valuation.FreshnessStale || !row.ReportObservedAt.Before(now) {
-				t.Fatalf("stale row must retain its earlier observation: %+v", row)
-			}
-			assertOnlyStaleIssue(t, row.Issues, row.AccountID)
-		} else if row.Freshness != valuation.FreshnessFresh || len(row.Issues) != 0 {
-			t.Fatalf("%s/%s: expected a healthy row: %+v", row.AccountName, row.Symbol, row)
+	for _, row := range second.Items {
+		if seen[row.ID] {
+			t.Fatal("audit cursor repeated an event")
 		}
 	}
-	if stale != 1 || stringValue(positions.TotalUSD) != decimal.Format(total) {
-		t.Fatalf("expected one stale row and complete notional sum, got %d and %v", stale, positions.TotalUSD)
-	}
-
-	// Historical fallback must retain its own mode and currency, too.
-	day := localMidnight(now, 10, shanghai)
-	var pointBytes []byte
-	if err := db.QueryRowContext(ctx, `SELECT v.id FROM valuation_points v JOIN jobs j ON j.id = v.job_id
-		WHERE j.portfolio_id = ? AND j.created_at >= ? AND j.created_at < ? ORDER BY j.created_at LIMIT 1`,
-		PortfolioAliceMain[:], day, day.AddDate(0, 0, 1)).Scan(&pointBytes); err != nil {
-		t.Fatal(err)
-	}
-	pointID, err := uuid.FromBytes(pointBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	history, err := svc.AccountPositionsAt(ctx, p, AccountAliceBybitUnified, &pointID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if history.Account.Freshness != valuation.FreshnessStale || len(history.Positions) != 2 {
-		t.Fatalf("historical rate-limited day lost its positions: %+v", history)
-	}
-	for _, row := range history.Positions {
-		assertOnlyStaleIssue(t, row.Issues, AccountAliceBybitUnified)
-		if row.PositionMode == nil || row.PortfolioMargin == nil || *row.PortfolioMargin || stringValue(row.MarginCurrency) != "USDT" {
-			t.Fatalf("historical source metadata lost: %+v", row)
-		}
-	}
-}
-
-func assertOnlyStaleIssue(t *testing.T, issues []valuation.Issue, accountID uuid.UUID) {
-	t.Helper()
-	if len(issues) != 1 || issues[0].Code != "stale" || issues[0].AccountID == nil || *issues[0].AccountID != accountID {
-		t.Fatalf("expected one stale issue for %s, got %+v", accountID, issues)
-	}
-}
-
-func stringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }

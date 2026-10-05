@@ -87,6 +87,15 @@ func TestDualCutoverStaleAndRebuild(t *testing.T) {
 			if err != nil || len(view.DualPositions) != 2 || len(view.Issues) == 0 {
 				t.Fatalf("dual positions and missing-term warnings: %+v %v", view, err)
 			}
+
+			for _, row := range view.DualPositions {
+				if len(row.Issues) != 1 || !strings.Contains(row.Issues[0].Detail, "Dual position "+row.PlatformPositionRef+" ") {
+					t.Fatalf("same-asset row lost its own issue: %+v", row)
+				}
+				if strings.Contains(row.Issues[0].Detail, "expiry") != (row.PlatformPositionRef == "one") {
+					t.Fatalf("expiry issue crossed same-asset subscriptions: %+v", row)
+				}
+			}
 			flat, err := h.valuation.FlatDualPositions(h.ctx, pctx, &valuation.ListFilter{Symbol: "USDT", Limit: 1, Offset: 1})
 			if err != nil || flat.Total != 2 || len(flat.Items) != 1 || flat.Items[0].PlatformPositionRef != "one" {
 				t.Fatalf("pagination: %+v %v", flat, err)

@@ -183,6 +183,21 @@ Accounts. When Bybit's Earn valuation still includes a position that has already
 left the list, the completeness check fails and selected Earn and Dual Accounts
 are carried Stale for that run instead of dipping.
 
+### Earn Position descriptions
+
+Flexible Savings rows remain product aggregates: `amount` is principal and
+`claimableYield` is Pending yield. Other reported earnings keep their own scope
+in details. Fixed-Term rows retain position IDs, APY by reward currency,
+subscription and settlement times, estimated rewards, and native Status.
+
+Only a Collection Run selecting Earn with nonzero Flexible Savings makes one
+additional unsigned `GET /v5/earn/product?category=FlexibleSaving` read. Product
+and coin must match exactly once to supply Estimated APR; failures and missing
+matches add metadata issues without discarding holdings or affecting valuation.
+Catalogue availability is never a holding Status. Fixed-Term and catalogue
+recorded evidence gaps remain documented in the
+[Earn delivery report](../earn-presentation-delivery.md).
+
 ## Dual Investment Account and positions
 
 Dual Account selection, principal valuation, and shared Earn completeness follow

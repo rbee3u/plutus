@@ -174,7 +174,13 @@ func (a *Adapter) collect(ctx context.Context, c *client, structure adapters.Acc
 	// valuation's "latest price at or before the report" picks them.
 	prices, pricedAt := a.tickers(ctx, c)
 	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
-		return a.earn(ctx, c, prices)
+		enrich := false
+		for _, selected := range accounts {
+			if selected == TypeEarn {
+				enrich = true
+			}
+		}
+		return a.earn(ctx, c, prices, enrich)
 	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		switch accountType {

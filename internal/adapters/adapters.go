@@ -228,6 +228,8 @@ type AccountReport struct {
 	Balances               []Balance
 	Positions              []Position
 	DualPositions          []DualPosition
+	EarnDetailsCollected   bool
+	EarnPositions          []EarnPosition
 }
 
 // Balance is one coin line within an Account Report.

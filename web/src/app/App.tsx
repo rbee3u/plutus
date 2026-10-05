@@ -13,6 +13,7 @@ import { IdentitiesPage } from "@/features/data/IdentitiesPage";
 import { ValuationPointsPage } from "@/features/history/ValuationPointsPage";
 import { ValueChangesPage } from "@/features/history/ValueChangesPage";
 import { BalancesPage } from "@/features/holdings/BalancesPage";
+import { EarnPositionsPage } from "@/features/holdings/EarnPositionsPage";
 import { PositionsPage } from "@/features/holdings/PositionsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
@@ -54,6 +55,7 @@ export function App() {
               <Route path="holdings" element={<Navigate to="balances" replace />} />
               <Route path="holdings/balances" element={<BalancesPage />} />
               <Route path="holdings/futures" element={<PositionsPage />} />
+              <Route path="holdings/earn" element={<EarnPositionsPage />} />
               <Route path="holdings/dual-investment" element={<PositionsPage key="dual" dual />} />
               <Route path="history" element={<ValuationPointsPage />} />
               <Route path="history/value-changes" element={<ValueChangesPage />} />

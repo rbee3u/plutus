@@ -17,6 +17,12 @@ Futures REST API, plus one balances snapshot of the Futures WebSocket feed.
 Current test coverage, reviewed responses, real gaps, and pending exchange-app
 checks are in [Kraken verification](./verification.md).
 
+Kraken Dual Investment is not offered by this Adapter. Kraken has the product,
+but the 2026-10-05 review did not find a published read-only holdings contract
+in its Spot or Futures OpenAPI specifications. Ordinary Earn support does not
+establish Dual coverage. See the
+[contract review and implementation prerequisites](./verification.md#dual-investment-contract-review).
+
 ## Credentials
 
 One Connection holds a Spot key pair and a Futures key pair, replaced together.
@@ -142,6 +148,18 @@ Earn is the same Account in both structures.
   does an allocation list with a `next_cursor`, which Kraken documents as
   unpaged. Skipping such a holding would violate the Complete Set rule.
 - `name` is never set: these endpoints report no full asset name.
+
+## Earn Position descriptions
+
+Each nonzero allocation becomes one strategy aggregate, with `native.total` as
+allocated Amount. Strategy estimates retain the source APR range (percentage
+units normalized to ratios); `total_rewarded` remains strategy-history
+Cumulative rewards. Current-period accumulated and estimated payouts stay
+separate. Supplied bonding, pending, exit-queue, unbonding, and timed buckets
+retain their quantities and timestamps in details. Their phases do not imply a
+single subscription time or Maturity. Descriptions neither create subscriptions
+nor add their rewards or bucket amounts to valuation. See
+[ADR 0018](../../adr/0018-earn-position-presentation.md).
 
 ## Position
 

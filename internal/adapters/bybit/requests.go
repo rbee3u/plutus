@@ -12,7 +12,7 @@ import (
 )
 
 func selectedEndpoints() []endpoint {
-	return []endpoint{epTime, epAccountInfo, epAPIKey, epWallet, epFunding, epFlexible, epFixedTerm, epDualAssets, epAssetOverview, epTickers, epPositions, epInstruments}
+	return []endpoint{epTime, epAccountInfo, epAPIKey, epWallet, epFunding, epEarnProduct, epFlexible, epFixedTerm, epDualAssets, epAssetOverview, epTickers, epPositions, epInstruments}
 }
 
 func RecordingRequests() recording.Catalogue {

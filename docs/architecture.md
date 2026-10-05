@@ -116,6 +116,29 @@ sanitized responses to `/tmp/plutus/` for review. See the
 [evidence workflow](./adapters/evidence-workflow.md) and
 [Platform mapping guides](../README.md#documentation).
 
+## Development scenarios
+
+The fake Adapter owns a pure scenario catalog and normalized report generator,
+shared by seed history and runtime collection. Reserved `plutus-demo-v1` keys
+carry a scenario ID and original UTC anchor inside normal sealed credentials.
+Validation binds a stable external reference; subsequent observations depend on
+that anchor and observation time. Ordinary fake behavior prefixes are unchanged.
+
+The seed writer materializes terminal configuration and historical source facts,
+including Earn descriptions, report scopes, manual flows, exclusion events and
+audits. It validates definitions and decimals and propagates serialization
+errors. Connection setup uses the Identity service. It inserts no derived
+Valuation Points; the normal rebuild computes them. Monetary relationships use
+exact decimal arithmetic. Platform/Asset/time prices are independent of login
+identity, avoiding shared-price collisions.
+
+Historical Plutus events stop at the anchor. Runtime fake collection cannot
+mutate flows, Account selection, archival or Catalog policy. Holding and product
+lifecycles continue through deterministic cohorts without a persisted simulator
+or background application hooks. See the [scenario index](./seeds.md) and
+[ADR 0008](./adr/0008-environments-and-migrations.md) for coverage and
+trade-offs.
+
 ## Persistence and rebuilds
 
 MySQL holds configuration, normalized observed facts, derived values, jobs, and
@@ -139,6 +162,20 @@ combined Earn uses scope 1; separate Earn and Dual on Binance, OKX, and Bybit
 use scope 2. Stale selection requires equal scope. Rebuilds preserve the
 reclassification and incomplete-comparison rules in the
 [domain model](../CONTEXT.md#report-scope-compatibility).
+
+Earn descriptions are stored as typed normalized JSON in `earn_positions`, owned
+by a Portfolio and Account Report. This JSON serializes the normalized Earn
+Position model, never a Platform response. The source report records
+`earn_details_collected`; its false default distinguishes old reports from new
+successful empty reads. Reads use the financial valuation's existing source
+report, including compatible stale history, and return legacy Balance summaries
+separately. Detail availability does not change financial completeness or scope.
+
+Earn and Dual reads return row-local issues for their Observed cells. Optional
+Bybit FlexibleSaving product metadata is fetched once per Collection Run only
+when Earn is selected and nonzero flexible holdings exist. Catalogue failure or
+ambiguous matching affects rate metadata alone and cannot invalidate the
+Connection or clear the successful position read.
 
 The cumulative schema is defined by [migrations](../db/migrations); generated
 query access comes from [SQL queries](../db/queries) and
@@ -183,10 +220,10 @@ flushes pending input on dismissal. Before internal navigation, the shared Shell
 controller saves pending input in the outgoing Holdings view without updating
 the destination URL. Server reads apply literal case-insensitive substring
 matching before pagination. Flat Account filters and Balance grouping are
-retired. Balances, Futures, and Dual Investment use separate top-level routes
-and session-memory state keyed by User, Portfolio, and view. Internal links
-restore the target view's filters, search, and page; explicit URLs, reloads, and
-browser history remain authoritative. See
+retired. Balances, Futures, Earn, and Dual Investment use separate top-level
+routes and session-memory state keyed by User, Portfolio, and view. Internal
+links restore the target view's filters, search, and page; explicit URLs,
+reloads, and browser history remain authoritative. See
 [ADR 0014](./adr/0014-holdings-header-filters.md).
 
 Overview reads its summary and ownership Tree in one frontend query. The result

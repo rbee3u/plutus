@@ -69,9 +69,6 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
                 <span className={styles.holdingsSummaryCurrency}>$</span>
               ) : null}
               <NumericText>{formatAmount(data.totalNotionalUsd)}</NumericText>
-              {data.totalNotionalUsd ? (
-                <span className={styles.holdingsSummaryUnit}>USD</span>
-              ) : null}
             </span>
             <CompletenessBadge value={data.completeness} />
           </div>

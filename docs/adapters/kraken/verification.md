@@ -6,6 +6,11 @@ real gaps, and pending exchange-app checks. See the
 [evidence workflow](../evidence-workflow.md) for recording and promotion rules.
 Synthetic tests, recorded responses, and exchange-app validation are distinct.
 
+Earn presentation coverage and remaining metadata evidence gaps are recorded in
+[the Earn delivery report](../earn-presentation-delivery.md). Existing recorded
+responses remain unchanged; the new descriptive fields are not exchange-app
+validation.
+
 ## Current evidence
 
 **11 reviewed responses**, recorded and owner-reviewed on 2026-10-01. The owner
@@ -17,8 +22,53 @@ observed; separately masked references do not prove shared credential ownership.
 Samples cover nonzero Unified Main, Coin-M, and Holding wallets; linear
 perpetual/delivery and inverse perpetual positions; and instant, bonded, and
 timed USDT Earn. They are interface evidence, not a complete Account Report or
-an atomic asset-total proof. No supported Kraken Dual Investment interface
-exists.
+an atomic asset-total proof. Plutus does not collect Kraken Dual Investment; the
+public API contract gap is described below.
+
+## Dual Investment contract review
+
+Reviewed on 2026-10-05. Kraken offers
+[Dual Investments](https://support.kraken.com/articles/kraken-pro-dual-investments)
+on Kraken Pro. Its product guide describes invested principal, an alternate
+payout Asset, a trigger price, a fixed APR, and settlement to the Spot balance.
+Product availability does not establish an API contract.
+
+The published
+[Spot REST OpenAPI](https://docs.kraken.com/openapi/spot-rest.yaml) and
+[Futures REST OpenAPI](https://docs.kraken.com/openapi/futures-rest.yaml),
+together with the [developer index](https://docs.kraken.com/llms.txt) and
+[sitemap](https://docs.kraken.com/sitemap.xml), did not expose a Dual Investment
+subscription or holdings contract in this review. This is a finding about the
+reviewed public documentation, not a claim that no private interface exists.
+
+The adjacent interfaces do not establish a substitute:
+
+- [Earn Strategies](https://docs.kraken.com/api-reference/earn/list-earn-strategies)
+  and
+  [Earn Allocations](https://docs.kraken.com/api-reference/earn/list-earn-allocations)
+  describe strategies and allocated amounts. Their published contracts do not
+  identify Dual subscriptions or their paired Assets and trigger prices. A
+  `timed` strategy alone does not identify a Dual Investment.
+- [BalanceEx](https://docs.kraken.com/api-reference/account-data/get-extended-balance)
+  documents held amounts for Spot non-margin orders; `hold_trade` is not a
+  documented Dual principal source.
+- [List Wallet Accounts](https://docs.kraken.com/api-reference/account-data/list-wallet-accounts)
+  lists wallet identifiers. It does not document Dual subscription terms or
+  establish whether invested principal is included in Main or Earn.
+
+Implementation is blocked on a documented read-only contract: service and
+authentication permissions; subscription identity and principal Asset/amount;
+pagination and complete-set guarantees; running, settlement, and pending-payout
+states; and overlap with Main, Earn, and any combined aggregate. Available
+product terms must also have documented field meanings and units. These facts
+are needed to avoid omitted or double-counted principal and premature removal of
+holdings.
+
+The owner currently cannot purchase this product. Real Dual holdings and
+exchange-app reconciliation therefore remain unavailable, but that alone would
+not prevent a contract-based implementation with independent synthetic tests. No
+Dual endpoint, response fixture, recorded evidence, or selectable Account has
+been added from guessed field names or product screenshots.
 
 ## Important observations
 

@@ -1,0 +1,28 @@
+{
+  "source": "synthetic",
+  "notes": "Constructed product metadata for offline Earn detail tests; not recorded evidence.",
+  "request": {
+    "service": "v5",
+    "method": "GET",
+    "path": "/v5/earn/product",
+    "query": {
+      "category": "FlexibleSaving"
+    }
+  },
+  "status": 200,
+  "body": {
+    "retCode": 0,
+    "result": {
+      "list": [
+        {
+          "category": "FlexibleSaving",
+          "productId": "flex-USDT",
+          "coin": "USDT",
+          "estimateApr": "4.25%",
+          "status": "Available"
+        }
+      ]
+    },
+    "time": 1700000000000
+  }
+}

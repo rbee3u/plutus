@@ -4,6 +4,7 @@ import {
   listAccountBalances,
   listAccountPositions,
   listAccountDualPositions,
+  listAccountEarnPositions,
 } from "@/api/generated/sdk.gen";
 import type { AccountValuation, BalanceRow, Issue, ReadContext } from "@/api/generated/types.gen";
 import {
@@ -22,6 +23,7 @@ import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
+import { EarnPositionsTable, EarnBalanceSummaries } from "./EarnPositionsTable";
 import { DualPositionsTable } from "@/features/holdings/DualPositionsTable";
 import styles from "@/features/pages.module.css";
 
@@ -50,9 +52,10 @@ export function AccountDetail({
       ),
   });
   const isDual = account.accountType === "dual_investment";
+  const isEarn = account.accountType === "earn";
   const positions = useQuery({
     queryKey: ["account-positions", userId, portfolioId, accountId, pointId, account.reportId],
-    enabled: Boolean(userId && portfolioId && accountId && !isDual),
+    enabled: Boolean(userId && portfolioId && accountId && !isDual && !isEarn),
     queryFn: async () =>
       checkAccountReport(
         unwrapOrRedirect(
@@ -76,9 +79,26 @@ export function AccountDetail({
         pointId,
       ),
   });
+  const earnPositions = useQuery({
+    queryKey: ["account-earn-positions", userId, portfolioId, accountId, pointId, account.reportId],
+    enabled: Boolean(userId && portfolioId && isEarn),
+    queryFn: async () =>
+      checkAccountReport(
+        unwrapOrRedirect(
+          await listAccountEarnPositions({ path: { portfolioId, accountId } }),
+          redirect,
+        ),
+        account,
+        pointId,
+      ),
+  });
   const issues = [
     ...(balances.data?.issues ?? []),
-    ...(isDual ? (dualPositions.data?.issues ?? []) : (positions.data?.issues ?? [])),
+    ...(isDual
+      ? (dualPositions.data?.issues ?? [])
+      : isEarn
+        ? (earnPositions.data?.issues ?? [])
+        : (positions.data?.issues ?? [])),
   ];
 
   return (
@@ -109,6 +129,43 @@ export function AccountDetail({
               : "No balances in the current Account Report for this account."
         }
       />
+      {isEarn &&
+      (!earnPositions.isSuccess ||
+        earnPositions.data.items.length > 0 ||
+        earnPositions.data.balanceSummaries.length > 0 ||
+        !earnPositions.data.detailsCollected ||
+        earnPositions.isError) ? (
+        <>
+          <QueryRecovery
+            error={earnPositions.error}
+            hasData={Boolean(earnPositions.data)}
+            busy={earnPositions.isFetching}
+            fallback="Earn positions could not be loaded."
+            onRetry={() => {
+              void earnPositions.refetch();
+            }}
+          />
+          <h3 className={styles.accountSectionTitle}>Earn</h3>
+          <EarnPositionsTable
+            items={earnPositions.data?.items ?? []}
+            timezone={earnPositions.data?.context.timezone}
+            loading={earnPositions.isPending}
+            empty={
+              earnPositions.isError
+                ? "Earn positions could not be loaded. Retry above."
+                : earnPositions.data?.balanceSummaries.length
+                  ? "Product details were not collected. Known balances are shown below."
+                  : !earnPositions.data?.detailsCollected
+                    ? "No successful Earn report with product details is available."
+                    : undefined
+            }
+          />
+          <EarnBalanceSummaries
+            items={earnPositions.data?.balanceSummaries ?? []}
+            timezone={earnPositions.data?.context.timezone}
+          />
+        </>
+      ) : null}
       {isDual &&
       (!dualPositions.isSuccess || dualPositions.data.items.length > 0 || dualPositions.isError) ? (
         <>
@@ -133,6 +190,7 @@ export function AccountDetail({
           )}
         </>
       ) : !isDual &&
+        !isEarn &&
         (!positions.isSuccess || positions.data.items.length > 0 || positions.isError) ? (
         <>
           <QueryRecovery

@@ -37,12 +37,15 @@ Position reference. Do not infer a Base from a Symbol or merge distinct Assets
 such as SHIB and 1000SHIB.
 
 Balances inside an Account use Asset Symbol, native listing Symbol, and listing
-ID. Dual Positions inside an Account use expiry, missing expiry last, and
-Position reference. Account hierarchy groups retain that order regardless of
-their value. Overview's Tree presents Platform and Identity totals in the
-ownership hierarchy. Flat Balance grouping is retired by ADR 0014. History and
-Activity timelines retain their time order; their Account detail lists use the
-shared hierarchy.
+ID. Earn Positions use their sorted invested Asset sequence (native listing
+breaks Asset ties), then Flexible, Fixed, Bonded, Timed, On-chain, maturity with
+unknown last, and stable source reference. Multi-Asset products stay together.
+Dual Positions inside an Account use expiry, missing expiry last, and Position
+reference. Account hierarchy groups retain that order regardless of their value.
+Overview's Tree presents Platform and Identity totals in the ownership
+hierarchy. Flat Balance grouping is retired by ADR 0014. History and Activity
+timelines retain their time order; their Account detail lists use the shared
+hierarchy.
 
 Ordering happens before pagination and does not use financial measures,
 freshness, or collection arrival order. The global and Account-detail futures

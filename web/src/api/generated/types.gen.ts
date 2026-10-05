@@ -434,6 +434,7 @@ export type PositionRow = {
 };
 
 export type DualPositionRow = {
+    issues?: Array<Issue>;
     accountId: Uuid;
     accountName: string;
     accountType: string;
@@ -456,6 +457,88 @@ export type DualPositionRow = {
     freshness: Freshness;
     reportObservedAt?: string | null;
     subscribedAt?: string | null;
+};
+
+export type EarnAmount = {
+    assetSymbol?: string | null;
+    symbol: string;
+    amount: Decimal;
+};
+
+export type EarnRate = {
+    value: Decimal;
+    upper?: NullableDecimal;
+    kind: string;
+    qualifier: string;
+    label: string;
+    symbol?: string | null;
+};
+
+export type EarnReward = {
+    symbol: string;
+    amount: Decimal;
+    kind: string;
+};
+
+export type EarnDetail = {
+    label: string;
+    value?: string | null;
+    at?: string | null;
+};
+
+export type EarnPositionRow = {
+    accountId: Uuid;
+    identityId: Uuid;
+    accountName: string;
+    accountType: string;
+    identityName: string;
+    platform: string;
+    platformPositionRef: string;
+    productRef?: string | null;
+    productName?: string | null;
+    type: string;
+    granularity: string;
+    amountBasis: string;
+    assets: Array<EarnAmount>;
+    rates: Array<EarnRate>;
+    rewards: Array<EarnReward>;
+    details: Array<EarnDetail>;
+    issues: Array<Issue>;
+    status?: string | null;
+    freshness: Freshness;
+    reportObservedAt?: string | null;
+    subscribedAt?: string | null;
+    maturityAt?: string | null;
+};
+
+export type EarnBalanceSummary = {
+    accountId: Uuid;
+    accountName: string;
+    identityName: string;
+    platform: string;
+    assets: Array<EarnAmount>;
+    freshness: Freshness;
+    reportObservedAt?: string | null;
+    issues: Array<Issue>;
+};
+
+export type AccountEarnPositionList = {
+    detailsCollected: boolean;
+    balanceSummaries: Array<EarnBalanceSummary>;
+    context: ReadContext;
+    account: AccountValuation;
+    items: Array<EarnPositionRow>;
+    issues: Array<Issue>;
+};
+
+export type EarnPositionList = {
+    detailsComplete: boolean;
+    balanceSummaries: Array<EarnBalanceSummary>;
+    context: ReadContext;
+    items: Array<EarnPositionRow>;
+    page: OffsetPage;
+    completeness: Completeness;
+    issues: Array<Issue>;
 };
 
 export type AccountBalanceList = {
@@ -1980,6 +2063,38 @@ export type ListAccountDualPositionsResponses = {
 
 export type ListAccountDualPositionsResponse = ListAccountDualPositionsResponses[keyof ListAccountDualPositionsResponses];
 
+export type ListAccountEarnPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        accountId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions';
+};
+
+export type ListAccountEarnPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListAccountEarnPositionsError = ListAccountEarnPositionsErrors[keyof ListAccountEarnPositionsErrors];
+
+export type ListAccountEarnPositionsResponses = {
+    /**
+     * Account positions.
+     */
+    200: AccountEarnPositionList;
+};
+
+export type ListAccountEarnPositionsResponse = ListAccountEarnPositionsResponses[keyof ListAccountEarnPositionsResponses];
+
 export type ListBalancesData = {
     body?: never;
     path: {
@@ -2111,6 +2226,50 @@ export type ListDualPositionsResponses = {
 };
 
 export type ListDualPositionsResponse = ListDualPositionsResponses[keyof ListDualPositionsResponses];
+
+export type ListEarnPositionsData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        platform?: string;
+        identityId?: string;
+        /**
+         * Case-insensitive literal substring of any invested native or mapped Asset Symbol.
+         */
+        symbol?: string;
+        offset?: number;
+        limit?: number;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/earn-positions';
+};
+
+export type ListEarnPositionsErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type ListEarnPositionsError = ListEarnPositionsErrors[keyof ListEarnPositionsErrors];
+
+export type ListEarnPositionsResponses = {
+    /**
+     * Positions.
+     */
+    200: EarnPositionList;
+};
+
+export type ListEarnPositionsResponse = ListEarnPositionsResponses[keyof ListEarnPositionsResponses];
 
 export type GetHistoryWindowData = {
     body?: never;

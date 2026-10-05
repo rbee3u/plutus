@@ -85,12 +85,12 @@
   --control-padding-x: 10px;
   --control-gap: 6px;
   /*
-   * Content measures by role. A wider viewport gains whitespace instead of
-   * spreading the same content thinner.
+   * Content measures by role. Forms and reading retain a comfortable line
+   * measure; data-heavy pages scale up to widescreen desktops (up to 1920px).
    */
   --measure-compact: 560px;
   --measure-text: 720px;
-  --measure-data: 1280px;
+  --measure-data: 1920px;
   --toolbar-height: 48px;
   --sidebar-width: 232px;
   --sidebar-width-collapsed: 56px;

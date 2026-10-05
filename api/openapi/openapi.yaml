@@ -768,6 +768,25 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions:
+    get:
+      operationId: listAccountEarnPositions
+      tags: [holdings]
+      summary: Earn positions of an account's current report
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/AccountID"
+      responses:
+        "200":
+          description: Account positions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountEarnPositionList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/balances:
     get:
       operationId: listBalances
@@ -903,6 +922,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DualPositionList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/earn-positions:
+    get:
+      operationId: listEarnPositions
+      tags: [holdings]
+      summary: Flat Earn position list across the boundary at the latest point
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: identityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: symbol
+          in: query
+          description: Case-insensitive literal substring of any invested native or mapped Asset Symbol.
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Positions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EarnPositionList"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
@@ -2484,6 +2550,10 @@ components:
       additionalProperties: false
       required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, investSymbol, principal, status, freshness]
       properties:
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
         accountId:
           $ref: "#/components/schemas/UUID"
         accountName:
@@ -2531,6 +2601,195 @@ components:
         subscribedAt:
           type: [string, "null"]
           format: date-time
+    EarnAmount:
+      type: object
+      additionalProperties: false
+      required: [symbol, amount]
+      properties:
+        assetSymbol:
+          type: [string, "null"]
+        symbol:
+          type: string
+        amount:
+          $ref: "#/components/schemas/Decimal"
+    EarnRate:
+      type: object
+      additionalProperties: false
+      required: [value, kind, qualifier, label]
+      properties:
+        value:
+          $ref: "#/components/schemas/Decimal"
+        upper:
+          $ref: "#/components/schemas/NullableDecimal"
+        kind:
+          type: string
+        qualifier:
+          type: string
+        label:
+          type: string
+        symbol:
+          type: [string, "null"]
+    EarnReward:
+      type: object
+      additionalProperties: false
+      required: [symbol, amount, kind]
+      properties:
+        symbol:
+          type: string
+        amount:
+          $ref: "#/components/schemas/Decimal"
+        kind:
+          type: string
+    EarnDetail:
+      type: object
+      additionalProperties: false
+      required: [label]
+      properties:
+        label:
+          type: string
+        value:
+          type: [string, "null"]
+        at:
+          type: [string, "null"]
+          format: date-time
+    EarnPositionRow:
+      type: object
+      additionalProperties: false
+      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, type, granularity, amountBasis, assets, rates, rewards, details, freshness, issues]
+      properties:
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        accountType:
+          type: string
+        identityName:
+          type: string
+        platform:
+          type: string
+        platformPositionRef:
+          type: string
+        productRef:
+          type: [string, "null"]
+        productName:
+          type: [string, "null"]
+        type:
+          type: string
+        granularity:
+          type: string
+        amountBasis:
+          type: string
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnAmount"
+        rates:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnRate"
+        rewards:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnReward"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnDetail"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+        status:
+          type: [string, "null"]
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        reportObservedAt:
+          type: [string, "null"]
+          format: date-time
+        subscribedAt:
+          type: [string, "null"]
+          format: date-time
+        maturityAt:
+          type: [string, "null"]
+          format: date-time
+    EarnBalanceSummary:
+      type: object
+      additionalProperties: false
+      required: [accountId, accountName, identityName, platform, assets, freshness, issues]
+      properties:
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        identityName:
+          type: string
+        platform:
+          type: string
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnAmount"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        reportObservedAt:
+          type: [string, "null"]
+          format: date-time
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+
+    AccountEarnPositionList:
+      type: object
+      additionalProperties: false
+      required: [context, account, items, balanceSummaries, detailsCollected, issues]
+      properties:
+        detailsCollected:
+          type: boolean
+        balanceSummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnBalanceSummary"
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        account:
+          $ref: "#/components/schemas/AccountValuation"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnPositionRow"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+
+    EarnPositionList:
+      type: object
+      additionalProperties: false
+      required: [context, items, page, balanceSummaries, detailsComplete, completeness, issues]
+      properties:
+        detailsComplete:
+          type: boolean
+        balanceSummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnBalanceSummary"
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnPositionRow"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
     AccountBalanceList:
       type: object
       additionalProperties: false

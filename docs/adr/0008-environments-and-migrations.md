@@ -37,23 +37,43 @@ compatible with populated databases. Never reset prod.
 
 Dev has one deterministic walkthrough seed rather than selectable profiles.
 `db seed` loads it into an empty migrated database; `db reset --seed` resets and
-loads it, while bare `db reset` still leaves an empty database for remote test
-setup. The old `--profile` flag is removed without aliases. Seed data retains
-the normalized Position and Account Report source fields used by collection. Its
-latest point has one stale COIN-M Futures Account with one Position; other
-Accounts are healthy. Later normal fake collection recovers that Account.
-Historical failures remain available, and complex anomaly fixtures belong only
-to regression tests. Existing dev data is replaced by an explicit reset rather
-than rewritten through migrations or seed backfills.
+loads it, while bare `db reset` leaves an empty database for remote test setup.
+The old `--profile` flag remains rejected. Seed generation requires the fake and
+a master key and fails explicitly for invalid definitions or serialization.
+
+The single Alice User owns healthy, edge-case, large and empty Portfolios. Long
+histories cover 400 days with daily older and two-hour recent points; large-list
+history covers seven days. All supported structures and observed Margin Modes
+have examples. Complex anomalies are now visible in the standard walkthrough,
+superseding the earlier test-only decision. They remain separated from the
+healthy default Portfolio and have explicit read-level expectations.
+
+Seeds and runtime fake collection share pure, versioned scenario definitions.
+The original anchor is carried in sealed fake credentials; the external login
+reference depends only on scenario identity. Platform prices are coherent across
+Identities. Scripted Capital Flows and configuration changes end at the anchor;
+subsequent collection evolves only Platform facts. Source fields, Earn detail
+availability, report scopes and exclusion policy history are preserved; real
+valuation code derives all Valuation Points. Connection initialization uses the
+normal credential lifecycle with explicit expected states. Ordinary fake keys
+retain their previous behavior.
+
+Existing dev data is replaced by explicit reset rather than migrations or seed
+backfills. No product capability, HTTP interface, schema or seed profile is
+added.
 
 ## Reason and trade-offs
 
-A single seed makes dev startup predictable and keeps its financial source facts
-aligned with the fake Adapter. One recoverable stale example demonstrates
-failure handling without making every Position look defective. Keeping complex
-anomalies in tests preserves regression coverage without a second public data
-choice. Replacing seed history through reset is accepted for disposable dev
-data; it is not a policy for changing retained production Observations.
+A single seed keeps startup predictable, while theme Portfolios isolate
+persistent omissions from everyday browsing. Shared scenario generation prevents
+rich seeded holdings from disappearing at the next Collection Cycle. Coherent
+financial events reveal Value Change defects that disconnected flow records
+hide. A longer history exercises calendar and timezone boundaries; a shorter
+large Portfolio avoids multiplying every list across 400 days. This costs more
+scenario code, seed volume and rebuild time than the earlier forty-day seed. The
+scenario index and acceptance tests make that complexity reviewable. Synthetic
+data remains distinct from exchange-app validation. Disposable resets are
+accepted for dev data, not retained production Observations.
 
 Isolation protects production; appended migrations preserve observations and
 configuration. Minimal units inherit host defaults; weak MySQL dependencies

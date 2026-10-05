@@ -3,6 +3,7 @@ import type {
   AccountValuation,
   BalanceRow,
   DualPositionRow,
+  EarnPositionRow,
   Overview,
   PositionRow,
   HoldingsTree,
@@ -26,6 +27,8 @@ async function fixture(page: Page) {
     requests: [] as string[],
     positions: [] as PositionRow[],
     dual: [] as DualPositionRow[],
+    earns: [] as EarnPositionRow[],
+    includeEarn: false,
   };
   const context = () => ({
     portfolioId,
@@ -104,7 +107,21 @@ async function fixture(page: Page) {
                 connectionStatus: "enabled",
                 valueUsd: state.value,
                 completeness: "complete",
-                accounts: [account(), account(true)],
+                accounts: [
+                  account(),
+                  account(true),
+                  ...(state.includeEarn
+                    ? [
+                        {
+                          ...account(),
+                          accountId: "earn",
+                          accountName: "Earn",
+                          accountType: "earn",
+                          reportId: `${state.point}-earn`,
+                        },
+                      ]
+                    : []),
+                ],
               },
             ],
           },
@@ -139,8 +156,27 @@ async function fixture(page: Page) {
       );
     if (path.includes("/accounts/")) {
       const dual = path.includes("/accounts/dual/");
-      const a = account(dual);
+      const a = path.includes("/accounts/earn/")
+        ? {
+            ...account(),
+            accountId: "earn",
+            accountName: "Earn",
+            accountType: "earn",
+            reportId: `${state.point}-earn`,
+          }
+        : account(dual);
       if (state.detailReport) a.reportId = state.detailReport;
+      if (path.endsWith("/earn-positions"))
+        return route.fulfill({
+          json: {
+            context: context(),
+            account: a,
+            items: state.earns,
+            balanceSummaries: [],
+            detailsCollected: true,
+            issues: [],
+          },
+        });
       if (path.endsWith("/positions") || path.endsWith("/dual-positions")) {
         if (state.holdPositions) await new Promise((resolve) => setTimeout(resolve, 500));
         if (state.failPositions)
@@ -237,7 +273,7 @@ test("Overview replaces groups with an Identity-depth Tree and accessible drilld
   ).toHaveCount(0);
   expect(state.requests.filter((path) => path.includes("/accounts/"))).toHaveLength(0);
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded."),
+    page.getByText("Named omission remains visible while Accounts are folded.").first(),
   ).toBeVisible();
   const identity = page.getByRole("button", { name: "Expand Owner", exact: true });
   await identity.focus();
@@ -420,7 +456,7 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
     .click();
   await expect(page.getByRole("heading", { name: "Dual Investment", exact: true })).toBeVisible();
   await expect(page.getByRole("table", { name: "Dual Investment positions" })).toContainText(
-    "stale",
+    "Stale",
   );
   await page.reload();
   state.detailReport = "newer-report";
@@ -452,7 +488,7 @@ for (const viewport of [
       const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
       await expect(tree.getByRole("table")).toHaveCount(0);
       await expect(tree.getByRole("button", { name: "Collapse Binance" })).toHaveText(
-        /^Binance(\d+\.\d+%)?\$100$/,
+        /^Binance\$100\.00(\d+\.\d+%)?$/,
       );
       await expect(tree).not.toContainText(/\d+ (identities|accounts)|connection enabled/);
       await tree.getByRole("button", { name: `Expand ${state.ownerName}`, exact: true }).click();
@@ -526,7 +562,7 @@ test("unknown and stale valuations keep exceptions inside Account details", asyn
     tree.getByText("No compatible successful Account Report; value is unknown."),
   ).toBeVisible();
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded."),
+    page.getByText("Named omission remains visible while Accounts are folded.").first(),
   ).toBeVisible();
   state.unknown = false;
   state.stale = true;
@@ -537,10 +573,80 @@ test("unknown and stale valuations keep exceptions inside Account details", asyn
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Collapse balances and positions for Spot" }),
-  ).toHaveText("Spot$100");
+  ).toHaveText("Spot$100.00");
   await page.getByRole("button", { name: "Collapse Owner", exact: true }).click();
   await expect(tree.getByText("failed", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded."),
+    page.getByText("Named omission remains visible while Accounts are folded.").first(),
   ).toBeVisible();
+});
+
+test("Overview shares Earn columns without ownership and rejects mismatched reports", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.includeEarn = true;
+  state.earns = [
+    {
+      accountId: "earn",
+      accountName: "Earn",
+      accountType: "earn",
+      identityId: "owner",
+      identityName: "Owner",
+      platform: "binance",
+      platformPositionRef: "flex:ETH",
+      type: "flexible",
+      granularity: "product",
+      amountBasis: "total",
+      assets: [{ symbol: "ETH", amount: "1" }],
+      rates: [],
+      rewards: [],
+      details: [],
+      issues: [],
+      freshness: "fresh",
+      reportObservedAt: observed,
+    },
+  ];
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(`/p/${portfolioId}/overview`);
+  await page.getByRole("button", { name: "Expand Owner", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Expand balances and positions for Earn", exact: true })
+    .click();
+  const table = page.getByRole("table", { name: "Earn positions", exact: true });
+  await expect(table.getByRole("columnheader")).toHaveText([
+    "Asset",
+    "Type",
+    "Maturity",
+    "Rate",
+    "Amount",
+    "Rewards",
+    "Subscribed",
+    "Status",
+    "Observed",
+  ]);
+  await expect(table.locator("tbody > tr")).toHaveCount(1);
+  expect(state.requests.some((path) => path.includes("/accounts/earn/positions"))).toBe(false);
+  const wrapper = table.locator("..");
+  await wrapper.evaluate((element) => {
+    element.scrollLeft = 200;
+  });
+  expect(await wrapper.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  state.detailReport = "newer-report";
+  await page.reload();
+  await page.getByRole("button", { name: "Expand Owner", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Expand balances and positions for Earn", exact: true })
+    .click();
+  await expect(
+    page
+      .getByText(
+        "This Account changed since the displayed Valuation Point. Reload the page to read its latest Account Report.",
+      )
+      .first(),
+  ).toBeVisible();
+  await expect(table).not.toContainText("1 ETH");
 });

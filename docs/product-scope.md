@@ -8,9 +8,9 @@ Two questions, in priority order:
 
 1. **How much is there now, and where.** A Platform → Identity → Account tree
    with each Account's report fields (equity, adjusted equity, available equity,
-   margin ratios), its Balances, Positions, and Dual Positions, and USD totals
-   per Account, Platform, and Portfolio. The numbers are meant to match each
-   exchange app.
+   margin ratios), its Balances, Positions, Earn Positions, and Dual Positions,
+   and USD totals per Account, Platform, and Portfolio. The numbers are meant to
+   match each exchange app.
 2. **How did the total change over a period, excluding my own transfers.** One
    Valuation Point per Collection Cycle (default every 15 minutes), Period
    Closes, and absolute USD Value Change by calendar day, ISO week, month,
@@ -23,16 +23,17 @@ Overview presents the latest total, recent Valuation Points, and the ownership
 Tree. Each node presents a name and adjacent USD value without repeated counts
 or status badges. Its default rows show Platform and Identity; expanding an
 Identity shows Accounts, and expanding an Account shows report measures and
-holding details. Balances remain visible even when empty. Futures and Dual
-Investment details appear when held; loading and collection failures remain
+holding details. Balances remain visible even when empty. Futures, Earn, and
+Dual Investment details appear when held; loading and collection failures remain
 explicit inside Account details. Report provenance is available in a folded
 Report details section. Page-level Issues explain omissions even when Accounts
 are folded.
 
-Holdings presents separate Balances, Futures, and Dual Investment tables, each
-with independent view filters. Balances is the default view. Dedicated Options
-and Earn views are not offered in this delivery; existing Earn Account
-collection and valuation remain supported.
+Holdings presents separate Balances, Futures, Earn, and Dual Investment tables,
+each with independent view filters. Balances is the default view. Earn presents
+currently supported products at their source granularity with qualified rates,
+amounts, rewards, product stages, and observation health. A dedicated Options
+view is not offered. Product descriptions do not expand supported Accounts.
 
 ## History presentation
 

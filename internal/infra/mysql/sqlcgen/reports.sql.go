@@ -204,11 +204,11 @@ func (q *Queries) GetReportForAccountInJob(ctx context.Context, arg GetReportFor
 
 const insertAccountReport = `-- name: InsertAccountReport :exec
 INSERT INTO account_reports (
-    id, portfolio_id, job_id, account_id, scope_version, margin_mode, status, observed_at, error_class, error_detail,
+    id, portfolio_id, job_id, account_id, scope_version, earn_details_collected, margin_mode, status, observed_at, error_class, error_detail,
     equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio,
     value_usd, method, source_report_id, omitted_json, created_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?,
@@ -222,6 +222,7 @@ type InsertAccountReportParams struct {
 	JobID                  []byte
 	AccountID              []byte
 	ScopeVersion           uint16
+	EarnDetailsCollected   bool
 	MarginMode             sql.NullString
 	Status                 string
 	ObservedAt             sql.NullTime
@@ -243,6 +244,7 @@ func (q *Queries) InsertAccountReport(ctx context.Context, arg InsertAccountRepo
 		arg.JobID,
 		arg.AccountID,
 		arg.ScopeVersion,
+		arg.EarnDetailsCollected,
 		arg.MarginMode,
 		arg.Status,
 		arg.ObservedAt,

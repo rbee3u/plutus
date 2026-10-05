@@ -90,9 +90,9 @@ produce new facts. They are distinct from raw responses and derived values.
 
 **Account Report**: One Account's aligned Observation in a Collection Run:
 collection outcome, reported equity when available, fixed Plutus-defined
-account-level measures, Balances, Positions, and Dual Positions. It is not a
-synonym for equity or a generic snapshot. Adapters map measures by meaning and
-leave unsupported values null.
+account-level measures, Balances, Positions, Earn Positions, and Dual Positions.
+It is not a synonym for equity or a generic snapshot. Adapters map measures by
+meaning and leave unsupported values null.
 
 **Balance**: An Asset Listing's equity in an Account Report, with availability,
 liability, and unrealized-profit measures. Quantity or holding is not a synonym
@@ -129,8 +129,8 @@ margin. Portfolio Margin is displayed as the Account regime without a position
 leverage multiplier.
 
 **Complete Set**: A successful Account Report contains all of that Account's
-Balances, Positions, and Dual Positions; anything absent is no longer held. A
-failure cannot clear holdings.
+Balances, Positions, Earn Positions, and Dual Positions; anything absent is no
+longer held. A failure cannot clear holdings.
 
 **Stale**: A failed Account uses its latest earlier successful Account Report
 with the same scope, retaining its observation time and displaying its age.
@@ -179,8 +179,8 @@ method, freshness, and completeness. State the method rather than calling it
 | Failed report with compatible successful history | Source report's method | Value the compatible report as stale              |
 | Failed report without compatible history         | Missing                | Unknown Account value; incomplete Portfolio total |
 
-Balance breakdowns, Positions, and Dual Positions describe value already
-represented in reported equity and never add it again.
+Balance breakdowns, Positions, Earn Positions, and Dual Positions describe value
+already represented in reported equity and never add it again.
 
 **Valuation Point**: The Portfolio's total of Account Valuations at the end of
 one Collection Cycle. Derived results can be rebuilt; avoid "snapshot",
@@ -214,6 +214,26 @@ change. Rebuild mechanisms belong in
 [architecture](./docs/architecture.md#persistence-and-rebuilds).
 
 ## Dual Investment and Earn completeness
+
+**Earn Position**: A descriptive holding within a selected Earn Account. Its
+source granularity is a product aggregate, strategy aggregate, or individual
+position; an aggregate is not an invented subscription. A multi-Asset product
+remains one Earn Position. Its Amount is reported principal, total holdings, or
+allocated holdings, matching value already represented in Balances.
+
+Rates retain APR/APY, estimated ranges, and tier or additional-reward meaning. A
+configured minimum lending rate is a preference, not a reported return. Rewards
+retain their Asset and cumulative, pending, estimated, or other reported scope;
+they are not added together or added again to Account Valuation. Subscription,
+maturity, delivery, and redemption-stage times are distinct. A missing date is
+never calculated from a duration. Product Status describes only reported
+lifecycle phases; collection health belongs to Observed.
+
+Optional invalid metadata retains known amounts with a display issue. Normal
+source unavailability is not a core-data alarm. A report without collected Earn
+details, including pre-delivery history, exposes known Balance summaries and
+explicit missing detail rather than claiming an empty set of product holdings.
+Adding descriptions changes neither Account scope nor financial completeness.
 
 **Dual Investment**: A product accepting principal in one Asset and settling in
 that Asset or its paired Asset according to target price and expiry. Binance,

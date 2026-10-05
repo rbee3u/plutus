@@ -37,10 +37,13 @@ precision. IMR, MMR, and UniMMR remain unscaled ratios, and leverage retains its
 USD-equivalent; derived USD valuations use USD precision. Price precision is
 independent of the quoting Asset.
 
-Valuation amounts, flows, and differences express currency exclusively using the
-canonical asset code `USD` (via column headers, adjacent unit markers, or
-trailing unit text). Currency symbols such as `$` are prohibited across all user
-interface views.
+Valuation amounts, flows, and differences express currency without redundant
+double-denomination. Prominent summary totals (such as Hero and summary cards),
+hierarchical tree nodes, signed performance badges, and chart tooltips use the
+currency symbol prefix (`$`, `+$`, `-$`). Tabular views declare the unit in
+the column header (e.g., `Value (USD)`, `Equity (USD)`) with unadorned numeric
+cells. Trailing currency codes (`USD`) are not appended when a currency symbol
+is already present, avoiding redundant `$ ... USD` duplication.
 
 Chart tooltips use source decimal strings and the USD policy. Numeric axes are
 the explicit exception: values at least 1 use English compact notation with at

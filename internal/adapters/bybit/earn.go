@@ -16,13 +16,6 @@ const earnBucket = "Earn"
 // hold principal that has not been settled yet, so both count (ADR 0005).
 var dualAssetStatuses = map[string]bool{"Active": true, "Redeeming": true}
 
-type savingsPosition struct {
-	Coin           string `json:"coin"`
-	Amount         string `json:"amount"`
-	ClaimableYield string `json:"claimableYield"`
-	Category       string `json:"category"`
-}
-
 type dualAssetPosition struct {
 	Category       string `json:"category"`
 	InvestCoin     string `json:"investCoin"`
@@ -42,12 +35,13 @@ type dualAssetPosition struct {
 
 // earn returns separate savings and Dual reports. Their combined principal is checked
 // against Bybit's Earn valuation so unsupported holdings fail selected dependent Accounts.
-func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapters.AccountReport, adapters.AccountReport, error) {
+func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich bool) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
-	if err := savings(ctx, c, epFlexible, "FlexibleSaving", totals); err != nil {
+	earnPositions := []adapters.EarnPosition{}
+	if err := savings(ctx, c, epFlexible, "FlexibleSaving", totals, &earnPositions); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	if err := savings(ctx, c, epFixedTerm, "FixedTermSaving", totals); err != nil {
+	if err := savings(ctx, c, epFixedTerm, "FixedTermSaving", totals, &earnPositions); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	positions, err := dualAssets(ctx, c)
@@ -55,6 +49,12 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapt
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
 	balances := totals.Balances()
+	if err := adapters.CheckEarnPositions(earnPositions, balances); err != nil {
+		return adapters.AccountReport{}, adapters.AccountReport{}, err
+	}
+	if enrich {
+		enrichFlexible(ctx, c, earnPositions)
+	}
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
@@ -67,7 +67,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapt
 	if err := checkEarn(ctx, c, combined, prices); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // savings adds the principal of one savings category to totals. `amount` is the principal,
@@ -75,7 +75,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices) (adapt
 // on the recorded account Bybit's own Earn value matched the summed amounts, not amounts plus
 // yield. Fixed-term `effectiveAmount` lags the principal by a day and is not used either. Neither
 // endpoint pages, so a page cursor means a list Plutus cannot read to its end.
-func savings(ctx context.Context, c *client, ep endpoint, category string, totals adapters.Totals) error {
+func savings(ctx context.Context, c *client, ep endpoint, category string, totals adapters.Totals, positions *[]adapters.EarnPosition) error {
 	var result struct {
 		List   []savingsPosition `json:"list"`
 		Cursor string            `json:"nextPageCursor"`
@@ -96,11 +96,12 @@ func savings(ctx context.Context, c *client, ep endpoint, category string, total
 		if err != nil {
 			return err
 		}
-		if _, err := adapters.OptionalDecimal(where, "claimableYield of "+row.Coin, row.ClaimableYield); err != nil {
-			return err
-		}
 		if err := totals.Add(where, row.Coin, amount); err != nil {
 			return err
+		}
+		if amount.Sign() != 0 {
+			p := row.position(category, decimal.Format(amount))
+			*positions = append(*positions, p)
 		}
 	}
 	return nil

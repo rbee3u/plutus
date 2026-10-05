@@ -113,7 +113,7 @@ export function ValueChangesPage() {
               const dec = parseDecimal(item.amountUsd);
               if (!dec) return "—";
               const sign = dec.gt(0) ? "+" : dec.lt(0) ? "-" : "";
-              return `${sign}$${formatAmount(dec.abs().toFixed())} USD`;
+              return `${sign}$${formatAmount(dec.abs().toFixed())}`;
             },
           },
         },

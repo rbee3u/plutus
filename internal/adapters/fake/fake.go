@@ -24,11 +24,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/adapters"
+	"github.com/rbee3u/plutus/internal/decimal"
 )
 
 // Adapter is the deterministic fake.
@@ -56,6 +58,18 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 		return adapters.ValidationResult{}, err
 	}
 	key := scenarioKey(creds)
+	if d, anchor, matched, err := parseDemoKey(key); matched {
+		if err != nil {
+			return adapters.ValidationResult{}, err
+		}
+		if d.Platform != a.platform || d.Structure != structure {
+			return adapters.ValidationResult{}, adapters.UnsupportedStructure(a.platform, structure)
+		}
+		if err := demoValidate(d, anchor, a.now()); err != nil {
+			return adapters.ValidationResult{}, err
+		}
+		return adapters.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: demoMode(d, anchor, a.now())}, nil
+	}
 	return adapters.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: MarginMode(structure, key, a.now())}, nil
 }
 
@@ -65,6 +79,9 @@ var behaviorPrefixes = []string{"invalid-", "forbidden-", "ratelimit-", "flaky-"
 // ExternalRef is the reference of the Platform account a key reaches: the key without its
 // behavior prefix, so one account can be tried with every behavior.
 func ExternalRef(apiKey string) string {
+	if d, _, matched, err := parseDemoKey(apiKey); matched && err == nil {
+		return "demo-" + d.ID
+	}
 	for _, prefix := range behaviorPrefixes {
 		if rest, ok := strings.CutPrefix(apiKey, prefix); ok {
 			apiKey = rest
@@ -81,6 +98,15 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	}
 	now := a.now().UTC().Truncate(time.Second)
 	key := scenarioKey(creds)
+	if d, anchor, matched, err := parseDemoKey(key); matched {
+		if err != nil {
+			return adapters.Batch{}, err
+		}
+		if d.Platform != a.platform || d.Structure != structure {
+			return adapters.Batch{}, adapters.UnsupportedStructure(a.platform, structure)
+		}
+		return DemoBatch(d, anchor, now, accounts)
+	}
 	mode := MarginMode(structure, key, now)
 	batch := adapters.Batch{ObservedAt: now, MarginMode: mode}
 	scenario := Scenario(key, now)
@@ -364,6 +390,25 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	case "earn":
 		report.Balances = []adapters.Balance{
 			{Symbol: "ETH", Name: "Ethereum", Equity: fs(round(4, 1.5*f)), AvailableToWithdraw: str(0), AvailableToTrade: str(0), Interest: str(round(6, 0.0031*f))},
+		}
+		report.EarnDetailsCollected = true
+		for i, kind := range []string{"flexible", "fixed"} {
+			p := adapters.NewEarnPosition(fmt.Sprintf("earn-%d", i+1), kind, "position", "principal")
+			p.ProductRef = adapters.DualText(fmt.Sprintf("ETH-%s", kind))
+			p.ProductName = adapters.DualText("Demo Earn " + kind)
+			p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.MustParse(report.Balances[0].Equity), big.NewRat(2, 1)))})
+			p.AddRate("0.045", "apr", "estimated", "Estimated APR", nil)
+			p.AddReward("ETH", fs(round(6, 0.00155*f)), "cumulative")
+			p.Status = adapters.DualText("Active")
+			if kind == "fixed" {
+				subscribed := at.UTC().Truncate(24 * time.Hour).Add(-72 * time.Hour)
+				maturity := subscribed.Add(30 * 24 * time.Hour)
+				p.SubscribedAt = &subscribed
+				p.MaturityAt = &maturity
+			} else {
+				p.Granularity = "product"
+			}
+			report.EarnPositions = append(report.EarnPositions, p)
 		}
 	default:
 		report.Status = adapters.StatusFailed

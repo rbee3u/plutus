@@ -45,6 +45,7 @@ type AccountReport struct {
 	CreatedAt              time.Time
 	ScopeVersion           uint16
 	MarginMode             sql.NullString
+	EarnDetailsCollected   bool
 }
 
 type AssetListing struct {
@@ -120,6 +121,13 @@ type DualPosition struct {
 	RateKind            sql.NullString
 	Status              string
 	SubscribedAt        sql.NullTime
+}
+
+type EarnPosition struct {
+	ReportID            []byte
+	PortfolioID         []byte
+	PlatformPositionRef string
+	ObservationJson     sqljson.Column
 }
 
 type IdempotencyRecord struct {

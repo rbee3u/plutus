@@ -4,6 +4,7 @@ package collection
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/rbee3u/plutus/internal/decimal"
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/infra/sqljson"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
 
@@ -350,6 +352,14 @@ func (s *Service) insertFailedReport(ctx context.Context, q *sqlcgen.Queries, po
 }
 
 func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, jobID uuid.UUID, platform adapters.Platform, accountID uuid.UUID, report *adapters.AccountReport, mode adapters.MarginMode, batchObserved, now time.Time) error {
+	if report.EarnDetailsCollected || len(report.EarnPositions) > 0 {
+		if report.AccountType != "earn" || !report.EarnDetailsCollected {
+			return fmt.Errorf("%w: Earn details outside a collected Earn report", catalog.ErrInvalid)
+		}
+		if err := adapters.CheckEarnPositions(report.EarnPositions, report.Balances); err != nil {
+			return err
+		}
+	}
 	id, err := uuid.NewV7()
 	if err != nil {
 		return err
@@ -363,6 +373,7 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 	}
 	if err := q.InsertAccountReport(ctx, sqlcgen.InsertAccountReportParams{
 		ID: id[:], PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: accountID[:], ScopeVersion: adapters.ReportScope(platform, report.AccountType), Status: adapters.StatusOK,
+		EarnDetailsCollected:   report.EarnDetailsCollected,
 		ObservedAt:             sql.NullTime{Time: observed.UTC(), Valid: true},
 		MarginMode:             textColumn(string(mode)),
 		Equity:                 nullDecimal(report.Equity),
@@ -438,6 +449,16 @@ func (s *Service) insertOkReport(ctx context.Context, q *sqlcgen.Queries, portfo
 		}
 	}
 
+	for i := range report.EarnPositions {
+		p := &report.EarnPositions[i]
+		payload, err := json.Marshal(p)
+		if err != nil {
+			return err
+		}
+		if err := q.InsertEarnPosition(ctx, sqlcgen.InsertEarnPositionParams{ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: p.PlatformPositionRef, ObservationJson: sqljson.Column(payload)}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -201,11 +201,12 @@ func normalizeRef(ref string) string { return strings.ToUpper(strings.Join(strin
 
 // run holds what one Collect call shares across its Accounts.
 type run struct {
-	a         *Adapter
-	c         *client
-	structure adapters.AccountStructure
-	assets    assetNames
-	prices    spotPrices
+	earnMetadata map[string]earnStrategy
+	a            *Adapter
+	c            *client
+	structure    adapters.AccountStructure
+	assets       assetNames
+	prices       spotPrices
 	// snapshot is the balances snapshot; it is read only when an Account other than Earn is
 	// requested, because only those Accounts depend on the wallet structure.
 	snapshot *snapshot
@@ -557,26 +558,6 @@ func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) 
 	return report, nil
 }
 
-// earnStrategy is one Earn strategy; its lock type decides whether an allocation belongs to Earn.
-type earnStrategy struct {
-	ID       string `json:"id"`
-	LockType struct {
-		Type string `json:"type"`
-	} `json:"lock_type"`
-}
-
-// earnAllocation is one row of Earn/Allocations. Its total already holds the bonding, unbonding,
-// exit-queue, and timed amounts; rewards are paid out separately and are not added again.
-type earnAllocation struct {
-	StrategyID  string `json:"strategy_id"`
-	NativeAsset string `json:"native_asset"`
-	Allocated   struct {
-		Total struct {
-			Native number `json:"native"`
-		} `json:"total"`
-	} `json:"amount_allocated"`
-}
-
 // earnInMain lists the lock types Kraken documents. flex strategies are Kraken Rewards, which earn
 // on Main balances and stay in Main; the other lock types hold funds allocated to Earn.
 var earnInMain = map[string]bool{"flex": true, "instant": false, "bonded": false, "timed": false}
@@ -605,6 +586,7 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 		return adapters.AccountReport{}, adapters.Malformed(where, "the complete allocation list")
 	}
 	totals := adapters.Totals{}
+	positions := []adapters.EarnPosition{}
 	for i := range allocations.Items {
 		row := &allocations.Items[i]
 		amount, err := adapters.Decimal(where, "amount_allocated.total.native of "+row.NativeAsset, string(row.Allocated.Total.Native))
@@ -634,8 +616,13 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 		if err := totals.Add(where, symbol, amount); err != nil {
 			return adapters.AccountReport{}, err
 		}
+		positions = append(positions, row.position(symbol, decimal.Format(amount), r.earnMetadata[row.StrategyID]))
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: r.a.now(), Balances: totals.Balances()}, nil
+	balances := totals.Balances()
+	if err := adapters.CheckEarnPositions(positions, balances); err != nil {
+		return adapters.AccountReport{}, err
+	}
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: r.a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: positions}, nil
 }
 
 // earnStrategies returns the lock type of every strategy, following next_cursor until Kraken
@@ -643,6 +630,7 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 func (r *run) earnStrategies(ctx context.Context) (map[string]string, error) {
 	where := "Kraken " + epEarnStrategies.String()
 	out := map[string]string{}
+	r.earnMetadata = map[string]earnStrategy{}
 	seen := map[string]bool{}
 	var params url.Values
 	for range maxStrategyPages {
@@ -662,6 +650,7 @@ func (r *run) earnStrategies(ctx context.Context) (map[string]string, error) {
 				return nil, adapters.Malformed(where, "a strategy id or lock type")
 			}
 			out[strategy.ID] = strategy.LockType.Type
+			r.earnMetadata[strategy.ID] = *strategy
 		}
 		if page.NextCursor == nil || *page.NextCursor == "" {
 			return out, nil

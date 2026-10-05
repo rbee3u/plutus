@@ -63,6 +63,11 @@ func newDBResetCommand() *cobra.Command {
 				return errors.New("db reset requires [database].allow_reset = true in the selected config file")
 			}
 			ctx := cmd.Context()
+			if seed {
+				if err := validateSeedConfig(&cfg); err != nil {
+					return err
+				}
+			}
 			name, err := mysql.GuardDevReset(ctx, db)
 			if err != nil {
 				return err
@@ -87,7 +92,13 @@ func newDBResetCommand() *cobra.Command {
 
 // seedDatabase runs the seed SQL, activates live Identities, and rebuilds every Valuation Point.
 func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Writer) error {
-	seed := seeds.Build()
+	if err := validateSeedConfig(cfg); err != nil {
+		return err
+	}
+	seed, err := seeds.Build()
+	if err != nil {
+		return err
+	}
 	if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
 		return err
 	}
@@ -103,45 +114,23 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points\n", portfolioID, count)
 	}
 	_, _ = fmt.Fprintln(out, "loaded development seed")
-	_, _ = fmt.Fprintln(out, "scratch logins: alice / Alice=123456 ; bob / Bob=123456")
+	_, _ = fmt.Fprintln(out, "scratch login: alice / Alice=123456")
 	return nil
 }
 
 // activateSeedIdentities seals deterministic credentials and enables each live Identity through the
 // configured adapters, so the scheduler collects them like User-configured Connections.
 func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config, live []seeds.LiveIdentity, out io.Writer) error {
-	if len(live) == 0 {
-		return nil
-	}
-	if !cfg.Crypto.HasMasterKey() {
-		_, _ = fmt.Fprintln(out, "no master key configured: seeded identities stay unconfigured")
-		return nil
-	}
-	registry := buildAdapters(cfg)
-	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: registry, ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
+	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: buildAdapters(cfg), ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
 	if err != nil {
 		return err
 	}
-	for _, item := range live {
-		current, err := identities.Get(ctx, item.PortfolioID, item.IdentityID)
-		if err != nil {
-			return fmt.Errorf("load seeded identity %s: %w", item.IdentityID, err)
-		}
-		stored, err := identities.PutCredentials(ctx, item.PortfolioID, item.IdentityID, current.Version, identity.ActionInput{}, item.Credentials)
-		if err != nil {
-			return fmt.Errorf("store credentials for %s: %w", current.DisplayName, err)
-		}
-		enabled, _, err := identities.Enable(ctx, item.PortfolioID, item.IdentityID, stored.Version, identity.ActionInput{})
-		switch {
-		case errors.Is(err, identity.ErrValidationFailed):
-			_, _ = fmt.Fprintf(out, "identity %q: validation failed, connection is %s\n", current.DisplayName, enabled.Connection.Status)
-		case errors.Is(err, identity.ErrAdapterUnavailable):
-			_, _ = fmt.Fprintf(out, "identity %q: no adapter for %s (set [collection] fake_adapter = true for offline lanes); credentials stored, connection disabled\n", current.DisplayName, current.Platform)
-		case err != nil:
-			return fmt.Errorf("enable %s: %w", current.DisplayName, err)
-		default:
-			_, _ = fmt.Fprintf(out, "identity %q: connection enabled\n", current.DisplayName)
-		}
+	return seeds.ActivateConnections(ctx, identities, live, out)
+}
+
+func validateSeedConfig(cfg *config.Config) error {
+	if !cfg.Collection.FakeAdapter || !cfg.Crypto.HasMasterKey() {
+		return errors.New("development seeds require fake_adapter = true and a configured master key")
 	}
 	return nil
 }

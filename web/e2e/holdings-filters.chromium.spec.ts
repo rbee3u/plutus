@@ -1,10 +1,117 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { BalanceRow, Issue } from "../src/api/generated/types.gen";
+import type {
+  BalanceRow,
+  Issue,
+  EarnPositionRow,
+  DualPositionRow,
+  EarnBalanceSummary,
+} from "../src/api/generated/types.gen";
+
+test.use({ hasTouch: true });
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
 const bn = "00000000-0000-7000-8000-000000000002";
 const ok = "00000000-0000-7000-8000-000000000003";
 const archived = "00000000-0000-7000-8000-000000000004";
+
+const earn: EarnPositionRow = {
+  accountId: "earn",
+  accountName: "Earn",
+  accountType: "earn",
+  identityId: bn,
+  identityName: "bn-main",
+  platform: "binance",
+  platformPositionRef: "multi",
+  productRef: "pool",
+  productName: "Example pool",
+  type: "on_chain",
+  granularity: "position",
+  amountBasis: "principal",
+  assets: [
+    { symbol: "ETH", amount: "1" },
+    { symbol: "USDT", amount: "10" },
+  ],
+  rates: [{ value: "0.04", kind: "apy", qualifier: "estimated", label: "Estimated APY" }],
+  rewards: [
+    { symbol: "USDT", amount: "0.2", kind: "cumulative" },
+    { symbol: "COMP", amount: "0.1", kind: "estimated" },
+  ],
+  details: [{ label: "Estimated redemption settlement", at: "2026-10-06T00:00:00Z" }],
+  status: "Redeeming",
+  freshness: "stale",
+  reportObservedAt: "2026-10-03T00:00:00Z",
+  issues: [
+    { code: "stale", detail: "Earn read failed; previous report retained." },
+    { code: "earn_metadata_unavailable", detail: "Additional rate unavailable." },
+  ],
+};
+
+test("Earn keeps multiasset products and accessible details on mobile", async ({ page }) => {
+  const state = await fixture(page);
+  state.earns = [earn];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/p/${portfolioId}/holdings/earn`);
+  await expect(page.getByRole("columnheader")).toHaveText([
+    /Platform.*All/,
+    /Identity.*All/,
+    /Asset.*All/,
+    "Type",
+    "Maturity",
+    "Rate",
+    "Amount",
+    "Rewards",
+    "Subscribed",
+    "Status",
+    "Observed",
+  ]);
+  await expect(page.getByRole("row")).toHaveCount(2);
+  await expect(
+    page
+      .getByRole("table", { name: "Earn positions", exact: true })
+      .getByText("1 ETH", { exact: true }),
+  ).toBeVisible();
+  const details = page.getByRole("button", { name: /Product details for ETH.*multi/ });
+  await details.tap();
+  await expect(page.getByRole("tooltip")).toContainText("Example pool");
+  await expect(page.getByRole("tooltip")).toContainText("2026-10-06 08:00");
+  await page.keyboard.press("Escape");
+  const issues = page.getByRole("button", { name: /Data issues for ETH.*multi/ });
+  await issues.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Additional rate unavailable.");
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+  expect(state.mutations).toHaveLength(0);
+});
+
+test("Earn remembers its own Asset search and labels old balances separately", async ({ page }) => {
+  const state = await fixture(page);
+  state.earns = [earn];
+  state.earnSummaries = [
+    {
+      accountId: "old",
+      accountName: "Earn",
+      identityName: "bn-main",
+      platform: "binance",
+      assets: [{ symbol: "USDT", amount: "25" }],
+      freshness: "fresh",
+      reportObservedAt: "2026-10-01T00:00:00Z",
+      issues: [{ code: "earn_details_unavailable", detail: "Product details not collected." }],
+    },
+  ];
+  await page.goto(`/p/${portfolioId}/holdings/earn?symbol=eth`);
+  await expect(page.getByText("Details incomplete", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Known balances without product details" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Futures", exact: true }).click();
+  await expect(page).toHaveURL(`/p/${portfolioId}/holdings/futures`);
+  await page.getByRole("link", { name: "Earn", exact: true }).click();
+  await expect(page).toHaveURL(`/p/${portfolioId}/holdings/earn?symbol=eth`);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Filter Asset: eth" })).toBeVisible();
+});
 
 async function fixture(page: Page) {
   const state = {
@@ -16,6 +123,9 @@ async function fixture(page: Page) {
     delaySearch: false,
     balances: [] as BalanceRow[],
     balanceIssues: [] as Issue[],
+    earns: [] as EarnPositionRow[],
+    duals: [] as DualPositionRow[],
+    earnSummaries: [] as EarnBalanceSummary[],
   };
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
@@ -76,7 +186,7 @@ async function fixture(page: Page) {
         },
       });
     }
-    if (/\/(balances|positions|dual-positions)$/.test(path)) {
+    if (/\/(balances|positions|earn-positions|dual-positions)$/.test(path)) {
       state.requests.push(url);
       if (state.delaySearch && url.searchParams.get("symbol"))
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -90,7 +200,15 @@ async function fixture(page: Page) {
             evaluatedAt: "2026-10-03T00:00:00Z",
             timezone: "Asia/Shanghai",
           },
-          items: path.endsWith("/balances") ? state.balances : [],
+          items: path.endsWith("/balances")
+            ? state.balances
+            : path.endsWith("/earn-positions")
+              ? state.earns
+              : path.endsWith("/dual-positions")
+                ? state.duals
+                : [],
+          balanceSummaries: state.earnSummaries,
+          detailsComplete: state.earnSummaries.length === 0,
           page: { offset: Number(url.searchParams.get("offset") ?? 0), limit: 50, total: 0 },
           totalUsd: "0",
           totalNotionalUsd: "741.37",
@@ -263,7 +381,12 @@ test("pending search stays with its own top-level tab and reset cancels it", asy
   await fixture(page);
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const tabs = page.getByRole("navigation", { name: "Holdings views" });
-  await expect(tabs.getByRole("link")).toHaveText(["Balances", "Futures", "Dual Investment"]);
+  await expect(tabs.getByRole("link")).toHaveText([
+    "Balances",
+    "Futures",
+    "Earn",
+    "Dual Investment",
+  ]);
   await expect(page.getByRole("tablist")).toHaveCount(0);
   await page.getByRole("button", { name: "Filter Symbol: All" }).click();
   await page.getByRole("textbox", { name: "Search Symbol" }).fill("eth");

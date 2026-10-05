@@ -171,6 +171,18 @@ or neither, a dip, depending on which side has updated. The next run after the
 payout is correct again. Both are expected and are not reconciled across
 Accounts.
 
+### Earn Position descriptions
+
+Flexible rows preserve product aggregates, `totalAmount`, source APR and tier
+rules, and explicitly cumulative rewards. Locked rows preserve each position
+reference, principal `amount`, subscription time, source APY, and native Status.
+`rewardsEndDate` supplies Maturity; `deliverDate` is a separate delivery detail.
+This date mapping is an inference from API fields and the locked-product help,
+recorded in [ADR 0018](../../adr/0018-earn-position-presentation.md). The API
+APY label and Help APR explanation are retained without compounding conversion.
+Unqualified `rewardAmt` stays in details as Reported rewards. These descriptions
+never add value to the Balance totals or change shared completeness.
+
 ## Dual Investment Account and positions
 
 Dual Account selection, principal valuation, and shared Earn completeness follow

@@ -34,63 +34,28 @@ func SeedID(kind uint16, n uint64) uuid.UUID {
 	return id
 }
 
-// Well-known IDs shared by the seed, tests, and walkthroughs.
+// Well-known IDs retained across disposable development resets.
 var (
-	UserAlice = SeedID(kindUser, 1)
-	UserBob   = SeedID(kindUser, 2)
-
-	PortfolioAliceMain    = SeedID(kindPortfolio, 1)
-	PortfolioAliceTrading = SeedID(kindPortfolio, 2)
-	PortfolioBobMain      = SeedID(kindPortfolio, 3)
-
-	IdentityAliceBinance    = SeedID(kindIdentity, 1)
-	IdentityAliceOKX        = SeedID(kindIdentity, 2)
-	IdentityAliceBybit      = SeedID(kindIdentity, 3)
-	IdentityAliceBinanceOld = SeedID(kindIdentity, 4)
-	IdentityBobBinance      = SeedID(kindIdentity, 5)
-	// IdentityAliceBinanceClassic is a Binance Classic Trading Identity next to the Portfolio Margin one.
-	IdentityAliceBinanceClassic = SeedID(kindIdentity, 6)
-
-	AccountAliceBinancePM      = SeedID(kindAccount, 1)
-	AccountAliceBinanceSpot    = SeedID(kindAccount, 2)
-	AccountAliceBinanceFunding = SeedID(kindAccount, 3)
-	AccountAliceBinanceEarn    = SeedID(kindAccount, 4)
-	AccountAliceOKXTrading     = SeedID(kindAccount, 5)
-	AccountAliceOKXFunding     = SeedID(kindAccount, 6)
-	AccountAliceOKXEarn        = SeedID(kindAccount, 7)
-	AccountAliceBybitUnified   = SeedID(kindAccount, 8)
-	AccountAliceBybitFunding   = SeedID(kindAccount, 9)
-	AccountAliceBybitEarn      = SeedID(kindAccount, 10)
-	AccountAliceOldPM          = SeedID(kindAccount, 11)
-	AccountAliceOldSpot        = SeedID(kindAccount, 12)
-	AccountAliceOldFunding     = SeedID(kindAccount, 13)
-	AccountAliceOldEarn        = SeedID(kindAccount, 14)
-	AccountBobBinancePM        = SeedID(kindAccount, 15)
-	AccountBobBinanceSpot      = SeedID(kindAccount, 16)
-	AccountBobBinanceFunding   = SeedID(kindAccount, 17)
-	AccountBobBinanceEarn      = SeedID(kindAccount, 18)
-
-	AccountAliceClassicSpot           = SeedID(kindAccount, 19)
-	AccountAliceClassicFunding        = SeedID(kindAccount, 20)
-	AccountAliceClassicCrossMargin    = SeedID(kindAccount, 21)
-	AccountAliceClassicIsolatedMargin = SeedID(kindAccount, 22)
-	AccountAliceClassicUMFutures      = SeedID(kindAccount, 23)
-	AccountAliceClassicCMFutures      = SeedID(kindAccount, 24)
-	AccountAliceClassicEarn           = SeedID(kindAccount, 25)
-
-	AccountAliceBinanceDual = SeedID(kindAccount, 26)
-	AccountAliceOKXDual     = SeedID(kindAccount, 27)
-	AccountAliceBybitDual   = SeedID(kindAccount, 28)
-	AccountAliceOldDual     = SeedID(kindAccount, 29)
-	AccountBobBinanceDual   = SeedID(kindAccount, 30)
-	AccountAliceClassicDual = SeedID(kindAccount, 31)
-
-	FlowAliceBTC     = SeedID(kindCapitalFlow, 1)
-	FlowAliceUSDT    = SeedID(kindCapitalFlow, 2)
-	FlowAliceTOKENX  = SeedID(kindCapitalFlow, 3)
-	FlowAliceUSDC    = SeedID(kindCapitalFlow, 4)
-	FlowAliceETH     = SeedID(kindCapitalFlow, 5)
-	FlowBobUSDT      = SeedID(kindCapitalFlow, 6)
-	FlowAliceBTCOut  = SeedID(kindCapitalFlow, 7)
-	FlowAliceUSDTOut = SeedID(kindCapitalFlow, 8)
+	UserAlice           = SeedID(kindUser, 1)
+	PortfolioAliceMain  = SeedID(kindPortfolio, 1)
+	PortfolioAliceEdge  = namedID("portfolio/edge-cases")
+	PortfolioAliceLarge = namedID("portfolio/large")
+	PortfolioAliceEmpty = namedID("portfolio/empty")
 )
+
+func namedID(key string) uuid.UUID {
+	// The fixed namespace keeps names stable when other scenarios are added.
+	return uuid.NewSHA1(SeedID(kindUser, 1), []byte(key))
+}
+
+func portfolioID(name string) uuid.UUID {
+	if name == "default" {
+		return PortfolioAliceMain
+	}
+	return namedID("portfolio/" + name)
+}
+
+func identityID(name string) uuid.UUID { return namedID("identity/" + name) }
+func accountID(identity string, kind string) uuid.UUID {
+	return namedID("account/" + identity + "/" + kind)
+}

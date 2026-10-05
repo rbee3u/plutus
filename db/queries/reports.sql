@@ -1,10 +1,10 @@
 -- name: InsertAccountReport :exec
 INSERT INTO account_reports (
-    id, portfolio_id, job_id, account_id, scope_version, margin_mode, status, observed_at, error_class, error_detail,
+    id, portfolio_id, job_id, account_id, scope_version, earn_details_collected, margin_mode, status, observed_at, error_class, error_detail,
     equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio,
     value_usd, method, source_report_id, omitted_json, created_at
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(scope_version), sqlc.narg(margin_mode), sqlc.arg(status),
+    sqlc.arg(id), sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(scope_version), sqlc.arg(earn_details_collected), sqlc.narg(margin_mode), sqlc.arg(status),
     sqlc.narg(observed_at), sqlc.narg(error_class), sqlc.narg(error_detail),
     sqlc.narg(equity), sqlc.narg(adjusted_equity), sqlc.narg(available_equity), sqlc.narg(initial_margin_ratio),
     sqlc.narg(maintenance_margin_ratio), sqlc.narg(unified_margin_ratio),

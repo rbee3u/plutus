@@ -106,7 +106,7 @@ func (r *replay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		r.t.Errorf("%s %s: the adapter may only read", req.Method, path)
 	}
-	if !strings.HasPrefix(path, "/v5/market/") {
+	if !strings.HasPrefix(path, "/v5/market/") && path != epEarnProduct.path {
 		if scenario, msg := r.checkSigned(req); msg != "" {
 			if !lenient {
 				r.t.Errorf("%s: %s", path, msg)

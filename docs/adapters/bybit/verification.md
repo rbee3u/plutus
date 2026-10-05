@@ -6,6 +6,11 @@ real gaps, and pending exchange-app checks. See the
 [evidence workflow](../evidence-workflow.md) for recording and promotion rules.
 Synthetic tests, recorded responses, and exchange-app validation are distinct.
 
+Earn presentation coverage and remaining metadata evidence gaps are recorded in
+[the Earn delivery report](../earn-presentation-delivery.md). Existing recorded
+responses remain unchanged; the new descriptive fields are not exchange-app
+validation.
+
 ## Current evidence
 
 **19 reviewed responses**, recorded and owner-reviewed on 2026-10-01. They cover

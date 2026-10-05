@@ -265,12 +265,15 @@ type PositionRow struct {
 
 // AccountView is one Account's current report with its Balances or Positions.
 type AccountView struct {
-	Context       Context
-	Account       AccountValuation
-	Balances      []BalanceRow
-	Positions     []PositionRow
-	DualPositions []DualPositionRow
-	Issues        []Issue
+	Context              Context
+	Account              AccountValuation
+	Balances             []BalanceRow
+	Positions            []PositionRow
+	DualPositions        []DualPositionRow
+	EarnPositions        []EarnPositionRow
+	EarnBalanceSummaries []EarnBalanceSummary
+	EarnDetailsCollected bool
+	Issues               []Issue
 }
 
 // ListFilter selects flat Balance or Position rows.

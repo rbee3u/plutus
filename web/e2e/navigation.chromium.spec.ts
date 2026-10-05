@@ -83,6 +83,20 @@ async function mockShell(page: Page, long = false) {
           ],
         },
       });
+    } else if (path === `/api/v1/portfolios/${portfolioId}/history-window`) {
+      await route.fulfill({
+        json: { context: data.context, from: "2026-09-30T00:00:00Z", to: "2026-10-03T00:00:00Z" },
+      });
+    } else if (path === `/api/v1/portfolios/${portfolioId}/valuation-points`) {
+      await route.fulfill({
+        json: {
+          context: data.context,
+          from: "2026-09-30T00:00:00Z",
+          to: "2026-10-03T00:00:00Z",
+          granularity: "raw",
+          items: data.sparkline,
+        },
+      });
     } else if (path === `/api/v1/portfolios/${portfolioId}/tree`) {
       await route.fulfill({ json: overviewTreeFixture(data) });
     } else if (path === `/api/v1/portfolios/${portfolioId}/overview`) {

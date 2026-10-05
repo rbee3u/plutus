@@ -10,7 +10,7 @@ import (
 )
 
 func commonSamples() []string {
-	return []string{"v5_market_time", "v5_user_query_api", "v5_asset_transfer_query_account_coins_balance", "v5_earn_position", "v5_market_tickers", "v5_market_instruments_info.linear", "v5_market_instruments_info.inverse", "v5_position_list.option"}
+	return []string{"v5_market_time", "v5_user_query_api", "v5_asset_transfer_query_account_coins_balance", "v5_earn_position", "v5_earn_product", "v5_market_tickers", "v5_market_instruments_info.linear", "v5_market_instruments_info.inverse", "v5_position_list.option"}
 }
 
 const (

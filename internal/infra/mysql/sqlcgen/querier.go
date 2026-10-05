@@ -26,6 +26,7 @@ type Querier interface {
 	GetAssetListing(ctx context.Context, id []byte) (AssetListing, error)
 	GetAssetListingByPlatformSymbol(ctx context.Context, arg GetAssetListingByPlatformSymbolParams) (AssetListing, error)
 	GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error)
+	GetEarnDetailsCollected(ctx context.Context, arg GetEarnDetailsCollectedParams) (bool, error)
 	GetFirstValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (GetIdentityRow, error)
 	GetIdentityCredentials(ctx context.Context, arg GetIdentityCredentialsParams) (GetIdentityCredentialsRow, error)
@@ -53,6 +54,7 @@ type Querier interface {
 	InsertBalance(ctx context.Context, arg InsertBalanceParams) error
 	InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error
 	InsertDualPosition(ctx context.Context, arg InsertDualPositionParams) error
+	InsertEarnPosition(ctx context.Context, arg InsertEarnPositionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
@@ -71,6 +73,7 @@ type Querier interface {
 	ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error)
 	ListDualPositionsByJob(ctx context.Context, arg ListDualPositionsByJobParams) ([]ListDualPositionsByJobRow, error)
 	ListDualPositionsByReport(ctx context.Context, reportID []byte) ([]DualPosition, error)
+	ListEarnPositionsByReport(ctx context.Context, arg ListEarnPositionsByReportParams) ([]EarnPosition, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]ListIdentitiesByPortfolioRow, error)
 	ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error)
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)

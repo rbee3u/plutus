@@ -189,11 +189,11 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
     Object.defineProperty(window.crypto, "randomUUID", { value: undefined }),
   );
   await page.goto(historyPath);
-  await expect(page.getByRole("button", { name: "1w", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-27T12:16:44");
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-10-01T12:16:44");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   await expect(rawTable(page).locator("tbody > tr").first()).toContainText("100,560");
   await expect(pager(page, "Raw Valuation Points")).toContainText("1–20 of 561");
@@ -205,7 +205,7 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   const resolved = state.requests.find((url) => url.pathname === `${base}/valuation-points`)!;
   const closes = state.requests.find((url) => url.pathname === `${base}/period-closes`)!;
   expect(closes.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
-  expect(resolved.searchParams.get("granularity")).toBe("hour");
+  expect(resolved.searchParams.get("granularity")).toBe("raw");
   await pager(page, "Raw Valuation Points")
     .getByRole("button", { name: "Next", exact: true })
     .click();
@@ -347,7 +347,7 @@ for (const theme of ["light", "dark"]) {
     await fixture(page);
     await page.goto(historyPath);
     await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
-    await page.getByRole("button", { name: "1Year", exact: true }).click();
+    await page.getByRole("button", { name: "6M", exact: true }).click();
     await expect(page.getByText(/day granularity/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       375,
