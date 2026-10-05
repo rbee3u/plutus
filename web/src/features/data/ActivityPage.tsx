@@ -16,6 +16,14 @@ export function ActivityPage() {
 
   return (
     <section className={styles.wide}>
+      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Collection & Activity</h2>
+          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+            Background collection cycles, worker jobs, and portfolio audit history.
+          </p>
+        </div>
+      </div>
       {tab === "cycles" ? (
         <CyclesPanel
           portfolioId={portfolioId}

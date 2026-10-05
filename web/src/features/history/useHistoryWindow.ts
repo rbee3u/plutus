@@ -4,20 +4,46 @@ import { useQuery } from "@tanstack/react-query";
 import { getHistoryWindow } from "@/api/generated/sdk.gen";
 import type { HistoryWindow, PeriodKind } from "@/api/generated/types.gen";
 import { usePortfolio } from "@/shared/lib/portfolio";
-import { readChoice, useSearchState } from "@/shared/lib/searchParams";
+import { useSearchState } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 
-export const HISTORY_PRESETS = ["1d", "3d", "1w", "2w", "1Month", "1Year"] as const;
+export const HISTORY_PRESETS = ["1D", "3D", "1W", "2W", "1M", "3M", "6M"] as const;
 export type HistoryPreset = (typeof HISTORY_PRESETS)[number];
 export const HISTORY_PAGE_SIZES = [10, 20, 50] as const;
 
-export function presetPeriod(preset: HistoryPreset): PeriodKind {
-  return preset === "1Year" ? "month" : preset === "1Month" ? "week" : "day";
+export function presetPeriod(preset: string): PeriodKind {
+  return preset === "6M" || preset === "3M" || preset === "1Year"
+    ? "month"
+    : preset === "1M" || preset === "1Month"
+      ? "week"
+      : "day";
 }
 
 export function historyGranularity(from: string, to: string) {
   const days = (Date.parse(to) - Date.parse(from)) / 86_400_000;
   return days <= 3 ? "raw" : days <= 45 ? "hour" : "day";
+}
+
+function normalizePreset(val: string | null): HistoryPreset | undefined {
+  if (!val) return undefined;
+  const map: Record<string, HistoryPreset> = {
+    "1d": "1D",
+    "1D": "1D",
+    "3d": "3D",
+    "3D": "3D",
+    "1w": "1W",
+    "1W": "1W",
+    "2w": "2W",
+    "2W": "2W",
+    "1Month": "1M",
+    "1m": "1M",
+    "1M": "1M",
+    "3m": "3M",
+    "3M": "3M",
+    "6m": "6M",
+    "6M": "6M",
+  };
+  return map[val];
 }
 
 /** Wall-clock text only; interpretation happens on the server in the Portfolio timezone. */
@@ -47,7 +73,7 @@ export function useHistoryWindow() {
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
   const custom = Boolean(from || to);
-  const preset = readChoice(params.get("range"), HISTORY_PRESETS, "1w");
+  const preset = normalizePreset(params.get("range")) ?? "3D";
   const timezone = portfolio.data?.item.timezone;
   const mountId = useId();
   const [anchor, setAnchor] = useState(0);

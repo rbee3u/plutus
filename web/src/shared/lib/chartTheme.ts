@@ -127,8 +127,23 @@ function styleSeries(item: Record<string, unknown>, tokens: ChartTokens): Record
       barMaxWidth: 28,
       itemStyle: {
         borderRadius: [3, 3, 0, 0],
-        color: (params: { value?: unknown }) =>
-          typeof params.value === "number" && params.value < 0 ? tokens.negative : tokens.accent,
+        color: (params: { value?: unknown }) => {
+          let num: number | null = null;
+          if (typeof params.value === "number") {
+            num = params.value;
+          } else if (
+            params.value &&
+            typeof params.value === "object" &&
+            "value" in params.value &&
+            typeof params.value.value === "number"
+          ) {
+            num = params.value.value;
+          }
+          if (num === null) return tokens.accent;
+          if (num > 0) return tokens.positive;
+          if (num < 0) return tokens.negative;
+          return tokens.muted;
+        },
       },
       ...item,
     };

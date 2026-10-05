@@ -72,9 +72,21 @@ async function fixture(page: Page) {
           });
       } else {
         const days =
-          { "1d": 1, "3d": 3, "1w": 7, "2w": 14, "1Month": 30, "1Year": 365 }[
-            params.get("preset") ?? "1w"
-          ] ?? 7;
+          {
+            "1D": 1,
+            "3D": 3,
+            "1W": 7,
+            "2W": 14,
+            "1M": 30,
+            "3M": 90,
+            "6M": 180,
+            "1d": 1,
+            "3d": 3,
+            "1w": 7,
+            "2w": 14,
+            "1Month": 30,
+            "1Year": 365,
+          }[params.get("preset") ?? "3D"] ?? 3;
         await route.fulfill({
           json: {
             context,
@@ -216,7 +228,7 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await page.getByLabel("Raw Valuation Points rows per page").selectOption("10");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(10);
   await expect(pager(page, "Raw Valuation Points")).toContainText("1–10 of 561");
-  await page.getByRole("button", { name: "1Year", exact: true }).click();
+  await page.getByRole("button", { name: "3M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("month");
   await expect(page.getByText(/day granularity/)).toBeVisible();
 });
@@ -233,7 +245,7 @@ test("date drafts apply once; custom endpoints survive reload, presets reanchor"
   expect(state.requests).toHaveLength(count);
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/from=2026-09-01T04/);
-  await expect(page.getByRole("button", { name: "1w", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
@@ -243,12 +255,12 @@ test("date drafts apply once; custom endpoints survive reload, presets reanchor"
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("The end must be after the start.");
   await expect(page).toHaveURL(/from=2026-09-01T04/);
-  await page.getByRole("button", { name: "3d", exact: true }).click();
+  await page.getByRole("button", { name: "3D", exact: true }).click();
   await expect(page.getByText(/raw granularity/)).toBeVisible();
   state.now = "2026-10-05T04:16:44Z";
   await page.reload();
   await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-05T12:16:44");
-  await expect(page.getByRole("button", { name: "3d", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -269,7 +281,7 @@ test("Value Changes pages its table, keeps its chart, and leaves custom comparis
     reads,
   );
   await page.getByLabel("From", { exact: true }).last().fill("2026-08-01T12:00");
-  await page.getByRole("button", { name: "1Month", exact: true }).click();
+  await page.getByRole("button", { name: "1M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("week");
   await expect(page.getByLabel("From", { exact: true }).last()).toHaveValue("2026-08-01T12:00");
   await expect(pager(page, "Value Changes")).toContainText("1–20 of 42");

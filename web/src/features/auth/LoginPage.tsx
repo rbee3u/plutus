@@ -8,6 +8,7 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput } from "@/shared/ui/FormControls";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import styles from "@/features/pages.module.css";
 
 export function LoginPage() {
@@ -64,6 +65,7 @@ export function LoginPage() {
           <span>Plutus</span>
         </div>
         <h1>Sign in</h1>
+        <p className={styles.cardSubtitle}>Portfolio valuation and wealth analytics</p>
         {notice ? (
           <p className={styles.notice} role="status">
             {notice}
@@ -86,8 +88,7 @@ export function LoginPage() {
         </label>
         <label className={styles.field}>
           <span>Password</span>
-          <TextInput
-            type="password"
+          <PasswordInput
             value={password}
             placeholder="Enter password"
             autoComplete="current-password"
@@ -97,7 +98,7 @@ export function LoginPage() {
         </label>
         <div className={styles.authActions}>
           <ActionButton type="submit" tone="primary" disabled={busy} className={styles.authSubmit}>
-            Sign in
+            {busy ? "Signing in..." : "Sign in"}
           </ActionButton>
         </div>
       </form>

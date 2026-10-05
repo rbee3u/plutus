@@ -18,7 +18,13 @@ import type {
   Platform,
   ValuationPointSummary,
 } from "@/api/generated/types.gen";
-import { chartNumber, formatAmount, formatBoundaryFlows, isZeroDecimal } from "@/shared/lib/amount";
+import {
+  chartNumber,
+  formatAmount,
+  formatBoundaryFlows,
+  isZeroDecimal,
+  parseDecimal,
+} from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { readChoice } from "@/shared/lib/searchParams";
@@ -395,6 +401,8 @@ export function boundaryEventRow(
   timezone?: string,
   platforms?: Platform[],
 ): DataRow {
+  const dec = parseDecimal(item.valueUsd);
+  const isContribution = item.direction.toLowerCase() === "contribution";
   return {
     id: `${item.pointId}-${item.accountId}-${item.direction}`,
     evaluatedAt: formatInstant(item.evaluatedAt, timezone),
@@ -406,7 +414,13 @@ export function boundaryEventRow(
     ),
     platform: item.platform ? platformLabel(platforms, item.platform) : "—",
     direction: <DirectionBadge value={item.direction} />,
-    valueUsd: formatAmount(item.valueUsd),
+    valueUsd: dec ? (
+      <span className={isContribution ? styles.pnlPositive : styles.pnlNegative}>
+        <NumericText>{`${isContribution ? "+" : "-"}$${formatAmount(dec.abs().toFixed())}`}</NumericText>
+      </span>
+    ) : (
+      <span className={styles.muted}>—</span>
+    ),
     method: <StatusBadge value={item.method} />,
   };
 }

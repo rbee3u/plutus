@@ -18,7 +18,7 @@ import {
 import { accountOptions, useIdentities } from "@/features/data/useIdentities";
 import { usePlatforms } from "@/features/data/usePlatforms";
 import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/features/history/ValuationPointsPage";
-import { formatAmount, formatDecimal } from "@/shared/lib/amount";
+import { formatAmount, formatDecimal, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant, isoFromLocalInput } from "@/shared/lib/datetime";
 import { usePortfolio } from "@/shared/lib/portfolio";
 import { useSearchState } from "@/shared/lib/searchParams";
@@ -173,34 +173,39 @@ export function CapitalPage() {
       ) : null}
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
-          <h2>Capital Flows</h2>
+          <div>
+            <h2>Capital Flows</h2>
+            <p className={styles.muted} style={{ margin: "2px 0 0" }}>
+              Manual contributions and withdrawals recorded to adjust portfolio valuation.
+            </p>
+          </div>
           <ActionButton type="button" tone="primary" disabled={busy} onClick={openCreate}>
             Record flow
           </ActionButton>
         </div>
-        <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.rangeField}>
-            <span className={styles.rangeLabel}>From</span>
+        <form className={styles.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={styles.compactFilterField}>
+            <span className={styles.compactFilterLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={from}
+              className={styles.compactDateInput}
               onChange={(event) => update({ from: event.target.value })}
             />
           </label>
-          <label className={styles.rangeField}>
-            <span className={styles.rangeLabel}>To</span>
+          <label className={styles.compactFilterField}>
+            <span className={styles.compactFilterLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={to}
+              className={styles.compactDateInput}
               onChange={(event) => update({ to: event.target.value })}
             />
           </label>
           {from || to ? (
-            <div className={styles.rangeActions}>
-              <ActionButton type="button" tone="ghost" onClick={() => update({ from: "", to: "" })}>
-                Clear
-              </ActionButton>
-            </div>
+            <ActionButton type="button" tone="ghost" onClick={() => update({ from: "", to: "" })}>
+              Clear
+            </ActionButton>
           ) : null}
         </form>
         <QueryRecovery
@@ -224,36 +229,48 @@ export function CapitalPage() {
             { key: "note", header: "Note" },
             { key: "actions", header: "" },
           ]}
-          rows={(flows.data?.items ?? []).map((item) => ({
-            id: item.id,
-            effectiveAt: formatInstant(item.effectiveAt, timezone),
-            direction: <DirectionBadge value={item.direction} />,
-            assetSymbol: item.assetSymbol,
-            quantity: formatDecimal(item.quantity),
-            valueUsd: formatAmount(item.valueUsd),
-            account: item.accountName ?? (item.accountId ? item.accountId : "Portfolio"),
-            note: item.note ?? "—",
-            actions: (
-              <span className={styles.rowActions}>
-                <ActionButton
-                  type="button"
-                  tone="ghost"
-                  disabled={busy}
-                  onClick={() => void openEdit(item)}
-                >
-                  Edit
-                </ActionButton>
-                <ActionButton
-                  type="button"
-                  tone="dangerQuiet"
-                  disabled={busy}
-                  onClick={() => setDeleteTarget(item)}
-                >
-                  Delete
-                </ActionButton>
-              </span>
-            ),
-          }))}
+          rows={(flows.data?.items ?? []).map((item) => {
+            const dec = parseDecimal(item.valueUsd);
+            const isContribution = item.direction.toLowerCase() === "contribution";
+            return {
+              id: item.id,
+              effectiveAt: formatInstant(item.effectiveAt, timezone),
+              direction: <DirectionBadge value={item.direction} />,
+              assetSymbol: item.assetSymbol,
+              quantity: formatDecimal(item.quantity),
+              valueUsd: dec ? (
+                <span className={isContribution ? styles.pnlPositive : styles.pnlNegative}>
+                  <NumericText>{`${isContribution ? "+" : "-"}$${formatAmount(dec.abs().toFixed())}`}</NumericText>
+                </span>
+              ) : (
+                <span className={styles.muted}>—</span>
+              ),
+              account:
+                item.accountName ??
+                (item.accountId ? item.accountId : <span className={styles.muted}>—</span>),
+              note: item.note ?? "—",
+              actions: (
+                <span className={styles.rowActions}>
+                  <ActionButton
+                    type="button"
+                    tone="ghost"
+                    disabled={busy}
+                    onClick={() => void openEdit(item)}
+                  >
+                    Edit
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    tone="dangerQuiet"
+                    disabled={busy}
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    Delete
+                  </ActionButton>
+                </span>
+              ),
+            };
+          })}
           empty={
             flows.isPending
               ? "Loading Capital Flows."
@@ -263,35 +280,40 @@ export function CapitalPage() {
       </section>
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
-          <h2>Boundary Events</h2>
+          <div>
+            <h2>Boundary Events</h2>
+            <p className={styles.muted} style={{ margin: "2px 0 0" }}>
+              Automatic adjustments recorded when accounts enter or leave the active boundary.
+            </p>
+          </div>
         </div>
-        <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.rangeField}>
-            <span className={styles.rangeLabel}>From</span>
+        <form className={styles.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={styles.compactFilterField}>
+            <span className={styles.compactFilterLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={eventsFrom}
+              className={styles.compactDateInput}
               onChange={(event) => update({ eventsFrom: event.target.value })}
             />
           </label>
-          <label className={styles.rangeField}>
-            <span className={styles.rangeLabel}>To</span>
+          <label className={styles.compactFilterField}>
+            <span className={styles.compactFilterLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={eventsTo}
+              className={styles.compactDateInput}
               onChange={(event) => update({ eventsTo: event.target.value })}
             />
           </label>
           {eventsFrom || eventsTo ? (
-            <div className={styles.rangeActions}>
-              <ActionButton
-                type="button"
-                tone="ghost"
-                onClick={() => update({ eventsFrom: "", eventsTo: "" })}
-              >
-                Clear
-              </ActionButton>
-            </div>
+            <ActionButton
+              type="button"
+              tone="ghost"
+              onClick={() => update({ eventsFrom: "", eventsTo: "" })}
+            >
+              Clear
+            </ActionButton>
           ) : null}
         </form>
         <QueryRecovery

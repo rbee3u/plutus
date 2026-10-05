@@ -49,9 +49,10 @@
   --success-soft: #ecfdf3;
   --warning: #b54708;
   --warning-soft: #fffaeb;
-  /* Two layers per level: a contact edge plus a broad ambient shadow. */
-  --shadow-md: 0 1px 2px rgb(16 24 40 / 0.06), 0 8px 24px rgb(16 24 40 / 0.1);
-  --shadow-lg: 0 2px 4px rgb(16 24 40 / 0.08), 0 16px 40px rgb(16 24 40 / 0.18);
+  /* Multi-layer shadows: crisp contact edge plus subtle ambient depth. */
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-md: 0 1px 3px rgb(16 24 40 / 0.06), 0 4px 12px rgb(16 24 40 / 0.04);
+  --shadow-lg: 0 2px 6px rgb(16 24 40 / 0.08), 0 12px 28px rgb(16 24 40 / 0.08);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -138,8 +139,9 @@
   --success-soft: #16302a;
   --warning: #f7b955;
   --warning-soft: #3a2c16;
-  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.35);
-  --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 * {

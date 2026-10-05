@@ -116,6 +116,25 @@ func plural(n int, one, many string) string {
 
 // RunCycle collects every enabled Identity of the Portfolio for jobID and writes the Valuation Point.
 func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (Summary, error) {
+	point, err := s.valuation.PointByJob(ctx, portfolioID, jobID)
+	if err == nil {
+		return s.cycleSummary(ctx, point)
+	}
+	if !errors.Is(err, valuation.ErrNotFound) {
+		return Summary{}, err
+	}
+	reports, err := s.q.ListReportsByJob(ctx, sqlcgen.ListReportsByJobParams{PortfolioID: portfolioID[:], JobID: jobID[:]})
+	if err != nil {
+		return Summary{}, err
+	}
+	reported := map[uuid.UUID]bool{}
+	for i := range reports {
+		id, err := uuid.FromBytes(reports[i].AccountID)
+		if err != nil {
+			return Summary{}, err
+		}
+		reported[id] = true
+	}
 	boundary, err := s.identities.ListBoundary(ctx, portfolioID)
 	if err != nil {
 		return Summary{}, err
@@ -124,30 +143,31 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 	if err != nil {
 		return Summary{}, err
 	}
-	summary := Summary{IdentityCount: len(collectable)}
-	reported := map[uuid.UUID]bool{}
+	collected := false
 	for i := range collectable {
-		item := &collectable[i]
-		if i > 0 && s.stagger > 0 {
+		item := collectable[i]
+		item.Accounts = nil
+		for _, account := range collectable[i].Accounts {
+			if !reported[account.ID] {
+				item.Accounts = append(item.Accounts, account)
+			}
+		}
+		if len(item.Accounts) == 0 {
+			continue
+		}
+		if collected && s.stagger > 0 {
 			if err := s.sleep(ctx, s.stagger); err != nil {
 				return Summary{}, err
 			}
 		}
-		written, failed, invalidated, err := s.collectIdentity(ctx, portfolioID, jobID, item)
+		written, err := s.collectIdentity(ctx, portfolioID, jobID, &item)
 		if err != nil {
 			return Summary{}, err
 		}
 		for id := range written {
 			reported[id] = true
 		}
-		summary.ReportCount += len(written)
-		summary.ReportFailed += failed
-		if invalidated {
-			summary.Invalidated++
-		}
-		if failed == len(item.Accounts) && len(item.Accounts) > 0 {
-			summary.IdentityFailed++
-		}
+		collected = true
 	}
 	now := s.now().UTC()
 	for i := range boundary {
@@ -159,15 +179,15 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 		if err := s.insertFailedReport(ctx, s.q, portfolioID, jobID, account.ID, ClassSkipped, detail, now); err != nil {
 			return Summary{}, err
 		}
-		summary.ReportCount++
-		summary.ReportFailed++
 	}
-	point, err := s.valuation.WritePoint(ctx, portfolioID, jobID, s.now())
+	point, err = s.valuation.WritePoint(ctx, portfolioID, jobID, s.now())
 	if err != nil {
 		return Summary{}, err
 	}
-	summary.Point = point
-	summary.ObservationTime = now
+	summary, err := s.cycleSummary(ctx, point)
+	if err != nil {
+		return Summary{}, err
+	}
 	if point.IncompleteAccountCount > 0 || summary.Invalidated > 0 {
 		s.logger.WarnContext(ctx, "valuation point written with issues",
 			slog.String("portfolio_id", portfolioID.String()), slog.String("job_id", jobID.String()),
@@ -178,10 +198,10 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 }
 
 // collectIdentity calls the adapter with bounded retries and writes one report per selected Account.
-func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.UUID, item *identity.Collectable) (map[uuid.UUID]bool, int, bool, error) {
+func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.UUID, item *identity.Collectable) (map[uuid.UUID]bool, error) {
 	written := map[uuid.UUID]bool{}
 	if len(item.Accounts) == 0 {
-		return written, 0, false, nil
+		return written, nil
 	}
 	types := make([]adapters.AccountType, 0, len(item.Accounts))
 	byType := map[adapters.AccountType]identity.Account{}
@@ -194,46 +214,52 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 		class, detail = adapters.Classify(adapters.UnknownMarginMode(item.Identity.Platform, string(batch.MarginMode)))
 	}
 	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := s.q.WithTx(tx)
+	invalidate := false
 	if class != "" {
-		invalidate := adapters.StopsScheduling(class)
+		invalidate = adapters.StopsScheduling(class)
 		for _, a := range item.Accounts {
-			if err := s.insertFailedReport(ctx, s.q, portfolioID, jobID, a.ID, class, detail, now); err != nil {
-				return nil, 0, false, err
+			if err := s.insertFailedReport(ctx, q, portfolioID, jobID, a.ID, class, detail, now); err != nil {
+				return nil, err
 			}
 			written[a.ID] = true
 		}
-		if err := s.identities.RecordCollection(ctx, portfolioID, item.Identity.ID, now, class, detail, invalidate); err != nil {
-			return nil, 0, false, err
+	} else {
+		if err := s.identities.RecordMarginMode(ctx, q, portfolioID, item.Identity.ID, batch.MarginMode); err != nil {
+			return nil, err
 		}
-		if invalidate {
-			s.logger.WarnContext(ctx, "connection set invalid", slog.String("identity_id", item.Identity.ID.String()), slog.String("error_class", class))
+		failed := 0
+		if err := s.storeBatch(ctx, q, portfolioID, jobID, item, &batch, byType, written, &failed, now); err != nil {
+			return nil, err
 		}
-		return written, len(item.Accounts), invalidate, nil
-	}
-	if err := s.identities.RecordMarginMode(ctx, portfolioID, item.Identity.ID, batch.MarginMode); err != nil {
-		return nil, 0, false, err
-	}
-	failed := 0
-	if err := s.storeBatch(ctx, portfolioID, jobID, item, &batch, byType, written, &failed, now); err != nil {
-		return nil, 0, false, err
-	}
-	for _, a := range item.Accounts {
-		if !written[a.ID] {
-			if err := s.insertFailedReport(ctx, s.q, portfolioID, jobID, a.ID, adapters.ClassNormalization, "The adapter returned no report for this account.", now); err != nil {
-				return nil, 0, false, err
+		for _, a := range item.Accounts {
+			if !written[a.ID] {
+				if err := s.insertFailedReport(ctx, q, portfolioID, jobID, a.ID, adapters.ClassNormalization, "The adapter returned no report for this account.", now); err != nil {
+					return nil, err
+				}
+				written[a.ID] = true
+				failed++
 			}
-			written[a.ID] = true
-			failed++
+		}
+		if failed == len(item.Accounts) {
+			class, detail = adapters.ClassNormalization, "Every collected account failed this cycle."
 		}
 	}
-	errClass, errDetail := "", ""
-	if failed == len(item.Accounts) {
-		errClass, errDetail = adapters.ClassNormalization, "Every selected account failed this cycle."
+	if err := s.identities.RecordCollection(ctx, q, portfolioID, item.Identity.ID, now, class, detail, invalidate); err != nil {
+		return nil, err
 	}
-	if err := s.identities.RecordCollection(ctx, portfolioID, item.Identity.ID, now, errClass, errDetail, false); err != nil {
-		return nil, 0, false, err
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
-	return written, failed, false, nil
+	if invalidate {
+		s.logger.WarnContext(ctx, "connection set invalid", slog.String("identity_id", item.Identity.ID.String()), slog.String("error_class", class))
+	}
+	return written, nil
 }
 
 func (s *Service) collectWithRetry(ctx context.Context, item *identity.Collectable, types []adapters.AccountType) (adapters.Batch, string, string) {
@@ -263,13 +289,7 @@ func (s *Service) collectWithRetry(ctx context.Context, item *identity.Collectab
 	return adapters.Batch{}, lastClass, lastDetail
 }
 
-func (s *Service) storeBatch(ctx context.Context, portfolioID, jobID uuid.UUID, item *identity.Collectable, batch *adapters.Batch, byType map[adapters.AccountType]identity.Account, written map[uuid.UUID]bool, failed *int, now time.Time) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
+func (s *Service) storeBatch(ctx context.Context, q *sqlcgen.Queries, portfolioID, jobID uuid.UUID, item *identity.Collectable, batch *adapters.Batch, byType map[adapters.AccountType]identity.Account, written map[uuid.UUID]bool, failed *int, now time.Time) error {
 	for _, price := range batch.Prices {
 		if price.Price == "" {
 			continue
@@ -307,7 +327,7 @@ func (s *Service) storeBatch(ctx context.Context, portfolioID, jobID uuid.UUID, 
 		}
 		written[account.ID] = true
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Service) insertFailedReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, jobID, accountID uuid.UUID, class, detail string, now time.Time) error {

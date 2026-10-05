@@ -1,51 +1,92 @@
 .header {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 2px;
+  vertical-align: middle;
 }
 
 .trigger {
-  display: grid;
-  min-width: 80px;
-  min-height: 44px;
-  gap: var(--space-2xs);
-  padding: var(--space-xs);
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 26px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--muted);
   background: transparent;
   font: inherit;
+  font-size: var(--text-xs);
   text-align: start;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  color: inherit;
+  font-weight: var(--weight-medium);
 }
 
 .value {
-  max-width: 160px;
-  min-height: var(--line-height-xs);
-  color: var(--muted);
-  font-size: var(--text-xs);
+  max-width: 120px;
+  color: var(--faint);
+  font-size: 11px;
   font-weight: var(--weight-regular);
-  line-height: var(--line-height-xs);
-  white-space: normal;
-  overflow-wrap: anywhere;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.active {
+  background: var(--surface-inset);
+  border-color: var(--line-soft);
+  color: var(--ink);
+}
+
+.active .label {
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
 }
 
 .active .value {
   color: var(--accent-strong);
-  font-weight: var(--weight-medium);
+  background: var(--accent-soft);
+  border-color: var(--accent-line, var(--line));
+  font-weight: var(--weight-semibold);
+}
+
+.icon {
+  color: var(--faint);
+  flex-shrink: 0;
+  transition:
+    transform var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.trigger:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.trigger:hover:not(:disabled) .icon {
+  color: var(--ink);
 }
 
 .clear {
   display: inline-flex;
   flex: 0 0 auto;
-  width: var(--control-sm);
-  height: var(--control-sm);
+  width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -54,11 +95,19 @@
   color: var(--muted);
   background: transparent;
   cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-.trigger:hover:not(:disabled),
-.clear:hover {
+.trigger:hover:not(:disabled) {
   background: var(--surface-hover);
+  border-color: var(--line-soft);
+}
+
+.clear:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .trigger:focus-visible,

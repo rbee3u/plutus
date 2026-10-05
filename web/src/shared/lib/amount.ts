@@ -53,7 +53,12 @@ export function presentNumber(value: NumberInput, kind: NumberKind): NumberPrese
   }
   const amount = kind === "percent" ? new DisplayDecimal(source).times(100) : source;
   const rounded = round(amount, kind);
-  const fixed = rounded.isZero() ? "0" : rounded.toFixed();
+  let fixed: string;
+  if (kind === "usd" && rounded.abs().gte(1)) {
+    fixed = rounded.toFixed(2);
+  } else {
+    fixed = rounded.isZero() ? "0" : rounded.toFixed();
+  }
   const suffix = kind === "percent" ? "%" : kind === "leverage" ? "x" : "";
   const plainText = `${group(fixed)}${suffix}`;
   const text = plainText.replace(

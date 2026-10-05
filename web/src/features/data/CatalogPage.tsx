@@ -62,9 +62,25 @@ export function CatalogPage() {
 
   return (
     <section className={styles.wide}>
-      <form className={styles.filterBar} onSubmit={submitSearch}>
-        <label className={styles.field}>
-          <span>Platform</span>
+      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>
+            {tab === "listings" ? "Asset Listings" : "Instruments Catalog"}
+          </h2>
+          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+            {tab === "listings"
+              ? "Raw asset listings and custom symbol mappings discovered from connected exchanges."
+              : "Futures and derivatives contracts metadata discovered from connected exchanges."}
+          </p>
+        </div>
+      </div>
+      <form
+        className={styles.compactFilterBar}
+        style={{ marginBottom: "var(--space-md)" }}
+        onSubmit={submitSearch}
+      >
+        <label className={styles.compactFilterField}>
+          <span className={styles.compactFilterLabel}>Platform</span>
           <Select
             value={platform}
             onChange={(event) => update({ platform: event.target.value, offset: "" })}
@@ -78,8 +94,8 @@ export function CatalogPage() {
           </Select>
         </label>
         {tab === "listings" ? (
-          <label className={styles.field}>
-            <span>Treatment</span>
+          <label className={styles.compactFilterField}>
+            <span className={styles.compactFilterLabel}>Treatment</span>
             <Select
               value={ignoredOnly ? "ignored" : "all"}
               onChange={(event) =>
@@ -94,29 +110,30 @@ export function CatalogPage() {
             </Select>
           </label>
         ) : null}
-        <label className={styles.field} style={{ flex: "1 1 200px" }}>
-          <span>Search</span>
+        <label
+          className={styles.compactFilterField}
+          style={{ flex: "1 1 200px", maxWidth: "320px" }}
+        >
+          <span className={styles.compactFilterLabel}>Search</span>
           <TextInput
             value={draftQuery}
             onChange={(event) => setDraftQuery(event.target.value)}
             placeholder="Symbol or name"
           />
         </label>
-        <div className={styles.actions}>
-          <ActionButton type="submit">Search</ActionButton>
-          {q ? (
-            <ActionButton
-              type="button"
-              tone="ghost"
-              onClick={() => {
-                setDraftQuery("");
-                update({ q: "", offset: "" });
-              }}
-            >
-              Clear
-            </ActionButton>
-          ) : null}
-        </div>
+        <ActionButton type="submit">Search</ActionButton>
+        {q ? (
+          <ActionButton
+            type="button"
+            tone="ghost"
+            onClick={() => {
+              setDraftQuery("");
+              update({ q: "", offset: "" });
+            }}
+          >
+            Clear
+          </ActionButton>
+        ) : null}
       </form>
       {tab === "listings" ? (
         <ListingsTab
@@ -212,8 +229,6 @@ function ListingsTab({
         columns={[
           { key: "platform", header: "Platform" },
           { key: "asset", header: "Asset" },
-          { key: "name", header: "Name" },
-          { key: "mappingSource", header: "Mapping" },
           { key: "treatment", header: "Treatment" },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
           { key: "actions", header: "", nowrap: true },
@@ -223,15 +238,22 @@ function ListingsTab({
           platform: platformLabel(platforms.data?.items, item.platform),
           asset: (
             <span className={styles.cellStack}>
-              <strong>{item.assetSymbol}</strong>
-              {item.symbol !== item.assetSymbol ? (
-                <span className={styles.cellMeta}>Platform: {item.symbol}</span>
-              ) : null}
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
+              >
+                <strong>{item.assetSymbol}</strong>
+                {item.mappingSource && item.mappingSource !== "auto" ? (
+                  <Badge tone="info">{item.mappingSource}</Badge>
+                ) : null}
+              </span>
+              <span className={styles.cellMeta}>
+                {item.name ? item.name : null}
+                {item.symbol !== item.assetSymbol
+                  ? `${item.name ? " · " : ""}platform: ${item.symbol}`
+                  : null}
+              </span>
             </span>
           ),
-          name: item.name ?? "—",
-          mappingSource:
-            item.mappingSource === "auto" ? "—" : <Badge tone="info">{item.mappingSource}</Badge>,
           treatment: item.ignored ? (
             <span className={styles.cellStack}>
               <StatusBadge value="ignored" />
@@ -563,8 +585,7 @@ function InstrumentsTab({ portfolioId, platform, q, offset, timezone, onOffset }
           { key: "platform", header: "Platform" },
           { key: "symbol", header: "Symbol" },
           { key: "kind", header: "Kind" },
-          { key: "base", header: "Base" },
-          { key: "quote", header: "Quote" },
+          { key: "pair", header: "Pair" },
           { key: "settlement", header: "Settlement" },
           { key: "expiryAt", header: "Expiry" },
           { key: "contractSize", header: "Contract size", numeric: true },
@@ -575,8 +596,10 @@ function InstrumentsTab({ portfolioId, platform, q, offset, timezone, onOffset }
           platform: platformLabel(platforms.data?.items, item.platform),
           symbol: item.symbol,
           kind: capitalize(item.kind.replaceAll("_", " ")),
-          base: item.baseSymbol ?? "—",
-          quote: item.quoteSymbol ?? "—",
+          pair:
+            item.baseSymbol || item.quoteSymbol
+              ? `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`
+              : "—",
           settlement: item.settlementSymbol ?? "—",
           expiryAt: item.expiryAt ? formatInstant(item.expiryAt, timezone) : "Perpetual",
           contractSize: formatDecimal(item.contractSize),

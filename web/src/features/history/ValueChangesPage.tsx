@@ -9,7 +9,7 @@ import {
   PERIOD_KINDS,
   boundaryEventRow,
 } from "@/features/history/ValuationPointsPage";
-import { chartNumber, formatAmount, formatUsd } from "@/shared/lib/amount";
+import { chartNumber, formatAmount, formatUsd, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { readChoice } from "@/shared/lib/searchParams";
 import { unwrapOrRedirect } from "@/shared/lib/session";
@@ -76,16 +76,45 @@ export function ValueChangesPage() {
       return null;
     }
     return {
-      xAxis: { type: "category", data: items.map((item) => item.label) },
-      yAxis: { type: "value" },
+      grid: {
+        left: 8,
+        right: 12,
+        top: 20,
+        bottom: 8,
+        containLabel: true,
+      },
+      xAxis: {
+        type: "category",
+        data: items.map((item) => item.label),
+        axisLabel: { hideOverlap: true, fontSize: 11 },
+      },
+      yAxis: {
+        type: "value",
+        splitLine: { lineStyle: { opacity: 0.15 } },
+      },
       series: [
         {
           type: "bar",
           name: "Value change",
-          data: items.map((item) => chartNumber(item.amountUsd)),
+          data: items.map((item) => {
+            const val = chartNumber(item.amountUsd);
+            if (val === null) return null;
+            return {
+              value: val,
+              itemStyle: {
+                borderRadius: val >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4],
+              },
+            };
+          }),
           tooltip: {
-            valueFormatter: (_value: unknown, index: number) =>
-              formatAmount(items[index]?.amountUsd),
+            valueFormatter: (_value: unknown, index: number) => {
+              const item = items[index];
+              if (!item) return "—";
+              const dec = parseDecimal(item.amountUsd);
+              if (!dec) return "—";
+              const sign = dec.gt(0) ? "+" : dec.lt(0) ? "-" : "";
+              return `${sign}$${formatAmount(dec.abs().toFixed())} USD`;
+            },
           },
         },
       ],
@@ -127,13 +156,14 @@ export function ValueChangesPage() {
           <ChartBlock
             title={`Value change per ${data.periodKind}`}
             action={
-              <label className={`${styles.field} ${styles.toolbarField}`}>
-                <span>Period</span>
+              <label className={styles.periodSwitcher}>
+                <span className={styles.periodLabel}>Period</span>
                 <Select
                   value={periodKind}
                   onChange={(event) =>
                     update({ periodKind: event.target.value, changesOffset: "" })
                   }
+                  className={styles.periodSelect}
                 >
                   {PERIOD_KINDS.map((option) => (
                     <option key={option} value={option}>
@@ -159,20 +189,24 @@ export function ValueChangesPage() {
           />
         </>
       ) : null}
-      <section className={styles.panel}>
-        <h2>Custom range</h2>
-        <p className={styles.muted}>
-          Compares the last Valuation Point at or before each instant, with the Capital Flows and
-          Boundary Events between them. Dates use {timezone ?? "the Portfolio timezone"}.
-        </p>
+      <section className={styles.customCalcPanel}>
+        <div className={styles.customCalcHeader}>
+          <div>
+            <h2 className={styles.customCalcTitle}>Custom Period Comparison</h2>
+            <p className={styles.customCalcDesc}>
+              Compare arbitrary valuation points and isolate capital flows and boundary events
+              between them. Dates use {timezone ?? "the Portfolio timezone"}.
+            </p>
+          </div>
+        </div>
         <form
           className={styles.rangeForm}
           onSubmit={(event) => {
             void submitCustom(event);
           }}
         >
-          <label className={styles.field}>
-            <span>From</span>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>From</span>
             <TextInput
               type="datetime-local"
               step="1"
@@ -181,8 +215,8 @@ export function ValueChangesPage() {
               required
             />
           </label>
-          <label className={styles.field}>
-            <span>To</span>
+          <label className={styles.rangeField}>
+            <span className={styles.rangeLabel}>To</span>
             <TextInput
               type="datetime-local"
               step="1"
@@ -191,9 +225,11 @@ export function ValueChangesPage() {
               required
             />
           </label>
-          <ActionButton type="submit" tone="primary">
-            Compute
-          </ActionButton>
+          <div className={styles.rangeActions}>
+            <ActionButton type="submit" tone="primary">
+              Compute
+            </ActionButton>
+          </div>
         </form>
         {customError ? (
           <p className={styles.alert} role="alert">
@@ -209,7 +245,7 @@ export function ValueChangesPage() {
             void custom.refetch();
           }}
         />
-        {range && custom.isPending ? <p className={styles.muted}>Computing.</p> : null}
+        {range && custom.isPending ? <p className={styles.muted}>Computing comparison.</p> : null}
         {custom.data ? <CustomResult change={custom.data} timezone={timezone} /> : null}
       </section>
     </section>
@@ -219,15 +255,75 @@ export function ValueChangesPage() {
 const VALUE_CHANGE_COLUMNS = [
   { key: "label", header: "Period" },
   { key: "amountUsd", header: "Value change (USD)", numeric: true },
-  { key: "start", header: "Start (USD)", numeric: true },
-  { key: "end", header: "End (USD)", numeric: true },
-  { key: "contributionsUsd", header: "Contributions", numeric: true },
-  { key: "withdrawalsUsd", header: "Withdrawals", numeric: true },
-  { key: "boundaryContributionsUsd", header: "Boundary in", numeric: true },
-  { key: "boundaryWithdrawalsUsd", header: "Boundary out", numeric: true },
+  { key: "start", header: "Start", numeric: true },
+  { key: "end", header: "End", numeric: true },
+  { key: "capitalFlows", header: "Capital flows", numeric: true },
+  { key: "boundaryFlows", header: "Boundary flows", numeric: true },
   { key: "completeness", header: "Completeness" },
   { key: "reasons", header: "Limitations" },
 ];
+
+function valueChangeCell(amount: string | null | undefined) {
+  const parsed = parseDecimal(amount);
+  if (!parsed) {
+    return <span className={styles.muted}>—</span>;
+  }
+  const isPositive = parsed.gt(0);
+  const isNegative = parsed.lt(0);
+  const sign = isPositive ? "+" : isNegative ? "-" : "";
+  const className = isPositive
+    ? styles.pnlPositive
+    : isNegative
+      ? styles.pnlNegative
+      : styles.pnlNeutral;
+  return (
+    <span className={className}>
+      <NumericText>{`${sign}$${formatAmount(parsed.abs().toFixed())}`}</NumericText>
+    </span>
+  );
+}
+
+function balanceCell(point: ValueChange["startPoint"]) {
+  if (!point || !point.totalUsd) {
+    return <span className={styles.muted}>—</span>;
+  }
+  return <NumericText>{formatUsd(point.totalUsd)}</NumericText>;
+}
+
+function flowsCell(inflow: string | null | undefined, outflow: string | null | undefined) {
+  const inVal = parseDecimal(inflow);
+  const outVal = parseDecimal(outflow);
+  const hasIn = inVal && !inVal.isZero();
+  const hasOut = outVal && !outVal.isZero();
+
+  if (!hasIn && !hasOut) {
+    return <span className={styles.muted}>—</span>;
+  }
+  if (hasIn && !hasOut) {
+    return (
+      <span className={styles.pnlPositive}>
+        <NumericText>{`+$${formatAmount(inVal.toFixed())}`}</NumericText>
+      </span>
+    );
+  }
+  if (!hasIn && hasOut) {
+    return (
+      <span className={styles.pnlNegative}>
+        <NumericText>{`-$${formatAmount(outVal.toFixed())}`}</NumericText>
+      </span>
+    );
+  }
+  return (
+    <span className={styles.cellStack} style={{ alignItems: "flex-end" }}>
+      <span className={styles.pnlPositive}>
+        <NumericText>{`+$${formatAmount(inVal!.toFixed())}`}</NumericText>
+      </span>
+      <span className={styles.pnlNegative}>
+        <NumericText>{`-$${formatAmount(outVal!.toFixed())}`}</NumericText>
+      </span>
+    </span>
+  );
+}
 
 function valueChangeRow(item: ValueChange, timezone?: string): DataRow {
   return {
@@ -240,14 +336,11 @@ function valueChangeRow(item: ValueChange, timezone?: string): DataRow {
         </span>
       </span>
     ),
-    amountUsd: formatAmount(item.amountUsd),
-    // A missing point is an unknown value; the Reasons column names which end is missing.
-    start: item.startPoint ? formatAmount(item.startPoint.totalUsd) : "—",
-    end: item.endPoint ? formatAmount(item.endPoint.totalUsd) : "—",
-    contributionsUsd: formatAmount(item.contributionsUsd),
-    withdrawalsUsd: formatAmount(item.withdrawalsUsd),
-    boundaryContributionsUsd: formatAmount(item.boundaryContributionsUsd),
-    boundaryWithdrawalsUsd: formatAmount(item.boundaryWithdrawalsUsd),
+    amountUsd: valueChangeCell(item.amountUsd),
+    start: balanceCell(item.startPoint),
+    end: balanceCell(item.endPoint),
+    capitalFlows: flowsCell(item.contributionsUsd, item.withdrawalsUsd),
+    boundaryFlows: flowsCell(item.boundaryContributionsUsd, item.boundaryWithdrawalsUsd),
     completeness: <CompletenessBadge value={item.completeness} />,
     reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
   };
@@ -266,9 +359,7 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
         <div>
           <dt>Value change</dt>
-          <dd>
-            <NumericText>{formatUsd(change.amountUsd)}</NumericText>
-          </dd>
+          <dd>{valueChangeCell(change.amountUsd)}</dd>
         </div>
         <div>
           <dt>Start point</dt>

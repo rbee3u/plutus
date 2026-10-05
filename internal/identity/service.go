@@ -798,8 +798,8 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 	return out, nil
 }
 
-// RecordCollection stores the outcome of one collection run for an Identity.
-func (s *Service) RecordCollection(ctx context.Context, portfolioID, id uuid.UUID, at time.Time, errorClass, errorDetail string, invalidate bool) error {
+// RecordCollection stores an Identity's outcome in the report transaction.
+func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, at time.Time, errorClass, errorDetail string, invalidate bool) error {
 	params := sqlcgen.RecordIdentityCollectionParams{
 		LastCollectedAt: sql.NullTime{Time: at.UTC(), Valid: true},
 		Invalidate:      0,
@@ -814,23 +814,17 @@ func (s *Service) RecordCollection(ctx context.Context, portfolioID, id uuid.UUI
 		params.LastErrorClass = sql.NullString{String: errorClass, Valid: true}
 		params.LastErrorDetail = sql.NullString{String: errorDetail, Valid: true}
 	}
-	return s.q.RecordIdentityCollection(ctx, params)
+	return q.RecordIdentityCollection(ctx, params)
 }
 
 // RecordMarginMode stores the Margin Mode a Collection Run observed. A change
 // is written to the audit log with the system as the actor, because nobody
-// changed it in Plutus: the owner switched it on the Platform (ADR 0001). An
-// empty mode, reported by structures without one, is ignored.
-func (s *Service) RecordMarginMode(ctx context.Context, portfolioID, id uuid.UUID, mode adapters.MarginMode) error {
+// changed it in Plutus: the owner switched it on the Platform (ADR 0001). It uses
+// the report transaction. An empty mode from structures without one is ignored.
+func (s *Service) RecordMarginMode(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, mode adapters.MarginMode) error {
 	if mode == "" {
 		return nil
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
 	stored, err := q.GetIdentityMarginModeForUpdate(ctx, sqlcgen.GetIdentityMarginModeForUpdateParams{PortfolioID: portfolioID[:], ID: id[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
@@ -854,7 +848,7 @@ func (s *Service) RecordMarginMode(ctx context.Context, portfolioID, id uuid.UUI
 	}); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 func nullableMode(mode adapters.MarginMode) any {

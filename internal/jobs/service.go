@@ -324,9 +324,11 @@ type Result struct {
 func (s *Service) Finish(ctx context.Context, job *ClaimedJob, result Result) error {
 	now := s.now().UTC()
 	owner := sql.NullString{String: job.WorkerID, Valid: true}
+	var n int64
+	var err error
 	switch {
 	case result.OK:
-		_, err := s.q.MarkJobSucceeded(ctx, sqlcgen.MarkJobSucceededParams{
+		n, err = s.q.MarkJobSucceeded(ctx, sqlcgen.MarkJobSucceededParams{
 			LastDetail:  nullable(result.Detail),
 			FinishedAt:  sql.NullTime{Time: now, Valid: true},
 			UpdatedAt:   now,
@@ -334,13 +336,12 @@ func (s *Service) Finish(ctx context.Context, job *ClaimedJob, result Result) er
 			PortfolioID: job.PortfolioID[:],
 			LeaseOwner:  owner,
 		})
-		return err
 	case result.Retry && job.AttemptCount < job.MaxAttempts:
 		retryAt := result.RetryAt
 		if retryAt.IsZero() {
 			retryAt = now
 		}
-		_, err := s.q.RequeueJob(ctx, sqlcgen.RequeueJobParams{
+		n, err = s.q.RequeueJob(ctx, sqlcgen.RequeueJobParams{
 			AvailableAt:    retryAt.UTC(),
 			LastErrorClass: nullable(result.ErrorClass),
 			LastDetail:     nullable(result.Detail),
@@ -349,9 +350,8 @@ func (s *Service) Finish(ctx context.Context, job *ClaimedJob, result Result) er
 			PortfolioID:    job.PortfolioID[:],
 			LeaseOwner:     owner,
 		})
-		return err
 	default:
-		_, err := s.q.MarkJobFailed(ctx, sqlcgen.MarkJobFailedParams{
+		n, err = s.q.MarkJobFailed(ctx, sqlcgen.MarkJobFailedParams{
 			LastErrorClass: nullable(result.ErrorClass),
 			LastDetail:     nullable(result.Detail),
 			FinishedAt:     sql.NullTime{Time: now, Valid: true},
@@ -360,8 +360,14 @@ func (s *Service) Finish(ctx context.Context, job *ClaimedJob, result Result) er
 			PortfolioID:    job.PortfolioID[:],
 			LeaseOwner:     owner,
 		})
+	}
+	if err != nil {
 		return err
 	}
+	if n == 0 {
+		return ErrLostLease
+	}
+	return nil
 }
 
 // SchedulingRow is one Portfolio the scheduler may need to enqueue.

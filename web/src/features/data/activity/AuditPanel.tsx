@@ -32,23 +32,36 @@ export function AuditPanel({
 }) {
   return (
     <>
-      <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field} style={{ flex: "1 1 200px" }}>
-          <span>Action</span>
+      <form
+        className={styles.compactFilterBar}
+        style={{ marginBottom: "var(--space-md)" }}
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label className={styles.compactFilterField} style={{ maxWidth: "260px" }}>
+          <span className={styles.compactFilterLabel}>Action</span>
           <TextInput
             value={action}
             onChange={(event) => onFilter({ action: event.target.value })}
             placeholder="e.g. identity.enable"
           />
         </label>
-        <label className={styles.field} style={{ flex: "1 1 200px" }}>
-          <span>Resource type</span>
+        <label className={styles.compactFilterField} style={{ maxWidth: "240px" }}>
+          <span className={styles.compactFilterLabel}>Resource type</span>
           <TextInput
             value={resourceType}
             onChange={(event) => onFilter({ resourceType: event.target.value })}
             placeholder="e.g. identity"
           />
         </label>
+        {action || resourceType ? (
+          <ActionButton
+            type="button"
+            tone="ghost"
+            onClick={() => onFilter({ action: "", resourceType: "" })}
+          >
+            Clear
+          </ActionButton>
+        ) : null}
       </form>
       <AuditResults
         key={`${action}|${resourceType}`}
@@ -126,7 +139,7 @@ function AuditResults({
             <span className={styles.cellStack}>
               <span>{item.resourceType}</span>
               {item.resourceId ? (
-                <span className={styles.cellMeta}>{shortId(item.resourceId)}</span>
+                <span className={styles.cellMeta}>#{shortId(item.resourceId)}</span>
               ) : null}
             </span>
           ),

@@ -1,4 +1,6 @@
+import { Shield } from "lucide-react";
 import { formatCount } from "@/shared/lib/amount";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -18,6 +20,40 @@ const MAX_INTERVAL = 86_400;
 const CONFLICT =
   "The portfolio changed in another session. The latest values were reloaded; review and save again.";
 
+const INTERVAL_PRESETS = [
+  { label: "1h", seconds: 3600 },
+  { label: "2h", seconds: 7200 },
+  { label: "6h", seconds: 21600 },
+  { label: "12h", seconds: 43200 },
+  { label: "24h", seconds: 86400 },
+] as const;
+
+function formatIntervalDuration(seconds: number): string | null {
+  if (!Number.isFinite(seconds) || seconds < MIN_INTERVAL || seconds > MAX_INTERVAL) {
+    return null;
+  }
+  if (seconds % 86400 === 0) {
+    const days = seconds / 86400;
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+  if (seconds % 3600 === 0) {
+    const hours = seconds / 3600;
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+  if (seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}h ${m}m`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
 export function PortfolioSettingsPage() {
   const { portfolioId = "" } = useParams();
   const { userId } = useSessionScope();
@@ -32,6 +68,14 @@ export function PortfolioSettingsPage() {
 
   return (
     <section className={styles.page}>
+      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Portfolio settings</h2>
+          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+            Manage configuration, base timezone, and collection cadence for this portfolio.
+          </p>
+        </div>
+      </div>
       {conflict ? (
         <p className={styles.alert} role="alert">
           {conflict}
@@ -93,6 +137,17 @@ function SettingsForms({
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  let browserTimezone: string | null = null;
+  try {
+    browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    browserTimezone = null;
+  }
+  const canMatchBrowser = Boolean(browserTimezone && browserTimezone !== timezone.trim());
+
+  const numSeconds = Number(interval);
+  const durationText = formatIntervalDuration(numSeconds);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -203,7 +258,19 @@ function SettingsForms({
           />
         </label>
         <label className={styles.field}>
-          <span>Timezone</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span>Timezone</span>
+            {canMatchBrowser && browserTimezone ? (
+              <button
+                type="button"
+                className={styles.tzSuggestionBtn}
+                onClick={() => setTimezone(browserTimezone)}
+                title={`Set timezone to ${browserTimezone}`}
+              >
+                Match browser ({browserTimezone})
+              </button>
+            ) : null}
+          </div>
           <TextInput
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
@@ -212,7 +279,12 @@ function SettingsForms({
           />
         </label>
         <label className={styles.field}>
-          <span>Collection interval (seconds)</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span>Collection interval (seconds)</span>
+            {durationText ? (
+              <span className={styles.intervalDurationBadge}>{durationText}</span>
+            ) : null}
+          </div>
           <TextInput
             type="number"
             inputMode="numeric"
@@ -223,6 +295,23 @@ function SettingsForms({
             onChange={(event) => setInterval(event.target.value)}
             required
           />
+          <div className={styles.intervalPresets}>
+            <span className={styles.intervalPresetsLabel}>Presets:</span>
+            {INTERVAL_PRESETS.map((p) => {
+              const active = interval === String(p.seconds);
+              return (
+                <button
+                  key={p.seconds}
+                  type="button"
+                  className={`${styles.intervalPresetBtn} ${active ? styles.intervalPresetActive : ""}`}
+                  onClick={() => setInterval(String(p.seconds))}
+                  title={`${p.label} (${formatCount(p.seconds)}s)`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
           <span className={styles.muted}>
             Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day).
             The schedule applies from the next cycle.
@@ -235,9 +324,19 @@ function SettingsForms({
         </div>
       </form>
       {view.item.undeletable ? (
-        <p className={styles.muted}>
-          This default portfolio was created with the account and cannot be deleted.
-        </p>
+        <div className={styles.defaultPortfolioNotice}>
+          <Shield
+            size={iconSize.sm}
+            className={styles.muted}
+            style={{ flexShrink: 0, marginTop: 2 }}
+          />
+          <div>
+            <strong>Default portfolio</strong>
+            <p className={styles.muted}>
+              This default portfolio was created with the account and cannot be deleted.
+            </p>
+          </div>
+        </div>
       ) : (
         <form
           className={`${styles.form} ${styles.dangerCard}`}

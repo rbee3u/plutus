@@ -122,15 +122,13 @@ export function HoldingsFilterHeader({
           }
         }}
       >
-        <span className={styles.label}>
-          {label}
-          {search ? (
-            <Search size={iconSize.sm} aria-hidden="true" />
-          ) : (
-            <ChevronDown size={iconSize.sm} aria-hidden="true" />
-          )}
-        </span>
+        <span className={styles.label}>{label}</span>
         <span className={styles.value}>{display}</span>
+        {search ? (
+          <Search size={iconSize.xs} className={styles.icon} aria-hidden="true" />
+        ) : (
+          <ChevronDown size={iconSize.xs} className={styles.icon} aria-hidden="true" />
+        )}
       </button>
       {value ? (
         <button
@@ -142,7 +140,7 @@ export function HoldingsFilterHeader({
             anchor.current?.focus({ preventScroll: true });
           }}
         >
-          <X size={iconSize.sm} aria-hidden="true" />
+          <X size={iconSize.xs} aria-hidden="true" />
         </button>
       ) : null}
       {open

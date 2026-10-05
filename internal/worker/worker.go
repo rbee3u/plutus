@@ -16,6 +16,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/collection"
 	"github.com/rbee3u/plutus/internal/infra/logging"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/jobs"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
@@ -192,9 +193,9 @@ func (w *Worker) ProcessOnce(ctx context.Context) (bool, error) {
 }
 
 func (w *Worker) handle(ctx context.Context, claimed *jobs.ClaimedJob) jobs.Result {
-	renewCtx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	renewDone := make(chan struct{})
-	go func() { defer close(renewDone); w.renewLoop(renewCtx, claimed) }()
+	go func() { defer close(renewDone); w.renewLoop(ctx, claimed, cancel) }()
 	defer func() { cancel(); <-renewDone }()
 
 	switch claimed.Kind {
@@ -214,6 +215,9 @@ func (w *Worker) handleCycle(ctx context.Context, claimed *jobs.ClaimedJob) jobs
 	summary, err := w.collection.RunCycle(ctx, claimed.PortfolioID, claimed.ID)
 	if err != nil {
 		w.logger.ErrorContext(ctx, "collection cycle failed", slog.String("job_id", claimed.ID.String()), slog.Any("err", err))
+		if mysql.IsDuplicate(err) {
+			return jobs.Result{ErrorClass: "persistence", Detail: safeDetail(err)}
+		}
 		return jobs.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", Detail: safeDetail(err)}
 	}
 	return jobs.Result{OK: true, Detail: summary.String()}
@@ -231,7 +235,7 @@ func (w *Worker) handleRecalc(ctx context.Context, claimed *jobs.ClaimedJob) job
 	return jobs.Result{OK: true, Detail: fmt.Sprintf("recalculated %d valuation points", count)}
 }
 
-func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob) {
+func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob, cancel context.CancelFunc) {
 	interval := w.lease / 3
 	if interval < time.Second {
 		interval = time.Second
@@ -244,6 +248,8 @@ func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob) {
 			return
 		case <-ticker.C:
 			if err := w.jobs.RenewLease(ctx, claimed, w.lease); err != nil {
+				w.logger.ErrorContext(ctx, "job lease renewal failed", slog.Any("err", err))
+				cancel()
 				return
 			}
 		}

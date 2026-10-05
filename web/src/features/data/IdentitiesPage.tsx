@@ -239,29 +239,44 @@ export function IdentitiesPage() {
           void identities.refetch();
         }}
       />
-      <div className={styles.panelHeader}>
-        <Toggle checked={showArchived} onCheckedChange={setShowArchived}>
-          Show archived ({formatCount(archivedCount)})
-        </Toggle>
-        <ActionButton
-          type="button"
-          tone="primary"
-          disabled={busyId !== null}
-          onClick={() => open({ kind: "create" })}
+      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Platform Connections</h2>
+          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+            Exchange API connections and credentials used to collect balances, positions, and
+            valuations.
+          </p>
+        </div>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "var(--space-md)",
+            flexWrap: "wrap",
+          }}
         >
-          New identity
-        </ActionButton>
+          <Toggle checked={showArchived} onCheckedChange={setShowArchived}>
+            Show archived ({formatCount(archivedCount)})
+          </Toggle>
+          <ActionButton
+            type="button"
+            tone="primary"
+            disabled={busyId !== null}
+            onClick={() => open({ kind: "create" })}
+          >
+            New identity
+          </ActionButton>
+        </div>
       </div>
       <DataTable
         caption="Identities of this Portfolio"
         columns={[
           { key: "name", header: "Identity", nowrap: true },
-          { key: "platform", header: "Platform" },
-          { key: "connection", header: "Connection", nowrap: true },
+          { key: "platform", header: "Platform", nowrap: true },
+          { key: "connection", header: "Connection" },
           { key: "accounts", header: "Accounts", nowrap: true },
           { key: "lastValidatedAt", header: "Last validated", nowrap: true },
           { key: "lastCollectedAt", header: "Last collected", nowrap: true },
-          { key: "lastError", header: "Last error" },
           { key: "actions", header: "" },
         ]}
         rowClassName={(row) => (row.archived ? styles.archivedRow : undefined)}
@@ -270,6 +285,12 @@ export function IdentitiesPage() {
           const connection = item.connection;
           const busy = busyId !== null;
           const selectedCount = item.accounts.filter((account) => account.selected).length;
+          const extRef = item.externalRef;
+          const refDisplay = extRef
+            ? extRef.startsWith("uid-")
+              ? `UID: ${extRef.slice(4)}`
+              : `UID: ${extRef}`
+            : "Not validated";
           return {
             id: item.id,
             archived,
@@ -277,9 +298,7 @@ export function IdentitiesPage() {
               <span className={styles.cellStack}>
                 <strong>{item.displayName}</strong>
                 <span className={styles.cellMeta}>
-                  {archived
-                    ? `archived ${formatInstant(item.archivedAt, timezone)}`
-                    : (item.externalRef ?? "not validated yet")}
+                  {archived ? `archived ${formatInstant(item.archivedAt, timezone)}` : refDisplay}
                 </span>
               </span>
             ),
@@ -303,27 +322,52 @@ export function IdentitiesPage() {
             ),
             connection: (
               <span className={styles.cellStack}>
-                <span>
+                <span
+                  style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
+                >
                   <StatusBadge value={connection.status} />
+                  <span className={styles.cellMeta}>
+                    {connection.credentialsConfigured ? "credentials stored" : "no credentials"}
+                  </span>
                 </span>
-                <span className={styles.cellMeta}>
-                  {connection.credentialsConfigured ? "credentials stored" : "no credentials"}
-                </span>
-              </span>
-            ),
-            accounts: `${formatCount(selectedCount)}/${formatCount(item.accounts.length)} selected`,
-            lastValidatedAt: formatInstant(connection.lastValidatedAt, timezone),
-            lastCollectedAt: formatInstant(connection.lastCollectedAt, timezone),
-            lastError: connection.lastErrorClass ? (
-              <span className={styles.cellStack}>
-                <Codes values={[connection.lastErrorClass]} />
-                {connection.lastErrorDetail ? (
-                  <span className={styles.cellMeta}>{connection.lastErrorDetail}</span>
+                {connection.lastErrorClass ? (
+                  <span className={styles.cellStack} style={{ marginTop: "2px" }}>
+                    <Codes values={[connection.lastErrorClass]} />
+                    {connection.lastErrorDetail ? (
+                      <span className={styles.cellMeta} style={{ color: "var(--danger)" }}>
+                        {connection.lastErrorDetail}
+                      </span>
+                    ) : null}
+                  </span>
                 ) : null}
               </span>
-            ) : (
-              "—"
             ),
+            accounts: archived ? (
+              <span className={styles.muted}>
+                {formatCount(selectedCount)}/{formatCount(item.accounts.length)}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className={styles.accountPillBtn}
+                disabled={busy}
+                onClick={() => open({ kind: "edit", item })}
+                title={`Configure selected accounts for ${item.displayName}`}
+              >
+                {selectedCount === item.accounts.length && item.accounts.length > 0 ? (
+                  <>
+                    <span className={styles.accountPillDot} aria-hidden="true" />
+                    <span>All ({formatCount(selectedCount)})</span>
+                  </>
+                ) : (
+                  <span>
+                    {formatCount(selectedCount)}/{formatCount(item.accounts.length)} selected
+                  </span>
+                )}
+              </button>
+            ),
+            lastValidatedAt: formatInstant(connection.lastValidatedAt, timezone),
+            lastCollectedAt: formatInstant(connection.lastCollectedAt, timezone),
             actions: archived ? (
               <span className={styles.cellMeta}>archived</span>
             ) : (

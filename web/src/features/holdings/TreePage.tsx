@@ -22,8 +22,12 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
   }
 
   return (
-    <section className={styles.panel} aria-labelledby={titleId}>
-      <h2 id={titleId}>Holdings tree</h2>
+    <section className={styles.treeCard} aria-labelledby={titleId}>
+      <div className={styles.treeCardHeader}>
+        <h2 id={titleId} className={styles.treeCardTitle}>
+          Holdings tree
+        </h2>
+      </div>
       {tree.platforms.length === 0 ? (
         <p className={styles.muted}>
           No accounts inside the boundary yet. Add an Identity, select its account types, enable the
@@ -137,20 +141,14 @@ function TreeNode({
         <span className={styles.treeNodeText}>
           <span className={styles.treeNodeLeft}>
             <span className={styles.treeNodeName}>{name}</span>
+          </span>
+          <span className={styles.treeNodeRight}>
+            <span className={styles.treeNodeValue} id={`${contentId}-value`}>
+              <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
+            </span>
             {showPercent ? (
               <span className={styles.treeNodeBadge}>{percent.toFixed(1)}%</span>
             ) : null}
-          </span>
-          {showPercent ? (
-            <i className={styles.treeBarTrack} aria-hidden="true">
-              <i
-                className={styles.treeBarFill}
-                style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
-              />
-            </i>
-          ) : null}
-          <span className={styles.treeNodeValue} id={`${contentId}-value`}>
-            <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
           </span>
         </span>
       </button>

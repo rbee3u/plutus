@@ -2118,7 +2118,7 @@ export type GetHistoryWindowData = {
         portfolioId: Uuid;
     };
     query?: {
-        preset?: '1d' | '3d' | '1w' | '2w' | '1Month' | '1Year';
+        preset?: '1D' | '3D' | '1W' | '2W' | '1M' | '3M' | '6M' | '1d' | '3d' | '1w' | '2w' | '1Month' | '1Year';
         fromLocal?: string;
         toLocal?: string;
     };

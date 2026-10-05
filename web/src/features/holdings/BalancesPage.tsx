@@ -8,7 +8,7 @@ import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import { HoldingsFilterFooter, HoldingsFilterRecovery } from "./HoldingsFilterControls";
 import { useHoldingsFilters } from "./useHoldingsFilters";
 import { formatInstant } from "@/shared/lib/datetime";
-import { formatUsd } from "@/shared/lib/amount";
+import { formatAmount } from "@/shared/lib/amount";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
 import { NO_POINT } from "@/shared/lib/text";
 import { CompletenessBadge } from "@/shared/ui/Badge";
@@ -63,7 +63,9 @@ export function BalancesPage() {
           <div className={styles.holdingsSummaryAmount}>
             <span className={styles.holdingsSummaryLabel}>Total Balance</span>
             <span className={styles.holdingsSummaryValue}>
-              <NumericText>{formatUsd(data.totalUsd)}</NumericText>
+              {data.totalUsd ? <span className={styles.holdingsSummaryCurrency}>$</span> : null}
+              <NumericText>{formatAmount(data.totalUsd)}</NumericText>
+              {data.totalUsd ? <span className={styles.holdingsSummaryUnit}>USD</span> : null}
             </span>
             <CompletenessBadge value={data.completeness} />
           </div>

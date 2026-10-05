@@ -71,7 +71,6 @@ export function CyclesPanel({
           { key: "trigger", header: "Trigger" },
           { key: "finishedAt", header: "Finished", nowrap: true },
           { key: "point", header: "Valuation point" },
-          { key: "error", header: "Last error" },
           { key: "actions", header: "" },
         ]}
         rowClassName={(row) => (row.id === selectedId ? styles.openRow : undefined)}
@@ -112,10 +111,26 @@ function cycleRow(
     createdAt: (
       <span className={styles.cellStack}>
         <span>{formatInstant(item.createdAt, timezone)}</span>
-        <span className={styles.cellMeta}>{shortId(item.id)}</span>
+        <span className={styles.cellMeta}>#{shortId(item.id)}</span>
       </span>
     ),
-    status: <StatusBadge value={item.status} />,
+    status: (
+      <span className={styles.cellStack}>
+        <span>
+          <StatusBadge value={item.status} />
+        </span>
+        {item.lastErrorClass ? (
+          <span className={styles.cellStack} style={{ marginTop: "2px" }}>
+            <Codes values={[item.lastErrorClass]} />
+            {item.lastDetail ? (
+              <span className={styles.cellMeta} style={{ color: "var(--danger)" }}>
+                {item.lastDetail}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </span>
+    ),
     trigger: capitalize(item.trigger),
     finishedAt: formatInstant(item.finishedAt, timezone),
     point: item.point ? (
@@ -126,14 +141,6 @@ function cycleRow(
         <span>
           <CompletenessBadge value={item.point.completeness} />
         </span>
-      </span>
-    ) : (
-      "—"
-    ),
-    error: item.lastErrorClass ? (
-      <span className={styles.cellStack}>
-        <Codes values={[item.lastErrorClass]} />
-        {item.lastDetail ? <span className={styles.cellMeta}>{item.lastDetail}</span> : null}
       </span>
     ) : (
       "—"

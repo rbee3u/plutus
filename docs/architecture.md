@@ -57,16 +57,26 @@ Package boundaries do not imply exclusive ownership of tables or queries.
 Scheduled and manual collection use the same persistent job and Portfolio
 deduplication rule. The worker polls an idle queue every second, claims jobs
 transactionally, renews its two-minute leases, and can reclaim expired jobs.
-Handler failures have bounded retries with backoff. Partially persisted
-collection is not an exactly-once operation; reclaiming a lease does not promise
-seamless completion of every interrupted cycle.
+Infrastructure failures have bounded retries with backoff. Recovery retains
+every committed Account Report for the job, including failures, and collects
+only selected Accounts still missing reports. An existing Valuation Point is
+reused without collection or rewriting its evaluation time and values; the
+worker then completes the job status. Report uniqueness remains enforced.
+Duplicate persistence errors fail the job without repeating the same conflict.
+Lease-renewal failures cancel the handler, and completion checks lease
+ownership. This remains a single-process design without exactly-once Platform
+reads.
 
 A cycle establishes its selected Accounts, then collects each usable Connection
 with a fixed three-second delay between Identities. Adapters perform the
 applicable structure and Margin Mode checks. Successful normalized reports,
 holdings, and prices are persisted; failed or omitted Accounts receive failure
-reports. Valuation then selects compatible source reports, calculates Account
-values and Boundary Events, and writes one Valuation Point for the cycle.
+reports. Each Identity commits its reports, missing-report failures, Margin Mode
+audit, and collection outcome in one transaction after its Platform reads.
+Recovery keeps committed observations and scopes; uncommitted work uses the
+current boundary and Connections. Valuation then selects compatible source
+reports, calculates Account values and Boundary Events, and writes one Valuation
+Point for the cycle.
 
 Temporary and rate-limit Adapter failures have bounded retries within the cycle.
 Authentication and authorization failures invalidate the Connection. Platform

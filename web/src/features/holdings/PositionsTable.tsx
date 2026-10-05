@@ -40,6 +40,28 @@ function amountCell(
   return <NumericText>{`${presentNumber(value, kind).text}${unit}`}</NumericText>;
 }
 
+function pnlCell(value: string | null | undefined, currency?: string | null) {
+  if (value == null || currency === null) {
+    return <span title="Amount or currency is unavailable.">—</span>;
+  }
+  const parsed = parseDecimal(value);
+  if (!parsed) {
+    return <span title="Amount is unavailable.">—</span>;
+  }
+  const unit = currency ? ` ${currency}` : "";
+  const sign = parsed.gt(0) ? "+" : "";
+  const className = parsed.gt(0)
+    ? styles.pnlPositive
+    : parsed.lt(0)
+      ? styles.pnlNegative
+      : styles.pnlNeutral;
+  return (
+    <span className={className}>
+      <NumericText>{`${sign}${presentNumber(value, "quantity").text}${unit}`}</NumericText>
+    </span>
+  );
+}
+
 // Keep source-decimal multiplication and division ahead of display rounding.
 const MarginDecimal = Decimal.clone({ precision: 200 });
 
@@ -130,7 +152,13 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
         </dl>
       </HoverDetails>
     ),
-    side: item.positionMode === "one_way" ? "Both" : item.side === "long" ? "Long" : "Short",
+    side: (
+      <Badge
+        tone={item.positionMode === "one_way" ? "neutral" : item.side === "long" ? "good" : "bad"}
+      >
+        {item.positionMode === "one_way" ? "Both" : item.side === "long" ? "Long" : "Short"}
+      </Badge>
+    ),
     size: amountCell(item.size, item.sizeSymbol ?? null),
     entryPrice: amountCell(item.entryPrice, undefined, "price"),
     markPrice: amountCell(item.markPrice, undefined, "price"),
@@ -146,7 +174,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
         </p>
       </HoverDetails>
     ),
-    unrealizedPnl: amountCell(item.unrealizedPnl, item.settlementSymbol ?? null),
+    unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementSymbol ?? null),
     notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),
     observed: (
       <span className={styles.statusGroup}>

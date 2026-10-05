@@ -58,9 +58,11 @@ export function App() {
               <Route path="history" element={<ValuationPointsPage />} />
               <Route path="history/value-changes" element={<ValueChangesPage />} />
               <Route path="capital" element={<CapitalPage />} />
+              <Route path="data" element={<Navigate to="identities" replace />} />
               <Route path="data/identities" element={<IdentitiesPage />} />
               <Route path="data/catalog" element={<CatalogPage />} />
               <Route path="data/activity" element={<ActivityPage />} />
+              <Route path="settings" element={<Navigate to="portfolio" replace />} />
               <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
               <Route path="settings/security" element={<LegacySecurityRedirect />} />
               {LEGACY_PATHS.map((item) => (

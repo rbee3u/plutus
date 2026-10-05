@@ -6,7 +6,13 @@ import {
   listAccountDualPositions,
 } from "@/api/generated/sdk.gen";
 import type { AccountValuation, BalanceRow, Issue, ReadContext } from "@/api/generated/types.gen";
-import { formatAmount, formatDecimal, formatRatio, formatPrice } from "@/shared/lib/amount";
+import {
+  formatAmount,
+  formatDecimal,
+  formatRatio,
+  formatPrice,
+  parseDecimal,
+} from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
@@ -245,22 +251,22 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
   const reported = figures.filter((figure) => figure.value != null);
   if (reported.length === 0) return null;
   return (
-    <dl className={`${styles.metaList} ${styles.metaListCased}`}>
+    <div className={styles.accountMetricsBar}>
       {reported.map((figure) => (
-        <div key={figure.label}>
-          <dt>
+        <div key={figure.label} className={styles.accountMetricChip}>
+          <span className={styles.accountMetricLabel}>
             {figure.label === figure.title ? (
               figure.label
             ) : (
               <abbr title={figure.title}>{figure.label}</abbr>
             )}
-          </dt>
-          <dd>
+          </span>
+          <span className={styles.accountMetricValue}>
             <NumericText>{figure.format(figure.value)}</NumericText>
-          </dd>
+          </span>
         </div>
       ))}
-    </dl>
+    </div>
   );
 }
 
@@ -338,6 +344,19 @@ export const BALANCE_COLUMNS = [
   { key: "observed", header: "Observed", nowrap: true },
 ];
 
+function balancePnl(value: string | null | undefined) {
+  if (value == null) return "—";
+  const parsed = parseDecimal(value);
+  if (!parsed || parsed.isZero()) return formatDecimal(value);
+  const sign = parsed.gt(0) ? "+" : "";
+  const className = parsed.gt(0) ? styles.pnlPositive : styles.pnlNegative;
+  return (
+    <span className={className}>
+      <NumericText>{`${sign}${formatDecimal(value)}`}</NumericText>
+    </span>
+  );
+}
+
 export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] = []): DataRow {
   const stale = issues.find(
     (issue) => issue.accountId === item.accountId && issue.code === "stale",
@@ -356,7 +375,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       ),
     equity: formatDecimal(item.equity),
     liability: formatDecimal(item.liability),
-    unrealizedPnl: formatDecimal(item.unrealizedPnl),
+    unrealizedPnl: balancePnl(item.unrealizedPnl),
     priceUsd: item.noPrice ? (
       <span className={styles.cellMeta}>no price</span>
     ) : (

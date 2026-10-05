@@ -32,17 +32,21 @@ func ResolveHistoryWindow(timezone, preset, fromLocal, toLocal string, now time.
 	to := now.UTC().Truncate(time.Second)
 	var from time.Time
 	switch preset {
-	case "1d":
+	case "1d", "1D":
 		from = to.Add(-24 * time.Hour)
-	case "3d":
+	case "3d", "3D":
 		from = to.Add(-3 * 24 * time.Hour)
-	case "", "1w":
+	case "", "1w", "1W":
 		from = to.Add(-7 * 24 * time.Hour)
-	case "2w":
+	case "2w", "2W":
 		from = to.Add(-14 * 24 * time.Hour)
-	case "1Month":
+	case "1Month", "1m", "1M":
 		from = subtractHistoryMonths(to.In(loc), 1)
-	case "1Year":
+	case "3m", "3M":
+		from = subtractHistoryMonths(to.In(loc), 3)
+	case "6m", "6M":
+		from = subtractHistoryMonths(to.In(loc), 6)
+	case "1Year", "1y", "1Y":
 		from = subtractHistoryMonths(to.In(loc), 12)
 	default:
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: unsupported history preset", ErrInvalid)

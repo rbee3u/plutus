@@ -19,10 +19,11 @@ describe("History ranges", () => {
     }
   });
   it("matches calendar periods to presets", () => {
-    expect(presetPeriod("1w")).toBe("day");
-    expect(presetPeriod("2w")).toBe("day");
-    expect(presetPeriod("1Month")).toBe("week");
-    expect(presetPeriod("1Year")).toBe("month");
+    expect(presetPeriod("1W")).toBe("day");
+    expect(presetPeriod("2W")).toBe("day");
+    expect(presetPeriod("1M")).toBe("week");
+    expect(presetPeriod("3M")).toBe("month");
+    expect(presetPeriod("6M")).toBe("month");
   });
   it("formats inputs in the Portfolio timezone rather than the browser timezone", () => {
     expect(historyLocalValue("2026-10-04T04:16:44Z", "Asia/Shanghai")).toBe("2026-10-04T12:16:44");

@@ -37,6 +37,11 @@ precision. IMR, MMR, and UniMMR remain unscaled ratios, and leverage retains its
 USD-equivalent; derived USD valuations use USD precision. Price precision is
 independent of the quoting Asset.
 
+Valuation amounts, flows, and differences express currency exclusively using the
+canonical asset code `USD` (via column headers, adjacent unit markers, or
+trailing unit text). Currency symbols such as `$` are prohibited across all user
+interface views.
+
 Chart tooltips use source decimal strings and the USD policy. Numeric axes are
 the explicit exception: values at least 1 use English compact notation with at
 most one fractional digit. Smaller nonzero ticks round to four significant

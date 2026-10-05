@@ -10,6 +10,7 @@ import { capitalize } from "@/shared/lib/text";
 import { StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Select } from "@/shared/ui/FormControls";
+import { Codes } from "@/shared/ui/IssueList";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/pages.module.css";
@@ -35,9 +36,13 @@ export function JobsPanel({
 }) {
   return (
     <>
-      <form className={styles.filterBar} onSubmit={(event) => event.preventDefault()}>
-        <label className={styles.field} style={{ minWidth: "200px" }}>
-          <span>Kind</span>
+      <form
+        className={styles.compactFilterBar}
+        style={{ marginBottom: "var(--space-md)" }}
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label className={styles.compactFilterField}>
+          <span className={styles.compactFilterLabel}>Kind</span>
           <Select value={kind} onChange={(event) => onKind(event.target.value)}>
             <option value="">All kinds</option>
             {JOB_KINDS.map((item) => (
@@ -98,33 +103,37 @@ function JobsTable({
           { key: "attempts", header: "Attempts", numeric: true },
           { key: "startedAt", header: "Started", nowrap: true },
           { key: "finishedAt", header: "Finished", nowrap: true },
-          { key: "outcome", header: "Outcome" },
         ]}
         rows={(query.data?.items ?? []).map((item) => ({
           id: item.id,
           createdAt: (
             <span className={styles.cellStack}>
               {formatInstant(item.createdAt, timezone)}
-              <span className={styles.cellMeta}>{shortId(item.id)}</span>
+              <span className={styles.cellMeta}>#{shortId(item.id)}</span>
             </span>
           ),
           kind: JOB_KIND_LABELS[item.kind],
-          status: <StatusBadge value={item.status} />,
+          status: (
+            <span className={styles.cellStack}>
+              <span>
+                <StatusBadge value={item.status} />
+              </span>
+              {item.lastErrorClass || item.lastDetail ? (
+                <span className={styles.cellStack} style={{ marginTop: "2px" }}>
+                  {item.lastErrorClass ? <Codes values={[item.lastErrorClass]} /> : null}
+                  {item.lastDetail ? (
+                    <span className={styles.cellMeta} style={{ color: "var(--danger)" }}>
+                      {item.lastDetail}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </span>
+          ),
           trigger: capitalize(item.trigger),
           attempts: `${formatCount(item.attemptCount)}/${formatCount(item.maxAttempts)}`,
           startedAt: formatInstant(item.startedAt, timezone),
           finishedAt: formatInstant(item.finishedAt, timezone),
-          outcome:
-            item.lastErrorClass || item.lastDetail ? (
-              <span className={styles.cellStack}>
-                {item.lastErrorClass ? <span>{item.lastErrorClass}</span> : null}
-                {item.lastDetail ? (
-                  <span className={styles.cellMeta}>{item.lastDetail}</span>
-                ) : null}
-              </span>
-            ) : (
-              "—"
-            ),
         }))}
         empty={
           query.isPending

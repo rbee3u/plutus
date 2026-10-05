@@ -57,7 +57,7 @@ export function FreshnessBadge({
 export function DirectionBadge({ value }: { value: string }) {
   const isContribution = value.toLowerCase() === "contribution";
   return (
-    <Badge tone={isContribution ? "good" : "warn"}>
+    <Badge tone={isContribution ? "good" : "bad"}>
       {isContribution ? "+ Contribution" : "- Withdrawal"}
     </Badge>
   );

@@ -186,6 +186,14 @@ export function SecuritySettingsPage() {
 
   return (
     <section className={styles.page}>
+      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Account & Security</h2>
+          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+            Manage authentication credentials and review active browser sessions.
+          </p>
+        </div>
+      </div>
       {error ? (
         <p className={styles.alert} role="alert">
           {error}
@@ -347,10 +355,21 @@ export function SecuritySettingsPage() {
           {sessions.map((session) => (
             <li key={session.id}>
               <div>
-                <strong>
-                  {session.clientLabel ? clientSummary(session.clientLabel) : "Unknown client"}
-                  {session.current ? " · this session" : ""}
-                </strong>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-xs)",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <strong>
+                    {session.clientLabel ? clientSummary(session.clientLabel) : "Unknown client"}
+                  </strong>
+                  {session.current ? (
+                    <span className={styles.currentSessionBadge}>Current</span>
+                  ) : null}
+                </div>
                 <p className={styles.muted} title={session.clientLabel ?? undefined}>
                   Signed in {formatInstant(session.createdAt)} · last seen{" "}
                   {formatInstant(session.lastSeenAt)}
