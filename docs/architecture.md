@@ -32,25 +32,48 @@ custom properties. Toolchain requirements and pinned versions live in
 
 ## Module responsibilities
 
-The CLI composes services, transport, and the worker. Application packages
-separate responsibilities while sharing generated SQL queries and
-transaction-scoped helpers. The HTTP layer maps generated wire types to
-application types; services do not depend on Gin or generated HTTP types.
-Package boundaries do not imply exclusive ownership of tables or queries.
+The composition root builds services, transport, and the worker. Application
+packages separate responsibilities while sharing generated SQL queries and
+transaction-scoped helpers. Dependencies flow one way: `shared` then `infra`,
+`domain`, and `transport`; `platform` is a leaf below `domain`; `internal/app`
+and `internal/cli` are the only packages that wire across layers
+([ADR 0020](./adr/0020-architecture-layering.md)). The HTTP layer maps generated
+wire types to application types; services do not depend on Gin or generated HTTP
+types. Package boundaries do not imply exclusive ownership of tables or queries.
 
-| Module                                                  | Responsibility                                                         |
-| ------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `cmd/plutus`                                            | Composition, configuration, and CLI commands                           |
-| `internal/transport/http`                               | API bindings, browser security, HTTP conventions, and SPA serving      |
-| `internal/auth`                                         | Users, password verification, and Sessions                             |
-| `internal/portfolio`, `internal/identity`               | Ownership, Portfolio settings, Identity configuration, and Connections |
-| `internal/catalog`, `internal/listingexclusion`         | Listings, Instruments, prices, and exclusion policy                    |
-| `internal/collection`                                   | Adapter orchestration and normalized report persistence                |
-| `internal/valuation`, `internal/capital`                | Derived values, history, and manual Capital Flows                      |
-| `internal/jobs`, `internal/worker`                      | Persistent jobs, scheduling, leases, and dispatch                      |
-| `internal/audit`                                        | User and system action records                                         |
-| `internal/adapters`                                     | Typed Platform contract, live implementations, and deterministic fake  |
-| `internal/infra`, `internal/decimal`, `internal/secret` | SQL infrastructure, exact arithmetic, and credential encryption        |
+| Module                                                               | Responsibility                                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `internal/app`                                                       | Composition root: every service built on one database handle           |
+| `internal/cli`, `cmd/plutus`                                         | CLI commands; `cmd/plutus` only starts them                            |
+| `internal/seeds`                                                     | Development seed fixtures for `db seed` and `db reset --seed`          |
+| `internal/transport/http`                                            | API bindings, browser security, HTTP conventions, and SPA serving      |
+| `internal/domain/auth`                                               | Users, password verification, and Sessions                             |
+| `internal/domain/portfolio`, `internal/domain/identity`              | Ownership, Portfolio settings, Identity configuration, and Connections |
+| `internal/domain/catalog`, `internal/domain/listingexclusion`        | Listings, Instruments, prices, and exclusion policy                    |
+| `internal/domain/collection`                                         | Adapter orchestration and normalized report persistence                |
+| `internal/domain/valuation`, `internal/domain/capital`               | Derived values, history, and manual Capital Flows                      |
+| `internal/domain/jobs`, `internal/worker`                            | Persistent jobs, scheduling, leases, and dispatch                      |
+| `internal/domain/audit`                                              | User and system action records                                         |
+| `internal/platform/adapters`                                         | Typed Platform contract, live implementations, and deterministic fake  |
+| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret` | SQL infrastructure, exact arithmetic, and credential encryption        |
+
+## Frontend structure
+
+`web/src` separates `app` (shell, routes, theme), `features/<name>` (one
+directory per product area with `pages/`, `components/`, `dialogs/`, `hooks/`,
+and `lib/`), and `shared` (API client, UI primitives, libraries, icons, styles).
+Features depend on `shared`, not on each other; the only cross-feature imports
+are embedded display components and the history preset helpers the overview page
+reuses ([ADR 0021](./adr/0021-frontend-structure.md)).
+
+Page-level CSS lives beside its owner: classes used by two or more features are
+in `shared/styles/page.module.css`, a feature's own classes in
+`features/<name>/styles.module.css`, and design tokens in
+`shared/styles/tokens.css`. CSS-module hashing is per file, so a compound
+selector must stay inside one module; classes that only co-apply with shared
+classes live in the shared module. Cross-module cascade order follows bundle
+module order, so a rule that must win or lose across modules is co-located with
+its counterpart instead of relying on import order.
 
 ## Collection and job lifecycle
 
@@ -87,10 +110,11 @@ The full stale, scope, completeness, and value rules are in
 
 ## Manual persistence and collection
 
-`internal/manual` owns the current signed ledger, immutable revisions, and
-version-guarded audited mutations. Appended migrations create one Manual Account
-for existing Identities and increment Identity versions without modifying old
-reports or points. New Identity creation and seeds include it automatically.
+`internal/domain/manual` owns the current signed ledger, immutable revisions,
+and version-guarded audited mutations. Appended migrations create one Manual
+Account for existing Identities and increment Identity versions without
+modifying old reports or points. New Identity creation and seeds include it
+automatically.
 
 Before Platform reads, the runner locks the job and Manual boundary Accounts,
 then atomically writes `manual_cycles` and `manual_cycle_accounts`, including
@@ -249,16 +273,19 @@ have not changed. Routes and payload schemas are not duplicated here.
 
 The API uses versioned routes, Problem Details errors, version-based ETags,
 idempotency keys for supported mutations, and cursor pagination where specified
-by OpenAPI. Browser ownership checks scope access to the authenticated User and
-their Portfolios.
+by OpenAPI. ETag validators are formatted and strictly parsed through
+`internal/shared/etag`; list cursors are opaque HMAC-signed values from
+`internal/shared/cursor`. Browser ownership checks scope access to the
+authenticated User and their Portfolios.
 
-Display ordering is shared by application reads through `internal/ordering`.
-Platform ranks and Account Type ranks come from the Adapter capability catalog.
-Valuation reads sort Accounts first, then order flat holdings by those Account
-ranks before grouping or pagination; Account-detail futures use the same
-contract comparator. Catalog queries receive the shared Platform order and apply
-it in SQL before `LIMIT` and `OFFSET`. The SPA preserves API ordering in lists
-and selectors. See [ADR 0011](./adr/0011-display-ordering.md).
+Display ordering is shared by application reads through
+`internal/shared/ordering`. Platform ranks and Account Type ranks come from the
+Adapter capability catalog. Valuation reads sort Accounts first, then order flat
+holdings by those Account ranks before grouping or pagination; Account-detail
+futures use the same contract comparator. Catalog queries receive the shared
+Platform order and apply it in SQL before `LIMIT` and `OFFSET`. The SPA
+preserves API ordering in lists and selectors. See
+[ADR 0011](./adr/0011-display-ordering.md).
 
 The global Holdings tables keep their filter headers mounted independently of
 query results. Platform and Identity candidates derive from configured
@@ -300,11 +327,11 @@ polling until completion. Collect now updates the paired Overview read and open
 Account details on completion. Browser refresh does not request collection. See
 [ADR 0016](./adr/0016-overview-and-holdings-navigation.md).
 
-Financial arithmetic uses exact rationals behind `internal/decimal`; storage
-uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values with at
-most 30 fractional digits. JSON financial values are strings; null means unknown
-or inapplicable. The frontend uses `decimal.js`, converting to JavaScript
-numbers only for chart plotting.
+Financial arithmetic uses exact rationals behind `internal/shared/decimal`;
+storage uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values
+with at most 30 fractional digits. JSON financial values are strings; null means
+unknown or inapplicable. The frontend uses `decimal.js`, converting to
+JavaScript numbers only for chart plotting.
 
 The shared numeric formatter selects a semantic type and explicit half-up
 rounding, then returns display text and its rounded ordinary decimal equivalent.
@@ -497,8 +524,9 @@ same-Platform prices. Exchange Account valuation currently prefers that Platform
 but falls back to the latest eligible price across Platforms. Manual Account
 valuation enforces own-Platform prices without fallback. Capital Flow valuation
 queries prices across Platforms directly. Both enforce at-or-before time and the
-24-hour age limit. See [Account price lookup](../internal/valuation/write.go)
-and [Capital Flow valuation](../internal/capital/service.go).
+24-hour age limit. See
+[Account price lookup](../internal/domain/valuation/write.go) and
+[Capital Flow valuation](../internal/domain/capital/service.go).
 
 This is an unresolved implementation gap, not an accepted change to the pricing
 decision.

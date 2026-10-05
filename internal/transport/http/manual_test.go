@@ -11,13 +11,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/adapters/fake"
-	"github.com/rbee3u/plutus/internal/auth"
-	"github.com/rbee3u/plutus/internal/identity"
+	"github.com/rbee3u/plutus/internal/app"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/domain/manual"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/manual"
-	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -49,7 +50,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db)})
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db)}})
 	csrf := httptest.NewRecorder()
 	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/auth/csrf", nil))
 	var token struct {

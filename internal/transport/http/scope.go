@@ -11,10 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/auth"
-	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 // scope is the authenticated user and the owned Portfolio a request acts on.

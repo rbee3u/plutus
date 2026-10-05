@@ -1,11 +1,17 @@
-import { createCollectionCycle, getCollectionCycle } from "@/api/generated/sdk.gen";
-import type { CollectionCycle, JobStatus } from "@/api/generated/types.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import {
+  createCollectionCycle,
+  getCollectionCycle,
+  invalidatePortfolioReads,
+  keys,
+  problemMessage,
+  refreshCsrf,
+} from "@/api";
+import type { CollectionCycle, CollectionCycleDetail, JobStatus } from "@/api";
 import { newIdempotencyKey } from "@/shared/lib/id";
-import { invalidatePortfolioReads } from "@/shared/lib/queryKeys";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSessionScope } from "@/shared/lib/session";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 const TERMINAL: ReadonlySet<JobStatus> = new Set(["succeeded", "failed", "cancelled"]);
 const FOLLOW_INTERVAL_MS = 2000;
@@ -30,16 +36,12 @@ export function useCollectNow(portfolioId: string) {
       ? started.id
       : null;
 
-  const followed = useQuery({
-    queryKey: ["collection-cycle", userId, portfolioId, watchId],
-    enabled: Boolean(userId && portfolioId && watchId),
+  const followed = usePortfolioQuery<CollectionCycleDetail>({
+    key: (userId, portfolioId) => keys.collectionCycle(userId, portfolioId, watchId),
+    ready: Boolean(watchId),
+    load: (portfolioId) => getCollectionCycle({ path: { portfolioId, cycleId: watchId ?? "" } }),
     refetchInterval: (query) =>
       isTerminalStatus(query.state.data?.cycle.status) ? false : FOLLOW_INTERVAL_MS,
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await getCollectionCycle({ path: { portfolioId, cycleId: watchId ?? "" } }),
-        redirect,
-      ),
   });
 
   const latest = followed.data?.cycle;
@@ -73,7 +75,7 @@ export function useCollectNow(portfolioId: string) {
       }
       idempotencyKey.current = newIdempotencyKey();
       setStarted(result.data);
-      await queryClient.invalidateQueries({ queryKey: ["collection-cycles", userId, portfolioId] });
+      await queryClient.invalidateQueries({ queryKey: keys.collectionCycles(userId, portfolioId) });
     } catch (cause) {
       setError(problemMessage(cause, "The Collection Cycle could not be queued."));
     } finally {

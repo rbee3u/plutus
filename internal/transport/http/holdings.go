@@ -3,8 +3,8 @@ package httpserver
 import (
 	"context"
 
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func (a *API) GetOverview(ctx context.Context, request api.GetOverviewRequestObject) (api.GetOverviewResponseObject, error) {

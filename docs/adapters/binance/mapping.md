@@ -1,6 +1,6 @@
 # Binance Adapter mapping
 
-Package `internal/adapters/binance`. Binance has two Account Structures and no
+Package `internal/platform/binance`. Binance has two Account Structures and no
 Margin Mode. The User selects the structure on the Identity following the
 [Account model](../../adr/0001-ownership-and-accounts.md):
 

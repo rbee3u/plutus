@@ -1,42 +1,42 @@
 import { NumericText } from "@/shared/ui/NumericText";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useParams } from "react-router";
 import {
   deleteCapitalFlow,
   getCapitalFlow,
+  invalidatePortfolioReads,
+  keys,
   listBoundaryEvents,
   listCapitalFlows,
-} from "@/api/generated/sdk.gen";
-import type { CapitalFlow } from "@/api/generated/types.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+  problemMessage,
+  readEtag,
+  refreshCsrf,
+  unwrapOrRedirect,
+} from "@/api";
+import type { BoundaryEventList, CapitalFlow, CapitalFlowList } from "@/api";
 import {
   CapitalFlowDialog,
   type FlowDialogRequest,
   flowEtag,
 } from "@/features/capital/CapitalFlowDialog";
-import { accountOptions, useIdentities } from "@/features/data/useIdentities";
-import { usePlatforms } from "@/features/data/usePlatforms";
-import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/features/history/ValuationPointsPage";
+import { accountOptions, useIdentities } from "@/shared/lib/useIdentities";
+import { usePlatforms } from "@/shared/lib/usePlatforms";
+import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import { formatAmount, formatDecimal, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant, isoFromLocalInput } from "@/shared/lib/datetime";
 import { usePortfolio } from "@/shared/lib/portfolio";
 import { useSearchState } from "@/shared/lib/searchParams";
-import { readEtag, unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DirectionBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import styles from "@/features/pages.module.css";
-
-const AFFECTED_KEYS = [
-  "capital-flows",
-  "value-changes",
-  "custom-value-change",
-  "overview",
-] as const;
+import styles from "@/features/capital/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 export function CapitalPage() {
   const { portfolioId = "" } = useParams();
@@ -59,37 +59,27 @@ export function CapitalPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const flows = useQuery({
-    queryKey: ["capital-flows", userId, portfolioId, from, to],
-    enabled: Boolean(userId && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await listCapitalFlows({
-          path: { portfolioId },
-          query: { from: isoFromLocalInput(from), to: isoFromLocalInput(to) },
-        }),
-        redirect,
-      ),
+  const flows = usePortfolioQuery<CapitalFlowList>({
+    key: (userId, portfolioId) => keys.capitalFlows(userId, portfolioId, from, to),
+    ready: true,
+    load: (portfolioId) =>
+      listCapitalFlows({
+        path: { portfolioId },
+        query: { from: isoFromLocalInput(from), to: isoFromLocalInput(to) },
+      }),
   });
-  const events = useQuery({
-    queryKey: ["boundary-events", userId, portfolioId, eventsFrom, eventsTo],
-    enabled: Boolean(userId && portfolioId),
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await listBoundaryEvents({
-          path: { portfolioId },
-          query: { from: isoFromLocalInput(eventsFrom), to: isoFromLocalInput(eventsTo) },
-        }),
-        redirect,
-      ),
+  const events = usePortfolioQuery<BoundaryEventList>({
+    key: (userId, portfolioId) => keys.boundaryEvents(userId, portfolioId, eventsFrom, eventsTo),
+    ready: true,
+    load: (portfolioId) =>
+      listBoundaryEvents({
+        path: { portfolioId },
+        query: { from: isoFromLocalInput(eventsFrom), to: isoFromLocalInput(eventsTo) },
+      }),
   });
 
   async function invalidate() {
-    await Promise.all(
-      AFFECTED_KEYS.map((key) =>
-        queryClient.invalidateQueries({ queryKey: [key, userId, portfolioId] }),
-      ),
-    );
+    await invalidatePortfolioReads(queryClient, userId, portfolioId);
   }
 
   function openCreate() {
@@ -160,22 +150,22 @@ export function CapitalPage() {
   }
 
   return (
-    <section className={styles.wide}>
+    <section className={shared.wide}>
       {error ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {error}
         </p>
       ) : null}
       {notice ? (
-        <p className={styles.notice} role="status">
+        <p className={shared.notice} role="status">
           {notice}
         </p>
       ) : null}
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
+      <section className={shared.panel}>
+        <div className={shared.panelHeader}>
           <div>
             <h2>Capital Flows</h2>
-            <p className={styles.muted} style={{ margin: "2px 0 0" }}>
+            <p className={shared.muted} style={{ margin: "2px 0 0" }}>
               Manual contributions and withdrawals recorded to adjust portfolio valuation.
             </p>
           </div>
@@ -183,9 +173,9 @@ export function CapitalPage() {
             Record flow
           </ActionButton>
         </div>
-        <form className={styles.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.compactFilterField}>
-            <span className={styles.compactFilterLabel}>From</span>
+        <form className={shared.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={shared.compactFilterField}>
+            <span className={shared.compactFilterLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={from}
@@ -193,8 +183,8 @@ export function CapitalPage() {
               onChange={(event) => update({ from: event.target.value })}
             />
           </label>
-          <label className={styles.compactFilterField}>
-            <span className={styles.compactFilterLabel}>To</span>
+          <label className={shared.compactFilterField}>
+            <span className={shared.compactFilterLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={to}
@@ -239,18 +229,18 @@ export function CapitalPage() {
               assetSymbol: item.assetSymbol,
               quantity: formatDecimal(item.quantity),
               valueUsd: dec ? (
-                <span className={isContribution ? styles.pnlPositive : styles.pnlNegative}>
+                <span className={isContribution ? shared.pnlPositive : shared.pnlNegative}>
                   <NumericText>{`${isContribution ? "+" : "-"}$${formatAmount(dec.abs().toFixed())}`}</NumericText>
                 </span>
               ) : (
-                <span className={styles.muted}>—</span>
+                <span className={shared.muted}>—</span>
               ),
               account:
                 item.accountName ??
-                (item.accountId ? item.accountId : <span className={styles.muted}>—</span>),
+                (item.accountId ? item.accountId : <span className={shared.muted}>—</span>),
               note: item.note ?? "—",
               actions: (
-                <span className={styles.rowActions}>
+                <span className={shared.rowActions}>
                   <ActionButton
                     type="button"
                     tone="ghost"
@@ -278,18 +268,18 @@ export function CapitalPage() {
           }
         />
       </section>
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
+      <section className={shared.panel}>
+        <div className={shared.panelHeader}>
           <div>
             <h2>Boundary Events</h2>
-            <p className={styles.muted} style={{ margin: "2px 0 0" }}>
+            <p className={shared.muted} style={{ margin: "2px 0 0" }}>
               Automatic adjustments recorded when accounts enter or leave the active boundary.
             </p>
           </div>
         </div>
-        <form className={styles.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
-          <label className={styles.compactFilterField}>
-            <span className={styles.compactFilterLabel}>From</span>
+        <form className={shared.compactFilterBar} onSubmit={(event) => event.preventDefault()}>
+          <label className={shared.compactFilterField}>
+            <span className={shared.compactFilterLabel}>From</span>
             <TextInput
               type="datetime-local"
               value={eventsFrom}
@@ -297,8 +287,8 @@ export function CapitalPage() {
               onChange={(event) => update({ eventsFrom: event.target.value })}
             />
           </label>
-          <label className={styles.compactFilterField}>
-            <span className={styles.compactFilterLabel}>To</span>
+          <label className={shared.compactFilterField}>
+            <span className={shared.compactFilterLabel}>To</span>
             <TextInput
               type="datetime-local"
               value={eventsTo}
@@ -356,14 +346,14 @@ export function CapitalPage() {
           if (!busy) setDeleteTarget(null);
         }}
       >
-        <p className={styles.lead}>
+        <p className={shared.lead}>
           <NumericText>
             {deleteTarget
               ? `Delete the ${deleteTarget.direction} of ${formatDecimal(deleteTarget.quantity)} ${deleteTarget.assetSymbol} effective ${formatInstant(deleteTarget.effectiveAt, timezone)}? Value Changes over that period will no longer account for it.`
               : ""}
           </NumericText>
         </p>
-        <div className={styles.actions}>
+        <div className={shared.actions}>
           <ActionButton
             type="button"
             tone="danger"

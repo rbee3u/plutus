@@ -1,6 +1,6 @@
 # Bybit Adapter mapping
 
-Package `internal/adapters/bybit`. Bybit has one Account Structure,
+Package `internal/platform/bybit`. Bybit has one Account Structure,
 `bybit_uta_2_0`: the global Unified Trading Account 2.0, including UTA 2.0 Pro
 (`unifiedMarginStatus` 5 and 6). Its Account Types are `unified`, `funding`,
 `earn`, and `dual_investment`. The account's Margin Mode is observed, never

@@ -12,11 +12,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/app"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
@@ -58,7 +59,7 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := valuation.NewService(db)
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Auth: authentication, Portfolios: portfolios, Valuation: service})
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Valuation: service}})
 	request := func(path string, authenticated bool) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)

@@ -4,8 +4,14 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { deletePortfolio, listPortfolios, patchPortfolio } from "@/api/generated/sdk.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import {
+  deletePortfolio,
+  keys,
+  listPortfolios,
+  patchPortfolio,
+  problemMessage,
+  refreshCsrf,
+} from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { type PortfolioView, usePortfolio } from "@/shared/lib/portfolio";
 import { storePreference } from "@/shared/lib/preferences";
@@ -13,7 +19,8 @@ import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import styles from "@/features/pages.module.css";
+import styles from "@/features/settings/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
 
 const MIN_INTERVAL = 60;
 const MAX_INTERVAL = 86_400;
@@ -56,33 +63,33 @@ function formatIntervalDuration(seconds: number): string | null {
 
 export function PortfolioSettingsPage() {
   const { portfolioId = "" } = useParams();
-  const { userId } = useSessionScope();
   const queryClient = useQueryClient();
   const portfolio = usePortfolio(portfolioId);
+  const { userId } = useSessionScope();
   const [notice, setNotice] = useState<string | null>(null);
   const [conflict, setConflict] = useState<string | null>(null);
 
   async function reload() {
-    await queryClient.invalidateQueries({ queryKey: ["portfolio", userId, portfolioId] });
+    await queryClient.invalidateQueries({ queryKey: keys.portfolio(userId, portfolioId) });
   }
 
   return (
     <section className={styles.page}>
-      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+      <div className={shared.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
         <div>
           <h2 style={{ margin: 0 }}>Portfolio settings</h2>
-          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+          <p className={shared.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
             Manage configuration, base timezone, and collection cadence for this portfolio.
           </p>
         </div>
       </div>
       {conflict ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {conflict}
         </p>
       ) : null}
       {notice ? (
-        <p className={styles.notice} role="status">
+        <p className={shared.notice} role="status">
           {notice}
         </p>
       ) : null}
@@ -112,7 +119,7 @@ export function PortfolioSettingsPage() {
           }}
         />
       ) : portfolio.isPending ? (
-        <p className={styles.muted}>Loading portfolio settings.</p>
+        <p className={shared.muted}>Loading portfolio settings.</p>
       ) : null}
     </section>
   );
@@ -129,8 +136,8 @@ function SettingsForms({
   onSaved: (message: string) => Promise<void>;
   onConflict: () => Promise<void>;
 }) {
-  const navigate = useNavigate();
   const { redirect } = useSessionScope();
+  const navigate = useNavigate();
   const [name, setName] = useState(view.item.name);
   const [timezone, setTimezone] = useState(view.item.timezone);
   const [interval, setInterval] = useState(String(view.item.collectionIntervalSeconds));
@@ -239,16 +246,16 @@ function SettingsForms({
   return (
     <>
       {error ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {error}
         </p>
       ) : null}
       <form
-        className={`${styles.form} ${styles.settingsCard}`}
+        className={`${shared.form} ${styles.settingsCard}`}
         onSubmit={(event) => void onSubmit(event)}
       >
         <h2>General settings</h2>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Name</span>
           <TextInput
             value={name}
@@ -257,7 +264,7 @@ function SettingsForms({
             required
           />
         </label>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span>Timezone</span>
             {canMatchBrowser && browserTimezone ? (
@@ -278,7 +285,7 @@ function SettingsForms({
             required
           />
         </label>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span>Collection interval (seconds)</span>
             {durationText ? (
@@ -312,12 +319,12 @@ function SettingsForms({
               );
             })}
           </div>
-          <span className={styles.muted}>
+          <span className={shared.muted}>
             Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day).
             The schedule applies from the next cycle.
           </span>
         </label>
-        <div className={styles.actions}>
+        <div className={shared.actions}>
           <ActionButton type="submit" tone="primary" disabled={busy}>
             Save
           </ActionButton>
@@ -327,27 +334,27 @@ function SettingsForms({
         <div className={styles.defaultPortfolioNotice}>
           <Shield
             size={iconSize.sm}
-            className={styles.muted}
+            className={shared.muted}
             style={{ flexShrink: 0, marginTop: 2 }}
           />
           <div>
             <strong>Default portfolio</strong>
-            <p className={styles.muted}>
+            <p className={shared.muted}>
               This default portfolio was created with the account and cannot be deleted.
             </p>
           </div>
         </div>
       ) : (
         <form
-          className={`${styles.form} ${styles.dangerCard}`}
+          className={`${shared.form} ${styles.dangerCard}`}
           onSubmit={(event) => void onDelete(event)}
         >
           <h2>Delete portfolio</h2>
-          <p className={styles.muted}>
+          <p className={shared.muted}>
             Permanently deletes this portfolio and every Identity, Collection Cycle, Valuation
             Point, and Capital Flow scoped to it. Type the current name to confirm.
           </p>
-          <label className={styles.field}>
+          <label className={shared.field}>
             <span>Confirm name</span>
             <TextInput
               value={confirmName}
@@ -356,7 +363,7 @@ function SettingsForms({
               required
             />
           </label>
-          <div className={styles.actions}>
+          <div className={shared.actions}>
             <ActionButton
               type="submit"
               tone="danger"

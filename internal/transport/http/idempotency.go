@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/infra/idempotency"
 )
 
 func (a *API) lookupIdempotency(ctx context.Context, userID uuid.UUID, key, method, path string, body []byte) (*idempotency.Record, []byte, error) {

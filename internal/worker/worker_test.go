@@ -8,15 +8,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/auth"
-	"github.com/rbee3u/plutus/internal/catalog"
-	"github.com/rbee3u/plutus/internal/collection"
-	"github.com/rbee3u/plutus/internal/identity"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/domain/catalog"
+	"github.com/rbee3u/plutus/internal/domain/collection"
+	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/domain/jobs"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/jobs"
-	"github.com/rbee3u/plutus/internal/portfolio"
-	"github.com/rbee3u/plutus/internal/valuation"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
 type leaseAdapter struct {

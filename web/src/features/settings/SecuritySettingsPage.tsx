@@ -1,14 +1,21 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertCircle, Check, Circle } from "lucide-react";
-import { deleteAuthSession, getAuthSessions, putAuthPassword } from "@/api/generated/sdk.gen";
-import { problemError, problemMessage, refreshCsrf } from "@/api/http";
+import {
+  deleteAuthSession,
+  getAuthSessions,
+  problemError,
+  problemMessage,
+  putAuthPassword,
+  refreshCsrf,
+} from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { formatInstant } from "@/shared/lib/datetime";
 import { clientSummary } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { PasswordInput } from "@/shared/ui/PasswordInput";
-import styles from "@/features/pages.module.css";
+import styles from "@/features/settings/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
 import secStyles from "@/features/settings/SecuritySettingsPage.module.css";
 
 interface SessionRow {
@@ -186,26 +193,26 @@ export function SecuritySettingsPage() {
 
   return (
     <section className={styles.page}>
-      <div className={styles.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
+      <div className={shared.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
         <div>
           <h2 style={{ margin: 0 }}>Account & Security</h2>
-          <p className={styles.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
+          <p className={shared.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
             Manage authentication credentials and review active browser sessions.
           </p>
         </div>
       </div>
       {error ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {error}
         </p>
       ) : null}
       <form
-        className={`${styles.form} ${styles.settingsCard}`}
+        className={`${shared.form} ${styles.settingsCard}`}
         onSubmit={(event) => void onChangePassword(event)}
       >
         <h2>Change password</h2>
 
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Current password</span>
           <PasswordInput
             ref={currentPasswordRef}
@@ -233,7 +240,7 @@ export function SecuritySettingsPage() {
           ) : null}
         </label>
 
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>New password</span>
           <PasswordInput
             value={newPassword}
@@ -306,7 +313,7 @@ export function SecuritySettingsPage() {
           ) : null}
         </label>
 
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Confirm new password</span>
           <PasswordInput
             value={confirmPassword}
@@ -342,14 +349,14 @@ export function SecuritySettingsPage() {
           ) : null}
         </label>
 
-        <div className={styles.actions}>
+        <div className={shared.actions}>
           <ActionButton type="submit" tone="primary" disabled={!canSubmit}>
             Change password
           </ActionButton>
         </div>
       </form>
 
-      <section className={`${styles.panel} ${styles.settingsCard}`}>
+      <section className={`${shared.panel} ${styles.settingsCard}`}>
         <h2>Sessions</h2>
         <ul className={styles.sessions}>
           {sessions.map((session) => (
@@ -370,7 +377,7 @@ export function SecuritySettingsPage() {
                     <span className={styles.currentSessionBadge}>Current</span>
                   ) : null}
                 </div>
-                <p className={styles.muted} title={session.clientLabel ?? undefined}>
+                <p className={shared.muted} title={session.clientLabel ?? undefined}>
                   Signed in {formatInstant(session.createdAt)} · last seen{" "}
                   {formatInstant(session.lastSeenAt)}
                 </p>

@@ -3,7 +3,7 @@ package httpserver
 import (
 	"context"
 
-	"github.com/rbee3u/plutus/internal/audit"
+	"github.com/rbee3u/plutus/internal/domain/audit"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

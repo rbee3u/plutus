@@ -1,0 +1,115 @@
+package cursor
+
+import (
+	"encoding/base64"
+	"errors"
+	"testing"
+
+	"github.com/google/uuid"
+)
+
+var (
+	testPortfolio = uuid.MustParse("01a0bdfc-1fa4-7a54-9fa1-24f4721a71af")
+	testOther     = uuid.MustParse("01a0bdfc-1fa4-7af4-bedf-65d968b9122b")
+	testCodec     = Codec{Version: 1, Key: []byte("plutus-audit-cursor-v1")}
+)
+
+// TestEncodeWireFormatIsStable pins the 73-byte payload and HMAC layout for
+// both production codecs, so a refactor can never silently invalidate cursors
+// already handed to clients.
+func TestEncodeWireFormatIsStable(t *testing.T) {
+	t.Parallel()
+
+	got, err := testCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1700000000123456, ID: testOther})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantAudit = "AQGgvfwfpHpUn6Ek9HIaca8ABgokGCAiQAGgvfwfpHr0vt9l2Wi5Eisa6WjZ7KZU_XNWf4BuFd-fwxyVnqdBvD5n3VVKywhlrA"
+	if got != wantAudit {
+		t.Fatalf("audit cursor = %q, want %q", got, wantAudit)
+	}
+
+	jobCodec := Codec{Version: 2, Key: []byte("plutus-job-cursor-v2")}
+	got, err = jobCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1759600000987654, ID: testOther})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantJobs = "AgGgvfwfpHpUn6Ek9HIaca8ABkBYzQFyBgGgvfwfpHr0vt9l2Wi5EityCsWscPtTWXtTnwvbj-Nl72jK5CbVWCckEznxUXoing"
+	if got != wantJobs {
+		t.Fatalf("job cursor = %q, want %q", got, wantJobs)
+	}
+}
+
+func TestRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	cur := Cursor{PortfolioID: testPortfolio, TimeMicro: 1700000000123456, ID: testOther}
+	encoded, err := testCodec.Encode(cur)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := testCodec.Decode(encoded, testPortfolio)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded != cur {
+		t.Fatalf("Decode = %+v, want %+v", decoded, cur)
+	}
+}
+
+func TestDecodeRejectsTamperedPayload(t *testing.T) {
+	t.Parallel()
+
+	encoded, err := testCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1, ID: testOther})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data[20] ^= 0x01
+	if _, err := testCodec.Decode(base64.RawURLEncoding.EncodeToString(data), testPortfolio); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("tampered cursor error = %v, want ErrInvalid", err)
+	}
+}
+
+func TestDecodeRejectsForeignPortfolio(t *testing.T) {
+	t.Parallel()
+
+	encoded, err := testCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1, ID: testOther})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testCodec.Decode(encoded, testOther); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("foreign cursor error = %v, want ErrInvalid", err)
+	}
+}
+
+func TestDecodeRejectsWrongVersion(t *testing.T) {
+	t.Parallel()
+
+	other := Codec{Version: 2, Key: testCodec.Key}
+	encoded, err := other.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1, ID: testOther})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testCodec.Decode(encoded, testPortfolio); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("wrong version error = %v, want ErrInvalid", err)
+	}
+}
+
+func TestDecodeRejectsMalformed(t *testing.T) {
+	t.Parallel()
+
+	for _, raw := range []string{
+		"",
+		"not-a-cursor",
+		base64.RawURLEncoding.EncodeToString(make([]byte, 72)),
+		base64.RawURLEncoding.EncodeToString(make([]byte, 74)),
+	} {
+		if _, err := testCodec.Decode(raw, testPortfolio); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("Decode(%q) error = %v, want ErrInvalid", raw, err)
+		}
+	}
+}

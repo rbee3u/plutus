@@ -1,17 +1,24 @@
 import { type FormEvent, useRef, useState } from "react";
-import { createCapitalFlow, getCapitalFlow, patchCapitalFlow } from "@/api/generated/sdk.gen";
-import type { CapitalFlow } from "@/api/generated/types.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
-import type { AccountOption } from "@/features/data/useIdentities";
+import {
+  createCapitalFlow,
+  getCapitalFlow,
+  patchCapitalFlow,
+  problemMessage,
+  readEtag,
+  refreshCsrf,
+} from "@/api";
+import type { CapitalFlow } from "@/api";
+import type { AccountOption } from "@/shared/lib/useIdentities";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
 import { newIdempotencyKey } from "@/shared/lib/id";
-import { readEtag, useSessionScope } from "@/shared/lib/session";
 import { parseDecimal } from "@/shared/lib/amount";
+import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
-import styles from "@/features/pages.module.css";
+import styles from "@/features/capital/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
 
 export function flowEtag(item: CapitalFlow): string {
   return `"capital-flow:${String(item.version)}"`;
@@ -212,13 +219,13 @@ function FlowForm({
   }
 
   return (
-    <form className={styles.form} onSubmit={(event) => void onSubmit(event)}>
+    <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       {error ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {error}
         </p>
       ) : null}
-      <div className={styles.field}>
+      <div className={shared.field}>
         <span>Direction</span>
         <SegmentedControl<"contribution" | "withdrawal">
           value={form.direction}
@@ -231,7 +238,7 @@ function FlowForm({
         />
       </div>
       <div className={styles.formRow2}>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Asset symbol</span>
           <TextInput
             value={form.assetSymbol}
@@ -240,7 +247,7 @@ function FlowForm({
             required
           />
         </label>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Quantity</span>
           <TextInput
             value={form.quantity}
@@ -252,7 +259,7 @@ function FlowForm({
         </label>
       </div>
       <div className={styles.formRow2}>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Effective at</span>
           <TextInput
             type="datetime-local"
@@ -261,7 +268,7 @@ function FlowForm({
             required
           />
         </label>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Value (USD, optional)</span>
           <TextInput
             value={form.valueUsd}
@@ -271,7 +278,7 @@ function FlowForm({
           />
         </label>
       </div>
-      <label className={styles.field}>
+      <label className={shared.field}>
         <span>Account (optional)</span>
         <Select value={form.accountId} onChange={(event) => set({ accountId: event.target.value })}>
           <option value="">Portfolio level</option>
@@ -283,7 +290,7 @@ function FlowForm({
           ))}
         </Select>
       </label>
-      <label className={styles.field}>
+      <label className={shared.field}>
         <span>Note</span>
         <TextArea
           value={form.note}
@@ -292,7 +299,7 @@ function FlowForm({
           onChange={(event) => set({ note: event.target.value })}
         />
       </label>
-      <div className={styles.actions}>
+      <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
           {editingId ? "Save flow" : "Record flow"}
         </ActionButton>

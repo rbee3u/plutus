@@ -6,9 +6,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/idempotency"
-	"github.com/rbee3u/plutus/internal/identity"
+	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/infra/idempotency"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

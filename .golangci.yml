@@ -76,6 +76,6 @@ linters:
         linters: [gosec]
         text: "^G124:"
       # Verify the network guard rejects a forbidden URL.
-      - path: ^internal/adapters/offline/default_test\.go$
+      - path: ^internal/platform/offline/default_test\.go$
         linters: [gosec]
         text: "^G704:"

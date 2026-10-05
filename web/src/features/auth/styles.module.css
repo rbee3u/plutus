@@ -1,0 +1,71 @@
+/* Page-level classes used only by the auth feature. */
+
+/* Sign-in */
+.auth {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  padding: var(--space-2xl);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, var(--accent-soft) 0%, transparent 70%),
+    var(--bg-canvas);
+}
+
+.card {
+  display: grid;
+  width: min(400px, 100%);
+  gap: var(--space-xl);
+  padding: var(--space-2xl);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.cardSubtitle {
+  margin: -10px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: var(--line-height-sm);
+}
+
+.card h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+.cardBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  color: var(--accent);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.cardBrand span {
+  color: var(--ink);
+}
+
+.authActions {
+  display: flex;
+  margin-top: var(--space-xs);
+}
+
+.authSubmit {
+  width: 100%;
+  justify-content: center;
+  min-height: var(--control-lg);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+}
+
+@media (max-width: 900px) {
+  .auth {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}

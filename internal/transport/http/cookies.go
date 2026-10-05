@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/domain/auth"
 )
 
 func (a *API) setSessionCookies(ctx context.Context, session *auth.Session) {

@@ -13,19 +13,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/adapters"
-	"github.com/rbee3u/plutus/internal/audit"
-	"github.com/rbee3u/plutus/internal/auth"
-	"github.com/rbee3u/plutus/internal/capital"
-	"github.com/rbee3u/plutus/internal/catalog"
+	"github.com/rbee3u/plutus/internal/app"
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/idempotency"
-	"github.com/rbee3u/plutus/internal/identity"
-	"github.com/rbee3u/plutus/internal/jobs"
-	"github.com/rbee3u/plutus/internal/manual"
-	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func init() {
@@ -60,21 +52,11 @@ type EngineOptions struct {
 	Logger            *slog.Logger
 	AccessLogger      *slog.Logger
 	Ready             ReadyChecker
-	Auth              *auth.Service
+	Services          *app.Services
 	SecureCookies     bool
 	SessionCookieName string
 	CSRFCookieName    string
 	AllowedOrigins    []string
-	Portfolios        *portfolio.Service
-	Identities        *identity.Service
-	Adapters          *adapters.Registry
-	Catalog           *catalog.Service
-	Capital           *capital.Service
-	Manual            *manual.Service
-	Valuation         *valuation.Service
-	Jobs              *jobs.Service
-	Audit             *audit.Service
-	Idempotency       *idempotency.Store
 }
 
 // Engine returns the HTTP handler for the process.
@@ -98,25 +80,19 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	engine.Use(limitBody(1 << 20))
 	engine.Use(captureBody())
 	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
+	services := opts.Services
+	if services == nil {
+		services = &app.Services{}
+	}
+	if services.Adapters == nil {
+		services.Adapters = adapters.NewRegistry()
+	}
 	impl := &API{
+		Services:          services,
 		Ready:             opts.Ready,
-		Auth:              opts.Auth,
 		SecureCookies:     opts.SecureCookies,
 		SessionCookieName: cookieName(opts.SessionCookieName, auth.SessionCookieName),
 		CSRFCookieName:    cookieName(opts.CSRFCookieName, auth.CSRFCookieName),
-		Portfolios:        opts.Portfolios,
-		Identities:        opts.Identities,
-		Adapters:          opts.Adapters,
-		Catalog:           opts.Catalog,
-		Capital:           opts.Capital,
-		Manual:            opts.Manual,
-		Valuation:         opts.Valuation,
-		Jobs:              opts.Jobs,
-		Audit:             opts.Audit,
-		Idempotency:       opts.Idempotency,
-	}
-	if impl.Adapters == nil {
-		impl.Adapters = adapters.NewRegistry()
 	}
 	strict := api.NewStrictHandlerWithOptions(impl, nil, api.StrictGinServerOptions{
 		RequestErrorHandlerFunc:  requestError,

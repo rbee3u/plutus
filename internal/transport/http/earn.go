@@ -3,9 +3,9 @@ package httpserver
 import (
 	"context"
 
-	"github.com/rbee3u/plutus/internal/adapters"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func (a *API) ListAccountEarnPositions(ctx context.Context, request api.ListAccountEarnPositionsRequestObject) (api.ListAccountEarnPositionsResponseObject, error) {

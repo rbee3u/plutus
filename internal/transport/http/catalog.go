@@ -3,8 +3,8 @@ package httpserver
 import (
 	"context"
 
-	"github.com/rbee3u/plutus/internal/catalog"
-	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/domain/catalog"
+	"github.com/rbee3u/plutus/internal/domain/jobs"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

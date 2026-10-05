@@ -10,11 +10,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/app"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
@@ -35,7 +36,7 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Auth: authentication, Portfolios: portfolios, Valuation: valuation.NewService(db)})
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Valuation: valuation.NewService(db)}})
 	request := func(path string, authenticated bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 		if authenticated {

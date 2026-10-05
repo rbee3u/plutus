@@ -1,6 +1,6 @@
 # OKX Adapter mapping
 
-Package `internal/adapters/okx`. OKX has one account, the Unified account, so it
+Package `internal/platform/okx`. OKX has one account, the Unified account, so it
 has one Account Structure, `okx_unified`, with the Account Types `trading`,
 `funding`, `earn`, and `dual_investment`. The Margin Mode is OKX's account mode
 (the `acctLv` level). Plutus supports all four levels: Spot mode, Futures mode,

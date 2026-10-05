@@ -81,20 +81,20 @@ to the structure used to sample them.
 
 Synthetic inputs:
 
-- [v5_account_info.bad_signature.json](../../../internal/adapters/bybit/testdata/v5_account_info.bad_signature.json)
-- [v5_account_info.cross.json](../../../internal/adapters/bybit/testdata/v5_account_info.cross.json)
-- [v5_account_info.invalid_key.json](../../../internal/adapters/bybit/testdata/v5_account_info.invalid_key.json)
-- [v5_account_info.ip_rate_limited.json](../../../internal/adapters/bybit/testdata/v5_account_info.ip_rate_limited.json)
-- [v5_account_info.isolated.json](../../../internal/adapters/bybit/testdata/v5_account_info.isolated.json)
-- [v5_account_info.pm.json](../../../internal/adapters/bybit/testdata/v5_account_info.pm.json)
-- [v5_account_info.region_restricted.json](../../../internal/adapters/bybit/testdata/v5_account_info.region_restricted.json)
-- [v5_account_info.stale_timestamp.json](../../../internal/adapters/bybit/testdata/v5_account_info.stale_timestamp.json)
-- [v5_account_info.uta_1_0_pro.json](../../../internal/adapters/bybit/testdata/v5_account_info.uta_1_0_pro.json)
+- [v5_account_info.bad_signature.json](../../../internal/platform/bybit/testdata/v5_account_info.bad_signature.json)
+- [v5_account_info.cross.json](../../../internal/platform/bybit/testdata/v5_account_info.cross.json)
+- [v5_account_info.invalid_key.json](../../../internal/platform/bybit/testdata/v5_account_info.invalid_key.json)
+- [v5_account_info.ip_rate_limited.json](../../../internal/platform/bybit/testdata/v5_account_info.ip_rate_limited.json)
+- [v5_account_info.isolated.json](../../../internal/platform/bybit/testdata/v5_account_info.isolated.json)
+- [v5_account_info.pm.json](../../../internal/platform/bybit/testdata/v5_account_info.pm.json)
+- [v5_account_info.region_restricted.json](../../../internal/platform/bybit/testdata/v5_account_info.region_restricted.json)
+- [v5_account_info.stale_timestamp.json](../../../internal/platform/bybit/testdata/v5_account_info.stale_timestamp.json)
+- [v5_account_info.uta_1_0_pro.json](../../../internal/platform/bybit/testdata/v5_account_info.uta_1_0_pro.json)
 
 Recorded evidence:
 
-[PM](../../../internal/adapters/bybit/evidence/v5_account_info.pm.json),
-[Cross](../../../internal/adapters/bybit/evidence/v5_account_info.cross.json);
+[PM](../../../internal/platform/bybit/evidence/v5_account_info.pm.json),
+[Cross](../../../internal/platform/bybit/evidence/v5_account_info.cross.json);
 directly observed UTA 2.0 Pro and the corresponding Margin Mode; both report
 Spot Hedging ON
 
@@ -104,15 +104,15 @@ Spot Hedging ON
 
 Synthetic inputs:
 
-- [v5_account_wallet_balance.cross.json](../../../internal/adapters/bybit/testdata/v5_account_wallet_balance.cross.json)
-- [v5_account_wallet_balance.isolated.json](../../../internal/adapters/bybit/testdata/v5_account_wallet_balance.isolated.json)
-- [v5_account_wallet_balance.pm.json](../../../internal/adapters/bybit/testdata/v5_account_wallet_balance.pm.json)
-- [v5_account_wallet_balance.rate_limited.json](../../../internal/adapters/bybit/testdata/v5_account_wallet_balance.rate_limited.json)
+- [v5_account_wallet_balance.cross.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.cross.json)
+- [v5_account_wallet_balance.isolated.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.isolated.json)
+- [v5_account_wallet_balance.pm.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.pm.json)
+- [v5_account_wallet_balance.rate_limited.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.rate_limited.json)
 
 Recorded evidence:
 
-[PM](../../../internal/adapters/bybit/evidence/v5_account_wallet_balance.pm.json),
-[Cross](../../../internal/adapters/bybit/evidence/v5_account_wallet_balance.cross.json);
+[PM](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.pm.json),
+[Cross](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.cross.json);
 nonzero HYPE borrowing/interest and negative equity; PM SOL spotHedgingQty
 nonzero, Cross quantities zero
 
@@ -122,13 +122,13 @@ nonzero, Cross quantities zero
 
 Synthetic inputs:
 
-- [v5_asset_asset_overview.dual_only.json](../../../internal/adapters/bybit/testdata/v5_asset_asset_overview.dual_only.json)
-- [v5_asset_asset_overview.fixed_saving.json](../../../internal/adapters/bybit/testdata/v5_asset_asset_overview.fixed_saving.json)
-- [v5_asset_asset_overview.json](../../../internal/adapters/bybit/testdata/v5_asset_asset_overview.json)
+- [v5_asset_asset_overview.dual_only.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.dual_only.json)
+- [v5_asset_asset_overview.fixed_saving.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.fixed_saving.json)
+- [v5_asset_asset_overview.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.json)
 
 Recorded evidence:
 
-[v5_asset_asset_overview.json](../../../internal/adapters/bybit/evidence/v5_asset_asset_overview.json);
+[v5_asset_asset_overview.json](../../../internal/platform/bybit/evidence/v5_asset_asset_overview.json);
 Funding, Unified and Earn with EasyEarn/DualAsset entries; independent interface
 totals
 
@@ -138,12 +138,12 @@ totals
 
 Synthetic inputs:
 
-- [v5_asset_transfer_query_account_coins_balance.json](../../../internal/adapters/bybit/testdata/v5_asset_transfer_query_account_coins_balance.json)
-- [v5_asset_transfer_query_account_coins_balance.rate_limited.json](../../../internal/adapters/bybit/testdata/v5_asset_transfer_query_account_coins_balance.rate_limited.json)
+- [v5_asset_transfer_query_account_coins_balance.json](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.json)
+- [v5_asset_transfer_query_account_coins_balance.rate_limited.json](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.rate_limited.json)
 
 Recorded evidence:
 
-[v5_asset_transfer_query_account_coins_balance.json](../../../internal/adapters/bybit/evidence/v5_asset_transfer_query_account_coins_balance.json);
+[v5_asset_transfer_query_account_coins_balance.json](../../../internal/platform/bybit/evidence/v5_asset_transfer_query_account_coins_balance.json);
 nonzero USDT/USDC Funding; memberId masked, including the disclosed local
 redaction repair
 
@@ -153,13 +153,13 @@ redaction repair
 
 Synthetic inputs:
 
-- [v5_earn_advance_position.buy_low.json](../../../internal/adapters/bybit/testdata/v5_earn_advance_position.buy_low.json)
-- [v5_earn_advance_position.empty.json](../../../internal/adapters/bybit/testdata/v5_earn_advance_position.empty.json)
-- [v5_earn_advance_position.sell_high.json](../../../internal/adapters/bybit/testdata/v5_earn_advance_position.sell_high.json)
+- [v5_earn_advance_position.buy_low.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.buy_low.json)
+- [v5_earn_advance_position.empty.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.empty.json)
+- [v5_earn_advance_position.sell_high.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.sell_high.json)
 
 Recorded evidence:
 
-[v5_earn_advance_position.json](../../../internal/adapters/bybit/evidence/v5_earn_advance_position.json);
+[v5_earn_advance_position.json](../../../internal/platform/bybit/evidence/v5_earn_advance_position.json);
 Active HYPE BuyLow, USDT principal 20; SellHigh deferred
 
 ### `v5: GET /v5/earn/fixed-term/position`
@@ -168,8 +168,8 @@ Active HYPE BuyLow, USDT principal 20; SellHigh deferred
 
 Synthetic inputs:
 
-- [v5_earn_fixed_term_position.empty.json](../../../internal/adapters/bybit/testdata/v5_earn_fixed_term_position.empty.json)
-- [v5_earn_fixed_term_position.json](../../../internal/adapters/bybit/testdata/v5_earn_fixed_term_position.json)
+- [v5_earn_fixed_term_position.empty.json](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.empty.json)
+- [v5_earn_fixed_term_position.json](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.json)
 
 Recorded evidence:
 
@@ -182,11 +182,11 @@ diagnostic was not promoted.
 
 Synthetic inputs:
 
-- [v5_earn_position.json](../../../internal/adapters/bybit/testdata/v5_earn_position.json)
+- [v5_earn_position.json](../../../internal/platform/bybit/testdata/v5_earn_position.json)
 
 Recorded evidence:
 
-[v5_earn_position.json](../../../internal/adapters/bybit/evidence/v5_earn_position.json);
+[v5_earn_position.json](../../../internal/platform/bybit/evidence/v5_earn_position.json);
 USDT Flexible principal 20; zero-principal HYPE row with historical PnL retained
 
 ### `v5: GET /v5/market/instruments-info`
@@ -195,13 +195,13 @@ USDT Flexible principal 20; zero-principal HYPE row with historical PnL retained
 
 Synthetic inputs:
 
-- [v5_market_instruments_info.inverse.json](../../../internal/adapters/bybit/testdata/v5_market_instruments_info.inverse.json)
-- [v5_market_instruments_info.linear.json](../../../internal/adapters/bybit/testdata/v5_market_instruments_info.linear.json)
+- [v5_market_instruments_info.inverse.json](../../../internal/platform/bybit/testdata/v5_market_instruments_info.inverse.json)
+- [v5_market_instruments_info.linear.json](../../../internal/platform/bybit/testdata/v5_market_instruments_info.linear.json)
 
 Recorded evidence:
 
-[linear](../../../internal/adapters/bybit/evidence/v5_market_instruments_info.linear.json),
-[inverse](../../../internal/adapters/bybit/evidence/v5_market_instruments_info.inverse.json);
+[linear](../../../internal/platform/bybit/evidence/v5_market_instruments_info.linear.json),
+[inverse](../../../internal/platform/bybit/evidence/v5_market_instruments_info.inverse.json);
 kept 7/890 and 4/26 rows, retaining every held contract; linear replaced for the
 HYPEUSDT coverage gap
 
@@ -211,11 +211,11 @@ HYPEUSDT coverage gap
 
 Synthetic inputs:
 
-- [v5_market_tickers.json](../../../internal/adapters/bybit/testdata/v5_market_tickers.json)
+- [v5_market_tickers.json](../../../internal/platform/bybit/testdata/v5_market_tickers.json)
 
 Recorded evidence:
 
-[v5_market_tickers.json](../../../internal/adapters/bybit/evidence/v5_market_tickers.json);
+[v5_market_tickers.json](../../../internal/platform/bybit/evidence/v5_market_tickers.json);
 6/530 whole rows, including relevant ETH/SOL/HYPE/XRP price pairs
 
 ### `v5: GET /v5/market/time`
@@ -224,11 +224,11 @@ Recorded evidence:
 
 Synthetic inputs:
 
-- [v5_market_time.json](../../../internal/adapters/bybit/testdata/v5_market_time.json)
+- [v5_market_time.json](../../../internal/platform/bybit/testdata/v5_market_time.json)
 
 Recorded evidence:
 
-[v5_market_time.json](../../../internal/adapters/bybit/evidence/v5_market_time.json);
+[v5_market_time.json](../../../internal/platform/bybit/evidence/v5_market_time.json);
 explicit public clock request, native time fields retained
 
 ### `v5: GET /v5/position/list`
@@ -237,27 +237,27 @@ explicit public clock request, native time fields retained
 
 Synthetic inputs:
 
-- [v5_position_list.inverse_cross.json](../../../internal/adapters/bybit/testdata/v5_position_list.inverse_cross.json)
-- [v5_position_list.inverse_isolated.json](../../../internal/adapters/bybit/testdata/v5_position_list.inverse_isolated.json)
-- [v5_position_list.inverse_pm.json](../../../internal/adapters/bybit/testdata/v5_position_list.inverse_pm.json)
-- [v5_position_list.linear_usdc_cross.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdc_cross.json)
-- [v5_position_list.linear_usdc_isolated.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdc_isolated.json)
-- [v5_position_list.linear_usdc_pm.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdc_pm.json)
-- [v5_position_list.linear_usdt_cross.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdt_cross.json)
-- [v5_position_list.linear_usdt_isolated.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdt_isolated.json)
-- [v5_position_list.linear_usdt_pm.json](../../../internal/adapters/bybit/testdata/v5_position_list.linear_usdt_pm.json)
-- [v5_position_list.option.json](../../../internal/adapters/bybit/testdata/v5_position_list.option.json)
+- [v5_position_list.inverse_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_cross.json)
+- [v5_position_list.inverse_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_isolated.json)
+- [v5_position_list.inverse_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_pm.json)
+- [v5_position_list.linear_usdc_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_cross.json)
+- [v5_position_list.linear_usdc_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_isolated.json)
+- [v5_position_list.linear_usdc_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_pm.json)
+- [v5_position_list.linear_usdt_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_cross.json)
+- [v5_position_list.linear_usdt_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_isolated.json)
+- [v5_position_list.linear_usdt_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_pm.json)
+- [v5_position_list.option.json](../../../internal/platform/bybit/testdata/v5_position_list.option.json)
 
 Recorded evidence:
 
 PM
-[USDT](../../../internal/adapters/bybit/evidence/v5_position_list.linear_usdt_pm.json),
-[USDC](../../../internal/adapters/bybit/evidence/v5_position_list.linear_usdc_pm.json),
-[inverse](../../../internal/adapters/bybit/evidence/v5_position_list.inverse_pm.json);
+[USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_pm.json),
+[USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_pm.json),
+[inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_pm.json);
 Cross
-[USDT](../../../internal/adapters/bybit/evidence/v5_position_list.linear_usdt_cross.json),
-[USDC](../../../internal/adapters/bybit/evidence/v5_position_list.linear_usdc_cross.json),
-[inverse](../../../internal/adapters/bybit/evidence/v5_position_list.inverse_cross.json);
+[USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_cross.json),
+[USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_cross.json),
+[inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_cross.json);
 four contract kinds, coexisting HYPEUSDT Hedge sides and One-way rows; literal
 cursors preserved
 
@@ -267,11 +267,11 @@ cursors preserved
 
 Synthetic inputs:
 
-- [v5_user_query_api.json](../../../internal/adapters/bybit/testdata/v5_user_query_api.json)
+- [v5_user_query_api.json](../../../internal/platform/bybit/testdata/v5_user_query_api.json)
 
 Recorded evidence:
 
-[v5_user_query_api.json](../../../internal/adapters/bybit/evidence/v5_user_query_api.json);
+[v5_user_query_api.json](../../../internal/platform/bybit/evidence/v5_user_query_api.json);
 readOnly=1, isMaster=true and Earn permission; identity/key/IP/label masked
 
 ## Exchange-app validation checklist

@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { getAuthMe, postAuthLogin } from "@/api/generated/sdk.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import { getAuthMe, postAuthLogin, problemMessage, refreshCsrf } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { readPreference } from "@/shared/lib/preferences";
 import { iconSize } from "@/shared/icons/iconSizes";
@@ -9,7 +8,8 @@ import { PlutusIcon } from "@/shared/icons/PlutusIcon";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput } from "@/shared/ui/FormControls";
 import { PasswordInput } from "@/shared/ui/PasswordInput";
-import styles from "@/features/pages.module.css";
+import styles from "@/features/auth/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -67,16 +67,16 @@ export function LoginPage() {
         <h1>Sign in</h1>
         <p className={styles.cardSubtitle}>Portfolio valuation and wealth analytics</p>
         {notice ? (
-          <p className={styles.notice} role="status">
+          <p className={shared.notice} role="status">
             {notice}
           </p>
         ) : null}
         {error ? (
-          <p className={styles.alert} role="alert">
+          <p className={shared.alert} role="alert">
             {error}
           </p>
         ) : null}
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Username</span>
           <TextInput
             value={username}
@@ -86,7 +86,7 @@ export function LoginPage() {
             required
           />
         </label>
-        <label className={styles.field}>
+        <label className={shared.field}>
           <span>Password</span>
           <PasswordInput
             value={password}

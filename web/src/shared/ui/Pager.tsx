@@ -1,6 +1,6 @@
 import { formatCount } from "@/shared/lib/amount";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import styles from "@/features/pages.module.css";
+import styles from "@/shared/styles/page.module.css";
 
 export function Pager({
   offset,

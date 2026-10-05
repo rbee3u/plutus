@@ -6,7 +6,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import { withChartTheme } from "@/shared/lib/chartTheme";
 import { DataTable, type DataTableProps } from "@/shared/ui/DataTable";
-import styles from "@/features/pages.module.css";
+import styles from "@/shared/styles/page.module.css";
 
 echarts.use([
   BarChart,

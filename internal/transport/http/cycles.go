@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/domain/jobs"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 func (a *API) ListCollectionCycles(ctx context.Context, request api.ListCollectionCyclesRequestObject) (api.ListCollectionCyclesResponseObject, error) {

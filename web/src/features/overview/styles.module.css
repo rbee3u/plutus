@@ -1,0 +1,394 @@
+/* Page-level classes used only by the overview feature. */
+
+/* Hero Card */
+.heroContainer {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: border-color var(--transition-base);
+}
+
+.heroCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-xl) var(--space-2xl) var(--space-md);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.heroHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.heroMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.heroTitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: var(--line-height-xs);
+}
+
+.heroAccountsBadgeAlert {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--warning-soft);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+}
+
+.heroSync {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.heroUpdatedTime,
+.heroAccountsCount {
+  color: var(--faint);
+  font-size: var(--text-xs);
+}
+
+.heroSubMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-xs);
+}
+
+.heroMetaDot {
+  color: var(--line-strong);
+  font-size: var(--text-xs);
+}
+
+.syncButton {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-md);
+}
+
+.heroBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.heroAmountRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md) var(--space-xl);
+}
+
+.heroAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: clamp(34px, 5vw, 44px);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.heroCurrencySymbol {
+  font-family: var(--font-sans);
+  font-size: 0.82em;
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  margin-right: 1px;
+}
+
+.heroBadges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.changePositive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.changeNegative {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.changeNeutral {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.changeLabel {
+  margin-left: 2px;
+  color: var(--faint);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+}
+
+.heroBoundaryNotice {
+  color: var(--faint);
+  font-size: var(--text-xs);
+}
+
+.heroChartWrapper {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--surface) 97%, var(--bg-canvas));
+  padding-top: var(--space-sm);
+}
+
+.heroChartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-2xl) 0;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.heroChartLabel {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.chartPresets {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-inset);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-soft);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chartPresets::-webkit-scrollbar {
+  display: none;
+}
+
+.chartPreset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chartPreset:hover {
+  color: var(--ink);
+}
+
+.chartPresetActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.heroChart {
+  width: 100%;
+  height: 210px;
+}
+
+.heroChartEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 210px;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.emptyHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-2xl) var(--space-xl);
+  margin: var(--space-xl) auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  max-width: 540px;
+}
+
+.emptyHeroIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--line-soft);
+}
+
+.emptyHeroTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  margin: 0 0 var(--space-xs);
+}
+
+.emptyHeroText {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: var(--line-height-md);
+  max-width: 420px;
+  margin: 0 0 var(--space-lg);
+}
+
+.emptyHeroActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.emptyHeroLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+  text-decoration: none;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.emptyHeroLink:hover {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .heroCard {
+    padding: var(--space-lg) var(--space-md) var(--space-sm);
+  }
+
+  .heroChartHeader {
+    padding: var(--space-xs) var(--space-md) 0;
+  }
+
+  .emptyHero {
+    padding: var(--space-xl) var(--space-md);
+    margin: var(--space-md) auto;
+  }
+
+  .emptyHeroActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .emptyHeroActions > * {
+    width: 100%;
+    justify-content: center;
+  }
+}

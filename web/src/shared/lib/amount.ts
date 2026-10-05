@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import type { NullableDecimal } from "@/api/generated/types.gen";
+import type { NullableDecimal } from "@/api";
 
 const UNKNOWN = "—";
 const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";

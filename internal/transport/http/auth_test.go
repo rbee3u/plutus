@@ -13,7 +13,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/auth"
+	"github.com/rbee3u/plutus/internal/app"
+	"github.com/rbee3u/plutus/internal/domain/auth"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
@@ -27,9 +28,9 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.DiscardHandler),
-		Ready:  StaticReady{},
-		Auth:   svc,
+		Logger:   slog.New(slog.DiscardHandler),
+		Ready:    StaticReady{},
+		Services: &app.Services{Auth: svc},
 	})
 
 	csrf := httptest.NewRecorder()
@@ -111,9 +112,9 @@ func TestLoginRateLimit(t *testing.T) {
 	db := mysql.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.DiscardHandler),
-		Ready:  StaticReady{},
-		Auth:   svc,
+		Logger:   slog.New(slog.DiscardHandler),
+		Ready:    StaticReady{},
+		Services: &app.Services{Auth: svc},
 	})
 	csrf := httptest.NewRecorder()
 	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
@@ -154,7 +155,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	engine := Engine(&EngineOptions{
 		Logger:            slog.New(slog.DiscardHandler),
 		Ready:             StaticReady{},
-		Auth:              svc,
+		Services:          &app.Services{Auth: svc},
 		SessionCookieName: "plutus_session_agent",
 		CSRFCookieName:    "plutus_csrf_agent",
 	})
@@ -222,9 +223,9 @@ func TestPutAuthPassword(t *testing.T) {
 	}
 
 	engine := Engine(&EngineOptions{
-		Logger: slog.New(slog.DiscardHandler),
-		Ready:  StaticReady{},
-		Auth:   svc,
+		Logger:   slog.New(slog.DiscardHandler),
+		Ready:    StaticReady{},
+		Services: &app.Services{Auth: svc},
 	})
 
 	csrf := httptest.NewRecorder()

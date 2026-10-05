@@ -6,8 +6,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/idempotency"
-	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

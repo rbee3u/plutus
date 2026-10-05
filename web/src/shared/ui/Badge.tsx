@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { Completeness, Freshness } from "@/api/generated/types.gen";
-import styles from "@/features/pages.module.css";
+import type { Completeness, Freshness } from "@/api";
+import styles from "@/shared/styles/page.module.css";
 
 export type BadgeTone = "neutral" | "good" | "warn" | "bad" | "info";
 

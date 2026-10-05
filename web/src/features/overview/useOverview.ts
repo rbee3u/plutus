@@ -1,13 +1,13 @@
-import { getOverview, getHoldingsTree } from "@/api/generated/sdk.gen";
-import type { Overview, HoldingsTree } from "@/api/generated/types.gen";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { getHoldingsTree, getOverview, keys, unwrapOrRedirect } from "@/api";
+import type { HoldingsTree, Overview } from "@/api";
+import { useSessionScope } from "@/shared/lib/session";
 import { useQuery } from "@tanstack/react-query";
 
 /** Publish the summary and ownership tree only when they describe the same point. */
 export function useOverview(portfolioId: string) {
   const { userId, redirect } = useSessionScope();
   return useQuery({
-    queryKey: ["overview", userId, portfolioId],
+    queryKey: keys.overview(userId, portfolioId),
     enabled: Boolean(userId && portfolioId),
     refetchOnReconnect: false,
     queryFn: async (): Promise<Overview & { tree: HoldingsTree }> => {

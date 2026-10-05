@@ -8,16 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/audit"
-	"github.com/rbee3u/plutus/internal/auth"
-	"github.com/rbee3u/plutus/internal/capital"
-	"github.com/rbee3u/plutus/internal/catalog"
-	"github.com/rbee3u/plutus/internal/idempotency"
-	"github.com/rbee3u/plutus/internal/identity"
-	"github.com/rbee3u/plutus/internal/jobs"
-	"github.com/rbee3u/plutus/internal/portfolio"
+	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 // problemError carries an RFC 9457 problem from a handler to the response writer.
@@ -103,26 +96,29 @@ func handlerError(c *gin.Context, err error) {
 	}
 }
 
-// classify maps well-known service errors to a status, code, and title.
+// classify maps an application error kind to a status, code, and title.
 func classify(err error) (int, string, string) {
-	switch {
-	case errors.Is(err, portfolio.ErrNotFound), errors.Is(err, identity.ErrNotFound), errors.Is(err, capital.ErrNotFound),
-		errors.Is(err, catalog.ErrNotFound), errors.Is(err, jobs.ErrNotFound), errors.Is(err, valuation.ErrNotFound), errors.Is(err, valuation.ErrNoPoint):
+	switch apperr.KindOf(err) {
+	case apperr.KindNotFound:
 		return http.StatusNotFound, "not_found", "Not found"
-	case errors.Is(err, portfolio.ErrPrecondition), errors.Is(err, identity.ErrPrecondition), errors.Is(err, capital.ErrPrecondition), errors.Is(err, catalog.ErrPrecondition):
+	case apperr.KindPrecondition:
 		return http.StatusPreconditionFailed, "precondition_failed", "Precondition failed"
-	case errors.Is(err, portfolio.ErrUndeletable):
+	case apperr.KindUndeletable:
 		return http.StatusConflict, "undeletable", "Portfolio is undeletable"
-	case errors.Is(err, portfolio.ErrConflict), errors.Is(err, identity.ErrConflict), errors.Is(err, idempotency.ErrConflict):
+	case apperr.KindConflict:
 		return http.StatusConflict, "conflict", "Conflict"
-	case errors.Is(err, identity.ErrArchived), errors.Is(err, identity.ErrConnectionEnabled), errors.Is(err, identity.ErrCredentialsMissing):
+	case apperr.KindStateConflict:
 		return http.StatusConflict, "state_conflict", "The identity state does not allow this action"
-	case errors.Is(err, identity.ErrMasterKeyRequired), errors.Is(err, identity.ErrAdapterUnavailable):
+	case apperr.KindUnprocessable:
+		return http.StatusUnprocessableEntity, "unprocessable", "The request could not be processed"
+	case apperr.KindUnavailable:
 		return http.StatusServiceUnavailable, "unavailable", "The platform connection service is unavailable"
-	case errors.Is(err, portfolio.ErrInvalidName), errors.Is(err, portfolio.ErrInvalidTimezone), errors.Is(err, portfolio.ErrInvalidInterval),
-		errors.Is(err, identity.ErrInvalid), errors.Is(err, capital.ErrInvalid), errors.Is(err, catalog.ErrInvalid), errors.Is(err, valuation.ErrInvalid),
-		errors.Is(err, jobs.ErrInvalidCursor), errors.Is(err, jobs.ErrInvalidLimit), errors.Is(err, audit.ErrInvalidPage), errors.Is(err, audit.ErrInvalidCursor):
+	case apperr.KindRateLimited:
+		return http.StatusTooManyRequests, "rate_limited", "Too many requests"
+	case apperr.KindInvalid:
 		return http.StatusBadRequest, "validation_failed", "Request validation failed"
+	case apperr.KindInternal, apperr.KindUnauthenticated, apperr.KindForbidden:
+		return 0, "", ""
 	default:
 		return 0, "", ""
 	}

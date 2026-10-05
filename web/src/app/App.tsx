@@ -1,20 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router";
-import { getAuthMe, listPortfolios } from "@/api/generated/sdk.gen";
-import { configureApiClient, refreshCsrf } from "@/api/http";
+import { configureApiClient, getAuthMe, listPortfolios, refreshCsrf } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/app/shell/navigation";
 import { RootRedirect, Shell } from "@/app/shell/Shell";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { CapitalPage } from "@/features/capital/CapitalPage";
-import { ActivityPage } from "@/features/data/ActivityPage";
-import { CatalogPage } from "@/features/data/CatalogPage";
-import { IdentitiesPage } from "@/features/data/IdentitiesPage";
-import { ValuationPointsPage } from "@/features/history/ValuationPointsPage";
-import { ValueChangesPage } from "@/features/history/ValueChangesPage";
-import { BalancesPage } from "@/features/holdings/BalancesPage";
-import { EarnPositionsPage } from "@/features/holdings/EarnPositionsPage";
-import { PositionsPage } from "@/features/holdings/PositionsPage";
+import { ActivityPage } from "@/features/manage/pages/ActivityPage";
+import { CatalogPage } from "@/features/manage/pages/CatalogPage";
+import { IdentitiesPage } from "@/features/manage/pages/IdentitiesPage";
+import { ValuationPointsPage } from "@/features/history/pages/ValuationPointsPage";
+import { ValueChangesPage } from "@/features/history/pages/ValueChangesPage";
+import { BalancesPage } from "@/features/holdings/pages/BalancesPage";
+import { EarnPositionsPage } from "@/features/holdings/pages/EarnPositionsPage";
+import { PositionsPage } from "@/features/holdings/pages/PositionsPage";
 import { OverviewPage } from "@/features/overview/OverviewPage";
 import { PortfolioSettingsPage } from "@/features/settings/PortfolioSettingsPage";
 import { SecuritySettingsPage } from "@/features/settings/SecuritySettingsPage";
@@ -125,7 +124,7 @@ function Bootstrap() {
 }
 
 function LegacySecurityRedirect() {
-  const { portfolioId } = useParams();
+  const { portfolioId = "" } = useParams();
   if (portfolioId) {
     storePreference(LAST_PORTFOLIO_KEY, portfolioId);
   }

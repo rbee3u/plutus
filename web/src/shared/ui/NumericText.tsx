@@ -1,5 +1,5 @@
 import { plainNumberText } from "@/shared/lib/amount";
-import styles from "@/features/pages.module.css";
+import styles from "@/shared/styles/page.module.css";
 
 /** Read zero-count shorthand as the rounded ordinary decimal, without adding a control. */
 export function NumericText({ children }: { children: string }) {

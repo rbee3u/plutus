@@ -1,5 +1,5 @@
-import type { Issue } from "@/api/generated/types.gen";
-import styles from "@/features/pages.module.css";
+import type { Issue } from "@/api";
+import styles from "@/shared/styles/page.module.css";
 
 /** Machine codes (issue codes, reason codes, error classes) in one mono style. */
 export function Codes({ values }: { values: string[] }) {

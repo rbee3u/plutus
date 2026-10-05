@@ -3,8 +3,8 @@ package worker
 import (
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/adapters/offline"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/platform/offline"
 )
 
 func TestMain(m *testing.M) {

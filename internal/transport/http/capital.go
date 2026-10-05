@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/capital"
-	"github.com/rbee3u/plutus/internal/idempotency"
+	"github.com/rbee3u/plutus/internal/domain/capital"
+	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

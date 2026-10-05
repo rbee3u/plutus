@@ -14,11 +14,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/collection"
+	"github.com/rbee3u/plutus/internal/domain/collection"
+	"github.com/rbee3u/plutus/internal/domain/jobs"
+	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/logging"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/jobs"
-	"github.com/rbee3u/plutus/internal/valuation"
 )
 
 const (

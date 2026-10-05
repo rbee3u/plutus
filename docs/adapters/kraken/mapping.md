@@ -1,6 +1,6 @@
 # Kraken Adapter mapping
 
-Package `internal/adapters/kraken`. Kraken supports `kraken_separate` (Separate
+Package `internal/platform/kraken`. Kraken supports `kraken_separate` (Separate
 wallets) and `kraken_unified` (Unified Wallet). Neither structure has a Margin
 Mode: validation and every batch return an empty one. Every call is a read-only
 balance, position, account, or market-data endpoint of Kraken's Spot REST API or

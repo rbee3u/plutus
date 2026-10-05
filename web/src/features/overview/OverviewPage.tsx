@@ -1,38 +1,33 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { NumericText } from "@/shared/ui/NumericText";
-import * as echarts from "echarts/core";
-import type { EChartsCoreOption } from "echarts/core";
 import { ArrowRight, Layers, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { getHistoryWindow, listValuationPoints } from "@/api/generated/sdk.gen";
-import type { CollectionCycle } from "@/api/generated/types.gen";
+import { getHistoryWindow, keys, listValuationPoints, unwrapOrRedirect } from "@/api";
+import type { HistoryWindow } from "@/api";
 import {
-  chartNumber,
   formatAmount,
   formatCount,
   formatUsd,
   isZeroDecimal,
   parseDecimal,
 } from "@/shared/lib/amount";
-import { withChartTheme } from "@/shared/lib/chartTheme";
 import { formatInstant } from "@/shared/lib/datetime";
-import { shortId } from "@/shared/lib/id";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { unwrapOrRedirect, useSessionScope } from "@/shared/lib/session";
+import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
-import { HoldingsTree } from "@/features/holdings/TreePage";
-import {
-  HISTORY_PRESETS,
-  historyGranularity,
-  type HistoryPreset,
-} from "@/features/history/useHistoryWindow";
+import { CompletenessBadge } from "@/shared/ui/Badge";
+import { HoldingsTree } from "@/features/holdings/pages/TreePage";
+import { historyGranularity, type HistoryPreset } from "@/features/history/hooks/useHistoryWindow";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { useCollectNow, isTerminalStatus } from "@/features/overview/useCollectNow";
-import { useOverview } from "@/features/overview/useOverview";
-import styles from "@/features/pages.module.css";
+import { CycleNotice } from "./components/CycleNotice";
+import { HeroChart } from "./components/HeroChart";
+import { isTerminalStatus, useCollectNow } from "./useCollectNow";
+import { useOverview } from "./useOverview";
+import styles from "@/features/overview/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 export function OverviewPage() {
   const { portfolioId = "" } = useParams();
@@ -44,28 +39,21 @@ export function OverviewPage() {
 
   const [selectedRange, setSelectedRange] = useState<HistoryPreset>("3D");
 
-  const rangeWindow = useQuery({
-    queryKey: ["overview-chart-window", userId, portfolioId, selectedRange],
-    enabled: Boolean(userId && portfolioId),
+  const rangeWindow = usePortfolioQuery<HistoryWindow>({
+    key: (userId, portfolioId) => keys.overviewChartWindow(userId, portfolioId, selectedRange),
+    ready: true,
+    load: (portfolioId) =>
+      getHistoryWindow({ path: { portfolioId }, query: { preset: selectedRange } }),
     placeholderData: keepPreviousData,
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await getHistoryWindow({
-          path: { portfolioId },
-          query: { preset: selectedRange },
-        }),
-        redirect,
-      ),
   });
 
   const rangePoints = useQuery({
-    queryKey: [
-      "overview-chart-points",
+    queryKey: keys.overviewChartPoints(
       userId,
       portfolioId,
       rangeWindow.data?.from,
       rangeWindow.data?.to,
-    ],
+    ),
     enabled: Boolean(userId && portfolioId && rangeWindow.data),
     placeholderData: keepPreviousData,
     queryFn: async () => {
@@ -86,99 +74,6 @@ export function OverviewPage() {
     () => rangePoints.data?.items ?? overview?.sparkline ?? [],
     [rangePoints.data?.items, overview?.sparkline],
   );
-
-  const chartHostRef = useRef<HTMLDivElement>(null);
-  const [themeTick, setThemeTick] = useState(0);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const observer = new MutationObserver(() => setThemeTick((value) => value + 1));
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-resolved-theme", "data-theme"],
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  const sparklineOption = useMemo((): EChartsCoreOption | null => {
-    const points = activePoints;
-    if (points.length < 2) {
-      return null;
-    }
-    return {
-      grid: {
-        left: 12,
-        right: 16,
-        top: 16,
-        bottom: 24,
-        containLabel: true,
-      },
-      tooltip: {
-        trigger: "axis",
-        valueFormatter: (_value: unknown, index: number) => {
-          const amt = formatAmount(points[index]?.totalUsd);
-          return amt === "—" ? amt : `$${amt}`;
-        },
-      },
-      xAxis: {
-        type: "category",
-        boundaryGap: false,
-        data: points.map((point) => formatInstant(point.evaluatedAt, timezone)),
-        axisLabel: {
-          hideOverlap: true,
-          showMaxLabel: true,
-          showMinLabel: true,
-          fontSize: 11,
-        },
-      },
-      yAxis: {
-        type: "value",
-        scale: true,
-        splitLine: {
-          lineStyle: {
-            opacity: 0.15,
-          },
-        },
-        axisLabel: {
-          formatter: (value: number) => {
-            if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-            if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-            return `${value}`;
-          },
-        },
-      },
-      series: [
-        {
-          type: "line",
-          name: "Total value",
-          smooth: true,
-          showSymbol: false,
-          lineStyle: {
-            width: 2.5,
-          },
-          data: points.map((point) => chartNumber(point.totalUsd)),
-          areaStyle: {
-            opacity: 0.1,
-          },
-        },
-      ],
-    };
-  }, [activePoints, timezone]);
-
-  useEffect(() => {
-    const host = chartHostRef.current;
-    if (!host || !sparklineOption) {
-      return;
-    }
-    const chart = echarts.init(host);
-    chart.setOption(withChartTheme(sparklineOption), true);
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(host);
-    return () => {
-      observer.disconnect();
-      chart.dispose();
-    };
-  }, [sparklineOption, themeTick]);
 
   const changeInsight = useMemo(() => {
     const points = activePoints;
@@ -208,8 +103,8 @@ export function OverviewPage() {
 
   if (query.isPending && !overview) {
     return (
-      <section className={styles.wide}>
-        <p className={styles.muted}>Loading the latest Valuation Point.</p>
+      <section className={shared.wide}>
+        <p className={shared.muted}>Loading the latest Valuation Point.</p>
       </section>
     );
   }
@@ -220,9 +115,9 @@ export function OverviewPage() {
     : null;
 
   return (
-    <section className={styles.wide}>
+    <section className={shared.wide}>
       {collect.error ? (
-        <p className={styles.alert} role="alert">
+        <p className={shared.alert} role="alert">
           {collect.error}
         </p>
       ) : null}
@@ -237,7 +132,7 @@ export function OverviewPage() {
         }}
       />
       {query.isFetching && overview ? (
-        <p className={styles.muted} role="status">
+        <p className={shared.muted} role="status">
           Updating the latest Valuation Point.
         </p>
       ) : null}
@@ -339,44 +234,12 @@ export function OverviewPage() {
               </article>
 
               {overview.sparkline.length >= 2 || (rangePoints.data?.items?.length ?? 0) >= 2 ? (
-                <div className={styles.heroChartWrapper}>
-                  <div className={styles.heroChartHeader}>
-                    <span className={styles.heroChartLabel}>Recent valuation trend</span>
-                    <div
-                      className={styles.chartPresets}
-                      role="tablist"
-                      aria-label="Chart time range"
-                    >
-                      {HISTORY_PRESETS.map((preset) => {
-                        const active = selectedRange === preset;
-                        return (
-                          <button
-                            key={preset}
-                            type="button"
-                            role="tab"
-                            aria-selected={active}
-                            className={active ? styles.chartPresetActive : styles.chartPreset}
-                            onClick={() => setSelectedRange(preset)}
-                          >
-                            {preset}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {sparklineOption ? (
-                    <div
-                      ref={chartHostRef}
-                      className={styles.heroChart}
-                      role="img"
-                      aria-label="Recent Valuation Points"
-                    />
-                  ) : (
-                    <div className={styles.heroChartEmpty}>
-                      No valuation points recorded for this period.
-                    </div>
-                  )}
-                </div>
+                <HeroChart
+                  points={activePoints}
+                  timezone={timezone}
+                  preset={selectedRange}
+                  onPreset={setSelectedRange}
+                />
               ) : null}
             </div>
           ) : (
@@ -449,24 +312,4 @@ function boundarySummary(contribution: string, withdrawal: string): string | nul
     parts.push(`boundary withdrawal ${formatUsd(withdrawal)}`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function CycleNotice({ cycle, timezone }: { cycle: CollectionCycle; timezone?: string }) {
-  const finished = isTerminalStatus(cycle.status);
-  return (
-    <p className={cycle.status === "failed" ? styles.alert : styles.notice} role="status">
-      Collection Cycle {shortId(cycle.id)} <StatusBadge value={cycle.status} />{" "}
-      {finished
-        ? `at ${formatInstant(cycle.finishedAt, timezone)}.`
-        : "· this page refreshes when it finishes."}
-      <NumericText>
-        {cycle.point
-          ? ` Point total ${formatUsd(cycle.point.totalUsd)} (${cycle.point.completeness}).`
-          : ""}
-      </NumericText>
-      {cycle.lastErrorClass
-        ? ` ${cycle.lastErrorClass}${cycle.lastDetail ? `: ${cycle.lastDetail}` : ""}`
-        : ""}
-    </p>
-  );
 }

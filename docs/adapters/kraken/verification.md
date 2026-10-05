@@ -142,11 +142,11 @@ to the structure used to sample them.
 
 Synthetic inputs:
 
-- [derivatives_api_v3_instruments.json](../../../internal/adapters/kraken/testdata/derivatives_api_v3_instruments.json)
+- [derivatives_api_v3_instruments.json](../../../internal/platform/kraken/testdata/derivatives_api_v3_instruments.json)
 
 Recorded evidence:
 
-[derivatives_api_v3_instruments.json](../../../internal/adapters/kraken/evidence/derivatives_api_v3_instruments.json);
+[derivatives_api_v3_instruments.json](../../../internal/platform/kraken/evidence/derivatives_api_v3_instruments.json);
 18 of 424 rows; all four held contracts; flexible perpetual/delivery and inverse
 contracts; one option metadata row does not add support or nonempty coverage
 
@@ -156,13 +156,13 @@ contracts; one option metadata row does not add support or nonempty coverage
 
 Synthetic inputs:
 
-- [derivatives_api_v3_openpositions.api_limit_exceeded.json](../../../internal/adapters/kraken/testdata/derivatives_api_v3_openpositions.api_limit_exceeded.json)
-- [derivatives_api_v3_openpositions.authentication_error.json](../../../internal/adapters/kraken/testdata/derivatives_api_v3_openpositions.authentication_error.json)
-- [derivatives_api_v3_openpositions.json](../../../internal/adapters/kraken/testdata/derivatives_api_v3_openpositions.json)
+- [derivatives_api_v3_openpositions.api_limit_exceeded.json](../../../internal/platform/kraken/testdata/derivatives_api_v3_openpositions.api_limit_exceeded.json)
+- [derivatives_api_v3_openpositions.authentication_error.json](../../../internal/platform/kraken/testdata/derivatives_api_v3_openpositions.authentication_error.json)
+- [derivatives_api_v3_openpositions.json](../../../internal/platform/kraken/testdata/derivatives_api_v3_openpositions.json)
 
 Recorded evidence:
 
-[derivatives_api_v3_openpositions.json](../../../internal/adapters/kraken/evidence/derivatives_api_v3_openpositions.json);
+[derivatives_api_v3_openpositions.json](../../../internal/platform/kraken/evidence/derivatives_api_v3_openpositions.json);
 Four nonzero long/short positions: PF DOGE/ETH, FF ETH delivery, PI ETH; epoch
 fillTime; inverse pnlCurrency absent; delivery funding null
 
@@ -172,11 +172,11 @@ fillTime; inverse pnlCurrency absent; delivery funding null
 
 Synthetic inputs:
 
-- [derivatives_api_v3_tickers.json](../../../internal/adapters/kraken/testdata/derivatives_api_v3_tickers.json)
+- [derivatives_api_v3_tickers.json](../../../internal/platform/kraken/testdata/derivatives_api_v3_tickers.json)
 
 Recorded evidence:
 
-[derivatives_api_v3_tickers.json](../../../internal/adapters/kraken/evidence/derivatives_api_v3_tickers.json);
+[derivatives_api_v3_tickers.json](../../../internal/platform/kraken/evidence/derivatives_api_v3_tickers.json);
 11 of 300 rows; all four held contracts retain markPrice and delivery/perpetual
 tags
 
@@ -186,13 +186,13 @@ tags
 
 Synthetic inputs:
 
-- [api_auth_v1_api_keys_v3_check.bad_signature.json](../../../internal/adapters/kraken/testdata/api_auth_v1_api_keys_v3_check.bad_signature.json)
-- [api_auth_v1_api_keys_v3_check.invalid_key.json](../../../internal/adapters/kraken/testdata/api_auth_v1_api_keys_v3_check.invalid_key.json)
-- [api_auth_v1_api_keys_v3_check.json](../../../internal/adapters/kraken/testdata/api_auth_v1_api_keys_v3_check.json)
+- [api_auth_v1_api_keys_v3_check.bad_signature.json](../../../internal/platform/kraken/testdata/api_auth_v1_api_keys_v3_check.bad_signature.json)
+- [api_auth_v1_api_keys_v3_check.invalid_key.json](../../../internal/platform/kraken/testdata/api_auth_v1_api_keys_v3_check.invalid_key.json)
+- [api_auth_v1_api_keys_v3_check.json](../../../internal/platform/kraken/testdata/api_auth_v1_api_keys_v3_check.json)
 
 Recorded evidence:
 
-[api_auth_v1_api_keys_v3_check.json](../../../internal/adapters/kraken/evidence/api_auth_v1_api_keys_v3_check.json);
+[api_auth_v1_api_keys_v3_check.json](../../../internal/platform/kraken/evidence/api_auth_v1_api_keys_v3_check.json);
 READ_ONLY / NO_ACCESS; nonempty iiban and accountUid are masked; ownership
 across separate captures is not proven
 
@@ -202,12 +202,12 @@ across separate captures is not proven
 
 Synthetic inputs:
 
-- [ws_v1_balances_snapshot.separate.json](../../../internal/adapters/kraken/testdata/ws_v1_balances_snapshot.separate.json)
-- [ws_v1_balances_snapshot.unified.json](../../../internal/adapters/kraken/testdata/ws_v1_balances_snapshot.unified.json)
+- [ws_v1_balances_snapshot.separate.json](../../../internal/platform/kraken/testdata/ws_v1_balances_snapshot.separate.json)
+- [ws_v1_balances_snapshot.unified.json](../../../internal/platform/kraken/testdata/ws_v1_balances_snapshot.unified.json)
 
 Recorded evidence:
 
-[ws_v1_balances_snapshot.unified.json](../../../internal/adapters/kraken/evidence/ws_v1_balances_snapshot.unified.json);
+[ws_v1_balances_snapshot.unified.json](../../../internal/platform/kraken/evidence/ws_v1_balances_snapshot.unified.json);
 unified_balances=true; nonzero Main/Coin-M/Holding; cross and isolated fields
 coexist; additional isolated_list array
 
@@ -217,11 +217,11 @@ coexist; additional isolated_list array
 
 Synthetic inputs:
 
-- [0_public_AssetPairs.json](../../../internal/adapters/kraken/testdata/0_public_AssetPairs.json)
+- [0_public_AssetPairs.json](../../../internal/platform/kraken/testdata/0_public_AssetPairs.json)
 
 Recorded evidence:
 
-[0_public_AssetPairs.json](../../../internal/adapters/kraken/evidence/0_public_AssetPairs.json);
+[0_public_AssetPairs.json](../../../internal/platform/kraken/evidence/0_public_AssetPairs.json);
 41 of 1455 rows; ETH/DOGE/XRP/USDT/BTC USD pairs and representative quotes/field
 shapes
 
@@ -231,11 +231,11 @@ shapes
 
 Synthetic inputs:
 
-- [0_public_Assets.json](../../../internal/adapters/kraken/testdata/0_public_Assets.json)
+- [0_public_Assets.json](../../../internal/platform/kraken/testdata/0_public_Assets.json)
 
 Recorded evidence:
 
-[0_public_Assets.json](../../../internal/adapters/kraken/evidence/0_public_Assets.json);
+[0_public_Assets.json](../../../internal/platform/kraken/evidence/0_public_Assets.json);
 9 of 852 rows; held currencies and legacy asset aliases preserved
 
 ### `spot: GET /0/public/Ticker`
@@ -244,11 +244,11 @@ Recorded evidence:
 
 Synthetic inputs:
 
-- [0_public_Ticker.json](../../../internal/adapters/kraken/testdata/0_public_Ticker.json)
+- [0_public_Ticker.json](../../../internal/platform/kraken/testdata/0_public_Ticker.json)
 
 Recorded evidence:
 
-[0_public_Ticker.json](../../../internal/adapters/kraken/evidence/0_public_Ticker.json);
+[0_public_Ticker.json](../../../internal/platform/kraken/evidence/0_public_Ticker.json);
 6 of 1484 rows; corresponding held-asset USD pairs and a representative field
 shape
 
@@ -258,8 +258,8 @@ shape
 
 Synthetic inputs:
 
-- [0_private_BalanceEx.separate.json](../../../internal/adapters/kraken/testdata/0_private_BalanceEx.separate.json)
-- [0_private_BalanceEx.unified.json](../../../internal/adapters/kraken/testdata/0_private_BalanceEx.unified.json)
+- [0_private_BalanceEx.separate.json](../../../internal/platform/kraken/testdata/0_private_BalanceEx.separate.json)
+- [0_private_BalanceEx.unified.json](../../../internal/platform/kraken/testdata/0_private_BalanceEx.unified.json)
 
 Recorded evidence:
 
@@ -271,16 +271,16 @@ Missing: no Separate account; not requested in the Unified round
 
 Synthetic inputs:
 
-- [0_private_Earn_Allocations.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.json)
-- [0_private_Earn_Allocations.permission_denied.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.permission_denied.json)
-- [0_private_Earn_Allocations.rate_limited.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.rate_limited.json)
-- [0_private_Earn_Allocations.throttled.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.throttled.json)
-- [0_private_Earn_Allocations.too_many_requests.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.too_many_requests.json)
-- [0_private_Earn_Allocations.unavailable.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Allocations.unavailable.json)
+- [0_private_Earn_Allocations.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.json)
+- [0_private_Earn_Allocations.permission_denied.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.permission_denied.json)
+- [0_private_Earn_Allocations.rate_limited.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.rate_limited.json)
+- [0_private_Earn_Allocations.throttled.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.throttled.json)
+- [0_private_Earn_Allocations.too_many_requests.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.too_many_requests.json)
+- [0_private_Earn_Allocations.unavailable.json](../../../internal/platform/kraken/testdata/0_private_Earn_Allocations.unavailable.json)
 
 Recorded evidence:
 
-[0_private_Earn_Allocations.json](../../../internal/adapters/kraken/evidence/0_private_Earn_Allocations.json);
+[0_private_Earn_Allocations.json](../../../internal/platform/kraken/evidence/0_private_Earn_Allocations.json);
 Four nonzero USDT allocations; instant, bonded/unbonding and timed 6/18 months;
 next_cursor null
 
@@ -290,11 +290,11 @@ next_cursor null
 
 Synthetic inputs:
 
-- [0_private_Earn_Strategies.json](../../../internal/adapters/kraken/testdata/0_private_Earn_Strategies.json)
+- [0_private_Earn_Strategies.json](../../../internal/platform/kraken/testdata/0_private_Earn_Strategies.json)
 
 Recorded evidence:
 
-[0_private_Earn_Strategies.json](../../../internal/adapters/kraken/evidence/0_private_Earn_Strategies.json);
+[0_private_Earn_Strategies.json](../../../internal/platform/kraken/evidence/0_private_Earn_Strategies.json);
 24 of 403 rows; every allocated strategy; flex/instant/bonded/timed types and
 representative terms; next_cursor null
 
@@ -304,14 +304,14 @@ representative terms; next_cursor null
 
 Synthetic inputs:
 
-- [0_private_GetApiKeyInfo.bad_signature.json](../../../internal/adapters/kraken/testdata/0_private_GetApiKeyInfo.bad_signature.json)
-- [0_private_GetApiKeyInfo.invalid_key.json](../../../internal/adapters/kraken/testdata/0_private_GetApiKeyInfo.invalid_key.json)
-- [0_private_GetApiKeyInfo.invalid_nonce.json](../../../internal/adapters/kraken/testdata/0_private_GetApiKeyInfo.invalid_nonce.json)
-- [0_private_GetApiKeyInfo.json](../../../internal/adapters/kraken/testdata/0_private_GetApiKeyInfo.json)
+- [0_private_GetApiKeyInfo.bad_signature.json](../../../internal/platform/kraken/testdata/0_private_GetApiKeyInfo.bad_signature.json)
+- [0_private_GetApiKeyInfo.invalid_key.json](../../../internal/platform/kraken/testdata/0_private_GetApiKeyInfo.invalid_key.json)
+- [0_private_GetApiKeyInfo.invalid_nonce.json](../../../internal/platform/kraken/testdata/0_private_GetApiKeyInfo.invalid_nonce.json)
+- [0_private_GetApiKeyInfo.json](../../../internal/platform/kraken/testdata/0_private_GetApiKeyInfo.json)
 
 Recorded evidence:
 
-[0_private_GetApiKeyInfo.json](../../../internal/adapters/kraken/evidence/0_private_GetApiKeyInfo.json);
+[0_private_GetApiKeyInfo.json](../../../internal/platform/kraken/evidence/0_private_GetApiKeyInfo.json);
 query-funds only; key, name, iban and IP allowlist masked
 
 ### `spot: POST /0/private/TradeBalance`
@@ -320,8 +320,8 @@ query-funds only; key, name, iban and IP allowlist masked
 
 Synthetic inputs:
 
-- [0_private_TradeBalance.separate.json](../../../internal/adapters/kraken/testdata/0_private_TradeBalance.separate.json)
-- [0_private_TradeBalance.unified.json](../../../internal/adapters/kraken/testdata/0_private_TradeBalance.unified.json)
+- [0_private_TradeBalance.separate.json](../../../internal/platform/kraken/testdata/0_private_TradeBalance.separate.json)
+- [0_private_TradeBalance.unified.json](../../../internal/platform/kraken/testdata/0_private_TradeBalance.unified.json)
 
 Recorded evidence:
 

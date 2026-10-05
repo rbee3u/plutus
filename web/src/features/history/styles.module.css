@@ -1,0 +1,185 @@
+/* Page-level classes used only by the history feature. */
+
+.rangeForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-md);
+}
+
+.toolbarField {
+  width: min(200px, 100%);
+}
+
+.historyToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.historyPresets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  width: fit-content;
+}
+
+.presetActive {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow-sm);
+  font-weight: var(--weight-medium);
+}
+
+.presetInactive {
+  color: var(--muted) !important;
+}
+
+.presetInactive:hover {
+  color: var(--ink) !important;
+}
+
+.rangeField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  flex: 0 1 240px;
+  min-width: 160px;
+}
+
+.rangeLabel {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.rangeActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-bottom: 2px;
+}
+
+.rangeTimezone {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.historyMetaNotice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.bullet {
+  color: var(--faint);
+}
+
+.detailPanel {
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-inset);
+}
+
+.periodSwitcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.periodLabel {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+}
+
+.periodSelect {
+  height: 32px;
+  min-width: 100px;
+  padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-md);
+}
+
+.customCalcPanel {
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.customCalcHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.customCalcTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.customCalcDesc {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: var(--line-height-sm);
+}
+
+@media (max-width: 768px) {
+  .historyToolbar {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .historyPresets {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .rangeActions {
+    justify-content: space-between;
+    margin-top: var(--space-xs);
+    width: 100%;
+  }
+}
+
+.inlineButton {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline dotted var(--line-strong);
+  text-underline-offset: 4px;
+}
+
+.inlineButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

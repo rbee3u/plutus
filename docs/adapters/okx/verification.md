@@ -77,21 +77,21 @@ to the structure used to sample them.
 
 Synthetic inputs:
 
-- [api_v5_account_balance.futures.json](../../../internal/adapters/okx/testdata/api_v5_account_balance.futures.json)
-- [api_v5_account_balance.mcm.json](../../../internal/adapters/okx/testdata/api_v5_account_balance.mcm.json)
-- [api_v5_account_balance.pm.json](../../../internal/adapters/okx/testdata/api_v5_account_balance.pm.json)
-- [api_v5_account_balance.spot.json](../../../internal/adapters/okx/testdata/api_v5_account_balance.spot.json)
+- [api_v5_account_balance.futures.json](../../../internal/platform/okx/testdata/api_v5_account_balance.futures.json)
+- [api_v5_account_balance.mcm.json](../../../internal/platform/okx/testdata/api_v5_account_balance.mcm.json)
+- [api_v5_account_balance.pm.json](../../../internal/platform/okx/testdata/api_v5_account_balance.pm.json)
+- [api_v5_account_balance.spot.json](../../../internal/platform/okx/testdata/api_v5_account_balance.spot.json)
 
 Recorded evidence:
 
-[api_v5_account_balance.pm.json](../../../internal/adapters/okx/evidence/api_v5_account_balance.pm.json);
+[api_v5_account_balance.pm.json](../../../internal/platform/okx/evidence/api_v5_account_balance.pm.json);
 PM; four currencies, nonzero HYPE/USDC liabilities; interest is zero;
-[api_v5_account_balance.mcm.json](../../../internal/adapters/okx/evidence/api_v5_account_balance.mcm.json),
+[api_v5_account_balance.mcm.json](../../../internal/platform/okx/evidence/api_v5_account_balance.mcm.json),
 MCM; delta fields empty, nonzero HYPE/USDC liabilities, interest zero;
-[api_v5_account_balance.futures.json](../../../internal/adapters/okx/evidence/api_v5_account_balance.futures.json),
+[api_v5_account_balance.futures.json](../../../internal/platform/okx/evidence/api_v5_account_balance.futures.json),
 Futures; nonzero equity/isoEq, account margin and currency liability fields
 empty;
-[api_v5_account_balance.spot.json](../../../internal/adapters/okx/evidence/api_v5_account_balance.spot.json),
+[api_v5_account_balance.spot.json](../../../internal/platform/okx/evidence/api_v5_account_balance.spot.json),
 Spot with USDT/ETH balances and HYPE liab=0.2; cash/equity distinct, optional
 blanks preserved
 
@@ -101,24 +101,24 @@ blanks preserved
 
 Synthetic inputs:
 
-- [api_v5_account_config.bad_signature.json](../../../internal/adapters/okx/testdata/api_v5_account_config.bad_signature.json)
-- [api_v5_account_config.futures.json](../../../internal/adapters/okx/testdata/api_v5_account_config.futures.json)
-- [api_v5_account_config.invalid_key.json](../../../internal/adapters/okx/testdata/api_v5_account_config.invalid_key.json)
-- [api_v5_account_config.mcm.json](../../../internal/adapters/okx/testdata/api_v5_account_config.mcm.json)
-- [api_v5_account_config.pm.json](../../../internal/adapters/okx/testdata/api_v5_account_config.pm.json)
-- [api_v5_account_config.spot.json](../../../internal/adapters/okx/testdata/api_v5_account_config.spot.json)
-- [api_v5_account_config.stale_timestamp.json](../../../internal/adapters/okx/testdata/api_v5_account_config.stale_timestamp.json)
-- [api_v5_account_config.wrong_passphrase.json](../../../internal/adapters/okx/testdata/api_v5_account_config.wrong_passphrase.json)
+- [api_v5_account_config.bad_signature.json](../../../internal/platform/okx/testdata/api_v5_account_config.bad_signature.json)
+- [api_v5_account_config.futures.json](../../../internal/platform/okx/testdata/api_v5_account_config.futures.json)
+- [api_v5_account_config.invalid_key.json](../../../internal/platform/okx/testdata/api_v5_account_config.invalid_key.json)
+- [api_v5_account_config.mcm.json](../../../internal/platform/okx/testdata/api_v5_account_config.mcm.json)
+- [api_v5_account_config.pm.json](../../../internal/platform/okx/testdata/api_v5_account_config.pm.json)
+- [api_v5_account_config.spot.json](../../../internal/platform/okx/testdata/api_v5_account_config.spot.json)
+- [api_v5_account_config.stale_timestamp.json](../../../internal/platform/okx/testdata/api_v5_account_config.stale_timestamp.json)
+- [api_v5_account_config.wrong_passphrase.json](../../../internal/platform/okx/testdata/api_v5_account_config.wrong_passphrase.json)
 
 Recorded evidence:
 
-[api_v5_account_config.pm.json](../../../internal/adapters/okx/evidence/api_v5_account_config.pm.json);
+[api_v5_account_config.pm.json](../../../internal/platform/okx/evidence/api_v5_account_config.pm.json);
 PM acctLv=4, net_mode, read_only; identity/IP/label masked;
-[api_v5_account_config.mcm.json](../../../internal/adapters/okx/evidence/api_v5_account_config.mcm.json),
+[api_v5_account_config.mcm.json](../../../internal/platform/okx/evidence/api_v5_account_config.mcm.json),
 MCM acctLv=3, net_mode, read_only;
-[api_v5_account_config.futures.json](../../../internal/adapters/okx/evidence/api_v5_account_config.futures.json),
+[api_v5_account_config.futures.json](../../../internal/platform/okx/evidence/api_v5_account_config.futures.json),
 Futures acctLv=2, long_short_mode, auto_transfers_ccy;
-[api_v5_account_config.spot.json](../../../internal/adapters/okx/evidence/api_v5_account_config.spot.json),
+[api_v5_account_config.spot.json](../../../internal/platform/okx/evidence/api_v5_account_config.spot.json),
 Spot acctLv=1, enableSpotBorrow=true, read_only
 
 ### `v5: GET /api/v5/account/positions`
@@ -127,20 +127,20 @@ Spot acctLv=1, enableSpotBorrow=true, read_only
 
 Synthetic inputs:
 
-- [api_v5_account_positions.futures.json](../../../internal/adapters/okx/testdata/api_v5_account_positions.futures.json)
-- [api_v5_account_positions.mcm.json](../../../internal/adapters/okx/testdata/api_v5_account_positions.mcm.json)
-- [api_v5_account_positions.pm.json](../../../internal/adapters/okx/testdata/api_v5_account_positions.pm.json)
-- [api_v5_account_positions.spot.json](../../../internal/adapters/okx/testdata/api_v5_account_positions.spot.json)
+- [api_v5_account_positions.futures.json](../../../internal/platform/okx/testdata/api_v5_account_positions.futures.json)
+- [api_v5_account_positions.mcm.json](../../../internal/platform/okx/testdata/api_v5_account_positions.mcm.json)
+- [api_v5_account_positions.pm.json](../../../internal/platform/okx/testdata/api_v5_account_positions.pm.json)
+- [api_v5_account_positions.spot.json](../../../internal/platform/okx/testdata/api_v5_account_positions.spot.json)
 
 Recorded evidence:
 
-[api_v5_account_positions.pm.json](../../../internal/adapters/okx/evidence/api_v5_account_positions.pm.json);
+[api_v5_account_positions.pm.json](../../../internal/platform/okx/evidence/api_v5_account_positions.pm.json);
 Five nonzero cross/net positions; linear/inverse perpetual/delivery; lever=0,
 liqPx empty;
-[api_v5_account_positions.mcm.json](../../../internal/adapters/okx/evidence/api_v5_account_positions.mcm.json),
+[api_v5_account_positions.mcm.json](../../../internal/platform/okx/evidence/api_v5_account_positions.mcm.json),
 MCM; five cross/net positions, lever=3; liqPx populated on three rows and empty
 on two;
-[api_v5_account_positions.futures.json](../../../internal/adapters/okx/evidence/api_v5_account_positions.futures.json),
+[api_v5_account_positions.futures.json](../../../internal/platform/okx/evidence/api_v5_account_positions.futures.json),
 Futures; same-contract isolated LONG/SHORT, cross inverse SHORT, isolated MARGIN
 HYPE liability
 
@@ -150,11 +150,11 @@ HYPE liability
 
 Synthetic inputs:
 
-- [api_v5_asset_asset_valuation.json](../../../internal/adapters/okx/testdata/api_v5_asset_asset_valuation.json)
+- [api_v5_asset_asset_valuation.json](../../../internal/platform/okx/testdata/api_v5_asset_asset_valuation.json)
 
 Recorded evidence:
 
-[api_v5_asset_asset_valuation.json](../../../internal/adapters/okx/evidence/api_v5_asset_asset_valuation.json);
+[api_v5_asset_asset_valuation.json](../../../internal/platform/okx/evidence/api_v5_asset_asset_valuation.json);
 ccy=USDT; Earn/Funding/Trading totals, no aggregate reconciliation
 
 ### `v5: GET /api/v5/asset/balances`
@@ -163,11 +163,11 @@ ccy=USDT; Earn/Funding/Trading totals, no aggregate reconciliation
 
 Synthetic inputs:
 
-- [api_v5_asset_balances.json](../../../internal/adapters/okx/testdata/api_v5_asset_balances.json)
+- [api_v5_asset_balances.json](../../../internal/platform/okx/testdata/api_v5_asset_balances.json)
 
 Recorded evidence:
 
-[api_v5_asset_balances.json](../../../internal/adapters/okx/evidence/api_v5_asset_balances.json);
+[api_v5_asset_balances.json](../../../internal/platform/okx/evidence/api_v5_asset_balances.json);
 Five nonzero balances including BETH; small ENS/NIGHT retained
 
 ### `v5: GET /api/v5/finance/savings/balance`
@@ -176,11 +176,11 @@ Five nonzero balances including BETH; small ENS/NIGHT retained
 
 Synthetic inputs:
 
-- [api_v5_finance_savings_balance.json](../../../internal/adapters/okx/testdata/api_v5_finance_savings_balance.json)
+- [api_v5_finance_savings_balance.json](../../../internal/platform/okx/testdata/api_v5_finance_savings_balance.json)
 
 Recorded evidence:
 
-[api_v5_finance_savings_balance.json](../../../internal/adapters/okx/evidence/api_v5_finance_savings_balance.json);
+[api_v5_finance_savings_balance.json](../../../internal/platform/okx/evidence/api_v5_finance_savings_balance.json);
 USDT/USDC flexible principal, earnings, loan/pending amounts
 
 ### `v5: GET /api/v5/finance/sfp/dcd/order-history`
@@ -189,12 +189,12 @@ USDT/USDC flexible principal, earnings, loan/pending amounts
 
 Synthetic inputs:
 
-- [api_v5_finance_sfp_dcd_order_history.json](../../../internal/adapters/okx/testdata/api_v5_finance_sfp_dcd_order_history.json)
-- [api_v5_finance_sfp_dcd_order_history.put.json](../../../internal/adapters/okx/testdata/api_v5_finance_sfp_dcd_order_history.put.json)
+- [api_v5_finance_sfp_dcd_order_history.json](../../../internal/platform/okx/testdata/api_v5_finance_sfp_dcd_order_history.json)
+- [api_v5_finance_sfp_dcd_order_history.put.json](../../../internal/platform/okx/testdata/api_v5_finance_sfp_dcd_order_history.put.json)
 
 Recorded evidence:
 
-[api_v5_finance_sfp_dcd_order_history.json](../../../internal/adapters/okx/evidence/api_v5_finance_sfp_dcd_order_history.json);
+[api_v5_finance_sfp_dcd_order_history.json](../../../internal/platform/okx/evidence/api_v5_finance_sfp_dcd_order_history.json);
 limit=100; LIVE Buy Low/Sell High together and a SETTLED product
 
 ### `v5: GET /api/v5/finance/staking-defi/orders-active`
@@ -203,11 +203,11 @@ limit=100; LIVE Buy Low/Sell High together and a SETTLED product
 
 Synthetic inputs:
 
-- [api_v5_finance_staking_defi_orders_active.json](../../../internal/adapters/okx/testdata/api_v5_finance_staking_defi_orders_active.json)
+- [api_v5_finance_staking_defi_orders_active.json](../../../internal/platform/okx/testdata/api_v5_finance_staking_defi_orders_active.json)
 
 Recorded evidence:
 
-[api_v5_finance_staking_defi_orders_active.json](../../../internal/adapters/okx/evidence/api_v5_finance_staking_defi_orders_active.json);
+[api_v5_finance_staking_defi_orders_active.json](../../../internal/platform/okx/evidence/api_v5_finance_staking_defi_orders_active.json);
 USDT investData amt=5, defi, state=8
 
 ### `v5: GET /api/v5/market/tickers`
@@ -216,11 +216,11 @@ USDT investData amt=5, defi, state=8
 
 Synthetic inputs:
 
-- [api_v5_market_tickers.json](../../../internal/adapters/okx/testdata/api_v5_market_tickers.json)
+- [api_v5_market_tickers.json](../../../internal/platform/okx/testdata/api_v5_market_tickers.json)
 
 Recorded evidence:
 
-[api_v5_market_tickers.json](../../../internal/adapters/okx/evidence/api_v5_market_tickers.json);
+[api_v5_market_tickers.json](../../../internal/platform/okx/evidence/api_v5_market_tickers.json);
 instType=SPOT; four of 1148 rows retained
 
 ### `v5: GET /api/v5/public/instruments`
@@ -229,13 +229,13 @@ instType=SPOT; four of 1148 rows retained
 
 Synthetic inputs:
 
-- [api_v5_public_instruments.futures.json](../../../internal/adapters/okx/testdata/api_v5_public_instruments.futures.json)
-- [api_v5_public_instruments.swap.json](../../../internal/adapters/okx/testdata/api_v5_public_instruments.swap.json)
+- [api_v5_public_instruments.futures.json](../../../internal/platform/okx/testdata/api_v5_public_instruments.futures.json)
+- [api_v5_public_instruments.swap.json](../../../internal/platform/okx/testdata/api_v5_public_instruments.swap.json)
 
 Recorded evidence:
 
-[swap](../../../internal/adapters/okx/evidence/api_v5_public_instruments.swap.json),
-[futures](../../../internal/adapters/okx/evidence/api_v5_public_instruments.futures.json);
+[swap](../../../internal/platform/okx/evidence/api_v5_public_instruments.swap.json),
+[futures](../../../internal/platform/okx/evidence/api_v5_public_instruments.futures.json);
 5/494 and 4/254 rows retained, including every held contract
 
 ### `v5: GET /api/v5/public/time`
@@ -244,11 +244,11 @@ Recorded evidence:
 
 Synthetic inputs:
 
-- [api_v5_public_time.json](../../../internal/adapters/okx/testdata/api_v5_public_time.json)
+- [api_v5_public_time.json](../../../internal/platform/okx/testdata/api_v5_public_time.json)
 
 Recorded evidence:
 
-[api_v5_public_time.json](../../../internal/adapters/okx/evidence/api_v5_public_time.json);
+[api_v5_public_time.json](../../../internal/platform/okx/evidence/api_v5_public_time.json);
 Numeric code 0, unlike string code on the other eleven responses
 
 ## Exchange-app validation checklist

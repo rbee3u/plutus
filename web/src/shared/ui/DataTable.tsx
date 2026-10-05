@@ -1,6 +1,6 @@
 import { Fragment, type MouseEvent, type ReactNode } from "react";
 import { NumericText } from "./NumericText";
-import styles from "@/features/pages.module.css";
+import styles from "@/shared/styles/page.module.css";
 
 export interface DataColumn {
   key: string;

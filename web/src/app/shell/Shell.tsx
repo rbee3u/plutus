@@ -1,10 +1,12 @@
 import { Menu as MenuIcon, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { listPortfolios, postAuthLogout } from "@/api/generated/sdk.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import { listPortfolios, postAuthLogout, problemMessage, refreshCsrf } from "@/api";
 import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
-import { HoldingsNavigationProvider, SessionLink } from "@/features/holdings/HoldingsNavigation";
+import {
+  HoldingsNavigationProvider,
+  SessionLink,
+} from "@/features/holdings/components/HoldingsNavigation";
 import { SidebarUtilities } from "@/app/shell/SidebarUtilities";
 import { UserMenu } from "@/app/shell/UserMenu";
 import {

@@ -1,10 +1,9 @@
 import { Briefcase, ChevronDown, Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { useHoldingsNavigation } from "@/features/holdings/HoldingsNavigation";
-import { createPortfolio } from "@/api/generated/sdk.gen";
-import type { Portfolio } from "@/api/generated/types.gen";
-import { problemMessage, refreshCsrf } from "@/api/http";
+import { useHoldingsNavigation } from "@/features/holdings/components/HoldingsNavigation";
+import { createPortfolio, problemMessage, refreshCsrf } from "@/api";
+import type { Portfolio } from "@/api";
 import { LAST_PORTFOLIO_KEY, isAccountPath } from "@/app/shell/navigation";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { newIdempotencyKey } from "@/shared/lib/id";
@@ -14,7 +13,7 @@ import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
 import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import styles from "@/app/shell/Shell.module.css";
-import pageStyles from "@/features/pages.module.css";
+import pageStyles from "@/shared/styles/page.module.css";
 
 export type PortfolioOption = Pick<Portfolio, "id" | "name">;
 

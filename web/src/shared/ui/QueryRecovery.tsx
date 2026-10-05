@@ -1,6 +1,6 @@
-import { problemError } from "@/api/http";
+import { problemError } from "@/api";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import styles from "@/features/pages.module.css";
+import styles from "@/shared/styles/page.module.css";
 
 export function QueryRecovery({
   error,
