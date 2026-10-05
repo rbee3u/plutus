@@ -243,7 +243,7 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 	}
 	selected := map[adapters.AccountType]bool{}
 	for _, t := range in.SelectedAccountTypes {
-		if !adapters.ValidAccountType(in.AccountStructure, t) {
+		if t != adapters.TypeManual && !adapters.ValidAccountType(in.AccountStructure, t) {
 			return Identity{}, ErrInvalid
 		}
 		selected[t] = true
@@ -275,7 +275,9 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 		}
 		return Identity{}, err
 	}
-	for _, info := range adapters.AccountTypes(in.AccountStructure) {
+	accountTypes := append(adapters.AccountTypes(in.AccountStructure), adapters.AccountTypeInfo{ID: adapters.TypeManual, Name: "Manual"})
+	selected[adapters.TypeManual] = true
+	for _, info := range accountTypes {
 		accountID, err := uuid.NewV7()
 		if err != nil {
 			return Identity{}, err
@@ -331,6 +333,9 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 		known[a.ID] = a
 	}
 	for _, patch := range in.Accounts {
+		if account, ok := known[patch.ID]; ok && account.AccountType == adapters.TypeManual && patch.Selected != nil && !*patch.Selected {
+			return Identity{}, ErrInvalid
+		}
 		if _, ok := known[patch.ID]; !ok {
 			return Identity{}, ErrNotFound
 		}
@@ -779,7 +784,7 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 			return nil, err
 		}
 		for j := range accounts {
-			if !accounts[j].Selected {
+			if !accounts[j].Selected || accounts[j].AccountType == string(adapters.TypeManual) {
 				continue
 			}
 			account, err := accountFromFields(accounts[j].ID, accounts[j].IdentityID, accounts[j].AccountType, accounts[j].DisplayName, accounts[j].Selected, accounts[j].Version)
@@ -989,7 +994,7 @@ func nullTimePtr(v sql.NullTime) *time.Time {
 func selectedTypes(accounts []Account) []adapters.AccountType {
 	var types []adapters.AccountType
 	for _, account := range accounts {
-		if account.Selected {
+		if account.Selected && account.AccountType != adapters.TypeManual {
 			types = append(types, account.AccountType)
 		}
 	}

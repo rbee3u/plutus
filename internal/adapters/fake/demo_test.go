@@ -213,6 +213,7 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, r := range future.Reports {
+		//nolint:exhaustive // Manual is application-owned and outside the private Adapter report fixture.
 		switch r.AccountType {
 		case "spot":
 			if len(r.Balances) < 60 {

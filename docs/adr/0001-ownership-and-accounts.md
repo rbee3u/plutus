@@ -12,6 +12,10 @@ Identities are unrelated. The User selects Accounts from supported Account
 Types; only selected Accounts under enabled Identities define the Portfolio
 Boundary.
 
+Every Identity also has one always-selected application-owned Manual Account,
+independent of Connection health. See
+[ADR 0019](./0019-manual-balances-and-empty-accounts.md).
+
 An Account Structure is declared at Identity creation and cannot change. A
 Margin Mode is observed during validation and every Collection Run and can
 change the report mapping without changing Accounts. Applicable structure checks
@@ -33,18 +37,18 @@ Accounts are in [product scope](../product-scope.md).
 
 ## Frontend display aliases
 
-Identity lists and creation forms use compact aliases for Account Structures
-and Margin Modes. These are accepted presentation choices, not new domain
-terms or changes to supported Accounts, API names, identifiers, or stored data.
+Identity lists and creation forms use compact aliases for Account Structures and
+Margin Modes. These are accepted presentation choices, not new domain terms or
+changes to supported Accounts, API names, identifiers, or stored data.
 
-| Platform | Account Structure aliases | Margin Mode aliases |
-| -------- | ------------------------- | ------------------- |
-| Binance | Classic Trading → Classic; Portfolio Margin → Unified | none |
-| OKX | Unified account → Unified | Spot mode → SPOT; Futures mode → FUTURES; Multi-currency margin → MCM; Portfolio margin → PM |
-| Bybit | Unified Trading Account 2.0 → Unified | Isolated Margin → ISO; Cross Margin → MCM; Portfolio Margin → PM |
-| Kraken | Separate wallets → Classic; Unified Wallet → Unified | none |
+| Platform | Account Structure aliases                             | Margin Mode aliases                                                                          |
+| -------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Binance  | Classic Trading → Classic; Portfolio Margin → Unified | none                                                                                         |
+| OKX      | Unified account → Unified                             | Spot mode → SPOT; Futures mode → FUTURES; Multi-currency margin → MCM; Portfolio margin → PM |
+| Bybit    | Unified Trading Account 2.0 → Unified                 | Isolated Margin → ISO; Cross Margin → MCM; Portfolio Margin → PM                             |
+| Kraken   | Separate wallets → Classic; Unified Wallet → Unified  | none                                                                                         |
 
-The list joins structure and mode with ` · `, using `UNKNOWN` while a mode is
+The list joins structure and mode with `·`, using `UNKNOWN` while a mode is
 unavailable for OKX or Bybit. Known aliases render before the Platform catalog
 loads. Unrecognized identifiers retain their catalog name when available,
 otherwise their raw identifier. No full-name disclosure is added. Position

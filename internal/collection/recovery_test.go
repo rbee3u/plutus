@@ -86,7 +86,7 @@ func TestCycleResumesCommittedIdentityAfterLeaseExpiry(t *testing.T) {
 		t.Fatalf("interrupted cycle has a point: %v", err)
 	}
 	rows, err := h.collection.q.ListReportsByJob(h.ctx, sqlcgen.ListReportsByJobParams{PortfolioID: h.portfolioID[:], JobID: claimed.ID[:]})
-	if err != nil || len(rows) != 3 {
+	if err != nil || len(rows) != 5 {
 		t.Fatalf("committed reports: %d %v", len(rows), err)
 	}
 	// Capture the original facts and all three kinds of holdings before recovery.
@@ -126,7 +126,7 @@ func TestCycleResumesCommittedIdentityAfterLeaseExpiry(t *testing.T) {
 	reclaimed := reclaimRecoveryCycle(h, claimed.ID)
 	h.collection.stagger = 0
 	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, reclaimed.ID)
-	if err != nil || summary.ReportCount != 4 || summary.ReportFailed != 0 || summary.IdentityCount != 2 || summary.Point.AccountCount != 4 {
+	if err != nil || summary.ReportCount != 6 || summary.ReportFailed != 0 || summary.IdentityCount != 2 || summary.Point.AccountCount != 6 {
 		t.Fatalf("recovered cycle: %+v %v", summary, err)
 	}
 	if len(first.calls) != 1 || len(second.calls) != 1 {
@@ -225,7 +225,7 @@ func TestCycleResumesLegacyPartialAccountReports(t *testing.T) {
 				t.Fatalf("retry claim: %v %v", ok, err)
 			}
 			summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, claimed.ID)
-			if err != nil || summary.ReportCount != 2 || summary.Point.TotalUSD != "100" {
+			if err != nil || summary.ReportCount != 3 || summary.Point.TotalUSD != "100" {
 				t.Fatalf("resume: %+v %v", summary, err)
 			}
 			accounts := h.accountsByType(claimed.ID, item.ID)
@@ -292,7 +292,7 @@ func TestIdentityReportsAndOutcomeRollbackTogether(t *testing.T) {
 				t.Fatal("expected outcome write failure")
 			}
 			var count int
-			if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM account_reports WHERE job_id=?", claimed.ID[:]).Scan(&count); err != nil || count != 0 {
+			if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM account_reports r JOIN accounts a ON a.id=r.account_id WHERE r.job_id=? AND a.account_type <> 'manual'", claimed.ID[:]).Scan(&count); err != nil || count != 0 {
 				t.Fatalf("reports escaped rollback: %d %v", count, err)
 			}
 			current, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)
@@ -306,7 +306,7 @@ func TestIdentityReportsAndOutcomeRollbackTogether(t *testing.T) {
 				t.Fatal(err)
 			}
 			summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, claimed.ID)
-			if err != nil || summary.ReportCount != 2 {
+			if err != nil || summary.ReportCount != 3 {
 				t.Fatalf("retry after rollback: %+v %v", summary, err)
 			}
 			if result == "authentication" && summary.Invalidated != 1 {

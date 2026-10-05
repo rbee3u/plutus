@@ -25,6 +25,9 @@ func (s *Service) cycleSummary(ctx context.Context, point valuation.Point) (Summ
 	summary := Summary{Point: point, ReportCount: len(rows), ObservationTime: point.EvaluatedAt}
 	for i := range rows {
 		r := &rows[i]
+		if r.AccountType == string(adapters.TypeManual) {
+			continue
+		}
 		key := string(r.IdentityID)
 		if identities[key] == nil {
 			identities[key] = &outcome{}

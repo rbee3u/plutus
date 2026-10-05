@@ -262,6 +262,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	eth := round(4, 2.5*f)
 	btcPrice := mustFloat(s.Price("BTC"))
 	ethPrice := mustFloat(s.Price("ETH"))
+	//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
 	switch accountType {
 	case "portfolio_margin", "trading", "unified", "main", "multi_m", "coin_m":
 		equity := round(2, usdt+btc*btcPrice+eth*ethPrice-1200*f)

@@ -125,4 +125,5 @@ DELETE j FROM jobs j
 WHERE j.status IN ('succeeded', 'failed', 'cancelled')
   AND j.finished_at IS NOT NULL AND j.finished_at < sqlc.arg(before)
   AND NOT EXISTS (SELECT 1 FROM account_reports r WHERE r.portfolio_id = j.portfolio_id AND r.job_id = j.id)
-  AND NOT EXISTS (SELECT 1 FROM valuation_points p WHERE p.portfolio_id = j.portfolio_id AND p.job_id = j.id);
+  AND NOT EXISTS (SELECT 1 FROM valuation_points p WHERE p.portfolio_id = j.portfolio_id AND p.job_id = j.id)
+  AND NOT EXISTS (SELECT 1 FROM manual_cycles m WHERE m.portfolio_id = j.portfolio_id AND m.job_id = j.id);

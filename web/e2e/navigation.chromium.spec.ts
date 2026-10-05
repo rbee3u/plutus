@@ -154,7 +154,8 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto(`/p/${portfolioId}/overview`);
     const tree = page.getByRole("list", { name: "Holdings tree at the latest Valuation Point" });
-    await expect(tree.getByRole("button")).toHaveCount(41);
+    await expect(tree.getByRole("button", { name: /^(Expand|Collapse) / })).toHaveCount(41);
+    await expect(tree.getByRole("button", { name: /^Add manual balance for / })).toHaveCount(40);
     await page.mouse.move(viewport.width - 20, viewport.height - 40);
     await page.mouse.wheel(0, 600);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);

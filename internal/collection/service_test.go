@@ -493,6 +493,12 @@ func TestRateLimitIsRetriedWithoutInvalidating(t *testing.T) {
 	}
 	accounts := h.accountsByType(jobID, item.ID)
 	for kind, a := range accounts {
+		if kind == string(adapters.TypeManual) {
+			if a.Method != valuation.MethodCalculated || a.ValueUSD == nil || *a.ValueUSD != "0" {
+				t.Fatalf("Manual should remain independent: %+v", a)
+			}
+			continue
+		}
 		if a.Method != valuation.MethodMissing || a.ValueUSD != nil || a.ErrorClass == nil || *a.ErrorClass != adapters.ClassRateLimited {
 			t.Fatalf("%s should be missing after a rate limit with no earlier report: %+v", kind, a)
 		}

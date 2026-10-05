@@ -230,7 +230,13 @@ func (s *Service) Tree(ctx context.Context, p PortfolioContext) (Tree, error) {
 			platform.Identities = append(platform.Identities, TreeIdentity{ID: a.IdentityID, DisplayName: a.IdentityName, Status: a.IdentityStatus, ConnectionStatus: a.ConnectionStatus, Completeness: CompletenessComplete})
 			identity = &platform.Identities[len(platform.Identities)-1]
 		}
-		identity.Accounts = append(identity.Accounts, TreeAccount{AccountValuation: *a})
+		empty, err := s.confirmedEmpty(ctx, a)
+		if err != nil {
+			return Tree{}, err
+		}
+		if !empty {
+			identity.Accounts = append(identity.Accounts, TreeAccount{AccountValuation: *a})
+		}
 	}
 	for pi := range out.Platforms {
 		platform := &out.Platforms[pi]
@@ -402,14 +408,18 @@ func balanceRow(ctx context.Context, book *priceBook, account *AccountValuation,
 		ListingID: id, Symbol: symbol, AssetSymbol: assetSymbol, Equity: decimal.Compact(equity),
 		AvailableToWithdraw: nullDecimal(availableToWithdraw), AvailableToTrade: nullDecimal(availableToTrade),
 		Liability: nullDecimal(liability), Interest: nullDecimal(interest), UnrealizedPnl: nullDecimal(unrealized),
-		Freshness: account.Freshness, ReportObservedAt: account.ReportObservedAt,
+		Freshness: account.Freshness, ReportObservedAt: account.ReportObservedAt, ManualModifiedAt: account.ManualModifiedAt,
 	}
 	quantity, ok := decimal.Parse(equity)
 	if !ok {
 		row.NoPrice = true
 		return row, nil
 	}
-	price, found, err := book.lookup(ctx, platform, assetSymbol, at)
+	lookup := book.lookup
+	if account.AccountType == string(adapters.TypeManual) {
+		lookup = book.lookupPlatform
+	}
+	price, found, err := lookup(ctx, platform, assetSymbol, at)
 	if err != nil {
 		return BalanceRow{}, err
 	}

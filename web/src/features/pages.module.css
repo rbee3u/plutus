@@ -1777,3 +1777,14 @@
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
+
+.treeNodeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.treeNodeRow > .treeNodeButton {
+  flex: 1;
+  min-width: 0;
+}

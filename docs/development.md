@@ -146,8 +146,8 @@ key_file = "/etc/plutus/server-key.pem"
 ```
 
 Finished-job retention includes succeeded, failed, and cancelled jobs, but never
-deletes jobs referenced by Account Reports or Valuation Points. It does not set
-a retention period for financial history.
+deletes jobs referenced by Account Reports, Valuation Points, or frozen Manual
+cycle inputs. It does not set a retention period for financial history.
 
 ### Platform proxies
 

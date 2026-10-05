@@ -84,8 +84,8 @@ func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 		t.Fatalf("summary %s", summary.String())
 	}
 	accounts := h.accountsByType(jobID, item.ID)
-	if len(accounts) != len(types) {
-		t.Fatalf("%d valued Accounts, want %d", len(accounts), len(types))
+	if len(accounts) != len(types)+1 {
+		t.Fatalf("%d valued Accounts, want %d", len(accounts), len(types)+1)
 	}
 	for _, accountType := range types {
 		a := accounts[string(accountType)]
@@ -239,7 +239,7 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 			}
 			accounts := h.accountsByType(jobID, item.ID)
 			account := accounts[string(binance.TypeUMFutures)]
-			if len(accounts) != 1 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != tc.valueUSD || account.Equity != nil || len(account.Omitted) != 0 {
+			if len(accounts) != 2 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != tc.valueUSD || account.Equity != nil || len(account.Omitted) != 0 {
 				t.Fatalf("Balances must be valued once, independently of adjusted equity: %+v", account)
 			}
 
@@ -308,7 +308,7 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 	}
 	accounts := h.accountsByType(jobID, item.ID)
 	account := accounts[string(binance.TypeCMFutures)]
-	if len(accounts) != 1 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != "22" || account.Equity != nil || account.AdjustedEquity != nil || account.AvailableEquity != nil || len(account.Omitted) != 0 {
+	if len(accounts) != 2 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != "22" || account.Equity != nil || account.AdjustedEquity != nil || account.AvailableEquity != nil || len(account.Omitted) != 0 {
 		t.Fatalf("ETH balance must be valued once at synthetic 2000 USD, independently of position notional: %+v", account)
 	}
 	view, err := h.valuation.AccountPositions(h.ctx, valuation.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}, account.AccountID)

@@ -46,6 +46,8 @@ type AccountReport struct {
 	ScopeVersion           uint16
 	MarginMode             sql.NullString
 	EarnDetailsCollected   bool
+	ManualStateJson        sqljson.Column
+	ManualModifiedAt       sql.NullTime
 }
 
 type AssetListing struct {
@@ -207,6 +209,38 @@ type Job struct {
 	StartedAt         sql.NullTime
 	FinishedAt        sql.NullTime
 	ActiveDedupeKey   sql.NullString
+}
+
+type ManualBalance struct {
+	PortfolioID []byte
+	AccountID   []byte
+	Symbol      string
+	ListingID   []byte
+	Quantity    string
+	ModifiedAt  time.Time
+}
+
+type ManualCycle struct {
+	PortfolioID []byte
+	JobID       []byte
+	CapturedAt  time.Time
+}
+
+type ManualCycleAccount struct {
+	PortfolioID  []byte
+	JobID        []byte
+	AccountID    []byte
+	Version      uint64
+	BalancesJson sqljson.Column
+	ModifiedAt   sql.NullTime
+}
+
+type ManualRevision struct {
+	PortfolioID  []byte
+	AccountID    []byte
+	Version      uint64
+	BalancesJson sqljson.Column
+	ModifiedAt   time.Time
 }
 
 type Portfolio struct {

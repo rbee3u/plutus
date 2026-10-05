@@ -329,6 +329,10 @@ export type AccountValuation = {
     maintenanceMarginRatio?: NullableDecimal;
     unifiedMarginRatio?: NullableDecimal;
     omitted: Array<OmittedBalance>;
+    /**
+     * Last user quantity adjustment, distinct from report observation time.
+     */
+    manualModifiedAt?: string | null;
 };
 
 export type TreeIdentity = {
@@ -357,6 +361,33 @@ export type HoldingsTree = {
     issues: Array<Issue>;
 };
 
+export type ManualBalance = {
+    symbol: string;
+    listingId: Uuid;
+    assetSymbol: string;
+    quantity: Decimal;
+    modifiedAt: string;
+};
+
+export type ManualBalanceState = {
+    accountId: Uuid;
+    identityId: Uuid;
+    version: number;
+    appliedVersion: number | null;
+    items: Array<ManualBalance>;
+    appliedItems: Array<ManualBalance>;
+    pending: boolean;
+};
+
+export type CreateManualBalance = {
+    symbol: string;
+    quantity: Decimal;
+};
+
+export type UpdateManualBalance = {
+    quantity: Decimal;
+};
+
 export type BalanceRow = {
     accountId: Uuid;
     accountName: string;
@@ -378,6 +409,10 @@ export type BalanceRow = {
     noPrice: boolean;
     freshness: Freshness;
     reportObservedAt?: string | null;
+    /**
+     * Last user quantity adjustment, distinct from report observation time.
+     */
+    manualModifiedAt?: string | null;
 };
 
 export type PositionRow = {
@@ -3069,3 +3104,209 @@ export type ListAuditEventsResponses = {
 };
 
 export type ListAuditEventsResponse = ListAuditEventsResponses[keyof ListAuditEventsResponses];
+
+export type GetManualBalancesData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances';
+};
+
+export type GetManualBalancesErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type GetManualBalancesError = GetManualBalancesErrors[keyof GetManualBalancesErrors];
+
+export type GetManualBalancesResponses = {
+    /**
+     * Editable manual ledger; prices and current valuation are unchanged until collection.
+     */
+    200: ManualBalanceState;
+};
+
+export type GetManualBalancesResponse = GetManualBalancesResponses[keyof GetManualBalancesResponses];
+
+export type CreateManualBalanceData = {
+    body: CreateManualBalance;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances';
+};
+
+export type CreateManualBalanceErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type CreateManualBalanceError = CreateManualBalanceErrors[keyof CreateManualBalanceErrors];
+
+export type CreateManualBalanceResponses = {
+    /**
+     * Editable manual ledger; prices and current valuation are unchanged until collection.
+     */
+    200: ManualBalanceState;
+};
+
+export type CreateManualBalanceResponse = CreateManualBalanceResponses[keyof CreateManualBalanceResponses];
+
+export type DeleteManualBalanceData = {
+    body?: never;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+        symbol: string;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}';
+};
+
+export type DeleteManualBalanceErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type DeleteManualBalanceError = DeleteManualBalanceErrors[keyof DeleteManualBalanceErrors];
+
+export type DeleteManualBalanceResponses = {
+    /**
+     * Updated manual ledger.
+     */
+    200: ManualBalanceState;
+};
+
+export type DeleteManualBalanceResponse = DeleteManualBalanceResponses[keyof DeleteManualBalanceResponses];
+
+export type UpdateManualBalanceData = {
+    body: UpdateManualBalance;
+    headers: {
+        'If-Match': string;
+        'X-CSRF-Token'?: string;
+    };
+    path: {
+        portfolioId: Uuid;
+        identityId: Uuid;
+        symbol: string;
+    };
+    query?: never;
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}';
+};
+
+export type UpdateManualBalanceErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    409: Problem;
+    /**
+     * Problem details.
+     */
+    412: Problem;
+};
+
+export type UpdateManualBalanceError = UpdateManualBalanceErrors[keyof UpdateManualBalanceErrors];
+
+export type UpdateManualBalanceResponses = {
+    /**
+     * Updated manual ledger.
+     */
+    200: ManualBalanceState;
+};
+
+export type UpdateManualBalanceResponse = UpdateManualBalanceResponses[keyof UpdateManualBalanceResponses];

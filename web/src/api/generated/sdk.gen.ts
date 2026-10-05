@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountDualPositionsData, ListAccountDualPositionsErrors, ListAccountDualPositionsResponses, ListAccountEarnPositionsData, ListAccountEarnPositionsErrors, ListAccountEarnPositionsResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetListingsData, ListAssetListingsErrors, ListAssetListingsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListInstrumentsData, ListInstrumentsErrors, ListInstrumentsResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetListingExclusionData, PutAssetListingExclusionErrors, PutAssetListingExclusionResponses, PutAssetListingMappingData, PutAssetListingMappingErrors, PutAssetListingMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
+import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreateManualBalanceData, CreateManualBalanceErrors, CreateManualBalanceResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeleteManualBalanceData, DeleteManualBalanceErrors, DeleteManualBalanceResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetManualBalancesData, GetManualBalancesErrors, GetManualBalancesResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountDualPositionsData, ListAccountDualPositionsErrors, ListAccountDualPositionsResponses, ListAccountEarnPositionsData, ListAccountEarnPositionsErrors, ListAccountEarnPositionsResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetListingsData, ListAssetListingsErrors, ListAssetListingsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListInstrumentsData, ListInstrumentsErrors, ListInstrumentsResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetListingExclusionData, PutAssetListingExclusionErrors, PutAssetListingExclusionResponses, PutAssetListingMappingData, PutAssetListingMappingErrors, PutAssetListingMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, UpdateManualBalanceData, UpdateManualBalanceErrors, UpdateManualBalanceResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -800,4 +800,64 @@ export const listAuditEvents = <ThrowOnError extends boolean = false>(options: O
         }],
     url: '/api/v1/portfolios/{portfolioId}/audit-events',
     ...options
+});
+
+/**
+ * Read editable manual balances and last applied quantities
+ */
+export const getManualBalances = <ThrowOnError extends boolean = false>(options: Options<GetManualBalancesData, ThrowOnError>): RequestResult<GetManualBalancesResponses, GetManualBalancesErrors, ThrowOnError> => (options.client ?? client).get<GetManualBalancesResponses, GetManualBalancesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances',
+    ...options
+});
+
+/**
+ * Add one manual asset without accumulating an existing balance
+ */
+export const createManualBalance = <ThrowOnError extends boolean = false>(options: Options<CreateManualBalanceData, ThrowOnError>): RequestResult<CreateManualBalanceResponses, CreateManualBalanceErrors, ThrowOnError> => (options.client ?? client).post<CreateManualBalanceResponses, CreateManualBalanceErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove a current manual balance without rewriting history
+ */
+export const deleteManualBalance = <ThrowOnError extends boolean = false>(options: Options<DeleteManualBalanceData, ThrowOnError>): RequestResult<DeleteManualBalanceResponses, DeleteManualBalanceErrors, ThrowOnError> => (options.client ?? client).delete<DeleteManualBalanceResponses, DeleteManualBalanceErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}',
+    ...options
+});
+
+/**
+ * Set a signed manual quantity; zero clears the balance
+ */
+export const updateManualBalance = <ThrowOnError extends boolean = false>(options: Options<UpdateManualBalanceData, ThrowOnError>): RequestResult<UpdateManualBalanceResponses, UpdateManualBalanceErrors, ThrowOnError> => (options.client ?? client).patch<UpdateManualBalanceResponses, UpdateManualBalanceErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });

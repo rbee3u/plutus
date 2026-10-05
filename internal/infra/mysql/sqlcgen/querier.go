@@ -7,9 +7,11 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type Querier interface {
+	AdvanceManualVersion(ctx context.Context, arg AdvanceManualVersionParams) error
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ClearIdentityCredentials(ctx context.Context, arg ClearIdentityCredentialsParams) (int64, error)
 	CountAssetListings(ctx context.Context, arg CountAssetListingsParams) (int64, error)
@@ -20,9 +22,11 @@ type Querier interface {
 	CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error)
 	DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowParams) (int64, error)
 	DeleteFinishedJobsBefore(ctx context.Context, before sql.NullTime) (int64, error)
+	DeleteManualBalance(ctx context.Context, arg DeleteManualBalanceParams) error
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
 	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
+	GetAppliedManualState(ctx context.Context, arg GetAppliedManualStateParams) (GetAppliedManualStateRow, error)
 	GetAssetListing(ctx context.Context, id []byte) (AssetListing, error)
 	GetAssetListingByPlatformSymbol(ctx context.Context, arg GetAssetListingByPlatformSymbolParams) (AssetListing, error)
 	GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error)
@@ -35,6 +39,9 @@ type Querier interface {
 	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
 	GetLatestOkReportForAccount(ctx context.Context, arg GetLatestOkReportForAccountParams) (GetLatestOkReportForAccountRow, error)
 	GetLatestValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
+	GetManualAccount(ctx context.Context, arg GetManualAccountParams) (GetManualAccountRow, error)
+	GetManualCycle(ctx context.Context, arg GetManualCycleParams) ([]byte, error)
+	GetManualModifiedAt(ctx context.Context, arg GetManualModifiedAtParams) (time.Time, error)
 	GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtParams) (Price, error)
 	GetPortfolioByID(ctx context.Context, id []byte) (Portfolio, error)
 	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (Portfolio, error)
@@ -57,6 +64,9 @@ type Querier interface {
 	InsertEarnPosition(ctx context.Context, arg InsertEarnPositionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
+	InsertManualCycle(ctx context.Context, arg InsertManualCycleParams) error
+	InsertManualCycleAccount(ctx context.Context, arg InsertManualCycleAccountParams) error
+	InsertManualRevision(ctx context.Context, arg InsertManualRevisionParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
 	InsertPosition(ctx context.Context, arg InsertPositionParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
@@ -78,6 +88,8 @@ type Querier interface {
 	ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error)
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
 	ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]Price, error)
+	ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error)
+	ListManualCycleAccounts(ctx context.Context, arg ListManualCycleAccountsParams) ([]ListManualCycleAccountsRow, error)
 	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error)
 	ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfoliosForSchedulingRow, error)
 	ListPortfoliosHoldingListing(ctx context.Context, listingID []byte) ([][]byte, error)
@@ -98,11 +110,16 @@ type Querier interface {
 	ListValuationPointSummariesByIDs(ctx context.Context, arg ListValuationPointSummariesByIDsParams) ([]ListValuationPointSummariesByIDsRow, error)
 	ListValuationPointsBetween(ctx context.Context, arg ListValuationPointsBetweenParams) ([]ValuationPoint, error)
 	LockClaimableJob(ctx context.Context, arg LockClaimableJobParams) (LockClaimableJobRow, error)
+	LockManualAccount(ctx context.Context, arg LockManualAccountParams) (LockManualAccountRow, error)
+	LockManualBoundary(ctx context.Context, portfolioID []byte) ([]LockManualBoundaryRow, error)
+	LockManualCycleJob(ctx context.Context, arg LockManualCycleJobParams) ([]byte, error)
 	MarkJobFailed(ctx context.Context, arg MarkJobFailedParams) (int64, error)
 	MarkJobRunning(ctx context.Context, arg MarkJobRunningParams) (int64, error)
 	MarkJobSucceeded(ctx context.Context, arg MarkJobSucceededParams) (int64, error)
+	PutManualBalance(ctx context.Context, arg PutManualBalanceParams) error
 	RecordIdentityCollection(ctx context.Context, arg RecordIdentityCollectionParams) error
 	RenewJobLease(ctx context.Context, arg RenewJobLeaseParams) (int64, error)
+	ReportHasHoldings(ctx context.Context, arg ReportHasHoldingsParams) (sql.NullBool, error)
 	RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error
 	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
@@ -110,6 +127,7 @@ type Querier interface {
 	SetIdentityConnectionStatus(ctx context.Context, arg SetIdentityConnectionStatusParams) (int64, error)
 	SetIdentityCredentials(ctx context.Context, arg SetIdentityCredentialsParams) (int64, error)
 	SetIdentityMarginMode(ctx context.Context, arg SetIdentityMarginModeParams) error
+	SetManualReportMetadata(ctx context.Context, arg SetManualReportMetadataParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error)

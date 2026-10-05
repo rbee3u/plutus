@@ -99,6 +99,7 @@ func (s *Service) persistPoint(ctx context.Context, point Point, accounts []Acco
 
 type priceResolver interface {
 	lookup(context.Context, string, string, time.Time) (*big.Rat, bool, error)
+	lookupPlatform(context.Context, string, string, time.Time) (*big.Rat, bool, error)
 }
 
 type priceKey struct {
@@ -117,6 +118,14 @@ type pricePoint struct {
 }
 
 func (b *priceBook) lookup(ctx context.Context, platform, assetSymbol string, at time.Time) (*big.Rat, bool, error) {
+	return b.lookupWithPolicy(ctx, platform, assetSymbol, at, false)
+}
+
+func (b *priceBook) lookupPlatform(ctx context.Context, platform, assetSymbol string, at time.Time) (*big.Rat, bool, error) {
+	return b.lookupWithPolicy(ctx, platform, assetSymbol, at, true)
+}
+
+func (b *priceBook) lookupWithPolicy(ctx context.Context, platform, assetSymbol string, at time.Time, ownPlatform bool) (*big.Rat, bool, error) {
 	switch assetSymbol {
 	case "USD", "USDT", "USDC":
 		return big.NewRat(1, 1), true, nil
@@ -141,6 +150,9 @@ func (b *priceBook) lookup(ctx context.Context, platform, assetSymbol string, at
 	}
 	if p, ok := book[assetSymbol]; ok && at.Sub(p.observedAt) <= maxPriceAge {
 		return p.value, true, nil
+	}
+	if ownPlatform {
+		return nil, false, nil
 	}
 	row, err := b.s.q.GetNearestPriceAt(ctx, sqlcgen.GetNearestPriceAtParams{AssetSymbol: assetSymbol, FilterPlatform: 0, At: at})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -282,7 +294,11 @@ func (s *Service) valueReport(ctx context.Context, book priceResolver, row *sqlc
 		if equity.Sign() == 0 {
 			continue
 		}
-		price, found, err := book.lookup(ctx, balances[i].Platform, balances[i].AssetSymbol, observedAt)
+		lookup := book.lookup
+		if item.AccountType == string(adapters.TypeManual) {
+			lookup = book.lookupPlatform
+		}
+		price, found, err := lookup(ctx, balances[i].Platform, balances[i].AssetSymbol, observedAt)
 		if err != nil {
 			return AccountValuation{}, err
 		}
@@ -307,6 +323,7 @@ func mappedSymbol(listingSymbol, assetSymbol string) string {
 }
 
 type previousAccount struct {
+	manualState  string
 	scopeVersion uint16
 	accountType  string
 	name         string
@@ -347,7 +364,7 @@ func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, e
 		if err != nil {
 			return nil, err
 		}
-		entry := previousAccount{scopeVersion: rows[i].ScopeVersion, accountType: rows[i].AccountType, name: rows[i].AccountName, identityID: identityID, identityName: rows[i].IdentityName, platform: rows[i].Platform, method: rows[i].Method}
+		entry := previousAccount{manualState: canonicalManualState(rows[i].ManualStateJson), scopeVersion: rows[i].ScopeVersion, accountType: rows[i].AccountType, name: rows[i].AccountName, identityID: identityID, identityName: rows[i].IdentityName, platform: rows[i].Platform, method: rows[i].Method}
 		if rows[i].ValueUsd.Valid {
 			if value, ok := decimal.Parse(rows[i].ValueUsd.String); ok {
 				entry.value = value
@@ -380,6 +397,12 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 			point.IncompleteAccountCount++
 		}
 		point.Issues = append(point.Issues, accountIssues(a)...)
+		if a.AccountType == string(adapters.TypeManual) && previous != nil && identityWasPresent(previous, a.IdentityID) {
+			old := previous[a.AccountID].manualState
+			if canonicalManualState([]byte(old)) != canonicalManualState([]byte(a.manualState)) {
+				point.Issues = append(point.Issues, Issue{Code: "manual_balance_changed", AccountID: &a.AccountID, AccountName: a.AccountName, Detail: "Manual quantities changed for " + a.IdentityName + "; value changes across this point include a user adjustment."})
+			}
+		}
 		if transitions[a.IdentityID] && (a.AccountType == "earn" || a.AccountType == "dual_investment") {
 			if !markedTransitions[a.IdentityID] {
 				markedTransitions[a.IdentityID] = true
@@ -387,7 +410,7 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 			}
 		}
 		if previous != nil {
-			if _, existed := previous[a.AccountID]; !existed && (!transitions[a.IdentityID] || a.AccountType != "dual_investment") {
+			if _, existed := previous[a.AccountID]; !existed && !(a.AccountType == string(adapters.TypeManual) && identityWasPresent(previous, a.IdentityID)) && (!transitions[a.IdentityID] || a.AccountType != "dual_investment") {
 				event := BoundaryEvent{AccountID: a.AccountID, AccountName: a.AccountName, IdentityID: a.IdentityID, IdentityName: a.IdentityName, Platform: a.Platform, Direction: DirectionContribution, Method: a.Method, ValueUSD: a.ValueUSD, valueRat: a.valueRat}
 				point.BoundaryEvents = append(point.BoundaryEvents, event)
 				if a.valueRat != nil {
@@ -505,6 +528,8 @@ func accountFromRow(row *sqlcgen.ListReportsByJobRow) (AccountValuation, error) 
 	}
 	item := AccountValuation{
 		ReportID:         reportID,
+		manualState:      canonicalManualState(row.ManualStateJson),
+		ManualModifiedAt: manualTime(row.ManualModifiedAt),
 		ScopeVersion:     row.ScopeVersion,
 		AccountID:        accountID,
 		AccountName:      row.AccountName,

@@ -127,10 +127,6 @@ function CreateForm({
       setError("Choose the account structure; it cannot be changed after creation.");
       return;
     }
-    if (selectedTypes.length === 0) {
-      setError("Select at least one account type; only selected accounts join the boundary.");
-      return;
-    }
     if (displayName.trim() === "") {
       setError("Display name is required.");
       return;
@@ -159,7 +155,7 @@ function CreateForm({
       }
       createKey.current = newIdempotencyKey();
       await onSaved(
-        `Identity ${result.data.displayName} created. Store its credentials, then enable the connection.`,
+        `Identity ${result.data.displayName} created. Manual balances are available; add credentials to collect Platform accounts.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The identity could not be created."));
@@ -223,6 +219,9 @@ function CreateForm({
         <legend>
           <span>Account types</span>
         </legend>
+        <p className={styles.muted}>
+          Every Identity also includes an always-selected Manual account.
+        </p>
         {structure ? null : <p className={styles.muted}>Choose the account structure first.</p>}
         <div className={styles.checkList}>
           {(structure?.accountTypes ?? []).map((type) => (
@@ -341,6 +340,7 @@ function EditForm({
           {item.accounts.map((account) => (
             <Toggle
               key={account.id}
+              disabled={account.accountType === "manual"}
               checked={selected[account.id] ?? account.selected}
               onCheckedChange={(checked) =>
                 setSelected((current) => ({ ...current, [account.id]: checked }))

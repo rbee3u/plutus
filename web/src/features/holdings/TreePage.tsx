@@ -1,6 +1,8 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { HoldingsTree as Tree } from "@/api/generated/types.gen";
+import { ManualDialog, ManualPending, type ManualTarget } from "./ManualBalances";
+import { IconButton } from "@/shared/ui/IconButton";
 import { AccountDetail } from "@/features/holdings/AccountDetail";
 import { formatAmount, parseDecimal } from "@/shared/lib/amount";
 import { iconSize } from "@/shared/icons/iconSizes";
@@ -9,6 +11,7 @@ import styles from "@/features/pages.module.css";
 
 export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree: Tree }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
   const titleId = useId();
   const totalUsdDecimal = parseDecimal(tree.totalUsd);
 
@@ -60,10 +63,23 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                       key={identity.id}
                       name={identity.displayName}
                       value={identity.valueUsd}
+                      actions={
+                        <IconButton
+                          label={`Add manual balance for ${identity.displayName}`}
+                          onClick={() => setManualTarget({ identityId: identity.id })}
+                        >
+                          <Plus size={iconSize.sm} aria-hidden="true" />
+                        </IconButton>
+                      }
                       level="identity"
                       open={expanded.has(`identity:${identity.id}`)}
                       onToggle={() => toggle(`identity:${identity.id}`)}
                     >
+                      <ManualPending
+                        portfolioId={portfolioId}
+                        identityId={identity.id}
+                        onOpen={setManualTarget}
+                      />
                       <ul className={styles.treeChildren}>
                         {identity.accounts.map((account) => (
                           <TreeNode
@@ -79,6 +95,7 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                               <AccountDetail
                                 portfolioId={portfolioId}
                                 account={account}
+                                onManual={setManualTarget}
                                 pointId={tree.context.pointId ?? ""}
                                 timezone={tree.context.timezone}
                               />
@@ -94,6 +111,11 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
           })}
         </ul>
       )}
+      <ManualDialog
+        portfolioId={portfolioId}
+        target={manualTarget}
+        onClose={() => setManualTarget(null)}
+      />
     </section>
   );
 }
@@ -108,6 +130,7 @@ function TreeNode({
   open,
   onToggle,
   children,
+  actions,
 }: {
   name: string;
   actionName?: string;
@@ -117,6 +140,7 @@ function TreeNode({
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  actions?: ReactNode;
 }) {
   const contentId = useId();
   const amount = formatAmount(value);
@@ -124,34 +148,37 @@ function TreeNode({
 
   return (
     <li className={styles.treeNode}>
-      <button
-        type="button"
-        className={`${styles.treeNodeButton} ${level === "platform" ? styles.treePlatform : level === "identity" ? styles.treeIdentity : ""}`}
-        aria-label={`${open ? "Collapse" : "Expand"} ${actionName}`}
-        aria-describedby={`${contentId}-value`}
-        aria-expanded={open}
-        aria-controls={open ? contentId : undefined}
-        onClick={onToggle}
-      >
-        <ChevronRight
-          size={iconSize.sm}
-          aria-hidden="true"
-          className={open ? styles.chevronOpen : styles.chevron}
-        />
-        <span className={styles.treeNodeText}>
-          <span className={styles.treeNodeLeft}>
-            <span className={styles.treeNodeName}>{name}</span>
-          </span>
-          <span className={styles.treeNodeRight}>
-            <span className={styles.treeNodeValue} id={`${contentId}-value`}>
-              <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
+      <div className={styles.treeNodeRow}>
+        <button
+          type="button"
+          className={`${styles.treeNodeButton} ${level === "platform" ? styles.treePlatform : level === "identity" ? styles.treeIdentity : ""}`}
+          aria-label={`${open ? "Collapse" : "Expand"} ${actionName}`}
+          aria-describedby={`${contentId}-value`}
+          aria-expanded={open}
+          aria-controls={open ? contentId : undefined}
+          onClick={onToggle}
+        >
+          <ChevronRight
+            size={iconSize.sm}
+            aria-hidden="true"
+            className={open ? styles.chevronOpen : styles.chevron}
+          />
+          <span className={styles.treeNodeText}>
+            <span className={styles.treeNodeLeft}>
+              <span className={styles.treeNodeName}>{name}</span>
             </span>
-            {showPercent ? (
-              <span className={styles.treeNodeBadge}>{percent.toFixed(1)}%</span>
-            ) : null}
+            <span className={styles.treeNodeRight}>
+              <span className={styles.treeNodeValue} id={`${contentId}-value`}>
+                <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
+              </span>
+              {showPercent ? (
+                <span className={styles.treeNodeBadge}>{percent.toFixed(1)}%</span>
+              ) : null}
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+        {actions}
+      </div>
       {open ? <div id={contentId}>{children}</div> : null}
     </li>
   );

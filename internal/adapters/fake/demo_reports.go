@@ -154,6 +154,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 		r.EarnDetailsCollected = kind == "earn"
 		return r
 	}
+	//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
 	switch kind {
 	case "earn":
 		demoEarn(&r, d, anchor, at)

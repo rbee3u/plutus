@@ -32,6 +32,9 @@ identifies a record, not an implementation priority or proof of completion.
 | [0017](./0017-history-windows-and-pagination.md)   | Explicit history windows and independent pagination                                 |
 | [0018](./0018-earn-position-presentation.md)       | Earn product granularity, qualified metadata, legacy summaries, and shared Observed |
 
+| [0019](./0019-manual-balances-and-empty-accounts.md) | Fixed signed Manual
+ledger, frozen cycle inputs, adjustment intervals, and confirmed empty display |
+
 ## Maintenance
 
 Keep these identifiers stable after this reorganization. Update the relevant

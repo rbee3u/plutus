@@ -23,11 +23,14 @@ Overview presents the latest total, recent Valuation Points, and the ownership
 Tree. Each node presents a name and adjacent USD value without repeated counts
 or status badges. Its default rows show Platform and Identity; expanding an
 Identity shows Accounts, and expanding an Account shows report measures and
-holding details. Balances remain visible even when empty. Futures, Earn, and
-Dual Investment details appear when held; loading and collection failures remain
-explicit inside Account details. Report provenance is available in a folded
-Report details section. Page-level Issues explain omissions even when Accounts
-are folded.
+holding details. Confirmed empty Account nodes are hidden after fresh successful
+complete zero valuation with no nonzero Balances or Positions of any kind.
+Uncertain, stale, failed, and offsetting holdings remain visible. Hiding changes
+no selection or history. Balances sections remain available within visible
+nodes. Futures, Earn, and Dual Investment details appear when held; loading and
+collection failures remain explicit inside Account details. Report provenance is
+available in a folded Report details section. Page-level Issues explain
+omissions even when Accounts are folded.
 
 Holdings presents separate Balances, Futures, Earn, and Dual Investment tables,
 each with independent view filters. Balances is the default view. Earn presents
@@ -60,14 +63,23 @@ and Account Types. Offered scope is distinct from exchange-app validation; see
 | Kraken   | Separate wallets             | none                                                             | main, multi-m, coin-m, derivatives holding, earn                                                    |
 | Kraken   | Unified Wallet               | none                                                             | main, coin-m, derivatives holding, earn                                                             |
 
+Each Identity also owns a fixed, always-selected Manual Account, independent of
+Connection health. It supplements API-uncovered signed quantities using public
+Platform prices; it is not an additional exchange Account Structure. Overview
+Identity rows and Manual Balances headings, and the Holdings Balances toolbar,
+share an editor. Pending changes are separate from current Valuation Point
+quantities and values. See
+[ADR 0019](./adr/0019-manual-balances-and-empty-accounts.md).
+
 ## Product boundaries
 
 - Only selected Accounts are collected and valued. Main and sub-account logins
   are separate Identities, each with its own read-only credentials.
 - USD is the only Valuation Asset. USDT and USDC count as 1 USD; other
   stablecoins are priced normally.
-- Capital Flows are manual; selection changes are implicit flows. Value Change
-  is an absolute amount, not an investment return.
+- Capital Flows are manual; selection changes are implicit flows. Manual
+  quantity adjustments create no flow and make crossing comparisons incomplete.
+  Value Change is an absolute amount, not an investment return.
 - Trading, transfers, trade history, automatic deposit import, percentage
   returns, attribution, non-USD display, and Exposure aggregation are out of
   scope. Options, unlisted products and structures, shared Portfolios, public

@@ -17,6 +17,11 @@ Missing endpoints and unvalued flows or boundary amounts remain explicit. Scope
 reclassification and differing relevant exclusion policies make affected
 comparisons incomplete rather than producing fabricated flows.
 
+Effective Manual quantity adjustments generate no flow and mark crossing
+comparisons incomplete while retaining the calculated difference. Price-only
+changes and edits reverted before collection do not mark adjustments. See
+[ADR 0019](./0019-manual-balances-and-empty-accounts.md).
+
 ## Reason and trade-offs
 
 Observation plus manual flows answers how total value changed without trade

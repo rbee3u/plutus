@@ -100,7 +100,13 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 			}
 		}
 	}
-	if !slices.Equal(treeAccounts, wantAccounts) {
+	var visibleAccounts []uuid.UUID
+	for _, account := range accounts {
+		if account.AccountType != string(adapters.TypeManual) {
+			visibleAccounts = append(visibleAccounts, account.AccountID)
+		}
+	}
+	if !slices.Equal(treeAccounts, visibleAccounts) {
 		t.Fatal("Tree order differs from management order")
 	}
 	overview, err := h.valuation.Overview(h.ctx, pctx)

@@ -40,8 +40,8 @@ independent of the quoting Asset.
 Valuation amounts, flows, and differences express currency without redundant
 double-denomination. Prominent summary totals (such as Hero and summary cards),
 hierarchical tree nodes, signed performance badges, and chart tooltips use the
-currency symbol prefix (`$`, `+$`, `-$`). Tabular views declare the unit in
-the column header (e.g., `Value (USD)`, `Equity (USD)`) with unadorned numeric
+currency symbol prefix (`$`, `+$`, `-$`). Tabular views declare the unit in the
+column header (e.g., `Value (USD)`, `Equity (USD)`) with unadorned numeric
 cells. Trailing currency codes (`USD`) are not appended when a currency symbol
 is already present, avoiding redundant `$ ... USD` duplication.
 

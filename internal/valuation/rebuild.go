@@ -143,7 +143,7 @@ func (s *Service) rebuildPrevious(ctx context.Context, portfolioID, jobID uuid.U
 func previousFromAccounts(accounts []AccountValuation) map[uuid.UUID]previousAccount {
 	previous := make(map[uuid.UUID]previousAccount, len(accounts))
 	for _, a := range accounts {
-		entry := previousAccount{scopeVersion: a.ScopeVersion, accountType: a.AccountType, name: a.AccountName, identityID: a.IdentityID, identityName: a.IdentityName, platform: a.Platform, method: a.Method}
+		entry := previousAccount{manualState: a.manualState, scopeVersion: a.ScopeVersion, accountType: a.AccountType, name: a.AccountName, identityID: a.IdentityID, identityName: a.IdentityName, platform: a.Platform, method: a.Method}
 		if a.ValueUSD != nil {
 			entry.value, _ = decimal.Parse(*a.ValueUSD)
 		}

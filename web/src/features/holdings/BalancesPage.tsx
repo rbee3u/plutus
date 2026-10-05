@@ -1,3 +1,8 @@
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { ManualActions, ManualDialog, ManualPending, type ManualTarget } from "./ManualBalances";
+import { ActionButton } from "@/shared/ui/ActionButton";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { listBalances } from "@/api/generated/sdk.gen";
@@ -46,8 +51,15 @@ export function BalancesPage() {
       ),
   });
   const data = query.data;
+  const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
   return (
     <section className={styles.wide}>
+      <div className={styles.headingRow}>
+        <h2>Balances</h2>
+        <ActionButton tone="secondary" onClick={() => setManualTarget({ identityId })}>
+          <Plus size={iconSize.sm} aria-hidden="true" /> Add manual balance
+        </ActionButton>
+      </div>
       <QueryRecovery
         error={query.error}
         hasData={Boolean(data)}
@@ -107,12 +119,23 @@ export function BalancesPage() {
                 }
               : column,
           ),
+          ...((data?.items ?? []).some((item) => item.accountType === "manual")
+            ? [{ key: "actions", header: "Actions" }]
+            : []),
         ]}
         rows={(data?.items ?? []).map((item) => ({
           ...balanceRow(item, data?.context.timezone, data?.issues),
           platform: platformLabel(filters.platforms.data?.items, item.platform),
           identityName: item.identityName,
           accountName: item.accountName,
+          actions:
+            item.accountType === "manual" ? (
+              <ManualActions
+                identityId={item.identityId}
+                symbol={item.symbol}
+                onOpen={setManualTarget}
+              />
+            ) : undefined,
         }))}
         empty={
           query.isPending
@@ -134,6 +157,27 @@ export function BalancesPage() {
           />
         ) : null}
       </HoldingsFilterFooter>
+      {filters.identities.data?.items
+        .filter(
+          (item) =>
+            item.status !== "archived" &&
+            (!identityId || item.id === identityId) &&
+            (!platform || item.platform === platform),
+        )
+        .map((item) => (
+          <ManualPending
+            key={item.id}
+            portfolioId={portfolioId}
+            identityId={item.id}
+            name={item.displayName}
+            onOpen={setManualTarget}
+          />
+        ))}
+      <ManualDialog
+        portfolioId={portfolioId}
+        target={manualTarget}
+        onClose={() => setManualTarget(null)}
+      />
       {data?.context.pointId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these balances." />
       ) : null}

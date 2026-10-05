@@ -65,7 +65,7 @@ func (f *rebuildFixture) accounts(types ...adapters.AccountType) map[string]uuid
 	}
 	out := map[string]uuid.UUID{}
 	for _, a := range item.Accounts {
-		if a.Selected {
+		if a.Selected && a.AccountType != adapters.TypeManual {
 			out[string(a.AccountType)] = a.ID
 		}
 	}

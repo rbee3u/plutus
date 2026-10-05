@@ -21,8 +21,11 @@ type AccountStructure string
 // Structure. Plutus observes it from the Platform; only some Account Structures have one.
 type MarginMode string
 
-// AccountType is one collectable account within an Account Structure.
+// AccountType is a Platform account or the application-owned Manual account.
 type AccountType string
+
+// TypeManual is managed by Plutus and must never be passed to an Adapter.
+const TypeManual AccountType = "manual"
 
 // Supported Platforms.
 const (
@@ -292,6 +295,11 @@ type Adapter interface {
 	Validate(ctx context.Context, creds Credentials, structure AccountStructure) (ValidationResult, error)
 	// Collect returns one AccountReport per requested Account with balances, positions, and prices.
 	Collect(ctx context.Context, creds Credentials, structure AccountStructure, accounts []AccountType) (Batch, error)
+}
+
+// MarketData reads normalized public prices independently of private credentials.
+type MarketData interface {
+	CollectPrices(context.Context, []string) ([]Price, error)
 }
 
 // Registry maps Platform codes to adapters.

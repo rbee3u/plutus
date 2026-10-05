@@ -35,8 +35,8 @@ func TestMigrateUpAndSeeds(t *testing.T) {
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME <> 'goose_db_version'").Scan(&tables); err != nil {
 		t.Fatal(err)
 	}
-	if tables != 20 {
-		t.Fatalf("base tables %d, want 20", tables)
+	if tables != 24 {
+		t.Fatalf("base tables %d, want 24", tables)
 	}
 }
 

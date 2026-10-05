@@ -180,7 +180,7 @@ func (q *Queries) ListRebuildPrices(ctx context.Context, arg ListRebuildPricesPa
 const listRebuildReports = `-- name: ListRebuildReports :many
 SELECT r.id, r.portfolio_id, r.job_id, r.account_id, r.scope_version, r.margin_mode, r.status, r.observed_at, r.error_class, r.error_detail,
        r.equity, r.adjusted_equity, r.available_equity, r.initial_margin_ratio, r.maintenance_margin_ratio, r.unified_margin_ratio,
-       r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at,
+       r.value_usd, r.method, r.source_report_id, r.omitted_json, r.created_at, r.manual_state_json, r.manual_modified_at,
        a.identity_id, a.account_type, a.display_name AS account_name, a.selected, i.platform, i.display_name AS identity_name,
        i.status AS identity_status, i.connection_status, i.account_structure,
        src.margin_mode AS source_margin_mode, src.observed_at AS source_observed_at, src.equity AS source_equity, src.adjusted_equity AS source_adjusted_equity,
@@ -221,6 +221,8 @@ type ListRebuildReportsRow struct {
 	SourceReportID               []byte
 	OmittedJson                  sqljson.Column
 	CreatedAt                    time.Time
+	ManualStateJson              sqljson.Column
+	ManualModifiedAt             sql.NullTime
 	IdentityID                   []byte
 	AccountType                  string
 	AccountName                  string
@@ -282,6 +284,8 @@ func (q *Queries) ListRebuildReports(ctx context.Context, arg ListRebuildReports
 			&i.SourceReportID,
 			&i.OmittedJson,
 			&i.CreatedAt,
+			&i.ManualStateJson,
+			&i.ManualModifiedAt,
 			&i.IdentityID,
 			&i.AccountType,
 			&i.AccountName,

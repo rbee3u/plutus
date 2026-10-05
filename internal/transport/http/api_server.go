@@ -12,6 +12,7 @@ import (
 	"github.com/rbee3u/plutus/internal/idempotency"
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/manual"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 	"github.com/rbee3u/plutus/internal/valuation"
@@ -32,6 +33,7 @@ type API struct {
 	Adapters          *adapters.Registry
 	Catalog           *catalog.Service
 	Capital           *capital.Service
+	Manual            *manual.Service
 	Valuation         *valuation.Service
 	Jobs              *jobs.Service
 	Audit             *audit.Service

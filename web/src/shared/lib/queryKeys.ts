@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 /** Query families that read from Valuation Points and change after a Collection Cycle. */
 export const PORTFOLIO_READ_KEYS = [
   "overview",
+  "manual-balances",
   "holdings-tree",
   "balances",
   "positions",

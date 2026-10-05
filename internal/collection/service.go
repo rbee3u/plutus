@@ -19,6 +19,7 @@ import (
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
+	"github.com/rbee3u/plutus/internal/manual"
 	"github.com/rbee3u/plutus/internal/valuation"
 )
 
@@ -50,6 +51,7 @@ type Service struct {
 	sleep       func(context.Context, time.Duration) error
 	adapters    *adapters.Registry
 	identities  *identity.Service
+	manual      *manual.Service
 	catalog     *catalog.Service
 	valuation   *valuation.Service
 	stagger     time.Duration
@@ -60,7 +62,7 @@ type Service struct {
 // NewService constructs a cycle runner.
 func NewService(db *sql.DB, opts Options) *Service {
 	s := &Service{
-		db: db, q: sqlcgen.New(db), now: time.Now, sleep: sleepCtx,
+		db: db, q: sqlcgen.New(db), now: time.Now, sleep: sleepCtx, manual: manual.NewService(db),
 		adapters: opts.Adapters, identities: opts.Identities, catalog: opts.Catalog, valuation: opts.Valuation,
 		stagger: opts.Stagger, retryDelays: opts.RetryDelays, logger: opts.Logger,
 	}
@@ -137,6 +139,13 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 		}
 		reported[id] = true
 	}
+	manualInputs, err := s.manual.Freeze(ctx, portfolioID, jobID)
+	if err != nil {
+		return Summary{}, err
+	}
+	if err := s.collectManual(ctx, portfolioID, jobID, manualInputs, reported); err != nil {
+		return Summary{}, err
+	}
 	boundary, err := s.identities.ListBoundary(ctx, portfolioID)
 	if err != nil {
 		return Summary{}, err
@@ -174,7 +183,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 	now := s.now().UTC()
 	for i := range boundary {
 		account := &boundary[i]
-		if reported[account.ID] {
+		if reported[account.ID] || account.AccountType == adapters.TypeManual {
 			continue
 		}
 		detail := "The identity's connection is " + account.ConnectionStatus + "; the account was not collected this cycle."

@@ -88,6 +88,8 @@ func (p *Point) Completeness() string {
 
 // AccountValuation is one Account's report and value at a point.
 type AccountValuation struct {
+	ManualModifiedAt       *time.Time
+	manualState            string
 	ScopeVersion           uint16
 	ReportID               uuid.UUID
 	AccountID              uuid.UUID
@@ -218,6 +220,7 @@ type BalanceRow struct {
 	NoPrice             bool
 	Freshness           string
 	ReportObservedAt    *time.Time
+	ManualModifiedAt    *time.Time
 	equityUSDRat        *big.Rat
 }
 

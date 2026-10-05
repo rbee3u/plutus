@@ -56,3 +56,26 @@ func TestHistoricalPriceSelection(t *testing.T) {
 		})
 	}
 }
+
+func TestManualHistoricalPricesRequireOwnPlatform(t *testing.T) {
+	at := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name  string
+		ownAt time.Time
+		quote string
+		want  bool
+	}{
+		{"exact expiry", at.Add(-maxPriceAge), "USD", true},
+		{"expired", at.Add(-maxPriceAge - time.Microsecond), "USD", false},
+		{"future", at.Add(time.Microsecond), "USD", false},
+		{"invalid quote", at, "EUR", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			book := newHistoricalPrices(nil, []sqlcgen.Price{{Platform: "binance", AssetSymbol: "BTC", ObservedAt: tc.ownAt, Price: "10", QuoteSymbol: tc.quote}, {Platform: "okx", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteSymbol: "USD"}})
+			_, found, err := book.lookupPlatform(context.Background(), "binance", "BTC", at)
+			if err != nil || found != tc.want {
+				t.Fatalf("qualified price found=%v err=%v", found, err)
+			}
+		})
+	}
+}

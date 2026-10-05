@@ -61,4 +61,4 @@ export function accountSummary(total: number, stale: number, incomplete: number)
 }
 
 /** Shown wherever a read needs a Valuation Point and the Portfolio has none yet. */
-export const NO_POINT = "No Valuation Point yet. Enable a connection and run a Collection Cycle.";
+export const NO_POINT = "No Valuation Point yet. Run a Collection Cycle to create the first point.";

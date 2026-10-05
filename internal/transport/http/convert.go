@@ -148,6 +148,7 @@ func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 		Completeness:           api.Completeness(v.Completeness()),
 		ValueUsd:               v.ValueUSD,
 		ReportObservedAt:       v.ReportObservedAt,
+		ManualModifiedAt:       v.ManualModifiedAt,
 		Equity:                 v.Equity,
 		AdjustedEquity:         v.AdjustedEquity,
 		AvailableEquity:        v.AvailableEquity,
@@ -186,7 +187,7 @@ func toAPIBalanceRows(rows []valuation.BalanceRow) []api.BalanceRow {
 			Equity: r.Equity, AvailableToWithdraw: r.AvailableToWithdraw, AvailableToTrade: r.AvailableToTrade,
 			Liability: r.Liability, Interest: r.Interest, UnrealizedPnl: r.UnrealizedPnl,
 			PriceUsd: r.PriceUSD, EquityUsd: r.EquityUSD, NoPrice: r.NoPrice,
-			Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt,
+			Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt, ManualModifiedAt: r.ManualModifiedAt,
 		})
 	}
 	return out

@@ -23,6 +23,7 @@ import (
 	"github.com/rbee3u/plutus/internal/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/jobs"
+	"github.com/rbee3u/plutus/internal/manual"
 	"github.com/rbee3u/plutus/internal/portfolio"
 	httpserver "github.com/rbee3u/plutus/internal/transport/http"
 	"github.com/rbee3u/plutus/internal/valuation"
@@ -103,6 +104,7 @@ func runServe(cmd *cobra.Command) error {
 		options.Identities = services.identities
 		options.Catalog = services.catalog
 		options.Capital = services.capital
+		options.Manual = services.manual
 		options.Valuation = services.valuation
 		options.Jobs = services.jobs
 		options.Audit = services.audit
@@ -118,6 +120,7 @@ type services struct {
 	identities  *identity.Service
 	catalog     *catalog.Service
 	capital     *capital.Service
+	manual      *manual.Service
 	valuation   *valuation.Service
 	collection  *collection.Service
 	jobs        *jobs.Service
@@ -139,6 +142,7 @@ func newServices(db *sql.DB, cfg *config.Config, registry *adapters.Registry, lo
 		identities: identities,
 		catalog:    catalogSvc,
 		capital:    capital.NewService(db),
+		manual:     manual.NewService(db),
 		valuation:  valuationSvc,
 		collection: collection.NewService(db, collection.Options{
 			Adapters:   registry,

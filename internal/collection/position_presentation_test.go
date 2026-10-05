@@ -33,6 +33,9 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 		t.Fatalf("row filters changed boundary total: %+v %v", filtered, err)
 	}
 	for _, account := range h.accountsByType(first.Point.JobID, item.ID) {
+		if account.AccountType == string(adapters.TypeManual) {
+			continue
+		}
 		historical, err := h.valuation.AccountPositionsAt(h.ctx, pctx, account.AccountID, &first.Point.ID)
 		if err != nil || len(historical.Positions) != 1 || historical.Positions[0].PositionMode == nil || *historical.Positions[0].PositionMode != "one_way" {
 			t.Fatalf("historical %+v %v", historical, err)

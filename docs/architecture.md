@@ -85,6 +85,42 @@ other infrastructure failures can interrupt collection before a point exists.
 The full stale, scope, completeness, and value rules are in
 [domain model](../CONTEXT.md#collection-and-account-reports).
 
+## Manual persistence and collection
+
+`internal/manual` owns the current signed ledger, immutable revisions, and
+version-guarded audited mutations. Appended migrations create one Manual Account
+for existing Identities and increment Identity versions without modifying old
+reports or points. New Identity creation and seeds include it automatically.
+
+Before Platform reads, the runner locks the job and Manual boundary Accounts,
+then atomically writes `manual_cycles` and `manual_cycle_accounts`, including
+empty ledgers. Retry loads this persisted selection. Ledger mutations serialize
+on the Manual Account version. One cycle reports each frozen Account as a
+successful complete set with its selected quantity signature and user-modified
+time. Reports and metadata commit together. Finished jobs with frozen Manual
+inputs are retained by job cleanup.
+
+The separate `MarketData` capability fetches public prices without credentials
+or private preflight, grouped by Platform and needed Manual Assets. Failure
+leaves quantities and eligible cached prices available for valuation; no private
+collection success is inferred. Manual reports never enter Adapter Collect or
+private Identity success counters. Manual prices use only the own-Platform
+lookup in live valuation, Balance reads, and rebuilds; the existing pricing
+discrepancy below remains for other Accounts and Capital Flows.
+
+The quantity signature excludes timestamps and mapping. Adjacent effective
+changes create `manual_balance_changed` issues, which mark crossing Value Change
+intervals incomplete without manufacturing flows. The writer and rebuild share
+this logic. Existing Identity continuity suppresses the first Manual boundary
+entry; ordinary new Identity and archive boundaries remain signed.
+
+The ledger API returns current and last-applied quantities, versions, and
+pending state. The shared UI editor fetches the current version before editing.
+Pending changes, including deletions, have a separate quantity table without old
+USD values. Excluded records remain in the editor. Overview tests complete zero
+value and actual report holdings before hiding Account nodes; all stored Account
+counts, selection, and boundary events remain unchanged.
+
 ## Adapter boundary
 
 Adapters accept typed credentials, Account Structure, and selected Account
@@ -457,8 +493,9 @@ Implemented capabilities and integration gaps belong in
 ## Known implementation discrepancy
 
 The [pricing decision](./adr/0003-valuation-and-catalog.md) requires
-same-Platform prices. Account valuation currently prefers that Platform but
-falls back to the latest eligible price across Platforms. Capital Flow valuation
+same-Platform prices. Exchange Account valuation currently prefers that Platform
+but falls back to the latest eligible price across Platforms. Manual Account
+valuation enforces own-Platform prices without fallback. Capital Flow valuation
 queries prices across Platforms directly. Both enforce at-or-before time and the
 24-hour age limit. See [Account price lookup](../internal/valuation/write.go)
 and [Capital Flow valuation](../internal/capital/service.go).

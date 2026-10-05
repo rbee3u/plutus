@@ -114,7 +114,7 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 				t.Fatal("lease renewal failure did not cancel collection")
 			}
 			var count int
-			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports WHERE job_id=?", job.ID[:]).Scan(&count); err != nil || count != 0 {
+			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports r JOIN accounts a ON a.id=r.account_id WHERE r.job_id=? AND a.account_type <> 'manual'", job.ID[:]).Scan(&count); err != nil || count != 0 {
 				t.Fatalf("lost owner wrote reports: %d %v", count, err)
 			}
 		})

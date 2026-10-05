@@ -64,11 +64,28 @@ product terms must also have documented field meanings and units. These facts
 are needed to avoid omitted or double-counted principal and premature removal of
 holdings.
 
-The owner currently cannot purchase this product. Real Dual holdings and
-exchange-app reconciliation therefore remain unavailable, but that alone would
-not prevent a contract-based implementation with independent synthetic tests. No
-Dual endpoint, response fixture, recorded evidence, or selectable Account has
-been added from guessed field names or product screenshots.
+The owner purchased a 100 USD Dual Investment. On 2026-10-05, explicit recording
+with the existing recording credentials checked the current interfaces:
+
+| Capture (UTC) | Interface                       | Observed result                                            |
+| ------------- | ------------------------------- | ---------------------------------------------------------- |
+| 08:02:47      | Unified Main WebSocket balances | USD 33.7841; Main portfolio value 158.15 USD               |
+| 08:03:24      | Spot BalanceEx                  | ZUSD 33.7841; `hold_trade` 0                               |
+| 08:03:57      | Earn Allocations                | Three USDT allocations; no USD principal; null next cursor |
+
+Together with the owner's subscription confirmation, these observations show
+that Main and Earn currently omit that 100 USD principal. Main's aggregate
+includes other assets and is not the subscription amount. Manual can supplement
+the omission, with user cleanup after settlement. This narrow principal-coverage
+check does not complete exchange-app totals, simultaneous wallet reconciliation,
+product lifecycle, or settlement validation.
+
+The sanitized review groups remain under `/tmp/plutus/kraken-dual-check/kraken/`
+with group IDs `20261005T080247Z-2728805597`, `20261005T080324Z-1206188283`, and
+`20261005T080357Z-2917705898`. They have not been promoted into repository
+evidence, and do not replace or upgrade the 2026-10-01 accepted responses.
+Temporary files are not durable evidence links. No guessed Dual endpoint,
+fixture, or selectable exchange Account was added.
 
 ## Important observations
 

@@ -255,9 +255,9 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	}
 	for i := range points {
 		for _, issue := range points[i].Issues {
-			if issue.Code == "account_scope_changed" {
+			if issue.Code == "account_scope_changed" || issue.Code == "manual_balance_changed" {
 				change.Completeness = CompletenessIncomplete
-				change.Reasons = append(change.Reasons, "account_scope_changed: "+issue.Detail)
+				change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
 			}
 		}
 		for j := range points[i].BoundaryEvents {

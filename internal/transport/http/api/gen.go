@@ -721,31 +721,34 @@ type AccountTypeInfo struct {
 
 // AccountValuation defines model for AccountValuation.
 type AccountValuation struct {
-	AccountId              UUID                   `json:"accountId"`
-	AccountName            string                 `json:"accountName"`
-	AccountType            string                 `json:"accountType"`
-	AdjustedEquity         *NullableDecimal       `json:"adjustedEquity,omitempty"`
-	AvailableEquity        *NullableDecimal       `json:"availableEquity,omitempty"`
-	Completeness           Completeness           `json:"completeness"`
-	ConnectionStatus       *string                `json:"connectionStatus,omitempty"`
-	Equity                 *NullableDecimal       `json:"equity,omitempty"`
-	ErrorClass             *string                `json:"errorClass,omitempty"`
-	ErrorDetail            *string                `json:"errorDetail,omitempty"`
-	Freshness              Freshness              `json:"freshness"`
-	IdentityId             UUID                   `json:"identityId"`
-	IdentityName           string                 `json:"identityName"`
-	IdentityStatus         *string                `json:"identityStatus,omitempty"`
-	InitialMarginRatio     *NullableDecimal       `json:"initialMarginRatio,omitempty"`
-	MaintenanceMarginRatio *NullableDecimal       `json:"maintenanceMarginRatio,omitempty"`
-	Method                 AccountValuationMethod `json:"method"`
-	Omitted                []OmittedBalance       `json:"omitted"`
-	Platform               string                 `json:"platform"`
-	ReportId               *openapi_types.UUID    `json:"reportId,omitempty"`
-	ReportObservedAt       *time.Time             `json:"reportObservedAt,omitempty"`
-	Selected               bool                   `json:"selected"`
-	Status                 AccountValuationStatus `json:"status"`
-	UnifiedMarginRatio     *NullableDecimal       `json:"unifiedMarginRatio,omitempty"`
-	ValueUsd               *NullableDecimal       `json:"valueUsd,omitempty"`
+	AccountId              UUID             `json:"accountId"`
+	AccountName            string           `json:"accountName"`
+	AccountType            string           `json:"accountType"`
+	AdjustedEquity         *NullableDecimal `json:"adjustedEquity,omitempty"`
+	AvailableEquity        *NullableDecimal `json:"availableEquity,omitempty"`
+	Completeness           Completeness     `json:"completeness"`
+	ConnectionStatus       *string          `json:"connectionStatus,omitempty"`
+	Equity                 *NullableDecimal `json:"equity,omitempty"`
+	ErrorClass             *string          `json:"errorClass,omitempty"`
+	ErrorDetail            *string          `json:"errorDetail,omitempty"`
+	Freshness              Freshness        `json:"freshness"`
+	IdentityId             UUID             `json:"identityId"`
+	IdentityName           string           `json:"identityName"`
+	IdentityStatus         *string          `json:"identityStatus,omitempty"`
+	InitialMarginRatio     *NullableDecimal `json:"initialMarginRatio,omitempty"`
+	MaintenanceMarginRatio *NullableDecimal `json:"maintenanceMarginRatio,omitempty"`
+
+	// ManualModifiedAt Last user quantity adjustment, distinct from report observation time.
+	ManualModifiedAt   *time.Time             `json:"manualModifiedAt,omitempty"`
+	Method             AccountValuationMethod `json:"method"`
+	Omitted            []OmittedBalance       `json:"omitted"`
+	Platform           string                 `json:"platform"`
+	ReportId           *openapi_types.UUID    `json:"reportId,omitempty"`
+	ReportObservedAt   *time.Time             `json:"reportObservedAt,omitempty"`
+	Selected           bool                   `json:"selected"`
+	Status             AccountValuationStatus `json:"status"`
+	UnifiedMarginRatio *NullableDecimal       `json:"unifiedMarginRatio,omitempty"`
+	ValueUsd           *NullableDecimal       `json:"valueUsd,omitempty"`
 }
 
 // AccountValuationMethod defines model for AccountValuation.Method.
@@ -832,12 +835,15 @@ type BalanceRow struct {
 	Interest            *NullableDecimal `json:"interest,omitempty"`
 	Liability           *NullableDecimal `json:"liability,omitempty"`
 	ListingId           UUID             `json:"listingId"`
-	NoPrice             bool             `json:"noPrice"`
-	Platform            string           `json:"platform"`
-	PriceUsd            *NullableDecimal `json:"priceUsd,omitempty"`
-	ReportObservedAt    *time.Time       `json:"reportObservedAt,omitempty"`
-	Symbol              string           `json:"symbol"`
-	UnrealizedPnl       *NullableDecimal `json:"unrealizedPnl,omitempty"`
+
+	// ManualModifiedAt Last user quantity adjustment, distinct from report observation time.
+	ManualModifiedAt *time.Time       `json:"manualModifiedAt,omitempty"`
+	NoPrice          bool             `json:"noPrice"`
+	Platform         string           `json:"platform"`
+	PriceUsd         *NullableDecimal `json:"priceUsd,omitempty"`
+	ReportObservedAt *time.Time       `json:"reportObservedAt,omitempty"`
+	Symbol           string           `json:"symbol"`
+	UnrealizedPnl    *NullableDecimal `json:"unrealizedPnl,omitempty"`
 }
 
 // BoundaryEvent defines model for BoundaryEvent.
@@ -964,6 +970,12 @@ type CreateIdentityRequest struct {
 	DisplayName          string   `json:"displayName"`
 	Platform             string   `json:"platform"`
 	SelectedAccountTypes []string `json:"selectedAccountTypes"`
+}
+
+// CreateManualBalance defines model for CreateManualBalance.
+type CreateManualBalance struct {
+	Quantity Decimal `json:"quantity"`
+	Symbol   string  `json:"symbol"`
 }
 
 // CreatePortfolioRequest defines model for CreatePortfolioRequest.
@@ -1273,6 +1285,26 @@ type LoginRequest struct {
 	Username string `json:"username"`
 }
 
+// ManualBalance defines model for ManualBalance.
+type ManualBalance struct {
+	AssetSymbol string    `json:"assetSymbol"`
+	ListingId   UUID      `json:"listingId"`
+	ModifiedAt  time.Time `json:"modifiedAt"`
+	Quantity    Decimal   `json:"quantity"`
+	Symbol      string    `json:"symbol"`
+}
+
+// ManualBalanceState defines model for ManualBalanceState.
+type ManualBalanceState struct {
+	AccountId      UUID            `json:"accountId"`
+	AppliedItems   []ManualBalance `json:"appliedItems"`
+	AppliedVersion *uint64         `json:"appliedVersion"`
+	IdentityId     UUID            `json:"identityId"`
+	Items          []ManualBalance `json:"items"`
+	Pending        bool            `json:"pending"`
+	Version        uint64          `json:"version"`
+}
+
 // MarginModeInfo defines model for MarginModeInfo.
 type MarginModeInfo struct {
 	Id   string `json:"id"`
@@ -1563,6 +1595,11 @@ type TreePlatform struct {
 
 // UUID defines model for UUID.
 type UUID = openapi_types.UUID
+
+// UpdateManualBalance defines model for UpdateManualBalance.
+type UpdateManualBalance struct {
+	Quantity Decimal `json:"quantity"`
+}
 
 // User defines model for User.
 type User struct {
@@ -1907,6 +1944,24 @@ type EnableIdentityConnectionParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
+// CreateManualBalanceParams defines parameters for CreateManualBalance.
+type CreateManualBalanceParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// DeleteManualBalanceParams defines parameters for DeleteManualBalance.
+type DeleteManualBalanceParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// UpdateManualBalanceParams defines parameters for UpdateManualBalance.
+type UpdateManualBalanceParams struct {
+	IfMatch    IfMatch    `json:"If-Match"`
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
 // ValidateIdentityConnectionParams defines parameters for ValidateIdentityConnection.
 type ValidateIdentityConnectionParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
@@ -2006,6 +2061,12 @@ type PatchIdentityJSONRequestBody = PatchIdentityRequest
 
 // PutIdentityCredentialsJSONRequestBody defines body for PutIdentityCredentials for application/json ContentType.
 type PutIdentityCredentialsJSONRequestBody = PutCredentialsRequest
+
+// CreateManualBalanceJSONRequestBody defines body for CreateManualBalance for application/json ContentType.
+type CreateManualBalanceJSONRequestBody = CreateManualBalance
+
+// UpdateManualBalanceJSONRequestBody defines body for UpdateManualBalance for application/json ContentType.
+type UpdateManualBalanceJSONRequestBody = UpdateManualBalance
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -2144,6 +2205,18 @@ type ServerInterface interface {
 	// EnableIdentityConnection Validate and enable the connection for scheduling
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
 	EnableIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params EnableIdentityConnectionParams)
+	// GetManualBalances Read editable manual balances and last applied quantities
+	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
+	GetManualBalances(c *gin.Context, portfolioId PortfolioID, identityId IdentityID)
+	// CreateManualBalance Add one manual asset without accumulating an existing balance
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
+	CreateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params CreateManualBalanceParams)
+	// DeleteManualBalance Remove a current manual balance without rewriting history
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol})
+	DeleteManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, symbol string, params DeleteManualBalanceParams)
+	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
+	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol})
+	UpdateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, symbol string, params UpdateManualBalanceParams)
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
 	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
@@ -4551,6 +4624,298 @@ func (siw *ServerInterfaceWrapper) EnableIdentityConnection(c *gin.Context) {
 	siw.Handler.EnableIdentityConnection(c, portfolioId, identityId, params)
 }
 
+// GetManualBalances operation middleware
+func (siw *ServerInterfaceWrapper) GetManualBalances(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetManualBalances(c, portfolioId, identityId)
+}
+
+// CreateManualBalance operation middleware
+func (siw *ServerInterfaceWrapper) CreateManualBalance(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateManualBalanceParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateManualBalance(c, portfolioId, identityId, params)
+}
+
+// DeleteManualBalance operation middleware
+func (siw *ServerInterfaceWrapper) DeleteManualBalance(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "symbol" -------------
+	var symbol string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "symbol", c.Param("symbol"), &symbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteManualBalanceParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteManualBalance(c, portfolioId, identityId, symbol, params)
+}
+
+// UpdateManualBalance operation middleware
+func (siw *ServerInterfaceWrapper) UpdateManualBalance(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "symbol" -------------
+	var symbol string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "symbol", c.Param("symbol"), &symbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateManualBalanceParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateManualBalance(c, portfolioId, identityId, symbol, params)
+}
+
 // ValidateIdentityConnection operation middleware
 func (siw *ServerInterfaceWrapper) ValidateIdentityConnection(c *gin.Context) {
 
@@ -5219,6 +5584,10 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/audit-events", wrapper.ListAuditEvents)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.GetManualBalances)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.CreateManualBalance)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:symbol", wrapper.DeleteManualBalance)
+	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:symbol", wrapper.UpdateManualBalance)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -8249,6 +8618,489 @@ func (response EnableIdentityConnection503ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
+type GetManualBalancesRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+}
+
+type GetManualBalancesResponseObject interface {
+	VisitGetManualBalancesResponse(w http.ResponseWriter) error
+}
+
+type GetManualBalances200ResponseHeaders struct {
+	ETag *string
+}
+
+type GetManualBalances200JSONResponse struct {
+	Body    ManualBalanceState
+	Headers GetManualBalances200ResponseHeaders
+}
+
+func (response GetManualBalances200JSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetManualBalances400ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances401ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances401ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances403ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances404ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances409ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances409ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalances412ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances412ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalanceRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      CreateManualBalanceParams
+	Body        *CreateManualBalanceJSONRequestBody
+}
+
+type CreateManualBalanceResponseObject interface {
+	VisitCreateManualBalanceResponse(w http.ResponseWriter) error
+}
+
+type CreateManualBalance200ResponseHeaders struct {
+	ETag *string
+}
+
+type CreateManualBalance200JSONResponse struct {
+	Body    ManualBalanceState
+	Headers CreateManualBalance200ResponseHeaders
+}
+
+func (response CreateManualBalance200JSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateManualBalance400ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance401ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance403ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance404ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance409ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance409ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalance412ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance412ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalanceRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Symbol      string      `json:"symbol"`
+	Params      DeleteManualBalanceParams
+}
+
+type DeleteManualBalanceResponseObject interface {
+	VisitDeleteManualBalanceResponse(w http.ResponseWriter) error
+}
+
+type DeleteManualBalance200ResponseHeaders struct {
+	ETag *string
+}
+
+type DeleteManualBalance200JSONResponse struct {
+	Body    ManualBalanceState
+	Headers DeleteManualBalance200ResponseHeaders
+}
+
+func (response DeleteManualBalance200JSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteManualBalance400ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance401ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance401ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance403ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance404ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance404ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance409ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance409ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalance412ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance412ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalanceRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Symbol      string      `json:"symbol"`
+	Params      UpdateManualBalanceParams
+	Body        *UpdateManualBalanceJSONRequestBody
+}
+
+type UpdateManualBalanceResponseObject interface {
+	VisitUpdateManualBalanceResponse(w http.ResponseWriter) error
+}
+
+type UpdateManualBalance200ResponseHeaders struct {
+	ETag *string
+}
+
+type UpdateManualBalance200JSONResponse struct {
+	Body    ManualBalanceState
+	Headers UpdateManualBalance200ResponseHeaders
+}
+
+func (response UpdateManualBalance200JSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateManualBalance400ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance401ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance403ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance404ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance409ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance409ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateManualBalance412ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance412ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ValidateIdentityConnectionRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -9213,6 +10065,18 @@ type StrictServerInterface interface {
 	// EnableIdentityConnection Validate and enable the connection for scheduling
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
 	EnableIdentityConnection(ctx context.Context, request EnableIdentityConnectionRequestObject) (EnableIdentityConnectionResponseObject, error)
+	// GetManualBalances Read editable manual balances and last applied quantities
+	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
+	GetManualBalances(ctx context.Context, request GetManualBalancesRequestObject) (GetManualBalancesResponseObject, error)
+	// CreateManualBalance Add one manual asset without accumulating an existing balance
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
+	CreateManualBalance(ctx context.Context, request CreateManualBalanceRequestObject) (CreateManualBalanceResponseObject, error)
+	// DeleteManualBalance Remove a current manual balance without rewriting history
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol})
+	DeleteManualBalance(ctx context.Context, request DeleteManualBalanceRequestObject) (DeleteManualBalanceResponseObject, error)
+	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
+	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol})
+	UpdateManualBalance(ctx context.Context, request UpdateManualBalanceRequestObject) (UpdateManualBalanceResponseObject, error)
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
 	ValidateIdentityConnection(ctx context.Context, request ValidateIdentityConnectionRequestObject) (ValidateIdentityConnectionResponseObject, error)
@@ -10595,6 +11459,133 @@ func (sh *strictHandler) EnableIdentityConnection(ctx *gin.Context, portfolioId 
 	}
 }
 
+// GetManualBalances operation middleware
+func (sh *strictHandler) GetManualBalances(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID) {
+	var request GetManualBalancesRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetManualBalances(ctx, request.(GetManualBalancesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetManualBalances")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetManualBalancesResponseObject); ok {
+		if err := validResponse.VisitGetManualBalancesResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateManualBalance operation middleware
+func (sh *strictHandler) CreateManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params CreateManualBalanceParams) {
+	var request CreateManualBalanceRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	var body CreateManualBalanceJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateManualBalance(ctx, request.(CreateManualBalanceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateManualBalance")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(CreateManualBalanceResponseObject); ok {
+		if err := validResponse.VisitCreateManualBalanceResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteManualBalance operation middleware
+func (sh *strictHandler) DeleteManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, symbol string, params DeleteManualBalanceParams) {
+	var request DeleteManualBalanceRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Symbol = symbol
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteManualBalance(ctx, request.(DeleteManualBalanceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteManualBalance")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(DeleteManualBalanceResponseObject); ok {
+		if err := validResponse.VisitDeleteManualBalanceResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateManualBalance operation middleware
+func (sh *strictHandler) UpdateManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, symbol string, params UpdateManualBalanceParams) {
+	var request UpdateManualBalanceRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Symbol = symbol
+	request.Params = params
+
+	var body UpdateManualBalanceJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateManualBalance(ctx, request.(UpdateManualBalanceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateManualBalance")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(UpdateManualBalanceResponseObject); ok {
+		if err := validResponse.VisitUpdateManualBalanceResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ValidateIdentityConnection operation middleware
 func (sh *strictHandler) ValidateIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams) {
 	var request ValidateIdentityConnectionRequestObject
@@ -10971,154 +11962,162 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"JDgPToL7D/f/fwA=",
+	"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",
+	"jqK793f/fwA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

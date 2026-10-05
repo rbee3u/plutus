@@ -38,6 +38,11 @@ Implemented capabilities include:
 - Earn product details and source-aware rates/rewards, with shared Earn and Dual
   Investment observation badges; see
   [the delivery report](./docs/adapters/earn-presentation-delivery.md).
+- Fixed Manual Accounts for signed API-uncovered quantities, versioned edits,
+  frozen cycle inputs, separate pending changes, and confirmed empty Overview
+  Account hiding. See
+  [the decision](./docs/adr/0019-manual-balances-and-empty-accounts.md) and
+  [delivery report](./docs/adapters/manual-balances-delivery.md).
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
   audit views, and one deterministic Alice development dataset with healthy,
   edge-case, large-list and empty Portfolios. See the
@@ -52,7 +57,10 @@ Platform coverage notes: [Binance](./docs/adapters/binance/verification.md),
 [Kraken](./docs/adapters/kraken/verification.md).
 
 Kraken Dual Investment remains unsupported: the public API review has not found
-a documented read-only holdings contract. See the
+a documented read-only holdings contract. The 2026-10-05 Main/Earn check
+confirmed the owner-reported 100 USD subscription principal was omitted; Manual
+can record that uncovered amount. This is not full exchange-app reconciliation.
+See the
 [contract review](./docs/adapters/kraken/verification.md#dual-investment-contract-review).
 
 The implementation also has an unresolved

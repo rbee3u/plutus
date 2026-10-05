@@ -62,6 +62,19 @@ func eligiblePrice(p historicalPrice, at time.Time) bool {
 	return p.value != nil && usdQuote(p.quote) && at.Sub(p.at) <= maxPriceAge
 }
 
+// lookupPlatform enforces Manual pricing without the ordinary cross-Platform fallback.
+func (h *historicalPrices) lookupPlatform(_ context.Context, platform, symbol string, at time.Time) (*big.Rat, bool, error) {
+	switch symbol {
+	case "USD", "USDT", "USDC":
+		return big.NewRat(1, 1), true, nil
+	}
+	series := h.platform[priceAsset{platform: platform, symbol: symbol}]
+	if i := latestPrice(series, at); i >= 0 && eligiblePrice(series[i], at) {
+		return series[i].value, true, nil
+	}
+	return nil, false, nil
+}
+
 func (h *historicalPrices) lookup(ctx context.Context, platform, symbol string, at time.Time) (*big.Rat, bool, error) {
 	switch symbol {
 	case "USD", "USDT", "USDC":

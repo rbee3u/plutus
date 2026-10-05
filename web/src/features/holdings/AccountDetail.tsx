@@ -1,3 +1,7 @@
+import { Plus } from "lucide-react";
+import { ManualActions, type ManualTarget } from "./ManualBalances";
+import { IconButton } from "@/shared/ui/IconButton";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -33,11 +37,13 @@ export function AccountDetail({
   account,
   pointId,
   timezone,
+  onManual,
 }: {
   portfolioId: string;
   account: AccountValuation;
   pointId: string;
   timezone?: string;
+  onManual?: (target: ManualTarget) => void;
 }) {
   const { userId, redirect } = useSessionScope();
   const accountId = account.accountId;
@@ -51,11 +57,12 @@ export function AccountDetail({
         pointId,
       ),
   });
+  const isManual = account.accountType === "manual";
   const isDual = account.accountType === "dual_investment";
   const isEarn = account.accountType === "earn";
   const positions = useQuery({
     queryKey: ["account-positions", userId, portfolioId, accountId, pointId, account.reportId],
-    enabled: Boolean(userId && portfolioId && accountId && !isDual && !isEarn),
+    enabled: Boolean(userId && portfolioId && accountId && !isDual && !isEarn && !isManual),
     queryFn: async () =>
       checkAccountReport(
         unwrapOrRedirect(
@@ -114,13 +121,37 @@ export function AccountDetail({
           void balances.refetch();
         }}
       />
-      <h3 className={styles.accountSectionTitle}>Balances</h3>
+      <div className={styles.headingRow}>
+        <h3 className={styles.accountSectionTitle}>Balances</h3>
+        {isManual && onManual ? (
+          <IconButton
+            label="Add manual balance"
+            onClick={() => onManual({ identityId: account.identityId })}
+          >
+            <Plus size={iconSize.sm} aria-hidden="true" />
+          </IconButton>
+        ) : null}
+      </div>
+      {isManual && account.manualModifiedAt ? (
+        <p className={styles.muted}>
+          Quantities last edited {formatInstant(account.manualModifiedAt, timezone)}. Collection
+          time is shown below.
+        </p>
+      ) : null}
       <DataTable
         caption={`Balances of ${account.accountName}`}
-        columns={BALANCE_COLUMNS}
-        rows={(balances.data?.items ?? []).map((item) =>
-          balanceRow(item, balances.data?.context.timezone, balances.data?.issues),
-        )}
+        columns={
+          isManual && onManual
+            ? [...BALANCE_COLUMNS, { key: "actions", header: "Actions" }]
+            : BALANCE_COLUMNS
+        }
+        rows={(balances.data?.items ?? []).map((item) => ({
+          ...balanceRow(item, balances.data?.context.timezone, balances.data?.issues),
+          actions:
+            isManual && onManual ? (
+              <ManualActions identityId={item.identityId} symbol={item.symbol} onOpen={onManual} />
+            ) : undefined,
+        }))}
         empty={
           balances.isPending
             ? "Loading balances."
@@ -191,6 +222,7 @@ export function AccountDetail({
         </>
       ) : !isDual &&
         !isEarn &&
+        !isManual &&
         (!positions.isSuccess || positions.data.items.length > 0 || positions.isError) ? (
         <>
           <QueryRecovery

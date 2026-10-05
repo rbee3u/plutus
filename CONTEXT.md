@@ -23,10 +23,12 @@ with separate Connections; a main-account key does not collect sub-accounts. An
 Identity is not a User, Account, API key, or Connection.
 
 **Account Type**: A kind of wallet, trading account, or product account an
-Adapter knows how to collect within an Account Structure.
+Adapter knows how to collect within an Account Structure. The application-owned
+`manual` Account Type is independent of the Adapter catalog.
 
 **Account**: One Account Type selected by the User for an Identity. Only
-selected Accounts are collected and valued.
+selected Accounts are collected and valued. Every Identity also has one fixed,
+always-selected Manual Account for user-entered signed quantities.
 
 **Portfolio Boundary**: Selected Accounts under enabled Identities. Value
 outside the boundary is invisible to Plutus. View filters do not change it; a
@@ -76,8 +78,9 @@ reports observed Margin Modes. A runtime Platform payload is not an Observation.
 ## Collection and Account Reports
 
 **Collection Cycle**: One scheduled or manual pass over a Portfolio's enabled
-Connections, producing one Valuation Point after collection and valuation
-complete. Avoid "refresh", "sync", or "snapshot" as synonyms.
+Identities, producing one Valuation Point after collection and valuation
+complete. Private collection uses enabled Connections; Manual Accounts do not
+require a usable Connection. Avoid "refresh", "sync", or "snapshot" as synonyms.
 
 **Collection Run**: Work for one Connection within a Collection Cycle. The cycle
 records success or failure for every Account in its boundary, including skipped
@@ -88,11 +91,11 @@ a cycle before its point is written.
 with its Platform observation time. Observations have no editing API; later runs
 produce new facts. They are distinct from raw responses and derived values.
 
-**Account Report**: One Account's aligned Observation in a Collection Run:
-collection outcome, reported equity when available, fixed Plutus-defined
-account-level measures, Balances, Positions, Earn Positions, and Dual Positions.
-It is not a synonym for equity or a generic snapshot. Adapters map measures by
-meaning and leave unsupported values null.
+**Account Report**: One Account's aligned collection facts: collection outcome,
+reported equity when available, fixed Plutus-defined account-level measures,
+Balances, Positions, Earn Positions, and Dual Positions. It is not a synonym for
+equity or a generic snapshot. Adapters map measures by meaning and leave
+unsupported values null.
 
 **Balance**: An Asset Listing's equity in an Account Report, with availability,
 liability, and unrealized-profit measures. Quantity or holding is not a synonym
@@ -140,6 +143,40 @@ fresh report can lack prices.
 
 Platform reads are not atomic snapshots. Accounts and interfaces may observe
 different instants, including temporary settlement gaps or double counts.
+
+## Manual balances
+
+A **Manual Account** belongs to one Identity and records quantities missing from
+its Platform API. It remains selected with disabled, invalid, or unconfigured
+Connections. Identity archive removes it from the boundary; history and current
+records remain. External bank assets are outside the offered scope.
+
+One normalized Asset code has one current signed quantity. Duplicate addition
+requires editing; zero clears it. Negative quantities represent liabilities or
+offsets. Revisions are immutable. Saving waits for the next Collection Cycle,
+which freezes its input selection before Platform reads; retries use that same
+selection. Manual complete-set reports are distinct from exchange Observations,
+with collection time separate from last user modification time. Successful
+Manual reports do not count as successful private Identity collection.
+
+Manual uses calculated valuation and eligible own-Platform public prices, even
+for Assets held only in Manual. USD, USDT, and USDC count as 1 USD. Missing
+prices retain signed quantities, name omissions, and make totals incomplete.
+Mapping and Listing Exclusions apply; excluded current records remain editable.
+
+Effective quantity changes mark comparisons crossing their Valuation Point
+incomplete while retaining their computed difference. They do not create Capital
+Flows. No-op edits, price changes, and edits reverted before collection do not
+mark adjustments. Existing Identities initially add Manual as zero continuity,
+including first nonzero recording; new Identity entry and archive retain signed
+boundary rules. Users clear or adjust Manual when the API includes settled
+amounts; Plutus does not infer settlement or prevent that double counting.
+
+Current editable and pending quantities are displayed separately from collected
+Balance values. Accounts hide from Overview only after a fresh successful
+complete zero valuation confirms no nonzero Balances or holdings of any kind.
+Stale, failed, unknown, and offsetting holdings remain visible. Hiding changes
+neither selection nor the Portfolio Boundary or history.
 
 ## Assets and valuation
 

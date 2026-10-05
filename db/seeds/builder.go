@@ -370,13 +370,14 @@ func (b *builder) accounts(identityID uuid.UUID, ids map[adapters.AccountType]uu
 		b.fail(fmt.Errorf("seed Account references unknown Identity %s", identityID))
 		return
 	}
-	for _, t := range adapters.AccountTypes(spec.Structure) {
+	types := append(adapters.AccountTypes(spec.Structure), adapters.AccountTypeInfo{ID: adapters.TypeManual, Name: "Manual"})
+	for _, t := range types {
 		id, ok := ids[t.ID]
 		if !ok {
 			id = b.next(kindAccount)
 		}
 		b.accountOwners[id], b.accountTypes[id] = spec.Portfolio, t.ID
-		b.add("accounts", bin(id), bin(spec.Portfolio), bin(identityID), q(string(t.ID)), q(t.Name), boolean(selected[t.ID]), "1", ts(createdAt), ts(createdAt))
+		b.add("accounts", bin(id), bin(spec.Portfolio), bin(identityID), q(string(t.ID)), q(t.Name), boolean(selected[t.ID] || t.ID == adapters.TypeManual), "1", ts(createdAt), ts(createdAt))
 	}
 }
 

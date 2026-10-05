@@ -134,23 +134,32 @@ type QuoteLookup func(symbol, quote string) (string, bool)
 // quotes that lookup prices. USD equivalents get no row; a symbol no quote prices gets none either
 // and is valued as no_price.
 func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, at time.Time) []Price {
+	var symbols []string
+	for _, report := range reports {
+		for _, balance := range report.Balances {
+			symbols = append(symbols, balance.Symbol)
+		}
+	}
+	return SymbolPrices(symbols, quotes, lookup, at)
+}
+
+// SymbolPrices chooses public prices for explicit assets, including manually held assets.
+func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time.Time) []Price {
 	if lookup == nil {
 		return nil
 	}
 	seen := map[string]bool{}
 	var out []Price
-	for i := range reports {
-		for _, balance := range reports[i].Balances {
-			symbol := strings.ToUpper(strings.TrimSpace(balance.Symbol))
-			if symbol == "" || seen[symbol] || USDEquivalent(symbol) {
-				continue
-			}
-			seen[symbol] = true
-			for _, quote := range quotes {
-				if price, ok := lookup(symbol, quote); ok {
-					out = append(out, Price{AssetSymbol: symbol, Price: price, QuoteSymbol: quote, ObservedAt: at})
-					break
-				}
+	for _, input := range symbols {
+		symbol := strings.ToUpper(strings.TrimSpace(input))
+		if symbol == "" || seen[symbol] || USDEquivalent(symbol) {
+			continue
+		}
+		seen[symbol] = true
+		for _, quote := range quotes {
+			if price, ok := lookup(symbol, quote); ok {
+				out = append(out, Price{AssetSymbol: symbol, Price: price, QuoteSymbol: quote, ObservedAt: at})
+				break
 			}
 		}
 	}

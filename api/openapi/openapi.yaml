@@ -1568,6 +1568,156 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances:
+    get:
+      operationId: getManualBalances
+      tags: [holdings]
+      summary: Read editable manual balances and last applied quantities
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+      responses:
+        "200":
+          description: Editable manual ledger; prices and current valuation are unchanged until collection.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualBalanceState"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createManualBalance
+      tags: [holdings]
+      summary: Add one manual asset without accumulating an existing balance
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateManualBalance"
+      responses:
+        "200":
+          description: Editable manual ledger; prices and current valuation are unchanged until collection.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualBalanceState"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}:
+    patch:
+      operationId: updateManualBalance
+      tags: [holdings]
+      summary: Set a signed manual quantity; zero clears the balance
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateManualBalance"
+      responses:
+        "200":
+          description: Updated manual ledger.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualBalanceState"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteManualBalance
+      tags: [holdings]
+      summary: Remove a current manual balance without rewriting history
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/IdentityID"
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200":
+          description: Updated manual ledger.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualBalanceState"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
@@ -2347,6 +2497,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OmittedBalance"
+        manualModifiedAt:
+          type: [string, "null"]
+          format: date-time
+          description: Last user quantity adjustment, distinct from report observation time.
+
     TreeIdentity:
       type: object
       additionalProperties: false
@@ -2404,6 +2559,68 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
+    ManualBalance:
+      type: object
+      additionalProperties: false
+      required: [symbol, listingId, assetSymbol, quantity, modifiedAt]
+      properties:
+        symbol:
+          type: string
+        listingId:
+          $ref: "#/components/schemas/UUID"
+        assetSymbol:
+          type: string
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+        modifiedAt:
+          type: string
+          format: date-time
+    ManualBalanceState:
+      type: object
+      additionalProperties: false
+      required: [accountId, identityId, version, appliedVersion, items, appliedItems, pending]
+      properties:
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+          x-go-type: uint64
+        appliedVersion:
+          type: [integer, "null"]
+          format: int64
+          x-go-type: uint64
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualBalance"
+        appliedItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualBalance"
+        pending:
+          type: boolean
+    CreateManualBalance:
+      type: object
+      additionalProperties: false
+      required: [symbol, quantity]
+      properties:
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 64
+        quantity:
+          $ref: "#/components/schemas/Decimal"
+    UpdateManualBalance:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        quantity:
+          $ref: "#/components/schemas/Decimal"
     BalanceRow:
       type: object
       additionalProperties: false
@@ -2450,6 +2667,11 @@ components:
         reportObservedAt:
           type: [string, "null"]
           format: date-time
+        manualModifiedAt:
+          type: [string, "null"]
+          format: date-time
+          description: Last user quantity adjustment, distinct from report observation time.
+
     PositionRow:
       type: object
       additionalProperties: false
