@@ -55,7 +55,7 @@ structure on the Platform requires a new Identity and archiving the old one.
 Kraken exposes its structure flag through Futures access. Validation without
 Futures credentials cannot check it, and Earn-only collection reads no wallet
 snapshot because Earn is shared by both structures. See
-[Kraken's structure check](./docs/adapters/kraken/mapping.md#account-structure-check).
+[Kraken's structure check](./docs/platform/kraken/mapping.md#account-structure-check).
 
 **Margin Mode**: A Platform's margin regime for a whole trading account within
 an Account Structure. It is observed, never chosen in Plutus, may change between

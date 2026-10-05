@@ -6,7 +6,7 @@
 // snapshot of the Futures WebSocket feed. Raw responses are decoded inside
 // this package and never cross the adapter boundary; the one exception is
 // Record, the explicit response recorder of ADR 0009. Field mappings are
-// documented in docs/adapters/kraken/mapping.md.
+// documented in docs/platform/kraken/mapping.md.
 package kraken
 
 import (

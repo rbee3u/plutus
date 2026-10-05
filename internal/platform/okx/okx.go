@@ -5,7 +5,7 @@
 // It calls only balance, position, account, and market-data endpoints. Raw
 // responses are decoded inside this package and never cross the adapter
 // boundary; the one exception is Record, the explicit response recorder of ADR
-// 0009. Field mappings are documented in docs/adapters/okx/mapping.md.
+// 0009. Field mappings are documented in docs/platform/okx/mapping.md.
 package okx
 
 import (
@@ -234,7 +234,7 @@ type tradingBalance struct {
 // trading maps the trading account: its USD equity and margin figures, its
 // per-coin equities, and its open positions. One mapping serves all four
 // Margin Modes: OKX returns "" for every field that does not apply to the
-// account's level (docs/adapters/okx/mapping.md lists them per mode), and an
+// account's level (docs/platform/okx/mapping.md lists them per mode), and an
 // empty field stays unknown rather than becoming zero.
 func (a *Adapter) trading(ctx context.Context, c *client, mode adapters.MarginMode) (adapters.AccountReport, error) {
 	var rows []tradingAccount

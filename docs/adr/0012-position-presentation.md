@@ -108,7 +108,7 @@ rewriting financial source amounts. It does not infer missing historical
 provenance or distribute PM risk units. See
 [OKX's native margin rules](https://www.okx.com/en-sg/help/futures-margin-calculation-rules)
 and the
-[Adapter mapping](../adapters/okx/mapping.md#position-presentation-provenance).
+[Adapter mapping](../platform/okx/mapping.md#position-presentation-provenance).
 
 Historical restoration uses exact Platform-specific references and verifies
 direction. Missing provenance cannot be guessed from current configuration;

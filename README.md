@@ -33,16 +33,16 @@ Implemented capabilities include:
   table headers; Balances has a separate Identity column and no grouping view.
 - Shared contract position columns, normalized Size, margin provenance, and
   observation badges in current and historical holdings; see
-  [the delivery report](./docs/adapters/position-presentation-delivery.md) and
-  [the margin correction](./docs/adapters/margin-presentation-delivery.md).
+  [the delivery report](./docs/platform/position-presentation-delivery.md) and
+  [the margin correction](./docs/platform/margin-presentation-delivery.md).
 - Earn product details and source-aware rates/rewards, with shared Earn and Dual
   Investment observation badges; see
-  [the delivery report](./docs/adapters/earn-presentation-delivery.md).
+  [the delivery report](./docs/platform/earn-presentation-delivery.md).
 - Fixed Manual Accounts for signed API-uncovered quantities, versioned edits,
   frozen cycle inputs, separate pending changes, and confirmed empty Overview
   Account hiding. See
   [the decision](./docs/adr/0019-manual-balances-and-empty-accounts.md) and
-  [delivery report](./docs/adapters/manual-balances-delivery.md).
+  [delivery report](./docs/platform/manual-balances-delivery.md).
 - Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
   audit views, and one deterministic Alice development dataset with healthy,
   edge-case, large-list and empty Portfolios. See the
@@ -51,17 +51,17 @@ Implemented capabilities include:
 Remaining work is exchange-app reconciliation and validation of unexercised
 Account Structures, Margin Modes, and products. Synthetic tests and reviewed
 recordings provide separate evidence; neither completes an integration. See the
-Platform coverage notes: [Binance](./docs/adapters/binance/verification.md),
-[OKX](./docs/adapters/okx/verification.md),
-[Bybit](./docs/adapters/bybit/verification.md), and
-[Kraken](./docs/adapters/kraken/verification.md).
+Platform coverage notes: [Binance](./docs/platform/binance/verification.md),
+[OKX](./docs/platform/okx/verification.md),
+[Bybit](./docs/platform/bybit/verification.md), and
+[Kraken](./docs/platform/kraken/verification.md).
 
 Kraken Dual Investment remains unsupported: the public API review has not found
 a documented read-only holdings contract. The 2026-10-05 Main/Earn check
 confirmed the owner-reported 100 USD subscription principal was omitted; Manual
 can record that uncovered amount. This is not full exchange-app reconciliation.
 See the
-[contract review](./docs/adapters/kraken/verification.md#dual-investment-contract-review).
+[contract review](./docs/platform/kraken/verification.md#dual-investment-contract-review).
 
 The implementation also has an unresolved
 [same-Platform pricing discrepancy](./docs/architecture.md#known-implementation-discrepancy).
@@ -128,6 +128,6 @@ frontend, and externally managed MySQL database.
 | Set up and develop                        | [Development](./docs/development.md)                                                                                                                                                  |
 | Verify a change                           | [Testing](./docs/testing.md)                                                                                                                                                          |
 | Deploy and upgrade                        | [Deployment](./docs/deployment.md)                                                                                                                                                    |
-| Maintain a Platform integration           | Mapping: [Binance](./docs/adapters/binance/mapping.md), [OKX](./docs/adapters/okx/mapping.md), [Bybit](./docs/adapters/bybit/mapping.md), [Kraken](./docs/adapters/kraken/mapping.md) |
-| Record and review real responses          | [Evidence workflow](./docs/adapters/evidence-workflow.md); per-Platform verification links above                                                                                      |
+| Maintain a Platform integration           | Mapping: [Binance](./docs/platform/binance/mapping.md), [OKX](./docs/platform/okx/mapping.md), [Bybit](./docs/platform/bybit/mapping.md), [Kraken](./docs/platform/kraken/mapping.md) |
+| Record and review real responses          | [Evidence workflow](./docs/platform/evidence-workflow.md); per-Platform verification links above                                                                                      |
 | Work as an agent                          | [Agent guidance](./AGENTS.md)                                                                                                                                                         |

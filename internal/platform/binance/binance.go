@@ -8,7 +8,7 @@
 // It calls only balance, position, account, and market-data endpoints. Raw
 // responses are decoded inside this package and never cross the adapter
 // boundary; the one exception is Record, the explicit response recorder of ADR
-// 0009. Field mappings are documented in docs/adapters/binance/mapping.md.
+// 0009. Field mappings are documented in docs/platform/binance/mapping.md.
 package binance
 
 import (

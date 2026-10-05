@@ -94,7 +94,7 @@ completeness, exclusions, and history calculations are defined in
 
 Support in this matrix does not mean an integration has been validated against
 its exchange app. See the [README status](../README.md#current-status) and the
-per-Platform verification notes: [Binance](./adapters/binance/verification.md),
-[OKX](./adapters/okx/verification.md),
-[Bybit](./adapters/bybit/verification.md), and
-[Kraken](./adapters/kraken/verification.md).
+per-Platform verification notes: [Binance](./platform/binance/verification.md),
+[OKX](./platform/okx/verification.md),
+[Bybit](./platform/bybit/verification.md), and
+[Kraken](./platform/kraken/verification.md).

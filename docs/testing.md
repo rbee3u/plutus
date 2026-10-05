@@ -151,7 +151,7 @@ Test configuration uses `PLUTUS_GOTEST_*` in gitignored `config/gotest.env`
 (copy [config/gotest-example.env](../config/gotest-example.env)) or the process
 environment, which wins. Currently it contains only the throwaway MySQL DSN.
 Recording credentials are configured separately through the
-[evidence workflow](./adapters/evidence-workflow.md#record-one-interface-prepare-a-group).
+[evidence workflow](./platform/evidence-workflow.md#record-one-interface-prepare-a-group).
 Tests never load them; runtime `serve`, the worker, and `collect` load neither
 developer configuration source.
 
@@ -172,7 +172,7 @@ developer configuration source.
 ## Recorded evidence
 
 Recorded responses are reviewed interface evidence, separate from automated
-tests. The [evidence workflow](./adapters/evidence-workflow.md) owns recording
+tests. The [evidence workflow](./platform/evidence-workflow.md) owns recording
 credentials, exact requests, capture guarantees, sanitation, and promotion. Each
 Platform's verification document tracks dates and outstanding real gaps;
 exchange-app reconciliation remains a separate check.

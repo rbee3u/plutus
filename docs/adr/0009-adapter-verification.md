@@ -30,7 +30,7 @@ subdirectories for concurrent work. This keeps disposable files out of the
 repository, but system cleanup can remove unpromoted recordings; review and
 promote evidence before relying on its retention.
 
-The [evidence workflow](../adapters/evidence-workflow.md) owns request,
+The [evidence workflow](../platform/evidence-workflow.md) owns request,
 sanitization, promotion, and replacement procedures. [Testing](../testing.md)
 owns verification gates; Platform verification documents own current evidence
 and pending exchange-app checks.

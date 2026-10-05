@@ -197,7 +197,7 @@ putting `HTTPS_PROXY` in that file alone does not configure the recording or
 `EnvironmentFile=` for those variables. Recording credentials remain exclusively
 in `config/record.env` or `PLUTUS_RECORD_*`.
 
-See the [runtime proxy delivery report](./adapters/proxy-verification.md) for
+See the [runtime proxy delivery report](./platform/proxy-verification.md) for
 synthetic and agent verification coverage and remaining deployment gaps.
 
 ### Logging

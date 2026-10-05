@@ -67,7 +67,7 @@
 - New or expanded real Adapter deliveries also require a Linux amd64 build and
   an [Adapter delivery report](./docs/testing.md#adapter-delivery-reports).
   Synthetic `testdata/` and recorded `evidence/` are independent; follow the
-  [evidence workflow](./docs/adapters/evidence-workflow.md).
+  [evidence workflow](./docs/platform/evidence-workflow.md).
 - Changes affecting `serve`, the JSON API, or the UI require
   [agent runtime verification](./docs/testing.md#agent-runtime-verification) on
   :8081. Changes confined to Adapters, tests, or fixtures use offline
