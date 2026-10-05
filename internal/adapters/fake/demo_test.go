@@ -139,7 +139,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 		kind        adapters.AccountType
 		coin, delta string
 	}{
-		{-120, "spot", "BTC", "0.1"}, {-30, "funding", "USDT", "5000"}, {-5, "funding", "USDC", "-1000"},
+		{-60, "spot", "BTC", "0.1"}, {-30, "funding", "USDT", "5000"}, {-5, "funding", "USDC", "-1000"},
 	} {
 		at := DemoEventTime(anchor, event.days)
 		if change := demoSub(amount(event.kind, event.coin, at), amount(event.kind, event.coin, at.Add(-time.Second))); change != event.delta {

@@ -30,7 +30,7 @@ func BuildAt(now time.Time) (Seed, error) {
 	b.comment("Deterministic offline walkthrough; synthetic values, not recorded market history")
 	b.comment("Scratch login: alice / Alice=123456")
 	b.comment("Valuation Points are rebuilt from normalized Account Reports after insertion.")
-	created := anchor.AddDate(0, 0, -410)
+	created := anchor.AddDate(0, -3, -10)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
 	portfolios := []portfolioSpec{
 		{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 900, Undeletable: true, CreatedAt: created},

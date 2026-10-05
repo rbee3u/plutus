@@ -87,6 +87,7 @@ func TestCalendarTimeline(t *testing.T) {
 		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		time.Date(2026, 3, 30, 10, 0, 0, 0, time.UTC),
 		time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC),
+		time.Date(2026, 5, 31, 10, 0, 0, 0, time.UTC),
 	} {
 		points := cycleTimes(anchor, berlin, false)
 		days := map[string]bool{}
@@ -99,8 +100,23 @@ func TestCalendarTimeline(t *testing.T) {
 			}
 			days[at.In(berlin).Format("2006-01-02")] = true
 		}
-		if len(days) != 401 {
-			t.Fatalf("expected 401 local days including today, got %d", len(days))
+		local := anchor.In(berlin)
+		start := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, berlin).AddDate(0, -3, 0)
+		if anchor.Month() == time.May {
+			start = time.Date(2026, time.February, 28, 0, 0, 0, 0, berlin)
+		}
+		if !points[0].Equal(start) {
+			t.Fatalf("three-month start: %s instead of %s", points[0], start)
+		}
+		expectedDays := 0
+		for day := start; !day.After(anchor); day = day.AddDate(0, 0, 1) {
+			expectedDays++
+			if !days[day.Format("2006-01-02")] {
+				t.Fatalf("missing local calendar day %s", day)
+			}
+		}
+		if len(days) != expectedDays {
+			t.Fatalf("expected %d local days including today, got %d", expectedDays, len(days))
 		}
 		if !points[len(points)-1].Equal(anchor) {
 			t.Fatal("latest cycle does not equal anchor")
@@ -117,7 +133,7 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
+	if err := Apply(ctx, db, seed); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	registry := adapters.NewRegistry()
@@ -138,6 +154,7 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 			t.Fatalf("rebuild %s: %v", p, err)
 		}
 	}
+	assertRebuildEquivalent(ctx, t, db, v)
 	assertWalkthroughReads(ctx, t, db, anchor)
 	queue := jobs.NewService(db)
 	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: catalog.NewService(db), Valuation: v, RetryDelays: []time.Duration{}})

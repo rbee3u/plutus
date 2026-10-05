@@ -162,7 +162,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 	case "spot", "main":
 		r.Balances = []adapters.Balance{demoBalance("USDT", "2500"), demoBalance("BTC", "0.06"), demoBalance("USDC", "0"), demoBalance("SHIB", "0.00000000000002")}
 		if d.ID == "daily-classic" {
-			if !at.Before(DemoEventTime(anchor, -120)) {
+			if !at.Before(DemoEventTime(anchor, -60)) {
 				r.Balances[1].Equity = "0.16"
 			}
 			if !at.Before(DemoEventTime(anchor, -3)) {

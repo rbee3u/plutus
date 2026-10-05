@@ -128,9 +128,11 @@ The seed writer materializes terminal configuration and historical source facts,
 including Earn descriptions, report scopes, manual flows, exclusion events and
 audits. It validates definitions and decimals and propagates serialization
 errors. Connection setup uses the Identity service. It inserts no derived
-Valuation Points; the normal rebuild computes them. Monetary relationships use
-exact decimal arithmetic. Platform/Asset/time prices are independent of login
-identity, avoiding shared-price collisions.
+Valuation Points; the normal rebuild computes them. Source INSERT batches run in
+one transaction and roll back together on failure. Connection initialization
+follows the source commit. Monetary relationships use exact decimal arithmetic.
+Platform/Asset/time prices are independent of login identity, avoiding
+shared-price collisions.
 
 Historical Plutus events stop at the anchor. Runtime fake collection cannot
 mutate flows, Account selection, archival or Catalog policy. Holding and product
@@ -151,6 +153,19 @@ Mapping corrections enqueue affected Portfolio rebuilds. Rebuilds retain point
 evaluation times, use stored report scopes and cycle-time exclusion policy, and
 recalculate succeeded cycles in order. Source facts, historical policy events,
 and point results remain distinguishable.
+
+Rebuild reads reports in chunks of 64 cycles. Compatible stale sources and
+Balances use bounded ID batches; price series cover the actual source report
+times, including sources outside the current chunk. Historical exclusion
+versions are loaded once and retain strict cycle-start eligibility. Binary
+searches reuse the existing price-age, quote and fallback rules; ambiguous
+cross-Platform price ties defer to the existing SQL selection. No pricing policy
+is changed. Sequential predecessor values are reused at database decimal
+precision; nonadjacent evaluation times use the normal database lookup. Report
+values use parameterized UPDATE batches of at most 256 reports, sharing one
+transaction with their Valuation Point. Earlier points remain committed after
+failure or cancellation, and retry recomputes them safely. Ordinary collection
+uses the same valuation rules and atomic batched writer.
 
 Financial observations and Valuation Points have no implemented retention or
 downsampling policy. Completed jobs without report or point ownership are pruned

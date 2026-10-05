@@ -13,16 +13,19 @@ Agents use only `plutus_agent` on :8081. There are no seed profiles.
 
 | Name         | Timezone      | History                                | Purpose                                                                                  |
 | ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `default`    | Asia/Shanghai | 400 days                               | Healthy daily holdings and coherent financial events                                     |
-| `edge-cases` | Europe/Berlin | 400 days with an intentional empty day | Failures, legacy reports and policy/boundary transitions                                 |
+| `default`    | Asia/Shanghai | 3 months                               | Healthy daily holdings and coherent financial events                                     |
+| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day | Failures, legacy reports and policy/boundary transitions                                 |
 | `large`      | UTC           | 7 days                                 | At least 60 current rows in each holdings table and both Catalog lists; audit pagination |
 | `empty`      | Asia/Shanghai | None                                   | Unconfigured initial state, no Identities or Valuation Points                            |
 
-Long histories have daily older points and two-hour points in the last 45 local
-days. Event instants have surrounding points. The current local day is included,
-so daily history covers 401 date labels. Nonempty Portfolios collect every 15
-minutes. A collection does not advance a special simulation counter;
-observations depend on the original anchor and actual time.
+Long histories have daily older points and two-hour points in the last 14 local
+days. Event instants have surrounding points. The current local day is included;
+the number of local date labels depends on the calendar months at the anchor.
+Nonempty Portfolios collect every 15 minutes. A collection does not advance a
+special simulation counter; observations depend on the original anchor and
+actual time. The earliest partial calendar month or quarter can be incomplete
+because its first dates predate the seed horizon; the history read names those
+missing dates. Dates inside the generated daily range remain covered.
 
 ## Healthy walkthrough
 
@@ -45,7 +48,7 @@ timezone for labels.
 
 | When            | Event                                   | Expected result                                                             |
 | --------------- | --------------------------------------- | --------------------------------------------------------------------------- |
-| D−120 days      | Binance Spot receives 0.1 BTC           | Spot BTC increases by 0.1; a valued contribution offsets it in Value Change |
+| D−60 days       | Binance Spot receives 0.1 BTC           | Spot BTC increases by 0.1; a valued contribution offsets it in Value Change |
 | D−30 days       | Binance Funding receives 5,000 USDT     | Funding increases by 5,000 and Capital records the contribution             |
 | D−8 to D−4 days | Historical ETH hedge opens, then closes | The Position disappears after success; realized PnL remains in collateral   |
 | D−6 to D−5 days | Bybit temporary outage                  | History carries compatible reports as stale; current Bybit is healthy       |
@@ -88,8 +91,10 @@ empty successful report. Unknown amounts have omissions rather than zero.
 
 Compare ranges spanning the unvalued flow, scope transition and exclusion
 changes. The results remain incomplete and name the reasons. Longer windows
-exercise year, quarter, month, ISO week and Berlin DST boundaries. The complete
-daily Portfolio supplies ordinary comparisons with both gains and losses.
+exercise quarter, month, ISO week and Berlin DST boundaries when present in the
+three-month range. Controlled-anchor tests cover year and DST changes. The
+complete daily Portfolio supplies ordinary comparisons with both gains and
+losses.
 
 ## Pagination and continued collection
 
@@ -114,7 +119,12 @@ Automated tests apply source SQL to a throwaway database, initialize real
 Connection lifecycle services, rebuild valuations, read actual service results,
 and collect again through the same scenario generator. They cover deterministic
 IDs/output, exact event deltas, source amounts, calendar/DST timing, compatible
-stale fallback, legacy scope and product descriptions, and pagination.
+stale fallback, legacy scope and product descriptions, and pagination. Every
+edge-case point and report is compared against sequential collection valuation
+across multiple read chunks, fresh reconstruction and repeated rebuilds.
+Database tests also cover interrupted source jobs, nonmonotonic evaluation
+times, price fallback ties, cancellation, partial progress and transactional
+rollback after a later report batch fails.
 
 Implementation boundaries and reset policy are recorded in
 [ADR 0008](./adr/0008-environments-and-migrations.md). Runtime verification uses
@@ -141,3 +151,31 @@ Portfolio had no Identities or Valuation Points. These observations validate the
 synthetic walkthrough, not real exchange holdings or market history. Both
 session-started process groups and their children were stopped; agent health
 became unreachable and :8081 had no listener.
+
+## Performance revision check: 2026-10-05
+
+After batch rebuild optimization, the original 400-day/45-day-dense dataset
+still took 16.94 seconds for a complete reset with normal SQL logging. The
+accepted fallback uses three months, a 14-day dense window and the D−60 BTC
+deposit. Existing data requires an explicit reset.
+
+Three consecutive runs of the final compiled `dist/plutus-darwin-arm64`
+`db reset --seed`, using `config/agent.toml` and `config/agent.env`, took 6.405,
+5.519 and 5.630 seconds. SQL logging retained its normal enabled policy. The
+median was 5.630 seconds and all runs met the 10-second target; SPA and Go
+compilation were excluded. Generation took 0.904–0.916 seconds, source insertion
+2.135–2.194 seconds, Connection initialization 0.116–0.124 seconds, and total
+valuation rebuild 2.111–2.211 seconds. The source dataset had 286 default, 268
+edge-case, 105 large and zero empty Valuation Points at this anchor; counts vary
+with local time and event sampling.
+
+The ordered validation gates passed. A repeated :8081 browser walkthrough
+confirmed all four Portfolios and their holdings views, three-month history, the
+Berlin empty day, explicit Value Change limitations, Connection states, and the
+D−60 Capital Flow. Manual collection succeeded for all three nonempty
+Portfolios. Large retained 116 Balances, 79 Futures, 84 Earn and 89 Dual rows;
+all four holdings views, both Catalog lists and Audit had working later pages.
+Asset filtering reset pagination correctly. The empty Portfolio had no
+Identities or points. Compatible stale observations, missing prices and the
+legacy Earn summary survived collection. The session process group and its
+children were stopped, :8081 was released, and temporary tooling was removed.

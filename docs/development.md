@@ -273,18 +273,25 @@ matching `plutus` or `plutus_<suffix>` that does not contain `prod`. `serve`
 never migrates or seeds automatically.
 
 There is one walkthrough dataset owned only by Alice. Its four Portfolios are
-`default` (Asia/Shanghai, 400 days), `edge-cases` (Europe/Berlin, 400 days),
-`large` (UTC, seven days), and `empty` (Asia/Shanghai, no history). The healthy
-Portfolio covers all six supported Account Structures. Other Margin Modes,
-persistent anomalies, legacy reports and pagination are available in the other
-Portfolios. See the [scenario index](./seeds.md) for exact events, expected
-results and walkthrough instructions.
+`default` (Asia/Shanghai, three months), `edge-cases` (Europe/Berlin, three
+months), `large` (UTC, seven days), and `empty` (Asia/Shanghai, no history). The
+healthy Portfolio covers all six supported Account Structures. Other Margin
+Modes, persistent anomalies, legacy reports and pagination are available in the
+other Portfolios. Older days have one point each; the last 14 local days have
+two-hour points, with additional samples around events. See the
+[scenario index](./seeds.md) for exact events, expected results and walkthrough
+instructions.
 
 Seeding requires `[collection].fake_adapter = true` and a configured master key.
 It rejects missing prerequisites before inserting data. Source Account Reports
 retain Positions and product descriptions; real valuation code rebuilds the
 derived results. Later fake collection uses the same original time anchor, so
-the data remains coherent after process restarts.
+the data remains coherent after process restarts. Source facts commit together;
+rebuild retains one transaction per point. The CLI reports generation, source
+insertion, Connection setup and each Portfolio rebuild duration. The complete
+compiled `db reset --seed` target is at most 10 seconds on the current
+development machine with normal SQL logging; SPA and Go compilation are separate
+setup costs.
 
 `db seed` loads this data into an empty migrated database. It does not update
 existing seed data: fixed IDs would conflict. Use the dev wipe-and-serve script

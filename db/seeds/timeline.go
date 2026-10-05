@@ -22,11 +22,14 @@ func sameLocalDay(a, b time.Time, loc *time.Location) bool {
 }
 
 func cycleTimes(anchor time.Time, loc *time.Location, large bool) []time.Time {
-	days := 400
+	local := anchor.In(loc)
+	month := time.Date(local.Year(), local.Month()-3, 1, 0, 0, 0, 0, loc)
+	day := min(local.Day(), month.AddDate(0, 1, -1).Day())
+	start := time.Date(month.Year(), month.Month(), day, 0, 0, 0, 0, loc)
 	if large {
-		days = 7
+		start = localMidnight(anchor, 7, loc)
 	}
-	start, dense := localMidnight(anchor, days, loc), localMidnight(anchor, 45, loc)
+	dense := localMidnight(anchor, 14, loc)
 	times := map[int64]time.Time{anchor.Unix(): anchor}
 	for at := start; at.Before(anchor); {
 		times[at.Unix()] = at.UTC()
@@ -36,7 +39,7 @@ func cycleTimes(anchor time.Time, loc *time.Location, large bool) []time.Time {
 			at = at.Add(2 * time.Hour)
 		}
 	}
-	for _, daysAgo := range []int{120, 33, 30, 10, 8, 6, 5, 4, 3, 2} {
+	for _, daysAgo := range []int{60, 33, 30, 10, 8, 6, 5, 4, 3, 2} {
 		event := anchor.AddDate(0, 0, -daysAgo)
 		if event.Before(start) {
 			continue
@@ -57,7 +60,7 @@ func intString(n int) string { return strconv.Itoa(n) }
 
 func (b *builder) demoEvents(anchor time.Time) {
 	for _, f := range []flowSpec{
-		{ID: namedID("flow/btc-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "BTC", Quantity: "0.1", At: anchor.AddDate(0, 0, -120), Note: "Cold-wallet deposit into Binance Spot"},
+		{ID: namedID("flow/btc-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "BTC", Quantity: "0.1", At: anchor.AddDate(0, 0, -60), Note: "Cold-wallet deposit into Binance Spot"},
 		{ID: namedID("flow/usdt-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "USDT", Quantity: "5000", ValueUSD: "5000", At: anchor.AddDate(0, 0, -30), Note: "External funding into Binance Funding"},
 		{ID: namedID("flow/usdc-withdrawal"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "withdrawal", Asset: "USDC", Quantity: "1000", ValueUSD: "1000", At: anchor.AddDate(0, 0, -5), Note: "Withdrawal from Binance Funding"},
 		{ID: namedID("flow/unpriced-airdrop"), Portfolio: PortfolioAliceEdge, User: UserAlice, Direction: "contribution", Asset: "DEMO-NOPRICE", Quantity: "1000", At: anchor.AddDate(0, 0, -5), Note: "Unpriced airdrop; USD value remains unknown"},

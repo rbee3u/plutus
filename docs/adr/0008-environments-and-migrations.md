@@ -42,9 +42,10 @@ The old `--profile` flag remains rejected. Seed generation requires the fake and
 a master key and fails explicitly for invalid definitions or serialization.
 
 The single Alice User owns healthy, edge-case, large and empty Portfolios. Long
-histories cover 400 days with daily older and two-hour recent points; large-list
-history covers seven days. All supported structures and observed Margin Modes
-have examples. Complex anomalies are now visible in the standard walkthrough,
+histories cover three months with daily older points and two-hour points in the
+last 14 local days; large-list history covers seven days. Event instants retain
+surrounding points. All supported structures and observed Margin Modes have
+examples. Complex anomalies are now visible in the standard walkthrough,
 superseding the earlier test-only decision. They remain separated from the
 healthy default Portfolio and have explicit read-level expectations.
 
@@ -54,9 +55,10 @@ reference depends only on scenario identity. Platform prices are coherent across
 Identities. Scripted Capital Flows and configuration changes end at the anchor;
 subsequent collection evolves only Platform facts. Source fields, Earn detail
 availability, report scopes and exclusion policy history are preserved; real
-valuation code derives all Valuation Points. Connection initialization uses the
-normal credential lifecycle with explicit expected states. Ordinary fake keys
-retain their previous behavior.
+valuation code derives all Valuation Points. Source INSERT batches commit in one
+transaction; Connection setup and each derived point commit separately.
+Connection initialization uses the normal credential lifecycle with explicit
+expected states. Ordinary fake keys retain their previous behavior.
 
 Existing dev data is replaced by explicit reset rather than migrations or seed
 backfills. No product capability, HTTP interface, schema or seed profile is
@@ -68,12 +70,20 @@ A single seed keeps startup predictable, while theme Portfolios isolate
 persistent omissions from everyday browsing. Shared scenario generation prevents
 rich seeded holdings from disappearing at the next Collection Cycle. Coherent
 financial events reveal Value Change defects that disconnected flow records
-hide. A longer history exercises calendar and timezone boundaries; a shorter
-large Portfolio avoids multiplying every list across 400 days. This costs more
-scenario code, seed volume and rebuild time than the earlier forty-day seed. The
-scenario index and acceptance tests make that complexity reviewable. Synthetic
-data remains distinct from exchange-app validation. Disposable resets are
-accepted for dev data, not retained production Observations.
+hide. The original 400-day history and 45-day dense window remained too slow
+after batch rebuild optimization: a reset with normal SQL logging took about 17
+seconds on the development machine. The accepted startup target is at most 10
+seconds there, so three months and a 14-day dense window supersede that volume
+decision. Daily older points retain complete calendar walkthroughs; nearby event
+samples and seven-day large-list history preserve failures, transitions and
+pagination. Year and DST boundaries remain controlled-anchor test cases rather
+than mandatory coverage at every current anchor. The BTC deposit moves to D−60
+so its flow and before/after holdings remain in range. This reduces long-range
+chart density while keeping the business scenarios. The scenario index and
+differential acceptance tests make the trade-off reviewable. This seed horizon
+is not a retention policy for collected data. Synthetic data remains distinct
+from exchange-app validation. Disposable resets are accepted for dev data, not
+retained production Observations.
 
 Isolation protects production; appended migrations preserve observations and
 configuration. Minimal units inherit host defaults; weak MySQL dependencies

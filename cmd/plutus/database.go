@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -95,25 +96,32 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 	if err := validateSeedConfig(cfg); err != nil {
 		return err
 	}
+	started := time.Now()
 	seed, err := seeds.Build()
 	if err != nil {
 		return err
 	}
-	if err := mysql.ExecSQLStatements(ctx, db, seed.SQL); err != nil {
+	_, _ = fmt.Fprintf(out, "generated source facts in %s\n", time.Since(started).Round(time.Millisecond))
+	stage := time.Now()
+	if err := seeds.Apply(ctx, db, seed); err != nil {
 		return err
 	}
+	_, _ = fmt.Fprintf(out, "inserted source facts in %s\n", time.Since(stage).Round(time.Millisecond))
+	stage = time.Now()
 	if err := activateSeedIdentities(ctx, db, cfg, seed.Live, out); err != nil {
 		return err
 	}
+	_, _ = fmt.Fprintf(out, "initialized connections in %s\n", time.Since(stage).Round(time.Millisecond))
 	svc := valuation.NewService(db)
 	for _, portfolioID := range seed.Portfolios {
+		stage = time.Now()
 		count, err := svc.Rebuild(ctx, portfolioID)
 		if err != nil {
 			return fmt.Errorf("rebuild valuation points for %s: %w", portfolioID, err)
 		}
-		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points\n", portfolioID, count)
+		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points in %s\n", portfolioID, count, time.Since(stage).Round(time.Millisecond))
 	}
-	_, _ = fmt.Fprintln(out, "loaded development seed")
+	_, _ = fmt.Fprintf(out, "loaded development seed in %s\n", time.Since(started).Round(time.Millisecond))
 	_, _ = fmt.Fprintln(out, "scratch login: alice / Alice=123456")
 	return nil
 }

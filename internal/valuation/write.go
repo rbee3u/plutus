@@ -48,53 +48,40 @@ func (s *Service) WritePoint(ctx context.Context, portfolioID, jobID uuid.UUID, 
 	}
 	point := buildPoint(portfolioID, jobID, evaluatedAt, accounts, previous)
 
+	if err := s.persistPoint(ctx, point, accounts); err != nil {
+		return Point{}, err
+	}
+	return s.pointByJob(ctx, portfolioID, jobID)
+}
+
+// persistPoint commits report values and their aggregate atomically.
+func (s *Service) persistPoint(ctx context.Context, point Point, accounts []AccountValuation) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return Point{}, err
+		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
-	for i := range accounts {
-		a := &accounts[i]
-		params := sqlcgen.UpdateAccountReportValuationParams{
-			Method:      a.Method,
-			PortfolioID: portfolioID[:],
-			ID:          a.ReportID[:],
-		}
-		if a.ValueUSD != nil {
-			params.ValueUsd = sql.NullString{String: *a.ValueUSD, Valid: true}
-		}
-		if a.SourceReportID != nil {
-			params.SourceReportID = a.SourceReportID[:]
-		}
-		if len(a.Omitted) > 0 {
-			raw, err := json.Marshal(a.Omitted)
-			if err != nil {
-				return Point{}, err
-			}
-			params.OmittedJson = sqljson.Column(raw)
-		}
-		if err := q.UpdateAccountReportValuation(ctx, params); err != nil {
-			return Point{}, err
-		}
+	if err := updateReportValuations(ctx, tx, point.PortfolioID, accounts); err != nil {
+		return err
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
-		return Point{}, err
+		return err
 	}
 	boundaryJSON, err := marshalOrNil(point.BoundaryEvents)
 	if err != nil {
-		return Point{}, err
+		return err
 	}
 	issuesJSON, err := marshalOrNil(point.Issues)
 	if err != nil {
-		return Point{}, err
+		return err
 	}
 	if err := q.UpsertValuationPoint(ctx, sqlcgen.UpsertValuationPointParams{
 		ID:                      id[:],
-		PortfolioID:             portfolioID[:],
-		JobID:                   jobID[:],
-		EvaluatedAt:             evaluatedAt,
+		PortfolioID:             point.PortfolioID[:],
+		JobID:                   point.JobID[:],
+		EvaluatedAt:             point.EvaluatedAt,
 		TotalUsd:                point.TotalUSD,
 		AccountCount:            uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
 		StaleAccountCount:       uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
@@ -105,41 +92,13 @@ func (s *Service) WritePoint(ctx context.Context, portfolioID, jobID uuid.UUID, 
 		IssuesJson:              issuesJSON,
 		CreatedAt:               s.now().UTC(),
 	}); err != nil {
-		return Point{}, err
+		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return Point{}, err
-	}
-	return s.pointByJob(ctx, portfolioID, jobID)
+	return tx.Commit()
 }
 
-// Rebuild recomputes every point of the Portfolio in cycle order (mapping overrides, seeds).
-func (s *Service) Rebuild(ctx context.Context, portfolioID uuid.UUID) (int, error) {
-	jobs, err := s.q.ListSucceededCycleJobs(ctx, portfolioID[:])
-	if err != nil {
-		return 0, err
-	}
-	count := 0
-	for i := range jobs {
-		jobID, err := uuid.FromBytes(jobs[i].ID)
-		if err != nil {
-			return count, err
-		}
-		evaluatedAt := jobs[i].CreatedAt
-		if jobs[i].FinishedAt.Valid {
-			evaluatedAt = jobs[i].FinishedAt.Time
-		}
-		if existing, err := s.pointByJob(ctx, portfolioID, jobID); err == nil {
-			evaluatedAt = existing.EvaluatedAt
-		} else if !errors.Is(err, ErrNotFound) {
-			return count, err
-		}
-		if _, err := s.WritePoint(ctx, portfolioID, jobID, evaluatedAt); err != nil {
-			return count, fmt.Errorf("rebuild point for job %s: %w", jobID, err)
-		}
-		count++
-	}
-	return count, nil
+type priceResolver interface {
+	lookup(context.Context, string, string, time.Time) (*big.Rat, bool, error)
 }
 
 type priceKey struct {
@@ -224,7 +183,7 @@ func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 	book := &priceBook{s: s, cache: map[priceKey]map[string]pricePoint{}}
 	out := make([]AccountValuation, 0, len(rows))
 	for i := range rows {
-		item, err := s.valueReport(ctx, book, &rows[i], ignored)
+		item, err := s.valueReport(ctx, book, &rows[i], ignored, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +193,7 @@ func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([
 	return out, nil
 }
 
-func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen.ListReportsByJobRow, ignored map[uuid.UUID]bool) (AccountValuation, error) {
+func (s *Service) valueReport(ctx context.Context, book priceResolver, row *sqlcgen.ListReportsByJobRow, ignored map[uuid.UUID]bool, inputs *reportInputs) (AccountValuation, error) {
 	item, err := accountFromRow(row)
 	if err != nil {
 		return AccountValuation{}, err
@@ -253,7 +212,14 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 		item.Freshness = FreshnessFresh
 		item.sourceMarginMode = nullStr(row.MarginMode)
 	} else {
-		src, err := s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, ScopeVersion: row.ScopeVersion, Before: row.CreatedAt})
+		var src sqlcgen.GetLatestOkReportForAccountRow
+		if inputs == nil {
+			src, err = s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, ScopeVersion: row.ScopeVersion, Before: row.CreatedAt})
+		} else if previous := inputs.sources[item.ReportID]; previous != nil {
+			src = *previous
+		} else {
+			err = sql.ErrNoRows
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			item.Method = MethodMissing
 			item.Freshness = FreshnessStale
@@ -286,9 +252,18 @@ func (s *Service) valueReport(ctx context.Context, book *priceBook, row *sqlcgen
 			return item, nil
 		}
 	}
-	balances, err := s.q.ListBalancesByReport(ctx, sourceID[:])
-	if err != nil {
-		return AccountValuation{}, err
+	var balances []sqlcgen.ListBalancesByReportRow
+	if inputs == nil {
+		balances, err = s.q.ListBalancesByReport(ctx, sourceID[:])
+		if err != nil {
+			return AccountValuation{}, err
+		}
+	} else {
+		var loaded bool
+		balances, loaded = inputs.balances[sourceID]
+		if !loaded {
+			return AccountValuation{}, fmt.Errorf("balances were not loaded for source report %s", sourceID)
+		}
 	}
 	total := decimal.Zero()
 	for i := range balances {

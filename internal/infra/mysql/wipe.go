@@ -77,7 +77,10 @@ func DropAllTables(ctx context.Context, db *sql.DB) error {
 }
 
 // ExecSQLStatements runs each SQL statement from src in order.
-func ExecSQLStatements(ctx context.Context, db *sql.DB, src string) error {
+func ExecSQLStatements(ctx context.Context, db interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}, src string,
+) error {
 	for i, stmt := range splitSQL(src) {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("statement %d: %w", i+1, err)
