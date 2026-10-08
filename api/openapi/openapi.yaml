@@ -2716,6 +2716,16 @@ components:
           format: date-time
           description: Last user quantity adjustment, distinct from report observation time.
 
+        manualChange:
+          type: string
+          enum: [added, updated, deleted]
+          description: Current manual changes relative to this displayed report; never changes its valuation.
+        manualQuantity:
+          $ref: "#/components/schemas/Decimal"
+        excluded:
+          type: boolean
+          description: Manual balance retained for editing but excluded from the displayed valuation.
+
     PositionRow:
       type: object
       additionalProperties: false

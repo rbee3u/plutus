@@ -10,7 +10,7 @@ import {
 } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { Badge } from "@/shared/ui/Badge";
-import { HoverDetails } from "@/shared/ui/HoverDetails";
+import { HoverCard, HoverDetails } from "@/shared/ui/HoverDetails";
 import type { DataRow } from "@/shared/ui/DataTable";
 import { NumericText } from "@/shared/ui/NumericText";
 import { ObservedCell } from "./ObservedCell";
@@ -109,45 +109,42 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
     id: `${item.accountId}-${item.instrumentId}-${item.platformPositionRef}`,
     symbol: (
       <HoverDetails label={item.symbol} name={`Contract details for ${item.symbol}`}>
-        <dl>
-          <div>
-            <dt>Base</dt>
-            <dd>{item.baseSymbol ?? "—"}</dd>
-          </div>
-          <div>
-            <dt>Quote</dt>
-            <dd>{item.quoteSymbol ?? "—"}</dd>
-          </div>
-          <div>
-            <dt>Settle</dt>
-            <dd>{item.settlementSymbol ?? "—"}</dd>
-          </div>
-          {item.contractSize ? (
+        <HoverCard
+          title={item.symbol}
+          tags={[inverse ? "Inverse" : "Linear", delivery ? "Delivery" : "Perpetual"]}
+        >
+          <dl>
             <div>
-              <dt>Contract Size</dt>
-              <dd>
-                1 contract = <NumericText>{formatDecimal(item.contractSize)}</NumericText>{" "}
-                {factorUnit ?? "—"}
-              </dd>
+              <dt>Base</dt>
+              <dd>{item.baseSymbol ?? "—"}</dd>
             </div>
-          ) : null}
-          <div>
-            <dt>Payoff</dt>
-            <dd>{inverse ? "Inverse" : "Linear"}</dd>
-          </div>
-          <div>
-            <dt>Term</dt>
-            <dd>{delivery ? "Delivery" : "Perpetual"}</dd>
-          </div>
-          {delivery ? (
             <div>
-              <dt>Delivery</dt>
-              <dd>
-                {formatInstant(item.expiryAt, timezone)} {timezone}
-              </dd>
+              <dt>Quote</dt>
+              <dd>{item.quoteSymbol ?? "—"}</dd>
             </div>
-          ) : null}
-        </dl>
+            <div>
+              <dt>Settle</dt>
+              <dd>{item.settlementSymbol ?? "—"}</dd>
+            </div>
+            {item.contractSize ? (
+              <div>
+                <dt>Contract Size</dt>
+                <dd>
+                  1 contract = <NumericText>{formatDecimal(item.contractSize)}</NumericText>{" "}
+                  {factorUnit ?? "—"}
+                </dd>
+              </div>
+            ) : null}
+            {delivery && item.expiryAt ? (
+              <div>
+                <dt>Delivery</dt>
+                <dd>
+                  {formatInstant(item.expiryAt, timezone)} {timezone}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </HoverCard>
       </HoverDetails>
     ),
     side: (

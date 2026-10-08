@@ -76,7 +76,7 @@ function checkAccountReport<T extends { context: ReadContext; account: AccountVa
   pointId: string,
 ): T {
   if (
-    data.context.pointId !== pointId ||
+    (data.context.pointId ?? "") !== pointId ||
     (data.account.reportId ?? null) !== (account.reportId ?? null)
   ) {
     throw new Error(

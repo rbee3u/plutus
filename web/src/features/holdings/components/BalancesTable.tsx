@@ -1,5 +1,5 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import type { ManualTarget } from "../dialogs/manual";
+import { Plus } from "lucide-react";
+import { ManualActions, type ManualTarget } from "../dialogs/manual";
 import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -7,6 +7,7 @@ import type { AccountBalanceList, AccountValuation, BalanceRow, Issue } from "@/
 import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
+import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { ObservedCell } from "./ObservedCell";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -56,31 +57,13 @@ export function BalancesTable({
             row.symbol = (
               <span className={styles.inlineActionCell}>
                 <span>{row.symbol}</span>
-                <IconButton
-                  label={`Edit manual ${item.symbol}`}
-                  onClick={() =>
-                    onManual({
-                      identityId: item.identityId,
-                      symbol: item.symbol,
-                      action: "edit",
-                    })
-                  }
-                >
-                  <Pencil size={iconSize.sm} aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  label={`Delete manual ${item.symbol}`}
-                  tone="dangerQuiet"
-                  onClick={() =>
-                    onManual({
-                      identityId: item.identityId,
-                      symbol: item.symbol,
-                      action: "delete",
-                    })
-                  }
-                >
-                  <Trash2 size={iconSize.sm} aria-hidden="true" />
-                </IconButton>
+                {item.manualChange !== "deleted" ? (
+                  <ManualActions
+                    identityId={item.identityId}
+                    symbol={item.symbol}
+                    onOpen={onManual}
+                  />
+                ) : null}
               </span>
             );
           }
@@ -137,7 +120,31 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       ) : (
         item.symbol
       ),
-    equity: formatDecimal(item.equity),
+    equity:
+      item.manualChange || item.excluded ? (
+        <HoverDetails
+          name={`Manual ${item.symbol} quantity ${formatDecimal(item.equity)}`}
+          label={<NumericText>{formatDecimal(item.equity)}</NumericText>}
+        >
+          {item.manualChange ? (
+            <p>
+              {item.manualChange === "added" ? (
+                "Pending collection"
+              ) : item.manualChange === "deleted" ? (
+                "Pending removal"
+              ) : (
+                <>
+                  Pending: <NumericText>{formatDecimal(item.manualQuantity)}</NumericText>{" "}
+                  {item.symbol}
+                </>
+              )}
+            </p>
+          ) : null}
+          {item.excluded ? <p>Excluded</p> : null}
+        </HoverDetails>
+      ) : (
+        formatDecimal(item.equity)
+      ),
     liability: formatDecimal(item.liability),
     unrealizedPnl: balancePnl(item.unrealizedPnl),
     priceUsd: item.noPrice ? (

@@ -2,7 +2,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import type { HoldingsTree as Tree } from "@/api";
 import { type ManualTarget } from "../dialogs/manual";
-import { ManualDialog, ManualPending } from "../dialogs/ManualBalances";
+import { ManualDialog } from "../dialogs/ManualBalances";
 import { IconButton } from "@/shared/ui/IconButton";
 import { AccountDetail } from "@/features/holdings/components/AccountDetail";
 import { formatAmount, parseDecimal } from "@/shared/lib/amount";
@@ -77,11 +77,6 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                       open={expanded.has(`identity:${identity.id}`)}
                       onToggle={() => toggle(`identity:${identity.id}`)}
                     >
-                      <ManualPending
-                        portfolioId={portfolioId}
-                        identityId={identity.id}
-                        onOpen={setManualTarget}
-                      />
                       <ul className={styles.treeChildren}>
                         {identity.accounts.map((account) => (
                           <TreeNode

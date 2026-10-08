@@ -75,6 +75,9 @@ type Tree struct {
 
 // BalanceRow is one Balance with its USD value.
 type BalanceRow struct {
+	ManualChange        string
+	ManualQuantity      *string
+	Excluded            bool
 	AccountID           uuid.UUID
 	AccountName         string
 	AccountType         string

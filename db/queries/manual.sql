@@ -81,3 +81,12 @@ SELECT (
     OR EXISTS(SELECT 1 FROM earn_positions e WHERE e.report_id = sqlc.arg(source_id))
     OR EXISTS(SELECT 1 FROM dual_positions d WHERE d.report_id = sqlc.arg(source_id))
 ) AS has_holdings;
+
+-- name: ListPortfolioManualBalances :many
+SELECT b.account_id, b.symbol, b.listing_id, b.quantity, b.modified_at,
+       l.asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
+FROM manual_balances b
+JOIN asset_listings l ON l.id = b.listing_id
+LEFT JOIN portfolio_listing_exclusions e ON e.portfolio_id = b.portfolio_id AND e.listing_id = b.listing_id
+WHERE b.portfolio_id = sqlc.arg(portfolio_id)
+ORDER BY b.account_id, b.symbol;

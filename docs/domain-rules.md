@@ -133,9 +133,10 @@ prevent double counting.
 
 Current editable and pending quantities remain distinct from collected values.
 An Account hides from Overview only after a fresh successful complete zero
-valuation confirms no nonzero Balances or holdings of any kind. Stale, failed,
-unknown, and offsetting holdings remain visible. Hiding changes neither
-selection nor the Portfolio Boundary, history, or Account counts.
+valuation confirms no nonzero Balances or holdings of any kind, and no current
+Manual quantities remain. Stale, failed, unknown, and offsetting holdings remain
+visible. Hiding changes neither selection nor the Portfolio Boundary, history,
+or Account counts.
 
 ## Assets and valuation
 

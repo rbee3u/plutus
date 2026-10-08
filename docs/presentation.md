@@ -151,10 +151,11 @@ Account hiding follows the
 action stays available when all Accounts hide.
 
 Summary and Tree must describe one consistent Valuation Point; expanded details
-must match the visible Account Report. Failed or conflicting reads offer
-recovery, retain compatible prior data, and expose its age through point/report
-times. Latest-only endpoints can race with collection and require a retry or
-reload; the display must not combine inconsistent reports.
+must match the visible Account Report, apart from explicitly pending Manual
+additions described below. Failed or conflicting reads offer recovery, retain
+compatible prior data, and expose its age through point/report times.
+Latest-only endpoints can race with collection and require a retry or reload;
+the display must not combine inconsistent reports.
 
 Holdings has independent Balances, Futures, Earn, and Dual Investment views,
 with Balances as default and no Options placeholder. Ownership totals belong in
@@ -194,17 +195,30 @@ candidates may yield no holdings, but stay stable during searches and collection
 failures; URL correction can deliberately widen results.
 
 The Futures notional total and completeness cover the Portfolio Boundary before
-filtering or pagination. Balance totals follow filtered Balances. Filtering
-never changes the Portfolio Boundary.
+filtering or pagination. Balance totals follow filtered collected Balances;
+pending Manual additions have no valuation and do not enter those totals.
+Filtering never changes the Portfolio Boundary.
 
 ### Manual editing
 
 Overview Identity and Manual headings and global Balances share an editor,
-available before the first Valuation Point. It shows the current ledger,
-including excluded records, with pending additions, edits, and deletions
-separate from collected values. Version conflicts require recovery rather than
-silently overwriting another editor. Users remove amounts when they become
+available before the first Valuation Point. Each dialog handles one addition,
+edit, or deletion and reads the current quantity. Version conflicts require
+explicit reload before another save; adding retains the draft on reload, while
+editing reloads the latest quantity. Users remove amounts when they become
 API-visible; collection time does not imply User reconfirmation.
+
+Balance tables include current Manual additions before collection, with prices,
+USD values, and observation times unknown. Changes to collected records retain
+their collected quantities and values until a cycle applies the change. Equity
+uses a dotted disclosure for short pending-addition, pending-quantity, or
+pending-removal hints, available on hover, focus, and touch. Pending removals
+hide edit/delete actions; all other current records remain editable. Reverting
+to the collected quantity clears the hint, and deleting an uncollected addition
+removes its row immediately. Excluded Manual records remain visible and
+editable, with an Excluded hint and no valuation. There is no separate records
+or pending-changes table. Current quantities keep their Manual Account visible;
+Accounts without a report display no invented valuation.
 
 ## Holding tables
 

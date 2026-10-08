@@ -126,7 +126,13 @@ func toAPIBalanceRows(rows []financial.BalanceRow) []api.BalanceRow {
 	out := make([]api.BalanceRow, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
+		var change *api.BalanceRowManualChange
+		if r.ManualChange != "" {
+			value := api.BalanceRowManualChange(r.ManualChange)
+			change = &value
+		}
 		out = append(out, api.BalanceRow{
+			ManualChange: change, ManualQuantity: r.ManualQuantity, Excluded: &r.Excluded,
 			AccountId:           r.AccountID,
 			AccountName:         r.AccountName,
 			AccountType:         r.AccountType,

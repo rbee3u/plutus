@@ -60,7 +60,9 @@ export function AccountDetail({
   return (
     <div className={styles.accountDetail}>
       <AccountMetrics account={account} />
-      <AccountFeedback account={account} timezone={timezone} />
+      {!isManual || account.reportId ? (
+        <AccountFeedback account={account} timezone={timezone} />
+      ) : null}
       <QueryRecovery query={balances} fallback="Account balances could not be loaded." />
       <BalancesTable
         account={account}

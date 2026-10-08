@@ -416,7 +416,7 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 		t.Fatalf("excluded editor %+v %v", ledger, err)
 	}
 	manualSave(t, h, item, "BTC", "2")
-	if view, err := h.financial.AccountBalances(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}, account.AccountID); err != nil || len(view.Balances) != 0 {
+	if view, err := h.financial.AccountBalances(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}, account.AccountID); err != nil || len(view.Balances) != 1 || !view.Balances[0].Excluded || view.Balances[0].Equity != "1" || view.Balances[0].ManualChange != "updated" || view.Balances[0].EquityUSD != nil {
 		t.Fatalf("excluded read %+v %v", view, err)
 	}
 	tree, err := h.financial.Tree(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
@@ -429,5 +429,60 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 	old, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
 	if err != nil || old.TotalUSD != "10000" {
 		t.Fatalf("exclusion rewrote old total %+v %v", old, err)
+	}
+}
+
+func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
+	h := newHarness(t)
+	item := manualEnabled(t, h, &manualTestAdapter{usd: "0"})
+	p := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
+	state := manualSave(t, h, item, "USD", "100")
+	list, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	if err != nil || len(list.Items) != 1 || list.Items[0].ManualChange != "added" || list.Items[0].PriceUSD != nil || list.TotalUSD != nil {
+		t.Fatalf("before first collection: %+v %v", list, err)
+	}
+	view, err := h.financial.AccountBalances(h.ctx, p, state.AccountID)
+	if err != nil || len(view.Balances) != 1 || view.Balances[0].Equity != "100" {
+		t.Fatalf("account before collection: %+v %v", view, err)
+	}
+	tree, err := h.financial.Tree(h.ctx, p)
+	if err != nil || len(tree.Platforms) != 1 || len(tree.Platforms[0].Identities[0].Accounts) != 1 || tree.TotalUSD != nil {
+		t.Fatalf("tree before collection: %+v %v", tree, err)
+	}
+	first, _ := h.runCycle()
+	manualSave(t, h, item, "USD", "150")
+	manualSave(t, h, item, "BTC", "-0.000000000000000000000000000001")
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 1, Offset: 1})
+	if err != nil || list.Total != 2 || len(list.Items) != 1 || list.Items[0].Symbol != "USD" || list.Items[0].Equity != "100" || list.Items[0].ManualChange != "updated" || *list.Items[0].ManualQuantity != "150" || *list.TotalUSD != "100" {
+		t.Fatalf("updated and paginated: %+v %v", list, err)
+	}
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Symbol: " btc ", Limit: 50})
+	if err != nil || list.Total != 1 || list.Items[0].Symbol != "BTC" || list.Items[0].ManualChange != "added" || *list.TotalUSD != "0" {
+		t.Fatalf("pending search: %+v %v", list, err)
+	}
+	manualSave(t, h, item, "USD", "100")
+	view, err = h.financial.AccountBalances(h.ctx, p, state.AccountID)
+	if err != nil || view.Balances[1].ManualChange != "" {
+		t.Fatalf("reverted: %+v %v", view, err)
+	}
+	manualSave(t, h, item, "USD", "0")
+	manualSave(t, h, item, "BTC", "0")
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	if err != nil || list.Total != 1 || list.Items[0].ManualChange != "deleted" || list.Items[0].Equity != "100" || *list.TotalUSD != "100" {
+		t.Fatalf("pending deletion: %+v %v", list, err)
+	}
+	h.runCycle()
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	if err != nil || list.Total != 0 || *list.TotalUSD != "0" {
+		t.Fatalf("applied deletion: %+v %v", list, err)
+	}
+	manualSave(t, h, item, "USD", "200")
+	tree, err = h.financial.Tree(h.ctx, p)
+	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 1 || *tree.TotalUSD != "0" {
+		t.Fatalf("pending account hidden: %+v %v", tree, err)
+	}
+	old, err := h.valuation.Get(h.ctx, h.portfolioID, first.Point.ID)
+	if err != nil || old.TotalUSD != "100" {
+		t.Fatalf("history changed: %+v %v", old, err)
 	}
 }

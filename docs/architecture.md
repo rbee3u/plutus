@@ -164,7 +164,11 @@ rebuilds all use the own-Platform lookup.
 
 Writer and rebuild share quantity-signature adjustment detection; signatures
 exclude timestamps and mapping. The ledger API exposes current/last-applied
-quantities, versions, and pending state.
+quantities, versions, and pending state. Financial reads merge current Manual
+records with the selected report before filtering, sorting, and pagination.
+Added, updated, and deleted row metadata is derived from quantities, never
+persisted; report values and historical totals are unchanged. Manual writes
+invalidate balance and Overview reads without starting collection.
 [Manual rules](./domain-rules.md#manual-balances) own continuity and
 empty-Account semantics; [deployment](./deployment.md#upgrades-and-resets) owns
 existing-data upgrades.

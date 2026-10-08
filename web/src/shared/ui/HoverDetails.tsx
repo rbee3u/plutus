@@ -1,6 +1,21 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import styles from "./HoverDetails.module.css";
+
+interface PositionState {
+  left: number;
+  top: number;
+  placement: "below" | "above";
+  arrowOffset: number;
+}
 
 /** Rich details available to pointer, keyboard, and touch users outside scroll clips. */
 export function HoverDetails({
@@ -19,7 +34,12 @@ export function HoverDetails({
   const panel = useRef<HTMLDivElement>(null);
   const anchorPosition = useRef({ left: 0, bottom: 0 });
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const [position, setPosition] = useState<PositionState>({
+    left: 0,
+    top: 0,
+    placement: "below",
+    arrowOffset: 16,
+  });
   const pinned = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   function cancelClose() {
@@ -27,6 +47,14 @@ export function HoverDetails({
   }
   function show() {
     cancelClose();
+    if (anchor.current) {
+      const rect = anchor.current.getBoundingClientRect();
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 300));
+      const top = rect.bottom + 8;
+      const anchorCenter = rect.left + rect.width / 2;
+      const arrowOffset = Math.max(12, Math.min(260, anchorCenter - left - 4));
+      setPosition({ left, top, placement: "below", arrowOffset });
+    }
     setOpen(true);
   }
   function leave() {
@@ -45,11 +73,12 @@ export function HoverDetails({
     const bounds = panel.current.getBoundingClientRect();
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8));
     const below = rect.bottom + 8;
-    const top =
-      below + bounds.height <= window.innerHeight - 8
-        ? below
-        : Math.max(8, rect.top - bounds.height - 8);
-    setPosition({ left, top });
+    const isBelow = below + bounds.height <= window.innerHeight - 8;
+    const top = isBelow ? below : Math.max(8, rect.top - bounds.height - 8);
+    const placement: "below" | "above" = isBelow ? "below" : "above";
+    const anchorCenter = rect.left + rect.width / 2;
+    const arrowOffset = Math.max(12, Math.min(bounds.width - 20, anchorCenter - left - 4));
+    setPosition({ left, top, placement, arrowOffset });
   }, [open]);
   useEffect(() => {
     if (!open) return;
@@ -120,16 +149,58 @@ export function HoverDetails({
               ref={panel}
               id={id}
               role="tooltip"
+              data-placement={position.placement}
               className={styles.panel}
-              style={position}
+              style={
+                {
+                  left: position.left,
+                  top: position.top,
+                  "--arrow-offset": `${position.arrowOffset}px`,
+                } as CSSProperties
+              }
               onPointerEnter={cancelClose}
               onPointerLeave={leave}
             >
-              {children}
+              <div className={styles.arrow} aria-hidden="true" />
+              <div className={styles.content}>{children}</div>
             </div>,
             document.body,
           )
         : null}
     </>
+  );
+}
+
+/** Structured card wrapper for rich entity inspection tooltips. */
+export function HoverCard({
+  title,
+  tags,
+  children,
+}: {
+  title?: ReactNode;
+  tags?: ReactNode[];
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.card}>
+      {title || (tags && tags.length > 0) ? (
+        <>
+          <div className={styles.cardHeader}>
+            {title ? <span className={styles.cardTitle}>{title}</span> : <span />}
+            {tags && tags.length > 0 ? (
+              <div className={styles.cardBadges}>
+                {tags.map((tag, i) => (
+                  <span key={i} className={styles.cardTag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className={styles.cardDivider} />
+        </>
+      ) : null}
+      {children}
+    </div>
   );
 }

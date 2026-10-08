@@ -18,6 +18,8 @@ import { Select, TextInput } from "@/shared/ui/FormControls";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "./ManualEditor.module.css";
 
+class ManualConflictError extends Error {}
+
 export function ManualEditor({
   portfolioId,
   target,
@@ -29,7 +31,7 @@ export function ManualEditor({
 }) {
   const identities = useIdentities(portfolioId);
   const [identityId, setIdentityId] = useState(target.identityId);
-  const query = useManual(portfolioId, identityId, true);
+  const query = useManual(portfolioId, identityId);
   const identity = identities.data?.items.find((item) => item.id === identityId);
   const { userId, redirect } = useSessionScope();
   const write = useAuthenticatedWrite();
@@ -67,7 +69,7 @@ export function ManualEditor({
           void identities.refetch();
         }}
       />
-      {identityId && query.isFetching ? (
+      {identityId && !query.data && query.isFetching ? (
         <p role="status">Loading current manual records…</p>
       ) : query.data && identityId ? (
         <ManualForm
@@ -75,8 +77,10 @@ export function ManualEditor({
           state={query.data}
           target={target}
           onClose={onClose}
-          onReload={() => {
-            void query.refetch();
+          onReload={async () => {
+            const result = await query.refetch();
+            if (result.error) throw result.error;
+            return result.data!;
           }}
           onSave={async (symbol, quantity, action) => {
             const path = { portfolioId, identityId, symbol };
@@ -96,15 +100,19 @@ export function ManualEditor({
               }
             });
             if (result.response?.status === 412) {
-              throw new Error(
+              throw new ManualConflictError(
                 "Manual records changed elsewhere. Reload current records before saving again.",
               );
             }
             const state = unwrapOrRedirect(result, redirect);
             queryClient.setQueryData(query.key, state);
-            await queryClient.invalidateQueries({
-              queryKey: keys.manualBalances(userId, portfolioId, identityId),
-            });
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: keys.balances(userId, portfolioId) }),
+              queryClient.invalidateQueries({
+                queryKey: keys.accountBalances(userId, portfolioId),
+              }),
+              queryClient.invalidateQueries({ queryKey: keys.overview(userId, portfolioId) }),
+            ]);
           }}
         />
       ) : null}
@@ -122,7 +130,7 @@ function ManualForm({
   state: ManualBalanceState;
   target: ManualTarget;
   onSave: (symbol: string, quantity: string, action: "add" | "edit" | "delete") => Promise<void>;
-  onReload: () => void;
+  onReload: () => Promise<ManualBalanceState>;
   onClose?: () => void;
 }) {
   const initial = state.items.find((item) => item.symbol === target.symbol);
@@ -134,6 +142,7 @@ function ManualForm({
     target.symbol && !initial && action !== "add" ? "This record has already been removed." : "",
   );
   const [saved, setSaved] = useState(false);
+  const [needsReload, setNeedsReload] = useState(false);
   const existing =
     !saved && Boolean(state.items.find((item) => item.symbol === symbol.trim().toUpperCase()));
 
@@ -145,16 +154,73 @@ function ManualForm({
       await onSave(symbol.trim().toUpperCase(), quantity, action);
       setSaved(true);
       setMessage("Saved. The next Collection Cycle will apply this quantity.");
-      if (action === "delete") {
-        setSymbol("");
-        setQuantity("");
-      }
+      onClose?.();
     } catch (error) {
       setMessage(problemMessage(error, "The manual record could not be saved."));
+      setNeedsReload(error instanceof ManualConflictError);
     } finally {
       setBusy(false);
     }
   }
+
+  async function reload() {
+    setBusy(true);
+    try {
+      const latest = await onReload();
+      if (action !== "add") {
+        setQuantity(latest.items.find((item) => item.symbol === symbol)?.quantity ?? "");
+      }
+      setMessage("");
+      setNeedsReload(false);
+      setSaved(false);
+    } catch (error) {
+      setMessage(problemMessage(error, "Manual records could not be loaded."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (action !== "add" && !initial && !saved && !busy) {
+    return <p role="status">This record has already been removed.</p>;
+  }
+
+  const feedback = message ? (
+    <p
+      className={saved ? styles.statusSuccess : styles.statusError}
+      role={saved ? "status" : "alert"}
+    >
+      {message}
+    </p>
+  ) : null;
+  const actions = (
+    <div className={styles.cardActions}>
+      {saved ? (
+        onClose ? (
+          <ActionButton type="button" tone="primary" onClick={onClose}>
+            Done
+          </ActionButton>
+        ) : null
+      ) : (
+        <ActionButton
+          type="submit"
+          tone={action === "delete" ? "danger" : "primary"}
+          disabled={busy || needsReload || (action === "add" && existing)}
+        >
+          {action === "delete" ? "Delete record" : "Save quantity"}
+        </ActionButton>
+      )}
+      {!saved && onClose ? (
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+          Cancel
+        </ActionButton>
+      ) : null}
+      {!saved ? (
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={() => void reload()}>
+          Reload current records
+        </ActionButton>
+      ) : null}
+    </div>
+  );
 
   return (
     <>
@@ -175,33 +241,8 @@ function ManualForm({
             <p className={styles.deletePrompt}>
               Remove {symbol} from future collections? Earlier reports remain unchanged.
             </p>
-            {message ? (
-              <p
-                className={saved ? styles.statusSuccess : styles.statusError}
-                role={saved ? "status" : "alert"}
-              >
-                {message}
-              </p>
-            ) : null}
-            <div className={styles.cardActions}>
-              {saved && onClose ? (
-                <ActionButton type="button" tone="primary" onClick={onClose}>
-                  Done
-                </ActionButton>
-              ) : (
-                <ActionButton type="submit" tone="danger" disabled={busy || saved}>
-                  Delete record
-                </ActionButton>
-              )}
-              {onClose && !saved ? (
-                <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-                  Cancel
-                </ActionButton>
-              ) : null}
-              <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
-                Reload current records
-              </ActionButton>
-            </div>
+            {feedback}
+            {actions}
           </form>
         </div>
       ) : action === "edit" ? (
@@ -228,37 +269,15 @@ function ManualForm({
                 disabled={busy}
                 onChange={(event) => {
                   setQuantity(event.target.value);
-                  if (saved) setSaved(false);
+                  if (saved) {
+                    setSaved(false);
+                    setMessage("");
+                  }
                 }}
               />
             </label>
-            {message ? (
-              <p
-                className={saved ? styles.statusSuccess : styles.statusError}
-                role={saved ? "status" : "alert"}
-              >
-                {message}
-              </p>
-            ) : null}
-            <div className={styles.cardActions}>
-              {saved && onClose ? (
-                <ActionButton type="button" tone="primary" onClick={onClose}>
-                  Done
-                </ActionButton>
-              ) : (
-                <ActionButton type="submit" tone="primary" disabled={busy}>
-                  Save quantity
-                </ActionButton>
-              )}
-              {onClose && !saved ? (
-                <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-                  Cancel
-                </ActionButton>
-              ) : null}
-              <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
-                Reload current records
-              </ActionButton>
-            </div>
+            {feedback}
+            {actions}
           </form>
         </div>
       ) : (
@@ -284,7 +303,10 @@ function ManualForm({
                   maxLength={64}
                   onChange={(event) => {
                     setSymbol(event.target.value);
-                    if (saved) setSaved(false);
+                    if (saved) {
+                      setSaved(false);
+                      setMessage("");
+                    }
                   }}
                 />
               </label>
@@ -298,7 +320,10 @@ function ManualForm({
                   disabled={busy || saved}
                   onChange={(event) => {
                     setQuantity(event.target.value);
-                    if (saved) setSaved(false);
+                    if (saved) {
+                      setSaved(false);
+                      setMessage("");
+                    }
                   }}
                 />
               </label>
@@ -308,48 +333,8 @@ function ManualForm({
                 This asset already exists in this identity.
               </p>
             ) : null}
-            {message ? (
-              <p
-                className={saved ? styles.statusSuccess : styles.statusError}
-                role={saved ? "status" : "alert"}
-              >
-                {message}
-              </p>
-            ) : null}
-            <div className={styles.cardActions}>
-              {saved ? (
-                <>
-                  {onClose ? (
-                    <ActionButton type="button" tone="primary" onClick={onClose}>
-                      Done
-                    </ActionButton>
-                  ) : null}
-                  <ActionButton
-                    type="button"
-                    tone="ghost"
-                    onClick={() => {
-                      setSymbol("");
-                      setQuantity("");
-                      setSaved(false);
-                      setMessage("");
-                    }}
-                  >
-                    Add another asset
-                  </ActionButton>
-                </>
-              ) : (
-                <>
-                  <ActionButton type="submit" tone="primary" disabled={busy || Boolean(existing)}>
-                    Save quantity
-                  </ActionButton>
-                  {onClose ? (
-                    <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-                      Cancel
-                    </ActionButton>
-                  ) : null}
-                </>
-              )}
-            </div>
+            {feedback}
+            {actions}
           </form>
         </div>
       )}

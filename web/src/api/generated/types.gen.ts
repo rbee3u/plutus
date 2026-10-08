@@ -439,6 +439,15 @@ export type BalanceRow = {
      * Last user quantity adjustment, distinct from report observation time.
      */
     manualModifiedAt?: string | null;
+    /**
+     * Current manual changes relative to this displayed report; never changes its valuation.
+     */
+    manualChange?: 'added' | 'updated' | 'deleted';
+    manualQuantity?: Decimal;
+    /**
+     * Manual balance retained for editing but excluded from the displayed valuation.
+     */
+    excluded?: boolean;
 };
 
 export type PositionRow = {

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { keys, listBalances } from "@/api";
@@ -11,15 +11,14 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
-import { IconButton } from "@/shared/ui/IconButton";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { BALANCE_COLUMNS, balanceRow } from "../components/BalancesTable";
 import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
-import { ManualDialog, ManualPending } from "../dialogs/ManualBalances";
-import type { ManualTarget } from "../dialogs/manual";
+import { ManualDialog } from "../dialogs/ManualBalances";
+import { ManualActions, type ManualTarget } from "../dialogs/manual";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
@@ -58,7 +57,7 @@ export function BalancesPage() {
       {data?.context.pointId ? (
         <HoldingsSummary
           context={data.context}
-          label="Total Balance"
+          label="Collected balance total"
           value={
             <>
               {data.totalUsd ? <span className={styles.holdingsSummaryCurrency}>$</span> : null}
@@ -69,7 +68,7 @@ export function BalancesPage() {
         />
       ) : null}
       <DataTable
-        caption="Balances at the latest Valuation Point"
+        caption="Balances"
         columns={[
           ...holdingsAccountColumns(filters),
           { key: "accountName", header: "Account", nowrap: true },
@@ -92,31 +91,13 @@ export function BalancesPage() {
             item.accountType === "manual" ? (
               <span className={styles.inlineActionCell}>
                 <span>{item.accountName}</span>
-                <IconButton
-                  label={`Edit manual ${item.symbol}`}
-                  onClick={() =>
-                    setManualTarget({
-                      identityId: item.identityId,
-                      symbol: item.symbol,
-                      action: "edit",
-                    })
-                  }
-                >
-                  <Pencil size={iconSize.sm} aria-hidden="true" />
-                </IconButton>
-                <IconButton
-                  label={`Delete manual ${item.symbol}`}
-                  tone="dangerQuiet"
-                  onClick={() =>
-                    setManualTarget({
-                      identityId: item.identityId,
-                      symbol: item.symbol,
-                      action: "delete",
-                    })
-                  }
-                >
-                  <Trash2 size={iconSize.sm} aria-hidden="true" />
-                </IconButton>
+                {item.manualChange !== "deleted" ? (
+                  <ManualActions
+                    identityId={item.identityId}
+                    symbol={item.symbol}
+                    onOpen={setManualTarget}
+                  />
+                ) : null}
               </span>
             ) : (
               item.accountName
@@ -133,22 +114,6 @@ export function BalancesPage() {
         }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {filters.identities.data?.items
-        .filter(
-          (item) =>
-            item.status !== "archived" &&
-            (!identityId || item.id === identityId) &&
-            (!platform || item.platform === platform),
-        )
-        .map((item) => (
-          <ManualPending
-            key={item.id}
-            portfolioId={portfolioId}
-            identityId={item.id}
-            name={item.displayName}
-            onOpen={setManualTarget}
-          />
-        ))}
       <ManualDialog
         portfolioId={portfolioId}
         target={manualTarget}

@@ -50,9 +50,7 @@ const registry = {
   accountEarnPositions: family<
     [accountId?: string, pointId?: string | null, reportId?: string | null]
   >("account-earn-positions", true),
-  manualBalances: family<[identityId?: string]>("manual-balances", true),
   manualEditor: family<[identityId?: string, editorId?: string]>("manual-editor", false),
-  manualSymbols: family<[platform?: string]>("manual-symbols", true),
   historyWindow: family<
     [timezone?: string, fromOrPreset?: string, to?: string, mountId?: string, anchor?: number]
   >("history-window", true),

@@ -114,6 +114,7 @@ type Querier interface {
 	ListListingExclusionsBefore(ctx context.Context, arg ListListingExclusionsBeforeParams) ([]ListListingExclusionsBeforeRow, error)
 	ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error)
 	ListManualCycleAccounts(ctx context.Context, arg ListManualCycleAccountsParams) ([]ListManualCycleAccountsRow, error)
+	ListPortfolioManualBalances(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualBalancesRow, error)
 	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error)
 	ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfoliosForSchedulingRow, error)
 	ListPortfoliosHoldingListing(ctx context.Context, listingID []byte) ([][]byte, error)

@@ -20,23 +20,20 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 		return AccountView{}, err
 	}
 	view.Balances = []BalanceRow{}
-	if source == nil {
-		return view, nil
-	}
+
 	ignored := map[uuid.UUID]bool{}
-	if view.Account.Method == valuation.MethodCalculated {
-		point, err := s.valuation.Latest(ctx, p.ID)
-		if err != nil {
-			return AccountView{}, err
-		}
-		ignored, err = listingexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+	if view.Account.Method == valuation.MethodCalculated && view.Context.JobID != nil {
+		ignored, err = listingexclusion.ActiveForJob(ctx, s.db, p.ID, *view.Context.JobID)
 		if err != nil {
 			return AccountView{}, err
 		}
 	}
-	rows, err := s.q.ListBalancesByReport(ctx, source[:])
-	if err != nil {
-		return AccountView{}, err
+	var rows []sqlcgen.ListBalancesByReportRow
+	if source != nil {
+		rows, err = s.q.ListBalancesByReport(ctx, source[:])
+		if err != nil {
+			return AccountView{}, err
+		}
 	}
 	book := valuation.NewPriceBook(s.q)
 	at := time.Time{}
@@ -48,15 +45,26 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 		if err != nil {
 			return AccountView{}, err
 		}
-		if ignored[listingID] {
+		if ignored[listingID] && view.Account.AccountType != string(adapters.TypeManual) {
 			continue
 		}
 		row, err := balanceRow(ctx, book, &view.Account, at, &rows[i])
 		if err != nil {
 			return AccountView{}, err
 		}
+		if ignored[listingID] {
+			excludeManualBalance(&row)
+		}
 		view.Balances = append(view.Balances, row)
 	}
+	if view.Account.AccountType == string(adapters.TypeManual) {
+		current, err := s.currentManualBalances(ctx, p)
+		if err != nil {
+			return AccountView{}, err
+		}
+		view.Balances = mergeManualBalances(view.Balances, current[accountID], &view.Account)
+	}
+	sortBalances(view.Balances, accountRanks([]valuation.AccountValuation{view.Account}))
 	return view, nil
 }
 
@@ -121,22 +129,31 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	out := FlatList[BalanceRow]{Context: c, Items: []BalanceRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 	if point == nil {
 		out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
-		return out, nil
+	} else {
+		out.Completeness = point.Completeness()
+		out.Issues = point.Issues
 	}
-	ignored, err := listingexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+	accounts, err = s.withManualAccounts(ctx, p, accounts)
 	if err != nil {
 		return FlatList[BalanceRow]{}, err
 	}
-	out.Completeness = point.Completeness()
-	out.Issues = point.Issues
+	ignored := map[uuid.UUID]bool{}
+	var rows []sqlcgen.ListBalancesByJobRow
+	if point != nil {
+		ignored, err = listingexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+		if err != nil {
+			return FlatList[BalanceRow]{}, err
+		}
+		rows, err = s.q.ListBalancesByJob(ctx, sqlcgen.ListBalancesByJobParams{PortfolioID: p.ID[:], JobID: point.JobID[:]})
+		if err != nil {
+			return FlatList[BalanceRow]{}, err
+		}
+	}
 	byAccount := indexAccounts(accounts)
-	rows, err := s.q.ListBalancesByJob(ctx, sqlcgen.ListBalancesByJobParams{PortfolioID: p.ID[:], JobID: point.JobID[:]})
-	if err != nil {
-		return FlatList[BalanceRow]{}, err
-	}
+
 	book := valuation.NewPriceBook(s.q)
 	all := make([]BalanceRow, 0, len(rows))
-	total := decimal.Zero()
+	manualRows := make(map[uuid.UUID][]BalanceRow)
 	for i := range rows {
 		accountID, err := uuid.FromBytes(rows[i].AccountID)
 		if err != nil {
@@ -146,14 +163,11 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		if !ok {
 			continue
 		}
-		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, rows[i].AssetSymbol, rows[i].Symbol) {
-			continue
-		}
 		listingID, err := uuid.FromBytes(rows[i].ListingID)
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
-		if account.Method == valuation.MethodCalculated && ignored[listingID] {
+		if account.Method == valuation.MethodCalculated && ignored[listingID] && account.AccountType != string(adapters.TypeManual) {
 			continue
 		}
 		at := time.Time{}
@@ -175,13 +189,47 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
+		if account.AccountType == string(adapters.TypeManual) {
+			if ignored[listingID] {
+				excludeManualBalance(&row)
+			}
+			manualRows[accountID] = append(manualRows[accountID], row)
+		} else {
+			all = append(all, row)
+		}
+	}
+	current, err := s.currentManualBalances(ctx, p)
+	if err != nil {
+		return FlatList[BalanceRow]{}, err
+	}
+	for i := range accounts {
+		account := &accounts[i]
+		if account.AccountType == string(adapters.TypeManual) {
+			all = append(all, mergeManualBalances(manualRows[account.AccountID], current[account.AccountID], account)...)
+		}
+	}
+	filtered := all[:0]
+	total := decimal.Zero()
+	for _, row := range all {
+		if !matchesAccount(f, byAccount[row.AccountID]) || !matchesSymbol(f.Symbol, row.AssetSymbol, row.Symbol) {
+			continue
+		}
+		filtered = append(filtered, row)
 		if row.equityUSDRat != nil {
 			total = decimal.Add(total, row.equityUSDRat)
 		}
-		all = append(all, row)
 	}
-	out.TotalUSD = decimal.FormatPtr(total)
+	all = filtered
+	if point != nil {
+		out.TotalUSD = decimal.FormatPtr(total)
+	}
 	sortBalances(all, accountRanks(accounts))
 	out.paginate(all)
 	return out, nil
+}
+
+func excludeManualBalance(row *BalanceRow) {
+	row.Excluded = true
+	row.PriceUSD, row.EquityUSD, row.equityUSDRat = nil, nil, nil
+	row.NoPrice = false
 }

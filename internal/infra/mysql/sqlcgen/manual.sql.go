@@ -300,6 +300,57 @@ func (q *Queries) ListManualCycleAccounts(ctx context.Context, arg ListManualCyc
 	return items, nil
 }
 
+const listPortfolioManualBalances = `-- name: ListPortfolioManualBalances :many
+SELECT b.account_id, b.symbol, b.listing_id, b.quantity, b.modified_at,
+       l.asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
+FROM manual_balances b
+JOIN asset_listings l ON l.id = b.listing_id
+LEFT JOIN portfolio_listing_exclusions e ON e.portfolio_id = b.portfolio_id AND e.listing_id = b.listing_id
+WHERE b.portfolio_id = ?
+ORDER BY b.account_id, b.symbol
+`
+
+type ListPortfolioManualBalancesRow struct {
+	AccountID   []byte
+	Symbol      string
+	ListingID   []byte
+	Quantity    string
+	ModifiedAt  time.Time
+	AssetSymbol string
+	Excluded    bool
+}
+
+func (q *Queries) ListPortfolioManualBalances(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualBalancesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfolioManualBalances, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPortfolioManualBalancesRow{}
+	for rows.Next() {
+		var i ListPortfolioManualBalancesRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.Symbol,
+			&i.ListingID,
+			&i.Quantity,
+			&i.ModifiedAt,
+			&i.AssetSymbol,
+			&i.Excluded,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockManualAccount = `-- name: LockManualAccount :one
 SELECT a.id, a.version, i.platform, i.status
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id

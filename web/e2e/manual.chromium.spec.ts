@@ -3,6 +3,7 @@ import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type {
   AccountValuation,
+  BalanceRow,
   ManualBalance,
   ManualBalanceState,
 } from "../src/api/generated/types.gen";
@@ -167,7 +168,7 @@ async function fixture(page: Page, initialPoint = true) {
                     connectionStatus: "unconfigured",
                     valueUsd: point()?.totalUsd ?? "0",
                     completeness: "complete",
-                    accounts: state.applied.length ? [account()] : [],
+                    accounts: state.applied.length || state.items.length ? [account()] : [],
                   },
                 ],
               },
@@ -175,7 +176,7 @@ async function fixture(page: Page, initialPoint = true) {
           },
         });
       if (path.endsWith("/balances")) {
-        const items = state.applied.map((item) => ({
+        const items: BalanceRow[] = state.applied.map((item) => ({
           ...item,
           ...account(),
           symbol: item.symbol,
@@ -183,7 +184,31 @@ async function fixture(page: Page, initialPoint = true) {
           equityUsd: item.quantity,
           priceUsd: "1",
           noPrice: false,
+          manualChange: !state.items.some((current) => current.symbol === item.symbol)
+            ? "deleted"
+            : state.items.find((current) => current.symbol === item.symbol)?.quantity !==
+                item.quantity
+              ? "updated"
+              : undefined,
+          manualQuantity: state.items.find((current) => current.symbol === item.symbol)?.quantity,
         }));
+        for (const item of state.items) {
+          if (!state.applied.some((applied) => applied.symbol === item.symbol)) {
+            items.push({
+              ...item,
+              ...account(),
+              symbol: item.symbol,
+              equity: item.quantity,
+              priceUsd: null,
+              equityUsd: null,
+              noPrice: false,
+              freshness: "fresh",
+              reportObservedAt: null,
+              manualChange: "added",
+              manualQuantity: item.quantity,
+            });
+          }
+        }
         return route.fulfill({
           json: {
             context: context(),
@@ -250,18 +275,15 @@ test("all three manual entries share fresh editing and keep pending values separ
   await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
   await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
-  await expect(dialog.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+  await expect(dialog).toBeHidden();
   expect(state.privateWrites).toBe(0);
-  await dialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Expand Owner", exact: true }).click();
-  await expect(page.getByRole("table", { name: "Pending manual quantities" })).toContainText("100");
-  await expect(
-    page.getByRole("button", { name: "Expand balances and positions for Manual" }),
-  ).toHaveCount(0);
-  await page.getByRole("button", { name: "Collect now", exact: true }).click();
   await page
     .getByRole("button", { name: "Expand balances and positions for Manual", exact: true })
     .click();
+  await page.getByRole("button", { name: "Manual USD quantity 100", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Pending collection");
+  await page.getByRole("button", { name: "Collect now", exact: true }).click();
   await page.getByRole("button", { name: "Add manual balance", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Add asset" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close dialog" }).click();
@@ -279,14 +301,20 @@ test("all three manual entries share fresh editing and keep pending values separ
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("102");
   await dialog.getByRole("button", { name: "Reload current records" }).click();
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("103");
-  await dialog.getByRole("button", { name: "Close dialog" }).click();
+  await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("104");
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Manual USD quantity 100", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Pending: 104 USD");
+  await expect(page.getByRole("button", { name: "Edit manual USD", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Delete manual USD", exact: true }).click();
   await dialog.getByRole("button", { name: "Delete record", exact: true }).click();
-  await dialog.getByRole("button", { name: "Close dialog" }).click();
-  await expect(page.getByRole("table", { name: "Pending manual quantities" })).toContainText("100");
-  await expect(
-    page.getByRole("table", { name: "Balances at the latest Valuation Point" }),
-  ).toContainText("100");
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("table", { name: "Balances", exact: true })).toContainText("100");
+  await expect(page.getByRole("button", { name: "Edit manual USD", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Delete manual USD", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Manual USD quantity 100", exact: true }).focus();
+  await expect(page.getByRole("tooltip")).toHaveText("Pending removal");
 });
 
 test("global entry works before a point and requires Identity selection on mobile", async ({
@@ -303,10 +331,38 @@ test("global entry works before a point and requires Identity selection on mobil
   await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
   await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("-100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
-  await expect(dialog.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
-  await dialog.getByRole("button", { name: "Close dialog" }).click();
-  await expect(page.getByRole("table", { name: "Pending manual quantities" })).toContainText(
-    "-100",
-  );
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("table", { name: "Balances", exact: true })).toContainText("-100");
+  await page.getByRole("button", { name: "Manual USD quantity -100", exact: true }).click();
+  await expect(page.getByRole("tooltip")).toHaveText("Pending collection");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Edit manual USD", exact: true }).click();
+  await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("-200");
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("table", { name: "Balances", exact: true })).toContainText("-200");
+  await page.getByRole("button", { name: "Delete manual USD", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete record", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: /^Manual USD quantity/ })).toHaveCount(0);
   expect(state.privateWrites).toBe(0);
+});
+
+test("adding recovers from a version conflict without losing the draft", async ({ page }) => {
+  const state = await fixture(page, false);
+  await page.goto(`/p/${portfolioId}/holdings/balances`);
+  await page.getByRole("button", { name: "Add manual balance", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Manual balances" });
+  await dialog.getByRole("combobox", { name: "Identity", exact: true }).selectOption("owner");
+  await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
+  await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("100");
+  state.version++;
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("changed elsewhere");
+  await expect(dialog.getByRole("button", { name: "Save quantity", exact: true })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Reload current records" }).click();
+  await expect(dialog.getByRole("textbox", { name: "Asset code" })).toHaveValue("USD");
+  await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("100");
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog).toBeHidden();
 });
