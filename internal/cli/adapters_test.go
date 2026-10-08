@@ -53,7 +53,7 @@ func TestRuntimeProxyPolicyAndFake(t *testing.T) {
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:7890")
 	t.Setenv("NO_PROXY", "*")
 	request, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://exchange.invalid/account", nil)
-	for _, mode := range []string{"environment", "direct", "proxy"} {
+	for _, mode := range []string{"direct", "proxy"} {
 		policy := config.Proxy{Mode: mode}
 		if mode == "proxy" {
 			policy.URL = "socks5h://127.0.0.1:1080"

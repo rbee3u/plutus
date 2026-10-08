@@ -36,10 +36,10 @@ documents `iiban` as nullable: without it the two pairs cannot be compared, and
 a Futures-only Identity is bound to the Futures `accountUid` instead. Adding the
 Spot pair to such an Identity later changes its reference, which validation
 refuses as a different account
-([Account model](../../adr/0001-ownership-and-accounts.md)), so add both key
-groups before the first validation, or create a new Identity. Read-only key
-permissions are guidance, not inspected; use only read-only keys as required by
-the [Adapter boundary](../../architecture.md#adapter-boundary).
+([Account model](../../adr/0001-ownership-and-account-boundaries.md)), so add
+both key groups before the first validation, or create a new Identity. Read-only
+key permissions are guidance, not inspected; use only read-only keys as required
+by the [Adapter boundary](../../architecture.md#adapter-boundary).
 
 ## Endpoints
 
@@ -78,8 +78,8 @@ missing flag fails the batch with `normalization`; it is never read as Separate
 wallets. A structure other than the Identity's fails with `unsupported` at
 validation when the Identity has a Futures key, and at the start of every
 Collection Run that selects an Account other than Earn, before any Account is
-read ([Account model](../../adr/0001-ownership-and-accounts.md)): "Kraken
-reports unified_balances = true (Unified Wallet), but this Identity is
+read ([Account model](../../adr/0001-ownership-and-account-boundaries.md)):
+"Kraken reports unified_balances = true (Unified Wallet), but this Identity is
 configured as Separate wallets. Create a new Identity for the new structure and
 archive this one." The Connection stays enabled and its Accounts turn stale. A
 run with Earn alone reads no snapshot: the Spot key cannot read the feed, and
@@ -125,9 +125,9 @@ Earn is the same Account in both structures.
 
 - A code Assets lists becomes its `altname` (`XXBT` → `XBT`, `ZUSD` → `USD`),
   then the aliases `XBT` → `BTC` and `XDG` → `DOGE` apply
-  ([Valuation policy](../../adr/0003-valuation-and-catalog.md)). Other suffixes,
-  such as `.T` for tokenized assets, are kept. A failed Assets call fails every
-  Account.
+  ([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)). Other
+  suffixes, such as `.T` for tokenized assets, are kept. A failed Assets call
+  fails every Account.
 - Zero totals are dropped. Every amount is required: a missing or non-decimal
   one fails its Account with `normalization`, naming the field; it is never read
   as zero.
@@ -151,15 +151,17 @@ Earn is the same Account in both structures.
 
 ## Earn Position descriptions
 
-Each nonzero allocation becomes one strategy aggregate, with `native.total` as
-allocated Amount. Strategy estimates retain the source APR range (percentage
-units normalized to ratios); `total_rewarded` remains strategy-history
-Cumulative rewards. Current-period accumulated and estimated payouts stay
-separate. Supplied bonding, pending, exit-queue, unbonding, and timed buckets
-retain their quantities and timestamps in details. Their phases do not imply a
-single subscription time or Maturity. Descriptions neither create subscriptions
-nor add their rewards or bucket amounts to valuation. See
-[ADR 0018](../../adr/0018-earn-position-presentation.md).
+Each nonzero
+[allocation](https://docs.kraken.com/api-reference/earn/list-earn-allocations)
+becomes one strategy aggregate, with `native.total` as allocated Amount.
+Strategy estimates retain the source APR range (percentage units normalized to
+ratios); `total_rewarded` remains strategy-history Cumulative rewards.
+Current-period accumulated and estimated payouts stay separate. Supplied
+bonding, pending, exit-queue, unbonding, and timed buckets retain their
+quantities and timestamps in details. Their phases do not imply a single
+subscription time or Maturity. Descriptions neither create subscriptions nor add
+their rewards or bucket amounts to valuation. See
+[ADR 0005](../../adr/0005-earn-and-dual-products.md).
 
 ## Position
 
@@ -199,8 +201,8 @@ routing uses the instrument type, not its symbol prefix or expiry.
 For every Balance symbol other than USD, USDT, and USDC, the Spot last trade
 price (`c[0]`) of its USD pair, else its USDT pair, else its USDC pair, observed
 when the tickers were fetched. USD, USDT, and USDC get no price row
-([Valuation policy](../../adr/0003-valuation-and-catalog.md)). A symbol with
-none of the three pairs gets no price and is valued as `no_price`. A failed
+([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)). A symbol
+with none of the three pairs gets no price and is valued as `no_price`. A failed
 AssetPairs or Ticker call leaves the batch without prices, and valuation falls
 back to the latest price within 24 hours. The same prices value Main in Separate
 wallets. Positions carry their own mark price; contracts get no separate price.
@@ -208,8 +210,8 @@ wallets. Positions carry their own mark price; contracts get no separate price.
 ## Earn completeness
 
 Kraken is not checked against an Earn valuation of its own
-([Dual Investment decision](../../adr/0005-dual-investment.md)): the only USD
-figure it reports, `total_allocated` on Earn/Allocations, values the same
+([Dual Investment decision](../../adr/0005-earn-and-dual-products.md)): the only
+USD figure it reports, `total_allocated` on Earn/Allocations, values the same
 allocation list Plutus itemizes, including Kraken Rewards that stay in Main. The
 list is documented as complete and unpaged, and a nonzero allocation that cannot
 be classified fails Earn instead of being skipped.

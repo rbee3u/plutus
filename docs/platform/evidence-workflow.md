@@ -47,7 +47,7 @@ fail shared validation. Test loaders and response sequences additionally reject
 
 The recorder is the only development-verification command that contacts
 exchanges. Runtime `serve`, worker and `collect` retain real collection. Listing
-and dry-run need no credentials or network:
+and dry-run read no configuration or credentials and need no network:
 
 ```sh
 plutus adapter record --platform binance --list-requests
@@ -71,12 +71,26 @@ environment or gitignored `config/record.env` (copy
 [record-example.env](../../config/record-example.env)). Kraken Spot/Futures use
 separate groups. Recording never falls back to `gotest.env` or old
 `PLUTUS_GOTEST_*` keys; ordinary tests never load recording credentials
-([Environment decision](../adr/0008-environments-and-migrations.md)).
+([Environment decision](../adr/0010-environments-and-configuration.md)).
 
-Each invocation makes exactly one HTTP request without configuration, clock
-synchronization, prices, products, totals, extra pages, retries, redirects or
-refusal probes. Kraken WS permits the necessary challenge/subscription for one
-logical snapshot without REST. An owner prepares one compatible group of
+Recording proxy settings come from the optional `config/record.toml` relative to
+the working directory; there is no parent-directory search. Copy
+[record-example.toml](../../config/record-example.toml) and configure `[proxy]`
+with `mode = "direct"` (the default), or `mode = "proxy"` and `url`. The
+[proxy URL rules](../development.md#platform-proxies) also apply here. Use
+`--config path/to/record.toml` to require a different file. The recording loader
+rejects unknown fields and does not accept runtime TOML sections.
+
+Actual recording validates its proxy configuration before reading credentials.
+It ignores `--env-file`, runtime configuration, and all proxy environment
+variables. `--list-requests` and `--dry-run` skip configuration entirely, even
+when `--config` points to a missing file. Neither offline command validates the
+routing of a later real request.
+
+Each invocation makes exactly one HTTP request without exchange configuration,
+clock synchronization, prices, products, totals, extra pages, retries, redirects
+or refusal probes. Kraken WS permits the necessary challenge/subscription for
+one logical snapshot without REST. An owner prepares one compatible group of
 holdings/settings, reviews its exact request/parameter list, and authorizes the
 sequential commands together. Stop on the first request/write failure; keep
 successes and resume only the uncompleted commands after correction. There is no

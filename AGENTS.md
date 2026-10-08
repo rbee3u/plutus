@@ -12,14 +12,18 @@
   work and clean up disposable files when finished.
 - Do not change the Git index unless explicitly asked. `CLAUDE.md` is a relative
   symlink to this file; edit `AGENTS.md` as the shared source.
-- Before changing behavior, read the [domain model](./CONTEXT.md),
+- Before changing behavior, read the [glossary](./GLOSSARY.md),
+  [domain rules](./docs/domain-rules.md),
   [product scope](./docs/product-scope.md), and relevant
   [ADRs](./docs/adr/README.md). Use canonical terms and preserve supported
-  scope. Update the relevant ADR for durable decisions and trade-offs.
+  scope. For UI changes, also read [presentation](./docs/presentation.md).
+  Maintain decisions under the [ADR rules](./docs/adr/README.md#maintenance).
 - Keep [README status](./README.md#current-status) honest. Synthetic tests and
-  recorded evidence do not establish exchange-app validation. `CONTEXT.md` owns
-  domain terms and rules; [architecture](./docs/architecture.md) owns technical
-  mechanisms; [ADRs](./docs/adr/README.md) own decisions and trade-offs.
+  recorded evidence do not establish exchange-app validation. The glossary owns
+  terms, domain rules own business behavior, presentation owns display and
+  interaction rules, [architecture](./docs/architecture.md) owns technical
+  mechanisms, and ADRs own decisions and trade-offs. Keep each rule in its owner
+  and link to it.
 
 ## Domain and data safeguards
 
@@ -28,7 +32,7 @@
   Report removes holdings; failures use compatible successful history as stale.
 - Account Structure and Margin Mode are distinct. Earn and Dual Investment are
   separate selected Accounts with shared completeness reads and scope-aware
-  stale fallback. Follow the [domain model](./CONTEXT.md).
+  stale fallback. Follow the [domain rules](./docs/domain-rules.md).
 - Adapters call only read-only balance, position, account, and market-data
   endpoints. Runtime raw Platform payloads never cross the Adapter boundary,
   enter logs, or reach storage. Only explicit `plutus adapter record` may write

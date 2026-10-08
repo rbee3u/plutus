@@ -1,0 +1,338 @@
+# Presentation
+
+This guide owns current display and interaction rules.
+[Product scope](./product-scope.md) defines offered views,
+[domain rules](./domain-rules.md) define financial meaning, and
+[architecture](./architecture.md) describes implementation. Display choices do
+not change source facts, selection, or the Portfolio Boundary.
+
+## Names and ordering
+
+### Account aliases
+
+Identity lists and creation forms use these compact labels without changing
+canonical terms, API names, identifiers, or stored data:
+
+| Platform | Account Structure aliases                             | Margin Mode aliases                                                                          |
+| -------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Binance  | Classic Trading → Classic; Portfolio Margin → Unified | none                                                                                         |
+| OKX      | Unified account → Unified                             | Spot mode → SPOT; Futures mode → FUTURES; Multi-currency margin → MCM; Portfolio margin → PM |
+| Bybit    | Unified Trading Account 2.0 → Unified                 | Isolated Margin → ISO; Cross Margin → MCM; Portfolio Margin → PM                             |
+| Kraken   | Separate wallets → Classic; Unified Wallet → Unified  | none                                                                                         |
+
+The list joins structure and mode with `·`, using `UNKNOWN` while an OKX or
+Bybit mode is unavailable. Known aliases render before the Platform catalog
+loads. Unknown identifiers use the catalog name when available, otherwise the
+identifier. There is no full-name disclosure. Position Margin Setting labels and
+Position Portfolio Margin descriptions use their own wording.
+
+Compact names improve scanning at the cost of native names and version details.
+Shared aliases imply neither identical Account arrangements nor identical risk
+models: Binance Unified is its supported Portfolio Margin structure; Bybit MCM
+is its canonical Cross Margin mode.
+
+### Ordering
+
+Lists, groups, and selectors use Platform, Identity, then Account order; views
+with fewer dimensions use the corresponding part of that hierarchy.
+
+- Platforms: Binance, OKX, Bybit, Kraken.
+- Identities: case-insensitive display name, then immutable ID.
+- Accounts: Account Type order within the declared Account Structure, then
+  immutable ID. The [Platform catalog](../internal/platform/adapters/catalog.go)
+  owns type order; Manual is last. Account names and Margin Mode do not affect
+  order.
+- Balances within an Account: Asset Symbol, native listing Symbol, listing ID.
+- Futures within an Account: Base Symbol; linear before inverse; perpetual
+  before delivery within each family; delivery expiry nearest first, unknown
+  last; native Symbol; long before short; Platform Position reference. Missing
+  Base follows known Bases and uses native Symbol, side, and reference. Do not
+  infer Base from Symbol or merge SHIB with 1000SHIB.
+- Earn within an Account: sorted invested Asset sequence, with native listing
+  breaking Asset ties; Flexible, Fixed, Bonded, Timed, On-chain; maturity with
+  unknown last; stable source reference. Multi-Asset products stay together.
+- Dual within an Account: expiry with unknown last, then Position reference.
+
+Ordering precedes pagination and ignores value, freshness, and collection
+arrival. Global and Account-detail views share within-Account order. History and
+Activity timelines retain time order; their Account details use the shared
+hierarchy. There is no user-selectable column sorting.
+
+This gives a predictable ownership path. Renaming an Identity deliberately moves
+it; renaming an Account does not. Trading Accounts precede funds and product
+Accounts; Kraken Derivatives Holding is a holding wallet before Earn. Stable
+ties and explicit missing-metadata rules avoid inventing facts.
+
+## Numeric presentation
+
+Cards, tables, details, explanatory text, counts, and chart tooltips share this
+policy. Select precision by absolute value and retain sign and unit. Limits are
+maxima rather than padding requirements; `d` is the number of integer digits.
+
+| Type                    | Absolute value at least 1         | Nonzero absolute value below 1 |
+| ----------------------- | --------------------------------- | ------------------------------ |
+| USD value               | 2 fractional digits               | 4 significant digits           |
+| Asset quantity or price | `max(2, 6 - d)` fractional digits | 6 significant digits           |
+| Unscaled ratio          | `max(2, 4 - d)` fractional digits | 4 significant digits           |
+| Percentage or leverage  | 2 fractional digits               | 4 significant digits           |
+| Count                   | Whole integer                     | Not applicable                 |
+
+Round to nearest with midpoint ties away from zero. Remove fractional trailing
+zeros, normalize negative zero, and group integer digits with English thousands
+commas. Missing, invalid, and non-finite values display as `—`, never zero.
+Known zero displays as `0` with its relevant unit.
+
+After rounding, at least four consecutive leading fractional zeros use
+zero-count shorthand: `0.00000444` becomes `0.0₅444`. The subscript counts all
+zeros after the decimal point before the first nonzero digit and may have
+multiple digits. There is no eight-place ceiling. A rounding carry can remove
+shorthand: USD `0.000099999` becomes `0.0001`.
+
+Fractional rates displayed as percentages scale by 100 before precision is
+selected. IMR, MMR, and UniMMR remain unscaled ratios; leverage retains `x`.
+Source Asset amounts use quantity precision even for USD-equivalent Assets;
+derived USD valuations use USD precision. Price precision is independent of the
+quoting Asset.
+
+USD valuations, flows, and differences in summaries, Tree nodes, signed badges,
+and tooltips use `$`, `+$`, or `-$`. Tables put currency in headers such as
+`Value (USD)` and use unadorned cells; never combine currency prefix and suffix.
+
+Chart tooltips use source decimal strings and USD precision. Numeric axes are
+the exception: values at least 1 use English compact notation with at most one
+fractional digit. Smaller nonzero ticks use four significant digits; rounded
+absolute values below `0.0001` use scientific notation. A carry to 1 uses
+compact notation; zero stays zero.
+
+Screen readers receive rounded ordinary decimals, not zero-count shorthand.
+There is no full-precision disclosure or copy-value interaction. Position
+disclosures retain units and terms using the same precision as the main display;
+margin provenance and conversion diagnostics remain available in the API.
+
+Inputs, submitted values, diagnostic JSON, API decimals, storage, calculations,
+aggregation, and ordering retain source precision. Dates, identifiers, protocol
+values, and versions are not numeric amounts. Format totals after aggregation;
+adding rounded rows can differ from the displayed total.
+
+Adaptive precision keeps small amounts visibly nonzero while favoring concise
+display. It sacrifices fixed decimal alignment and reconstruction of exact
+source values from the display. These are project preferences, not an industry
+standard;
+[Bybit Spot Cost](https://www.bybit.com/en/help-center/article/How-to-Calculate-View-or-Adjust-Spot-Cost-in-Unified-Trading-Account)
+and
+[Capital.com](https://help.capital.com/hc/en-us/articles/33093412785170-Why-do-some-crypto-prices-look-different)
+are precedents for individual conventions, not this combined policy.
+
+## Overview and navigation
+
+Overview shows metric cards, a recent-point chart, then the Platform → Identity
+→ Account Tree. Each node shows its name and adjacent USD valuation; unknown
+value is `—`. The nested disclosure list has no table headers or node counts.
+Its whole node row is a native expansion button with an accessible name and
+expanded state. Indentation and quiet guides express ownership; wide Account
+tables scroll locally inside their parent.
+
+Platforms start expanded, Identities and Accounts collapsed. Keyboard-operable
+controls exist at each level. Data updates preserve expansion; re-entering
+Overview or changing Portfolio resets it. Account details show known measures
+and holdings directly. Unavailable measures are omitted without inventing
+values; method, Report ID, and source time remain in an initially collapsed
+Report details disclosure.
+
+Account details contain failed, stale, and incomplete states with source times
+and omissions. Page-level Issues remain visible when nodes are collapsed; normal
+Connection labels and repeated ancestor badges do not occupy the Tree. Balances
+always appear in details. Futures, Earn, and Dual sections hide only after a
+successful empty read; loading, failed reads, and stale holdings stay explicit.
+Account hiding follows the
+[confirmed-empty rule](./domain-rules.md#manual-balances). The Identity add
+action stays available when all Accounts hide.
+
+Summary and Tree must describe one consistent Valuation Point; expanded details
+must match the visible Account Report. Failed or conflicting reads offer
+recovery, retain compatible prior data, and expose its age through point/report
+times. Latest-only endpoints can race with collection and require a retry or
+reload; the display must not combine inconsistent reports.
+
+Holdings has independent Balances, Futures, Earn, and Dual Investment views,
+with Balances as default and no Options placeholder. Ownership totals belong in
+Overview, while flat views support browsing distinct holding kinds. Each view
+remembers Platform, Identity, search, and pagination during the application
+session, scoped by User and Portfolio. Internal navigation saves outgoing search
+drafts and restores the target view. Explicit URLs, browser history, and reload
+take precedence; reload preserves only the current URL's view state.
+
+### Filters
+
+Global holdings filters live in their column headers. Labels remain visible with
+their condition; opening one offers a single-choice Platform or Identity list,
+or a symbol search. Account is descriptive, not filterable, because Account
+Types differ across Platforms and structures. Dual uses Pair for its currency
+search. Headers remain interactive during loading, failure, and empty results,
+with keyboard access and unclipped popovers.
+
+Platform and Identity candidates are the Portfolio's non-archived Identities in
+shared order. Each list is constrained by the other selection; symbol search
+does not affect candidates. All is independent: choosing an Identity does not
+choose its Platform. Clearing one filter preserves others; Clear filters resets
+all three. Filter changes restart pagination.
+
+Symbol search is a case-insensitive literal substring with surrounding
+whitespace ignored, applied before pagination without ranking or spelling
+correction. Futures searches native contract Symbol; Balances searches native
+and mapped Asset Symbols; Dual searches invested, Base, and Quote Symbols. Earn
+searches native and mapped invested Asset Symbols, retaining a matching
+multi-Asset Position as one whole row. Balance flat lists have no grouping
+option.
+
+Successful candidate reads reconcile invalid URL selections to All. If a valid
+Identity conflicts with a Platform, keep Identity and reset Platform to All.
+Loading or failed candidate reads cannot prove a selection invalid. Configured
+candidates may yield no holdings, but stay stable during searches and collection
+failures; URL correction can deliberately widen results.
+
+The Futures notional total and completeness cover the Portfolio Boundary before
+filtering or pagination. Balance totals follow filtered Balances. Filtering
+never changes the Portfolio Boundary.
+
+### Manual editing
+
+Overview Identity and Manual headings and global Balances share an editor,
+available before the first Valuation Point. It shows the current ledger,
+including excluded records, with pending additions, edits, and deletions
+separate from collected values. Version conflicts require recovery rather than
+silently overwriting another editor. Users remove amounts when they become
+API-visible; collection time does not imply User reconfirmation.
+
+## Holding tables
+
+Global and Account tables share columns, units, numeric policy, and provenance.
+Account and historical details omit ownership columns already established by
+their context. Tables scroll horizontally where needed. Pointer hover, keyboard
+focus, and click/touch disclosures expose the same supporting information.
+
+### Balances
+
+Columns are Platform, Identity, Account, Asset, Equity, Price (USD), Equity
+(USD), Liability, Unrealized PnL, Observed. Account details start at Asset.
+Asset shows the native Symbol with a secondary mapping hint. Withdrawable and
+Tradable remain source/API fields rather than displayed columns.
+
+Observed is the source Account Report time in the Portfolio timezone, to the
+minute, without a fresh badge. Stale rows retain the earlier time and disclose
+the Account's stale issue or standard carried-forward explanation. Unknown times
+stay unknown. Missing-price hints and page-level Issues remain visible; Balances
+do not add Position-style row issue counts.
+
+### Futures
+
+Columns are Platform, Identity, Account, Symbol, Side, Size, Entry Price, Mark
+Price, Liq. Price, Unrealized PnL, Margin, Notional (USD), Observed.
+
+Symbol disclosures show Base, Quote, Settle, effective Contract Size and its
+currency, linear/inverse payoff, perpetual/delivery term, and delivery time.
+Contract Size already includes any multiplier; a USD face amount is not a
+dimensionless multiplier.
+
+One-way Positions display Both with signed Size; hedged Positions display Long
+or Short with positive Size. Unknown historical mode keeps known direction and
+positive Size with a missing-mode issue. Source direction and quantity remain
+unchanged. [Contract rules](./domain-rules.md#contract-quantities-and-margin)
+own Size, Margin, conversion, and leverage calculations.
+
+Margin displays amount and Settle currency on one line. Known amounts and `—`
+share the same right edge; the content-sized column has no empty tag slot. The
+amount is one keyboard target disclosing a short line such as `1.88x isolated`,
+`3x cross`, or `portfolio margin`. Missing leverage leaves the known mode.
+Symbol details do not repeat leverage; margin provenance, conversion facts, and
+unavailable reasons remain in the API. Mode and leverage belong together while
+the visible row prioritizes Unrealized PnL and Margin amount.
+
+Observed uses the source Report time in Portfolio timezone; stale fallback also
+uses its observed Account Margin Mode. Badges identify stale data and missing
+Position Mode, Size, or USD notional. Failures without rows remain in page-level
+Issues. Known notionals are summed before filtering and pagination; missing
+required notionals or missing position-capable Accounts make that total
+incomplete. Balance valuation omissions alone do not make known contract
+notional incomplete.
+
+### Earn and Dual Investment
+
+Earn columns are Platform, Identity, Asset, Type, Maturity, Rate, Amount,
+Rewards, Subscribed, Status, Observed. Expanded Earn Accounts share this table
+without repeated Platform and Identity columns; Balances remain independently
+visible. Both Earn and Dual put source observation time and row-local stale or
+data issues in the final Observed column. Status contains product phases only.
+
+Earn Type uses Flexible, Fixed, Bonded, Timed, On-chain, with names and lock or
+redemption rules in details. Count Positions, not subscriptions: rows can be
+individual Positions or product/strategy aggregates. Multi-Asset products stay
+in one row with separate amounts and qualified rewards. Missing descriptions
+make the count explicitly partial; show known Balance summaries separately with
+their original Observed time rather than fabricating product rows.
+
+Amount, Rewards, Rate, and Maturity follow the
+[Earn semantic rules](./domain-rules.md#dual-investment-and-earn-completeness).
+Show their reported basis and qualifiers; minimum lending preferences, rewards
+with unverified scope, and delivery/redemption details belong in disclosures.
+Source-unavailable fields remain quiet; metadata faults and stale reports stay
+discoverable. Platform mappings own source-field interpretation.
+
+## Browser refresh and scrolling
+
+Ordinary iPhone Safari and Android Chrome tabs use native pull-to-refresh on all
+mobile pages, including sign-in and settings. Desktop uses browser reload. A
+reload reads existing data and never requests a Collection Cycle; Collect now is
+the explicit collection action. There are no page-specific reload buttons or
+periodic Overview/Activity list refreshes. Running Collection progress,
+completion reads, and reads after User mutations remain; scheduled backend
+collection is independent.
+
+URL-backed filters and pagination survive reload. Unsaved inputs, Tree
+expansion, and unshown view memory follow ordinary full reload behavior, without
+draft storage or refresh interception. An open page can lag scheduled
+collection; its displayed point time remains the reference.
+
+Page title and navigation stay visible during scrolling. Navigation drawers and
+dialogs isolate background scrolling and restore its position after the last
+overlay closes. Tables and overlay lists retain their own scrolling. Native
+gestures and presentation are browser-controlled; embedded browsers and
+home-screen installations are outside acceptance scope. Browser automation can
+verify scrolling and reload semantics, but does not establish actual Safari or
+Android browser-chrome coverage.
+
+## History windows and tables
+
+Both History views default to the rolling last seven days. They expose 1d, 3d,
+1w, 2w, 1Month, 1Year shortcuts and populated From / To controls in the
+Portfolio timezone. Days and weeks are fixed elapsed durations; months and years
+preserve local calendar time and clamp to the target month's last day. Reject
+ambiguous or nonexistent manually entered wall times explicitly.
+
+Shortcuts apply immediately; manual edits apply together through Apply. Anchor a
+relative window once for all reads while browsing: pagination, detail expansion,
+and retries cannot move it. Reload resolves relative windows again; custom
+absolute endpoints stay fixed. URLs retain the range, manually selected period,
+and independent table pagination.
+
+The Portfolio chart uses Raw through three days, Hour through 45 days, and Day
+for longer ranges. Hour and Day use the final actual point in each existing
+timezone bucket; they never average or synthesize value. Raw points remain
+individually accessible in a separate paginated table. Curves ascend in time;
+History tables use newest first. Sampling is display-only, not retention or
+stored preaggregation.
+
+Valuation Points shows filters, the full-window chart, Period closes, then raw
+points. Period closes shares the window. Both calendar views initially use Day
+for day/week shortcuts, Week for 1Month, and Month for 1Year. Users can override
+the period; applying a custom window retains it. Calendar reads calculate whole
+intersecting periods, not clipped intervals. Value Changes also offers an
+independent Custom range comparison.
+
+All three tables default to 20 rows with 10/20/50 choices, Previous / Next, and
+row counts. Range changes reset pagination and open point details; period
+changes reset only that period table. Expanding a point cannot reset a page. Raw
+points have unbounded count and server pagination; calendar results use the
+400-period ceiling and independent browser pagination, preserving the complete
+Value Changes chart. Read mechanisms belong in
+[architecture](./architecture.md#history-windows-and-tables).

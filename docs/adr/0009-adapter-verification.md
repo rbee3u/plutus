@@ -2,35 +2,27 @@
 status: accepted
 ---
 
-# ADR 0009: Independent synthetic tests and recorded evidence
+# Independent synthetic tests and recorded evidence
 
-## Decision
-
-Use independent synthetic responses for automated Adapter tests and
-owner-reviewed recorded responses for interface evidence. Tests must not read
-recordings. Documented support, observed response coverage, and exchange-app
-reconciliation are separate claims; none substitutes for the others.
+Keep automated Adapter fixtures independent from owner-reviewed recorded
+responses. Tests never read recordings. Documented support, observed response
+coverage, and exchange-app reconciliation are distinct claims; none substitutes
+for the others.
 
 Ordinary verification is network-guarded and uses loopback replay, fake data,
 and temporary MySQL. Only explicit single-interface recording contacts exchanges
-for development evidence. Recording uses separate credentials and writes
-sanitized responses into `/tmp/plutus/` for review. Accepted evidence is frozen;
-replacement needs a coverage-gap, interface-change, or error-fix reason.
+for development evidence, using separate credentials and sanitized output under
+`/tmp/plutus/`. Accepted evidence is frozen; replacement requires a coverage
+gap, interface change, or error fix.
 
-## Reason and trade-offs
+Synthetic scenarios give stable assertions without requiring matching real
+holdings. Independent evidence exposes undocumented contracts, at the cost of
+explicit review and separate regressions rather than replaying every recording.
+Temporary artifacts stay outside the checkout in unique task directories; system
+cleanup can remove unpromoted recordings, so review and promotion are required
+before relying on retention.
 
-Deliberate synthetic scenarios provide stable business assertions without
-forcing real account preparation to match tests. Separate evidence preserves
-actual contracts and exposes differences from documentation. This gives up
-automatic replay of every recording and requires explicit review, named gaps,
-and independent regression tests for parsing fixes.
-
-Temporary artifacts stay outside the checkout under `/tmp/plutus/`, with unique
-subdirectories for concurrent work. This keeps disposable files out of the
-repository, but system cleanup can remove unpromoted recordings; review and
-promote evidence before relying on its retention.
-
-The [evidence workflow](../platform/evidence-workflow.md) owns request,
-sanitization, promotion, and replacement procedures. [Testing](../testing.md)
-owns verification gates; Platform verification documents own current evidence
-and pending exchange-app checks.
+[Evidence workflow](../platform/evidence-workflow.md) owns recording and review;
+[testing](../testing.md) owns gates. Platform verification notes own coverage
+and pending exchange-app checks. Deterministic [dev scenarios](../seeds.md)
+exercise real valuation without establishing live integration coverage.

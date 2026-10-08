@@ -1,7 +1,7 @@
 # Position presentation delivery: 2026-10-03
 
 This delivery implements the accepted
-[ADR 0012](../adr/0012-position-presentation.md): shared contract columns,
+[contract presentation](../presentation.md#futures): shared contract columns,
 normalized Size, margin provenance, historical source context, and Observed
 badges. The existing business ordering remains in use. No exchange integration
 is declared complete.

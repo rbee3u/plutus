@@ -12,3 +12,4 @@
 /config/prod.env
 /config/gotest.env
 /config/record.env
+/config/record.toml

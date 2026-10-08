@@ -50,7 +50,8 @@ an investment return. Trading, transfers, and trade-history accounting are out
 of scope.
 
 See [product scope](./docs/product-scope.md) for supported Accounts and
-[domain model](./CONTEXT.md) for business rules.
+[domain rules](./docs/domain-rules.md) for business rules. The
+[glossary](./GLOSSARY.md) defines the canonical terms.
 
 ## Quick start
 
@@ -94,7 +95,8 @@ frontend, and externally managed MySQL database.
 | Read to                                   | Document                                                                                                                                                                              |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Check supported products and boundaries   | [Product scope](./docs/product-scope.md)                                                                                                                                              |
-| Understand terminology and business rules | [Domain model](./CONTEXT.md)                                                                                                                                                          |
+| Understand terminology and business rules | [Glossary](./GLOSSARY.md), [Domain rules](./docs/domain-rules.md)                                                                                                                     |
+| Understand display and interaction rules  | [Presentation](./docs/presentation.md)                                                                                                                                                |
 | Understand the system and its decisions   | [Architecture](./docs/architecture.md), [ADRs](./docs/adr/README.md)                                                                                                                  |
 | Set up and develop                        | [Development](./docs/development.md)                                                                                                                                                  |
 | Verify a change                           | [Testing](./docs/testing.md)                                                                                                                                                          |

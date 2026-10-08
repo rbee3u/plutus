@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -57,19 +56,16 @@ type fileConfig struct {
 		FinishedRetention *string `toml:"finished_retention"`
 	} `toml:"jobs"`
 	Collection struct {
-		ConnectionValidationTimeout *string `toml:"connection_validation_timeout"`
-		FakeAdapter                 bool    `toml:"fake_adapter"`
-		Proxy                       struct {
-			Mode *string `toml:"mode"`
-			URL  *string `toml:"url"`
-		} `toml:"proxy"`
+		ConnectionValidationTimeout *string   `toml:"connection_validation_timeout"`
+		FakeAdapter                 bool      `toml:"fake_adapter"`
+		Proxy                       proxyFile `toml:"proxy"`
 	} `toml:"collection"`
 	Database struct {
 		AllowReset bool `toml:"allow_reset"`
 	} `toml:"database"`
 }
 
-// Load reads defaults, an env file, an optional TOML file, environment overrides, and secrets.
+// Load reads ordinary settings from defaults and TOML, and secrets from the environment.
 // When Options.EnvFile is set, only that file is read. Otherwise an optional `config/local.env`
 // in the working directory or Go module root is used. Existing process environment values win
 // over the env file. A missing default env file is ignored. The nearest `config/local.env` wins
@@ -90,9 +86,6 @@ func Load(opts Options) (Config, error) {
 
 	cfg := defaults()
 	if err := applyFile(&cfg, &opts); err != nil {
-		return Config{}, err
-	}
-	if err := applyEnv(&cfg, opts.LookupEnv); err != nil {
 		return Config{}, err
 	}
 	if err := applySecrets(&cfg, &opts); err != nil {
@@ -120,27 +113,38 @@ func defaults() Config {
 		},
 		Collection: Collection{
 			ConnectionValidationTimeout: 15 * time.Second,
-			Proxy:                       Proxy{Mode: "environment"},
+			Proxy:                       Proxy{Mode: defaultProxyMode},
 		},
 	}
 }
 
 func applyFile(cfg *Config, opts *Options) error {
+	var parsed fileConfig
+	if err := readTOML(opts, defaultConfigFileName, &parsed); err != nil {
+		return err
+	}
+	return overlayFile(cfg, &parsed)
+}
+
+func readTOML(opts *Options, defaultPath string, target any) error {
 	path := opts.Path
 	required := path != ""
 	if path == "" {
-		path = defaultConfigFileName
+		path = defaultPath
 	}
-	raw, err := opts.ReadFile(path)
+	readFile := opts.ReadFile
+	if readFile == nil {
+		readFile = os.ReadFile
+	}
+	raw, err := readFile(path)
 	if err != nil {
 		if !required && os.IsNotExist(err) {
 			return nil
 		}
 		return fmt.Errorf("read config file %s: %w", path, err)
 	}
-	var parsed fileConfig
 	decoder := toml.NewDecoder(bytes.NewReader(raw)).DisallowUnknownFields()
-	if err := decoder.Decode(&parsed); err != nil {
+	if err := decoder.Decode(target); err != nil {
 		var unknown *toml.StrictMissingError
 		if errors.As(err, &unknown) {
 			keys := make([]string, len(unknown.Errors))
@@ -151,7 +155,7 @@ func applyFile(cfg *Config, opts *Options) error {
 		}
 		return fmt.Errorf("parse config file %s: %w", path, err)
 	}
-	return overlayFile(cfg, &parsed)
+	return nil
 }
 
 func overlayFile(cfg *Config, parsed *fileConfig) error {
@@ -179,12 +183,7 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 		return err
 	}
 	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
-	if parsed.Collection.Proxy.Mode != nil {
-		cfg.Collection.Proxy.Mode = strings.TrimSpace(*parsed.Collection.Proxy.Mode)
-	}
-	if parsed.Collection.Proxy.URL != nil {
-		cfg.Collection.Proxy.URL = strings.TrimSpace(*parsed.Collection.Proxy.URL)
-	}
+	cfg.Collection.Proxy = parsed.Collection.Proxy.policy()
 	cfg.Database.AllowReset = parsed.Database.AllowReset
 	if parsed.Logging.Directory != nil {
 		cfg.Logging.Directory = strings.TrimSpace(*parsed.Logging.Directory)
@@ -210,92 +209,6 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	return nil
 }
 
-func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
-	if err := rejectRemovedEnv(lookup); err != nil {
-		return err
-	}
-	optionalString(&cfg.Server.ListenAddress, lookup, "PLUTUS_SERVER_LISTEN_ADDRESS")
-	if v, ok := lookup("PLUTUS_SERVER_PORT"); ok {
-		port, err := strconv.Atoi(strings.TrimSpace(v))
-		if err != nil {
-			return fmt.Errorf("PLUTUS_SERVER_PORT: %w", err)
-		}
-		cfg.Server.Port = port
-	}
-	optionalString(&cfg.Server.TLS.CertFile, lookup, "PLUTUS_SERVER_TLS_CERT_FILE")
-	optionalString(&cfg.Server.TLS.KeyFile, lookup, "PLUTUS_SERVER_TLS_KEY_FILE")
-	optionalString(&cfg.Server.TLS.ClientCAFile, lookup, "PLUTUS_SERVER_TLS_CLIENT_CA_FILE")
-	optionalString(&cfg.Auth.CookieSuffix, lookup, "PLUTUS_AUTH_COOKIE_SUFFIX")
-	if err := optionalDurationEnv(&cfg.Auth.SessionIdleLifetime, lookup, "PLUTUS_AUTH_SESSION_IDLE_LIFETIME"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Auth.SessionAbsoluteLifetime, lookup, "PLUTUS_AUTH_SESSION_ABSOLUTE_LIFETIME"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Jobs.FinishedRetention, lookup, "PLUTUS_JOBS_FINISHED_RETENTION"); err != nil {
-		return err
-	}
-	if err := optionalDurationEnv(&cfg.Collection.ConnectionValidationTimeout, lookup, "PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT"); err != nil {
-		return err
-	}
-	if err := optionalBool(&cfg.Collection.FakeAdapter, lookup, "PLUTUS_COLLECTION_FAKE_ADAPTER"); err != nil {
-		return err
-	}
-	optionalString(&cfg.Collection.Proxy.Mode, lookup, "PLUTUS_COLLECTION_PROXY_MODE")
-	optionalString(&cfg.Collection.Proxy.URL, lookup, "PLUTUS_COLLECTION_PROXY_URL")
-	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Removed environment names must fail instead of silently selecting defaults.
-func rejectRemovedEnv(lookup func(string) (string, bool)) error {
-	removed := []struct {
-		key         string
-		instruction string
-	}{
-		{"PLUTUS_SERVER_TLS_HTTPS_ENABLED", "HTTPS is derived from cert_file and key_file"},
-		{"PLUTUS_SERVER_TLS_HTTPS_CERT_PATH", "use PLUTUS_SERVER_TLS_CERT_FILE"},
-		{"PLUTUS_SERVER_TLS_HTTPS_KEY_PATH", "use PLUTUS_SERVER_TLS_KEY_FILE"},
-		{"PLUTUS_SERVER_TLS_MTLS_ENABLED", "mTLS is derived from client_ca_file"},
-		{"PLUTUS_SERVER_TLS_MTLS_CA_PATH", "use PLUTUS_SERVER_TLS_CLIENT_CA_FILE"},
-		{"PLUTUS_AUTH_SESSION_COOKIE_NAME", "use PLUTUS_AUTH_COOKIE_SUFFIX"},
-		{"PLUTUS_AUTH_CSRF_COOKIE_NAME", "use PLUTUS_AUTH_COOKIE_SUFFIX"},
-		{"PLUTUS_JOBS_WORKER_POLL_INTERVAL", "worker polling is fixed at 1s"},
-		{"PLUTUS_JOBS_LEASE_DURATION", "the worker lease is fixed at 2m"},
-		{"PLUTUS_JOBS_COMPLETED_RETENTION", "use PLUTUS_JOBS_FINISHED_RETENTION"},
-		{"PLUTUS_COLLECTION_DEFAULT_INTERVAL", "new Portfolios default to 15m; edit each Portfolio's interval"},
-		{"PLUTUS_COLLECTION_STAGGER", "the delay between Identities is fixed at 3s"},
-		{"PLUTUS_COLLECTION_VALIDATE_TIMEOUT", "use PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT"},
-	}
-	for _, field := range removed {
-		if _, ok := lookup(field.key); ok {
-			return fmt.Errorf("%s is no longer supported: %s", field.key, field.instruction)
-		}
-	}
-	return nil
-}
-
-func optionalString(dst *string, lookup func(string) (string, bool), key string) {
-	if value, ok := lookup(key); ok {
-		*dst = strings.TrimSpace(value)
-	}
-}
-
-func optionalBool(dst *bool, lookup func(string) (string, bool), key string) error {
-	v, ok := lookup(key)
-	if !ok {
-		return nil
-	}
-	parsed, err := strconv.ParseBool(strings.TrimSpace(v))
-	if err != nil {
-		return fmt.Errorf("%s: %w", key, err)
-	}
-	*dst = parsed
-	return nil
-}
-
 func optionalDuration(dst *time.Duration, raw *string, name string) error {
 	if raw == nil {
 		return nil
@@ -306,12 +219,4 @@ func optionalDuration(dst *time.Duration, raw *string, name string) error {
 	}
 	*dst = d
 	return nil
-}
-
-func optionalDurationEnv(dst *time.Duration, lookup func(string) (string, bool), key string) error {
-	v, ok := lookup(key)
-	if !ok {
-		return nil
-	}
-	return optionalDuration(dst, &v, key)
 }

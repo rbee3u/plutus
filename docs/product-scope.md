@@ -2,7 +2,8 @@
 
 Plutus is a read-only portfolio observation tool. It values selected exchange
 Accounts in USD and compares observed totals after accounting for the owner's
-transfers. The [domain model](../CONTEXT.md) defines the model and rules.
+transfers. The [glossary](../GLOSSARY.md) defines terms and
+[domain rules](./domain-rules.md) define business behavior.
 
 Two questions, in priority order:
 
@@ -23,8 +24,8 @@ Overview shows the latest total, recent points, and an expandable Platform →
 Identity → Account Tree. Account details show report measures and holdings;
 page-level Issues name omissions even when Accounts are collapsed. Only freshly
 confirmed empty Accounts hide. See
-[ADR 0016](./adr/0016-overview-and-holdings-navigation.md) and
-[Manual/empty Account rules](../CONTEXT.md#manual-balances).
+[Overview and navigation](./presentation.md#overview-and-navigation) and
+[Manual/empty Account rules](./domain-rules.md#manual-balances).
 
 Holdings has independent Balances, Futures, Earn, and Dual Investment views,
 with Balances as the default. Earn preserves source product granularity and
@@ -36,7 +37,7 @@ History shows Valuation Points, grouped curves, Period Closes, and Value Changes
 in a selected time window, defaulting to seven days. Tables paginate
 independently; Value Changes also offers a custom comparison. Window and
 pagination choices are recorded in
-[ADR 0017](./adr/0017-history-windows-and-pagination.md).
+[History presentation](./presentation.md#history-windows-and-tables).
 
 ## Supported Accounts
 
@@ -56,7 +57,7 @@ and Account Types. Offered scope is distinct from exchange-app validation; see
 Each Identity also owns a fixed, always-selected Manual Account, independent of
 Connection health. It supplements API-uncovered signed quantities using public
 Platform prices. Pending edits are separate from collected values. See
-[ADR 0019](./adr/0019-manual-balances-and-empty-accounts.md).
+[ADR 0006](./adr/0006-manual-balances.md).
 
 ## Product boundaries
 
@@ -74,7 +75,7 @@ Platform prices. Pending edits are separate from collected values. See
 
 Collection success, stale fallback, unknown value, report scopes, Earn/Dual
 completeness, exclusions, and history calculations are defined in
-[domain model](../CONTEXT.md). Technical deployment limits belong in
+[domain rules](./domain-rules.md). Technical deployment limits belong in
 [architecture](./architecture.md).
 
 ## Integration status

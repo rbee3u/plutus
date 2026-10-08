@@ -127,8 +127,8 @@ times, price fallback ties, cancellation, partial progress and transactional
 rollback after a later report batch fails.
 
 Implementation boundaries and reset policy are recorded in
-[ADR 0008](./adr/0008-environments-and-migrations.md). Runtime verification uses
-[the agent workflow](./testing.md#agent-runtime-verification); successful
+[ADR 0010](./adr/0010-environments-and-configuration.md). Runtime verification
+uses [the agent workflow](./testing.md#agent-runtime-verification); successful
 offline fixtures are not a substitute for that check or real exchange-app
 comparison.
 
@@ -169,13 +169,9 @@ valuation rebuild 2.111–2.211 seconds. The source dataset had 286 default, 268
 edge-case, 105 large and zero empty Valuation Points at this anchor; counts vary
 with local time and event sampling.
 
-The ordered validation gates passed. A repeated :8081 browser walkthrough
-confirmed all four Portfolios and their holdings views, three-month history, the
-Berlin empty day, explicit Value Change limitations, Connection states, and the
-D−60 Capital Flow. Manual collection succeeded for all three nonempty
-Portfolios. Large retained 116 Balances, 79 Futures, 84 Earn and 89 Dual rows;
-all four holdings views, both Catalog lists and Audit had working later pages.
-Asset filtering reset pagination correctly. The empty Portfolio had no
-Identities or points. Compatible stale observations, missing prices and the
-legacy Earn summary survived collection. The session process group and its
-children were stopped, :8081 was released, and temporary tooling was removed.
+The ordered gates and [browser checks above](#recorded-agent-check-2026-10-05)
+passed again with three-month history and the D−60 Capital Flow. Collection
+preserved the same large-Portfolio row counts, pagination, stale observations,
+missing prices, and legacy Earn summaries. Asset filtering reset pagination
+correctly. The process group and children were stopped, :8081 was released, and
+temporary tooling was removed.

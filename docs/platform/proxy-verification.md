@@ -1,5 +1,9 @@
 # Runtime proxy delivery verification
 
+The original delivery below was verified on 2026-10-02. Its environment proxy
+behavior is superseded by the
+[2026-10-08 configuration revision](#configuration-source-revision-2026-10-08).
+
 Verified on 2026-10-02. This delivery adds instance-wide runtime HTTP/SOCKS
 proxy configuration for Binance, OKX, Bybit, and Kraken. It does not implement
 Shadowsocks or establish successful access through a real proxy exit. See
@@ -80,3 +84,51 @@ separately verify the exit IP and successful Account Reports; readiness alone
 does not establish either. UI interaction was not changed or exercised; this
 runtime configuration change was verified through the JSON API and embedded
 asset responses.
+
+## Configuration source revision (2026-10-08)
+
+This revision supersedes the environment proxy and ordinary environment override
+behavior described in the original delivery above. Ordinary settings now use
+TOML and defaults only; ignored environment names cannot override either source.
+Both runtime and recording default to direct access. Explicit proxies use TOML,
+and the removed `environment` mode fails with migration guidance. Recording uses
+its own optional `config/record.toml` rather than runtime configuration.
+
+### Synthetic verification and builds
+
+The ordered gates passed: `make format`, `make web`, `make build`, `make test`,
+and `make lint`. All Go packages passed, all 150 frontend tests in 18 files
+passed, and golangci-lint reported zero issues. The Linux amd64 build passed.
+
+Configuration tests cover ignored ordinary variables from both process and env
+files, including empty/invalid values and previously removed names, while
+preserving TOML validation, TLS checks, and secret precedence/isolation.
+Recording tests cover optional/default and required/explicit paths, unknown
+fields, invalid proxy policies, and configuration failures before credentials.
+Listing and dry-run still skip configuration and credentials.
+
+For each of Binance, OKX, Bybit, and Kraken, synthetic CLI recording requests
+reached a loopback CONNECT proxy selected from both the default and explicit
+recording TOML paths. Invalid runtime and credential files were not loaded for
+these public requests. The existing runtime Adapter routing and Kraken WebSocket
+CONNECT tests passed. Shared transport tests verify direct defaults without
+inherited proxy callbacks, upper/lowercase proxy variables having no effect,
+explicit HTTP/HTTPS/SOCKS routing despite `NO_PROXY`, cancellation, and proxy
+failure without direct fallback. No external requests or live keys were used.
+
+### Agent runtime and remaining gaps
+
+The host binary ran against existing seeded `plutus_agent` on `127.0.0.1:8081`
+with the deterministic fake and no proxy section. Invalid ordinary configuration
+variables and unavailable process proxy URLs did not prevent startup or alter
+the TOML listener/cookie settings. Liveness, readiness, the embedded SPA and its
+assets, seed login/logout, Portfolio listing, Overview, Tree, Balances, the
+default History window, and paginated Valuation Points all succeeded.
+
+Verification used a temporary copy of agent TOML with logs under `/tmp/plutus`;
+agent configuration and the human's :8080 instance were unchanged. The server
+process group stopped, :8081 was released, and temporary files were removed.
+
+No new exchange responses were recorded. Existing evidence and exchange-app
+validation status are unchanged. This revision does not establish real proxy
+exit routing, allowlisted IPs, live recording, or long-running reliability.

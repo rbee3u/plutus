@@ -7,7 +7,7 @@ embedded frontend. [Testing](./testing.md) owns validation procedures;
 ## Environments
 
 Plutus runs in three environments
-([Isolated environments and populated-database migrations](./adr/0008-environments-and-migrations.md)).
+([Environment and configuration boundaries](./adr/0010-environments-and-configuration.md)).
 Automated tests are not an environment; they create their own throwaway
 databases.
 
@@ -73,13 +73,15 @@ walkthrough seed.
 
 ## Configuration
 
-Pass `--config` and `--env-file` to any `plutus` command to select an
-environment. When `--env-file` is set, that file is the only env file loaded; it
-does not merge with `config/local.env`. The MySQL DSN comes only from
-`PLUTUS_DSN` or `PLUTUS_DSN_FILE`, never TOML. The credential encryption master
-key stays in `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear
-in TOML. Without a key, credential writes, validation, and enabling return 503.
-Seed commands require a master key.
+Pass `--config` and `--env-file` to runtime `plutus` commands to select an
+environment. Explicit `adapter record` uses separate
+[recording configuration](./platform/evidence-workflow.md#record-one-interface-prepare-a-group).
+When `--env-file` is set, that file is the only env file loaded; it does not
+merge with `config/local.env`. The MySQL DSN comes only from `PLUTUS_DSN` or
+`PLUTUS_DSN_FILE`, never TOML. The credential encryption master key stays in
+`PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML.
+Without a key, credential writes, validation, and enabling return 503. Seed
+commands require a master key.
 
 The environment examples contain deployment differences and explicit environment
 permissions, rather than every default. Keep their listener, port, cookie
@@ -88,42 +90,42 @@ files. Comments belong on separate lines above settings.
 
 ### Optional settings and defaults
 
-Runtime loading applies code defaults, TOML, then environment overrides. Process
-environment values take precedence over values in the selected env file. Unknown
-TOML fields fail startup with their names; explicit invalid values, including
-`port = 0` or an empty duration, fail rather than reverting to defaults.
-Durations use Go notation such as `15s`, `2m`, and `168h`; days are expressed in
-hours.
+Ordinary settings use code defaults followed by TOML only. Environment variables
+and env files supply secrets only; process values take precedence over the
+selected env file. Ordinary configuration variables, including removed names,
+are silently ignored. Unknown TOML fields fail startup with their names;
+explicit invalid values, including `port = 0` or an empty duration, fail rather
+than reverting to defaults. Durations use Go notation such as `15s`, `2m`, and
+`168h`; days are expressed in hours.
 
-| TOML field                                 | Default         | Purpose                                                                                |
-| ------------------------------------------ | --------------- | -------------------------------------------------------------------------------------- |
-| `server.listen_address`                    | `"0.0.0.0"`     | Bind address                                                                           |
-| `server.port`                              | `8080`          | Instance HTTP or HTTPS port                                                            |
-| `server.tls.cert_file`                     | `""`            | PEM server certificate; configure together with `key_file`                             |
-| `server.tls.key_file`                      | `""`            | PEM private key matching the server certificate                                        |
-| `server.tls.client_ca_file`                | `""`            | PEM trust bundle that enables required, verified client certificates                   |
-| `logging.directory`                        | `"./logs"`      | Log directory relative to the process working directory                                |
-| `logging.level`                            | `"info"`        | Application threshold: debug, info, warn, or error                                     |
-| `logging.max_size_mb`                      | `100`           | Independent active-file size limit in MiB; must be positive                            |
-| `logging.max_backups`                      | `5`             | Backup count per channel; zero removes the count limit                                 |
-| `logging.max_age_days`                     | `0`             | Backup age limit in 24-hour days; zero removes the age limit                           |
-| `logging.compress`                         | `true`          | gzip rotated files                                                                     |
-| `logging.sql_enabled`                      | `true`          | Record all project SQL executions and transaction boundaries                           |
-| `database.allow_reset`                     | `false`         | Permit the explicit destructive `db reset` command, subject to database-name checks    |
-| `auth.cookie_suffix`                       | `""`            | Shared suffix for session and CSRF cookie names                                        |
-| `auth.session_idle_lifetime`               | `"168h"`        | Session expiry after inactivity; 1 minute to 90 days                                   |
-| `auth.session_absolute_lifetime`           | `"720h"`        | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
-| `jobs.finished_retention`                  | `"2160h"`       | Retain finished jobs without report or point references; 1 to 365 days                 |
-| `collection.connection_validation_timeout` | `"15s"`         | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
-| `collection.fake_adapter`                  | `false`         | Register fake Adapters for dev rather than live Adapters                               |
-| `collection.proxy.mode`                    | `"environment"` | Runtime Platform proxy policy: environment, direct, or proxy                           |
-| `collection.proxy.url`                     | `""`            | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
+| TOML field                                 | Default     | Purpose                                                                                |
+| ------------------------------------------ | ----------- | -------------------------------------------------------------------------------------- |
+| `server.listen_address`                    | `"0.0.0.0"` | Bind address                                                                           |
+| `server.port`                              | `8080`      | Instance HTTP or HTTPS port                                                            |
+| `server.tls.cert_file`                     | `""`        | PEM server certificate; configure together with `key_file`                             |
+| `server.tls.key_file`                      | `""`        | PEM private key matching the server certificate                                        |
+| `server.tls.client_ca_file`                | `""`        | PEM trust bundle that enables required, verified client certificates                   |
+| `logging.directory`                        | `"./logs"`  | Log directory relative to the process working directory                                |
+| `logging.level`                            | `"info"`    | Application threshold: debug, info, warn, or error                                     |
+| `logging.max_size_mb`                      | `100`       | Independent active-file size limit in MiB; must be positive                            |
+| `logging.max_backups`                      | `5`         | Backup count per channel; zero removes the count limit                                 |
+| `logging.max_age_days`                     | `0`         | Backup age limit in 24-hour days; zero removes the age limit                           |
+| `logging.compress`                         | `true`      | gzip rotated files                                                                     |
+| `logging.sql_enabled`                      | `true`      | Record all project SQL executions and transaction boundaries                           |
+| `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks    |
+| `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                        |
+| `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                   |
+| `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
+| `jobs.finished_retention`                  | `"2160h"`   | Retain finished jobs without report or point references; 1 to 365 days                 |
+| `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
+| `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                               |
+| `collection.proxy.mode`                    | `"direct"`  | Runtime Platform proxy policy: direct or proxy                                         |
+| `collection.proxy.url`                     | `""`        | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
 
-Fields outside `[logging]` have matching environment overrides: prefix
-`PLUTUS_`, uppercase the field path, and replace dots with underscores. For
-example, `collection.connection_validation_timeout` becomes
-`PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT`. The three TLS file settings
-are paths to PEM files; their environment values are paths too.
+The three TLS settings are paths to PEM files and belong in TOML, including the
+private-key path. Secret values remain outside TOML. Environment variables such
+as `PLUTUS_SERVER_PORT` cannot change ordinary settings, even when the TOML
+field is omitted.
 
 The cookie suffix generates both names. `cookie_suffix = "agent"` produces
 `plutus_session_agent` and `plutus_csrf_agent`; an empty suffix produces
@@ -163,22 +165,20 @@ mode = "proxy"
 url = "http://127.0.0.1:7890"
 ```
 
-- `environment` is the default. It preserves the process environment's
-  `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` behavior (including lowercase
-  variants). Go does not use `ALL_PROXY` here.
-- `direct` ignores all environment proxy settings.
-- `proxy` forces the configured URL for every runtime Platform request and
-  ignores `NO_PROXY`. An unavailable proxy fails the request; it never triggers
-  automatic direct fallback. Temporary failures retain compatible earlier
-  Account Reports as stale under the normal collection rules.
+- `direct` is the default and connects without a proxy.
+- `proxy` forces the configured URL for every runtime Platform request. An
+  unavailable proxy fails the request; it never triggers automatic direct
+  fallback. Temporary failures retain compatible earlier Account Reports as
+  stale under the normal collection rules.
 
-The URL must be empty in `environment` or `direct` mode. In `proxy` mode it must
-use `http`, `https`, `socks5`, or `socks5h`, with a host and explicit port from
-1 to 65535. Only an empty or root path is allowed; usernames, passwords,
-queries, and fragments are rejected. TLS certificate verification remains
-enabled. The matching overrides are `PLUTUS_COLLECTION_PROXY_MODE` and
-`PLUTUS_COLLECTION_PROXY_URL`, with the normal process/env-file/TOML precedence.
-To override a proxy configuration with direct mode, also clear its URL.
+Neither mode reads `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, or `NO_PROXY`,
+including lowercase variants. The removed `environment` mode fails validation
+with migration instructions.
+
+The URL must be empty in `direct` mode. In `proxy` mode it must use `http`,
+`https`, `socks5`, or `socks5h`, with a host and explicit port from 1 to 65535.
+Only an empty or root path is allowed; usernames, passwords, queries, and
+fragments are rejected. TLS certificate verification remains enabled.
 
 For a Shadowsocks exit on another server, run sing-box separately. Plutus
 connects to its loopback HTTP/SOCKS entry point, sing-box connects over SS to
@@ -189,57 +189,54 @@ allowlisted for the Platform API keys. Plutus does not accept `ss://` or manage
 the tunnel.
 
 The deterministic fake stays offline and does not create proxy clients. Explicit
-`adapter record` remains independent: it ignores this runtime proxy
-configuration and uses only process proxy environment variables. The
-`--env-file` loader does not export variables into the process environment, so
-putting `HTTPS_PROXY` in that file alone does not configure the recording or
-`environment`-mode transport. Use shell exports or systemd `Environment=` /
-`EnvironmentFile=` for those variables. Recording credentials remain exclusively
-in `config/record.env` or `PLUTUS_RECORD_*`.
+`adapter record` uses an independent TOML proxy policy with the same validation
+and direct default. It reads neither runtime configuration nor proxy environment
+variables. See the
+[recording workflow](./platform/evidence-workflow.md#record-one-interface-prepare-a-group)
+for file selection and credential isolation.
 
 See the [runtime proxy delivery report](./platform/proxy-verification.md) for
 synthetic and agent verification coverage and remaining deployment gaps.
 
 ### Logging
 
-Runtime commands write single-line text to `app.log`, `access.log`, and
-`sql.log` in `logging.directory`. Application records also go to stderr;
-`logging.level` controls only application records. Access and enabled SQL
-records are independent of that threshold. Help, version, and Adapter recording
-do not initialize the runtime logging system. Command results remain on stdout.
+Runtime commands write `app.log`, `access.log`, and enabled `sql.log` under
+`logging.directory`; application records also go to stderr. `logging.level`
+affects only application records. Help, version, and Adapter recording do not
+initialize logging; command results stay on stdout.
 
-Access records contain request ID, method, path, status, and duration, including
-health checks, static resources, rejected requests, and recovered panics.
-Request IDs accepted from `X-Request-Id` must contain 1–128 ASCII letters,
-digits, dots, underscores, or hyphens; otherwise a new ID is generated. That ID
-also accompanies application and SQL records issued with the request context.
-Claimed background jobs carry job, Portfolio, and, for Collection Cycles, cycle
-IDs. Correlation does not persist a request ID across asynchronous job
-execution.
+Access logs include request ID, method, path, status, and duration for normal,
+rejected, and recovered requests, including health checks and static files.
+Valid `X-Request-Id` values are reused; otherwise an ID is generated under the
+[middleware rules](../internal/transport/http/middleware.go). Request context
+correlates application and SQL records. Jobs use job/Portfolio/cycle IDs rather
+than retaining the originating request ID.
 
-SQL logs show statements with parameter values substituted for inspection,
-execution duration, and errors. They include transactions, migrations, seeds,
-and UTC initialization. Values are not redacted; binary values use hexadecimal
-literals. Result rows are not recorded. If rendering is uncertain, the original
-statement, arguments, and `render_error` are recorded instead. SQL rendering
-never changes database execution. Query duration excludes result consumption.
-Turning off `logging.sql_enabled` avoids both the SQL file and SQL formatting.
+SQL logs include full parameter values, duration, errors, transactions,
+migrations, seeds, and UTC initialization, but no result rows. Binary values use
+hex; uncertain rendering records the template, arguments, and `render_error`.
+Duration excludes result consumption. Set `logging.sql_enabled = false` to avoid
+both the SQL file and formatting.
 
-Logging settings come only from the TOML `[logging]` section and code defaults;
-environment variables do not override them. Examples show only `directory` and
-`level`; add other fields when changing their documented defaults. Rotation
-limits apply separately to each file. Writes are synchronous, without per-record
-fsync. Backup compression and cleanup run in the rotation library's background
-maintenance; short commands do not wait, and subsequent runs resume maintenance.
-See [deployment logs](./deployment.md#logs) for directory ownership and
-write-failure behavior.
+Use the TOML fields in [defaults](#optional-settings-and-defaults); examples
+show only directory and level. [Deployment logs](./deployment.md#logs) owns
+rotation, directory ownership, and failure handling;
+[architecture](./architecture.md#operations-and-limits) owns integration.
 
 ### Configuration migration
 
-Configuration changes are direct migrations without legacy aliases. Update
-existing TOML and environment overrides together before starting the new binary.
-Known removed environment names fail with migration instructions, including
-those loaded from an env file.
+Configuration changes are direct migrations without legacy aliases. Move all
+ordinary environment overrides into TOML before starting the new binary; both
+current and previously removed non-secret environment names are silently
+ignored, even when empty or invalid. TOML retains strict field and value
+validation.
+
+Replace `collection.proxy.mode = "environment"` with `direct`, or with `proxy`
+and an explicit URL. Existing proxy environment variables no longer route
+runtime or recording traffic. For recording, configure `[proxy]` in its separate
+TOML file. An omitted policy defaults to direct; an explicit `environment` mode
+fails rather than silently switching routes. Secrets and stored data do not need
+migration.
 
 | Previous field                                        | Replacement                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -276,7 +273,7 @@ Seeding requires the fake Adapter and a master key. It writes source facts and
 uses real valuation code to rebuild points. Continued fake collection shares the
 original anchor. `db seed` requires an empty migrated database; replace old dev
 data with the wipe script or `db reset --seed`. The retired `--profile` flag is
-rejected. See [ADR 0008](./adr/0008-environments-and-migrations.md).
+rejected. See [ADR 0010](./adr/0010-environments-and-configuration.md).
 
 Equivalent commands without dropping the database:
 

@@ -31,13 +31,10 @@ func buildAdapters(cfg *config.Config) *adapters.Registry {
 	return registry
 }
 
-// The proxy policy must already be validated by config.Load.
+// The runtime or recording loader must have validated the proxy policy.
 func platformHTTPFactory(policy config.Proxy) func(time.Duration) *http.Client {
-	proxy := http.ProxyFromEnvironment
-	switch policy.Mode {
-	case "direct":
-		proxy = nil
-	case "proxy":
+	var proxy func(*http.Request) (*url.URL, error)
+	if policy.Mode == "proxy" {
 		// Config validation has already checked the scheme, authority, and absence of credentials.
 		target, _ := url.Parse(policy.URL)
 		proxy = http.ProxyURL(target)

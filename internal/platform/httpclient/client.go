@@ -9,9 +9,8 @@ import (
 	"time"
 )
 
-// NewIPv4 returns a client whose direct connections use IPv4. It retains the default transport's
-// TLS, connection reuse, and proxy behavior. A configured proxy determines the IP family used
-// between that proxy and a Platform.
+// NewIPv4 returns a direct IPv4 client, retaining the default transport's TLS and
+// connection reuse without inheriting its proxy policy.
 func NewIPv4(timeout time.Duration) *http.Client {
 	return &http.Client{Timeout: timeout, Transport: ipv4Transport()}
 }
@@ -27,9 +26,10 @@ func NewIPv4WithProxy(timeout time.Duration, proxy func(*http.Request) (*url.URL
 func ipv4Transport() *http.Transport {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
-		base = &http.Transport{Proxy: http.ProxyFromEnvironment}
+		base = &http.Transport{}
 	}
 	transport := base.Clone()
+	transport.Proxy = nil
 	dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
 	dial := transport.DialContext
 	if dial == nil {

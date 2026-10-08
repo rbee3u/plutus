@@ -1,0 +1,8 @@
+# Copy to gitignored config/record.toml for explicit adapter recording.
+# Credentials remain in config/record.env; runtime configuration is not loaded.
+
+[proxy]
+# Neither mode reads proxy environment variables.
+mode = "direct"
+# Set mode = "proxy" before configuring a URL; credentials are not accepted.
+# url = "http://127.0.0.1:7890"

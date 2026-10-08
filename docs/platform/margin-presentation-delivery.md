@@ -1,10 +1,10 @@
 # Margin presentation correction: 2026-10-03
 
 This follow-up implements the revised
-[ADR 0012](../adr/0012-position-presentation.md). It restores known Binance
-retail Portfolio Margin Futures initial requirements, verifies OKX inverse
-source units, and uses a single-line Margin amount with supporting details in
-its disclosure. No exchange integration is declared complete.
+[ADR 0014](../adr/0014-position-provenance.md). It restores known Binance retail
+Portfolio Margin Futures initial requirements, verifies OKX inverse source
+units, and uses a single-line Margin amount with supporting details in its
+disclosure. No exchange integration is declared complete.
 
 ## Financial behavior
 

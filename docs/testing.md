@@ -25,8 +25,8 @@ non-mutating check. `make generate` regenerates sqlc and Go/TypeScript API
 bindings; unchanged sources must produce no diff.
 
 Lint prioritizes correctness, security, resource lifetimes, and coarse
-[backend](./adr/0020-architecture-layering.md) and
-[frontend](./adr/0021-frontend-structure.md) import boundaries. The exact
+[backend](./adr/0007-backend-architecture.md) and
+[frontend](./adr/0013-frontend-architecture.md) import boundaries. The exact
 allowlist and exclusions live in [`.golangci.yml`](../.golangci.yml) and
 [`web/eslint.config.js`](../web/eslint.config.js); style preferences and
 speculative micro-optimizations are outside these gates. Rule-specific
@@ -63,8 +63,8 @@ After dependencies are installed with `make deps`, use the root Prettier
 configuration for Markdown-only changes:
 
 ```sh
-web/node_modules/.bin/prettier --write AGENTS.md CONTEXT.md README.md 'docs/**/*.md'
-web/node_modules/.bin/prettier --check AGENTS.md CONTEXT.md README.md 'docs/**/*.md'
+web/node_modules/.bin/prettier --write AGENTS.md GLOSSARY.md README.md 'docs/**/*.md'
+web/node_modules/.bin/prettier --check AGENTS.md GLOSSARY.md README.md 'docs/**/*.md'
 ```
 
 Check local paths and heading anchors, including links, image paths, and source

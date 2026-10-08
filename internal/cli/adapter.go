@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -29,14 +30,22 @@ type recorder interface {
 }
 
 var recorders = map[adapters.Platform]struct {
-	adapter        func() recorder
+	adapter        func(func(time.Duration) *http.Client) recorder
 	needPassphrase bool
 	requests       func() recording.Catalogue
 }{
-	adapters.PlatformBinance: {adapter: func() recorder { return binance.New(nil) }, requests: binance.RecordingRequests},
-	adapters.PlatformOKX:     {adapter: func() recorder { return okx.New(nil) }, needPassphrase: true, requests: okx.RecordingRequests},
-	adapters.PlatformBybit:   {adapter: func() recorder { return bybit.New(nil) }, requests: bybit.RecordingRequests},
-	adapters.PlatformKraken:  {adapter: func() recorder { return kraken.New(nil) }, requests: kraken.RecordingRequests},
+	adapters.PlatformBinance: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+		return binance.New(&binance.Options{HTTPFactory: factory})
+	}, requests: binance.RecordingRequests},
+	adapters.PlatformOKX: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+		return okx.New(&okx.Options{HTTPFactory: factory})
+	}, needPassphrase: true, requests: okx.RecordingRequests},
+	adapters.PlatformBybit: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+		return bybit.New(&bybit.Options{HTTPFactory: factory})
+	}, requests: bybit.RecordingRequests},
+	adapters.PlatformKraken: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+		return kraken.New(&kraken.Options{HTTPFactory: factory})
+	}, requests: kraken.RecordingRequests},
 }
 
 const recordingDirectory = "/tmp/plutus"
@@ -93,6 +102,14 @@ func newAdapterRecordCommand() *cobra.Command {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Local market selection: keep symbols %v; representative product types.\n", keepSymbols)
 			return nil
 		}
+		configPath, err := flagString(cmd, "config")
+		if err != nil {
+			return err
+		}
+		proxy, err := config.LoadRecordingProxy(config.Options{Path: configPath})
+		if err != nil {
+			return err
+		}
 		if err := checkRecordingDirectory(outFlag); err != nil {
 			return err
 		}
@@ -100,7 +117,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		file, captureErr := spec.adapter().RecordRequest(cmd.Context(), creds, request, recording.Options{KeepSymbols: keepSymbols})
+		file, captureErr := spec.adapter(platformHTTPFactory(proxy)).RecordRequest(cmd.Context(), creds, request, recording.Options{KeepSymbols: keepSymbols})
 		if file != nil {
 			parent := filepath.Join(outFlag, string(platform))
 			if err := checkRecordingDirectory(parent); err != nil {

@@ -2,7 +2,7 @@
 
 Package `internal/platform/binance`. Binance has two Account Structures and no
 Margin Mode. The User selects the structure on the Identity following the
-[Account model](../../adr/0001-ownership-and-accounts.md):
+[Account model](../../adr/0001-ownership-and-account-boundaries.md):
 
 - **Classic Trading** (`binance_classic`): Spot, Funding, Cross Margin, Isolated
   Margin, USDⓈ-M Futures, COIN-M Futures, Earn, and Dual Investment are separate
@@ -44,11 +44,12 @@ permission. Weights are Binance's documented request weights per call.
 
 Signed requests use HMAC-SHA256 hex signatures for ordinary secrets or Ed25519
 Base64 signatures for an unencrypted PKCS#8 private key PEM
-([Credential decision](../../adr/0007-authentication.md)). Ed25519 signs the
-same encoded parameters and percent-encodes the Base64 signature. Both use
-`recvWindow = 10000` and a timestamp corrected by the measured offset to Binance
-server time. The offset is measured before the first signed call and again after
-a `-1021` answer, which is then retried once. Binance's
+([Credential decision](../../adr/0008-authentication-and-credentials.md)).
+Ed25519 signs the same encoded parameters and percent-encodes the Base64
+signature. Both use `recvWindow = 10000` and a timestamp corrected by the
+measured offset to Binance server time. The offset is measured before the first
+signed call and again after a `-1021` answer, which is then retried once.
+Binance's
 [Spot API key documentation](https://github.com/binance/binance-spot-api-docs/blob/master/testnet/general-info.md#how-can-i-use-ed25519-api-keys)
 specifies the Ed25519 signing flow. Its application to all the adapter's SAPI,
 PAPI, FAPI, and DAPI calls has not been live verified.
@@ -56,8 +57,8 @@ PAPI, FAPI, and DAPI calls has not been live verified.
 ## Account Structure
 
 Validation and every Collection Run start with `/sapi/v1/account/info`
-([Account model](../../adr/0001-ownership-and-accounts.md)). The User can switch
-between the two structures inside Binance at any time.
+([Account model](../../adr/0001-ownership-and-account-boundaries.md)). The User
+can switch between the two structures inside Binance at any time.
 
 | `/sapi/v1/account/info`                       | Result                                                                                                                                            |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -156,9 +157,9 @@ also reads Binance's own USDT valuation of its `Earn` wallet from
 and Dual Balances, valued with the batch's last prices. If Binance's value
 exceeds the itemized value by more than max(1%, 1 USD), the selected Earn and
 Dual Accounts fail with `unsupported`, naming both amounts, and go Stale
-([Report policy](../../adr/0002-account-reports.md)). A missing `Earn` wallet is
-a `normalization` failure. A Balance without a price skips the check, because
-valuation already marks it `no_price`.
+([Report policy](../../adr/0002-reports-and-compatible-history.md)). A missing
+`Earn` wallet is a `normalization` failure. A Balance without a price skips the
+check, because valuation already marks it `no_price`.
 
 Any other product Binance values in its Earn wallet trips the check. Liquid
 staking tokens such as WBETH and BNSOL are ordinary spot coins.
@@ -177,16 +178,19 @@ Flexible rows preserve product aggregates, `totalAmount`, source APR and tier
 rules, and explicitly cumulative rewards. Locked rows preserve each position
 reference, principal `amount`, subscription time, source APY, and native Status.
 `rewardsEndDate` supplies Maturity; `deliverDate` is a separate delivery detail.
-This date mapping is an inference from API fields and the locked-product help,
-recorded in [ADR 0018](../../adr/0018-earn-position-presentation.md). The API
-APY label and Help APR explanation are retained without compounding conversion.
-Unqualified `rewardAmt` stays in details as Reported rewards. These descriptions
-never add value to the Balance totals or change shared completeness.
+This date mapping is an inference from the
+[API fields](https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked)
+and the locked-product help's
+[Interest end date](https://www.binance.com/en/support/faq/detail/af607a50de614350ae57be3e6f616699).
+The API APY label and Help APR explanation are retained without compounding
+conversion. Unqualified `rewardAmt` stays in details as Reported rewards. These
+descriptions never add value to the Balance totals or change shared
+completeness.
 
 ## Dual Investment Account and positions
 
 Dual Account selection, principal valuation, and shared Earn completeness follow
-[domain rules](../../../CONTEXT.md#dual-investment-and-earn-completeness).
+[domain rules](../../domain-rules.md#dual-investment-and-earn-completeness).
 Platform-specific fields map as follows:
 
 | Dual Position field   | Source                                                                                        |
@@ -235,13 +239,13 @@ For every non-USD Balance symbol, the price is the spot last price of
 `<symbol>USDT`, else `<symbol>USDC`, observed when the ticker response arrived.
 Binance keeps delisted pairs in the ticker at price `0`; such a pair is ignored,
 never used as a zero price. USD, USDT, and USDC get no price row
-([Valuation policy](../../adr/0003-valuation-and-catalog.md)). Other stablecoins
-such as FDUSD are priced through their pairs. A symbol with neither pair gets no
-price and is valued as `no_price`. A failed ticker call leaves the batch without
-prices. Valuation then falls back to the latest price within 24 hours, and the
-Earn check runs only when every Earn coin is a USD equivalent. Last price
-differs from the index price Binance uses for `actualEquity` by a few hundredths
-of a percent. Index or mark prices are a later refinement.
+([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)). Other
+stablecoins such as FDUSD are priced through their pairs. A symbol with neither
+pair gets no price and is valued as `no_price`. A failed ticker call leaves the
+batch without prices. Valuation then falls back to the latest price within 24
+hours, and the Earn check runs only when every Earn coin is a USD equivalent.
+Last price differs from the index price Binance uses for `actualEquity` by a few
+hundredths of a percent. Index or mark prices are a later refinement.
 
 ## Errors
 

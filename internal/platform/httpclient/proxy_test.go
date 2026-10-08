@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -111,48 +110,37 @@ func TestDirectAndFailedProxy(t *testing.T) {
 	}
 }
 
-func TestEnvironmentProxyIsolation(t *testing.T) {
-	if os.Getenv("PLUTUS_PROXY_HELPER") != "" {
-		// Restore the standard environment callback only in this isolated helper process.
-		http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
-		req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://exchange.invalid/account", nil)
-		client := NewIPv4(time.Second)
-		proxy, err := client.Transport.(*http.Transport).Proxy(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := os.Getenv("PLUTUS_PROXY_EXPECT")
-		if want == "" {
-			if proxy != nil {
-				t.Fatalf("unexpected proxy %v", proxy)
-			}
-		} else if proxy == nil || proxy.String() != want {
-			t.Fatalf("proxy=%v, want=%s", proxy, want)
-		}
-		return
+func TestDefaultClientIgnoresInheritedProxy(t *testing.T) {
+	for _, key := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"} {
+		t.Setenv(key, "http://127.0.0.1:1")
 	}
-	for _, bypass := range []bool{false, true} {
-		command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestEnvironmentProxyIsolation$") // #nosec G204 G702 -- Re-execute this test binary with a fixed test selector.
-		var env []string
-		for _, entry := range os.Environ() {
-			key, _, _ := strings.Cut(entry, "=")
-			switch strings.ToUpper(key) {
-			case "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY":
-				continue
-			}
-			env = append(env, entry)
-		}
-		want := "http://127.0.0.1:7890"
-		noProxy := ""
-		if bypass {
-			want = ""
-			noProxy = "*"
-		}
-		env = append(env, "PLUTUS_PROXY_HELPER=1", "HTTPS_PROXY=http://127.0.0.1:7890", "NO_PROXY="+noProxy, "PLUTUS_PROXY_EXPECT="+want)
-		command.Env = env
-		if out, err := command.CombinedOutput(); err != nil {
-			t.Fatalf("environment case bypass=%t: %v\n%s", bypass, err, out)
-		}
+	for _, key := range []string{"NO_PROXY", "no_proxy"} {
+		t.Setenv(key, "")
+	}
+	base := http.DefaultTransport.(*http.Transport)
+	original := base.Proxy
+	var proxyCalls atomic.Int64
+	base.Proxy = func(*http.Request) (*url.URL, error) {
+		proxyCalls.Add(1)
+		return url.Parse("http://127.0.0.1:1")
+	}
+	t.Cleanup(func() { base.Proxy = original })
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer origin.Close()
+	client := NewIPv4(time.Second)
+	defer client.CloseIdleConnections()
+	if client.Transport.(*http.Transport).Proxy != nil {
+		t.Fatal("default client inherited a proxy callback")
+	}
+	response, err := testGet(t, client, origin.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusNoContent || proxyCalls.Load() != 0 || base.Proxy == nil {
+		t.Fatal("default client must use direct access without mutating the default transport")
 	}
 }
 

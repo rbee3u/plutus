@@ -75,396 +75,260 @@ unrelated accepted interfaces to manufacture a test scene.
 
 ## Interface references
 
-Synthetic inputs and recorded evidence are listed separately. Recorded envelopes
-retain exact UTC timestamps and trimming notes; sampling settings do not limit
-an interface's applicability.
-
-### `cm: GET /dapi/v1/account`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-coin-m-futures/api/rest-api/account#account-information)
-
-Synthetic inputs:
-
-- [dapi_v1_account.json](../../../internal/platform/binance/testdata/dapi_v1_account.json)
-
-Recorded evidence:
-
-[dapi_v1_account.one_way.json](../../../internal/platform/binance/evidence/dapi_v1_account.one_way.json);
-2026-09-30T17:32:42.285334Z. Nonempty ETH wallet; inverse perpetual/delivery,
-cross/isolated; 5/81 rows retained.
-
-[dapi_v1_account.hedge.json](../../../internal/platform/binance/evidence/dapi_v1_account.hedge.json);
-2026-09-30T17:56:35.268755Z. Nonempty ETH wallet and simultaneous isolated
-ETHUSD_PERP LONG/SHORT; 8/111 rows retained.
-
-### `cm: GET /dapi/v1/exchangeInfo`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-coin-m-futures/api/rest-api/market-data)
-
-Synthetic inputs:
-
-- [dapi_v1_exchangeInfo.json](../../../internal/platform/binance/testdata/dapi_v1_exchangeInfo.json)
-
-Recorded evidence:
-
-[dapi_v1_exchangeInfo.json](../../../internal/platform/binance/evidence/dapi_v1_exchangeInfo.json);
-2026-09-30T17:03:03.410241Z. Seven of 30 representative/prepared markets
-retained; DOGE contract size 10; metadata is not position evidence.
-
-### `cm: GET /dapi/v1/positionRisk`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-coin-m-futures/api/rest-api/trade#position-information)
-
-Synthetic inputs:
-
-- [dapi_v1_positionRisk.json](../../../internal/platform/binance/testdata/dapi_v1_positionRisk.json)
-
-Recorded evidence:
-
-[dapi_v1_positionRisk.one_way.json](../../../internal/platform/binance/evidence/dapi_v1_positionRisk.one_way.json);
-2026-09-30T17:32:46.729834Z. ETHUSD_PERP long/cross and ETHUSD_261225
-short/isolated, BOTH; 3/30 rows retained.
-
-[dapi_v1_positionRisk.hedge.json](../../../internal/platform/binance/evidence/dapi_v1_positionRisk.hedge.json);
-2026-09-30T17:56:38.776229Z. ETHUSD_PERP LONG 1 / SHORT -1, isolated with
-separate nonzero wallets; 8/90 rows retained, including representative zero
-BOTH/LONG/SHORT.
-
-### `portfolio: GET /papi/v1/account`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#account-information-user_data)
-
-Synthetic inputs:
-
-- [papi_v1_account.json](../../../internal/platform/binance/testdata/papi_v1_account.json)
-
-Recorded evidence:
-
-[papi_v1_account.json](../../../internal/platform/binance/evidence/papi_v1_account.json);
-2026-09-30T17:01:09.101514Z. PM account equity and risk measures.
-
-### `portfolio: GET /papi/v1/balance`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#account-balance-user_data)
-
-Synthetic inputs:
-
-- [papi_v1_balance.json](../../../internal/platform/binance/testdata/papi_v1_balance.json)
-
-Recorded evidence:
-
-[papi_v1_balance.json](../../../internal/platform/binance/evidence/papi_v1_balance.json);
-2026-09-30T17:01:13.120698Z. Nonzero borrowing and accrued interest; seven
-retained asset rows.
-
-### `portfolio: GET /papi/v1/cm/positionRisk`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-cm-position-information-user_data)
-
-Synthetic inputs:
-
-- [papi_v1_cm_positionRisk.json](../../../internal/platform/binance/testdata/papi_v1_cm_positionRisk.json)
-
-Recorded evidence:
-
-[papi_v1_cm_positionRisk.json](../../../internal/platform/binance/evidence/papi_v1_cm_positionRisk.json);
-2026-09-30T17:01:21.297902Z. One-way nonempty long: DOGEUSD_PERP.
-
-[papi_v1_cm_positionRisk.hedge.json](../../../internal/platform/binance/evidence/papi_v1_cm_positionRisk.hedge.json);
-2026-09-30T18:31:20.863606Z. ETHUSD_PERP LONG 1 / SHORT -1, string leverage 20,
-liquidationPrice 2.82678988 on both sides; both nonempty rows retained without
-trimming.
-
-### `portfolio: GET /papi/v1/um/positionRisk`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-um-position-information-user_data)
-
-Synthetic inputs:
-
-- [papi_v1_um_positionRisk.json](../../../internal/platform/binance/testdata/papi_v1_um_positionRisk.json)
-
-Recorded evidence:
-
-[papi_v1_um_positionRisk.json](../../../internal/platform/binance/evidence/papi_v1_um_positionRisk.json);
-2026-09-30T17:01:17.728886Z. One-way nonempty shorts: 牛来USDT and ZECUSDT.
-
-[papi_v1_um_positionRisk.hedge.json](../../../internal/platform/binance/evidence/papi_v1_um_positionRisk.hedge.json);
-2026-09-30T18:31:16.597003Z. ETHUSDT LONG 0.009 / SHORT -0.008, string leverage
-5, liquidationPrice 0; both nonempty rows retained without trimming.
-
-### `spot: GET /api/v3/account`
-
-[Contract](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#account-information-user_data)
-
-Synthetic inputs:
-
-- [api_v3_account.json](../../../internal/platform/binance/testdata/api_v3_account.json)
-
-Recorded evidence:
-
-[api_v3_account.json](../../../internal/platform/binance/evidence/api_v3_account.json);
-2026-09-30T17:00:56.6164Z. Nonempty balances; UID masked.
-
-### `spot: GET /api/v3/ticker/price`
-
-[Contract](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#symbol-price-ticker)
-
-Synthetic inputs:
-
-- [api_v3_ticker_price.json](../../../internal/platform/binance/testdata/api_v3_ticker_price.json)
-
-Recorded evidence:
-
-[api_v3_ticker_price.json](../../../internal/platform/binance/evidence/api_v3_ticker_price.json);
-2026-09-30T17:03:57.472302Z. Nine of 3723 representative/prepared price rows
-retained.
-
-### `spot: GET /api/v3/time`
-
-[Contract](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#check-server-time)
-
-Synthetic inputs:
-
-- [api_v3_time.json](../../../internal/platform/binance/testdata/api_v3_time.json)
-
-Recorded evidence:
-
-[api_v3_time.json](../../../internal/platform/binance/evidence/api_v3_time.json);
-2026-09-30T17:02:50.567098Z. Public server-time response.
-
-### `spot: GET /sapi/v1/account/info`
-
-[Contract](https://developers.binance.com/docs/binance-spot-api-docs/errors)
-
-Synthetic inputs:
-
-- [sapi_v1_account_info.bad_signature.json](../../../internal/platform/binance/testdata/sapi_v1_account_info.bad_signature.json)
-- [sapi_v1_account_info.classic.json](../../../internal/platform/binance/testdata/sapi_v1_account_info.classic.json)
-- [sapi_v1_account_info.invalid_key.json](../../../internal/platform/binance/testdata/sapi_v1_account_info.invalid_key.json)
-- [sapi_v1_account_info.pm.json](../../../internal/platform/binance/testdata/sapi_v1_account_info.pm.json)
-- [sapi_v1_account_info.stale_timestamp.json](../../../internal/platform/binance/testdata/sapi_v1_account_info.stale_timestamp.json)
-
-Recorded evidence:
-
-[sapi_v1_account_info.pm.json](../../../internal/platform/binance/evidence/sapi_v1_account_info.pm.json);
-2026-09-30T17:00:14.877426Z. PM flag true; owner-declared PM main account.
-
-[sapi_v1_account_info.classic.json](../../../internal/platform/binance/evidence/sapi_v1_account_info.classic.json);
-2026-09-30T17:31:33.923818Z. Classic flag false; margin/futures enabled.
-
-### `spot: GET /sapi/v1/asset/wallet/balance`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
-
-Synthetic inputs:
-
-- [sapi_v1_asset_wallet_balance.dual_only.json](../../../internal/platform/binance/testdata/sapi_v1_asset_wallet_balance.dual_only.json)
-- [sapi_v1_asset_wallet_balance.json](../../../internal/platform/binance/testdata/sapi_v1_asset_wallet_balance.json)
-
-Recorded evidence:
-
-[sapi_v1_asset_wallet_balance.json](../../../internal/platform/binance/evidence/sapi_v1_asset_wallet_balance.json);
-2026-09-30T17:02:30.782555Z. Wallet totals retained; no cross-interface total
-acceptance.
-
-### `spot: GET /sapi/v1/dci/product/positions`
-
-[Contract](https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/trade#get-dual-investment-positions)
-
-Synthetic inputs:
-
-- [sapi_v1_dci_product_positions.pending.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.pending.json)
-- [sapi_v1_dci_product_positions.purchase_success.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success.json)
-- [sapi_v1_dci_product_positions.purchase_success_call.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success_call.json)
-- [sapi_v1_dci_product_positions.purchase_success_put.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success_put.json)
-- [sapi_v1_dci_product_positions.refunding.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.refunding.json)
-- [sapi_v1_dci_product_positions.settling.json](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.settling.json)
-
-Recorded evidence:
-
-[sapi_v1_dci_product_positions.purchase_success.json](../../../internal/platform/binance/evidence/sapi_v1_dci_product_positions.purchase_success.json);
-2026-09-30T17:02:27.2005Z. PUT USDT/SOL and CALL SOL/USDT coexist; total 2;
-orderId is an integer as documented.
-
-### `spot: GET /sapi/v1/margin/account`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-cross-margin-account-details)
-
-Synthetic inputs:
-
-- [sapi_v1_margin_account.json](../../../internal/platform/binance/testdata/sapi_v1_margin_account.json)
-
-Recorded evidence:
-
-[sapi_v1_margin_account.json](../../../internal/platform/binance/evidence/sapi_v1_margin_account.json);
-2026-09-30T17:32:23.922973Z. Nonzero borrowing/interest and negative USDT
-netAsset; 3/486 rows retained. Observed totalCollateralValueInUSDT differs in
-case from the official example.
-
-### `spot: GET /sapi/v1/margin/isolated/account`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-isolated-margin-account-info)
-
-Synthetic inputs:
-
-- [sapi_v1_margin_isolated_account.json](../../../internal/platform/binance/testdata/sapi_v1_margin_isolated_account.json)
-
-Recorded evidence:
-
-[sapi_v1_margin_isolated_account.json](../../../internal/platform/binance/evidence/sapi_v1_margin_isolated_account.json);
-2026-09-30T17:40:03.535114Z. Two funded pairs, DOGEUSDT and ETHUSDT; ETHUSDT has
-nonzero USDT borrowing/interest.
-
-### `spot: GET /sapi/v1/simple-earn/flexible/position`
-
-[Contract](https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-flexible-product-position)
-
-Synthetic inputs:
-
-- [sapi_v1_simple_earn_flexible_position.empty.json](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_flexible_position.empty.json)
-- [sapi_v1_simple_earn_flexible_position.json](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_flexible_position.json)
-
-Recorded evidence:
-
-[sapi_v1_simple_earn_flexible_position.json](../../../internal/platform/binance/evidence/sapi_v1_simple_earn_flexible_position.json);
-2026-09-30T17:02:17.362927Z. One USDT position; total 1.
-
-### `spot: GET /sapi/v1/simple-earn/locked/position`
-
-[Contract](https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-locked-product-position)
-
-Synthetic inputs:
-
-- [sapi_v1_simple_earn_locked_position.empty.json](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_locked_position.empty.json)
-- [sapi_v1_simple_earn_locked_position.json](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_locked_position.json)
-
-Recorded evidence:
-
-[sapi_v1_simple_earn_locked_position.json](../../../internal/platform/binance/evidence/sapi_v1_simple_earn_locked_position.json);
-2026-09-30T17:02:22.643714Z. One ETH position; duration 5, HOLDING; total 1.
-
-### `spot: POST /sapi/v1/asset/get-funding-asset`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
-
-Synthetic inputs:
-
-- [sapi_v1_asset_get_funding_asset.json](../../../internal/platform/binance/testdata/sapi_v1_asset_get_funding_asset.json)
-
-Recorded evidence:
-
-[sapi_v1_asset_get_funding_asset.json](../../../internal/platform/binance/evidence/sapi_v1_asset_get_funding_asset.json);
-2026-09-30T17:01:05.717296Z. Nonempty Funding wallet.
-
-### `spot: POST /sapi/v3/asset/getUserAsset`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
-
-Synthetic inputs:
-
-- [sapi_v3_asset_getUserAsset.json](../../../internal/platform/binance/testdata/sapi_v3_asset_getUserAsset.json)
-
-Recorded evidence:
-
-[sapi_v3_asset_getUserAsset.json](../../../internal/platform/binance/evidence/sapi_v3_asset_getUserAsset.json);
-2026-09-30T17:01:01.234487Z. Nonempty Spot wallet.
-
-### `um: GET /fapi/v1/exchangeInfo`
-
-[Contract](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-usds-margined-futures/api/rest-api/market-data)
-
-Synthetic inputs:
-
-- [fapi_v1_exchangeInfo.json](../../../internal/platform/binance/testdata/fapi_v1_exchangeInfo.json)
-
-Recorded evidence:
-
-[fapi_v1_exchangeInfo.json](../../../internal/platform/binance/evidence/fapi_v1_exchangeInfo.json);
-2026-09-30T17:02:58.246573Z. Eleven of 919 representative/prepared markets
-retained; metadata is not position evidence.
-
-### `um: GET /fapi/v1/multiAssetsMargin`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#get-current-multi-assets-mode)
-
-Synthetic inputs:
-
-- [fapi_v1_multiAssetsMargin.json](../../../internal/platform/binance/testdata/fapi_v1_multiAssetsMargin.json)
-- [fapi_v1_multiAssetsMargin.single_asset.json](../../../internal/platform/binance/testdata/fapi_v1_multiAssetsMargin.single_asset.json)
-
-Recorded evidence:
-
-[fapi_v1_multiAssetsMargin.single_asset.json](../../../internal/platform/binance/evidence/fapi_v1_multiAssetsMargin.single_asset.json);
-2026-09-30T17:31:58.680116Z. multiAssetsMargin false (Single-Asset).
-
-[fapi_v1_multiAssetsMargin.multi_assets.json](../../../internal/platform/binance/evidence/fapi_v1_multiAssetsMargin.multi_assets.json);
-2026-09-30T18:13:38.506073Z. multiAssetsMargin true, directly confirming
-Multi-Assets.
-
-### `um: GET /fapi/v1/symbolConfig`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#symbol-configuration)
-
-Synthetic inputs:
-
-- [fapi_v1_symbolConfig.isolated.json](../../../internal/platform/binance/testdata/fapi_v1_symbolConfig.isolated.json)
-- [fapi_v1_symbolConfig.json](../../../internal/platform/binance/testdata/fapi_v1_symbolConfig.json)
-
-Recorded evidence:
-
-[fapi_v1_symbolConfig.one_way.json](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.one_way.json);
-2026-09-30T17:40:16.796561Z. Cross/isolated settings and integer leverage; all
-919 rows retained.
-
-[fapi_v1_symbolConfig.hedge.json](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.hedge.json);
-2026-09-30T17:56:31.774781Z. ETHUSDT ISOLATED, integer leverage 20; one
-symbol-level entry for both sides; all 919 rows retained.
-
-### `um: GET /fapi/v3/account`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#account-information-v3)
-
-Synthetic inputs:
-
-- [fapi_v3_account.json](../../../internal/platform/binance/testdata/fapi_v3_account.json)
-- [fapi_v3_account.one_way_isolated.json](../../../internal/platform/binance/testdata/fapi_v3_account.one_way_isolated.json)
-- [fapi_v3_account.single_asset.json](../../../internal/platform/binance/testdata/fapi_v3_account.single_asset.json)
-
-Recorded evidence:
-
-[fapi_v3_account.single_asset.json](../../../internal/platform/binance/evidence/fapi_v3_account.single_asset.json);
-2026-09-30T17:40:08.417681Z. Nonempty USDT; cross perpetual and isolated
-delivery; 4/13 balance/position rows retained.
-
-[fapi_v3_account.hedge.json](../../../internal/platform/binance/evidence/fapi_v3_account.hedge.json);
-2026-09-30T17:56:22.49378Z. Nonempty USDT and simultaneous isolated ETHUSDT
-LONG/SHORT; 4/13 rows retained. Single-Asset is owner-declared in this round.
-
-[fapi_v3_account.multi_assets.json](../../../internal/platform/binance/evidence/fapi_v3_account.multi_assets.json);
-2026-09-30T18:13:42.992579Z. Nonempty USDT/ETH collateral and ETHUSDT LONG 0.009
-/ SHORT -0.009; both isolated fields zero, positive account margin totals. All
-11 assets / 2 positions retained, including zero-wallet assets with nonzero
-availableBalance; observed asset scope is broader than the documentation list.
-
-### `um: GET /fapi/v3/positionRisk`
-
-[Contract](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade#position-information-v3)
-
-Synthetic inputs:
-
-- [fapi_v3_positionRisk.hedge.json](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.hedge.json)
-- [fapi_v3_positionRisk.json](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.json)
-- [fapi_v3_positionRisk.one_way_isolated.json](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.one_way_isolated.json)
-
-Recorded evidence:
-
-[fapi_v3_positionRisk.one_way.json](../../../internal/platform/binance/evidence/fapi_v3_positionRisk.one_way.json);
-2026-09-30T17:40:12.355753Z. ETHUSDT short/cross and ETHUSDT_261225
-long/isolated, BOTH; nonzero isolated wallet/margin.
-
-[fapi_v3_positionRisk.hedge.json](../../../internal/platform/binance/evidence/fapi_v3_positionRisk.hedge.json);
-2026-09-30T17:56:28.522273Z. ETHUSDT LONG 0.009 / SHORT -0.010, both with
-nonzero isolatedWallet/isolatedMargin; both rows retained.
+Each interface links its contract, independent synthetic inputs, and reviewed
+recordings. Coverage notes below qualify those samples; exact UTC capture times
+and trimming details remain in each recording's `recordedAt` and `notes`. Link
+labels name file variants; `sample` denotes an unsuffixed file. Sampling
+settings do not limit an interface's applicability.
+
+### [`cm: GET /dapi/v1/account`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-coin-m-futures/api/rest-api/account#account-information)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/dapi_v1_account.json).
+- Recorded:
+  [one_way](../../../internal/platform/binance/evidence/dapi_v1_account.one_way.json)
+  — Nonempty ETH wallet; inverse perpetual/delivery, cross/isolated; 5/81 rows
+  retained.
+  [hedge](../../../internal/platform/binance/evidence/dapi_v1_account.hedge.json)
+  — Nonempty ETH wallet and simultaneous isolated ETHUSD_PERP LONG/SHORT; 8/111
+  rows retained.
+
+### [`cm: GET /dapi/v1/exchangeInfo`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-coin-m-futures/api/rest-api/market-data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/dapi_v1_exchangeInfo.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/dapi_v1_exchangeInfo.json)
+  — Seven of 30 representative/prepared markets retained; DOGE contract size 10;
+  metadata is not position evidence.
+
+### [`cm: GET /dapi/v1/positionRisk`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-coin-m-futures/api/rest-api/trade#position-information)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/dapi_v1_positionRisk.json).
+- Recorded:
+  [one_way](../../../internal/platform/binance/evidence/dapi_v1_positionRisk.one_way.json)
+  — ETHUSD_PERP long/cross and ETHUSD_261225 short/isolated, BOTH; 3/30 rows
+  retained.
+  [hedge](../../../internal/platform/binance/evidence/dapi_v1_positionRisk.hedge.json)
+  — ETHUSD_PERP LONG 1 / SHORT -1, isolated with separate nonzero wallets; 8/90
+  rows retained, including representative zero BOTH/LONG/SHORT.
+
+### [`portfolio: GET /papi/v1/account`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#account-information-user_data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/papi_v1_account.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/papi_v1_account.json) —
+  PM account equity and risk measures.
+
+### [`portfolio: GET /papi/v1/balance`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#account-balance-user_data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/papi_v1_balance.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/papi_v1_balance.json) —
+  Nonzero borrowing and accrued interest; seven retained asset rows.
+
+### [`portfolio: GET /papi/v1/cm/positionRisk`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-cm-position-information-user_data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/papi_v1_cm_positionRisk.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/papi_v1_cm_positionRisk.json)
+  — One-way nonempty long: DOGEUSD_PERP.
+  [hedge](../../../internal/platform/binance/evidence/papi_v1_cm_positionRisk.hedge.json)
+  — ETHUSD_PERP LONG 1 / SHORT -1, string leverage 20, liquidationPrice
+  2.82678988 on both sides; both nonempty rows retained without trimming.
+
+### [`portfolio: GET /papi/v1/um/positionRisk`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-portfolio-margin/api/rest-api/account#query-um-position-information-user_data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/papi_v1_um_positionRisk.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/papi_v1_um_positionRisk.json)
+  — One-way nonempty shorts: 牛来USDT and ZECUSDT.
+  [hedge](../../../internal/platform/binance/evidence/papi_v1_um_positionRisk.hedge.json)
+  — ETHUSDT LONG 0.009 / SHORT -0.008, string leverage 5, liquidationPrice 0;
+  both nonempty rows retained without trimming.
+
+### [`spot: GET /api/v3/account`](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#account-information-user_data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/api_v3_account.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/api_v3_account.json) —
+  Nonempty balances; UID masked.
+
+### [`spot: GET /api/v3/ticker/price`](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#symbol-price-ticker)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/api_v3_ticker_price.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/api_v3_ticker_price.json)
+  — Nine of 3723 representative/prepared price rows retained.
+
+### [`spot: GET /api/v3/time`](https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#check-server-time)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/api_v3_time.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/api_v3_time.json) —
+  Public server-time response.
+
+### [`spot: GET /sapi/v1/account/info`](https://developers.binance.com/docs/binance-spot-api-docs/errors)
+
+- Synthetic:
+  [bad_signature](../../../internal/platform/binance/testdata/sapi_v1_account_info.bad_signature.json),
+  [classic](../../../internal/platform/binance/testdata/sapi_v1_account_info.classic.json),
+  [invalid_key](../../../internal/platform/binance/testdata/sapi_v1_account_info.invalid_key.json),
+  [pm](../../../internal/platform/binance/testdata/sapi_v1_account_info.pm.json),
+  [stale_timestamp](../../../internal/platform/binance/testdata/sapi_v1_account_info.stale_timestamp.json).
+- Recorded:
+  [pm](../../../internal/platform/binance/evidence/sapi_v1_account_info.pm.json)
+  — PM flag true; owner-declared PM main account.
+  [classic](../../../internal/platform/binance/evidence/sapi_v1_account_info.classic.json)
+  — Classic flag false; margin/futures enabled.
+
+### [`spot: GET /sapi/v1/asset/wallet/balance`](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
+
+- Synthetic:
+  [dual_only](../../../internal/platform/binance/testdata/sapi_v1_asset_wallet_balance.dual_only.json),
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_asset_wallet_balance.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_asset_wallet_balance.json)
+  — Wallet totals retained; no cross-interface total acceptance.
+
+### [`spot: GET /sapi/v1/dci/product/positions`](https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/trade#get-dual-investment-positions)
+
+- Synthetic:
+  [pending](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.pending.json),
+  [purchase_success](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success.json),
+  [purchase_success_call](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success_call.json),
+  [purchase_success_put](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.purchase_success_put.json),
+  [refunding](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.refunding.json),
+  [settling](../../../internal/platform/binance/testdata/sapi_v1_dci_product_positions.settling.json).
+- Recorded:
+  [purchase_success](../../../internal/platform/binance/evidence/sapi_v1_dci_product_positions.purchase_success.json)
+  — PUT USDT/SOL and CALL SOL/USDT coexist; total 2; orderId is an integer as
+  documented.
+
+### [`spot: GET /sapi/v1/margin/account`](https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-cross-margin-account-details)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_margin_account.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_margin_account.json)
+  — Nonzero borrowing/interest and negative USDT netAsset; 3/486 rows retained.
+  Observed totalCollateralValueInUSDT differs in case from the official example.
+
+### [`spot: GET /sapi/v1/margin/isolated/account`](https://developers.binance.com/en/docs/catalog/core-trading-margin-trading/api/rest-api/account#query-isolated-margin-account-info)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_margin_isolated_account.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_margin_isolated_account.json)
+  — Two funded pairs, DOGEUSDT and ETHUSDT; ETHUSDT has nonzero USDT
+  borrowing/interest.
+
+### [`spot: GET /sapi/v1/simple-earn/flexible/position`](https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-flexible-product-position)
+
+- Synthetic:
+  [empty](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_flexible_position.empty.json),
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_flexible_position.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_simple_earn_flexible_position.json)
+  — One USDT position; total 1.
+
+### [`spot: GET /sapi/v1/simple-earn/locked/position`](https://developers.binance.com/en/docs/catalog/investment-and-services-simple-earn/api/rest-api/flexible-locked#get-locked-product-position)
+
+- Synthetic:
+  [empty](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_locked_position.empty.json),
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_simple_earn_locked_position.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_simple_earn_locked_position.json)
+  — One ETH position; duration 5, HOLDING; total 1.
+
+### [`spot: POST /sapi/v1/asset/get-funding-asset`](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/sapi_v1_asset_get_funding_asset.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v1_asset_get_funding_asset.json)
+  — Nonempty Funding wallet.
+
+### [`spot: POST /sapi/v3/asset/getUserAsset`](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/sapi_v3_asset_getUserAsset.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/sapi_v3_asset_getUserAsset.json)
+  — Nonempty Spot wallet.
+
+### [`um: GET /fapi/v1/exchangeInfo`](https://developers.binance.com/en/docs/catalog/advanced-trading-derivatives-trading-usds-margined-futures/api/rest-api/market-data)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/fapi_v1_exchangeInfo.json).
+- Recorded:
+  [sample](../../../internal/platform/binance/evidence/fapi_v1_exchangeInfo.json)
+  — Eleven of 919 representative/prepared markets retained; metadata is not
+  position evidence.
+
+### [`um: GET /fapi/v1/multiAssetsMargin`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#get-current-multi-assets-mode)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/fapi_v1_multiAssetsMargin.json),
+  [single_asset](../../../internal/platform/binance/testdata/fapi_v1_multiAssetsMargin.single_asset.json).
+- Recorded:
+  [single_asset](../../../internal/platform/binance/evidence/fapi_v1_multiAssetsMargin.single_asset.json)
+  — multiAssetsMargin false (Single-Asset).
+  [multi_assets](../../../internal/platform/binance/evidence/fapi_v1_multiAssetsMargin.multi_assets.json)
+  — multiAssetsMargin true, directly confirming Multi-Assets.
+
+### [`um: GET /fapi/v1/symbolConfig`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#symbol-configuration)
+
+- Synthetic:
+  [isolated](../../../internal/platform/binance/testdata/fapi_v1_symbolConfig.isolated.json),
+  [sample](../../../internal/platform/binance/testdata/fapi_v1_symbolConfig.json).
+- Recorded:
+  [one_way](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.one_way.json)
+  — Cross/isolated settings and integer leverage; all 919 rows retained.
+  [hedge](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.hedge.json)
+  — ETHUSDT ISOLATED, integer leverage 20; one symbol-level entry for both
+  sides; all 919 rows retained.
+
+### [`um: GET /fapi/v3/account`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account#account-information-v3)
+
+- Synthetic:
+  [sample](../../../internal/platform/binance/testdata/fapi_v3_account.json),
+  [one_way_isolated](../../../internal/platform/binance/testdata/fapi_v3_account.one_way_isolated.json),
+  [single_asset](../../../internal/platform/binance/testdata/fapi_v3_account.single_asset.json).
+- Recorded:
+  [single_asset](../../../internal/platform/binance/evidence/fapi_v3_account.single_asset.json)
+  — Nonempty USDT; cross perpetual and isolated delivery; 4/13 balance/position
+  rows retained.
+  [hedge](../../../internal/platform/binance/evidence/fapi_v3_account.hedge.json)
+  — Nonempty USDT and simultaneous isolated ETHUSDT LONG/SHORT; 4/13 rows
+  retained. Single-Asset is owner-declared in this round.
+  [multi_assets](../../../internal/platform/binance/evidence/fapi_v3_account.multi_assets.json)
+  — Nonempty USDT/ETH collateral and ETHUSDT LONG 0.009 / SHORT -0.009; both
+  isolated fields zero, positive account margin totals. All 11 assets / 2
+  positions retained, including zero-wallet assets with nonzero
+  availableBalance; observed asset scope is broader than the documentation list.
+
+### [`um: GET /fapi/v3/positionRisk`](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade#position-information-v3)
+
+- Synthetic:
+  [hedge](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.hedge.json),
+  [sample](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.json),
+  [one_way_isolated](../../../internal/platform/binance/testdata/fapi_v3_positionRisk.one_way_isolated.json).
+- Recorded:
+  [one_way](../../../internal/platform/binance/evidence/fapi_v3_positionRisk.one_way.json)
+  — ETHUSDT short/cross and ETHUSDT_261225 long/isolated, BOTH; nonzero isolated
+  wallet/margin.
+  [hedge](../../../internal/platform/binance/evidence/fapi_v3_positionRisk.hedge.json)
+  — ETHUSDT LONG 0.009 / SHORT -0.010, both with nonzero
+  isolatedWallet/isolatedMargin; both rows retained.
 
 ## Exchange-app validation checklist
 

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -54,7 +55,7 @@ func TestLoadDefaultsWithoutFile(t *testing.T) {
 	}
 }
 
-func TestLoadTOMLAndEnvOverride(t *testing.T) {
+func TestLoadTOMLAndEnvSecrets(t *testing.T) {
 	t.Parallel()
 
 	cfg, err := Load(Options{
@@ -77,8 +78,8 @@ session_absolute_lifetime = "48h"
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Server.Port != 9090 {
-		t.Fatalf("port override: got %d", cfg.Server.Port)
+	if cfg.Server.Port != 8080 {
+		t.Fatalf("TOML port: got %d", cfg.Server.Port)
 	}
 	if cfg.Auth.SessionIdleLifetime != 24*time.Hour {
 		t.Fatalf("idle lifetime: %s", cfg.Auth.SessionIdleLifetime)
@@ -178,40 +179,28 @@ func TestTLSMatrix(t *testing.T) {
 		{name: "invalid ca", cert: "cert.pem", key: "key.pem", ca: "bad-ca.pem", wantError: "contains no certificates"},
 	}
 	for _, tc := range cases {
-		for _, source := range []string{"toml", "env"} {
-			t.Run(tc.name+"/"+source, func(t *testing.T) {
-				t.Parallel()
-				readFile := func(path string) ([]byte, error) {
-					if path == "plutus.toml" {
-						return []byte(fmt.Sprintf("[server.tls]\ncert_file = %q\nkey_file = %q\nclient_ca_file = %q\n", tc.cert, tc.key, tc.ca)), nil
-					}
-					return filesMap(files)(path)
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			readFile := func(path string) ([]byte, error) {
+				if path == "plutus.toml" {
+					return []byte(fmt.Sprintf("[server.tls]\ncert_file = %q\nkey_file = %q\nclient_ca_file = %q\n", tc.cert, tc.key, tc.ca)), nil
 				}
-				opts := Options{LookupEnv: envMap(nil), ReadFile: readFile, Now: now}
-				if source == "toml" {
-					opts.Path = "plutus.toml"
-				} else {
-					opts.LookupEnv = envMap(map[string]string{
-						"PLUTUS_SERVER_TLS_CERT_FILE":      tc.cert,
-						"PLUTUS_SERVER_TLS_KEY_FILE":       tc.key,
-						"PLUTUS_SERVER_TLS_CLIENT_CA_FILE": tc.ca,
-					})
+				return filesMap(files)(path)
+			}
+			cfg, err := Load(Options{Path: "plutus.toml", LookupEnv: envMap(nil), ReadFile: readFile, Now: now})
+			if tc.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("expected %q, got %v", tc.wantError, err)
 				}
-				cfg, err := Load(opts)
-				if tc.wantError != "" {
-					if err == nil || !strings.Contains(err.Error(), tc.wantError) {
-						t.Fatalf("expected %q, got %v", tc.wantError, err)
-					}
-					return
-				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				if cfg.Server.TLS.HTTPSEnabled() != tc.https || cfg.Server.TLS.MTLSEnabled() != tc.mtls {
-					t.Fatalf("wrong transport mode: https=%v mtls=%v", cfg.Server.TLS.HTTPSEnabled(), cfg.Server.TLS.MTLSEnabled())
-				}
-			})
-		}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Server.TLS.HTTPSEnabled() != tc.https || cfg.Server.TLS.MTLSEnabled() != tc.mtls {
+				t.Fatalf("wrong transport mode: https=%v mtls=%v", cfg.Server.TLS.HTTPSEnabled(), cfg.Server.TLS.MTLSEnabled())
+			}
+		})
 	}
 }
 
@@ -345,47 +334,14 @@ allow_reset = true
 	}
 }
 
-func TestCookieSuffixEnvOverridesTOML(t *testing.T) {
-	t.Parallel()
-	for _, suffix := range []string{"agent", ""} {
-		t.Run("suffix="+suffix, func(t *testing.T) {
-			t.Parallel()
-			cfg, err := Load(Options{
-				Path:      "plutus.toml",
-				LookupEnv: envMap(map[string]string{"PLUTUS_AUTH_COOKIE_SUFFIX": suffix}),
-				ReadFile:  filesMap(map[string]string{"plutus.toml": "[auth]\ncookie_suffix = \"local\""}),
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			wantSuffix := ""
-			if suffix != "" {
-				wantSuffix = "_" + suffix
-			}
-			if cfg.Auth.SessionCookieName() != "plutus_session"+wantSuffix || cfg.Auth.CSRFCookieName() != "plutus_csrf"+wantSuffix {
-				t.Fatal("environment suffix must override both cookie names, including an empty suffix")
-			}
-		})
-	}
-}
-
 func TestCookieSuffixValidation(t *testing.T) {
 	t.Parallel()
-	for _, source := range []string{"toml", "env"} {
-		t.Run(source, func(t *testing.T) {
-			t.Parallel()
-			opts := Options{ReadFile: filesMap(nil), LookupEnv: envMap(nil)}
-			if source == "toml" {
-				opts.Path = "plutus.toml"
-				opts.ReadFile = filesMap(map[string]string{"plutus.toml": "[auth]\ncookie_suffix = \"bad name\""})
-			} else {
-				opts.LookupEnv = envMap(map[string]string{"PLUTUS_AUTH_COOKIE_SUFFIX": "bad name"})
-			}
-			_, err := Load(opts)
-			if err == nil || !strings.Contains(err.Error(), "auth.cookie_suffix") {
-				t.Fatalf("expected invalid cookie suffix, got %v", err)
-			}
-		})
+	_, err := Load(Options{
+		Path: "plutus.toml", LookupEnv: envMap(nil),
+		ReadFile: filesMap(map[string]string{"plutus.toml": "[auth]\ncookie_suffix = \"bad name\""}),
+	})
+	if err == nil || !strings.Contains(err.Error(), "auth.cookie_suffix") {
+		t.Fatalf("expected invalid cookie suffix, got %v", err)
 	}
 }
 
@@ -405,93 +361,94 @@ func TestDSNFromEnv(t *testing.T) {
 
 func TestInvalidExplicitValuesRejected(t *testing.T) {
 	t.Parallel()
-	cases := []struct{ table, key, env, value string }{
-		{"server", "port", "PLUTUS_SERVER_PORT", "0"},
-		{"server", "listen_address", "PLUTUS_SERVER_LISTEN_ADDRESS", "\"\""},
-		{"auth", "session_idle_lifetime", "PLUTUS_AUTH_SESSION_IDLE_LIFETIME", "\"\""},
-		{"auth", "session_absolute_lifetime", "PLUTUS_AUTH_SESSION_ABSOLUTE_LIFETIME", "\" \""},
-		{"jobs", "finished_retention", "PLUTUS_JOBS_FINISHED_RETENTION", "\"\""},
-		{"jobs", "finished_retention", "PLUTUS_JOBS_FINISHED_RETENTION", "\"0s\""},
-		{"jobs", "finished_retention", "PLUTUS_JOBS_FINISHED_RETENTION", "\"1h\""},
-		{"collection", "connection_validation_timeout", "PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT", "\"\""},
-		{"collection", "connection_validation_timeout", "PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT", "\"0s\""},
+	cases := []struct{ table, key, value string }{
+		{"server", "port", "0"},
+		{"server", "listen_address", `""`},
+		{"auth", "session_idle_lifetime", `""`},
+		{"auth", "session_absolute_lifetime", `" "`},
+		{"jobs", "finished_retention", `""`},
+		{"jobs", "finished_retention", `"0s"`},
+		{"jobs", "finished_retention", `"1h"`},
+		{"collection", "connection_validation_timeout", `""`},
+		{"collection", "connection_validation_timeout", `"0s"`},
 	}
 	for _, tc := range cases {
-		for _, source := range []string{"toml", "env"} {
-			t.Run(tc.table+"."+tc.key+"="+tc.value+"/"+source, func(t *testing.T) {
-				t.Parallel()
-				opts := Options{ReadFile: filesMap(nil), LookupEnv: envMap(nil)}
-				want := tc.env
-				if source == "toml" {
-					opts.Path = "plutus.toml"
-					opts.ReadFile = filesMap(map[string]string{"plutus.toml": "[" + tc.table + "]\n" + tc.key + " = " + tc.value})
-					want = tc.table + "." + tc.key
-				} else {
-					opts.LookupEnv = envMap(map[string]string{tc.env: strings.Trim(tc.value, "\"")})
-				}
-				_, err := Load(opts)
-				if err == nil {
-					t.Fatal("explicit invalid values must not fall back to defaults")
-				}
-				// Validation names canonical fields; parse errors name their input source.
-				if !strings.Contains(err.Error(), want) && !strings.Contains(err.Error(), tc.table+"."+tc.key) {
-					t.Fatalf("expected diagnostic naming the field, got %v", err)
-				}
+		t.Run(tc.table+"."+tc.key+"="+tc.value, func(t *testing.T) {
+			t.Parallel()
+			_, err := Load(Options{
+				Path: "plutus.toml", LookupEnv: envMap(nil),
+				ReadFile: filesMap(map[string]string{"plutus.toml": "[" + tc.table + "]\n" + tc.key + " = " + tc.value}),
 			})
-		}
+			if err == nil || !strings.Contains(err.Error(), tc.table+"."+tc.key) {
+				t.Fatalf("expected invalid field diagnostic, got %v", err)
+			}
+		})
 	}
 }
 
-func TestRetainedSettingsEnvOverrideTOML(t *testing.T) {
-	t.Parallel()
-	cfg, err := Load(Options{
-		Path: "plutus.toml",
-		LookupEnv: envMap(map[string]string{
-			"PLUTUS_JOBS_FINISHED_RETENTION":                  "48h",
-			"PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT": "30s",
-		}),
-		ReadFile: filesMap(map[string]string{"plutus.toml": `
-[jobs]
-finished_retention = "24h"
-[collection]
-connection_validation_timeout = "20s"
-`}),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Jobs.FinishedRetention != 48*time.Hour || cfg.Collection.ConnectionValidationTimeout != 30*time.Second {
-		t.Fatal("renamed environment settings must override TOML")
-	}
-}
-
-func TestRemovedEnvironmentNamesRejected(t *testing.T) {
+func TestOrdinaryEnvironmentSettingsIgnored(t *testing.T) {
 	t.Parallel()
 	keys := []string{
+		"PLUTUS_SERVER_LISTEN_ADDRESS", "PLUTUS_SERVER_PORT",
+		"PLUTUS_SERVER_TLS_CERT_FILE", "PLUTUS_SERVER_TLS_KEY_FILE", "PLUTUS_SERVER_TLS_CLIENT_CA_FILE",
+		"PLUTUS_AUTH_COOKIE_SUFFIX", "PLUTUS_AUTH_SESSION_IDLE_LIFETIME", "PLUTUS_AUTH_SESSION_ABSOLUTE_LIFETIME",
+		"PLUTUS_JOBS_FINISHED_RETENTION", "PLUTUS_COLLECTION_CONNECTION_VALIDATION_TIMEOUT",
+		"PLUTUS_COLLECTION_FAKE_ADAPTER", "PLUTUS_COLLECTION_PROXY_MODE", "PLUTUS_COLLECTION_PROXY_URL",
+		"PLUTUS_DATABASE_ALLOW_RESET",
 		"PLUTUS_SERVER_TLS_HTTPS_ENABLED", "PLUTUS_SERVER_TLS_HTTPS_CERT_PATH",
 		"PLUTUS_SERVER_TLS_HTTPS_KEY_PATH", "PLUTUS_SERVER_TLS_MTLS_ENABLED",
 		"PLUTUS_SERVER_TLS_MTLS_CA_PATH", "PLUTUS_AUTH_SESSION_COOKIE_NAME",
 		"PLUTUS_AUTH_CSRF_COOKIE_NAME", "PLUTUS_JOBS_WORKER_POLL_INTERVAL",
 		"PLUTUS_JOBS_LEASE_DURATION", "PLUTUS_JOBS_COMPLETED_RETENTION",
-		"PLUTUS_COLLECTION_DEFAULT_INTERVAL", "PLUTUS_COLLECTION_STAGGER",
-		"PLUTUS_COLLECTION_VALIDATE_TIMEOUT",
+		"PLUTUS_COLLECTION_DEFAULT_INTERVAL", "PLUTUS_COLLECTION_STAGGER", "PLUTUS_COLLECTION_VALIDATE_TIMEOUT",
 	}
-	for _, key := range keys {
+	for _, toml := range []string{"", `[server]
+listen_address = "127.0.0.1"
+port = 8081
+[auth]
+cookie_suffix = "agent"
+session_idle_lifetime = "24h"
+session_absolute_lifetime = "48h"
+[jobs]
+finished_retention = "48h"
+[collection]
+connection_validation_timeout = "20s"
+fake_adapter = true
+[collection.proxy]
+mode = "proxy"
+url = "http://127.0.0.1:7890"
+[database]
+allow_reset = true
+`} {
 		for _, source := range []string{"process", "dotenv"} {
-			t.Run(key+"/"+source, func(t *testing.T) {
-				t.Parallel()
-				opts := Options{LookupEnv: envMap(nil), ReadFile: filesMap(nil)}
-				if source == "process" {
-					opts.LookupEnv = envMap(map[string]string{key: "old-value"})
-				} else {
-					opts.EnvFile = "runtime.env"
-					opts.ReadFile = filesMap(map[string]string{"runtime.env": key + "=old-value"})
-				}
-				_, err := Load(opts)
-				if err == nil || !strings.Contains(err.Error(), key+" is no longer supported") {
-					t.Fatalf("expected migration error for %s, got %v", key, err)
-				}
-			})
+			for _, value := range []string{"", "invalid", "true", "9090"} {
+				t.Run(fmt.Sprintf("toml=%t/%s/%s", toml != "", source, value), func(t *testing.T) {
+					t.Parallel()
+					files := map[string]string{"app.toml": toml, "app.env": ""}
+					opts := Options{Path: "app.toml", EnvFile: "app.env", LookupEnv: envMap(nil), ReadFile: filesMap(files)}
+					want, err := Load(opts)
+					if err != nil {
+						t.Fatal(err)
+					}
+					env := map[string]string{}
+					for _, key := range keys {
+						env[key] = value
+						if source == "dotenv" {
+							files["app.env"] += key + "=" + value + "\n"
+						}
+					}
+					if source == "process" {
+						opts.LookupEnv = envMap(env)
+					}
+					got, err := Load(opts)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(got, want) {
+						t.Fatal("ordinary environment settings changed TOML or defaults")
+					}
+				})
+			}
 		}
 	}
 }

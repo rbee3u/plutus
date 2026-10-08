@@ -15,14 +15,16 @@ const (
 	envMasterKey     = "PLUTUS_MASTER_KEY"
 	envMasterKeyFile = "PLUTUS_MASTER_KEY_FILE"
 
-	defaultListenAddress     = "0.0.0.0"
-	defaultPort              = 8080
-	defaultConfigFileName    = "config/local.toml"
-	defaultEnvFileName       = "config/local.env"
-	defaultGotestEnvFileName = "config/gotest.env"
-	defaultRecordEnvFileName = "config/record.env"
-	defaultSessionCookieName = "plutus_session"
-	defaultCSRFCookieName    = "plutus_csrf"
+	defaultListenAddress        = "0.0.0.0"
+	defaultPort                 = 8080
+	defaultConfigFileName       = "config/local.toml"
+	defaultEnvFileName          = "config/local.env"
+	defaultGotestEnvFileName    = "config/gotest.env"
+	defaultRecordEnvFileName    = "config/record.env"
+	defaultRecordConfigFileName = "config/record.toml"
+	defaultProxyMode            = "direct"
+	defaultSessionCookieName    = "plutus_session"
+	defaultCSRFCookieName       = "plutus_csrf"
 
 	minSessionIdle     = time.Minute
 	maxSessionIdle     = 90 * 24 * time.Hour

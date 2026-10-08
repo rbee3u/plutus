@@ -4,9 +4,10 @@ Package `internal/platform/bybit`. Bybit has one Account Structure,
 `bybit_uta_2_0`: the global Unified Trading Account 2.0, including UTA 2.0 Pro
 (`unifiedMarginStatus` 5 and 6). Its Account Types are `unified`, `funding`,
 `earn`, and `dual_investment`. The account's Margin Mode is observed, never
-declared ([Account model](../../adr/0001-ownership-and-accounts.md)). It is
-Isolated Margin (`bybit_isolated`), Cross Margin (`bybit_cross`), or Portfolio
-Margin (`bybit_pm`), and it decides which `unified` figures a report carries.
+declared ([Account model](../../adr/0001-ownership-and-account-boundaries.md)).
+It is Isolated Margin (`bybit_isolated`), Cross Margin (`bybit_cross`), or
+Portfolio Margin (`bybit_pm`), and it decides which `unified` figures a report
+carries.
 
 Classic accounts, UTA 1.0, UTA 1.0 Pro, and regional services such as Bybit EU,
 KZ, and GE are not supported. Options are out of scope: an open option position
@@ -62,9 +63,9 @@ one call.
 ## Account Structure and Margin Mode
 
 Validation and every Collection Run start with `/v5/account/info`
-([Account model](../../adr/0001-ownership-and-accounts.md)). The User can change
-the Margin Mode in the Bybit app at any time. The adapter returns it with the
-validation result and with every batch.
+([Account model](../../adr/0001-ownership-and-account-boundaries.md)). The User
+can change the Margin Mode in the Bybit app at any time. The adapter returns it
+with the validation result and with every batch.
 
 | `/v5/account/info`                                                                         | Result                                                                                                                                                                       |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -140,7 +141,7 @@ hold, which fails only its own Account. `ExternalRef` is `userID` from
 
 The `earn` Account has one Balance per coin: the summed principal of Flexible
 and Fixed-Term Savings
-([Dual Investment decision](../../adr/0005-dual-investment.md)).
+([Dual Investment decision](../../adr/0005-earn-and-dual-products.md)).
 
 | Product                                         | Counted                                                                                                                                                                                                                     |
 | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -166,10 +167,10 @@ compares that figure with the combined ordinary Earn and Dual Balances valued at
 the batch's spot prices, with USDT and USDC at 1 USD. If Bybit's value exceeds
 the itemized value by more than max(1%, 1 USD), the selected Earn and Dual
 Accounts fail with `unsupported`, naming both amounts, and go Stale
-([Report policy](../../adr/0002-account-reports.md)). A list without an `Earn`
-entry counts as zero. A Balance without a price skips the check, because
-valuation already marks it `no_price`. An `Earn` entry valued in another
-currency, or with a `totalEquity` that is not a decimal, fails with
+([Report policy](../../adr/0002-reports-and-compatible-history.md)). A list
+without an `Earn` entry counts as zero. A Balance without a price skips the
+check, because valuation already marks it `no_price`. An `Earn` entry valued in
+another currency, or with a `totalEquity` that is not a decimal, fails with
 `normalization`. The check catches value Plutus does not read, not value it
 counts twice.
 
@@ -191,17 +192,18 @@ in details. Fixed-Term rows retain position IDs, APY by reward currency,
 subscription and settlement times, estimated rewards, and native Status.
 
 Only a Collection Run selecting Earn with nonzero Flexible Savings makes one
-additional unsigned `GET /v5/earn/product?category=FlexibleSaving` read. Product
-and coin must match exactly once to supply Estimated APR; failures and missing
-matches add metadata issues without discarding holdings or affecting valuation.
-Catalogue availability is never a holding Status. Fixed-Term and catalogue
-recorded evidence gaps remain documented in the
+additional unsigned
+[`GET /v5/earn/product?category=FlexibleSaving`](https://bybit-exchange.github.io/docs/v5/finance/earn/easy-onchain/product-info)
+read. Product and coin must match exactly once to supply Estimated APR; failures
+and missing matches add metadata issues without discarding holdings or affecting
+valuation. Catalogue availability is never a holding Status. Fixed-Term and
+catalogue recorded evidence gaps remain documented in the
 [Earn delivery report](../earn-presentation-delivery.md).
 
 ## Dual Investment Account and positions
 
 Dual Account selection, principal valuation, and shared Earn completeness follow
-[domain rules](../../../CONTEXT.md#dual-investment-and-earn-completeness).
+[domain rules](../../domain-rules.md#dual-investment-and-earn-completeness).
 Platform-specific fields map as follows:
 
 | Dual Position field   | Source                                               |
@@ -257,10 +259,11 @@ An unknown contract type, a missing coin, or a delivery contract without
 
 For every non-USD Balance symbol, the spot `lastPrice` of `<symbol>USDT`, else
 `<symbol>USDC`, observed when the ticker response arrived. USD, USDT, and USDC
-get no price row ([Valuation policy](../../adr/0003-valuation-and-catalog.md)).
-A symbol with neither pair gets no price and is valued as `no_price`. A failed
-ticker call leaves the batch without prices, and valuation falls back to the
-latest price within 24 hours. The Earn completeness check uses the same prices.
+get no price row
+([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)). A symbol
+with neither pair gets no price and is valued as `no_price`. A failed ticker
+call leaves the batch without prices, and valuation falls back to the latest
+price within 24 hours. The Earn completeness check uses the same prices.
 Positions carry their own `markPrice`; contracts get no separate price.
 
 ## Errors

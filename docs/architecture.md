@@ -2,8 +2,10 @@
 
 Plutus is a contract-first Go monolith with an embedded React frontend and an
 externally managed MySQL database. This document describes runtime boundaries
-and core mechanisms. Domain rules belong in [domain model](../CONTEXT.md);
-design reasons belong in [decisions](./adr/README.md).
+and core mechanisms. [Glossary](../GLOSSARY.md) defines terms,
+[domain rules](./domain-rules.md) define business behavior,
+[presentation](./presentation.md) defines display and interaction rules, and
+[decisions](./adr/README.md) explain trade-offs.
 
 ## Deployment and dependencies
 
@@ -37,7 +39,7 @@ HTTP server, worker, and process lifecycle. Services share sqlc queries and
 transaction helpers without exclusive table ownership. HTTP maps generated wire
 types to application types; services do not depend on Gin or HTTP types.
 
-Depguard enforces the [backend boundaries](./adr/0020-architecture-layering.md):
+Depguard enforces the [backend boundaries](./adr/0007-backend-architecture.md):
 application code uses the normalized Adapter contract, Valuation cannot import
 Financial, and HTTP cannot import SQL APIs. Runtime code cannot import
 `internal/testsupport`. Within-layer dependencies remain reviewed choices.
@@ -66,15 +68,9 @@ metadata is excluded from JSON. Product filters, totals, and completeness stay
 separate. `application/ordering` uses the offered Platform catalog; `shared` has
 no business dependencies.
 
-Within Valuation, `inputs.go` prepares reports, exclusions, and prices from
-ordinary SQL reads or rebuild preloads, retaining lazy price lookup.
-`calculate.go` evaluates those inputs without SQL, clocks, or query callbacks;
-`stored.go` decodes Account rows; `persist.go` commits derived writes
-atomically.
-
-App creates one Catalog and Manual instance and injects them into their
-consumers. One registry reaches Identity, Collection, and HTTP. HTTP does not
-create or mutate application dependencies; CLI owns process startup and cleanup.
+Collection and rebuild loaders feed one valuation evaluator with prepared
+inputs, without SQL, clocks, or query callbacks. App injects shared Catalog,
+Manual, and Adapter registry instances into their consumers.
 
 Catalog's mapping operation includes exclusion presentation and rebuild
 enqueueing through Jobs. Mapping commits before enqueueing; an enqueue failure
@@ -85,59 +81,36 @@ keys enabled. Account Report self/stale references are released only within the
 same transaction that deletes those reports; all changes roll back on failure.
 New owned tables require an explicit deletion decision. Shared catalogs and
 User-scoped rows remain outside the deletion scope; unexpected foreign ownership
-causes rollback. Fixed Listing Exclusion queries also live in `db/queries`,
-retaining their existing policy owners.
+causes rollback.
 
 See [test ownership](./testing.md#test-ownership) for cross-module workflows.
 
 ## Frontend structure
 
-The [frontend layout](./adr/0021-frontend-structure.md) separates `app`,
-`features`, `shared`, and `api`. ESLint checks these boundaries; browser API
-consumers use `api/index.ts`. Cross-feature entrypoints expose Holdings display,
-History time helpers, and navigation policies.
+The [frontend boundaries](./adr/0013-frontend-architecture.md) separate `app`,
+`features`, `shared`, and `api`, enforced by ESLint. Features expose explicit
+entrypoints; API consumers use `api/index.ts`. Feature CSS stays with its owner;
+compound selectors and cascade-sensitive rules stay within one CSS module.
 
-QueryClient is the sole User source. The authentication route boundary waits for
-that query before mounting the shell and features. An auth-me 401 yields no
-User; transport failures retain retryable error state. Login seeds the User
-cache; logout, expiry, and password success cancel queries, clear cached data,
-reset the in-memory CSRF token, and return to login. Expiry callbacks retain
-their session generation, so a late 401 cannot end a replacement session,
-including a new login by the same User. The User-scoped Portfolio list is shared
-by bootstrap, shell, and create/rename/delete actions.
+QueryClient owns the authenticated User and User-scoped Portfolio list. The auth
+boundary waits before mounting features; an auth-me 401 means no User, while
+transport failures remain retryable. Login seeds the cache. Logout, expiry, and
+password success cancel queries, clear cached data and CSRF state, and return to
+login. Generation-bound expiry callbacks prevent a late 401 from ending a
+replacement session, including a new login by the same User.
 
-Shared write mechanics acquire CSRF and retain raw SDK results. The
-authenticated write hook ends expired sessions, except the password endpoint's
-explicit `invalid_credentials` rejection. Features retain 204, 412, 422, ETag,
-validation, and idempotency handling. Typed named cache builders and Collection
-invalidation flags are defined together; editable resources keep their separate
-lifetimes.
+Shared writes acquire CSRF and handle expiry, except a password
+`invalid_credentials` rejection. Features retain raw SDK results and their
+validation, conflict, ETag, and idempotency policies. Cache keys and Collection
+invalidation flags are shared; editors retain independent lifetimes. Session
+lists use a User-scoped cache discarded when unused or logged out, with reads on
+entry and revocation but no background retry, focus, or reconnect refresh.
 
-Settings exposes the Portfolio creation dialog to the Shell; the feature owns
-form state, idempotency, and writes, while the Shell owns selection and
-navigation. Security separates password fields from the Session list. Sessions
-use a User-scoped QueryClient entry, discarded when unused or when the browser
-session ends, and load on page entry and after revocation. They do not add
-background retries, focus refresh, or reconnect refresh.
-
-Holdings pages share filter-to-request conversion, recovery, summary layout, and
-pagination controls within the feature. Each page retains its SDK call and
-product semantics. The Account Report hook owns the independent Balance,
-Position, Earn, and Dual queries and checks point/report matching before
-display. Futures and Dual Investment have separate route pages.
-
-Shared session navigation owns links and draft preparation; Holdings supplies
-the route-memory key policy. ECharts module registration is an explicit shared
-runtime dependency for each chart. Business options and visual styles remain
-with their components.
-
-Feature CSS lives in `features/<name>/styles.module.css`; shared page classes
-and tokens live in `shared/styles`. Co-locate compound selectors and rules with
-required cascade ordering: class hashes are module-local, while cross-module
-order follows bundling rather than intended precedence.
-
-Browser fixture ownership and routing rules are in
-[testing](./testing.md#test-ownership).
+Holdings shares request conversion, recovery, pagination, and Account Report
+reads; pages own product semantics. Shared navigation prepares outgoing drafts,
+while Holdings owns view-memory policy. Charts explicitly import common ECharts
+registration. See [presentation](./presentation.md) for interaction rules and
+[test ownership](./testing.md#test-ownership) for browser fixtures.
 
 ## Collection and job lifecycle
 
@@ -166,315 +139,181 @@ reports, calculates Account values and Boundary Events, and writes one Valuation
 Point for the cycle.
 
 Temporary and rate-limit Adapter failures have bounded retries within the cycle.
+`unsupported` failures, including detected structure mismatches, are not retried
+within that run. Enabled Connections remain scheduled for later cycles.
 Authentication and authorization failures invalidate the Connection. Platform
 failures can still produce a point with stale or missing values. Database or
 other infrastructure failures can interrupt collection before a point exists.
 The full stale, scope, completeness, and value rules are in
-[domain model](../CONTEXT.md#collection-and-account-reports).
+[domain rules](./domain-rules.md#collection-and-account-reports).
 
 ## Manual persistence and collection
 
-`internal/application/manual` owns the current signed ledger, immutable
-revisions, and version-guarded audited mutations. Appended migrations create one
-Manual Account for existing Identities and increment Identity versions without
-modifying old reports or points. New Identity creation and seeds include it
-automatically.
-
-Before Platform reads, the runner locks the job and Manual boundary Accounts,
-then atomically writes `manual_cycles` and `manual_cycle_accounts`, including
-empty ledgers. Retry loads this persisted selection. Ledger mutations serialize
-on the Manual Account version. One cycle reports each frozen Account as a
-successful complete set with its selected quantity signature and user-modified
-time. Reports and metadata commit together. Finished jobs with frozen Manual
-inputs are retained by job cleanup.
+`internal/application/manual` owns the signed ledger, immutable revisions, and
+version-guarded audited mutations. Before Platform reads, the runner locks the
+job and Manual boundary Accounts and atomically freezes inputs, including empty
+ledgers, in `manual_cycles` and `manual_cycle_accounts`. Retries reload them;
+ledger edits serialize on Account version. Reports and metadata commit together,
+and job cleanup retains jobs referenced by frozen inputs.
 
 The separate `MarketData` capability fetches public prices without credentials
-or private preflight, grouped by Platform and needed Manual Assets. Failure
-leaves quantities and eligible cached prices available for valuation; no private
-collection success is inferred. Manual reports never enter Adapter Collect or
-private Identity success counters. Manual prices use only the own-Platform
-lookup in live valuation, Balance reads, and rebuilds; the existing pricing
-discrepancy below remains for other Accounts and Capital Flows.
+or private preflight, grouped by Platform and required Assets. Failure leaves
+quantities and eligible cached prices available. Manual reports bypass Adapter
+Collect and private Identity success counters. Live valuation, reads, and
+rebuilds all use the own-Platform lookup.
 
-The quantity signature excludes timestamps and mapping. Writer and rebuild share
-`manual_balance_changed` detection and the
-[Manual continuity rules](../CONTEXT.md#manual-balances). The ledger API returns
-current and last-applied quantities, versions, and pending state; the editor
-fetches the current version before editing. Overview checks both valuation and
-report holdings before hiding an Account.
+Writer and rebuild share quantity-signature adjustment detection; signatures
+exclude timestamps and mapping. The ledger API exposes current/last-applied
+quantities, versions, and pending state.
+[Manual rules](./domain-rules.md#manual-balances) own continuity and
+empty-Account semantics; [deployment](./deployment.md#upgrades-and-resets) owns
+existing-data upgrades.
 
 ## Adapter boundary
 
-An ordered product catalog in `platform/adapters` owns offered Platform names,
-Account Structures, Account Types, Margin Modes, and browser credential input
-metadata. Catalog lookup helpers derive from this declaration and return copies
-of mutable descriptions. Registered runtime Adapters determine availability
-separately; CLI keeps live/fake assembly explicit, and recording has its own
-assembly path.
+The ordered `platform/adapters` catalog owns offered Platforms, Account
+Structures, Account Types, Margin Modes, and finite browser credential metadata.
+Lookups return copies of mutable descriptions. Runtime registration determines
+availability separately; CLI keeps live/fake assembly explicit, and recording
+has its own assembly. Browser forms do not replace server validation or expose
+stored credentials.
 
-The Platform API returns a finite credential form description. Manage uses it
-for the existing primary/Futures key inputs, secret presentation, passphrase,
-and Account-dependent requirements. Credential values are never returned.
-Catalog load failures expose recovery. Browser requirements do not replace
-server validation.
+Adapters accept typed credentials, declared structure, and selected Account
+Types, returning normalized reports and market observations. Application code
+does not depend on raw response shapes. Runtime calls use only read-only
+account, balance, position, and market-data interfaces. Errors may name an
+endpoint and Platform error code; raw bodies and credentials never enter logs or
+storage.
 
-Adapters accept typed credentials, Account Structure, and selected Account
-Types, and return normalized reports and market observations. They expose
-supported structures and Account Types and report observed Margin Modes. The
-application does not retain or depend on raw Platform response shapes.
+The shared transport clones the default without global mutation, clears its
+proxy callback, and applies the validated explicit instance policy. Adapter
+request budgets and caller-supplied clients retain precedence. Kraken WebSocket
+uses the same HTTP client; direct connections and proxy first hops use IPv4.
+Proxy failure never falls back to direct, and proxy availability is not a
+readiness dependency. External software owns tunnels. Recording reuses proxy
+validation and the client factory but loads no runtime secrets, logging, or TLS
+settings. [Development](./development.md#platform-proxies) owns configuration.
 
-Runtime calls use only read-only account, balance, position, and market-data
-interfaces. Normalized error details may name an endpoint and Platform error
-code; raw bodies and credentials must not enter logs or storage. Live HTTP and
-Kraken WebSocket connections use IPv4 for direct access and proxy first hops; an
-external proxy controls the address family it presents to the Platform.
-
-Validated instance configuration selects environment proxies, forced direct
-access, or one forced HTTP/HTTPS/SOCKS proxy for all runtime Adapters. Explicit
-proxy mode ignores environment bypass rules and never falls back to direct. The
-shared transport clones the default transport without global mutation; Adapter
-factories preserve individual timeouts and caller-supplied HTTP clients retain
-precedence. Kraken WebSocket uses the same configured HTTP client. Proxy
-availability is not a readiness dependency. External software such as sing-box
-owns SS protocols, credentials, and tunnel lifecycle. Explicit Adapter recording
-retains its separate process-environment proxy policy. See
-[proxy configuration](./development.md#platform-proxies).
-
-Development registers the deterministic fake for offered Platforms. Remote test
-and prod register live Adapters. Automated tests use independent synthetic
-responses and a network guard. Only explicit `adapter record` can publish
-sanitized responses to `/tmp/plutus/` for review. See the
+Dev registers the fake; remote test/prod register live Adapters. Automated tests
+use independent synthetic responses and a network guard. Only explicit recording
+writes sanitized responses under `/tmp/plutus/`; see the
 [evidence workflow](./platform/evidence-workflow.md) and
-[Platform mapping guides](../README.md#documentation).
+[Platform mappings](../README.md#documentation).
 
 ## Development scenarios
 
-The fake Adapter owns a pure scenario catalog and normalized report generator,
-shared by seed history and runtime collection. Reserved `plutus-demo-v1` keys
-carry a scenario ID and original UTC anchor inside normal sealed credentials.
-Validation binds a stable external reference; subsequent observations depend on
-that anchor and observation time. Ordinary fake behavior prefixes are unchanged.
+Seed history and ongoing fake collection share a pure scenario generator.
+Reserved `plutus-demo-v1` credentials carry a scenario ID and UTC anchor;
+validation binds a stable external reference. Platform/Asset/time prices are
+independent of login identity to avoid shared-price collisions.
 
-The seed writer materializes terminal configuration and historical source facts,
-including Earn descriptions, report scopes, manual flows, exclusion events and
-audits. It validates definitions and decimals and propagates serialization
-errors. Connection setup uses the Identity service. It inserts no derived
-Valuation Points; the normal rebuild computes them. Source INSERT batches run in
-one transaction and roll back together on failure. Connection initialization
-follows the source commit. Monetary relationships use exact decimal arithmetic.
-Platform/Asset/time prices are independent of login identity, avoiding
-shared-price collisions.
-
-Historical Plutus events stop at the anchor. Runtime fake collection cannot
-mutate flows, Account selection, archival or Catalog policy. Holding and product
-lifecycles continue through deterministic cohorts without a persisted simulator
-or background application hooks. See the [scenario index](./seeds.md) and
-[ADR 0008](./adr/0008-environments-and-migrations.md) for coverage and
-trade-offs.
+Seeds insert source facts in one transaction, initialize Connections through
+real services, then use the normal rebuild to derive values. Historical Plutus
+events stop at the anchor; continued fake holdings cannot mutate flows,
+selection, archival, or Catalog policy. No persistent simulator or background
+application hook is needed. [Seeds](./seeds.md) owns scenarios, coverage, and
+performance evidence.
 
 ## Persistence and rebuilds
 
-MySQL holds configuration, normalized observed facts, derived values, jobs, and
-audit records. Observed holdings have no user editing API; new cycles produce
-new reports. Derived valuation fields on reports and Valuation Point results can
-be rebuilt in place. Boundary Events are calculated and stored with points, then
-reused by reads.
+MySQL stores configuration, normalized source facts, derived values, jobs, and
+audits. Observations have no editing API. Rebuilds recalculate succeeded cycles
+in order using retained report scopes, source times, and cycle-time exclusion
+policy; evaluation times remain fixed. Financial history has no downsampling or
+retention limit; job cleanup excludes referenced jobs.
 
-Mapping corrections enqueue affected Portfolio rebuilds. Rebuilds retain point
-evaluation times, use stored report scopes and cycle-time exclusion policy, and
-recalculate succeeded cycles in order. Source facts, historical policy events,
-and point results remain distinguishable.
+Collection and rebuild share valuation and atomic Point/report writes. Rebuild
+preloads bounded chunks, including compatible stale sources outside each chunk;
+its price lookup preserves ordinary SQL selection and ambiguity behavior.
+Sequential predecessor values use stored decimal precision. Each Point commits
+independently: failure retains earlier commits and retries can recompute them
+safely. Batch sizes and loading details live in
+[the rebuild implementation](../internal/application/valuation/rebuild.go).
 
-Rebuild reads reports in chunks of 64 cycles. Compatible stale sources and
-Balances use bounded ID batches; price series cover the actual source report
-times, including sources outside the current chunk. Historical exclusion
-versions are loaded once and retain strict cycle-start eligibility. Binary
-searches reuse the existing price-age, quote and fallback rules; ambiguous
-cross-Platform price ties defer to the existing SQL selection. No pricing policy
-is changed. Sequential predecessor values are reused at database decimal
-precision; nonadjacent evaluation times use the normal database lookup. Report
-values use parameterized UPDATE batches of at most 256 reports, sharing one
-transaction with their Valuation Point. Earlier points remain committed after
-failure or cancellation, and retry recomputes them safely. Ordinary collection
-uses the same valuation rules and atomic batched writer.
+Reports preserve scope on success and failure: combined Earn uses scope 1;
+separate Earn/Dual on Binance, OKX, and Bybit use scope 2. Stale selection
+requires equality; [domain rules](./domain-rules.md#report-scope-compatibility)
+own reclassification semantics.
 
-Financial observations and Valuation Points have no implemented retention or
-downsampling policy. Completed jobs without report or point ownership are pruned
-according to configuration. Configuration versions support optimistic
-concurrency.
+`earn_positions` stores normalized typed JSON, never raw Platform responses.
+`earn_details_collected` distinguishes missing descriptions from a successful
+empty read. Reads follow the valuation's source report, including stale history,
+and return missing-detail Balance summaries separately. Platform-specific
+metadata reads belong in [mappings](../README.md#documentation).
 
-Report scope is stored with both successful and failed Account Reports. Legacy
-combined Earn uses scope 1; separate Earn and Dual on Binance, OKX, and Bybit
-use scope 2. Stale selection requires equal scope. Rebuilds preserve the
-reclassification and incomplete-comparison rules in the
-[domain model](../CONTEXT.md#report-scope-compatibility).
-
-Earn descriptions are stored as typed normalized JSON in `earn_positions`, owned
-by a Portfolio and Account Report. This JSON serializes the normalized Earn
-Position model, never a Platform response. The source report records
-`earn_details_collected`; its false default distinguishes old reports from new
-successful empty reads. Reads use the financial valuation's existing source
-report, including compatible stale history, and return legacy Balance summaries
-separately. Detail availability does not change financial completeness or scope.
-
-Earn and Dual reads return row-local issues for their Observed cells. Optional
-Bybit FlexibleSaving product metadata is fetched once per Collection Run only
-when Earn is selected and nonzero flexible holdings exist. Catalogue failure or
-ambiguous matching affects rate metadata alone and cannot invalidate the
-Connection or clear the successful position read.
-
-[Migrations](../db/migrations) define the schema; [SQL queries](../db/queries)
-and [sqlc.yaml](../sqlc.yaml) generate query access. The frozen baseline's
-`technical-design.md` reference is obsolete; use the migration itself.
-
-Migrations are explicit CLI operations; `serve` never migrates or seeds
-automatically. After prod's first migration, the baseline is frozen and changes
-must work on populated databases. Upgrade procedures are in
-[deployment](./deployment.md).
+[Migrations](../db/migrations) own schema; [SQL queries](../db/queries) and
+[sqlc.yaml](../sqlc.yaml) generate access. The frozen baseline's
+`technical-design.md` reference is obsolete; use the migration itself. `serve`
+never migrates or seeds automatically. Follow
+[populated-database upgrade safeguards](./deployment.md#upgrades-and-resets).
 
 ## API, numbers, and time
 
-[OpenAPI](../api/openapi/openapi.yaml) is the API contract. Generated Go server
-bindings and TypeScript client types stop at the transport boundary. Generated
-files are committed; regeneration must leave them unchanged when their sources
-have not changed. Routes and payload schemas are not duplicated here.
+[OpenAPI](../api/openapi/openapi.yaml) owns routes and wire schemas; generated
+Go/TypeScript types stop at transport boundaries. Generated files are committed
+and must reproduce unchanged from unchanged sources. The API uses Problem
+Details, version ETags, idempotency keys, and pagination as specified there.
+`shared/etag` strictly parses validators; `shared/cursor` signs opaque cursors.
+Reads and mutations remain scoped to the authenticated User and Portfolio.
 
-The API uses versioned routes, Problem Details errors, version-based ETags,
-idempotency keys for supported mutations, and cursor pagination where specified
-by OpenAPI. ETag validators are formatted and strictly parsed through
-`internal/shared/etag`; list cursors are opaque HMAC-signed values from
-`internal/shared/cursor`. Browser ownership checks scope access to the
-authenticated User and their Portfolios.
+`application/ordering` supplies catalog-based ordering before pagination; the
+SPA preserves it. Holdings filters remain mounted independently of results. The
+shared URL controller debounces search, defers during IME composition, and saves
+outgoing drafts before navigation. Portal menus preserve internal scrolling and
+keyboard input while dismissing on external scroll.
+[Presentation](./presentation.md#filters) owns matching, filter recovery, and
+view-memory rules.
 
-Display ordering is shared by application reads through
-`internal/application/ordering`. Platform ranks and Account Type ranks come from
-the Adapter capability catalog. Valuation reads sort Accounts first, then order
-flat holdings by those Account ranks before grouping or pagination;
-Account-detail futures use the same contract comparator. Catalog queries receive
-the shared Platform order and apply it in SQL before `LIMIT` and `OFFSET`. The
-SPA preserves API ordering in lists and selectors. See
-[ADR 0011](./adr/0011-display-ordering.md).
+Overview publishes summary and Tree together only when Point ID, total, and
+completeness agree. Without a Point, both IDs must be absent. Account queries
+are keyed by Point and Report and validate both against the visible Account;
+latest-only races offer recovery rather than mixing reports. Explicit mutations
+invalidate dependent queries; running Collection details poll until completion
+and then refresh Overview and open details.
+[Browser refresh](./presentation.md#browser-refresh-and-scrolling) owns other
+display-read behavior.
 
-The global Holdings tables keep their filter headers mounted independently of
-query results. Platform and Identity candidates derive from configured
-non-archived Identities; successful reads normalize obsolete URL choices.
-Interactive header content supplements a plain column name in `DataColumn`.
-Portal popovers measure their available viewport space and dismiss on external
-scroll, while preserving internal list scrolling and keyboard input. A shared
-URL controller debounces search by 250 ms, defers during IME composition, and
-flushes pending input on dismissal. Before internal navigation, the shared Shell
-controller saves pending input in the outgoing Holdings view without updating
-the destination URL. Server reads apply literal case-insensitive substring
-matching before pagination. Flat Account filters and Balance grouping are
-retired. Balances, Futures, Earn, and Dual Investment use separate top-level
-routes and session-memory state keyed by User, Portfolio, and view. Internal
-links restore the target view's filters, search, and page; explicit URLs,
-reloads, and browser history remain authoritative. See
-[ADR 0014](./adr/0014-holdings-header-filters.md).
+Financial arithmetic uses exact rationals in `shared/decimal`; storage uses
+`DECIMAL(65,30)`, and JSON financial values are strings with at most 30
+fractional digits. Null means unknown or inapplicable. The browser uses
+`decimal.js`, converting only plot coordinates to JavaScript numbers. Shared
+formatting retains source strings for chart tooltips and returns ordinary
+rounded decimals for screen readers.
+[Numeric presentation](./presentation.md#numeric-presentation) owns rounding and
+notation.
 
-Overview reads its summary and ownership Tree in one frontend query. The result
-is published only when the Valuation Point, total, and completeness agree; query
-retries and recovery retain the last successful pair. With no Valuation Point,
-only matching absent point IDs are required. Expanded Account queries are keyed
-by point and report, and validate both against the visible Account. A newer
-latest-only response produces a recovery notice instead of mixing reports.
-
-The ownership Tree uses nested lists and native disclosure buttons. Shrinkable
-Account grids and local table scroll wrappers keep wide details within their
-parent. [ADR 0016](./adr/0016-overview-and-holdings-navigation.md) defines
-expansion, provenance, and issue presentation.
-
-Overview and the Activity Cycles/Jobs lists have no periodic display polling.
-Page navigation and browser reload read existing data. Explicit mutations still
-invalidate dependent queries, and running Collection details retain status
-polling until completion. Collect now updates the paired Overview read and open
-Account details on completion. Browser refresh does not request collection. See
-[ADR 0016](./adr/0016-overview-and-holdings-navigation.md).
-
-Financial arithmetic uses exact rationals behind `internal/shared/decimal`;
-storage uses `DECIMAL(65,30)`. Storage and JSON boundaries format decimal values
-with at most 30 fractional digits. JSON financial values are strings; null means
-unknown or inapplicable. The frontend uses `decimal.js`, converting to
-JavaScript numbers only for chart plotting.
-
-The shared formatter implements [ADR 0013](./adr/0013-numeric-presentation.md),
-returning display text and a rounded ordinary decimal for `NumericText` screen
-reader output. Percentage scaling uses a separate Decimal constructor to avoid
-changing global precision. Chart tooltips retain source decimal strings in
-index-based closures; plotted JavaScript numbers never determine their rounding.
-
-Application-generated UUIDv7 identifiers are stored in binary form. Database
-sessions use UTC; stored instants use microsecond precision and JSON uses
-RFC 3339. Portfolio timezones affect calendar queries, not stored instants.
+Application-generated UUIDv7 IDs are stored in binary form. Database sessions
+use UTC; stored instants have microsecond precision and JSON uses RFC 3339.
+Portfolio timezones affect queries, not storage.
 
 ### Contract position presentation
 
-Account Reports retain the observed account Margin Mode; stale reads use the
-successful source Report rather than the Identity's latest mode. Positions
-retain direction, source quantity, position mode, margin setting, source margin
-currency, and initial/allocated basis. Exact decimal read calculations add Size,
-settlement-currency Margin, Portfolio context, and row issues to the API.
-[ADR 0012](./adr/0012-position-presentation.md) owns the display policy.
+The financial read model derives Size, settlement-currency Margin, and issues
+from retained Position facts and the source Report's observed mode. It exposes
+reported/calculated margin provenance and unavailable reasons without changing
+source amounts. [Domain rules](./domain-rules.md#contract-quantities-and-margin)
+own common semantics; Platform mappings own source interpretation and formulas.
 
-Margin reads prefer a verified source amount and expose `marginSource` as
-`reported` or `calculated`, plus `marginUnavailableReason` for unknown values.
-Binance Cross initial requirements can be calculated from the source Position's
-Size, Mark, and initial leverage, including supported retail PM. The immutable
-Binance PM structure establishes Cross for old Reports without margin metadata;
-no source amount or observation time changes. Other Platforms use their own
-reported measures rather than this fallback.
-
-OKX Cross reads retain the reported margin currency and verify non-PM inverse
-`imr` against both native and USD requirements using exact rational arithmetic
-and a relative `1e-8` tolerance. This also corrects earlier typed-USD reads when
-only the native candidate matches. Missing provenance, unsupported currencies,
-and ambiguous or mismatched candidates remain unknown. The source Report's
-regime determines eligibility; current Identity settings never establish it.
-
-The account Positions endpoint accepts an optional `pointId` scoped to the same
-Portfolio and Account. Historical expansion reads that point's source Report,
-never the latest report. Shared React cells provide the same columns and units
-in global, Account, and historical tables. Detail overlays render outside table
-scroll containers and support hover, focus, click, and Escape.
-
-Margin cells share numeric alignment and a content-sizing hint. One focusable
-amount control discloses mode and leverage. Display helpers use source decimals
-before formatting; Symbol disclosures contain contract specifications, while
-margin diagnostics stay in the API. The conversion and leverage policy is in
-[ADR 0012](./adr/0012-position-presentation.md).
-
-The appended Position presentation migration restores only byte-exact canonical
-references with compatible stored direction. Legacy Bybit margin is marked as an
-initial requirement; missing Report modes and other absent margin provenance
-remain null. The baseline and source financial amounts are retained.
+Historical Position reads resolve an optional `pointId` within the same
+Portfolio and Account, then load its source Report. Shared React cells keep
+global, Account, and historical views consistent. Disclosures render outside
+table scroll containers. [Presentation](./presentation.md#futures) owns columns
+and interactions; [deployment](./deployment.md#position-presentation-upgrade)
+owns historical provenance restoration.
 
 ## Mobile browser scrolling
 
-At the existing 900px layout breakpoint, the document owns vertical scrolling.
-The root, shell, workspace, and main content grow with their contents rather
-than clipping a viewport-sized inner pane. Vertical overscroll uses the browser
-default, allowing native pull-to-refresh in ordinary mobile browser tabs. The
-mobile top bar is sticky below navigation overlays and portal menus; table
-wrappers retain horizontal scrolling. Sign-in and startup screens use viewport
-minimum heights. Desktop retains its fixed-height shell and scrolling main pane.
-The mobile main pane clips only horizontal overflow, containing chart tooltips
-left at an old position after a viewport resize without adding a vertical scroll
-container. Its stacking context keeps chart content below the sticky header and
-navigation overlays, while body-portal menus retain their own overlay layer.
+At the 900px mobile breakpoint, the document owns vertical scrolling and native
+overscroll. The sticky header and overlay layers sit above charts; tables scroll
+horizontally. The main pane clips horizontal overflow without introducing a
+vertical scroll container. Desktop keeps its fixed-height shell and inner pane.
 
-Navigation drawers and shared Dialogs acquire a reference-counted mobile
-document lock before moving focus. The first lock records the scroll offset and
-affected inline styles, then fixes the body at the saved offset and locks root
-scrolling. The last release restores those styles and the scroll offset. Effect
-cleanup and layout-breakpoint changes release locks; focus restoration does not
-scroll the document. Drawer and dialog scrollers contain overscroll, while their
-backgrounds remain fixed. Shared menus dismiss on external scroll and preserve
-internal menu scrolling.
-
-Reload keeps the current URL, rereads existing data, and resets transient React
-state. It does not enqueue a Collection Cycle. The accepted user-facing behavior
-and browser coverage boundary are recorded in
-[ADR 0015](./adr/0015-mobile-native-refresh.md).
+Drawers and dialogs use a reference-counted document lock before moving focus.
+The first lock saves scroll position/styles and fixes the body; the last release
+restores them. Effect cleanup and breakpoint changes release locks, and focus
+restoration cannot scroll the document. Overlay scrollers contain overscroll.
+See [browser refresh](./presentation.md#browser-refresh-and-scrolling) for
+user-facing behavior and device-coverage limits.
 
 ## Authentication and secrets
 
@@ -504,47 +343,29 @@ credentials use separate configuration sources. See
 
 ## History windows and tables
 
-History shares a resolved UTC window across series, raw point pages, and
-calendar reads. The read-only `history-window` endpoint resolves shortcuts or
-Portfolio-local wall times; invalid, ambiguous, and nonexistent manual times
-fail explicitly. Browser URLs retain relative presets or absolute custom
-endpoints. Pagination and recovery reuse the applied window.
+The `history-window` read endpoint resolves one UTC window from presets or
+Portfolio-local inputs. All series, calendar, pagination, and recovery reads
+reuse it; ambiguous or nonexistent manual wall times fail explicitly.
 
-The `valuation-points/page` endpoint reads scalar summaries in descending order
-with SQL LIMIT/OFFSET and an indexed range count in one transaction. It reuses
-OffsetPage metadata. The existing ascending series interface remains compatible.
-Raw series read scalar summaries; Hour/Day scan only IDs and evaluation times,
-apply the existing timezone sampler, and fetch selected summaries in batches.
-Series reads avoid detail JSON, but the header scan still grows with the
-selected range. Series sampling is read-time only; stored history is not
-reduced.
-
-Period closes and Value Changes retain complete intersecting calendar periods
-and the 400-period ceiling. Their full results feed charts while table display
-reverses and paginates independently. Separate URL pagination keys prevent point
-expansion or an unrelated period selector from resetting a table. See
-[ADR 0017](./adr/0017-history-windows-and-pagination.md).
+Raw point pages read scalar summaries and an indexed count in one transaction.
+Aggregated series scan IDs/times, select final actual points by timezone bucket,
+then fetch summaries in batches. The scan still grows with the selected range;
+sampling does not reduce stored history. Calendar results feed full charts and
+paginate independently in the browser.
+[Presentation](./presentation.md#history-windows-and-tables) owns windows,
+periods, row limits, and URL state.
 
 ## Operations and limits
 
-The framework-independent `internal/infra/logging` component owns three `slog`
-loggers and independent rolling text files for application, HTTP access, and SQL
-events. The CLI loads configuration and initializes sinks before opening the
-database; it stops producers and closes the database before closing logs.
-Application logs also go to stderr. Gin framework writers and server diagnostics
-are adapted at the HTTP boundary. HTTP recovery records exceptions and stacks,
-and access logging surrounds recovery and early rejection so each request has
-one completion record.
-
-MySQL Connector, connection, statement, and transaction wrappers capture SQL
-execution without changing service constructors or generated sqlc code. They
-preserve driver conversion and connection lifecycle interfaces. Prepared
-fallbacks do not emit duplicate records. Parameter substitution is diagnostic;
-its uncertainty falls back to the original statement and arguments. Context
-fields associate SQL and application events with requests and claimed jobs. SQL
-duration ends at driver return, excluding row iteration. See
-[ADR 0010](./adr/0010-process-logging.md) for accepted visibility and retention
-trade-offs and [configuration](./development.md#logging) for settings.
+`internal/infra/logging` owns application, access, and SQL sinks. CLI opens logs
+before the database and closes them after producers stop. HTTP access logging
+surrounds recovery and early rejection for one completion record per request.
+MySQL driver wrappers preserve conversion/lifecycle interfaces without changing
+services or generated sqlc code; prepared fallbacks avoid duplicate records.
+Context propagates request/job correlation. See
+[logging configuration](./development.md#logging),
+[sink operation](./deployment.md#logs), and
+[logging trade-offs](./adr/0012-process-logging.md).
 
 Readiness checks database access, schema version, encryption-key availability,
 and worker heartbeat. Liveness only indicates that the HTTP process responds.
@@ -567,7 +388,7 @@ Implemented capabilities and integration gaps belong in
 
 ## Known implementation discrepancy
 
-The [pricing decision](./adr/0003-valuation-and-catalog.md) requires
+The [pricing decision](./adr/0003-valuation-and-asset-policy.md) requires
 same-Platform prices. Exchange Account valuation currently prefers that Platform
 but falls back to the latest eligible price across Platforms. Manual Account
 valuation enforces own-Platform prices without fallback. Capital Flow valuation

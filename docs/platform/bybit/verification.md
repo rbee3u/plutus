@@ -63,208 +63,149 @@ obligation to change account settings or fund another product.
 
 ## Interface references
 
-Synthetic inputs and recorded evidence are listed separately. Recorded envelopes
-retain exact UTC timestamps and trimming notes; sampling settings do not limit
-an interface's applicability.
-
-### `v5: GET /v5/account/info`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/account/account-info)
-
-Synthetic inputs:
-
-- [v5_account_info.bad_signature.json](../../../internal/platform/bybit/testdata/v5_account_info.bad_signature.json)
-- [v5_account_info.cross.json](../../../internal/platform/bybit/testdata/v5_account_info.cross.json)
-- [v5_account_info.invalid_key.json](../../../internal/platform/bybit/testdata/v5_account_info.invalid_key.json)
-- [v5_account_info.ip_rate_limited.json](../../../internal/platform/bybit/testdata/v5_account_info.ip_rate_limited.json)
-- [v5_account_info.isolated.json](../../../internal/platform/bybit/testdata/v5_account_info.isolated.json)
-- [v5_account_info.pm.json](../../../internal/platform/bybit/testdata/v5_account_info.pm.json)
-- [v5_account_info.region_restricted.json](../../../internal/platform/bybit/testdata/v5_account_info.region_restricted.json)
-- [v5_account_info.stale_timestamp.json](../../../internal/platform/bybit/testdata/v5_account_info.stale_timestamp.json)
-- [v5_account_info.uta_1_0_pro.json](../../../internal/platform/bybit/testdata/v5_account_info.uta_1_0_pro.json)
-
-Recorded evidence:
-
-[PM](../../../internal/platform/bybit/evidence/v5_account_info.pm.json),
-[Cross](../../../internal/platform/bybit/evidence/v5_account_info.cross.json);
-directly observed UTA 2.0 Pro and the corresponding Margin Mode; both report
-Spot Hedging ON
-
-### `v5: GET /v5/account/wallet-balance`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/account/wallet-balance)
-
-Synthetic inputs:
-
-- [v5_account_wallet_balance.cross.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.cross.json)
-- [v5_account_wallet_balance.isolated.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.isolated.json)
-- [v5_account_wallet_balance.pm.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.pm.json)
-- [v5_account_wallet_balance.rate_limited.json](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.rate_limited.json)
-
-Recorded evidence:
-
-[PM](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.pm.json),
-[Cross](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.cross.json);
-nonzero HYPE borrowing/interest and negative equity; PM SOL spotHedgingQty
-nonzero, Cross quantities zero
-
-### `v5: GET /v5/asset/asset-overview`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/asset/balance/asset-overview)
-
-Synthetic inputs:
-
-- [v5_asset_asset_overview.dual_only.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.dual_only.json)
-- [v5_asset_asset_overview.fixed_saving.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.fixed_saving.json)
-- [v5_asset_asset_overview.json](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.json)
-
-Recorded evidence:
-
-[v5_asset_asset_overview.json](../../../internal/platform/bybit/evidence/v5_asset_asset_overview.json);
-Funding, Unified and Earn with EasyEarn/DualAsset entries; independent interface
-totals
-
-### `v5: GET /v5/asset/transfer/query-account-coins-balance`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/asset/balance/all-balance)
-
-Synthetic inputs:
-
-- [v5_asset_transfer_query_account_coins_balance.json](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.json)
-- [v5_asset_transfer_query_account_coins_balance.rate_limited.json](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.rate_limited.json)
-
-Recorded evidence:
-
-[v5_asset_transfer_query_account_coins_balance.json](../../../internal/platform/bybit/evidence/v5_asset_transfer_query_account_coins_balance.json);
-nonzero USDT/USDC Funding; memberId masked, including the disclosed local
-redaction repair
-
-### `v5: GET /v5/earn/advance/position`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/finance/advanced-earn/dual-asset/position)
-
-Synthetic inputs:
-
-- [v5_earn_advance_position.buy_low.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.buy_low.json)
-- [v5_earn_advance_position.empty.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.empty.json)
-- [v5_earn_advance_position.sell_high.json](../../../internal/platform/bybit/testdata/v5_earn_advance_position.sell_high.json)
-
-Recorded evidence:
-
-[v5_earn_advance_position.json](../../../internal/platform/bybit/evidence/v5_earn_advance_position.json);
-Active HYPE BuyLow, USDT principal 20; SellHigh deferred
-
-### `v5: GET /v5/earn/fixed-term/position`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/finance/earn/fixed-saving/position)
-
-Synthetic inputs:
-
-- [v5_earn_fixed_term_position.empty.json](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.empty.json)
-- [v5_earn_fixed_term_position.json](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.json)
-
-Recorded evidence:
-
-Missing nonempty evidence; owner cannot currently meet minimum principal. Empty
-diagnostic was not promoted.
-
-### `v5: GET /v5/earn/position`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/finance/earn/easy-onchain/position)
-
-Synthetic inputs:
-
-- [v5_earn_position.json](../../../internal/platform/bybit/testdata/v5_earn_position.json)
-
-Recorded evidence:
-
-[v5_earn_position.json](../../../internal/platform/bybit/evidence/v5_earn_position.json);
-USDT Flexible principal 20; zero-principal HYPE row with historical PnL retained
-
-### `v5: GET /v5/market/instruments-info`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/market/instrument)
-
-Synthetic inputs:
-
-- [v5_market_instruments_info.inverse.json](../../../internal/platform/bybit/testdata/v5_market_instruments_info.inverse.json)
-- [v5_market_instruments_info.linear.json](../../../internal/platform/bybit/testdata/v5_market_instruments_info.linear.json)
-
-Recorded evidence:
-
-[linear](../../../internal/platform/bybit/evidence/v5_market_instruments_info.linear.json),
-[inverse](../../../internal/platform/bybit/evidence/v5_market_instruments_info.inverse.json);
-kept 7/890 and 4/26 rows, retaining every held contract; linear replaced for the
-HYPEUSDT coverage gap
-
-### `v5: GET /v5/market/tickers`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/market/tickers)
-
-Synthetic inputs:
-
-- [v5_market_tickers.json](../../../internal/platform/bybit/testdata/v5_market_tickers.json)
-
-Recorded evidence:
-
-[v5_market_tickers.json](../../../internal/platform/bybit/evidence/v5_market_tickers.json);
-6/530 whole rows, including relevant ETH/SOL/HYPE/XRP price pairs
-
-### `v5: GET /v5/market/time`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/market/time)
-
-Synthetic inputs:
-
-- [v5_market_time.json](../../../internal/platform/bybit/testdata/v5_market_time.json)
-
-Recorded evidence:
-
-[v5_market_time.json](../../../internal/platform/bybit/evidence/v5_market_time.json);
-explicit public clock request, native time fields retained
-
-### `v5: GET /v5/position/list`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/position)
-
-Synthetic inputs:
-
-- [v5_position_list.inverse_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_cross.json)
-- [v5_position_list.inverse_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_isolated.json)
-- [v5_position_list.inverse_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.inverse_pm.json)
-- [v5_position_list.linear_usdc_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_cross.json)
-- [v5_position_list.linear_usdc_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_isolated.json)
-- [v5_position_list.linear_usdc_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_pm.json)
-- [v5_position_list.linear_usdt_cross.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_cross.json)
-- [v5_position_list.linear_usdt_isolated.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_isolated.json)
-- [v5_position_list.linear_usdt_pm.json](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_pm.json)
-- [v5_position_list.option.json](../../../internal/platform/bybit/testdata/v5_position_list.option.json)
-
-Recorded evidence:
-
-PM
-[USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_pm.json),
-[USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_pm.json),
-[inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_pm.json);
-Cross
-[USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_cross.json),
-[USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_cross.json),
-[inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_cross.json);
-four contract kinds, coexisting HYPEUSDT Hedge sides and One-way rows; literal
-cursors preserved
-
-### `v5: GET /v5/user/query-api`
-
-[Contract](https://bybit-exchange.github.io/docs/v5/user/apikey-info)
-
-Synthetic inputs:
-
-- [v5_user_query_api.json](../../../internal/platform/bybit/testdata/v5_user_query_api.json)
-
-Recorded evidence:
-
-[v5_user_query_api.json](../../../internal/platform/bybit/evidence/v5_user_query_api.json);
-readOnly=1, isMaster=true and Earn permission; identity/key/IP/label masked
+Each interface links its contract, independent synthetic inputs, and reviewed
+recordings. Coverage notes below qualify those samples; exact UTC capture times
+and trimming details remain in each recording's `recordedAt` and `notes`. Link
+labels name file variants; `sample` denotes an unsuffixed file. Sampling
+settings do not limit an interface's applicability.
+
+### [`v5: GET /v5/account/info`](https://bybit-exchange.github.io/docs/v5/account/account-info)
+
+- Synthetic:
+  [bad_signature](../../../internal/platform/bybit/testdata/v5_account_info.bad_signature.json),
+  [cross](../../../internal/platform/bybit/testdata/v5_account_info.cross.json),
+  [invalid_key](../../../internal/platform/bybit/testdata/v5_account_info.invalid_key.json),
+  [ip_rate_limited](../../../internal/platform/bybit/testdata/v5_account_info.ip_rate_limited.json),
+  [isolated](../../../internal/platform/bybit/testdata/v5_account_info.isolated.json),
+  [pm](../../../internal/platform/bybit/testdata/v5_account_info.pm.json),
+  [region_restricted](../../../internal/platform/bybit/testdata/v5_account_info.region_restricted.json),
+  [stale_timestamp](../../../internal/platform/bybit/testdata/v5_account_info.stale_timestamp.json),
+  [uta_1_0_pro](../../../internal/platform/bybit/testdata/v5_account_info.uta_1_0_pro.json).
+- Recorded:
+  [PM](../../../internal/platform/bybit/evidence/v5_account_info.pm.json),
+  [Cross](../../../internal/platform/bybit/evidence/v5_account_info.cross.json);
+  directly observed UTA 2.0 Pro and the corresponding Margin Mode; both report
+  Spot Hedging ON
+
+### [`v5: GET /v5/account/wallet-balance`](https://bybit-exchange.github.io/docs/v5/account/wallet-balance)
+
+- Synthetic:
+  [cross](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.cross.json),
+  [isolated](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.isolated.json),
+  [pm](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.pm.json),
+  [rate_limited](../../../internal/platform/bybit/testdata/v5_account_wallet_balance.rate_limited.json).
+- Recorded:
+  [PM](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.pm.json),
+  [Cross](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.cross.json);
+  nonzero HYPE borrowing/interest and negative equity; PM SOL spotHedgingQty
+  nonzero, Cross quantities zero
+
+### [`v5: GET /v5/asset/asset-overview`](https://bybit-exchange.github.io/docs/v5/asset/balance/asset-overview)
+
+- Synthetic:
+  [dual_only](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.dual_only.json),
+  [fixed_saving](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.fixed_saving.json),
+  [sample](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_asset_asset_overview.json);
+  Funding, Unified and Earn with EasyEarn/DualAsset entries; independent
+  interface totals
+
+### [`v5: GET /v5/asset/transfer/query-account-coins-balance`](https://bybit-exchange.github.io/docs/v5/asset/balance/all-balance)
+
+- Synthetic:
+  [sample](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.json),
+  [rate_limited](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.rate_limited.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_asset_transfer_query_account_coins_balance.json);
+  nonzero USDT/USDC Funding; memberId masked, including the disclosed local
+  redaction repair
+
+### [`v5: GET /v5/earn/advance/position`](https://bybit-exchange.github.io/docs/v5/finance/advanced-earn/dual-asset/position)
+
+- Synthetic:
+  [buy_low](../../../internal/platform/bybit/testdata/v5_earn_advance_position.buy_low.json),
+  [empty](../../../internal/platform/bybit/testdata/v5_earn_advance_position.empty.json),
+  [sell_high](../../../internal/platform/bybit/testdata/v5_earn_advance_position.sell_high.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_earn_advance_position.json);
+  Active HYPE BuyLow, USDT principal 20; SellHigh deferred
+
+### [`v5: GET /v5/earn/fixed-term/position`](https://bybit-exchange.github.io/docs/v5/finance/earn/fixed-saving/position)
+
+- Synthetic:
+  [empty](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.empty.json),
+  [sample](../../../internal/platform/bybit/testdata/v5_earn_fixed_term_position.json).
+- Recorded: Missing nonempty evidence; owner cannot currently meet minimum
+  principal. Empty diagnostic was not promoted.
+
+### [`v5: GET /v5/earn/position`](https://bybit-exchange.github.io/docs/v5/finance/earn/easy-onchain/position)
+
+- Synthetic:
+  [sample](../../../internal/platform/bybit/testdata/v5_earn_position.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_earn_position.json);
+  USDT Flexible principal 20; zero-principal HYPE row with historical PnL
+  retained
+
+### [`v5: GET /v5/market/instruments-info`](https://bybit-exchange.github.io/docs/v5/market/instrument)
+
+- Synthetic:
+  [inverse](../../../internal/platform/bybit/testdata/v5_market_instruments_info.inverse.json),
+  [linear](../../../internal/platform/bybit/testdata/v5_market_instruments_info.linear.json).
+- Recorded:
+  [linear](../../../internal/platform/bybit/evidence/v5_market_instruments_info.linear.json),
+  [inverse](../../../internal/platform/bybit/evidence/v5_market_instruments_info.inverse.json);
+  kept 7/890 and 4/26 rows, retaining every held contract; linear replaced for
+  the HYPEUSDT coverage gap
+
+### [`v5: GET /v5/market/tickers`](https://bybit-exchange.github.io/docs/v5/market/tickers)
+
+- Synthetic:
+  [sample](../../../internal/platform/bybit/testdata/v5_market_tickers.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_market_tickers.json);
+  6/530 whole rows, including relevant ETH/SOL/HYPE/XRP price pairs
+
+### [`v5: GET /v5/market/time`](https://bybit-exchange.github.io/docs/v5/market/time)
+
+- Synthetic:
+  [sample](../../../internal/platform/bybit/testdata/v5_market_time.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_market_time.json);
+  explicit public clock request, native time fields retained
+
+### [`v5: GET /v5/position/list`](https://bybit-exchange.github.io/docs/v5/position)
+
+- Synthetic:
+  [inverse_cross](../../../internal/platform/bybit/testdata/v5_position_list.inverse_cross.json),
+  [inverse_isolated](../../../internal/platform/bybit/testdata/v5_position_list.inverse_isolated.json),
+  [inverse_pm](../../../internal/platform/bybit/testdata/v5_position_list.inverse_pm.json),
+  [linear_usdc_cross](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_cross.json),
+  [linear_usdc_isolated](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_isolated.json),
+  [linear_usdc_pm](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdc_pm.json),
+  [linear_usdt_cross](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_cross.json),
+  [linear_usdt_isolated](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_isolated.json),
+  [linear_usdt_pm](../../../internal/platform/bybit/testdata/v5_position_list.linear_usdt_pm.json),
+  [option](../../../internal/platform/bybit/testdata/v5_position_list.option.json).
+- Recorded: PM
+  [USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_pm.json),
+  [USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_pm.json),
+  [inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_pm.json);
+  Cross
+  [USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_cross.json),
+  [USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_cross.json),
+  [inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_cross.json);
+  four contract kinds, coexisting HYPEUSDT Hedge sides and One-way rows; literal
+  cursors preserved
+
+### [`v5: GET /v5/user/query-api`](https://bybit-exchange.github.io/docs/v5/user/apikey-info)
+
+- Synthetic:
+  [sample](../../../internal/platform/bybit/testdata/v5_user_query_api.json).
+- Recorded:
+  [sample](../../../internal/platform/bybit/evidence/v5_user_query_api.json);
+  readOnly=1, isMaster=true and Earn permission; identity/key/IP/label masked
 
 ## Exchange-app validation checklist
 

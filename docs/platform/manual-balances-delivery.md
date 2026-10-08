@@ -1,7 +1,7 @@
 # Manual balances delivery report
 
 Delivery date: 2026-10-05. The accepted scope is recorded in
-[ADR 0019](../adr/0019-manual-balances-and-empty-accounts.md).
+[ADR 0006](../adr/0006-manual-balances.md).
 
 ## Recorded evidence and limits
 

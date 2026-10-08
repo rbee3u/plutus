@@ -4,7 +4,7 @@ This delivery adds normalized Earn descriptions for existing supported products,
 Portfolio and Account reads, an Earn Holdings view, shared Overview details, and
 row-local Observed health for Earn and Dual Investment. It adds no product
 Account Types or exchange-app validation. See
-[ADR 0018](../adr/0018-earn-position-presentation.md).
+[ADR 0005](../adr/0005-earn-and-dual-products.md).
 
 ## Evidence and limits
 

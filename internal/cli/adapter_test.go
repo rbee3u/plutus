@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,11 +19,11 @@ import (
 )
 
 func runRecord(args ...string) (string, error) {
-	cmd := newAdapterRecordCommand()
+	cmd := NewRootCommand("test")
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
-	cmd.SetArgs(args)
+	cmd.SetArgs(append([]string{"adapter", "record"}, args...))
 	err := cmd.Execute()
 	return out.String(), err
 }
@@ -156,7 +159,7 @@ func TestPublicRecordingIgnoresInvalidCredentialFiles(t *testing.T) {
 	original := recorders[adapters.PlatformBinance]
 	stub := &recordingStub{}
 	changed := original
-	changed.adapter = func() recorder { return stub }
+	changed.adapter = func(_ func(time.Duration) *http.Client) recorder { return stub }
 	recorders[adapters.PlatformBinance] = changed
 	t.Cleanup(func() { recorders[adapters.PlatformBinance] = original })
 	if _, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--out", outDir); err != nil || stub.calls != 1 {
@@ -217,7 +220,7 @@ func TestRecordingWritesOnlyOneReviewableFile(t *testing.T) {
 	spec := recorders[adapters.PlatformBinance]
 	stub := &recordingStub{}
 	changed := spec
-	changed.adapter = func() recorder { return stub }
+	changed.adapter = func(_ func(time.Duration) *http.Client) recorder { return stub }
 	recorders[adapters.PlatformBinance] = changed
 	t.Cleanup(func() { recorders[adapters.PlatformBinance] = spec })
 	for _, failure := range []error{nil, errors.New("platform failure")} {
@@ -279,7 +282,7 @@ func TestRecordingPlatformDirectoryCannotEscapeTmp(t *testing.T) {
 	}
 	original := recorders[adapters.PlatformBinance]
 	changed := original
-	changed.adapter = func() recorder { return &recordingStub{} }
+	changed.adapter = func(_ func(time.Duration) *http.Client) recorder { return &recordingStub{} }
 	recorders[adapters.PlatformBinance] = changed
 	t.Cleanup(func() { recorders[adapters.PlatformBinance] = original })
 	if _, err := runRecord("--platform", "binance", "--only", "api_v3_time", "--out", outDir); err == nil {
@@ -323,7 +326,7 @@ func TestFailuresAndEmptyResponsesCannotPromoteSamples(t *testing.T) {
 			}
 			original := recorders[adapters.PlatformBinance]
 			changed := original
-			changed.adapter = func() recorder {
+			changed.adapter = func(_ func(time.Duration) *http.Client) recorder {
 				return recordingFailureStub{unsafe: mode == "unsafe", disk: mode == "disk", outDir: outDir}
 			}
 			recorders[adapters.PlatformBinance] = changed
@@ -364,5 +367,79 @@ func TestRecordingIgnoresRuntimeProxyConfiguration(t *testing.T) {
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("recording loaded runtime configuration: %v", err)
 		}
+	}
+}
+
+func TestRecordingRejectsConfigBeforeCredentials(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("config", 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Reading credentials would fail with an unrelated dotenv syntax error.
+	if err := os.WriteFile("config/record.env", []byte("invalid-secret-file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("config/record.toml", []byte("[proxy]\nmode = 'environment'"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ path, want string }{
+		{"config/record.toml", "proxy.mode no longer supports environment"},
+		{"missing.toml", "read config file missing.toml"},
+	} {
+		_, err := runRecord("--config", tc.path, "--platform", "binance", "--only", "api_v3_account")
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("expected config failure before credentials, got %v", err)
+		}
+	}
+}
+
+func TestRecordingAdaptersUseConfiguredProxy(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("config", 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Actual public recording must ignore both runtime files and all credential files.
+	for _, name := range []string{"local.toml", "local.env", "record.env", "gotest.env"} {
+		if err := os.WriteFile(filepath.Join("config", name), []byte("invalid-file"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("NO_PROXY", "*")
+	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+	var requests atomic.Int64
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodConnect {
+			t.Errorf("method = %s, want CONNECT", r.Method)
+		}
+		requests.Add(1)
+		http.Error(w, "synthetic proxy unavailable", http.StatusBadGateway)
+	}))
+	defer proxy.Close()
+	contents := "[proxy]\nmode = 'proxy'\nurl = '" + proxy.URL + "'\n"
+	for _, name := range []string{"config/record.toml", "chosen.toml"} {
+		if err := os.WriteFile(name, []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct{ platform, request string }{
+		{"binance", "api_v3_time"},
+		{"okx", "api_v5_public_time"},
+		{"bybit", "v5_market_time"},
+		{"kraken", "0_public_Assets"},
+	} {
+		t.Run(tc.platform, func(t *testing.T) {
+			for _, path := range []string{"", "chosen.toml"} {
+				args := []string{"--env-file", "missing.env", "--platform", tc.platform, "--only", tc.request, "--out", recordingTestDirectory(t)}
+				if path != "" {
+					args = append(args, "--config", path)
+				}
+				before := requests.Load()
+				_, err := runRecord(args...)
+				class, _ := adapters.Classify(err)
+				if class != adapters.ClassTemporary || requests.Load() != before+1 {
+					t.Fatalf("recording error=%v requests=%d", err, requests.Load()-before)
+				}
+			}
+		})
 	}
 }

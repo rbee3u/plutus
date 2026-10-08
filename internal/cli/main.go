@@ -18,8 +18,8 @@ func NewRootCommand(version string) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	cmd.PersistentFlags().String("config", "", "path to a non-secret TOML config file")
-	cmd.PersistentFlags().String("env-file", "", "path to an env file used instead of walking config/local.env")
+	cmd.PersistentFlags().String("config", "", "non-secret TOML file (default config/local.toml; adapter record uses config/record.toml)")
+	cmd.PersistentFlags().String("env-file", "", "runtime secrets env file instead of walking config/local.env (ignored by adapter record)")
 	for _, runtimeCmd := range []*cobra.Command{newServeCommand(), newMigrateCommand(), newUserCommand(), newCollectCommand(), newDatabaseCommand()} {
 		withRuntime(runtimeCmd)
 		cmd.AddCommand(runtimeCmd)

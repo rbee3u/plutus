@@ -125,7 +125,7 @@ when the unit changes; preserve file ownership and permissions.
 
 After prod's first migration, freeze the baseline and append migrations that
 work on populated databases. Never reset prod; see
-[ADR 0008](./adr/0008-environments-and-migrations.md).
+[ADR 0011](./adr/0011-retained-data-and-upgrades.md).
 
 Test allows reset with `allow_reset = true`; it needs no seed data:
 
@@ -143,7 +143,7 @@ and
 drain running or partially collected cycles with the previous release, then stop
 all workers. Migration refuses unfinished cycles. Missing Dual Accounts inherit
 Earn selections; existing Dual selections and history remain. No reset is
-needed. See [report scope rules](../CONTEXT.md#report-scope-compatibility).
+needed. See [report scope rules](./domain-rules.md#report-scope-compatibility).
 
 ### Position presentation upgrade
 
@@ -165,7 +165,7 @@ retain their financial values and original observation times. The new collection
 flag starts false for history: the UI shows separate Balance summaries until a
 new successful Earn report supplies normalized descriptions. No scope
 reclassification, historical product reconstruction, or database reset is
-required. See [ADR 0018](./adr/0018-earn-position-presentation.md).
+required. See [ADR 0005](./adr/0005-earn-and-dual-products.md).
 
 ## Platform connectivity
 

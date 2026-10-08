@@ -6,16 +6,16 @@ has one Account Structure, `okx_unified`, with the Account Types `trading`,
 (the `acctLv` level). Plutus supports all four levels: Spot mode, Futures mode,
 Multi-currency margin, and Portfolio margin. The adapter observes the level at
 validation and at the start of every Collection Run. It is never chosen in
-Plutus ([Account model](../../adr/0001-ownership-and-accounts.md)).
+Plutus ([Account model](../../adr/0001-ownership-and-account-boundaries.md)).
 
 Every call is a read-only GET for account, balance, position, Earn holdings, or
 market data.
 
 A sub-account is its own Identity with its own read-only key
-([Account model](../../adr/0001-ownership-and-accounts.md)). OKX answers
-`account/config` with the sub-account's own UID and level, so it validates like
-a main account. Each sub-account can use a different Margin Mode. Nothing is
-collected through a main-account key.
+([Account model](../../adr/0001-ownership-and-account-boundaries.md)). OKX
+answers `account/config` with the sub-account's own UID and level, so it
+validates like a main account. Each sub-account can use a different Margin Mode.
+Nothing is collected through a main-account key.
 
 The adapter calls `https://openapi.okx.com`. OKX requires accounts registered on
 its US or Australian app to use `us.okx.com`, and European ones to use
@@ -185,10 +185,10 @@ Dual Investment order takes its principal out of Funding when it is bought
 (Funding bill type `160`). OKX pays the principal back to Funding at settlement
 or refund (`161`–`163`). While the order is open, the principal is in no other
 Account. `dual_investment` counts it in the coin invested
-([Dual Investment decision](../../adr/0005-dual-investment.md)): `notionalSz` of
-`notionalCcy`, added to that coin's Dual Balance and priced like any other
-Balance. The yield (`yieldSz`) and a conversion into the other coin (`settleSz`
-of `settleCcy`) count only once OKX pays them into Funding.
+([Dual Investment decision](../../adr/0005-earn-and-dual-products.md)):
+`notionalSz` of `notionalCcy`, added to that coin's Dual Balance and priced like
+any other Balance. The yield (`yieldSz`) and a conversion into the other coin
+(`settleSz` of `settleCcy`) count only once OKX pays them into Funding.
 
 | `state`                                                                                                      | Counted                                                                     |
 | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
@@ -210,8 +210,8 @@ therefore reads the whole history, newest first:
    because a page out of order could end the walk before an invested order.
 4. If ten full pages (1,000 orders) do not reach the end, selected Earn and Dual
    Accounts fail with `unsupported` and go Stale
-   ([Report policy](../../adr/0002-account-reports.md)). It never reads a
-   partial history and drops an older order that is still invested.
+   ([Report policy](../../adr/0002-reports-and-compatible-history.md)). It never
+   reads a partial history and drops an older order that is still invested.
 
 **Settlement window.** An order settles at its product's expiry, and OKX pays
 out to Funding. OKX does not document how long the payout takes. A run inside
@@ -224,16 +224,16 @@ that window can go either way:
 
 The next run after both have updated is correct again. Telling the two apart
 would need Funding's bill history, which Plutus does not read
-([Capital Flow decision](../../adr/0004-capital-and-periods.md)). Both are
-expected and are not reconciled across Accounts. The same window can fail one
-run's [Earn check](#earn-check) if OKX's valuation still holds an order the
-history already shows as settled. Selected Earn and Dual Accounts then stay
+([Capital Flow decision](../../adr/0004-value-change-and-boundary-flows.md)).
+Both are expected and are not reconciled across Accounts. The same window can
+fail one run's [Earn check](#earn-check) if OKX's valuation still holds an order
+the history already shows as settled. Selected Earn and Dual Accounts then stay
 Stale for that run.
 
 ### Dual Position fields
 
 Dual Account selection, principal valuation, and shared Earn completeness follow
-[domain rules](../../../CONTEXT.md#dual-investment-and-earn-completeness).
+[domain rules](../../domain-rules.md#dual-investment-and-earn-completeness).
 Platform-specific fields map as follows:
 
 | Dual Position field   | Source                                                                                                                                                                                                             |
@@ -246,15 +246,18 @@ Platform-specific fields map as follows:
 
 ## Earn Position descriptions
 
-Savings rows remain coin aggregates. `amt` is total holding Amount; `rate` is a
-minimum lending preference kept in details, not an actual return. Earnings with
-unspecified accumulation scope remain Reported rewards in details. On-chain
-orders retain all nonzero invested currencies in one row, Estimated APY,
-purchase time, and native stage. `earningType` distinguishes Estimated and
-Cumulative rewards; unknown scopes remain Reported rewards. Estimated redemption
-settlement time is a detail, never Maturity. These facts describe existing
-Balance equity and do not change the shared completeness check. See
-[ADR 0018](../../adr/0018-earn-position-presentation.md).
+Rows from
+[Savings balances](https://my.okx.com/docs-v5/en/#financial-product-simple-earn-flexible-get-saving-balance)
+remain coin aggregates. `amt` is total holding Amount; `rate` is a minimum
+lending preference kept in details, not an actual return. Earnings with
+unspecified accumulation scope remain Reported rewards in details.
+[On-chain orders](https://my.okx.com/docs-v5/en/#financial-product-on-chain-earn-get-active-orders)
+retain all nonzero invested currencies in one row, Estimated APY, purchase time,
+and native stage. `earningType` distinguishes Estimated and Cumulative rewards;
+unknown scopes remain Reported rewards. Estimated redemption settlement time is
+a detail, never Maturity. These facts describe existing Balance equity and do
+not change the shared completeness check. See
+[ADR 0005](../../adr/0005-earn-and-dual-products.md).
 
 ## Earn check
 
@@ -263,10 +266,11 @@ vanish from a successful `earn` report. So after itemizing, the adapter reads
 `GET /api/v5/asset/asset-valuation?ccy=USDT`, OKX's own valuation split into
 `trading`, `funding`, `earn`, and the deprecated `classic` bucket. It compares
 `details.earn` with the combined ordinary Earn and Dual Balances valued at the
-batch's prices ([Dual Investment decision](../../adr/0005-dual-investment.md)).
-USDT counts as USD
-([Valuation policy](../../adr/0003-valuation-and-catalog.md)), the quote the
-Balances are priced in.
+batch's prices
+([Dual Investment decision](../../adr/0005-earn-and-dual-products.md)). USDT
+counts as USD
+([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)), the quote
+the Balances are priced in.
 
 ## Position
 
@@ -320,7 +324,7 @@ Each non-USD Balance symbol is priced at the spot `last` of `<symbol>-USDT`,
 else `<symbol>-USDC`, observed when the ticker response arrived.
 
 - **USD equivalents.** USD, USDT, and USDC get no price row
-  ([Valuation policy](../../adr/0003-valuation-and-catalog.md)). Other
+  ([Valuation policy](../../adr/0003-valuation-and-asset-policy.md)). Other
   stablecoins such as USDG are priced through their pairs.
 - **No pair.** A symbol with neither pair gets no price and is valued as
   `no_price`.

@@ -58,12 +58,10 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	untrustedPEM, untrustedKeyPEM := mustCertificate(t, otherCAPEM, otherCAKeyPEM, now.Add(-time.Hour), now.Add(24*time.Hour), false, true)
 
 	cfg, err := config.Load(config.Options{
-		LookupEnv: envMap(map[string]string{
-			"PLUTUS_SERVER_TLS_CERT_FILE":      "cert.pem",
-			"PLUTUS_SERVER_TLS_KEY_FILE":       "key.pem",
-			"PLUTUS_SERVER_TLS_CLIENT_CA_FILE": "ca.pem",
-		}),
+		Path:      "app.toml",
+		LookupEnv: envMap(nil),
 		ReadFile: filesMap(map[string]string{
+			"app.toml": "[server.tls]\ncert_file = 'cert.pem'\nkey_file = 'key.pem'\nclient_ca_file = 'ca.pem'\n",
 			"cert.pem": string(serverPEM),
 			"key.pem":  string(serverKeyPEM),
 			"ca.pem":   string(caPEM),

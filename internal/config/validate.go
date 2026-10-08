@@ -12,7 +12,7 @@ import (
 
 // Validate checks durations, listen settings, and the TLS matrix.
 func Validate(cfg *Config, opts *Options) error {
-	if err := validateProxy(&cfg.Collection.Proxy); err != nil {
+	if err := validateProxy(&cfg.Collection.Proxy, "collection.proxy"); err != nil {
 		return err
 	}
 	if err := validateLogging(&cfg.Logging); err != nil {
