@@ -247,7 +247,7 @@ test("all three manual entries share fresh editing and keep pending values separ
   await page.goto(`/p/${portfolioId}/overview`);
   await page.getByRole("button", { name: "Add manual balance for Owner", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Manual balances" });
-  await dialog.getByRole("combobox", { name: "Asset code" }).fill("USD");
+  await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
   await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
@@ -263,7 +263,7 @@ test("all three manual entries share fresh editing and keep pending values separ
     .getByRole("button", { name: "Expand balances and positions for Manual", exact: true })
     .click();
   await page.getByRole("button", { name: "Add manual balance", exact: true }).click();
-  await expect(dialog.getByRole("table", { name: "Current manual records" })).toContainText("100");
+  await expect(dialog.getByRole("heading", { name: "Add asset" })).toBeVisible();
   await dialog.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("link", { name: "Holdings", exact: true }).click();
   state.items[0].quantity = "101";
@@ -279,7 +279,8 @@ test("all three manual entries share fresh editing and keep pending values separ
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("102");
   await dialog.getByRole("button", { name: "Reload current records" }).click();
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("103");
-  await dialog.getByRole("button", { name: "Delete manual USD", exact: true }).click();
+  await dialog.getByRole("button", { name: "Close dialog" }).click();
+  await page.getByRole("button", { name: "Delete manual USD", exact: true }).click();
   await dialog.getByRole("button", { name: "Delete record", exact: true }).click();
   await dialog.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("table", { name: "Pending manual quantities" })).toContainText("100");
@@ -299,7 +300,7 @@ test("global entry works before a point and requires Identity selection on mobil
   await expect(dialog.getByRole("combobox", { name: "Identity", exact: true })).toHaveValue("");
   await expect(dialog.getByRole("button", { name: "Save quantity", exact: true })).toHaveCount(0);
   await dialog.getByRole("combobox", { name: "Identity", exact: true }).selectOption("owner");
-  await dialog.getByRole("combobox", { name: "Asset code" }).fill("USD");
+  await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
   await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("-100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();

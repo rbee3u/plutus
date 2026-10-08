@@ -1,4 +1,4 @@
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { keys, listBalances } from "@/api";
@@ -103,6 +103,19 @@ export function BalancesPage() {
                   }
                 >
                   <Pencil size={iconSize.sm} aria-hidden="true" />
+                </IconButton>
+                <IconButton
+                  label={`Delete manual ${item.symbol}`}
+                  tone="dangerQuiet"
+                  onClick={() =>
+                    setManualTarget({
+                      identityId: item.identityId,
+                      symbol: item.symbol,
+                      action: "delete",
+                    })
+                  }
+                >
+                  <Trash2 size={iconSize.sm} aria-hidden="true" />
                 </IconButton>
               </span>
             ) : (

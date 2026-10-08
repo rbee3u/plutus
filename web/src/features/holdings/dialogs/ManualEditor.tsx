@@ -1,58 +1,40 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
-import { useId, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   createManualBalance,
   deleteManualBalance,
   keys,
-  listAssetListings,
   problemMessage,
   unwrapOrRedirect,
   updateManualBalance,
 } from "@/api";
 import type { ManualBalanceState } from "@/api";
-import { ManualActions, useManual, type ManualTarget } from "./manual";
+import { useManual, type ManualTarget } from "./manual";
 import { useIdentities } from "@/shared/lib/useIdentities";
-import { usePortfolio } from "@/shared/lib/portfolio";
-import { formatInstant } from "@/shared/lib/datetime";
 import { useSessionScope } from "@/shared/lib/session";
-import { iconSize } from "@/shared/icons/iconSizes";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { DataTable } from "@/shared/ui/DataTable";
 import { Select, TextInput } from "@/shared/ui/FormControls";
-import { NumericText } from "@/shared/ui/NumericText";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "./ManualEditor.module.css";
 
 export function ManualEditor({
   portfolioId,
   target,
+  onClose,
 }: {
   portfolioId: string;
   target: ManualTarget;
+  onClose?: () => void;
 }) {
   const identities = useIdentities(portfolioId);
-  const portfolio = usePortfolio(portfolioId);
   const [identityId, setIdentityId] = useState(target.identityId);
   const query = useManual(portfolioId, identityId, true);
   const identity = identities.data?.items.find((item) => item.id === identityId);
   const { userId, redirect } = useSessionScope();
   const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
-  const symbolsId = useId();
-  const listings = useQuery({
-    queryKey: keys.manualSymbols(userId, portfolioId, identity?.platform),
-    enabled: Boolean(userId && identity),
-    queryFn: async () =>
-      unwrapOrRedirect(
-        await listAssetListings({
-          path: { portfolioId },
-          query: { platform: identity?.platform, limit: 200 },
-        }),
-        redirect,
-      ),
-  });
+
   return (
     <div className={styles.container}>
       {target.identityId ? (
@@ -92,8 +74,7 @@ export function ManualEditor({
           key={identityId}
           state={query.data}
           target={target}
-          symbolsId={symbolsId}
-          timezone={portfolio.data?.item.timezone ?? "UTC"}
+          onClose={onClose}
           onReload={() => {
             void query.refetch();
           }}
@@ -127,11 +108,6 @@ export function ManualEditor({
           }}
         />
       ) : null}
-      <datalist id={symbolsId}>
-        {[...new Set((listings.data?.items ?? []).map((item) => item.symbol))].map((symbol) => (
-          <option key={symbol} value={symbol} />
-        ))}
-      </datalist>
     </div>
   );
 }
@@ -139,32 +115,27 @@ export function ManualEditor({
 function ManualForm({
   state,
   target,
-  symbolsId,
-  timezone,
   onSave,
   onReload,
+  onClose,
 }: {
   state: ManualBalanceState;
   target: ManualTarget;
-  symbolsId: string;
-  timezone: string;
   onSave: (symbol: string, quantity: string, action: "add" | "edit" | "delete") => Promise<void>;
   onReload: () => void;
+  onClose?: () => void;
 }) {
   const initial = state.items.find((item) => item.symbol === target.symbol);
   const [symbol, setSymbol] = useState(initial?.symbol ?? "");
   const [quantity, setQuantity] = useState(initial?.quantity ?? "");
-  const [action, setAction] = useState<"add" | "edit" | "delete">(
-    initial ? (target.action ?? "edit") : "add",
-  );
+  const action = target.action ?? (initial ? "edit" : "add");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
-    target.symbol && !initial
-      ? "This record has already been removed. Current records are shown below."
-      : "",
+    target.symbol && !initial && action !== "add" ? "This record has already been removed." : "",
   );
   const [saved, setSaved] = useState(false);
-  const existing = state.items.find((item) => item.symbol === symbol.trim().toUpperCase());
+  const existing =
+    !saved && Boolean(state.items.find((item) => item.symbol === symbol.trim().toUpperCase()));
 
   async function save() {
     setBusy(true);
@@ -175,7 +146,6 @@ function ManualForm({
       setSaved(true);
       setMessage("Saved. The next Collection Cycle will apply this quantity.");
       if (action === "delete") {
-        setAction("add");
         setSymbol("");
         setQuantity("");
       }
@@ -184,14 +154,6 @@ function ManualForm({
     } finally {
       setBusy(false);
     }
-  }
-
-  function switchToAdd() {
-    setSymbol("");
-    setQuantity("");
-    setAction("add");
-    setMessage("");
-    setSaved(false);
   }
 
   return (
@@ -214,17 +176,28 @@ function ManualForm({
               Remove {symbol} from future collections? Earlier reports remain unchanged.
             </p>
             {message ? (
-              <p className={styles.statusError} role="alert">
+              <p
+                className={saved ? styles.statusSuccess : styles.statusError}
+                role={saved ? "status" : "alert"}
+              >
                 {message}
               </p>
             ) : null}
             <div className={styles.cardActions}>
-              <ActionButton type="submit" tone="danger" disabled={busy}>
-                Delete record
-              </ActionButton>
-              <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
-                Cancel
-              </ActionButton>
+              {saved && onClose ? (
+                <ActionButton type="button" tone="primary" onClick={onClose}>
+                  Done
+                </ActionButton>
+              ) : (
+                <ActionButton type="submit" tone="danger" disabled={busy || saved}>
+                  Delete record
+                </ActionButton>
+              )}
+              {onClose && !saved ? (
+                <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+                  Cancel
+                </ActionButton>
+              ) : null}
               <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
                 Reload current records
               </ActionButton>
@@ -237,9 +210,6 @@ function ManualForm({
             <h3 className={styles.cardTitle}>
               Edit <strong>{symbol}</strong> quantity
             </h3>
-            <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
-              Cancel
-            </ActionButton>
           </div>
           <form
             className={styles.form}
@@ -252,11 +222,14 @@ function ManualForm({
               <span>Quantity</span>
               <TextInput
                 value={quantity}
-                placeholder="0.00 (negative for liability)"
+                placeholder="0.00 (negative for liability, 0 to clear)"
                 required
                 inputMode="text"
                 disabled={busy}
-                onChange={(event) => setQuantity(event.target.value)}
+                onChange={(event) => {
+                  setQuantity(event.target.value);
+                  if (saved) setSaved(false);
+                }}
               />
             </label>
             {message ? (
@@ -268,9 +241,20 @@ function ManualForm({
               </p>
             ) : null}
             <div className={styles.cardActions}>
-              <ActionButton type="submit" tone="primary" disabled={busy}>
-                Save quantity
-              </ActionButton>
+              {saved && onClose ? (
+                <ActionButton type="button" tone="primary" onClick={onClose}>
+                  Done
+                </ActionButton>
+              ) : (
+                <ActionButton type="submit" tone="primary" disabled={busy}>
+                  Save quantity
+                </ActionButton>
+              )}
+              {onClose && !saved ? (
+                <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+                  Cancel
+                </ActionButton>
+              ) : null}
               <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
                 Reload current records
               </ActionButton>
@@ -293,13 +277,15 @@ function ManualForm({
               <label className={styles.field}>
                 <span>Asset code</span>
                 <TextInput
-                  list={symbolsId}
                   value={symbol}
                   placeholder="e.g. USD, BTC"
-                  disabled={busy}
+                  disabled={busy || saved}
                   required
                   maxLength={64}
-                  onChange={(event) => setSymbol(event.target.value)}
+                  onChange={(event) => {
+                    setSymbol(event.target.value);
+                    if (saved) setSaved(false);
+                  }}
                 />
               </label>
               <label className={styles.field}>
@@ -309,25 +295,17 @@ function ManualForm({
                   placeholder="0.00 (negative for liability)"
                   required
                   inputMode="text"
-                  disabled={busy}
-                  onChange={(event) => setQuantity(event.target.value)}
+                  disabled={busy || saved}
+                  onChange={(event) => {
+                    setQuantity(event.target.value);
+                    if (saved) setSaved(false);
+                  }}
                 />
               </label>
             </div>
             {existing ? (
               <p role="status" className={styles.fieldNote}>
-                This asset already exists.{" "}
-                <ActionButton
-                  type="button"
-                  tone="ghost"
-                  onClick={() => {
-                    setAction("edit");
-                    setSymbol(existing.symbol);
-                    setQuantity(existing.quantity);
-                  }}
-                >
-                  Edit current quantity
-                </ActionButton>
+                This asset already exists in this identity.
               </p>
             ) : null}
             {message ? (
@@ -339,59 +317,42 @@ function ManualForm({
               </p>
             ) : null}
             <div className={styles.cardActions}>
-              <ActionButton type="submit" tone="primary" disabled={busy || Boolean(existing)}>
-                Save quantity
-              </ActionButton>
+              {saved ? (
+                <>
+                  {onClose ? (
+                    <ActionButton type="button" tone="primary" onClick={onClose}>
+                      Done
+                    </ActionButton>
+                  ) : null}
+                  <ActionButton
+                    type="button"
+                    tone="ghost"
+                    onClick={() => {
+                      setSymbol("");
+                      setQuantity("");
+                      setSaved(false);
+                      setMessage("");
+                    }}
+                  >
+                    Add another asset
+                  </ActionButton>
+                </>
+              ) : (
+                <>
+                  <ActionButton type="submit" tone="primary" disabled={busy || Boolean(existing)}>
+                    Save quantity
+                  </ActionButton>
+                  {onClose ? (
+                    <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+                      Cancel
+                    </ActionButton>
+                  ) : null}
+                </>
+              )}
             </div>
           </form>
         </div>
       )}
-
-      <div className={styles.recordsSection}>
-        <div className={styles.recordsHeader}>
-          <div className={styles.recordsTitleGroup}>
-            <h3 className={styles.recordsTitle}>Current records</h3>
-            <span className={styles.recordsCount}>{state.items.length}</span>
-          </div>
-          {action !== "add" ? (
-            <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
-              <Plus size={iconSize.sm} aria-hidden="true" /> Add another asset
-            </ActionButton>
-          ) : null}
-        </div>
-        <DataTable
-          caption="Current manual records"
-          columns={[
-            { key: "symbol", header: "Asset" },
-            { key: "quantity", header: "Quantity", numeric: true },
-            { key: "modified", header: "Last edited" },
-            { key: "actions", header: "Actions" },
-          ]}
-          rows={state.items.map((item) => ({
-            id: item.symbol,
-            symbol: <span className={styles.assetSymbol}>{item.symbol}</span>,
-            quantity: <NumericText>{item.quantity}</NumericText>,
-            modified: formatInstant(item.modifiedAt, timezone),
-            actions: (
-              <ManualActions
-                identityId={state.identityId}
-                symbol={item.symbol}
-                onOpen={(next) => {
-                  setSymbol(item.symbol);
-                  setQuantity(item.quantity);
-                  setAction(next.action ?? "edit");
-                  setMessage("");
-                  setSaved(false);
-                }}
-              />
-            ),
-          }))}
-          empty="No manual records. Enter an asset and quantity above."
-        />
-        <p className={styles.footerNote}>
-          Saved quantities take effect at the next collection cycle.
-        </p>
-      </div>
     </>
   );
 }

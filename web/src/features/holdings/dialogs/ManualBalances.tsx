@@ -61,6 +61,7 @@ export function ManualDialog({
           key={`${target.identityId}:${target.symbol ?? ""}:${target.action ?? "add"}`}
           portfolioId={portfolioId}
           target={target}
+          onClose={onClose}
         />
       ) : null}
     </Dialog>

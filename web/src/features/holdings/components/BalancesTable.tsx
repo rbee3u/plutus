@@ -1,4 +1,4 @@
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { ManualTarget } from "../dialogs/manual";
 import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
@@ -67,6 +67,19 @@ export function BalancesTable({
                   }
                 >
                   <Pencil size={iconSize.sm} aria-hidden="true" />
+                </IconButton>
+                <IconButton
+                  label={`Delete manual ${item.symbol}`}
+                  tone="dangerQuiet"
+                  onClick={() =>
+                    onManual({
+                      identityId: item.identityId,
+                      symbol: item.symbol,
+                      action: "delete",
+                    })
+                  }
+                >
+                  <Trash2 size={iconSize.sm} aria-hidden="true" />
                 </IconButton>
               </span>
             );
