@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { keys, listBalances } from "@/api";
@@ -11,6 +11,7 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
+import { IconButton } from "@/shared/ui/IconButton";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { BALANCE_COLUMNS, balanceRow } from "../components/BalancesTable";
@@ -18,7 +19,7 @@ import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/Holdin
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { ManualDialog, ManualPending } from "../dialogs/ManualBalances";
-import { ManualActions, type ManualTarget } from "../dialogs/manual";
+import type { ManualTarget } from "../dialogs/manual";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
@@ -82,23 +83,31 @@ export function BalancesPage() {
                 }
               : column,
           ),
-          ...((data?.items ?? []).some((item) => item.accountType === "manual")
-            ? [{ key: "actions", header: "Actions" }]
-            : []),
         ]}
         rows={(data?.items ?? []).map((item) => ({
           ...balanceRow(item, data?.context.timezone, data?.issues),
           platform: platformLabel(filters.platforms.data?.items, item.platform),
           identityName: item.identityName,
-          accountName: item.accountName,
-          actions:
+          accountName:
             item.accountType === "manual" ? (
-              <ManualActions
-                identityId={item.identityId}
-                symbol={item.symbol}
-                onOpen={setManualTarget}
-              />
-            ) : undefined,
+              <span className={styles.inlineActionCell}>
+                <span>{item.accountName}</span>
+                <IconButton
+                  label={`Edit manual ${item.symbol}`}
+                  onClick={() =>
+                    setManualTarget({
+                      identityId: item.identityId,
+                      symbol: item.symbol,
+                      action: "edit",
+                    })
+                  }
+                >
+                  <Pencil size={iconSize.sm} aria-hidden="true" />
+                </IconButton>
+              </span>
+            ) : (
+              item.accountName
+            ),
         }))}
         empty={
           query.isPending

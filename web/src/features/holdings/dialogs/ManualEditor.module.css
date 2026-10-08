@@ -1,0 +1,173 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.identityBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--surface-inset);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+
+.identityLabel {
+  color: var(--muted);
+}
+
+.identityBadge {
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardDanger {
+  border-color: var(--danger-line);
+  background: color-mix(in srgb, var(--danger-soft) 40%, var(--surface));
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.cardTitle strong {
+  color: var(--accent);
+}
+
+.cardDanger .cardTitle strong {
+  color: var(--danger);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+@media (max-width: 500px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-secondary);
+}
+
+.fieldNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--warning);
+}
+
+.deletePrompt {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  line-height: var(--line-height-md);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.statusSuccess {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--success);
+}
+
+.statusError {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.recordsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.recordsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.recordsTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.recordsTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.recordsCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  border: 1px solid var(--line-soft);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+}
+
+.assetSymbol {
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.footerNote {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}

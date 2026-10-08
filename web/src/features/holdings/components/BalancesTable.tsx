@@ -1,5 +1,5 @@
-import { Plus } from "lucide-react";
-import { ManualActions, type ManualTarget } from "../dialogs/manual";
+import { Pencil, Plus } from "lucide-react";
+import type { ManualTarget } from "../dialogs/manual";
 import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -49,18 +49,30 @@ export function BalancesTable({
       ) : null}
       <DataTable
         caption={`Balances of ${account.accountName}`}
-        columns={
-          isManual && onManual
-            ? [...BALANCE_COLUMNS, { key: "actions", header: "Actions" }]
-            : BALANCE_COLUMNS
-        }
-        rows={(data?.items ?? []).map((item) => ({
-          ...balanceRow(item, data?.context.timezone, data?.issues),
-          actions:
-            isManual && onManual ? (
-              <ManualActions identityId={item.identityId} symbol={item.symbol} onOpen={onManual} />
-            ) : undefined,
-        }))}
+        columns={BALANCE_COLUMNS}
+        rows={(data?.items ?? []).map((item) => {
+          const row = balanceRow(item, data?.context.timezone, data?.issues);
+          if (isManual && onManual) {
+            row.symbol = (
+              <span className={styles.inlineActionCell}>
+                <span>{row.symbol}</span>
+                <IconButton
+                  label={`Edit manual ${item.symbol}`}
+                  onClick={() =>
+                    onManual({
+                      identityId: item.identityId,
+                      symbol: item.symbol,
+                      action: "edit",
+                    })
+                  }
+                >
+                  <Pencil size={iconSize.sm} aria-hidden="true" />
+                </IconButton>
+              </span>
+            );
+          }
+          return row;
+        })}
         empty={
           isPending
             ? "Loading balances."

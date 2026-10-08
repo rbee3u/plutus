@@ -21,8 +21,9 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Select, TextInput } from "@/shared/ui/FormControls";
+import { NumericText } from "@/shared/ui/NumericText";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
-import shared from "@/shared/styles/page.module.css";
+import styles from "./ManualEditor.module.css";
 
 export function ManualEditor({
   portfolioId,
@@ -53,28 +54,27 @@ export function ManualEditor({
       ),
   });
   return (
-    <>
-      <p>
-        Record only assets or liabilities missing from the Platform API. Update or remove them when
-        the API includes them. Saved quantities apply at the next Collection Cycle.
-      </p>
-      <label className={shared.field}>
-        Identity
-        <Select
-          value={identityId}
-          onChange={(event) => setIdentityId(event.target.value)}
-          disabled={Boolean(target.identityId)}
-        >
-          <option value="">Choose an Identity</option>
-          {identities.data?.items
-            .filter((item) => item.status !== "archived")
-            .map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.displayName}
-              </option>
-            ))}
-        </Select>
-      </label>
+    <div className={styles.container}>
+      {target.identityId ? (
+        <div className={styles.identityBar}>
+          <span className={styles.identityLabel}>Identity</span>
+          <span className={styles.identityBadge}>{identity?.displayName ?? target.identityId}</span>
+        </div>
+      ) : (
+        <label className={styles.field}>
+          <span>Identity</span>
+          <Select value={identityId} onChange={(event) => setIdentityId(event.target.value)}>
+            <option value="">Choose an Identity</option>
+            {identities.data?.items
+              .filter((item) => item.status !== "archived")
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.displayName}
+                </option>
+              ))}
+          </Select>
+        </label>
+      )}
       <RequestRecovery
         error={query.error ?? identities.error}
         hasData={Boolean(query.data)}
@@ -132,7 +132,7 @@ export function ManualEditor({
           <option key={symbol} value={symbol} />
         ))}
       </datalist>
-    </>
+    </div>
   );
 }
 
@@ -165,6 +165,7 @@ function ManualForm({
   );
   const [saved, setSaved] = useState(false);
   const existing = state.items.find((item) => item.symbol === symbol.trim().toUpperCase());
+
   async function save() {
     setBusy(true);
     setMessage("");
@@ -173,121 +174,224 @@ function ManualForm({
       await onSave(symbol.trim().toUpperCase(), quantity, action);
       setSaved(true);
       setMessage("Saved. The next Collection Cycle will apply this quantity.");
+      if (action === "delete") {
+        setAction("add");
+        setSymbol("");
+        setQuantity("");
+      }
     } catch (error) {
       setMessage(problemMessage(error, "The manual record could not be saved."));
     } finally {
       setBusy(false);
     }
   }
+
+  function switchToAdd() {
+    setSymbol("");
+    setQuantity("");
+    setAction("add");
+    setMessage("");
+    setSaved(false);
+  }
+
   return (
     <>
-      <form
-        className={shared.form}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        <label className={shared.field}>
-          Asset code
-          <TextInput
-            list={symbolsId}
-            value={symbol}
-            disabled={action !== "add" || busy}
-            required
-            maxLength={64}
-            onChange={(event) => setSymbol(event.target.value)}
-          />
-        </label>
-        {action === "delete" ? (
-          <p>Remove {symbol} from future collections? Earlier reports remain unchanged.</p>
-        ) : (
-          <label className={shared.field}>
-            Quantity
-            <TextInput
-              value={quantity}
-              required
-              inputMode="text"
-              disabled={busy}
-              onChange={(event) => setQuantity(event.target.value)}
-            />
-            <small>Negative quantities record liabilities. Zero removes the record.</small>
-          </label>
-        )}
-        {action === "add" && existing ? (
-          <p role="status">
-            This asset already exists.{" "}
-            <ActionButton
-              tone="ghost"
-              onClick={() => {
-                setAction("edit");
-                setSymbol(existing.symbol);
-                setQuantity(existing.quantity);
-              }}
-            >
-              Edit current quantity
-            </ActionButton>
-          </p>
-        ) : null}
-        {message ? <p role={saved ? "status" : "alert"}>{message}</p> : null}
-        <div className={shared.actions}>
-          <ActionButton
-            type="submit"
-            tone={action === "delete" ? "danger" : "primary"}
-            disabled={busy || (action === "add" && Boolean(existing))}
+      {action === "delete" ? (
+        <div className={`${styles.card} ${styles.cardDanger}`}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>
+              Remove <strong>{symbol}</strong>
+            </h3>
+          </div>
+          <form
+            className={styles.form}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
           >
-            {action === "delete" ? "Delete record" : "Save quantity"}
-          </ActionButton>
-          <ActionButton tone="ghost" disabled={busy} onClick={onReload}>
-            Reload current records
-          </ActionButton>
+            <p className={styles.deletePrompt}>
+              Remove {symbol} from future collections? Earlier reports remain unchanged.
+            </p>
+            {message ? (
+              <p className={styles.statusError} role="alert">
+                {message}
+              </p>
+            ) : null}
+            <div className={styles.cardActions}>
+              <ActionButton type="submit" tone="danger" disabled={busy}>
+                Delete record
+              </ActionButton>
+              <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
+                Cancel
+              </ActionButton>
+              <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
+                Reload current records
+              </ActionButton>
+            </div>
+          </form>
         </div>
-      </form>
-      <h3>Current editable records</h3>
-      <p className={shared.muted}>
-        Includes pending and excluded records. Prices and values belong to collected reports. Times
-        in {timezone}.
-      </p>
-      <DataTable
-        caption="Current manual records"
-        columns={[
-          { key: "symbol", header: "Asset" },
-          { key: "quantity", header: "Quantity", numeric: true },
-          { key: "modified", header: "Last edited" },
-          { key: "actions", header: "Actions" },
-        ]}
-        rows={state.items.map((item) => ({
-          id: item.symbol,
-          symbol: item.symbol,
-          quantity: item.quantity,
-          modified: formatInstant(item.modifiedAt, timezone),
-          actions: (
-            <ManualActions
-              identityId={state.identityId}
-              symbol={item.symbol}
-              onOpen={(next) => {
-                setSymbol(item.symbol);
-                setQuantity(item.quantity);
-                setAction(next.action ?? "edit");
-                setMessage("");
-              }}
-            />
-          ),
-        }))}
-        empty="No manual records. Enter an asset and quantity above."
-      />
-      <ActionButton
-        tone="ghost"
-        disabled={busy}
-        onClick={() => {
-          setSymbol("");
-          setQuantity("");
-          setAction("add");
-          setMessage("");
-        }}
-      >
-        <Plus size={iconSize.sm} aria-hidden="true" /> Add another asset
-      </ActionButton>
+      ) : action === "edit" ? (
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>
+              Edit <strong>{symbol}</strong> quantity
+            </h3>
+            <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
+              Cancel
+            </ActionButton>
+          </div>
+          <form
+            className={styles.form}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <label className={styles.field}>
+              <span>Quantity</span>
+              <TextInput
+                value={quantity}
+                placeholder="0.00 (negative for liability)"
+                required
+                inputMode="text"
+                disabled={busy}
+                onChange={(event) => setQuantity(event.target.value)}
+              />
+            </label>
+            {message ? (
+              <p
+                className={saved ? styles.statusSuccess : styles.statusError}
+                role={saved ? "status" : "alert"}
+              >
+                {message}
+              </p>
+            ) : null}
+            <div className={styles.cardActions}>
+              <ActionButton type="submit" tone="primary" disabled={busy}>
+                Save quantity
+              </ActionButton>
+              <ActionButton type="button" tone="ghost" disabled={busy} onClick={onReload}>
+                Reload current records
+              </ActionButton>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Add asset</h3>
+          </div>
+          <form
+            className={styles.form}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <div className={styles.formGrid}>
+              <label className={styles.field}>
+                <span>Asset code</span>
+                <TextInput
+                  list={symbolsId}
+                  value={symbol}
+                  placeholder="e.g. USD, BTC"
+                  disabled={busy}
+                  required
+                  maxLength={64}
+                  onChange={(event) => setSymbol(event.target.value)}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Quantity</span>
+                <TextInput
+                  value={quantity}
+                  placeholder="0.00 (negative for liability)"
+                  required
+                  inputMode="text"
+                  disabled={busy}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </label>
+            </div>
+            {existing ? (
+              <p role="status" className={styles.fieldNote}>
+                This asset already exists.{" "}
+                <ActionButton
+                  type="button"
+                  tone="ghost"
+                  onClick={() => {
+                    setAction("edit");
+                    setSymbol(existing.symbol);
+                    setQuantity(existing.quantity);
+                  }}
+                >
+                  Edit current quantity
+                </ActionButton>
+              </p>
+            ) : null}
+            {message ? (
+              <p
+                className={saved ? styles.statusSuccess : styles.statusError}
+                role={saved ? "status" : "alert"}
+              >
+                {message}
+              </p>
+            ) : null}
+            <div className={styles.cardActions}>
+              <ActionButton type="submit" tone="primary" disabled={busy || Boolean(existing)}>
+                Save quantity
+              </ActionButton>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className={styles.recordsSection}>
+        <div className={styles.recordsHeader}>
+          <div className={styles.recordsTitleGroup}>
+            <h3 className={styles.recordsTitle}>Current records</h3>
+            <span className={styles.recordsCount}>{state.items.length}</span>
+          </div>
+          {action !== "add" ? (
+            <ActionButton type="button" tone="ghost" disabled={busy} onClick={switchToAdd}>
+              <Plus size={iconSize.sm} aria-hidden="true" /> Add another asset
+            </ActionButton>
+          ) : null}
+        </div>
+        <DataTable
+          caption="Current manual records"
+          columns={[
+            { key: "symbol", header: "Asset" },
+            { key: "quantity", header: "Quantity", numeric: true },
+            { key: "modified", header: "Last edited" },
+            { key: "actions", header: "Actions" },
+          ]}
+          rows={state.items.map((item) => ({
+            id: item.symbol,
+            symbol: <span className={styles.assetSymbol}>{item.symbol}</span>,
+            quantity: <NumericText>{item.quantity}</NumericText>,
+            modified: formatInstant(item.modifiedAt, timezone),
+            actions: (
+              <ManualActions
+                identityId={state.identityId}
+                symbol={item.symbol}
+                onOpen={(next) => {
+                  setSymbol(item.symbol);
+                  setQuantity(item.quantity);
+                  setAction(next.action ?? "edit");
+                  setMessage("");
+                  setSaved(false);
+                }}
+              />
+            ),
+          }))}
+          empty="No manual records. Enter an asset and quantity above."
+        />
+        <p className={styles.footerNote}>
+          Saved quantities take effect at the next collection cycle.
+        </p>
+      </div>
     </>
   );
 }

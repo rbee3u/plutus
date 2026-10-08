@@ -279,8 +279,7 @@ test("all three manual entries share fresh editing and keep pending values separ
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("102");
   await dialog.getByRole("button", { name: "Reload current records" }).click();
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("103");
-  await dialog.getByRole("button", { name: "Close dialog" }).click();
-  await page.getByRole("button", { name: "Delete manual USD", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete manual USD", exact: true }).click();
   await dialog.getByRole("button", { name: "Delete record", exact: true }).click();
   await dialog.getByRole("button", { name: "Close dialog" }).click();
   await expect(page.getByRole("table", { name: "Pending manual quantities" })).toContainText("100");

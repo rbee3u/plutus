@@ -240,12 +240,6 @@
   color: var(--muted);
 }
 
-.accountMetricLabel abbr {
-  text-decoration: none;
-  border-bottom: 1px dotted var(--line);
-  cursor: help;
-}
-
 .accountMetricValue {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
@@ -290,4 +284,12 @@
 .treeNodeRow > .treeNodeButton {
   flex: 1;
   min-width: 0;
+}
+
+.inlineActionCell {
+  --icon-button-size: var(--control-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: -4px 0;
 }

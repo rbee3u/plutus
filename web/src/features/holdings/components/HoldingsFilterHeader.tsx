@@ -196,7 +196,7 @@ export function HoldingsFilterHeader({
                         event.preventDefault();
                     }}
                   />
-                  <p>Matches part of a symbol, ignoring case.</p>
+                  <p>{`Matches part of ${/^[aeiou]/i.test(label) ? "an" : "a"} ${label.toLowerCase()}, ignoring case.`}</p>
                 </form>
               ) : (
                 options.map((option) => (

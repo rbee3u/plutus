@@ -164,37 +164,31 @@ export function AccountDetail({
 }
 
 function AccountMetrics({ account }: { account: AccountValuation }) {
-  // Short labels keep the six figures on one line; <abbr> carries the full name for hover and
-  // assistive technology.
+  // Short labels keep the six figures on one line.
   const figures = [
-    { label: "Equity", title: "Equity", value: account.equity, format: formatAmount },
+    { label: "Equity", value: account.equity, format: formatAmount },
     {
       label: "AdjEq",
-      title: "Adjusted equity",
       value: account.adjustedEquity,
       format: formatAmount,
     },
     {
       label: "AvailEq",
-      title: "Available equity",
       value: account.availableEquity,
       format: formatAmount,
     },
     {
       label: "IMR",
-      title: "Initial margin ratio",
       value: account.initialMarginRatio,
       format: formatRatio,
     },
     {
       label: "MMR",
-      title: "Maintenance margin ratio",
       value: account.maintenanceMarginRatio,
       format: formatRatio,
     },
     {
       label: "UniMMR",
-      title: "Unified margin ratio",
       value: account.unifiedMarginRatio,
       format: formatRatio,
     },
@@ -205,13 +199,7 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
     <div className={styles.accountMetricsBar}>
       {reported.map((figure) => (
         <div key={figure.label} className={styles.accountMetricChip}>
-          <span className={styles.accountMetricLabel}>
-            {figure.label === figure.title ? (
-              figure.label
-            ) : (
-              <abbr title={figure.title}>{figure.label}</abbr>
-            )}
-          </span>
+          <span className={styles.accountMetricLabel}>{figure.label}</span>
           <span className={styles.accountMetricValue}>
             <NumericText>{figure.format(figure.value)}</NumericText>
           </span>
