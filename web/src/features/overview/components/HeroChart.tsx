@@ -52,18 +52,6 @@ export function HeroChart({
       yAxis: {
         type: "value",
         scale: true,
-        splitLine: {
-          lineStyle: {
-            opacity: 0.15,
-          },
-        },
-        axisLabel: {
-          formatter: (value: number) => {
-            if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-            if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-            return `${value}`;
-          },
-        },
       },
       series: [
         {

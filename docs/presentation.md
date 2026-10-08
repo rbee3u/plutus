@@ -99,10 +99,12 @@ and tooltips use `$`, `+$`, or `-$`. Tables put currency in headers such as
 `Value (USD)` and use unadorned cells; never combine currency prefix and suffix.
 
 Chart tooltips use source decimal strings and USD precision. Numeric axes are
-the exception: values at least 1 use English compact notation with at most one
-fractional digit. Smaller nonzero ticks use four significant digits; rounded
-absolute values below `0.0001` use scientific notation. A carry to 1 uses
-compact notation; zero stays zero.
+the exception: values at least 1 use English compact notation whose fractional
+precision adapts to the tick interval to prevent duplicate labels (one or two
+fractional digits for narrow spans; uncompacted integers for increments below
+10). Smaller nonzero ticks use four significant digits; rounded absolute values
+below `0.0001` use scientific notation. A carry to 1 uses compact notation; zero
+stays zero.
 
 Screen readers receive rounded ordinary decimals, not zero-count shorthand.
 There is no full-precision disclosure or copy-value interaction. Position
