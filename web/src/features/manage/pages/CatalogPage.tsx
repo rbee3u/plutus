@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useParams } from "react-router";
-import { catalogTabFromSearch } from "@/app/shell/navigation";
+import { catalogTabFromSearch } from "@/features/manage/lib/tabs";
 import { InstrumentsTab } from "../components/InstrumentsTab";
 import { ListingsTab } from "../components/ListingsTab";
 import { usePlatforms } from "@/shared/lib/usePlatforms";

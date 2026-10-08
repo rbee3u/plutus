@@ -6,17 +6,18 @@ import (
 	"database/sql"
 	"log/slog"
 
+	"github.com/rbee3u/plutus/internal/application/audit"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/capital"
+	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/domain/audit"
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/domain/capital"
-	"github.com/rbee3u/plutus/internal/domain/catalog"
-	"github.com/rbee3u/plutus/internal/domain/collection"
-	"github.com/rbee3u/plutus/internal/domain/identity"
-	"github.com/rbee3u/plutus/internal/domain/jobs"
-	"github.com/rbee3u/plutus/internal/domain/manual"
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
@@ -35,15 +36,18 @@ type Services struct {
 	Capital     *capital.Service
 	Manual      *manual.Service
 	Valuation   *valuation.Service
+	Financial   *financial.Service
 	Collection  *collection.Service
 	Jobs        *jobs.Service
 	Audit       *audit.Service
 	Idempotency *idempotency.Store
 }
 
-// New builds every service on db. registry may be nil; Identities then build
-// their own default registry through identity.Options.
+// New builds every service on db and shares one registry across its consumers.
 func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *slog.Logger) (*Services, error) {
+	if registry == nil {
+		registry = adapters.NewRegistry()
+	}
 	identities, err := identity.NewService(db, identity.Options{
 		MasterKey:       cfg.Crypto.MasterKey,
 		Adapters:        registry,
@@ -52,8 +56,10 @@ func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *sl
 	if err != nil {
 		return nil, err
 	}
-	catalogSvc := catalog.NewService(db)
+	jobsSvc := jobs.NewService(db)
+	catalogSvc := catalog.NewService(db, jobsSvc)
 	valuationSvc := valuation.NewService(db)
+	manualSvc := manual.NewService(db, catalogSvc)
 	return &Services{
 		DB:          db,
 		Adapters:    registry,
@@ -62,10 +68,11 @@ func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *sl
 		Identities:  identities,
 		Catalog:     catalogSvc,
 		Capital:     capital.NewService(db),
-		Manual:      manual.NewService(db),
+		Manual:      manualSvc,
 		Valuation:   valuationSvc,
-		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Valuation: valuationSvc, Stagger: collection.IdentityDelay, Logger: logger}),
-		Jobs:        jobs.NewService(db),
+		Financial:   financial.NewService(db, valuationSvc),
+		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manualSvc, Valuation: valuationSvc, Stagger: collection.IdentityDelay, Logger: logger}),
+		Jobs:        jobsSvc,
 		Audit:       audit.NewService(db),
 		Idempotency: idempotency.NewStore(db),
 	}, nil

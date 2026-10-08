@@ -1,8 +1,30 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { problemError } from "@/api";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import styles from "@/shared/styles/page.module.css";
 
 export function QueryRecovery({
+  query,
+  fallback,
+}: {
+  query: Pick<UseQueryResult<unknown, unknown>, "error" | "data" | "isFetching" | "refetch">;
+  fallback: string;
+}) {
+  return (
+    <RequestRecovery
+      error={query.error}
+      hasData={Boolean(query.data)}
+      busy={query.isFetching}
+      fallback={fallback}
+      onRetry={() => {
+        void query.refetch();
+      }}
+    />
+  );
+}
+
+/** Explicit recovery for combined requests or locally managed state. */
+export function RequestRecovery({
   error,
   hasData,
   onRetry,

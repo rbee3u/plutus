@@ -52,31 +52,40 @@ function render(item: PositionRow) {
 
 describe("shared position cells", () => {
   it("uses the agreed inner columns, Both signs, settlement amounts, and timezone", () => {
-    expect(POSITION_COLUMNS.map((item) => item.header)).toEqual([
-      "Symbol",
-      "Side",
-      "Size",
-      "Entry Price",
-      "Mark Price",
-      "Liq. Price",
-      "Unrealized PnL",
-      "Margin",
-      "Notional (USD)",
-      "Observed",
+    expect(POSITION_COLUMNS.map(({ key, header }) => [key, header])).toEqual([
+      ["symbol", "Symbol"],
+      ["side", "Side"],
+      ["size", "Size"],
+      ["entryPrice", "Entry Price"],
+      ["markPrice", "Mark Price"],
+      ["liquidationPrice", "Liq. Price"],
+      ["unrealizedPnl", "Unrealized PnL"],
+      ["margin", "Margin"],
+      ["notionalUsd", "Notional (USD)"],
+      ["observed", "Observed"],
     ]);
-    const html = render(position);
-    expect(html).toContain("Both");
-    expect(html).toContain("-200 USD");
-    expect(html).toContain("0.000123457 BTC");
-    expect(html).toContain("0.002 BTC");
-    expect(html).toContain("2026-10-03 08:00");
-    expect(html).not.toContain("Stale</span>");
-    expect(html).not.toContain("Freshness");
-    expect(html).not.toContain("Full amount");
+    const row = positionRow(position, "Asia/Shanghai");
+    for (const [key, expected] of Object.entries({
+      side: "Both",
+      size: "-200 USD",
+      entryPrice: "—",
+      markPrice: "50,000",
+      liquidationPrice: "—",
+      unrealizedPnl: "+0.000123457 BTC",
+      margin: "0.002 BTC",
+      notionalUsd: "200.00",
+      observed: "2026-10-03 08:00",
+    })) {
+      const html = renderToStaticMarkup(<>{row[key]}</>);
+      expect(html.replace(/<[^>]*>/g, ""), key).toBe(expected);
+    }
+    // Keep one composition check; named cells own the values and their placement.
+    expect(render(position)).toContain("-200 USD");
   });
-  it("keeps opposing hedged positions distinct and core badges visible", () => {
-    const html = render({
+  it("gives hedged sides distinct row keys and preserves stale and issue badges", () => {
+    const short: PositionRow = {
       ...position,
+      platformPositionRef: "BTC-USD-SWAP:short",
       positionMode: "hedged",
       size: "200",
       freshness: "stale",
@@ -85,27 +94,35 @@ describe("shared position cells", () => {
         { code: "stale", detail: "Previous report." },
         { code: "position_notional_unknown", detail: "Missing price." },
       ],
-    });
-    expect(html).toContain("Short");
+    };
+    const long: PositionRow = {
+      ...short,
+      platformPositionRef: "BTC-USD-SWAP:long",
+      side: "long",
+    };
+    const shortRow = positionRow(short, "Asia/Shanghai");
+    const longRow = positionRow(long, "Asia/Shanghai");
+    expect(shortRow.id).not.toBe(longRow.id);
+    expect(renderToStaticMarkup(<>{shortRow.side}</>)).toContain("Short");
+    expect(renderToStaticMarkup(<>{longRow.side}</>)).toContain("Long");
+    const html = renderToStaticMarkup(<>{shortRow.observed}</>);
     expect(html).toContain("Stale");
-    expect(html).not.toContain(">pm</span>");
     expect(html).toContain("1 issue");
     expect(html).toContain("2026-10-03 08:00");
   });
-  it("keeps margin mode and leverage out of the visible row", () => {
-    for (const item of [
-      position,
+  it.each([
+    ["cross", position, "0.002 BTC"],
+    [
+      "isolated",
       { ...position, marginMode: "isolated" as const, marginBasis: "allocated" as const },
-      { ...position, portfolioMargin: true },
-      { ...position, settleMargin: null, portfolioMargin: true },
-    ]) {
-      const html = render(item);
-      expect(html).not.toContain(">crx</span>");
-      expect(html).not.toContain(">iso</span>");
-      expect(html).not.toContain(">pm</span>");
-      expect(html).not.toContain(">3x</span>");
-      expect(html).not.toContain("positionMarginTagSlot");
-    }
+      "0.002 BTC",
+    ],
+    ["portfolio", { ...position, portfolioMargin: true }, "0.002 BTC"],
+    ["unknown", { ...position, settleMargin: null, portfolioMargin: true }, "—"],
+  ])("shows only the margin amount in the closed %s cell", (_, item, expected) => {
+    const cell = positionRow(item, "Asia/Shanghai").margin;
+    const html = renderToStaticMarkup(<>{cell}</>);
+    expect(html.replace(/<[^>]*>/g, "")).toBe(expected);
   });
 });
 

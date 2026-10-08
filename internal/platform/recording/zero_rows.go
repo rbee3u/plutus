@@ -3,6 +3,7 @@ package recording
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"slices"
 	"strings"
@@ -144,11 +145,7 @@ func (s *Session) trimZeroRows(values []any) {
 					if !ok {
 						continue
 					}
-					names := make([]string, 0, len(rows))
-					for name := range rows {
-						names = append(names, name)
-					}
-					slices.Sort(names)
+					names := slices.Sorted(maps.Keys(rows))
 					seen := map[string]bool{}
 					for _, name := range names {
 						shape, zero := "", false

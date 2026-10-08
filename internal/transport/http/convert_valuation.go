@@ -1,7 +1,8 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/domain/valuation"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -25,8 +26,7 @@ func toAPIPointPtr(p *valuation.Point) *api.ValuationPointSummary {
 	if p == nil {
 		return nil
 	}
-	out := toAPIPoint(p)
-	return &out
+	return new(toAPIPoint(p))
 }
 
 func toAPIPoints(points []valuation.Point) []api.ValuationPointSummary {
@@ -37,15 +37,27 @@ func toAPIPoints(points []valuation.Point) []api.ValuationPointSummary {
 	return out
 }
 
-func toAPIContext(c *valuation.Context) api.ReadContext {
-	return api.ReadContext{PortfolioId: c.PortfolioID, Timezone: c.Timezone, PointId: c.PointID, JobId: c.JobID, EvaluatedAt: c.EvaluatedAt}
+func toAPIContext(c *financial.Context) api.ReadContext {
+	return api.ReadContext{
+		PortfolioId: c.PortfolioID,
+		Timezone:    c.Timezone,
+		PointId:     c.PointID,
+		JobId:       c.JobID,
+		EvaluatedAt: c.EvaluatedAt,
+	}
 }
 
 func toAPIIssues(issues []valuation.Issue) []api.Issue {
 	out := make([]api.Issue, 0, len(issues))
 	for i := range issues {
 		item := &issues[i]
-		out = append(out, api.Issue{Code: item.Code, Detail: item.Detail, AccountId: item.AccountID, AccountName: strPtr(item.AccountName), Symbol: strPtr(item.Symbol)})
+		out = append(out, api.Issue{
+			Code:        item.Code,
+			Detail:      item.Detail,
+			AccountId:   item.AccountID,
+			AccountName: nonEmptyStringPtr(item.AccountName),
+			Symbol:      nonEmptyStringPtr(item.Symbol),
+		})
 	}
 	return out
 }
@@ -53,18 +65,18 @@ func toAPIIssues(issues []valuation.Issue) []api.Issue {
 func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 	omitted := make([]api.OmittedBalance, 0, len(v.Omitted))
 	for i := range v.Omitted {
-		omitted = append(omitted, api.OmittedBalance{Symbol: v.Omitted[i].Symbol, AssetSymbol: strPtr(v.Omitted[i].AssetSymbol), Equity: v.Omitted[i].Equity, Reason: v.Omitted[i].Reason})
+		omitted = append(omitted, api.OmittedBalance{Symbol: v.Omitted[i].Symbol, AssetSymbol: nonEmptyStringPtr(v.Omitted[i].AssetSymbol), Equity: v.Omitted[i].Equity, Reason: v.Omitted[i].Reason})
 	}
 	return api.AccountValuation{
-		ReportId:               uuidPtr(v.ReportID),
+		ReportId:               nonNilUUIDPtr(v.ReportID),
 		AccountId:              v.AccountID,
 		AccountName:            v.AccountName,
 		AccountType:            v.AccountType,
 		Selected:               v.Selected,
 		IdentityId:             v.IdentityID,
 		IdentityName:           v.IdentityName,
-		IdentityStatus:         strPtr(v.IdentityStatus),
-		ConnectionStatus:       strPtr(v.ConnectionStatus),
+		IdentityStatus:         nonEmptyStringPtr(v.IdentityStatus),
+		ConnectionStatus:       nonEmptyStringPtr(v.ConnectionStatus),
 		Platform:               v.Platform,
 		Status:                 api.AccountValuationStatus(v.Status),
 		ErrorClass:             v.ErrorClass,
@@ -93,50 +105,97 @@ func toAPIAccountValuations(items []valuation.AccountValuation) []api.AccountVal
 	return out
 }
 
-func toAPIGroupTotals(groups []valuation.GroupTotal) []api.GroupTotal {
+func toAPIGroupTotals(groups []financial.GroupTotal) []api.GroupTotal {
 	out := make([]api.GroupTotal, 0, len(groups))
 	for i := range groups {
 		g := &groups[i]
-		out = append(out, api.GroupTotal{Key: g.Key, Label: g.Label, Platform: strPtr(g.Platform), ValueUsd: g.ValueUSD, AccountCount: g.AccountCount, RowCount: g.RowCount, Completeness: api.Completeness(g.Completeness)})
-	}
-	return out
-}
-
-func toAPIBalanceRows(rows []valuation.BalanceRow) []api.BalanceRow {
-	out := make([]api.BalanceRow, 0, len(rows))
-	for i := range rows {
-		r := &rows[i]
-		out = append(out, api.BalanceRow{
-			AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType,
-			IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform,
-			ListingId: r.ListingID, Symbol: r.Symbol, AssetSymbol: r.AssetSymbol,
-			Equity: r.Equity, AvailableToWithdraw: r.AvailableToWithdraw, AvailableToTrade: r.AvailableToTrade,
-			Liability: r.Liability, Interest: r.Interest, UnrealizedPnl: r.UnrealizedPnl,
-			PriceUsd: r.PriceUSD, EquityUsd: r.EquityUSD, NoPrice: r.NoPrice,
-			Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt, ManualModifiedAt: r.ManualModifiedAt,
+		out = append(out, api.GroupTotal{
+			Key:          g.Key,
+			Label:        g.Label,
+			Platform:     nonEmptyStringPtr(g.Platform),
+			ValueUsd:     g.ValueUSD,
+			AccountCount: g.AccountCount,
+			RowCount:     g.RowCount,
+			Completeness: api.Completeness(g.Completeness),
 		})
 	}
 	return out
 }
 
-func toAPIPositionRows(rows []valuation.PositionRow) []api.PositionRow {
+func toAPIBalanceRows(rows []financial.BalanceRow) []api.BalanceRow {
+	out := make([]api.BalanceRow, 0, len(rows))
+	for i := range rows {
+		r := &rows[i]
+		out = append(out, api.BalanceRow{
+			AccountId:           r.AccountID,
+			AccountName:         r.AccountName,
+			AccountType:         r.AccountType,
+			IdentityId:          r.IdentityID,
+			IdentityName:        r.IdentityName,
+			Platform:            r.Platform,
+			ListingId:           r.ListingID,
+			Symbol:              r.Symbol,
+			AssetSymbol:         r.AssetSymbol,
+			Equity:              r.Equity,
+			AvailableToWithdraw: r.AvailableToWithdraw,
+			AvailableToTrade:    r.AvailableToTrade,
+			Liability:           r.Liability,
+			Interest:            r.Interest,
+			UnrealizedPnl:       r.UnrealizedPnl,
+			PriceUsd:            r.PriceUSD,
+			EquityUsd:           r.EquityUSD,
+			NoPrice:             r.NoPrice,
+			Freshness:           api.Freshness(r.Freshness),
+			ReportObservedAt:    r.ReportObservedAt,
+			ManualModifiedAt:    r.ManualModifiedAt,
+		})
+	}
+	return out
+}
+
+func toAPIPositionRows(rows []financial.PositionRow) []api.PositionRow {
 	out := make([]api.PositionRow, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
 		out = append(out, api.PositionRow{
-			AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType,
-			IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform,
-			PlatformPositionRef: r.PlatformPositionRef, InstrumentId: r.InstrumentID, Symbol: r.Symbol, Kind: r.Kind,
-			BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, SettlementSymbol: r.SettlementSymbol,
-			ExpiryAt: r.ExpiryAt, ContractSize: r.ContractSize,
-			PositionMode: enumPtr[api.PositionRowPositionMode](r.PositionMode), MarginMode: enumPtr[api.PositionRowMarginMode](r.MarginMode),
-			MarginCurrency: r.MarginCurrency, MarginBasis: enumPtr[api.PositionRowMarginBasis](r.MarginBasis),
-			PortfolioMargin: r.PortfolioMargin, Size: r.Size, SizeSymbol: r.SizeSymbol, SettleMargin: r.SettleMargin, Issues: toAPIIssues(r.Issues),
-			MarginSource: enumPtr[api.PositionRowMarginSource](r.MarginSource), MarginUnavailableReason: r.MarginUnavailableReason,
-			Side: api.PositionRowSide(r.Side), Quantity: r.Quantity, QuantityUnit: api.PositionRowQuantityUnit(r.QuantityUnit),
-			EntryPrice: r.EntryPrice, MarkPrice: r.MarkPrice, LiquidationPrice: r.LiquidationPrice,
-			UnrealizedPnl: r.UnrealizedPnl, Leverage: r.Leverage, Margin: r.Margin, NotionalUsd: r.NotionalUSD,
-			Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt,
+			AccountId:               r.AccountID,
+			AccountName:             r.AccountName,
+			AccountType:             r.AccountType,
+			IdentityId:              r.IdentityID,
+			IdentityName:            r.IdentityName,
+			Platform:                r.Platform,
+			PlatformPositionRef:     r.PlatformPositionRef,
+			InstrumentId:            r.InstrumentID,
+			Symbol:                  r.Symbol,
+			Kind:                    r.Kind,
+			BaseSymbol:              r.BaseSymbol,
+			QuoteSymbol:             r.QuoteSymbol,
+			SettlementSymbol:        r.SettlementSymbol,
+			ExpiryAt:                r.ExpiryAt,
+			ContractSize:            r.ContractSize,
+			PositionMode:            enumPtr[api.PositionRowPositionMode](r.PositionMode),
+			MarginMode:              enumPtr[api.PositionRowMarginMode](r.MarginMode),
+			MarginCurrency:          r.MarginCurrency,
+			MarginBasis:             enumPtr[api.PositionRowMarginBasis](r.MarginBasis),
+			PortfolioMargin:         r.PortfolioMargin,
+			Size:                    r.Size,
+			SizeSymbol:              r.SizeSymbol,
+			SettleMargin:            r.SettleMargin,
+			Issues:                  toAPIIssues(r.Issues),
+			MarginSource:            enumPtr[api.PositionRowMarginSource](r.MarginSource),
+			MarginUnavailableReason: r.MarginUnavailableReason,
+			Side:                    api.PositionRowSide(r.Side),
+			Quantity:                r.Quantity,
+			QuantityUnit:            api.PositionRowQuantityUnit(r.QuantityUnit),
+			EntryPrice:              r.EntryPrice,
+			MarkPrice:               r.MarkPrice,
+			LiquidationPrice:        r.LiquidationPrice,
+			UnrealizedPnl:           r.UnrealizedPnl,
+			Leverage:                r.Leverage,
+			Margin:                  r.Margin,
+			NotionalUsd:             r.NotionalUSD,
+			Freshness:               api.Freshness(r.Freshness),
+			ReportObservedAt:        r.ReportObservedAt,
 		})
 	}
 	return out
@@ -147,37 +206,81 @@ func toAPIBoundaryEvents(events []valuation.BoundaryEvent) []api.BoundaryEvent {
 	for i := range events {
 		e := &events[i]
 		out = append(out, api.BoundaryEvent{
-			PointId: e.PointID, EvaluatedAt: e.EvaluatedAt, AccountId: e.AccountID, AccountName: e.AccountName,
-			IdentityId: uuidPtr(e.IdentityID), IdentityName: strPtr(e.IdentityName), Platform: strPtr(e.Platform),
-			Direction: api.BoundaryEventDirection(e.Direction), ValueUsd: e.ValueUSD, Method: e.Method,
+			PointId:      e.PointID,
+			EvaluatedAt:  e.EvaluatedAt,
+			AccountId:    e.AccountID,
+			AccountName:  e.AccountName,
+			IdentityId:   nonNilUUIDPtr(e.IdentityID),
+			IdentityName: nonEmptyStringPtr(e.IdentityName),
+			Platform:     nonEmptyStringPtr(e.Platform),
+			Direction:    api.BoundaryEventDirection(e.Direction),
+			ValueUsd:     e.ValueUSD,
+			Method:       e.Method,
 		})
 	}
 	return out
 }
 
-func toAPIPeriodClose(c *valuation.PeriodClose) api.PeriodClose {
+func toAPIPeriodClose(c *financial.PeriodClose) api.PeriodClose {
 	return api.PeriodClose{
-		PeriodKind: api.PeriodKind(c.PeriodKind), Label: c.Label, PeriodStart: c.PeriodStart, PeriodEnd: c.PeriodEnd,
-		Point: toAPIPointPtr(c.Point), Completeness: api.Completeness(c.Completeness), Reasons: nonNilStrings(c.Reasons),
+		PeriodKind:   api.PeriodKind(c.PeriodKind),
+		Label:        c.Label,
+		PeriodStart:  c.PeriodStart,
+		PeriodEnd:    c.PeriodEnd,
+		Point:        toAPIPointPtr(c.Point),
+		Completeness: api.Completeness(c.Completeness),
+		Reasons:      nonNilStrings(c.Reasons),
 	}
 }
 
-func toAPIValueChange(v *valuation.ValueChange) api.ValueChange {
+func toAPIValueChange(v *financial.ValueChange) api.ValueChange {
 	return api.ValueChange{
-		PeriodKind: v.PeriodKind, Label: v.Label, From: v.From, To: v.To,
-		StartPoint: toAPIPointPtr(v.StartPoint), EndPoint: toAPIPointPtr(v.EndPoint),
-		ContributionsUsd: v.ContributionsUSD, WithdrawalsUsd: v.WithdrawalsUSD,
-		BoundaryContributionsUsd: v.BoundaryContributionsUSD, BoundaryWithdrawalsUsd: v.BoundaryWithdrawalsUSD,
-		AmountUsd: v.AmountUSD, Completeness: api.Completeness(v.Completeness), Reasons: nonNilStrings(v.Reasons),
-		BoundaryEvents: toAPIBoundaryEvents(v.BoundaryEvents),
+		PeriodKind:               v.PeriodKind,
+		Label:                    v.Label,
+		From:                     v.From,
+		To:                       v.To,
+		StartPoint:               toAPIPointPtr(v.StartPoint),
+		EndPoint:                 toAPIPointPtr(v.EndPoint),
+		ContributionsUsd:         v.ContributionsUSD,
+		WithdrawalsUsd:           v.WithdrawalsUSD,
+		BoundaryContributionsUsd: v.BoundaryContributionsUSD,
+		BoundaryWithdrawalsUsd:   v.BoundaryWithdrawalsUSD,
+		AmountUsd:                v.AmountUSD,
+		Completeness:             api.Completeness(v.Completeness),
+		Reasons:                  nonNilStrings(v.Reasons),
+		BoundaryEvents:           toAPIBoundaryEvents(v.BoundaryEvents),
 	}
 }
 
-func toAPIDualPositionRows(rows []valuation.DualPositionRow) []api.DualPositionRow {
+func toAPIDualPositionRows(rows []financial.DualPositionRow) []api.DualPositionRow {
 	out := make([]api.DualPositionRow, 0, len(rows))
 	for i := range rows {
 		r := &rows[i]
-		out = append(out, api.DualPositionRow{AccountId: r.AccountID, AccountName: r.AccountName, AccountType: r.AccountType, IdentityId: r.IdentityID, IdentityName: r.IdentityName, Platform: r.Platform, PlatformPositionRef: r.PlatformPositionRef, ProductRef: r.ProductRef, OrderRef: r.OrderRef, BaseSymbol: r.BaseSymbol, QuoteSymbol: r.QuoteSymbol, InvestSymbol: r.InvestSymbol, Principal: r.Principal, Direction: r.Direction, TargetPrice: r.TargetPrice, ExpiryAt: r.ExpiryAt, AnnualizedRate: r.AnnualizedRate, RateKind: r.RateKind, Status: r.Status, Freshness: api.Freshness(r.Freshness), ReportObservedAt: r.ReportObservedAt, SubscribedAt: r.SubscribedAt, Issues: issueSlicePointer(r.Issues)})
+		out = append(out, api.DualPositionRow{
+			AccountId:           r.AccountID,
+			AccountName:         r.AccountName,
+			AccountType:         r.AccountType,
+			IdentityId:          r.IdentityID,
+			IdentityName:        r.IdentityName,
+			Platform:            r.Platform,
+			PlatformPositionRef: r.PlatformPositionRef,
+			ProductRef:          r.ProductRef,
+			OrderRef:            r.OrderRef,
+			BaseSymbol:          r.BaseSymbol,
+			QuoteSymbol:         r.QuoteSymbol,
+			InvestSymbol:        r.InvestSymbol,
+			Principal:           r.Principal,
+			Direction:           r.Direction,
+			TargetPrice:         r.TargetPrice,
+			ExpiryAt:            r.ExpiryAt,
+			AnnualizedRate:      r.AnnualizedRate,
+			RateKind:            r.RateKind,
+			Status:              r.Status,
+			Freshness:           api.Freshness(r.Freshness),
+			ReportObservedAt:    r.ReportObservedAt,
+			SubscribedAt:        r.SubscribedAt,
+			Issues:              new(toAPIIssues(r.Issues)),
+		})
 	}
 	return out
 }

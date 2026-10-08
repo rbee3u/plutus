@@ -28,12 +28,8 @@ import { IconButton } from "@/shared/ui/IconButton";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { HistoryFilters, HistoryPager } from "../components/HistoryFilters";
 import { PointDetail, POINT_DETAIL_ID } from "../components/PointDetail";
-import {
-  historyGranularity,
-  PERIOD_KINDS,
-  useHistoryPager,
-  useHistoryWindow,
-} from "../hooks/useHistoryWindow";
+import { useHistoryPager, useHistoryWindow } from "../hooks/useHistoryWindow";
+import { historyGranularity, PERIOD_KINDS } from "@/features/history/lib/timeWindow";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
@@ -117,15 +113,7 @@ export function ValuationPointsPage() {
   return (
     <section className={shared.wide}>
       <HistoryFilters state={history} />
-      <QueryRecovery
-        error={points.error}
-        hasData={Boolean(series)}
-        busy={points.isFetching}
-        fallback="Valuation Points could not be loaded."
-        onRetry={() => {
-          void points.refetch();
-        }}
-      />
+      <QueryRecovery query={points} fallback="Valuation Points could not be loaded." />
       {points.isPending && !series ? (
         <p className={shared.muted}>Loading Valuation Points.</p>
       ) : null}
@@ -168,15 +156,7 @@ export function ValuationPointsPage() {
             </Select>
           </label>
         </div>
-        <QueryRecovery
-          error={closes.error}
-          hasData={Boolean(closes.data)}
-          busy={closes.isFetching}
-          fallback="Period closes could not be loaded."
-          onRetry={() => {
-            void closes.refetch();
-          }}
-        />
+        <QueryRecovery query={closes} fallback="Period closes could not be loaded." />
         <DataTable
           caption={`Period closes per ${periodKind}`}
           columns={[
@@ -223,15 +203,7 @@ export function ValuationPointsPage() {
       </section>
       <section className={shared.panel} aria-labelledby="raw-points-heading">
         <h2 id="raw-points-heading">Raw Valuation Points</h2>
-        <QueryRecovery
-          error={records.error}
-          hasData={Boolean(records.data)}
-          busy={records.isFetching}
-          fallback="Raw Valuation Points could not be loaded."
-          onRetry={() => {
-            void records.refetch();
-          }}
-        />
+        <QueryRecovery query={records} fallback="Raw Valuation Points could not be loaded." />
         <DataTable
           caption="Raw Valuation Points"
           empty={records.isPending ? "Loading raw Valuation Points." : NO_POINT}
@@ -241,15 +213,7 @@ export function ValuationPointsPage() {
           detailId={POINT_DETAIL_ID}
           renderDetail={() => (
             <>
-              <QueryRecovery
-                error={detail.error}
-                hasData={Boolean(detail.data)}
-                busy={detail.isFetching}
-                fallback="The Valuation Point could not be loaded."
-                onRetry={() => {
-                  void detail.refetch();
-                }}
-              />
+              <QueryRecovery query={detail} fallback="The Valuation Point could not be loaded." />
               {detail.data ? <PointDetail detail={detail.data} timezone={timezone} /> : null}
               {detail.isPending ? <p className={shared.muted}>Loading the point.</p> : null}
             </>

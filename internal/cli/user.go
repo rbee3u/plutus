@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/application/auth"
 )
 
 func newUserCommand() *cobra.Command {

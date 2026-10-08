@@ -66,18 +66,18 @@ func (r *earnAllocation) position(symbol, amount string, s earnStrategy) adapter
 		kind = "flexible"
 	}
 	p := adapters.NewEarnPosition("strategy:"+r.StrategyID, kind, "strategy", "allocated")
-	p.ProductRef = adapters.DualText(r.StrategyID)
-	p.ProductName = adapters.DualText("Kraken Earn")
+	p.ProductRef = adapters.OptionalText(r.StrategyID)
+	p.ProductName = adapters.OptionalText("Kraken Earn")
 	p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: symbol, Amount: amount})
 	p.AddDetail("Yield source", s.YieldSource.Type)
 	low := p.OptionalDecimal("Estimated APR lower bound", s.APR.Low)
 	high := p.OptionalDecimal("Estimated APR upper bound", s.APR.High)
 	if low != nil && high != nil {
-		if decimal.MustParse(*high).Cmp(decimal.MustParse(*low)) < 0 {
+		if decimal.ParseOrZero(*high).Cmp(decimal.ParseOrZero(*low)) < 0 {
 			p.Problems = append(p.Problems, "Estimated APR bounds are contradictory.")
 		} else {
-			upper := decimal.Format(new(big.Rat).Quo(decimal.MustParse(*high), decimal.MustParse("100")))
-			p.Rates = append(p.Rates, adapters.EarnRate{Value: decimal.Format(new(big.Rat).Quo(decimal.MustParse(*low), decimal.MustParse("100"))), Upper: &upper, Kind: "apr", Qualifier: "estimated", Label: "Estimated APR"})
+			upper := decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(*high), decimal.ParseOrZero("100")))
+			p.Rates = append(p.Rates, adapters.EarnRate{Value: decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(*low), decimal.ParseOrZero("100"))), Upper: &upper, Kind: "apr", Qualifier: "estimated", Label: "Estimated APR"})
 		}
 	}
 	p.AddReward(symbol, string(r.Rewarded.Native), "cumulative")
@@ -107,7 +107,7 @@ func (r *earnAllocation) position(symbol, amount string, s earnStrategy) adapter
 			continue
 		}
 		n := p.OptionalDecimal(entry.label+" amount", string(entry.bucket.Native))
-		if n == nil || decimal.MustParse(*n).Sign() == 0 {
+		if n == nil || decimal.ParseOrZero(*n).Sign() == 0 {
 			continue
 		}
 		statuses = append(statuses, entry.label)
@@ -123,7 +123,7 @@ func (r *earnAllocation) position(symbol, amount string, s earnStrategy) adapter
 	// Only report stages Kraken supplied; total minus stage amounts is not a
 	// documented independent lifecycle bucket and cannot establish Active.
 	if len(statuses) > 0 {
-		p.Status = adapters.DualText(strings.Join(statuses, " / "))
+		p.Status = adapters.OptionalText(strings.Join(statuses, " / "))
 	}
 	return p
 }

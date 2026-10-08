@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -25,18 +25,18 @@ func (e *problemError) Error() string {
 	return e.code + ": " + e.detail
 }
 
-func problemf(status int, code, title, detail string) error {
+func newProblemError(status int, code, title, detail string) error {
 	return &problemError{status: status, code: code, title: title, detail: detail}
 }
 
 var (
-	errUnauthenticated = problemf(http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
-	errNotFound        = problemf(http.StatusNotFound, "not_found", "Not found", "The requested resource was not found.")
-	errPrecondition    = problemf(http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")
+	errUnauthenticated = newProblemError(http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
+	errNotFound        = newProblemError(http.StatusNotFound, "not_found", "Not found", "The requested resource was not found.")
+	errPrecondition    = newProblemError(http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")
 )
 
 func validationError(detail string) error {
-	return problemf(http.StatusBadRequest, "validation_failed", "Request validation failed", detail)
+	return newProblemError(http.StatusBadRequest, "validation_failed", "Request validation failed", detail)
 }
 
 func writeProblem(c *gin.Context, status int, code, title, detail string) {

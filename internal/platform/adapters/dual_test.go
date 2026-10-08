@@ -19,14 +19,14 @@ func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 		"negative principal": func(p *DualPosition) { p.Principal = "-1" },
 		"zero principal":     func(p *DualPosition) { p.Principal = "0" },
 		"contradictory direction": func(p *DualPosition) {
-			p.BaseSymbol = DualText("BTC")
-			p.QuoteSymbol = DualText("USDT")
-			p.Direction = DualText("sell_high")
+			p.BaseSymbol = OptionalText("BTC")
+			p.QuoteSymbol = OptionalText("USDT")
+			p.Direction = OptionalText("sell_high")
 		},
-		"unrelated currency":   func(p *DualPosition) { p.BaseSymbol = DualText("ETH"); p.QuoteSymbol = DualText("BTC") },
-		"identical currencies": func(p *DualPosition) { p.BaseSymbol = DualText("USDT"); p.QuoteSymbol = DualText("USDT") },
-		"invalid target":       func(p *DualPosition) { p.TargetPrice = DualText("n/a") },
-		"negative rate":        func(p *DualPosition) { p.AnnualizedRate = DualText("-0.1"); p.RateKind = DualText("apr") },
+		"unrelated currency":   func(p *DualPosition) { p.BaseSymbol = OptionalText("ETH"); p.QuoteSymbol = OptionalText("BTC") },
+		"identical currencies": func(p *DualPosition) { p.BaseSymbol = OptionalText("USDT"); p.QuoteSymbol = OptionalText("USDT") },
+		"invalid target":       func(p *DualPosition) { p.TargetPrice = OptionalText("n/a") },
+		"negative rate":        func(p *DualPosition) { p.AnnualizedRate = OptionalText("-0.1"); p.RateKind = OptionalText("apr") },
 		"unknown state":        func(p *DualPosition) { p.Status = "unknown" },
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -39,12 +39,12 @@ func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 	}
 	expiry := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
 	p = minimal
-	p.BaseSymbol = DualText("btc")
-	p.QuoteSymbol = DualText("usdt")
-	p.TargetPrice = DualText("62000")
+	p.BaseSymbol = OptionalText("btc")
+	p.QuoteSymbol = OptionalText("usdt")
+	p.TargetPrice = OptionalText("62000")
 	p.ExpiryAt = &expiry
-	p.AnnualizedRate = DualText("0.18")
-	p.RateKind = DualText("apr")
+	p.AnnualizedRate = OptionalText("0.18")
+	p.RateKind = OptionalText("apr")
 	p, err = NormalizeDualPosition("test", &p)
 	if err != nil || *p.Direction != "buy_low" || len(p.MissingFields()) != 0 {
 		t.Fatalf("complete terms: %+v %v", p, err)

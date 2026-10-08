@@ -94,6 +94,32 @@ export type Platform = {
     name: string;
     adapterAvailable: boolean;
     accountStructures: Array<AccountStructure>;
+    credentialForm: CredentialForm;
+};
+
+/**
+ * Existing browser inputs; server credential validation remains authoritative and separate.
+ */
+export type CredentialForm = {
+    primary: CredentialGroup;
+    futures?: CredentialGroup;
+    passphrase: 'hidden' | 'optional' | 'required';
+    help: string;
+};
+
+export type CredentialGroup = {
+    keyLabel: string;
+    secretLabel: string;
+    secretInput: 'password' | 'multiline';
+    requirement: CredentialRequirement;
+};
+
+export type CredentialRequirement = {
+    mode: 'always' | 'selected' | 'selected_except';
+    /**
+     * Selected Accounts matching this list (selected) or outside it (selected_except); ignored for always.
+     */
+    accountTypes: Array<string>;
 };
 
 /**

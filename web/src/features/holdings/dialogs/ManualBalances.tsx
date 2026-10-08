@@ -20,15 +20,7 @@ export function ManualPending({
   const query = useManual(portfolioId, identityId);
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Manual records could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Manual records could not be loaded." />
       {query.data?.pending ? (
         <div className={shared.notice}>
           <div className={shared.headingRow}>

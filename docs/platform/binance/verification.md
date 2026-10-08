@@ -1,15 +1,9 @@
 # Binance verification
 
-This document owns current coverage, evidence review observations, remaining
-real gaps, and pending exchange-app checks. See the
-[Adapter mapping](./mapping.md) for field semantics and the
-[evidence workflow](../evidence-workflow.md) for recording and promotion rules.
-Synthetic tests, recorded responses, and exchange-app validation are distinct.
-
-Earn presentation coverage and remaining metadata evidence gaps are recorded in
-[the Earn delivery report](../earn-presentation-delivery.md). Existing recorded
-responses remain unchanged; the new descriptive fields are not exchange-app
-validation.
+Current evidence and pending exchange-app checks. See the
+[Adapter mapping](./mapping.md) for field semantics,
+[evidence workflow](../evidence-workflow.md) for recording and promotion, and
+[Earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
 
 ## Current evidence
 
@@ -81,11 +75,9 @@ unrelated accepted interfaces to manufacture a test scene.
 
 ## Interface references
 
-The following independent synthetic inputs test deliberate request, field,
-mapping, pagination, and failure scenarios. Recorded links identify reviewed
-responses and their observed limits. Actual per-file UTC timestamps and trimming
-notes are retained in each recorded envelope. Generic interfaces are not limited
-to the structure used to sample them.
+Synthetic inputs and recorded evidence are listed separately. Recorded envelopes
+retain exact UTC timestamps and trimming notes; sampling settings do not limit
+an interface's applicability.
 
 ### `cm: GET /dapi/v1/account`
 

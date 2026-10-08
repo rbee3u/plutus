@@ -8,7 +8,7 @@ import (
 )
 
 func TestPositionMarginUnitAndMode(t *testing.T) {
-	instrument := adapters.Instrument{Symbol: "BTC-USD-SWAP", Kind: adapters.KindInversePerp, SettlementSymbol: "BTC"}
+	instrument := adapters.Instrument{Symbol: "BTC-USD-SWAP", Kind: adapters.KindInversePerpetual, SettlementSymbol: "BTC"}
 	row := openPosition{InstID: instrument.Symbol, PosSide: " NET ", MgnMode: "cross", IMR: "100", Margin: "0.3", Ccy: "BTC"}
 	cross, err := mapPosition(&row, big.NewRat(-2, 1), &instrument)
 	if err != nil || cross.PositionMode != "one_way" || cross.Side != "short" || cross.Margin == nil || *cross.Margin != "100" || cross.MarginCurrency != "BTC" || cross.MarginBasis != "initial" {

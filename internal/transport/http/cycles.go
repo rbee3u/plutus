@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/rbee3u/plutus/internal/domain/jobs"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
+	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

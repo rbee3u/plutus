@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/offline"
-	"github.com/rbee3u/plutus/internal/platform/proxytest"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
+	"github.com/rbee3u/plutus/internal/testsupport/proxytest"
 )
 
 func TestMain(m *testing.M) {

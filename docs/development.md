@@ -263,40 +263,20 @@ mechanisms, not deployment policies.
 
 ## Seeds and collection
 
-`db reset` drops every table in the connected database and reapplies the
-migration. With `--seed` it then inserts the development seed, seals and enables
-its live Identities through the fake Adapter, and rebuilds every Valuation Point
-with the real valuation code; without `--seed` it leaves an empty migrated
-database (how the test environment is wiped). It requires
-`[database].allow_reset = true` in the selected TOML and a database name
-matching `plutus` or `plutus_<suffix>` that does not contain `prod`. `serve`
-never migrates or seeds automatically.
+`db reset` drops every table and reapplies migrations. Without `--seed`, it
+leaves an empty migrated database. It requires `[database].allow_reset = true`
+in the selected TOML and a database name matching `plutus` or `plutus_<suffix>`
+that does not contain `prod`. `serve` never migrates or seeds automatically.
 
-There is one walkthrough dataset owned only by Alice. Its four Portfolios are
-`default` (Asia/Shanghai, three months), `edge-cases` (Europe/Berlin, three
-months), `large` (UTC, seven days), and `empty` (Asia/Shanghai, no history). The
-healthy Portfolio covers all six supported Account Structures. Other Margin
-Modes, persistent anomalies, legacy reports and pagination are available in the
-other Portfolios. Older days have one point each; the last 14 local days have
-two-hour points, with additional samples around events. See the
-[scenario index](./seeds.md) for exact events, expected results and walkthrough
-instructions.
+The single Alice dataset covers healthy, edge-case, large-list, and empty
+Portfolios. See [seeds](./seeds.md) for scenarios, history windows, expected
+results, and measured reset times.
 
-Seeding requires `[collection].fake_adapter = true` and a configured master key.
-It rejects missing prerequisites before inserting data. Source Account Reports
-retain Positions and product descriptions; real valuation code rebuilds the
-derived results. Later fake collection uses the same original time anchor, so
-the data remains coherent after process restarts. Source facts commit together;
-rebuild retains one transaction per point. The CLI reports generation, source
-insertion, Connection setup and each Portfolio rebuild duration. The complete
-compiled `db reset --seed` target is at most 10 seconds on the current
-development machine with normal SQL logging; SPA and Go compilation are separate
-setup costs.
-
-`db seed` loads this data into an empty migrated database. It does not update
-existing seed data: fixed IDs would conflict. Use the dev wipe-and-serve script
-or `db reset --seed` to replace old data. The former `--profile` flag is no
-longer accepted. See [ADR 0008](./adr/0008-environments-and-migrations.md).
+Seeding requires the fake Adapter and a master key. It writes source facts and
+uses real valuation code to rebuild points. Continued fake collection shares the
+original anchor. `db seed` requires an empty migrated database; replace old dev
+data with the wipe script or `db reset --seed`. The retired `--profile` flag is
+rejected. See [ADR 0008](./adr/0008-environments-and-migrations.md).
 
 Equivalent commands without dropping the database:
 
@@ -308,11 +288,7 @@ go run ./cmd/plutus --config config/local.toml --env-file config/local.env serve
 go run ./cmd/plutus --config config/local.toml --env-file config/local.env collect --portfolio <uuid>
 ```
 
-Scratch logins from the development seed:
-
-| Username | Password       |
-| -------- | -------------- |
-| `alice`  | `Alice=123456` |
+Sign in with the [seed login](./seeds.md).
 
 Alice's `default` Portfolio is undeletable. Once `serve` runs, the scheduler
 collects enabled Connections every 15 minutes. `Collect now` on Overview and
@@ -333,10 +309,5 @@ caller controls when to rebuild the frontend. Direct `go build`, `go test`, and
 
 Each `*-serve.sh` script runs `make web` once before starting the service. The
 wipe-and-serve scripts reuse that build for both reset and serve commands.
-`./scripts/local-serve.sh` runs the complete local service on `:8080` and keeps
-existing data. Restart it after frontend changes to rebuild the embedded SPA.
-
-See [testing and verification](./testing.md) for validation gates, temporary
-MySQL setup, agent runtime verification, and Adapter delivery reports. For
-remote environments and upgrades, see [deployment](./deployment.md). Run
-`make help` to list targets, or `make run ARGS=--help` for CLI help.
+Restart after frontend changes to rebuild the embedded SPA. Run `make help` for
+targets or `make run ARGS=--help` for CLI help.

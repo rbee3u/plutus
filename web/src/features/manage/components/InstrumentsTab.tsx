@@ -1,21 +1,19 @@
 import { keys, listInstruments } from "@/api";
 import type { InstrumentList } from "@/api";
-import { PAGE_SIZE, type TabProps } from "../lib/catalog";
-import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
+import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { PAGE_SIZE, type TabProps } from "../lib/catalog";
 
 export function InstrumentsTab({ platform, q, offset, timezone, onOffset }: TabProps) {
   const platforms = usePlatforms();
   const query = usePortfolioQuery<InstrumentList>({
     key: (userId, portfolioId) => keys.catalogInstruments(userId, portfolioId, platform, q, offset),
-    ready: true,
     load: (portfolioId) =>
       listInstruments({
         path: { portfolioId },
@@ -25,15 +23,7 @@ export function InstrumentsTab({ platform, q, offset, timezone, onOffset }: TabP
 
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Instruments could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Instruments could not be loaded." />
       <DataTable
         caption="Instruments"
         columns={[

@@ -5,7 +5,7 @@ import {
   IdentityDialog,
   type IdentityDialogInput,
   type IdentityDialogRequest,
-} from "@/features/manage/dialogs/IdentityDialogs";
+} from "@/features/manage/dialogs/IdentityDialog";
 import { IdentityActions } from "../components/IdentityActions";
 import { useIdentityActions } from "../hooks/useIdentityActions";
 import { useIdentities } from "@/shared/lib/useIdentities";
@@ -59,15 +59,8 @@ export function IdentitiesPage() {
           {actions.notice}
         </p>
       ) : null}
-      <QueryRecovery
-        error={identities.error}
-        hasData={Boolean(identities.data)}
-        busy={identities.isFetching}
-        fallback="Identities could not be loaded."
-        onRetry={() => {
-          void identities.refetch();
-        }}
-      />
+      <QueryRecovery query={identities} fallback="Identities could not be loaded." />
+      <QueryRecovery query={platforms} fallback="Platforms could not be loaded." />
       <div className={shared.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
         <div>
           <h2 style={{ margin: 0 }}>Platform Connections</h2>

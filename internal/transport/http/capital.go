@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/domain/capital"
+	"github.com/rbee3u/plutus/internal/application/capital"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -50,10 +50,10 @@ func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFl
 	if err != nil {
 		return nil, err
 	}
-	key := headerValue(request.Params.IdempotencyKey)
+	key := stringValue(request.Params.IdempotencyKey)
 	rec, hash, err := a.lookupIdempotency(ctx, sc.user.ID, key, http.MethodPost, requestPath(ctx), raw)
 	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, problemf(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
+		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
 	}
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFl
 	body := toAPIFlow(&item)
 	etag := item.ETag()
 	a.storeIdempotency(ctx, sc.user.ID, &sc.portfolio.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: etagPtr(etag)}}, nil
+	return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: new(etag)}}, nil
 }
 
 func (a *API) GetCapitalFlow(ctx context.Context, request api.GetCapitalFlowRequestObject) (api.GetCapitalFlowResponseObject, error) {
@@ -101,7 +101,7 @@ func (a *API) GetCapitalFlow(ctx context.Context, request api.GetCapitalFlowRequ
 	if err != nil {
 		return nil, err
 	}
-	return api.GetCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.GetCapitalFlow200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.GetCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.GetCapitalFlow200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlowRequestObject) (api.PatchCapitalFlowResponseObject, error) {
@@ -143,7 +143,7 @@ func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlow
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.PatchCapitalFlow200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.PatchCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.PatchCapitalFlow200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) DeleteCapitalFlow(ctx context.Context, request api.DeleteCapitalFlowRequestObject) (api.DeleteCapitalFlowResponseObject, error) {

@@ -1,101 +1,116 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-/**
- * A Portfolio-scoped query key: `[family, userId, portfolioId, ...args]`. Every
- * Portfolio-scoped family shares this prefix so one invalidation call covers
- * them all.
- */
-export type PortfolioKey = readonly [string, string | undefined, string, ...unknown[]];
-
-function scoped(family: string) {
-  return (userId: string | undefined, portfolioId: string, ...args: unknown[]): PortfolioKey => [
-    family,
-    userId,
-    portfolioId,
-    ...args,
-  ];
+/** Keep each family identity, typed arguments, and Collection policy together. */
+function family<Args extends readonly unknown[]>(name: string, refreshOnCollection: boolean) {
+  return {
+    key: (userId: string | undefined, portfolioId: string, ...args: Args) =>
+      [name, userId, portfolioId, ...args] as const,
+    prefix: (userId: string | undefined, portfolioId: string) =>
+      [name, userId, portfolioId] as const,
+    refreshOnCollection,
+  };
 }
 
-/** Named builders for every query family the frontend caches. */
-export const keys = {
-  authMe: () => ["auth", "me"] as const,
-  platforms: (userId?: string) => ["platforms", userId] as const,
-  portfolio: scoped("portfolio"),
-  overview: scoped("overview"),
-  overviewChartWindow: scoped("overview-chart-window"),
-  identities: scoped("identities"),
-  balances: scoped("balances"),
-  positions: scoped("positions"),
-  dualPositions: scoped("dual-positions"),
-  earnPositions: scoped("earn-positions"),
-  accountBalances: scoped("account-balances"),
-  accountPositions: scoped("account-positions"),
-  accountDualPositions: scoped("account-dual-positions"),
-  accountEarnPositions: scoped("account-earn-positions"),
-  manualBalances: scoped("manual-balances"),
-  manualEditor: scoped("manual-editor"),
-  manualSymbols: scoped("manual-symbols"),
-  historyWindow: scoped("history-window"),
-  valuationPoints: scoped("valuation-points"),
-  valuationPointPage: scoped("valuation-point-page"),
-  overviewChartPoints: scoped("overview-chart-points"),
-  valuationPoint: scoped("valuation-point"),
-  periodCloses: scoped("period-closes"),
-  valueChanges: scoped("value-changes"),
-  customValueChange: scoped("custom-value-change"),
-  boundaryEvents: scoped("boundary-events"),
-  collectionCycles: scoped("collection-cycles"),
-  collectionCycle: scoped("collection-cycle"),
-  jobs: scoped("jobs"),
-  job: scoped("job"),
-  auditEvents: scoped("audit-events"),
-  catalogListings: scoped("catalog-listings"),
-  catalogInstruments: scoped("catalog-instruments"),
-  capitalFlows: scoped("capital-flows"),
-  capitalFlow: scoped("capital-flow"),
+const registry = {
+  portfolio: family<[]>("portfolio", false),
+  overview: family<[]>("overview", true),
+  overviewChartWindow: family<[preset?: string]>("overview-chart-window", true),
+  overviewChartPoints: family<[from?: string, to?: string, granularity?: string]>(
+    "overview-chart-points",
+    true,
+  ),
+  identities: family<[]>("identities", true),
+  balances: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
+    "balances",
+    true,
+  ),
+  positions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
+    "positions",
+    true,
+  ),
+  dualPositions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
+    "dual-positions",
+    true,
+  ),
+  earnPositions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
+    "earn-positions",
+    true,
+  ),
+  accountBalances: family<[accountId?: string, pointId?: string | null, reportId?: string | null]>(
+    "account-balances",
+    true,
+  ),
+  accountPositions: family<[accountId?: string, pointId?: string | null, reportId?: string | null]>(
+    "account-positions",
+    true,
+  ),
+  accountDualPositions: family<
+    [accountId?: string, pointId?: string | null, reportId?: string | null]
+  >("account-dual-positions", true),
+  accountEarnPositions: family<
+    [accountId?: string, pointId?: string | null, reportId?: string | null]
+  >("account-earn-positions", true),
+  manualBalances: family<[identityId?: string]>("manual-balances", true),
+  manualEditor: family<[identityId?: string, editorId?: string]>("manual-editor", false),
+  manualSymbols: family<[platform?: string]>("manual-symbols", true),
+  historyWindow: family<
+    [timezone?: string, fromOrPreset?: string, to?: string, mountId?: string, anchor?: number]
+  >("history-window", true),
+  valuationPoints: family<[from?: string, to?: string, granularity?: string]>(
+    "valuation-points",
+    true,
+  ),
+  valuationPointPage: family<[from?: string, to?: string, offset?: number, limit?: number]>(
+    "valuation-point-page",
+    true,
+  ),
+  valuationPoint: family<[pointId?: string]>("valuation-point", true),
+  periodCloses: family<[kind?: string, from?: string, to?: string]>("period-closes", true),
+  valueChanges: family<[kind?: string, from?: string, to?: string]>("value-changes", true),
+  customValueChange: family<[from?: string, to?: string]>("custom-value-change", true),
+  boundaryEvents: family<[from?: string, to?: string]>("boundary-events", true),
+  collectionCycles: family<[cursor?: string]>("collection-cycles", true),
+  collectionCycle: family<[cycleId?: string | null]>("collection-cycle", true),
+  jobs: family<[kind?: string, cursor?: string]>("jobs", true),
+  job: family<[jobId?: string]>("job", false),
+  auditEvents: family<[action?: string, resourceType?: string, cursor?: string]>(
+    "audit-events",
+    true,
+  ),
+  catalogListings: family<
+    [platform?: string, search?: string, ignoredOnly?: boolean, offset?: number]
+  >("catalog-listings", true),
+  catalogInstruments: family<[platform?: string, search?: string, offset?: number]>(
+    "catalog-instruments",
+    true,
+  ),
+  capitalFlows: family<[from?: string, to?: string]>("capital-flows", true),
+  capitalFlow: family<[flowId?: string]>("capital-flow", false),
 } as const;
 
-/** Families that read Valuation Points and change after a Collection Cycle. */
-export const PORTFOLIO_READ_FAMILIES = [
-  "overview",
-  "overview-chart-window",
-  "overview-chart-points",
-  "history-window",
-  "valuation-point-page",
-  "balances",
-  "positions",
-  "dual-positions",
-  "earn-positions",
-  "account-balances",
-  "account-positions",
-  "account-dual-positions",
-  "account-earn-positions",
-  "manual-balances",
-  "manual-symbols",
-  "valuation-points",
-  "valuation-point",
-  "period-closes",
-  "value-changes",
-  "custom-value-change",
-  "boundary-events",
-  "collection-cycles",
-  "collection-cycle",
-  "jobs",
-  "identities",
-  "catalog-listings",
-  "catalog-instruments",
-  "capital-flows",
-  "audit-events",
-] as const;
+const portfolioKeys = Object.fromEntries(
+  Object.entries(registry).map(([name, entry]) => [name, entry.key]),
+) as { [K in keyof typeof registry]: (typeof registry)[K]["key"] };
 
+export const keys = {
+  authMe: () => ["auth", "me"] as const,
+  authSessions: (userId?: string) => ["auth", "sessions", userId] as const,
+  platforms: (userId?: string) => ["platforms", userId] as const,
+  portfolios: (userId?: string) => ["portfolios", userId] as const,
+  ...portfolioKeys,
+};
+
+/** Preserve the existing Collection-dependent set; editable resources are separate. */
 export async function invalidatePortfolioReads(
   queryClient: QueryClient,
   userId: string | undefined,
   portfolioId: string,
 ): Promise<void> {
   await Promise.all(
-    PORTFOLIO_READ_FAMILIES.map((family) =>
-      queryClient.invalidateQueries({ queryKey: [family, userId, portfolioId] }),
-    ),
+    Object.values(registry)
+      .filter((entry) => entry.refreshOnCollection)
+      .map((entry) =>
+        queryClient.invalidateQueries({ queryKey: entry.prefix(userId, portfolioId) }),
+      ),
   );
 }

@@ -1,3 +1,5 @@
+import { tabFromSearch, tabHref } from "@/shared/navigation/tabs";
+import { CATALOG_TABS, ACTIVITY_TABS } from "@/features/manage/navigation";
 import {
   Activity,
   BarChart3,
@@ -9,8 +11,6 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-
-export const LAST_PORTFOLIO_KEY = "plutus-last-portfolio-id";
 
 export interface NavItem {
   to: string;
@@ -41,12 +41,6 @@ export interface ModuleDefinition {
   defaultPathSuffix: string;
   subviews: readonly ModuleSubview[];
 }
-
-export const CATALOG_TABS = ["listings", "instruments"] as const;
-export type CatalogTab = (typeof CATALOG_TABS)[number];
-
-export const ACTIVITY_TABS = ["cycles", "jobs", "audit"] as const;
-export type ActivityTab = (typeof ACTIVITY_TABS)[number];
 
 export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
   {
@@ -110,8 +104,8 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Manage",
     defaultPathSuffix: "/data/catalog",
     subviews: [
-      { label: "Asset Listings", pathSuffix: "/data/catalog", tab: "listings" },
-      { label: "Instruments", pathSuffix: "/data/catalog", tab: "instruments" },
+      { label: "Asset Listings", pathSuffix: "/data/catalog", tab: CATALOG_TABS[0] },
+      { label: "Instruments", pathSuffix: "/data/catalog", tab: CATALOG_TABS[1] },
     ],
   },
   {
@@ -122,9 +116,9 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Manage",
     defaultPathSuffix: "/data/activity",
     subviews: [
-      { label: "Collection Cycles", pathSuffix: "/data/activity", tab: "cycles" },
-      { label: "Jobs", pathSuffix: "/data/activity", tab: "jobs" },
-      { label: "Audit", pathSuffix: "/data/activity", tab: "audit" },
+      { label: "Collection Cycles", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[0] },
+      { label: "Jobs", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[1] },
+      { label: "Audit", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[2] },
     ],
   },
   {
@@ -140,34 +134,6 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
 
 export function isAccountPath(pathname: string): boolean {
   return pathname.startsWith("/account/");
-}
-
-function searchQuery(search: string): URLSearchParams {
-  return new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
-}
-
-/** The `?tab=` value when it is one of `tabs`, otherwise the first tab. */
-export function tabFromSearch(search: string, tabs: readonly string[]): string {
-  const requested = searchQuery(search).get("tab");
-  return tabs.find((tab) => tab === requested) ?? tabs[0] ?? "";
-}
-
-/** A search string that switches the tab and restarts paging. */
-export function tabHref(search: string, tab: string): string {
-  const next = searchQuery(search);
-  next.set("tab", tab);
-  next.delete("offset");
-  next.delete("cursor");
-  return `?${next.toString()}`;
-}
-
-export function catalogTabFromSearch(search: string): CatalogTab {
-  return tabFromSearch(search, CATALOG_TABS) === "instruments" ? "instruments" : "listings";
-}
-
-export function activityTabFromSearch(search: string): ActivityTab {
-  const tab = tabFromSearch(search, ACTIVITY_TABS);
-  return tab === "jobs" || tab === "audit" ? tab : "cycles";
 }
 
 function portfolioRoute(pathname: string): { portfolioId: string; suffix: string } | null {

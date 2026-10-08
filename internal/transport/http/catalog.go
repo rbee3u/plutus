@@ -3,14 +3,9 @@ package httpserver
 import (
 	"context"
 
-	"github.com/rbee3u/plutus/internal/domain/catalog"
-	"github.com/rbee3u/plutus/internal/domain/jobs"
+	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
-
-func boolValue(value *bool) bool {
-	return value != nil && *value
-}
 
 func (a *API) ListAssetListings(ctx context.Context, request api.ListAssetListingsRequestObject) (api.ListAssetListingsResponseObject, error) {
 	sc, err := a.scoped(ctx, request.PortfolioId)
@@ -46,7 +41,7 @@ func (a *API) PutAssetListingMapping(ctx context.Context, request api.PutAssetLi
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	item, affected, err := a.Catalog.PutMapping(ctx, request.ListingId, catalog.MappingInput{
+	item, err := a.Catalog.PutMapping(ctx, request.ListingId, catalog.MappingInput{
 		ActorUserID: sc.user.ID,
 		PortfolioID: sc.portfolio.ID,
 		RequestID:   requestTraceID(ctx),
@@ -56,17 +51,7 @@ func (a *API) PutAssetListingMapping(ctx context.Context, request api.PutAssetLi
 	if err != nil {
 		return nil, err
 	}
-	if err := a.Catalog.WithExclusion(ctx, sc.portfolio.ID, &item); err != nil {
-		return nil, err
-	}
-	if a.Jobs != nil {
-		for _, portfolioID := range affected {
-			if _, _, err := a.Jobs.EnqueueRecalc(ctx, portfolioID, jobs.RecalcPayload{Reason: "asset listing mapping changed", ListingID: item.ID.String()}, &sc.user.ID); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return api.PutAssetListingMapping200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingMapping200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.PutAssetListingMapping200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) PutAssetListingExclusion(ctx context.Context, request api.PutAssetListingExclusionRequestObject) (api.PutAssetListingExclusionResponseObject, error) {
@@ -91,7 +76,7 @@ func (a *API) PutAssetListingExclusion(ctx context.Context, request api.PutAsset
 	if err != nil {
 		return nil, err
 	}
-	return api.PutAssetListingExclusion200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingExclusion200ResponseHeaders{ETag: etagPtr(item.ExclusionETag())}}, nil
+	return api.PutAssetListingExclusion200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
 }
 
 func (a *API) ListInstruments(ctx context.Context, request api.ListInstrumentsRequestObject) (api.ListInstrumentsResponseObject, error) {

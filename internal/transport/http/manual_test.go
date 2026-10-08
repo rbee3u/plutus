@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -12,18 +13,20 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/domain/identity"
-	"github.com/rbee3u/plutus/internal/domain/manual"
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fake"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
 func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	ctx := t.Context()
 	authentication := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "manual-" + uuid.NewString()[:8]
@@ -50,15 +53,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db)}})
-	csrf := httptest.NewRecorder()
-	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/auth/csrf", nil))
-	var token struct {
-		Token string `json:"token"`
-	}
-	if err := json.Unmarshal(csrf.Body.Bytes(), &token); err != nil {
-		t.Fatal(err)
-	}
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db, catalog.NewService(db, jobs.NewService(db)))}})
 	request := func(method, path, body, etag string, authenticated, csrfPresent bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -100,6 +95,27 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 		t.Fatalf("add %d %s", added.Code, added.Body.String())
 	}
 	next := added.Header().Get("ETag")
+	ownerSession := session
+	session = otherUserSession(t, authentication)
+	for _, tc := range []struct{ method, suffix, body string }{
+		{"GET", "", ""},
+		{"POST", "", `{"symbol":"BTC","quantity":"2"}`},
+		{"PATCH", "/USD", `{"quantity":"-999"}`},
+		{"DELETE", "/USD", ""},
+	} {
+		t.Run("foreign "+tc.method, func(t *testing.T) {
+			res := request(tc.method, base+tc.suffix, tc.body, next, true, true)
+			if res.Code != http.StatusNotFound {
+				t.Fatalf("foreign access: %d %s", res.Code, res.Body.String())
+			}
+		})
+	}
+	session = ownerSession
+	unchanged := request("GET", base, "", "", true, false)
+	var after api.ManualBalanceState
+	if unchanged.Code != 200 || json.Unmarshal(unchanged.Body.Bytes(), &after) != nil || !reflect.DeepEqual(state, after) || unchanged.Header().Get("ETag") != next {
+		t.Fatalf("rejected writes changed Manual balances: %d %s", unchanged.Code, unchanged.Body.String())
+	}
 	if res := request("POST", base, `{"symbol":"USD","quantity":"10"}`, next, true, true); res.Code != 409 {
 		t.Fatalf("duplicate %d %s", res.Code, res.Body.String())
 	}

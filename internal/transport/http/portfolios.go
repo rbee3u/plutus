@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -45,10 +45,10 @@ func (a *API) CreatePortfolio(ctx context.Context, request api.CreatePortfolioRe
 	if err != nil {
 		return nil, err
 	}
-	key := headerValue(request.Params.IdempotencyKey)
+	key := stringValue(request.Params.IdempotencyKey)
 	rec, hash, err := a.lookupIdempotency(ctx, user.ID, key, http.MethodPost, requestPath(ctx), raw)
 	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, problemf(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
+		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
 	}
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (a *API) CreatePortfolio(ctx context.Context, request api.CreatePortfolioRe
 	body := toAPIPortfolio(&item)
 	etag := item.ETag()
 	a.storeIdempotency(ctx, user.ID, &item.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: etagPtr(etag)}}, nil
+	return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: new(etag)}}, nil
 }
 
 func (a *API) GetPortfolio(ctx context.Context, request api.GetPortfolioRequestObject) (api.GetPortfolioResponseObject, error) {
@@ -77,7 +77,7 @@ func (a *API) GetPortfolio(ctx context.Context, request api.GetPortfolioRequestO
 	if err != nil {
 		return nil, err
 	}
-	return api.GetPortfolio200JSONResponse{Body: toAPIPortfolio(&sc.portfolio), Headers: api.GetPortfolio200ResponseHeaders{ETag: etagPtr(sc.portfolio.ETag())}}, nil
+	return api.GetPortfolio200JSONResponse{Body: toAPIPortfolio(&sc.portfolio), Headers: api.GetPortfolio200ResponseHeaders{ETag: new(sc.portfolio.ETag())}}, nil
 }
 
 func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequestObject) (api.PatchPortfolioResponseObject, error) {
@@ -97,7 +97,7 @@ func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequ
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchPortfolio200JSONResponse{Body: toAPIPortfolio(&item), Headers: api.PatchPortfolio200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.PatchPortfolio200JSONResponse{Body: toAPIPortfolio(&item), Headers: api.PatchPortfolio200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) DeletePortfolio(ctx context.Context, request api.DeletePortfolioRequestObject) (api.DeletePortfolioResponseObject, error) {

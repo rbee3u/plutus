@@ -260,119 +260,119 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	usdt := round(2, 5000*f*wave)
 	btc := round(6, 0.25*f*wave)
 	eth := round(4, 2.5*f)
-	btcPrice := mustFloat(s.Price("BTC"))
-	ethPrice := mustFloat(s.Price("ETH"))
+	btcPrice := floatValue(s.Price("BTC"))
+	ethPrice := floatValue(s.Price("ETH"))
 	//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
 	switch accountType {
 	case "portfolio_margin", "trading", "unified", "main", "multi_m", "coin_m":
 		equity := round(2, usdt+btc*btcPrice+eth*ethPrice-1200*f)
-		report.Equity = str(equity)
-		report.AdjustedEquity = str(round(2, equity*0.97))
-		report.AvailableEquity = str(round(2, equity*0.55))
-		report.InitialMarginRatio = str(round(4, 0.18+0.02*math.Sin(hours/7)))
-		report.MaintenanceMarginRatio = str(round(4, 0.09+0.01*math.Sin(hours/7)))
-		report.UnifiedMarginRatio = str(round(4, 3.1+0.4*math.Sin(hours/13+f)))
+		report.Equity = amountPtr(equity)
+		report.AdjustedEquity = amountPtr(round(2, equity*0.97))
+		report.AvailableEquity = amountPtr(round(2, equity*0.55))
+		report.InitialMarginRatio = amountPtr(round(4, 0.18+0.02*math.Sin(hours/7)))
+		report.MaintenanceMarginRatio = amountPtr(round(4, 0.09+0.01*math.Sin(hours/7)))
+		report.UnifiedMarginRatio = amountPtr(round(4, 3.1+0.4*math.Sin(hours/13+f)))
 		report.Balances = []adapters.Balance{
-			{Symbol: "USDT", Name: "Tether", Equity: fs(usdt), AvailableToWithdraw: str(round(2, usdt*0.5)), AvailableToTrade: str(round(2, usdt*0.9))},
-			{Symbol: "BTC", Name: "Bitcoin", Equity: fs(btc), AvailableToWithdraw: str(round(6, btc*0.5)), AvailableToTrade: str(btc)},
-			{Symbol: "ETH", Name: "Ethereum", Equity: fs(eth), AvailableToWithdraw: str(eth), AvailableToTrade: str(eth), Liability: str(round(4, 0.4*f)), Interest: str(round(6, 0.0012*f))},
+			{Symbol: "USDT", Name: "Tether", Equity: amountString(usdt), AvailableToWithdraw: amountPtr(round(2, usdt*0.5)), AvailableToTrade: amountPtr(round(2, usdt*0.9))},
+			{Symbol: "BTC", Name: "Bitcoin", Equity: amountString(btc), AvailableToWithdraw: amountPtr(round(6, btc*0.5)), AvailableToTrade: amountPtr(btc)},
+			{Symbol: "ETH", Name: "Ethereum", Equity: amountString(eth), AvailableToWithdraw: amountPtr(eth), AvailableToTrade: amountPtr(eth), Liability: amountPtr(round(4, 0.4*f)), Interest: amountPtr(round(6, 0.0012*f))},
 		}
 		short := round(3, 0.5*f)
 		entry := round(2, btcPrice*0.98)
 		report.Positions = []adapters.Position{{
 			PlatformPositionRef: "BTCUSDT-perp-short",
-			Instrument:          adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerp, BaseSymbol: "BTC", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: str(1)},
+			Instrument:          adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual, BaseSymbol: "BTC", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: amountPtr(1)},
 			Side:                adapters.SideShort,
-			Quantity:            fs(short),
+			Quantity:            amountString(short),
 			QuantityUnit:        adapters.UnitBase,
-			EntryPrice:          str(entry),
-			MarkPrice:           str(btcPrice),
-			LiquidationPrice:    str(round(2, btcPrice*1.35)),
-			UnrealizedPnl:       str(round(2, (entry-btcPrice)*short)),
-			Leverage:            str(3),
-			Margin:              str(round(2, short*btcPrice/3)),
+			EntryPrice:          amountPtr(entry),
+			MarkPrice:           amountPtr(btcPrice),
+			LiquidationPrice:    amountPtr(round(2, btcPrice*1.35)),
+			UnrealizedPnl:       amountPtr(round(2, (entry-btcPrice)*short)),
+			Leverage:            amountPtr(3),
+			Margin:              amountPtr(round(2, short*btcPrice/3)),
 		}, {
 			PlatformPositionRef: "ETHUSDT-perp-long",
-			Instrument:          adapters.Instrument{Symbol: "ETHUSDT", Kind: adapters.KindLinearPerp, BaseSymbol: "ETH", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: str(1)},
+			Instrument:          adapters.Instrument{Symbol: "ETHUSDT", Kind: adapters.KindLinearPerpetual, BaseSymbol: "ETH", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: amountPtr(1)},
 			Side:                adapters.SideLong,
-			Quantity:            fs(round(2, 4*f)),
+			Quantity:            amountString(round(2, 4*f)),
 			QuantityUnit:        adapters.UnitBase,
-			EntryPrice:          str(round(2, ethPrice*1.02)),
-			MarkPrice:           str(ethPrice),
-			LiquidationPrice:    str(round(2, ethPrice*0.6)),
-			UnrealizedPnl:       str(round(2, (ethPrice-ethPrice*1.02)*4*f)),
-			Leverage:            str(2),
-			Margin:              str(round(2, 4*f*ethPrice/2)),
+			EntryPrice:          amountPtr(round(2, ethPrice*1.02)),
+			MarkPrice:           amountPtr(ethPrice),
+			LiquidationPrice:    amountPtr(round(2, ethPrice*0.6)),
+			UnrealizedPnl:       amountPtr(round(2, (ethPrice-ethPrice*1.02)*4*f)),
+			Leverage:            amountPtr(2),
+			Margin:              amountPtr(round(2, 4*f*ethPrice/2)),
 		}}
 	case "cross_margin":
 		// Binance Classic Cross Margin: net assets per coin, a BTC loan, and the Margin Level.
-		report.UnifiedMarginRatio = str(round(4, 4.2+0.5*math.Sin(hours/9+f)))
+		report.UnifiedMarginRatio = amountPtr(round(4, 4.2+0.5*math.Sin(hours/9+f)))
 		report.Balances = []adapters.Balance{
-			{Symbol: "USDT", Name: "Tether", Equity: fs(round(2, 3000*f*wave)), AvailableToWithdraw: str(round(2, 2000*f)), AvailableToTrade: str(round(2, 3000*f))},
-			{Symbol: "BTC", Name: "Bitcoin", Equity: fs(round(6, 0.02*f)), Liability: str(round(6, 0.01*f)), Interest: str(round(8, 0.00001*f))},
+			{Symbol: "USDT", Name: "Tether", Equity: amountString(round(2, 3000*f*wave)), AvailableToWithdraw: amountPtr(round(2, 2000*f)), AvailableToTrade: amountPtr(round(2, 3000*f))},
+			{Symbol: "BTC", Name: "Bitcoin", Equity: amountString(round(6, 0.02*f)), Liability: amountPtr(round(6, 0.01*f)), Interest: amountPtr(round(8, 0.00001*f))},
 		}
 	case "isolated_margin":
 		// Binance Classic Isolated Margin: coins summed across pairs, with the pair's loan.
 		report.Balances = []adapters.Balance{
-			{Symbol: "SOL", Name: "Solana", Equity: fs(round(3, 8*f)), Liability: str(round(3, 2*f)), Interest: str(round(6, 0.001*f))},
-			{Symbol: "USDT", Name: "Tether", Equity: fs(round(2, 400*f))},
+			{Symbol: "SOL", Name: "Solana", Equity: amountString(round(3, 8*f)), Liability: amountPtr(round(3, 2*f)), Interest: amountPtr(round(6, 0.001*f))},
+			{Symbol: "USDT", Name: "Tether", Equity: amountString(round(2, 400*f))},
 		}
 	case "um_futures":
 		// Binance Classic USDⓈ-M Futures in Multi-Assets Mode: margin balance and account figures.
 		short := round(3, 0.2*f)
 		entry := round(2, btcPrice*1.01)
 		margin := round(2, 4000*f*wave)
-		report.AdjustedEquity = str(margin)
-		report.AvailableEquity = str(round(2, margin*0.7))
-		report.InitialMarginRatio = str(round(4, 0.12+0.02*math.Sin(hours/7)))
-		report.MaintenanceMarginRatio = str(round(4, 0.04+0.01*math.Sin(hours/7)))
+		report.AdjustedEquity = amountPtr(margin)
+		report.AvailableEquity = amountPtr(round(2, margin*0.7))
+		report.InitialMarginRatio = amountPtr(round(4, 0.12+0.02*math.Sin(hours/7)))
+		report.MaintenanceMarginRatio = amountPtr(round(4, 0.04+0.01*math.Sin(hours/7)))
 		report.Balances = []adapters.Balance{
-			{Symbol: "USDT", Name: "Tether", Equity: fs(margin), AvailableToWithdraw: str(round(2, margin*0.6)), AvailableToTrade: str(round(2, margin*0.7)), UnrealizedPnl: str(round(2, (entry-btcPrice)*short))},
+			{Symbol: "USDT", Name: "Tether", Equity: amountString(margin), AvailableToWithdraw: amountPtr(round(2, margin*0.6)), AvailableToTrade: amountPtr(round(2, margin*0.7)), UnrealizedPnl: amountPtr(round(2, (entry-btcPrice)*short))},
 		}
 		report.Positions = []adapters.Position{{
 			PlatformPositionRef: "BTCUSDT-BOTH",
-			Instrument:          adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerp, BaseSymbol: "BTC", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: str(1)},
+			Instrument:          adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual, BaseSymbol: "BTC", QuoteSymbol: "USDT", SettlementSymbol: "USDT", ContractSize: amountPtr(1)},
 			Side:                adapters.SideShort,
-			Quantity:            fs(short),
+			Quantity:            amountString(short),
 			QuantityUnit:        adapters.UnitBase,
-			EntryPrice:          str(entry),
-			MarkPrice:           str(btcPrice),
-			LiquidationPrice:    str(round(2, btcPrice*1.6)),
-			UnrealizedPnl:       str(round(2, (entry-btcPrice)*short)),
-			Leverage:            str(5),
-			Margin:              str(round(2, short*btcPrice/5)),
+			EntryPrice:          amountPtr(entry),
+			MarkPrice:           amountPtr(btcPrice),
+			LiquidationPrice:    amountPtr(round(2, btcPrice*1.6)),
+			UnrealizedPnl:       amountPtr(round(2, (entry-btcPrice)*short)),
+			Leverage:            amountPtr(5),
+			Margin:              amountPtr(round(2, short*btcPrice/5)),
 		}}
 	case "cm_futures":
 		// Binance Classic COIN-M Futures: BTC margin and an inverse perpetual in contracts.
 		contracts := math.Round(20 * f)
 		entry := round(1, btcPrice*0.99)
 		report.Balances = []adapters.Balance{
-			{Symbol: "BTC", Name: "Bitcoin", Equity: fs(round(6, 0.05*f*wave)), AvailableToWithdraw: str(round(6, 0.03*f)), UnrealizedPnl: str(round(8, contracts*100*(1/entry-1/btcPrice)))},
+			{Symbol: "BTC", Name: "Bitcoin", Equity: amountString(round(6, 0.05*f*wave)), AvailableToWithdraw: amountPtr(round(6, 0.03*f)), UnrealizedPnl: amountPtr(round(8, contracts*100*(1/entry-1/btcPrice)))},
 		}
 		report.Positions = []adapters.Position{{
 			PlatformPositionRef: "BTCUSD_PERP-BOTH",
-			Instrument:          adapters.Instrument{Symbol: "BTCUSD_PERP", Kind: adapters.KindInversePerp, BaseSymbol: "BTC", QuoteSymbol: "USD", SettlementSymbol: "BTC", ContractSize: str(100)},
+			Instrument:          adapters.Instrument{Symbol: "BTCUSD_PERP", Kind: adapters.KindInversePerpetual, BaseSymbol: "BTC", QuoteSymbol: "USD", SettlementSymbol: "BTC", ContractSize: amountPtr(100)},
 			Side:                adapters.SideLong,
-			Quantity:            fs(contracts),
+			Quantity:            amountString(contracts),
 			QuantityUnit:        adapters.UnitContracts,
-			EntryPrice:          str(entry),
-			MarkPrice:           str(btcPrice),
-			LiquidationPrice:    str(round(1, btcPrice*0.55)),
-			UnrealizedPnl:       str(round(8, contracts*100*(1/entry-1/btcPrice))),
-			Leverage:            str(2),
+			EntryPrice:          amountPtr(entry),
+			MarkPrice:           amountPtr(btcPrice),
+			LiquidationPrice:    amountPtr(round(1, btcPrice*0.55)),
+			UnrealizedPnl:       amountPtr(round(8, contracts*100*(1/entry-1/btcPrice))),
+			Leverage:            amountPtr(2),
 		}}
 	case "spot":
 		report.Balances = []adapters.Balance{
-			{Symbol: "USDC", Name: "USD Coin", Equity: fs(round(2, 800*f)), AvailableToWithdraw: str(round(2, 800*f)), AvailableToTrade: str(round(2, 800*f))},
-			{Symbol: "SOL", Name: "Solana", Equity: fs(round(3, 12*f)), AvailableToWithdraw: str(round(3, 12*f)), AvailableToTrade: str(round(3, 12*f))},
+			{Symbol: "USDC", Name: "USD Coin", Equity: amountString(round(2, 800*f)), AvailableToWithdraw: amountPtr(round(2, 800*f)), AvailableToTrade: amountPtr(round(2, 800*f))},
+			{Symbol: "SOL", Name: "Solana", Equity: amountString(round(3, 12*f)), AvailableToWithdraw: amountPtr(round(3, 12*f)), AvailableToTrade: amountPtr(round(3, 12*f))},
 		}
 		if s.unpriced {
 			report.Balances = append(report.Balances, UnpricedBalance(f))
 		}
 	case "funding", "derivatives_holding":
 		report.Balances = []adapters.Balance{
-			{Symbol: "USDT", Name: "Tether", Equity: fs(round(2, 1200*f)), AvailableToWithdraw: str(round(2, 1200*f)), AvailableToTrade: str(0)},
-			{Symbol: "BNB", Name: "BNB", Equity: fs(round(3, 3*f)), AvailableToWithdraw: str(round(3, 3*f)), AvailableToTrade: str(0)},
+			{Symbol: "USDT", Name: "Tether", Equity: amountString(round(2, 1200*f)), AvailableToWithdraw: amountPtr(round(2, 1200*f)), AvailableToTrade: amountPtr(0)},
+			{Symbol: "BNB", Name: "BNB", Equity: amountString(round(3, 3*f)), AvailableToWithdraw: amountPtr(round(3, 3*f)), AvailableToTrade: amountPtr(0)},
 		}
 	case adapters.TypeDualInvestment:
 		report.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "1000"}, {Symbol: "BTC", Equity: "0.02"}}
@@ -386,21 +386,21 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		} {
 			maturity := expiry.Add(time.Duration([]int{0, 1, 0, 2, 1}[i]) * 24 * time.Hour)
 			subscribed := maturity.Add(-72 * time.Hour)
-			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PlatformPositionRef: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.DualText(spec.base + "-" + spec.strike), OrderRef: adapters.DualText(fmt.Sprintf("order-%d", i+1)), BaseSymbol: adapters.DualText(spec.base), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: spec.invest, Principal: spec.amount, Direction: adapters.DualText(spec.direction), TargetPrice: adapters.DualText(spec.strike), ExpiryAt: &maturity, SubscribedAt: &subscribed, AnnualizedRate: adapters.DualText("0.18"), RateKind: adapters.DualText("apr"), Status: "active"})
+			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PlatformPositionRef: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.OptionalText(spec.base + "-" + spec.strike), OrderRef: adapters.OptionalText(fmt.Sprintf("order-%d", i+1)), BaseSymbol: adapters.OptionalText(spec.base), QuoteSymbol: adapters.OptionalText("USDT"), InvestSymbol: spec.invest, Principal: spec.amount, Direction: adapters.OptionalText(spec.direction), TargetPrice: adapters.OptionalText(spec.strike), ExpiryAt: &maturity, SubscribedAt: &subscribed, AnnualizedRate: adapters.OptionalText("0.18"), RateKind: adapters.OptionalText("apr"), Status: "active"})
 		}
 	case "earn":
 		report.Balances = []adapters.Balance{
-			{Symbol: "ETH", Name: "Ethereum", Equity: fs(round(4, 1.5*f)), AvailableToWithdraw: str(0), AvailableToTrade: str(0), Interest: str(round(6, 0.0031*f))},
+			{Symbol: "ETH", Name: "Ethereum", Equity: amountString(round(4, 1.5*f)), AvailableToWithdraw: amountPtr(0), AvailableToTrade: amountPtr(0), Interest: amountPtr(round(6, 0.0031*f))},
 		}
 		report.EarnDetailsCollected = true
 		for i, kind := range []string{"flexible", "fixed"} {
 			p := adapters.NewEarnPosition(fmt.Sprintf("earn-%d", i+1), kind, "position", "principal")
-			p.ProductRef = adapters.DualText(fmt.Sprintf("ETH-%s", kind))
-			p.ProductName = adapters.DualText("Demo Earn " + kind)
-			p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.MustParse(report.Balances[0].Equity), big.NewRat(2, 1)))})
+			p.ProductRef = adapters.OptionalText(fmt.Sprintf("ETH-%s", kind))
+			p.ProductName = adapters.OptionalText("Demo Earn " + kind)
+			p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(report.Balances[0].Equity), big.NewRat(2, 1)))})
 			p.AddRate("0.045", "apr", "estimated", "Estimated APR", nil)
-			p.AddReward("ETH", fs(round(6, 0.00155*f)), "cumulative")
-			p.Status = adapters.DualText("Active")
+			p.AddReward("ETH", amountString(round(6, 0.00155*f)), "cumulative")
+			p.Status = adapters.OptionalText("Active")
 			if kind == "fixed" {
 				subscribed := at.UTC().Truncate(24 * time.Hour).Add(-72 * time.Hour)
 				maturity := subscribed.Add(30 * 24 * time.Hour)
@@ -421,7 +421,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 
 // UnpricedBalance is the TOKENX Balance the fake never prices; seeds use it for the no-price case.
 func UnpricedBalance(factor float64) adapters.Balance {
-	return adapters.Balance{Symbol: "TOKENX", Name: "Token X", Equity: fs(round(2, 1500*factor))}
+	return adapters.Balance{Symbol: "TOKENX", Name: "Token X", Equity: amountString(round(2, 1500*factor))}
 }
 
 func (s ScenarioValues) factor(accountType adapters.AccountType) float64 {
@@ -439,16 +439,15 @@ func round(places int, value float64) float64 {
 	return math.Round(value*p) / p
 }
 
-func fs(value float64) string {
+func amountString(value float64) string {
 	return fmt.Sprintf("%.8f", value)
 }
 
-func str(value float64) *string {
-	s := fs(value)
-	return &s
+func amountPtr(value float64) *string {
+	return new(amountString(value))
 }
 
-func mustFloat(value string) float64 {
+func floatValue(value string) float64 {
 	var f float64
 	_, _ = fmt.Sscanf(value, "%g", &f)
 	return f

@@ -14,12 +14,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 func TestAuthHTTPFlow(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "http-" + uuid.NewString()[:8]
 	password := "Correct=123456"
@@ -109,7 +109,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 }
 
 func TestLoginRateLimit(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	engine := Engine(&EngineOptions{
 		Logger:   slog.New(slog.DiscardHandler),
@@ -144,7 +144,7 @@ func TestLoginRateLimit(t *testing.T) {
 }
 
 func TestConfiguredCookieNames(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "cookie-" + uuid.NewString()[:8]
 	password := "Correct=123456"
@@ -213,7 +213,7 @@ func cookieValue(rec *httptest.ResponseRecorder, name string) string {
 }
 
 func TestPutAuthPassword(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	svc := auth.NewService(db, time.Hour, 24*time.Hour)
 	username := "change-pwd-" + uuid.NewString()[:8]
 	oldPassword := "OldPass=123456"
@@ -310,4 +310,18 @@ func TestPutAuthPassword(t *testing.T) {
 	if meRec.Code != http.StatusUnauthorized {
 		t.Fatalf("old session should be unauthorized, got %d %s", meRec.Code, meRec.Body.String())
 	}
+}
+
+// otherUserSession supplies a real second principal for ownership checks.
+func otherUserSession(t *testing.T, svc *auth.Service) auth.Session {
+	t.Helper()
+	user, err := svc.CreateUser(t.Context(), "foreign-"+uuid.NewString()[:8], "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, session, err := svc.Login(t.Context(), user.Username, "Correct=123456", "127.0.0.2", "foreign-user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return session
 }

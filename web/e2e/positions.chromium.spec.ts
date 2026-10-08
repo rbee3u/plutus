@@ -1,3 +1,5 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { expect, test } from "@playwright/test";
 import type { PositionList, PositionRow } from "../src/api/generated/types.gen";
 
@@ -117,54 +119,37 @@ const unavailable: PositionRow = {
 test("position details work with hover, keyboard, click, scroll, and narrow tables", async ({
   page,
 }) => {
-  await page.route("**/api/v1/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/api/v1/auth/me")
-      return route.fulfill({
-        json: {
-          user: { id: "user", username: "browser-check", status: "active" },
-          sessionCount: 1,
-        },
-      });
-    if (path === "/api/v1/portfolios")
-      return route.fulfill({
-        json: {
-          items: [
-            {
-              id: portfolioId,
-              name: "Positions check",
+  await mockApi(
+    page,
+    sessionFixture({
+      user: { username: "browser-check" },
+      portfolio: { id: portfolioId, name: "Positions check", timezone: "Asia/Shanghai" },
+    }),
+    async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === "/api/v1/platforms")
+        return route.fulfill({
+          json: { items: [{ id: "okx", name: "OKX", accountStructures: [] }] },
+        });
+      if (path.endsWith("/identities")) return route.fulfill({ json: { items: [] } });
+      if (path.endsWith("/positions"))
+        return route.fulfill({
+          json: {
+            context: {
+              portfolioId,
               timezone: "Asia/Shanghai",
-              collectionIntervalSeconds: 3600,
-              undeletable: true,
-              version: 1,
-              createdAt: "2026-10-03T00:00:00Z",
-              updatedAt: "2026-10-03T00:00:00Z",
+              pointId: "00000000-0000-7000-8000-000000000006",
             },
-          ],
-        },
-      });
-    if (path === "/api/v1/platforms")
-      return route.fulfill({
-        json: { items: [{ id: "okx", name: "OKX", accountStructures: [] }] },
-      });
-    if (path.endsWith("/identities")) return route.fulfill({ json: { items: [] } });
-    if (path.endsWith("/positions"))
-      return route.fulfill({
-        json: {
-          context: {
-            portfolioId,
-            timezone: "Asia/Shanghai",
-            pointId: "00000000-0000-7000-8000-000000000006",
-          },
-          items: [position, delivery, calculated, isolated, unavailable],
-          totalNotionalUsd: "1000",
-          completeness: "complete",
-          issues: position.issues,
-          page: { kind: "offset", limit: 50, offset: 0, total: 5 },
-        } satisfies PositionList,
-      });
-    throw new Error(`Unexpected request ${path}`);
-  });
+            items: [position, delivery, calculated, isolated, unavailable],
+            totalNotionalUsd: "1000",
+            completeness: "complete",
+            issues: position.issues,
+            page: { kind: "offset", limit: 50, offset: 0, total: 5 },
+          } satisfies PositionList,
+        });
+      return route.fallback();
+    },
+  );
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const symbol = page.getByRole("button", { name: "Contract details for BTC-USD-SWAP" });

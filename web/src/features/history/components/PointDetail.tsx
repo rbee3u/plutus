@@ -5,7 +5,7 @@ import { formatBoundaryFlows } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
-import { HistoricalPositions } from "@/features/holdings/components/HistoricalPositions";
+import { HistoricalPositions } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
 import {

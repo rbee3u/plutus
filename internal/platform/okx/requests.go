@@ -11,13 +11,13 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/recording"
 )
 
-func selectedEndpoints() []endpoint {
+func recordingEndpoints() []endpoint {
 	return []endpoint{epTime, epConfig, epBalance, epPositions, epFunding, epSavings, epStaking, epDCD, epValuation, epSwaps, epTickers}
 }
 
 func RecordingRequests() recording.Catalogue {
 	out := recording.Catalogue{}
-	for _, ep := range selectedEndpoints() {
+	for _, ep := range recordingEndpoints() {
 		query, _ := url.ParseQuery(ep.query)
 		request := fixture.Request{Service: "v5", Method: ep.method, Path: ep.path, Query: query}
 		if ep.path == epSwaps.path {
@@ -35,7 +35,7 @@ func RecordingRequests() recording.Catalogue {
 }
 
 func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
-	for _, ep := range selectedEndpoints() {
+	for _, ep := range recordingEndpoints() {
 		if request.Service != "v5" || request.Method != ep.method || request.Path != ep.path || len(request.Form) != 0 {
 			continue
 		}

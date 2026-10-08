@@ -3,7 +3,7 @@ package httpserver
 import (
 	"context"
 
-	"github.com/rbee3u/plutus/internal/domain/valuation"
+	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -12,10 +12,10 @@ func (a *API) GetOverview(ctx context.Context, request api.GetOverviewRequestObj
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	view, err := a.Valuation.Overview(ctx, sc.valuation())
+	view, err := a.Financial.Overview(ctx, sc.portfolioContext())
 	if err != nil {
 		return nil, err
 	}
@@ -39,10 +39,10 @@ func (a *API) GetHoldingsTree(ctx context.Context, request api.GetHoldingsTreeRe
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	tree, err := a.Valuation.Tree(ctx, sc.valuation())
+	tree, err := a.Financial.Tree(ctx, sc.portfolioContext())
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (a *API) GetHoldingsTree(ctx context.Context, request api.GetHoldingsTreeRe
 			id := &p.Identities[j]
 			accounts := make([]api.AccountValuation, 0, len(id.Accounts))
 			for k := range id.Accounts {
-				accounts = append(accounts, toAPIAccountValuation(&id.Accounts[k].AccountValuation))
+				accounts = append(accounts, toAPIAccountValuation(&id.Accounts[k]))
 			}
 			identities = append(identities, api.TreeIdentity{Id: id.ID, DisplayName: id.DisplayName, Status: id.Status, ConnectionStatus: id.ConnectionStatus, ValueUsd: id.ValueUSD, Completeness: api.Completeness(id.Completeness), Accounts: accounts})
 		}
@@ -68,10 +68,10 @@ func (a *API) ListAccountBalances(ctx context.Context, request api.ListAccountBa
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	view, err := a.Valuation.AccountBalances(ctx, sc.valuation(), request.AccountId)
+	view, err := a.Financial.AccountBalances(ctx, sc.portfolioContext(), request.AccountId)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +83,10 @@ func (a *API) ListAccountPositions(ctx context.Context, request api.ListAccountP
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	view, err := a.Valuation.AccountPositionsAt(ctx, sc.valuation(), request.AccountId, request.Params.PointId)
+	view, err := a.Financial.AccountPositionsAt(ctx, sc.portfolioContext(), request.AccountId, request.Params.PointId)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +98,17 @@ func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestO
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	filter := valuation.ListFilter{
+	filter := financial.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
-	list, err := a.Valuation.FlatBalances(ctx, sc.valuation(), &filter)
+	list, err := a.Financial.FlatBalances(ctx, sc.portfolioContext(), &filter)
 	if err != nil {
 		return nil, err
 	}
@@ -127,17 +127,17 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	filter := valuation.ListFilter{
+	filter := financial.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
-	list, err := a.Valuation.FlatPositions(ctx, sc.valuation(), &filter)
+	list, err := a.Financial.FlatPositions(ctx, sc.portfolioContext(), &filter)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +156,10 @@ func (a *API) ListAccountDualPositions(ctx context.Context, request api.ListAcco
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	view, err := a.Valuation.AccountDualPositions(ctx, sc.valuation(), request.AccountId)
+	view, err := a.Financial.AccountDualPositions(ctx, sc.portfolioContext(), request.AccountId)
 	if err != nil {
 		return nil, err
 	}
@@ -171,17 +171,17 @@ func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositio
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	filter := valuation.ListFilter{
+	filter := financial.ListFilter{
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
 		Symbol:     stringValue(request.Params.Symbol),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
-	list, err := a.Valuation.FlatDualPositions(ctx, sc.valuation(), &filter)
+	list, err := a.Financial.FlatDualPositions(ctx, sc.portfolioContext(), &filter)
 	if err != nil {
 		return nil, err
 	}

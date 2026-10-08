@@ -151,13 +151,13 @@ func contractKind(m market, ctType string) (kind string, delivery, ok bool) {
 	}
 	switch {
 	case m == marketSwap && linear:
-		return adapters.KindLinearPerp, false, true
+		return adapters.KindLinearPerpetual, false, true
 	case m == marketSwap:
-		return adapters.KindInversePerp, false, true
+		return adapters.KindInversePerpetual, false, true
 	case linear:
-		return adapters.KindLinearDeliv, true, true
+		return adapters.KindLinearDelivery, true, true
 	default:
-		return adapters.KindInverseDlv, true, true
+		return adapters.KindInverseDelivery, true, true
 	}
 }
 
@@ -171,6 +171,5 @@ func contractSize(ctVal, ctMult string) *string {
 	if multiplier, ok := decimal.Parse(ctMult); ok && multiplier.Sign() > 0 {
 		value = new(big.Rat).Mul(value, multiplier)
 	}
-	s := decimal.Format(value)
-	return &s
+	return new(decimal.Format(value))
 }

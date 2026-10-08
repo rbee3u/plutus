@@ -71,7 +71,4 @@ func TestEarnFixedPositionsKeepAPYAndEarlyRedemption(t *testing.T) {
 	if p.PlatformPositionRef != "fixed:4065" || *p.Status != "EarlyRedemptionProcessing" || p.MaturityAt == nil || p.SubscribedAt == nil || p.Rates[0].Kind != "apy" || p.Rewards[0].Kind != "estimated" {
 		t.Fatalf("fixed: %+v", p)
 	}
-	if err := adapters.CheckEarnPositions(earn.EarnPositions, earn.Balances); err != nil {
-		t.Fatal(err)
-	}
 }

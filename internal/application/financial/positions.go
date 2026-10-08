@@ -1,0 +1,191 @@
+package financial
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+
+	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/shared/decimal"
+)
+
+// AccountPositions returns the Positions of an Account's current report with USD notionals.
+func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
+	return s.AccountPositionsAt(ctx, p, accountID, nil)
+}
+
+// AccountPositionsAt reads the selected point, retaining its compatible source Report.
+func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, pointID *uuid.UUID) (AccountView, error) {
+	view, source, err := s.positionView(ctx, p, accountID, pointID)
+	if err != nil {
+		return AccountView{}, err
+	}
+	view.Positions = []PositionRow{}
+	view.Issues = positionAccountIssues(&view.Account)
+	if source == nil {
+		return view, nil
+	}
+	rows, err := s.q.ListPositionsByReport(ctx, source[:])
+	if err != nil {
+		return AccountView{}, err
+	}
+	for i := range rows {
+		r := &rows[i]
+		row, err := positionRow(&view.Account, r)
+		if err != nil {
+			return AccountView{}, err
+		}
+		completePosition(&row, &view.Account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
+		view.Positions = append(view.Positions, row)
+	}
+	sortPositions(view.Positions, nil)
+	return view, nil
+}
+
+func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositionsByReportRow) (PositionRow, error) {
+	id, err := uuid.FromBytes(source.InstrumentID)
+	if err != nil {
+		return PositionRow{}, err
+	}
+	row := PositionRow{
+		AccountID:           account.AccountID,
+		AccountName:         account.AccountName,
+		AccountType:         account.AccountType,
+		IdentityID:          account.IdentityID,
+		IdentityName:        account.IdentityName,
+		Platform:            source.Platform,
+		PlatformPositionRef: source.PlatformPositionRef,
+		InstrumentID:        id,
+		Symbol:              source.Symbol,
+		Kind:                source.Kind,
+		BaseSymbol:          nullStringPtr(source.BaseSymbol),
+		QuoteSymbol:         nullStringPtr(source.QuoteSymbol),
+		SettlementSymbol:    nullStringPtr(source.SettlementSymbol),
+		ContractSize:        nullDecimal(source.ContractSize),
+		Side:                source.Side,
+		Quantity:            decimal.Compact(source.Quantity),
+		QuantityUnit:        source.QuantityUnit,
+		EntryPrice:          nullDecimal(source.EntryPrice),
+		MarkPrice:           nullDecimal(source.MarkPrice),
+		LiquidationPrice:    nullDecimal(source.LiquidationPrice),
+		UnrealizedPnl:       nullDecimal(source.UnrealizedPnl),
+		Leverage:            nullDecimal(source.Leverage),
+		Margin:              nullDecimal(source.Margin),
+		Freshness:           account.Freshness,
+		ReportObservedAt:    account.ReportObservedAt,
+	}
+	if source.ExpiryAt.Valid {
+		t := source.ExpiryAt.Time
+		row.ExpiryAt = &t
+	}
+	size, _ := normalizedPositionSize(&row)
+	if size == nil || !source.QuoteSymbol.Valid || !valuation.USDQuote(source.QuoteSymbol.String) {
+		return row, nil
+	}
+	qty, ok := decimal.Parse(*size)
+	if !ok {
+		return row, nil
+	}
+	if inverseKind(source.Kind) {
+		// Inverse Size is already the Quote face value; no Mark is required.
+		row.NotionalUSD = decimal.FormatPtr(decimal.Abs(qty))
+	} else if source.MarkPrice.Valid {
+		if price, valid := decimal.Parse(source.MarkPrice.String); valid && price.Sign() > 0 {
+			row.NotionalUSD = decimal.FormatPtr(decimal.Abs(decimal.Mul(qty, price)))
+		}
+	}
+	return row, nil
+}
+
+// FlatPositions lists every Position in the boundary at the latest point.
+func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[PositionRow], error) {
+	limit, offset, err := normalizePage(f.Limit, f.Offset)
+	if err != nil {
+		return FlatList[PositionRow]{}, err
+	}
+	c, point, accounts, err := s.latestContext(ctx, p)
+	if err != nil {
+		return FlatList[PositionRow]{}, err
+	}
+	out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
+	if point == nil {
+		out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+		return out, nil
+	}
+	out.Completeness = valuation.CompletenessComplete
+	for i := range accounts {
+		account := &accounts[i]
+		if positionAccount(account) {
+			if account.Method == valuation.MethodMissing {
+				out.Completeness = valuation.CompletenessIncomplete
+			}
+			out.Issues = append(out.Issues, positionAccountIssues(account)...)
+		}
+	}
+	byAccount := indexAccounts(accounts)
+	rows, err := s.q.ListPositionsByJob(ctx, sqlcgen.ListPositionsByJobParams{PortfolioID: p.ID[:], JobID: point.JobID[:]})
+	if err != nil {
+		return FlatList[PositionRow]{}, err
+	}
+	all := make([]PositionRow, 0, len(rows))
+	total := decimal.Zero()
+	for i := range rows {
+		r := &rows[i]
+		accountID, err := uuid.FromBytes(r.AccountID)
+		if err != nil {
+			return FlatList[PositionRow]{}, err
+		}
+		account, ok := byAccount[accountID]
+		if !ok {
+			continue
+		}
+		row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
+			InstrumentID:        r.InstrumentID,
+			Platform:            r.Platform,
+			Symbol:              r.Symbol,
+			Kind:                r.Kind,
+			BaseSymbol:          r.BaseSymbol,
+			QuoteSymbol:         r.QuoteSymbol,
+			SettlementSymbol:    r.SettlementSymbol,
+			ExpiryAt:            r.ExpiryAt,
+			ContractSize:        r.ContractSize,
+			PlatformPositionRef: r.PlatformPositionRef,
+			Side:                r.Side,
+			Quantity:            r.Quantity,
+			QuantityUnit:        r.QuantityUnit,
+			EntryPrice:          r.EntryPrice,
+			MarkPrice:           r.MarkPrice,
+			LiquidationPrice:    r.LiquidationPrice,
+			UnrealizedPnl:       r.UnrealizedPnl,
+			Leverage:            r.Leverage,
+			Margin:              r.Margin,
+		})
+		if err != nil {
+			return FlatList[PositionRow]{}, err
+		}
+		completePosition(&row, account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
+		if row.NotionalUSD == nil {
+			out.Completeness = valuation.CompletenessIncomplete
+		}
+		if row.NotionalUSD != nil {
+			total = decimal.Add(total, decimal.ParseOrZero(*row.NotionalUSD))
+		}
+		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.Symbol) {
+			continue
+		}
+		all = append(all, row)
+	}
+	out.TotalUSD = decimal.FormatPtr(total)
+	sortPositions(all, accountRanks(accounts))
+	out.paginate(all)
+	return out, nil
+}
+
+// inverseKind identifies contracts whose size is a Quote face amount.
+func inverseKind(kind string) bool {
+	return kind == adapters.KindInversePerpetual || kind == adapters.KindInverseDelivery
+}

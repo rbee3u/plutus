@@ -3,6 +3,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent } 
 import { createPortal } from "react-dom";
 import type { HoldingsFilterKey, HoldingsFilters } from "../hooks/useHoldingsFilters";
 import { iconSize } from "@/shared/icons/iconSizes";
+import type { DataColumn } from "@/shared/ui/DataTable";
 import { TextInput } from "@/shared/ui/FormControls";
 import { MenuItem } from "@/shared/ui/Menu";
 import styles from "./HoldingsFilterHeader.module.css";
@@ -218,4 +219,26 @@ export function HoldingsFilterHeader({
         : null}
     </div>
   );
+}
+
+/** Shared ownership columns for flat Holdings tables. */
+export function holdingsAccountColumns(filters?: HoldingsFilters): DataColumn[] {
+  return [
+    {
+      key: "platform",
+      header: "Platform",
+      nowrap: true,
+      headerContent: filters ? (
+        <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
+      ) : undefined,
+    },
+    {
+      key: "identityName",
+      header: "Identity",
+      nowrap: true,
+      headerContent: filters ? (
+        <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
+      ) : undefined,
+    },
+  ];
 }

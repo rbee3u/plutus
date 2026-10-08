@@ -26,15 +26,15 @@ func validateReport(r *adapters.AccountReport) error {
 		return fmt.Errorf("Earn descriptions must be marked collected")
 	}
 	for _, p := range r.Positions {
-		if p.PlatformPositionRef == "" || p.Instrument.Symbol == "" || !decimal.Valid(p.Quantity) || decimal.MustParse(p.Quantity).Sign() <= 0 {
+		if p.PlatformPositionRef == "" || p.Instrument.Symbol == "" || !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
 			return fmt.Errorf("invalid Position identity or quantity")
 		}
-		if (p.Instrument.Kind == adapters.KindLinearDeliv || p.Instrument.Kind == adapters.KindInverseDlv) && p.Instrument.ExpiryAt == nil {
+		if (p.Instrument.Kind == adapters.KindLinearDelivery || p.Instrument.Kind == adapters.KindInverseDelivery) && p.Instrument.ExpiryAt == nil {
 			return fmt.Errorf("delivery Instrument requires expiry")
 		}
 	}
 	for _, p := range r.DualPositions {
-		if p.PlatformPositionRef == "" || !decimal.Valid(p.Principal) || decimal.MustParse(p.Principal).Sign() <= 0 {
+		if p.PlatformPositionRef == "" || !decimal.Valid(p.Principal) || decimal.ParseOrZero(p.Principal).Sign() <= 0 {
 			return fmt.Errorf("invalid Dual subscription")
 		}
 	}

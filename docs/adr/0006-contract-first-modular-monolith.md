@@ -16,12 +16,10 @@ and transaction-scoped helpers where needed. Normalize Platform data behind
 Adapters; do not store raw runtime response payloads. Use exact arithmetic and
 string-encoded financial decimals rather than floating-point account values.
 
-Recover Collection Cycles by retaining committed Account Reports, including
-failures, and collecting only selected Accounts without a report for that job.
-An existing Valuation Point completes collection without another Adapter call or
-valuation rewrite. Commit each Identity's reports, missing-report failures,
-Margin Mode audit, and collection outcome together after Platform reads finish.
-Report uniqueness remains enforced by the database.
+Recovery retains committed reports, including failures, and reuses an existing
+Valuation Point. Each Identity's reports, mode audit, and outcome commit
+together after Platform reads. See the
+[collection lifecycle](../architecture.md#collection-and-job-lifecycle).
 
 ## Reason and trade-offs
 
@@ -29,16 +27,12 @@ One binary and one database fit a personal tool and keep deployment simple.
 Generated contracts keep browser and server shapes aligned. Typed boundaries
 contain exchange-specific parsing. Persistent jobs and leases permit recovery
 but do not provide multi-instance coordination or exactly-once collection.
-Recovery preserves committed observations and their product scopes, while work
-that has not committed uses the current boundary and Connections. It does not
-freeze an atomic Platform snapshot or guarantee exactly-once Adapter calls.
-Package separation is not exclusive table ownership. Lease-renewal failures
-cancel the handler; completion checks that the worker still owns the job.
+Uncommitted work uses the current boundary and Connections, so recovery does not
+freeze a Platform snapshot. Package separation is not exclusive table ownership.
 
-Static analysis prioritizes correctness, security, and resource lifetimes
-through a reviewed linter allowlist. This accepted tooling choice keeps general
-style, API-shape preferences, and speculative micro-optimizations out of lint
-gates. Standard formatting remains a separate tooling step.
+The [lint gates](../testing.md#validation-gates) prioritize correctness,
+security, and resource lifetimes; formatting is separate. Style and speculative
+micro-optimizations do not justify extra lint rules.
 
 [Architecture](../architecture.md) describes the current runtime mechanisms.
 Schema and API details are maintained in migrations and OpenAPI, rather than

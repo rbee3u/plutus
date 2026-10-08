@@ -2,17 +2,42 @@ package adapters
 
 import (
 	"fmt"
+	"maps"
 	"math/big"
-	"sort"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// Decimal parses a required decimal field. An absent or malformed value is a normalization
-// failure naming where it came from, never a zero: read as zero, a coin would disappear under the
-// Complete Set rule.
+// OptionalText preserves an absent platform field as null.
+func OptionalText(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+// OptionalMillis reads milliseconds since epoch without treating missing terms as zero.
+func OptionalMillis(where, name, value string) (*time.Time, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil //nolint:nilnil // An absent product term remains null without failing known principal.
+	}
+	ms, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || ms <= 0 {
+		return nil, Malformed(where, name)
+	}
+	t := time.UnixMilli(ms).UTC()
+	if t.Year() > 9999 {
+		return nil, Malformed(where, name)
+	}
+	return &t, nil
+}
+
+// Decimal rejects absent or malformed required values with a normalization error.
 func Decimal(where, field, value string) (*big.Rat, error) {
 	if !decimal.Valid(value) {
 		return nil, NewError(ClassNormalization, fmt.Sprintf("%s: field %s is not a decimal.", where, field))
@@ -21,8 +46,7 @@ func Decimal(where, field, value string) (*big.Rat, error) {
 	return rat, nil
 }
 
-// OptionalDecimal parses a field a Platform may leave empty: an absent value reads as zero, a
-// present non-decimal is a normalization failure.
+// OptionalDecimal returns zero for absence and rejects malformed values.
 func OptionalDecimal(where, field, value string) (*big.Rat, error) {
 	if strings.TrimSpace(value) == "" {
 		return decimal.Zero(), nil
@@ -35,19 +59,16 @@ func Malformed(where, what string) error {
 	return NewError(ClassNormalization, fmt.Sprintf("%s: %s is missing or malformed.", where, what))
 }
 
-// Plain returns a valid decimal field as reported, compacted. An absent or malformed value stays
-// nil, so an unknown measure is never stored as zero.
+// Plain compacts valid decimals; absent or malformed values stay nil.
 func Plain(value string) *string {
 	value = strings.TrimSpace(value)
 	if !decimal.Valid(value) {
 		return nil
 	}
-	s := decimal.Compact(value)
-	return &s
+	return new(decimal.Compact(value))
 }
 
-// NonZero is Plain for fields a Platform fills with "0" when they do not apply, such as the
-// liquidation price of a position that cannot be liquidated on its own.
+// NonZero is Plain for fields whose zero means inapplicable, such as liquidation price.
 func NonZero(value string) *string {
 	out := Plain(value)
 	if out == nil {
@@ -67,21 +88,19 @@ func Reported(raw string, value *big.Rat) *string {
 	return decimal.FormatPtr(value)
 }
 
-// Ratio returns numerator ÷ denominator rounded to eight fraction digits, or nil when either is
-// unknown or the denominator is zero.
+// Ratio rounds to eight fractional digits; unknown inputs or a zero denominator
+// return nil.
 func Ratio(numerator, denominator *big.Rat) *string {
 	if numerator == nil || denominator == nil || denominator.Sign() == 0 {
 		return nil
 	}
-	s := decimal.Compact(new(big.Rat).Quo(numerator, denominator).FloatString(8))
-	return &s
+	return new(decimal.Compact(new(big.Rat).Quo(numerator, denominator).FloatString(8)))
 }
 
 // Totals sums coin amounts by symbol, for Accounts that report one coin across several rows.
 type Totals map[string]*big.Rat
 
-// Add adds amount to symbol. A nonzero amount without a symbol is a normalization failure naming
-// where it came from: dropped, it would vanish from the Complete Set.
+// Add aggregates by symbol and rejects nonzero amounts without a symbol.
 func (t Totals) Add(where, symbol string, amount *big.Rat) error {
 	symbol = strings.TrimSpace(symbol)
 	if symbol == "" {
@@ -97,22 +116,12 @@ func (t Totals) Add(where, symbol string, amount *big.Rat) error {
 // Balances returns one Balance per nonzero total, ordered by symbol, with only its equity.
 func (t Totals) Balances() []Balance {
 	out := make([]Balance, 0, len(t))
-	for _, symbol := range SortedKeys(t) {
+	for _, symbol := range slices.Sorted(maps.Keys(t)) {
 		if t[symbol].Sign() == 0 {
 			continue
 		}
 		out = append(out, Balance{Symbol: symbol, Equity: decimal.Format(t[symbol])})
 	}
-	return out
-}
-
-// SortedKeys returns the keys of m in ascending order.
-func SortedKeys[T any](m map[string]T) []string {
-	out := make([]string, 0, len(m))
-	for key := range m {
-		out = append(out, key)
-	}
-	sort.Strings(out)
 	return out
 }
 
@@ -130,9 +139,8 @@ func USDEquivalent(symbol string) bool {
 // QuoteLookup returns the Platform's last price of symbol in quote, if it has one.
 type QuoteLookup func(symbol, quote string) (string, bool)
 
-// QuotePrices picks one price row for every Balance symbol that needs one: the first quote in
-// quotes that lookup prices. USD equivalents get no row; a symbol no quote prices gets none either
-// and is valued as no_price.
+// QuotePrices selects the first available quote per Balance symbol. USD
+// equivalents and unpriced symbols emit no row; the latter remain unvalued.
 func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, at time.Time) []Price {
 	var symbols []string
 	for _, report := range reports {
@@ -163,12 +171,12 @@ func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].AssetSymbol < out[j].AssetSymbol })
+	slices.SortFunc(out, func(a, b Price) int { return strings.Compare(a.AssetSymbol, b.AssetSymbol) })
 	return out
 }
 
-// USDPrice returns the USD value of one unit of symbol: 1 for a USD equivalent, otherwise the
-// first quote in quotes that lookup prices, where every quote is itself a USD equivalent.
+// USDPrice returns 1 for USD equivalents or the first positive quoted price.
+// Every supplied quote must itself be USD-equivalent.
 func USDPrice(symbol string, quotes []string, lookup QuoteLookup) (*big.Rat, bool) {
 	symbol = strings.ToUpper(strings.TrimSpace(symbol))
 	if USDEquivalent(symbol) {

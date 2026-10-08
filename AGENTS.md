@@ -3,8 +3,10 @@
 ## Working rules
 
 - Write code, comments, documentation, and application text in English. Wrap
-  Markdown prose near 80 columns; preserve useful content, tables, code blocks,
-  and indivisible links.
+  Markdown prose near 80 columns; preserve tables, code blocks, and links.
+- Prefer deletion or reuse to new files and abstractions. Keep one source per
+  rule; link instead of repeating it. Document constraints, non-obvious intent,
+  trade-offs, and evidence gaps; omit common knowledge and code paraphrases.
 - Put task and tool temporary artifacts under `/tmp/plutus`, never in a
   repository-local `tmp/` directory. Use unique subdirectories for concurrent
   work and clean up disposable files when finished.
@@ -12,15 +14,12 @@
   symlink to this file; edit `AGENTS.md` as the shared source.
 - Before changing behavior, read the [domain model](./CONTEXT.md),
   [product scope](./docs/product-scope.md), and relevant
-  [ADRs](./docs/adr/README.md). Use canonical terms; do not silently expand
-  supported Account Structures, Margin Modes, or Account Types. Record durable
-  decisions and meaningful trade-offs in the relevant ADR, distinguishing
-  preferences from accepted choices.
+  [ADRs](./docs/adr/README.md). Use canonical terms and preserve supported
+  scope. Update the relevant ADR for durable decisions and trade-offs.
 - Keep [README status](./README.md#current-status) honest. Synthetic tests and
-  recorded evidence do not establish exchange-app validation or a completed
-  integration. Technical mechanisms belong in
-  [architecture](./docs/architecture.md); domain terms and rules belong in
-  `CONTEXT.md`.
+  recorded evidence do not establish exchange-app validation. `CONTEXT.md` owns
+  domain terms and rules; [architecture](./docs/architecture.md) owns technical
+  mechanisms; [ADRs](./docs/adr/README.md) own decisions and trade-offs.
 
 ## Domain and data safeguards
 
@@ -34,8 +33,9 @@
   endpoints. Runtime raw Platform payloads never cross the Adapter boundary,
   enter logs, or reach storage. Only explicit `plutus adapter record` may write
   sanitized responses to `/tmp/plutus/` for review.
-- After prod's first `migrate up`, freeze the baseline and append migrations
-  that work on populated databases. Follow [deployment](./docs/deployment.md).
+- Follow [migration safeguards](./docs/deployment.md#upgrades-and-resets):
+  freeze the baseline after prod's first migration; append populated-database
+  upgrades.
 
 ## Environment boundaries
 
@@ -45,10 +45,9 @@
   `plutus_gotest_*` databases, never `plutus_local`, `plutus_test`, or
   `plutus_prod`. Use [agent setup](./docs/development.md#agent-setup), never the
   human's :8080 instance.
-- Tests use `config/gotest.env` and per-package temporary databases through
-  `mysql.RunTestMain`; new database-backed packages need that `TestMain`. Do not
-  edit `gotest.env` to fit tests. See
-  [test configuration](./docs/testing.md#test-configuration).
+- Follow [test configuration](./docs/testing.md#test-configuration); do not edit
+  `gotest.env` to fit tests. Every database-backed package needs
+  `mysqltest.RunTestMain` for its temporary database.
 - Only explicit recording loads `config/record.env` / `PLUTUS_RECORD_*`; tests
   and runtime commands never load them. Never use test or runtime credentials as
   a recording fallback. Prod keys never belong on a development machine.
@@ -59,11 +58,10 @@
   host's existing cache configuration without overrides or persistent changes.
   Request elevated execution when sandbox restrictions are expected or
   encountered.
-- Go changes must pass the
-  [validation gates](./docs/testing.md#validation-gates) in order:
-  `make format && make web && make build && make test && make lint`. Fix
-  failures and repeat the sequence. Tests allow loopback replay and temporary
-  MySQL, never external requests, live keys, or pre-created databases.
+- Go changes, including comments, must pass the ordered
+  [validation gates](./docs/testing.md#validation-gates). Tests allow only
+  loopback replay and temporary MySQL, never external requests, live keys, or
+  pre-created databases.
 - New or expanded real Adapter deliveries also require a Linux amd64 build and
   an [Adapter delivery report](./docs/testing.md#adapter-delivery-reports).
   Synthetic `testdata/` and recorded `evidence/` are independent; follow the

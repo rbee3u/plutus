@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -68,11 +69,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		}
 		catalogue := spec.requests()
 		if list {
-			var names []string
-			for name := range catalogue {
-				names = append(names, name)
-			}
-			sort.Strings(names)
+			names := slices.Sorted(maps.Keys(catalogue))
 			for _, name := range names {
 				ep := catalogue[name]
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s; required parameters: %s\n", name, ep.Request.Key(), strings.Join(ep.Required, ", "))

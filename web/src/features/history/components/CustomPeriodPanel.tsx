@@ -111,15 +111,7 @@ export function CustomPeriodPanel({
           {customError}
         </p>
       ) : null}
-      <QueryRecovery
-        error={custom.error}
-        hasData={Boolean(custom.data)}
-        busy={custom.isFetching}
-        fallback="The custom Value Change could not be computed."
-        onRetry={() => {
-          void custom.refetch();
-        }}
-      />
+      <QueryRecovery query={custom} fallback="The custom Value Change could not be computed." />
       {range && custom.isPending ? <p className={shared.muted}>Computing comparison.</p> : null}
       {custom.data ? <CustomResult change={custom.data} timezone={timezone} /> : null}
     </section>

@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -59,15 +58,6 @@ func (p *DualPosition) MissingFields() []string {
 	return missing
 }
 
-// DualText preserves an absent platform field as null.
-func DualText(value string) *string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
 // NormalizeDualPosition validates identity and principal, normalizes optional
 // terms, and rejects contradictory direction/currency combinations.
 func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, error) {
@@ -98,7 +88,7 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 	p.Principal = decimal.Format(principal)
 	for _, symbol := range []**string{&p.BaseSymbol, &p.QuoteSymbol} {
 		if *symbol != nil {
-			*symbol = DualText(strings.ToUpper(**symbol))
+			*symbol = OptionalText(strings.ToUpper(**symbol))
 		}
 	}
 	for _, field := range []struct {
@@ -172,25 +162,9 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 	return p, nil
 }
 
-// DualTime reads milliseconds since epoch without treating missing terms as zero.
-func DualTime(where, name, value string) (*time.Time, error) {
-	if strings.TrimSpace(value) == "" {
-		return nil, nil //nolint:nilnil // An absent product term remains null without failing known principal.
-	}
-	ms, err := strconv.ParseInt(value, 10, 64)
-	if err != nil || ms <= 0 {
-		return nil, Malformed(where, name)
-	}
-	t := time.UnixMilli(ms).UTC()
-	if t.Year() > 9999 {
-		return nil, Malformed(where, name)
-	}
-	return &t, nil
-}
-
 // DualExpiry reads milliseconds since epoch without treating missing terms as zero.
 func DualExpiry(where, value string) (*time.Time, error) {
-	return DualTime(where, "dual expiry", value)
+	return OptionalMillis(where, "dual expiry", value)
 }
 
 // CollectEarnPair shares auxiliary reads and their failures within one Collection

@@ -59,10 +59,10 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 					}
 				}
 				for _, p := range r.Positions {
-					if !decimal.Valid(p.Quantity) || decimal.MustParse(p.Quantity).Sign() <= 0 {
+					if !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
 						t.Fatal("invalid position quantity")
 					}
-					if p.Instrument.Kind == adapters.KindLinearDeliv || p.Instrument.Kind == adapters.KindInverseDlv {
+					if p.Instrument.Kind == adapters.KindLinearDelivery || p.Instrument.Kind == adapters.KindInverseDelivery {
 						if p.Instrument.ExpiryAt == nil {
 							t.Fatal("delivery without expiry")
 						}

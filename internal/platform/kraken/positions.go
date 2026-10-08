@@ -187,10 +187,10 @@ func mapPosition(row *openPosition, contract *instrument, ticker *futuresTicker,
 	if err != nil {
 		return adapters.Position{}, err
 	}
-	kind, settle := adapters.KindLinearPerp, "USD"
+	kind, settle := adapters.KindLinearPerpetual, "USD"
 	switch contract.Type {
 	case typeInverse:
-		kind, settle = adapters.KindInversePerp, base
+		kind, settle = adapters.KindInversePerpetual, base
 	case typeVanilla:
 		settle = quote
 	}
@@ -198,9 +198,9 @@ func mapPosition(row *openPosition, contract *instrument, ticker *futuresTicker,
 	switch {
 	case expiry != nil && !expiry.IsZero():
 		if contract.Type == typeInverse {
-			kind = adapters.KindInverseDlv
+			kind = adapters.KindInverseDelivery
 		} else {
-			kind = adapters.KindLinearDeliv
+			kind = adapters.KindLinearDelivery
 		}
 		at := expiry.UTC()
 		expiry = &at

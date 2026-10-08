@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/application/auth"
 )
 
 func (a *API) setSessionCookies(ctx context.Context, session *auth.Session) {
@@ -83,13 +83,6 @@ func clientLabel(ctx context.Context) string {
 		return label[:255]
 	}
 	return label
-}
-
-func headerValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }
 
 func retryAfter(ctx context.Context, seconds int) {

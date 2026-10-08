@@ -2007,7 +2007,7 @@ components:
     Platform:
       type: object
       additionalProperties: false
-      required: [id, name, adapterAvailable, accountStructures]
+      required: [id, name, adapterAvailable, accountStructures, credentialForm]
       properties:
         id:
           type: string
@@ -2019,6 +2019,50 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AccountStructure"
+        credentialForm:
+          $ref: "#/components/schemas/CredentialForm"
+    CredentialForm:
+      type: object
+      additionalProperties: false
+      description: Existing browser inputs; server credential validation remains authoritative and separate.
+      required: [primary, passphrase, help]
+      properties:
+        primary:
+          $ref: "#/components/schemas/CredentialGroup"
+        futures:
+          $ref: "#/components/schemas/CredentialGroup"
+        passphrase:
+          type: string
+          enum: [hidden, optional, required]
+        help:
+          type: string
+    CredentialGroup:
+      type: object
+      additionalProperties: false
+      required: [keyLabel, secretLabel, secretInput, requirement]
+      properties:
+        keyLabel:
+          type: string
+        secretLabel:
+          type: string
+        secretInput:
+          type: string
+          enum: [password, multiline]
+        requirement:
+          $ref: "#/components/schemas/CredentialRequirement"
+    CredentialRequirement:
+      type: object
+      additionalProperties: false
+      required: [mode, accountTypes]
+      properties:
+        mode:
+          type: string
+          enum: [always, selected, selected_except]
+        accountTypes:
+          type: array
+          items:
+            type: string
+          description: Selected Accounts matching this list (selected) or outside it (selected_except); ignored for always.
     AccountStructure:
       type: object
       additionalProperties: false

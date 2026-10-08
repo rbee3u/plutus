@@ -12,27 +12,23 @@ their common configuration, and their lifetime. Gin integration belongs at the
 HTTP boundary; SQL interception and diagnostic rendering belong at the MySQL
 boundary. Add only lumberjack as the rotation dependency.
 
-Configure logging through the TOML `[logging]` section, with code defaults for
-omitted fields. This accepted choice keeps one configuration entry point for
-logging; environment overrides are not supported.
+Use one TOML `[logging]` section with code defaults and no environment
+overrides. Single-line application records also go to stderr; access and SQL
+normally go only to files.
 
-Use single-line text records. Application logs also go to stderr; access and SQL
-normally go only to their files. SQL is enabled by default and records all
-project statements and transaction boundaries, with bound values substituted for
-display. This is an accepted operator choice: SQL text and parameter values are
-not redacted. Result rows, database connection configuration, CLI password
-arguments, master keys, and runtime Platform payloads are not logging inputs.
+SQL logging is enabled by default, including substituted parameter values and
+transaction boundaries without redaction. Result rows, connection configuration,
+CLI passwords, master keys, and runtime Platform payloads are not logging
+inputs.
 
-Use synchronous writes and size-based rotation, with configurable backup count,
-age, and compression. One process owns each directory. Initialization failures
-stop startup; active write failures fall back to stderr without stopping work.
-Backup compression and retention use lumberjack's asynchronous maintenance;
-short commands do not wait for maintenance, which resumes on subsequent runs.
+Use synchronous writes and size-based rotation. One process owns each directory.
+Startup fails if sinks cannot open; active write failures fall back to stderr.
+Lumberjack handles backup compression and retention asynchronously, including
+maintenance deferred by short-lived commands.
 
-Request and job context carries available correlation fields. Access records
-cover accepted, rejected, and recovered requests. Gin framework events and panic
-diagnostics enter application logging through boundary adapters, with panic
-records containing the exception and stack rather than request dumps.
+Correlate requests and jobs through context. Access records include rejections
+and recovered requests; panic diagnostics contain exceptions and stacks without
+request dumps.
 
 ## Reason and trade-offs
 

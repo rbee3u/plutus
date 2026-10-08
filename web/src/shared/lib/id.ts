@@ -18,11 +18,7 @@ export function newIdempotencyKey(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-/**
- * The last eight hex digits of a server identifier. Identifiers are UUIDv7,
- * whose leading blocks are a timestamp shared by everything created in the
- * same minute; only the tail tells two of them apart.
- */
+/** Use the random tail because UUIDv7 prefixes encode time and can look alike. */
 export function shortId(id: string | null | undefined): string {
   if (!id) {
     return "—";

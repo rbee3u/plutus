@@ -1,5 +1,5 @@
 import { useLocation } from "react-router";
-import { useHoldingsNavigation } from "../components/HoldingsNavigation";
+import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Identity } from "@/api";
 import { useIdentities } from "@/shared/lib/useIdentities";
@@ -46,7 +46,7 @@ export function holdingsCandidates(values: HoldingsFilterValues, identities: Fil
 export function useHoldingsFilters(portfolioId: string) {
   const { params, update } = useSearchState();
   const location = useLocation();
-  const navigation = useHoldingsNavigation();
+  const navigation = useSessionNavigation();
   const identities = useIdentities(portfolioId);
   const platforms = usePlatforms();
   const values: HoldingsFilterValues = {

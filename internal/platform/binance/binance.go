@@ -1,14 +1,6 @@
-// Package binance is the read-only Binance adapter for both Binance Account
-// Structures: Classic Trading (binance_classic), where Cross Margin, Isolated
-// Margin, USDⓈ-M Futures, and COIN-M Futures are separate wallets, and
-// Portfolio Margin (binance_pm), which merges those four into one
-// portfolio_margin Account. Spot, Funding, and Earn exist in both. Binance has
-// no Margin Mode.
-//
-// It calls only balance, position, account, and market-data endpoints. Raw
-// responses are decoded inside this package and never cross the adapter
-// boundary; the one exception is Record, the explicit response recorder of ADR
-// 0009. Field mappings are documented in docs/platform/binance/mapping.md.
+// Package binance implements read-only Binance access for Classic Trading and
+// Portfolio Margin. Field mappings: docs/platform/binance/mapping.md. Runtime
+// responses stay private; RecordRequest is the explicit recording path.
 package binance
 
 import (
@@ -22,7 +14,6 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
-	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
 // Account Types. Spot, Funding, and Earn belong to both Account Structures; Portfolio Margin
@@ -38,10 +29,6 @@ const (
 	TypeUMFutures       adapters.AccountType = "um_futures"
 	TypeCMFutures       adapters.AccountType = "cm_futures"
 )
-
-// quotes are the spot quote coins prices are read in, in order of preference.
-// Both value at 1 USD (ADR 0003).
-var quotes = []string{"USDT", "USDC"}
 
 // pageSize is the largest page the Simple Earn and dual investment position endpoints accept.
 const pageSize = 100
@@ -96,8 +83,6 @@ func (a *Adapter) client(creds adapters.Credentials) *client {
 
 func (a *Adapter) now() time.Time { return a.clock.now().UTC() }
 
-// Validate confirms that the key reaches an account with the Identity's Account Structure and
-// returns the account's UID.
 func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
 	if !adapters.ValidStructure(adapters.PlatformBinance, structure) {
 		return adapters.ValidationResult{}, adapters.UnsupportedStructure(adapters.PlatformBinance, structure)
@@ -124,10 +109,6 @@ func spotAccountQuery() url.Values {
 	return url.Values{"omitZeroBalances": {"true"}}
 }
 
-// Collect confirms the Account Structure, then returns one Account Report per requested Account
-// Type and the USDT/USDC prices of the reported Balances. An authentication failure on any call
-// fails the whole batch; any other failure fails only its Account, unless every Account failed
-// with a retryable class.
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
 	if !adapters.ValidStructure(adapters.PlatformBinance, structure) {
 		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformBinance, structure)
@@ -137,8 +118,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	if err != nil {
 		return adapters.Batch{}, err
 	}
-	// Prices come next so their observation time precedes every report of the batch, and the
-	// valuation's "latest price at or before the report" picks them.
+	// Read prices before reports to satisfy at-or-before valuation lookup.
 	prices, pricedAt := a.lastPrices(ctx, c)
 	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
 		return a.earn(ctx, c, prices)
@@ -242,41 +222,6 @@ func checkStructure(ctx context.Context, c *client, configured adapters.AccountS
 		return accountInfo{}, adapters.StructureMismatch(adapters.PlatformBinance, adapters.StructureName(actual), configured)
 	}
 	return info, nil
-}
-
-// lastPrices holds every spot last price by pair symbol, such as BTCUSDT.
-type lastPrices map[string]string
-
-// quote returns the last price of symbol in quote; it is the batch's adapters.QuoteLookup.
-func (p lastPrices) quote(symbol, quote string) (string, bool) {
-	price, ok := p[symbol+quote]
-	return price, ok
-}
-
-// usd returns the USD value of one unit of symbol, for the Earn completeness check.
-func (p lastPrices) usd(symbol string) (*big.Rat, bool) {
-	return adapters.USDPrice(symbol, quotes, p.quote)
-}
-
-// lastPrices returns every spot last price and when it arrived. A failure yields no prices rather
-// than failing the batch: valuation falls back to the latest price within 24 hours, and the Earn
-// completeness check is skipped for coins without a price.
-func (a *Adapter) lastPrices(ctx context.Context, c *client) (lastPrices, time.Time) {
-	var rows []struct {
-		Symbol string `json:"symbol"`
-		Price  string `json:"price"`
-	}
-	if err := c.call(ctx, epTickerPrice, nil, &rows); err != nil {
-		return nil, time.Time{}
-	}
-	out := make(lastPrices, len(rows))
-	for _, row := range rows {
-		// A delisted pair stays listed with price 0, which is not a value.
-		if price, ok := decimal.Parse(row.Price); ok && decimal.Valid(row.Price) && price.Sign() > 0 {
-			out[row.Symbol] = row.Price
-		}
-	}
-	return out, a.now()
 }
 
 // amounts parses a row's optional decimal fields and reports whether any of them is nonzero.

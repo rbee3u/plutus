@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/application/identity"
 )
 
 // ActivateConnections uses the same lifecycle as owner-configured Connections.

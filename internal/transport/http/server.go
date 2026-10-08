@@ -14,9 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rbee3u/plutus/internal/app"
+	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -83,9 +82,6 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	services := opts.Services
 	if services == nil {
 		services = &app.Services{}
-	}
-	if services.Adapters == nil {
-		services.Adapters = adapters.NewRegistry()
 	}
 	impl := &API{
 		Services:          services,

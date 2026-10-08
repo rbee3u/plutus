@@ -80,17 +80,14 @@ const (
 	codeExpired    = -1
 )
 
-// envelope is every Bybit V5 answer: a numeric code, a message, the result, and the server time
-// in milliseconds. A failed request may still arrive with HTTP 200, so the code is what decides
-// success.
+// HTTP 200 can still contain a failure; retCode must also indicate success.
 type envelope struct {
 	Code   *int            `json:"retCode"`
 	Result json.RawMessage `json:"result"`
 	Time   int64           `json:"time"`
 }
 
-// clock keeps the offset between the local clock and Bybit server time so signed requests stay
-// inside the receive window on a machine whose clock drifts.
+// Server offset keeps signed requests within the receive window despite clock drift.
 type clock struct {
 	mu     sync.Mutex
 	now    func() time.Time
@@ -98,7 +95,6 @@ type clock struct {
 	synced bool
 }
 
-// corrected is the current time on Bybit's clock, as last measured.
 func (c *clock) corrected() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -123,8 +119,7 @@ func (c *clock) set(serverMillis int64, sent, received time.Time) {
 	c.synced = true
 }
 
-// client issues Bybit requests for one credential set. Raw bodies stay inside this package; only
-// the recorder sets capture to keep each exchange.
+// Only explicit recording sets capture; runtime bodies stay inside this package.
 type client struct {
 	http    *http.Client
 	host    string
@@ -139,8 +134,7 @@ type response struct {
 	body   []byte
 }
 
-// call performs one request and decodes its result into out. A signed request first synchronizes
-// the clock; an answer that refuses the timestamp resynchronizes it and retries once.
+// Signed calls synchronize the clock and retry once after timestamp rejection.
 func (c *client) call(ctx context.Context, ep endpoint, params url.Values, out any) error {
 	if ep.signed && c.clock.needsSync() {
 		if err := c.syncClock(ctx); err != nil {
@@ -163,8 +157,7 @@ func (c *client) call(ctx context.Context, ep endpoint, params url.Values, out a
 	return decode(ep, resp, out)
 }
 
-// syncClock measures the offset to Bybit server time, taking the midpoint of the round trip as
-// the moment the server read its clock.
+// Approximate server observation time by the midpoint of the round trip.
 func (c *client) syncClock(ctx context.Context) error {
 	sent := c.clock.now()
 	resp, err := c.send(ctx, epTime, epTime.request(nil), c.creds)
@@ -191,7 +184,6 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs and performs one request using the client clock.
 func (c *client) send(ctx context.Context, ep endpoint, request string, creds adapters.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
@@ -204,7 +196,6 @@ func (c *client) send(ctx context.Context, ep endpoint, request string, creds ad
 		_, query, _ := strings.Cut(request, "?")
 		mac := hmac.New(sha256.New, []byte(creds.APISecret))
 		_, _ = mac.Write([]byte(timestamp + creds.APIKey + recvWindowMillis + query))
-		// Bybit documents these as X-BAPI-*; header names are case-insensitive.
 		req.Header.Set("X-Bapi-Api-Key", creds.APIKey)
 		req.Header.Set("X-Bapi-Timestamp", timestamp)
 		req.Header.Set("X-Bapi-Recv-Window", recvWindowMillis)
@@ -229,8 +220,7 @@ func (c *client) send(ctx context.Context, ep endpoint, request string, creds ad
 	return resp, nil
 }
 
-// decode converts a raw exchange into out, or into a classified error. Both a non-2xx status and
-// a non-zero code are failures, and Bybit uses both.
+// Both HTTP status and retCode must indicate success.
 func decode(ep endpoint, resp response, out any) error {
 	var env envelope
 	if json.Unmarshal(resp.body, &env) != nil || env.Code == nil {
@@ -247,7 +237,6 @@ func decode(ep endpoint, resp response, out any) error {
 	return nil
 }
 
-// clockRejected reports whether Bybit refused a signed request because of its timestamp.
 func clockRejected(resp response) bool {
 	var env envelope
 	if json.Unmarshal(resp.body, &env) != nil || env.Code == nil {
@@ -256,7 +245,6 @@ func clockRejected(resp response) bool {
 	return *env.Code == codeTimeWindow || *env.Code == codeExpired
 }
 
-// classOf maps a Bybit answer to an adapter error class.
 func classOf(status, code int) string {
 	switch code {
 	case 10003, 10004, 10007, 33004, -2015:
@@ -275,7 +263,6 @@ func classOf(status, code int) string {
 	return statusClass(status, adapters.ClassTemporary)
 }
 
-// statusClass classifies by HTTP status alone, falling back to fallback.
 func statusClass(status int, fallback string) string {
 	switch {
 	case status == http.StatusUnauthorized:
@@ -289,4 +276,40 @@ func statusClass(status int, fallback string) string {
 	default:
 		return fallback
 	}
+}
+
+// Bound reads even when the Platform keeps returning new cursors.
+const maxPages = 1000
+
+// Pagination failures discard partial results to preserve Complete Set semantics.
+// Missing lists, repeated cursors, and exceeding maxPages are failures.
+func pages[T any](ctx context.Context, c *client, ep endpoint, params url.Values) ([]T, error) {
+	query := url.Values{}
+	for key, values := range params {
+		query[key] = values
+	}
+	var rows []T
+	seen := map[string]bool{}
+	for page := 0; page < maxPages; page++ {
+		var result struct {
+			List   []T    `json:"list"`
+			Cursor string `json:"nextPageCursor"`
+		}
+		if err := c.call(ctx, ep, query, &result); err != nil {
+			return nil, err
+		}
+		if result.List == nil {
+			return nil, adapters.Malformed(ep.String(), "the list")
+		}
+		rows = append(rows, result.List...)
+		if result.Cursor == "" {
+			return rows, nil
+		}
+		if seen[result.Cursor] {
+			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: Bybit repeated a page cursor, so the list may be incomplete.", ep))
+		}
+		seen[result.Cursor] = true
+		query.Set("cursor", result.Cursor)
+	}
+	return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the list did not end within %d pages.", ep, maxPages))
 }

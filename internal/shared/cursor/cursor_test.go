@@ -3,6 +3,7 @@ package cursor
 import (
 	"encoding/base64"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/google/uuid"
@@ -40,21 +41,26 @@ func TestEncodeWireFormatIsStable(t *testing.T) {
 	}
 }
 
-func TestRoundTrip(t *testing.T) {
-	t.Parallel()
-
-	cur := Cursor{PortfolioID: testPortfolio, TimeMicro: 1700000000123456, ID: testOther}
-	encoded, err := testCodec.Encode(cur)
-	if err != nil {
-		t.Fatal(err)
+func FuzzRoundTrip(f *testing.F) {
+	for _, timestamp := range []int64{0, -1, 1700000000123456, math.MinInt64, math.MaxInt64} {
+		f.Add(testPortfolio[:], timestamp, testOther[:])
 	}
-	decoded, err := testCodec.Decode(encoded, testPortfolio)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if decoded != cur {
-		t.Fatalf("Decode = %+v, want %+v", decoded, cur)
-	}
+	f.Fuzz(func(t *testing.T, portfolio []byte, timestamp int64, id []byte) {
+		cur := Cursor{TimeMicro: timestamp}
+		copy(cur.PortfolioID[:], portfolio)
+		copy(cur.ID[:], id)
+		encoded, err := testCodec.Encode(cur)
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := testCodec.Decode(encoded, cur.PortfolioID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if decoded != cur {
+			t.Fatalf("Decode = %+v, want %+v", decoded, cur)
+		}
+	})
 }
 
 func TestDecodeRejectsTamperedPayload(t *testing.T) {
@@ -68,9 +74,12 @@ func TestDecodeRejectsTamperedPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data[20] ^= 0x01
-	if _, err := testCodec.Decode(base64.RawURLEncoding.EncodeToString(data), testPortfolio); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("tampered cursor error = %v, want ErrInvalid", err)
+	for i := range data {
+		data[i] ^= 0x01
+		if _, err := testCodec.Decode(base64.RawURLEncoding.EncodeToString(data), testPortfolio); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("tampered byte %d: error = %v, want ErrInvalid", i, err)
+		}
+		data[i] ^= 0x01
 	}
 }
 

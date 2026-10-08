@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 func TestApplyRollsBackSourceInsertionFailure(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	ctx := context.Background()
 	id := uuid.New()
 	t.Cleanup(func() {

@@ -22,8 +22,8 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
-	"github.com/rbee3u/plutus/internal/platform/offline"
 	"github.com/rbee3u/plutus/internal/platform/recording"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 // testCreds carry the base64 secret "secret" for both key groups, which the replay verifies.
@@ -373,7 +373,7 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	}
 	position := mainReport.Positions[0]
 	if position.PlatformPositionRef != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.Quantity != "1" ||
-		position.QuantityUnit != adapters.UnitContracts || position.Instrument.Kind != adapters.KindLinearPerp ||
+		position.QuantityUnit != adapters.UnitContracts || position.Instrument.Kind != adapters.KindLinearPerpetual ||
 		position.Instrument.BaseSymbol != "BTC" || position.Instrument.SettlementSymbol != "USD" || value(position.Instrument.ContractSize) != "1" ||
 		value(position.EntryPrice) != "570" || value(position.MarkPrice) != "30209.9" || position.UnrealizedPnl != nil {
 		t.Fatalf("Unified Main position: %+v", position)
@@ -448,11 +448,11 @@ func TestReplaySeparateWallets(t *testing.T) {
 		positions[p.PlatformPositionRef] = p
 	}
 	perpetual, delivery := positions["PI_XBTUSD:short"], positions["FI_XBTUSD_220930:long"]
-	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.Quantity != "10000" || perpetual.Instrument.Kind != adapters.KindInversePerp ||
+	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.Quantity != "10000" || perpetual.Instrument.Kind != adapters.KindInversePerpetual ||
 		perpetual.Instrument.SettlementSymbol != "BTC" || value(perpetual.Instrument.ContractSize) != "1" || perpetual.UnrealizedPnl != nil {
 		t.Fatalf("inverse perpetual: %+v", perpetual)
 	}
-	if delivery.Instrument.Kind != adapters.KindInverseDlv || delivery.Instrument.ExpiryAt == nil ||
+	if delivery.Instrument.Kind != adapters.KindInverseDelivery || delivery.Instrument.ExpiryAt == nil ||
 		!delivery.Instrument.ExpiryAt.Equal(time.Date(2022, 9, 30, 15, 0, 0, 0, time.UTC)) || value(delivery.MarkPrice) != "20478.5" {
 		t.Fatalf("inverse delivery: %+v", delivery)
 	}

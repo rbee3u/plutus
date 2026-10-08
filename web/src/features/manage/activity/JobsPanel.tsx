@@ -1,18 +1,18 @@
-import { formatCount } from "@/shared/lib/amount";
 import { keys, listJobs } from "@/api";
 import type { JobKind, JobList } from "@/api";
-import { useCursorPages } from "@/features/manage/activity/useCursorPages";
+import { formatCount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { capitalize } from "@/shared/lib/text";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Select } from "@/shared/ui/FormControls";
 import { Codes } from "@/shared/ui/IssueList";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { useCursorPages } from "../hooks/useCursorPages";
 import shared from "@/shared/styles/page.module.css";
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 const PAGE_SIZE = 50;
 
@@ -59,7 +59,6 @@ function JobsTable({ kind, timezone }: { kind: JobKind | ""; timezone?: string }
   const pages = useCursorPages();
   const query = usePortfolioQuery<JobList>({
     key: (userId, portfolioId) => keys.jobs(userId, portfolioId, kind, pages.cursor),
-    ready: true,
     load: (portfolioId) =>
       listJobs({
         path: { portfolioId },
@@ -69,15 +68,7 @@ function JobsTable({ kind, timezone }: { kind: JobKind | ""; timezone?: string }
 
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Jobs could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Jobs could not be loaded." />
       <DataTable
         caption="Jobs, newest first"
         columns={[

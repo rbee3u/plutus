@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
@@ -43,10 +43,10 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 	if err != nil {
 		return nil, err
 	}
-	key := headerValue(request.Params.IdempotencyKey)
+	key := stringValue(request.Params.IdempotencyKey)
 	rec, hash, err := a.lookupIdempotency(ctx, sc.user.ID, key, http.MethodPost, requestPath(ctx), raw)
 	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, problemf(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
+		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
 	}
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 	body := toAPIIdentity(&item)
 	etag := item.ETag()
 	a.storeIdempotency(ctx, sc.user.ID, &sc.portfolio.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: etagPtr(etag)}}, nil
+	return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: new(etag)}}, nil
 }
 
 func (a *API) GetIdentity(ctx context.Context, request api.GetIdentityRequestObject) (api.GetIdentityResponseObject, error) {
@@ -92,7 +92,7 @@ func (a *API) GetIdentity(ctx context.Context, request api.GetIdentityRequestObj
 	if err != nil {
 		return nil, err
 	}
-	return api.GetIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.GetIdentity200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.GetIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.GetIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityRequestObject) (api.PatchIdentityResponseObject, error) {
@@ -120,7 +120,7 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PatchIdentity200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.PatchIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PatchIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) ArchiveIdentity(ctx context.Context, request api.ArchiveIdentityRequestObject) (api.ArchiveIdentityResponseObject, error) {
@@ -139,7 +139,7 @@ func (a *API) ArchiveIdentity(ctx context.Context, request api.ArchiveIdentityRe
 	if err != nil {
 		return nil, err
 	}
-	return api.ArchiveIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.ArchiveIdentity200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.ArchiveIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.ArchiveIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentityCredentialsRequestObject) (api.PutIdentityCredentialsResponseObject, error) {
@@ -162,7 +162,7 @@ func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentit
 	if err != nil {
 		return nil, err
 	}
-	return api.PutIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PutIdentityCredentials200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.PutIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PutIdentityCredentials200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) DeleteIdentityCredentials(ctx context.Context, request api.DeleteIdentityCredentialsRequestObject) (api.DeleteIdentityCredentialsResponseObject, error) {
@@ -181,7 +181,7 @@ func (a *API) DeleteIdentityCredentials(ctx context.Context, request api.DeleteI
 	if err != nil {
 		return nil, err
 	}
-	return api.DeleteIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DeleteIdentityCredentials200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.DeleteIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DeleteIdentityCredentials200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) ValidateIdentityConnection(ctx context.Context, request api.ValidateIdentityConnectionRequestObject) (api.ValidateIdentityConnectionResponseObject, error) {
@@ -196,7 +196,7 @@ func (a *API) ValidateIdentityConnection(ctx context.Context, request api.Valida
 	if err != nil {
 		return nil, err
 	}
-	return api.ValidateIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.ValidateIdentityConnection200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.ValidateIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.ValidateIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) EnableIdentityConnection(ctx context.Context, request api.EnableIdentityConnectionRequestObject) (api.EnableIdentityConnectionResponseObject, error) {
@@ -213,12 +213,12 @@ func (a *API) EnableIdentityConnection(ctx context.Context, request api.EnableId
 	}
 	item, outcome, err := a.Identities.Enable(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if errors.Is(err, identity.ErrValidationFailed) {
-		return api.EnableIdentityConnection422JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection422ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+		return api.EnableIdentityConnection422JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection422ResponseHeaders{ETag: new(item.ETag())}}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return api.EnableIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.EnableIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
 func (a *API) DisableIdentityConnection(ctx context.Context, request api.DisableIdentityConnectionRequestObject) (api.DisableIdentityConnectionResponseObject, error) {
@@ -237,5 +237,5 @@ func (a *API) DisableIdentityConnection(ctx context.Context, request api.Disable
 	if err != nil {
 		return nil, err
 	}
-	return api.DisableIdentityConnection200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DisableIdentityConnection200ResponseHeaders{ETag: etagPtr(item.ETag())}}, nil
+	return api.DisableIdentityConnection200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DisableIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }

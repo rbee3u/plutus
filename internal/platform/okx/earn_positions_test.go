@@ -26,9 +26,6 @@ func TestEarnMultiAssetOrderAndSavingsPreference(t *testing.T) {
 	if s.Rates[0].Qualifier != "minimum" || s.Rewards[0].Kind != "reported" || s.Status != nil || s.SubscribedAt != nil {
 		t.Fatalf("savings: %+v", s)
 	}
-	if err := adapters.CheckEarnPositions(report.EarnPositions, report.Balances); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestEarnUnknownRewardScopeRetainsReportedAmount(t *testing.T) {

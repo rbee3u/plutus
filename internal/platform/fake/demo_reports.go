@@ -105,7 +105,7 @@ func DemoPrice(platform adapters.Platform, symbol string, at time.Time) string {
 		if platform == adapters.PlatformOKX {
 			premium = 2
 		}
-		return decimal.Format(decimal.Mul(decimal.MustParse(asset.Price), big.NewRat(9500+phase*6+premium, 10000)))
+		return decimal.Format(decimal.Mul(decimal.ParseOrZero(asset.Price), big.NewRat(9500+phase*6+premium, 10000)))
 	}
 	return ""
 }
@@ -206,9 +206,9 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 			}
 		}
 	case "cross_margin", "isolated_margin":
-		r.Balances = []adapters.Balance{{Symbol: "USDT", Name: "Tether", Equity: "-150", Liability: adapters.DualText("150"), Interest: adapters.DualText("0.25")}, demoBalance("BTC", "0.04")}
+		r.Balances = []adapters.Balance{{Symbol: "USDT", Name: "Tether", Equity: "-150", Liability: adapters.OptionalText("150"), Interest: adapters.OptionalText("0.25")}, demoBalance("BTC", "0.04")}
 		if kind == "cross_margin" {
-			r.UnifiedMarginRatio = adapters.DualText("4.2")
+			r.UnifiedMarginRatio = adapters.OptionalText("4.2")
 		}
 	case "portfolio_margin", "trading", "unified", "um_futures", "cm_futures", "multi_m", "coin_m":
 		demoTrading(&r, d, anchor, at)
@@ -217,8 +217,8 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 	for i := range r.Balances {
 		b := &r.Balances[i]
 		if b.AvailableToWithdraw != nil {
-			b.AvailableToWithdraw = adapters.DualText(b.Equity)
-			b.AvailableToTrade = adapters.DualText(b.Equity)
+			b.AvailableToWithdraw = adapters.OptionalText(b.Equity)
+			b.AvailableToTrade = adapters.OptionalText(b.Equity)
 		}
 	}
 	return r
@@ -232,7 +232,7 @@ func demoBalance(symbol, amount string) adapters.Balance {
 			break
 		}
 	}
-	return adapters.Balance{Symbol: symbol, Name: name, Equity: amount, AvailableToTrade: adapters.DualText(amount), AvailableToWithdraw: adapters.DualText(amount)}
+	return adapters.Balance{Symbol: symbol, Name: name, Equity: amount, AvailableToTrade: adapters.OptionalText(amount), AvailableToWithdraw: adapters.OptionalText(amount)}
 }
 
 func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
@@ -265,8 +265,8 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 	if !at.Before(DemoEventTime(anchor, -8)) && !closed {
 		p := demoPosition(d, anchor, at, demoAssets[1], 80, inverse)
 		p.PlatformPositionRef = "historical-hedge"
-		p.EntryPrice = adapters.DualText(DemoPrice(d.Platform, "ETH", DemoEventTime(anchor, -8)))
-		p.UnrealizedPnl = adapters.DualText(demoPositionPnl(p))
+		p.EntryPrice = adapters.OptionalText(DemoPrice(d.Platform, "ETH", DemoEventTime(anchor, -8)))
+		p.UnrealizedPnl = adapters.OptionalText(demoPositionPnl(p))
 		r.Positions = append(r.Positions, p)
 	}
 	settle := "USDT"
@@ -276,7 +276,7 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 	}
 	if closed && mode != adapters.MarginOKXSpot {
 		p := demoPosition(d, anchor, DemoEventTime(anchor, -4), demoAssets[1], 80, inverse)
-		p.EntryPrice = adapters.DualText(DemoPrice(d.Platform, "ETH", DemoEventTime(anchor, -8)))
+		p.EntryPrice = adapters.OptionalText(DemoPrice(d.Platform, "ETH", DemoEventTime(anchor, -8)))
 		// Inverse contracts settle in their own Base, not a shared BTC wallet.
 		if inverse {
 			realizedETH = demoAdd("0.05", demoPositionPnl(p))
@@ -309,10 +309,10 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 		for _, b := range r.Balances {
 			value = demoAdd(value, demoMul(b.Equity, DemoPrice(d.Platform, b.Symbol, at)))
 		}
-		r.Equity = adapters.DualText(value)
+		r.Equity = adapters.OptionalText(value)
 		if mode != adapters.MarginOKXFutures {
-			r.AdjustedEquity, r.AvailableEquity = adapters.DualText(value), adapters.DualText(demoMul(value, "0.7"))
-			r.InitialMarginRatio, r.MaintenanceMarginRatio = adapters.DualText("0.12"), adapters.DualText("0.04")
+			r.AdjustedEquity, r.AvailableEquity = adapters.OptionalText(value), adapters.OptionalText(demoMul(value, "0.7"))
+			r.InitialMarginRatio, r.MaintenanceMarginRatio = adapters.OptionalText("0.12"), adapters.OptionalText("0.04")
 		}
 	}
 }
@@ -324,25 +324,25 @@ func demoPosition(d DemoIdentity, anchor, at time.Time, asset demoAsset, i int, 
 	mark := DemoPrice(d.Platform, asset.Symbol, at)
 	entry := DemoPrice(d.Platform, asset.Symbol, cohort)
 	qty := demoDiv("1200", asset.Price)
-	kind, unit, settle, contract := adapters.KindLinearPerp, adapters.UnitBase, "USDT", "1"
+	kind, unit, settle, contract := adapters.KindLinearPerpetual, adapters.UnitBase, "USDT", "1"
 	if inverse {
-		kind, unit, settle, contract, qty = adapters.KindInversePerp, adapters.UnitContracts, asset.Symbol, "100", "12"
+		kind, unit, settle, contract, qty = adapters.KindInversePerpetual, adapters.UnitContracts, asset.Symbol, "100", "12"
 	}
 	var expiry *time.Time
 	if i%3 == 2 {
 		end := cohort.AddDate(0, 0, 35)
 		expiry = &end
-		kind = adapters.KindLinearDeliv
+		kind = adapters.KindLinearDelivery
 		if inverse {
-			kind = adapters.KindInverseDlv
+			kind = adapters.KindInverseDelivery
 		}
 	}
 	symbol := demoInstrumentSymbol(d.Platform, asset.Symbol, inverse, expiry)
 	p := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s-%d-%d", symbol, i, cohort.Unix()),
-		Instrument:          adapters.Instrument{Symbol: symbol, Kind: kind, BaseSymbol: asset.Symbol, QuoteSymbol: "USDT", SettlementSymbol: settle, ContractSize: adapters.DualText(contract), ExpiryAt: expiry},
+		Instrument:          adapters.Instrument{Symbol: symbol, Kind: kind, BaseSymbol: asset.Symbol, QuoteSymbol: "USDT", SettlementSymbol: settle, ContractSize: adapters.OptionalText(contract), ExpiryAt: expiry},
 		Side:                adapters.SideLong, PositionMode: "hedged", MarginMode: "cross", MarginCurrency: settle, MarginBasis: "initial",
-		Quantity: qty, QuantityUnit: unit, EntryPrice: adapters.DualText(entry), MarkPrice: adapters.DualText(mark), Leverage: adapters.DualText("3"),
+		Quantity: qty, QuantityUnit: unit, EntryPrice: adapters.OptionalText(entry), MarkPrice: adapters.OptionalText(mark), Leverage: adapters.OptionalText("3"),
 	}
 	if inverse {
 		p.Instrument.QuoteSymbol = "USD"
@@ -364,10 +364,10 @@ func demoPosition(d DemoIdentity, anchor, at time.Time, asset demoAsset, i int, 
 	if inverse {
 		margin = demoDiv(margin, mark)
 	}
-	p.Margin = adapters.DualText(margin)
-	p.LiquidationPrice = adapters.DualText(demoMul(entry, "0.7"))
+	p.Margin = adapters.OptionalText(margin)
+	p.LiquidationPrice = adapters.OptionalText(demoMul(entry, "0.7"))
 	if p.Side == adapters.SideShort {
-		p.LiquidationPrice = adapters.DualText(demoMul(entry, "1.3"))
+		p.LiquidationPrice = adapters.OptionalText(demoMul(entry, "1.3"))
 	}
 	if d.Structure == adapters.StructureBinancePM || d.Profile == "large" && i%7 == 0 || inverse && d.Platform == adapters.PlatformBinance {
 		p.Margin = nil // A supported Binance cross row uses calculated initial margin.
@@ -375,7 +375,7 @@ func demoPosition(d DemoIdentity, anchor, at time.Time, asset demoAsset, i int, 
 	if demoMode(d, anchor, at) == adapters.MarginOKXPM || demoMode(d, anchor, at) == adapters.MarginBybitPM {
 		p.Margin, p.Leverage, p.LiquidationPrice = nil, nil, nil
 	}
-	p.UnrealizedPnl = adapters.DualText(demoPositionPnl(p))
+	p.UnrealizedPnl = adapters.OptionalText(demoPositionPnl(p))
 	return p
 }
 

@@ -3,6 +3,11 @@ import { getAuthCsrf } from "@/api/generated/sdk.gen";
 
 let csrfToken = "";
 
+/** End the in-memory token lifetime with the authenticated session. */
+export function resetCsrf(): void {
+  csrfToken = "";
+}
+
 /** Point the generated client at the same origin and attach CSRF headers. */
 export function configureApiClient(): void {
   client.setConfig({
@@ -71,6 +76,12 @@ export interface ApiResult<T> {
   data?: T;
   error?: unknown;
   response?: Response;
+}
+
+/** Common write transport; business response interpretation stays with callers. */
+export async function executeWrite<T>(request: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> {
+  await refreshCsrf();
+  return request();
 }
 
 export class SessionExpiredError extends Error {

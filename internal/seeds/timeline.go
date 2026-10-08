@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/domain/catalog"
+	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
@@ -56,8 +56,6 @@ func cycleTimes(anchor time.Time, loc *time.Location, large bool) []time.Time {
 	return out
 }
 
-func intString(n int) string { return strconv.Itoa(n) }
-
 func (b *builder) demoEvents(anchor time.Time) {
 	for _, f := range []flowSpec{
 		{ID: namedID("flow/btc-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "BTC", Quantity: "0.1", At: anchor.AddDate(0, 0, -60), Note: "Cold-wallet deposit into Binance Spot"},
@@ -67,7 +65,7 @@ func (b *builder) demoEvents(anchor time.Time) {
 	} {
 		if f.Asset == "BTC" {
 			price := fake.DemoPrice(adapters.PlatformBinance, "BTC", f.At)
-			f.ValueUSD = decimal.Format(decimal.Mul(decimal.MustParse(price), decimal.MustParse(f.Quantity)))
+			f.ValueUSD = decimal.Format(decimal.Mul(decimal.ParseOrZero(price), decimal.ParseOrZero(f.Quantity)))
 			b.price(adapters.PlatformBinance, "BTC", price, f.At)
 		}
 		id := accountID("daily-classic", "funding")
@@ -136,7 +134,7 @@ func (b *builder) demoListingPolicy(anchor time.Time) {
 			reason = "Reviewed synthetic dust; intentionally omitted from calculated value."
 		}
 		at := anchor.AddDate(0, 0, days)
-		b.add("portfolio_listing_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), intString(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
+		b.add("portfolio_listing_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
 		action := "catalog.listing.restore"
 		if ignored {
 			action = "catalog.listing.exclude"

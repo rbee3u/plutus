@@ -7,6 +7,7 @@ linters:
     - bidichk
     - bodyclose
     - contextcheck
+    - depguard
     - durationcheck
     - errcheck
     - errchkjson
@@ -35,6 +36,90 @@ linters:
     - unused
     - wastedassign
   settings:
+    depguard:
+      rules:
+        runtime:
+          list-mode: lax
+          files:
+            - "$all"
+            - "!$test"
+            - "!${config-path}/internal/testsupport/**"
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/testsupport/
+              desc: Runtime code must not depend on test infrastructure.
+        adapter-contract:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/platform/adapters/**"
+            - "!$test"
+          allow:
+            - github.com/rbee3u/plutus/internal/shared/
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/
+              desc: The normalized Adapter contract must remain independent of implementations.
+        transport:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/transport/**"
+            - "!$test"
+          deny:
+            - pkg: database/sql$
+              desc: HTTP delegates database access to application services.
+            - pkg: github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen$
+              desc: HTTP delegates database access to application services.
+        shared:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/shared/**"
+            - "!$test"
+          allow:
+            - github.com/rbee3u/plutus/internal/shared/
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/
+              desc: Keep shared dependencies within its documented architectural boundary.
+        infra:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/infra/**"
+            - "!$test"
+          allow:
+            - github.com/rbee3u/plutus/internal/infra/
+            - github.com/rbee3u/plutus/internal/shared/
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/
+              desc: Keep infra dependencies within its documented architectural boundary.
+        platform:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/platform/**"
+            - "!$test"
+          allow:
+            - github.com/rbee3u/plutus/internal/platform/
+            - github.com/rbee3u/plutus/internal/shared/
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/
+              desc: Keep platform dependencies within its documented architectural boundary.
+        application:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/application/**"
+            - "!$test"
+          allow:
+            - github.com/rbee3u/plutus/internal/application/
+            - github.com/rbee3u/plutus/internal/infra/
+            - github.com/rbee3u/plutus/internal/platform/adapters$
+            - github.com/rbee3u/plutus/internal/shared/
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/
+              desc: Keep application dependencies within its documented architectural boundary.
+        valuation:
+          list-mode: lax
+          files:
+            - "${config-path}/internal/application/valuation/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/rbee3u/plutus/internal/application/financial
+              desc: Valuation must remain independent of financial presentation.
     gocritic:
       enabled-tags:
         - diagnostic
@@ -76,6 +161,6 @@ linters:
         linters: [gosec]
         text: "^G124:"
       # Verify the network guard rejects a forbidden URL.
-      - path: ^internal/platform/offline/default_test\.go$
+      - path: ^internal/testsupport/offline/default_test\.go$
         linters: [gosec]
         text: "^G704:"

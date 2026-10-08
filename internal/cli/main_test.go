@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/offline"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 func TestMain(m *testing.M) {

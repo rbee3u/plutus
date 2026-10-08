@@ -1,3 +1,4 @@
+import boundaries from "./eslint.boundaries.js";
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -19,5 +20,7 @@ export default defineConfig(
   {
     files: ["src/**/*.{ts,tsx}"],
     extends: [reactHooks.configs.flat.recommended],
+    plugins: { architecture: { rules: { boundaries } } },
+    rules: { "architecture/boundaries": "error" },
   },
 );

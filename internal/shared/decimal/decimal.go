@@ -26,8 +26,9 @@ func Parse(value string) (*big.Rat, bool) {
 	return rat, ok
 }
 
-// MustParse parses a literal that the caller knows is valid and returns zero otherwise.
-func MustParse(value string) *big.Rat {
+// ParseOrZero parses a decimal string, returning zero on failure.
+// Use Parse when an invalid or unknown value must stay distinct from zero.
+func ParseOrZero(value string) *big.Rat {
 	rat, ok := Parse(value)
 	if !ok {
 		return new(big.Rat)
@@ -91,14 +92,6 @@ func Mul(a, b *big.Rat) *big.Rat {
 	return new(big.Rat).Mul(a, b)
 }
 
-// Sign returns -1, 0, or 1 treating nil as zero.
-func Sign(value *big.Rat) int {
-	if value == nil {
-		return 0
-	}
-	return value.Sign()
-}
-
 // Abs returns |value| treating nil as zero.
 func Abs(value *big.Rat) *big.Rat {
 	if value == nil {
@@ -115,6 +108,5 @@ func FormatPtr(value *big.Rat) *string {
 	if value == nil {
 		return nil
 	}
-	s := Format(value)
-	return &s
+	return new(Format(value))
 }

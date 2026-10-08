@@ -1,11 +1,10 @@
-import * as echarts from "echarts/core";
+import { useChart } from "@/shared/lib/useChart";
 import type { EChartsCoreOption } from "echarts/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { ValuationPointSummary } from "@/api";
 import { chartNumber, formatAmount } from "@/shared/lib/amount";
-import { withChartTheme } from "@/shared/lib/chartTheme";
 import { formatInstant } from "@/shared/lib/datetime";
-import { HISTORY_PRESETS, type HistoryPreset } from "@/features/history/hooks/useHistoryWindow";
+import { HISTORY_PRESETS, type HistoryPreset } from "@/features/history/timeWindow";
 import styles from "@/features/overview/styles.module.css";
 
 /** The recent valuation trend of the Hero card, with its time-range presets. */
@@ -20,19 +19,6 @@ export function HeroChart({
   preset: HistoryPreset;
   onPreset: (preset: HistoryPreset) => void;
 }) {
-  const chartHostRef = useRef<HTMLDivElement>(null);
-  const [themeTick, setThemeTick] = useState(0);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const observer = new MutationObserver(() => setThemeTick((value) => value + 1));
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-resolved-theme", "data-theme"],
-    });
-    return () => observer.disconnect();
-  }, []);
-
   const sparklineOption = useMemo((): EChartsCoreOption | null => {
     if (points.length < 2) {
       return null;
@@ -97,20 +83,7 @@ export function HeroChart({
     };
   }, [points, timezone]);
 
-  useEffect(() => {
-    const host = chartHostRef.current;
-    if (!host || !sparklineOption) {
-      return;
-    }
-    const chart = echarts.init(host);
-    chart.setOption(withChartTheme(sparklineOption), true);
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(host);
-    return () => {
-      observer.disconnect();
-      chart.dispose();
-    };
-  }, [sparklineOption, themeTick]);
+  const chartHostRef = useChart(sparklineOption);
 
   return (
     <div className={styles.heroChartWrapper}>

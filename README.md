@@ -15,68 +15,39 @@ Adapter. Live Binance, OKX, Bybit, and Kraken Adapters are also implemented, but
 **none has been validated against its exchange app on the test environment**. No
 exchange integration is complete yet.
 
-Implemented capabilities include:
+Implemented capabilities:
 
-- Session authentication, multiple Portfolios, and Portfolio settings.
-- Identity and Account selection, encrypted credentials, and Connection
-  validation, enabling, disabling, and archiving.
-- Scheduled and on-demand collection, USD valuation, stale report carry-forward,
-  and explicit incomplete totals when some holdings cannot be valued.
-- Unified rotating application, HTTP access, and full-value SQL logs; see
-  [logging configuration](./docs/development.md#logging).
-- Overview totals, recent-point chart, and an expandable ownership Tree;
-  separate Balances, Futures, Earn, and Dual Investment Holdings views.
-- Historical Valuation Points, Period Closes, and Value Changes, with explicit
-  time windows, automatically grouped curves, independent table pagination,
-  manual Capital Flows, and derived Boundary Events.
-- Linked Platform and Identity filters and substring symbol search in Holdings
-  table headers; Balances has a separate Identity column and no grouping view.
-- Shared contract position columns, normalized Size, margin provenance, and
-  observation badges in current and historical holdings; see
-  [the delivery report](./docs/platform/position-presentation-delivery.md) and
-  [the margin correction](./docs/platform/margin-presentation-delivery.md).
-- Earn product details and source-aware rates/rewards, with shared Earn and Dual
-  Investment observation badges; see
-  [the delivery report](./docs/platform/earn-presentation-delivery.md).
-- Fixed Manual Accounts for signed API-uncovered quantities, versioned edits,
-  frozen cycle inputs, separate pending changes, and confirmed empty Overview
-  Account hiding. See
-  [the decision](./docs/adr/0019-manual-balances-and-empty-accounts.md) and
-  [delivery report](./docs/platform/manual-balances-delivery.md).
-- Asset mapping, reviewed Portfolio-specific Balance exclusions, Activity and
-  audit views, and one deterministic Alice development dataset with healthy,
-  edge-case, large-list and empty Portfolios. See the
-  [seed scenarios](./docs/seeds.md).
+- Authentication, multiple Portfolios, selected Accounts, and encrypted
+  read-only Connections.
+- Scheduled and manual collection, USD valuation, compatible stale history, and
+  explicit incomplete totals.
+- Overview ownership Tree; Balances, Futures, Earn, and Dual Investment tables;
+  Manual balances for API-uncovered quantities.
+- Historical points, calendar comparisons, manual Capital Flows, Asset mapping,
+  Listing Exclusions, and audit history.
+- Rotating application, access, and SQL logs, plus a deterministic
+  [development dataset](./docs/seeds.md).
 
-Remaining work is exchange-app reconciliation and validation of unexercised
-Account Structures, Margin Modes, and products. Synthetic tests and reviewed
-recordings provide separate evidence; neither completes an integration. See the
-Platform coverage notes: [Binance](./docs/platform/binance/verification.md),
+Remaining work is exchange-app reconciliation and unexercised structures, modes,
+and products. Synthetic tests and recordings are separate evidence. Coverage:
+[Binance](./docs/platform/binance/verification.md),
 [OKX](./docs/platform/okx/verification.md),
 [Bybit](./docs/platform/bybit/verification.md), and
 [Kraken](./docs/platform/kraken/verification.md).
 
-Kraken Dual Investment remains unsupported: the public API review has not found
-a documented read-only holdings contract. The 2026-10-05 Main/Earn check
-confirmed the owner-reported 100 USD subscription principal was omitted; Manual
-can record that uncovered amount. This is not full exchange-app reconciliation.
-See the
-[contract review](./docs/platform/kraken/verification.md#dual-investment-contract-review).
+Kraken Dual Investment remains unsupported; Manual can record API-uncovered
+principal. See the
+[contract review and observed omission](./docs/platform/kraken/verification.md#dual-investment-contract-review).
 
 The implementation also has an unresolved
 [same-Platform pricing discrepancy](./docs/architecture.md#known-implementation-discrepancy).
 
 ## Product scope
 
-Plutus answers two questions: **how much is there now, and where**, and **how
-did the total change over a period, excluding my own transfers**.
-
-Only selected Accounts are observed. Unknown value stays explicit and totals can
-be stale or incomplete. USD is the only valuation currency; USDT and USDC count
-as 1 USD. Plutus uses read-only API keys. Trading, transfers, trade history,
-automatic deposit import, percentage returns, attribution, non-USD display, and
-Exposure aggregation are outside the product. Value Change is not an investment
-return.
+Only selected Accounts are observed. USD is the valuation currency; USDT and
+USDC count as 1 USD. Value Change accounts for the owner's transfers and is not
+an investment return. Trading, transfers, and trade-history accounting are out
+of scope.
 
 See [product scope](./docs/product-scope.md) for supported Accounts and
 [domain model](./CONTEXT.md) for business rules.
@@ -131,3 +102,10 @@ frontend, and externally managed MySQL database.
 | Maintain a Platform integration           | Mapping: [Binance](./docs/platform/binance/mapping.md), [OKX](./docs/platform/okx/mapping.md), [Bybit](./docs/platform/bybit/mapping.md), [Kraken](./docs/platform/kraken/mapping.md) |
 | Record and review real responses          | [Evidence workflow](./docs/platform/evidence-workflow.md); per-Platform verification links above                                                                                      |
 | Work as an agent                          | [Agent guidance](./AGENTS.md)                                                                                                                                                         |
+
+Feature delivery reports:
+[Positions](./docs/platform/position-presentation-delivery.md),
+[Margin](./docs/platform/margin-presentation-delivery.md),
+[Earn](./docs/platform/earn-presentation-delivery.md),
+[Manual balances](./docs/platform/manual-balances-delivery.md), and
+[Proxy](./docs/platform/proxy-verification.md).

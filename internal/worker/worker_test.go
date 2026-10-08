@@ -8,15 +8,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/domain/catalog"
-	"github.com/rbee3u/plutus/internal/domain/collection"
-	"github.com/rbee3u/plutus/internal/domain/identity"
-	"github.com/rbee3u/plutus/internal/domain/jobs"
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 type leaseAdapter struct {
@@ -47,7 +48,7 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 			name = "duplicate_persistence"
 		}
 		t.Run(name, func(t *testing.T) {
-			db := mysql.OpenTestDB(t)
+			db := mysqltest.OpenTestDB(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			user, err := auth.NewService(db, time.Hour, time.Hour).CreateUser(ctx, "worker-"+uuid.NewString()[:8], "Worker=123456")
@@ -83,7 +84,8 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 				t.Fatal(err)
 			}
 			value := valuation.NewService(db)
-			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalog.NewService(db), Valuation: value, RetryDelays: []time.Duration{}})
+			listings := catalog.NewService(db, jobs.NewService(db))
+			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: listings, Manual: manual.NewService(db, listings), Valuation: value, RetryDelays: []time.Duration{}})
 			w := New(&Options{Jobs: jobService, Collection: collect, Valuation: value, Lease: 3 * time.Second})
 			if duplicate {
 				if ok, err := w.ProcessOnce(ctx); err != nil || !ok {

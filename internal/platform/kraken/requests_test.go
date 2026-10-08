@@ -9,7 +9,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
-	"github.com/rbee3u/plutus/internal/platform/offline"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 func TestSingleRecordingHasNoPreflightRetryOrPagination(t *testing.T) {
@@ -18,13 +18,6 @@ func TestSingleRecordingHasNoPreflightRetryOrPagination(t *testing.T) {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
-			for _, key := range ep.Required {
-				value := map[string]string{"category": "linear", "status": "PURCHASE_SUCCESS", "instType": "SWAP"}[key]
-				ep.Request.Query.Set(key, value)
-			}
-			if ep.Request.Path == "/v5/position/list" {
-				ep.Request.Query.Set("settleCoin", "USDT")
-			}
 			if ep.Request.Path == "/0/private/Earn/Strategies" {
 				ep.Request.Form.Set("cursor", "next%2Fpage")
 			}
@@ -87,23 +80,25 @@ func TestSingleWebSocketRecordingNeedsNoRESTOrSpotKey(t *testing.T) {
 }
 
 func TestSingleRecordingRetainsSafeFailureWithoutRetry(t *testing.T) {
-	calls := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls++
-		w.WriteHeader(429)
-		_, _ = w.Write([]byte("too frequent"))
-	}))
-	defer server.Close()
-	a := New(&Options{SpotHost: server.URL, FuturesHost: server.URL, HTTP: offline.Client(t, server)})
-	for _, ep := range RecordingRequests() {
-		if ep.Request.Method == "WS" || len(ep.Required) > 0 {
-			continue
-		}
-		f, err := a.RecordRequest(context.Background(), testCreds, ep.Request)
-		if err == nil || f == nil || f.Status != 429 || f.BodyFormat != "text" || calls != 1 {
-			t.Fatalf("failure lost or retried: %v %v calls=%d", f, err, calls)
-		}
-		return
+	// Fixed signed requests exercise each native HTTP protocol, independently of map order.
+	for _, name := range []string{"0_private_BalanceEx", "derivatives_api_v3_openpositions"} {
+		t.Run(name, func(t *testing.T) {
+			ep, ok := RecordingRequests()[name]
+			if !ok {
+				t.Fatalf("missing recording request %q", name)
+			}
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls++
+				w.WriteHeader(429)
+				_, _ = w.Write([]byte("too frequent"))
+			}))
+			defer server.Close()
+			a := New(&Options{SpotHost: server.URL, FuturesHost: server.URL, HTTP: offline.Client(t, server)})
+			f, err := a.RecordRequest(context.Background(), testCreds, ep.Request)
+			if err == nil || f == nil || f.Status != 429 || f.BodyFormat != "text" || calls != 1 {
+				t.Fatalf("failure lost or retried: %v %v calls=%d", f, err, calls)
+			}
+		})
 	}
-	t.Fatal("no selected HTTP interface")
 }

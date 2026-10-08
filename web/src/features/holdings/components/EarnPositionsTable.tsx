@@ -5,7 +5,7 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { DataTable } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
-import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
+import { holdingsAccountColumns, HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import type { HoldingsFilters } from "../hooks/useHoldingsFilters";
 import { ObservedCell } from "./ObservedCell";
 import styles from "@/features/holdings/styles.module.css";
@@ -30,30 +30,30 @@ const REWARD_LABELS: Record<string, string> = {
   cumulative_boost: "Cumulative boost",
 };
 
-function assetLabel(a: EarnAmount): string {
-  return a.assetSymbol ?? a.symbol;
+function assetLabel(asset: EarnAmount): string {
+  return asset.assetSymbol ?? asset.symbol;
 }
 function amountLines(assets: EarnAmount[]) {
   return assets.length
-    ? assets.map((a, i) => (
-        <div key={`${a.symbol}-${i}`}>
-          <NumericText>{`${formatDecimal(a.amount)} ${assetLabel(a)}`}</NumericText>
+    ? assets.map((asset, index) => (
+        <div key={`${asset.symbol}-${index}`}>
+          <NumericText>{`${formatDecimal(asset.amount)} ${assetLabel(asset)}`}</NumericText>
         </div>
       ))
     : "—";
 }
-function rateText(r: EarnRate): string {
+function rateText(rate: EarnRate): string {
   const range =
-    r.upper && r.upper !== r.value
-      ? `${formatPercent(r.value)}–${formatPercent(r.upper)}`
-      : formatPercent(r.value);
-  return `${r.qualifier === "estimated" ? "Est. " : ""}${range} ${r.kind.toUpperCase()}${r.symbol ? ` ${r.symbol}` : ""}`;
+    rate.upper && rate.upper !== rate.value
+      ? `${formatPercent(rate.value)}–${formatPercent(rate.upper)}`
+      : formatPercent(rate.value);
+  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.symbol ? ` ${rate.symbol}` : ""}`;
 }
-function rewardLine(r: EarnReward, i: number) {
+function rewardLine(reward: EarnReward, index: number) {
   return (
-    <div key={`${r.kind}-${r.symbol}-${i}`}>
-      {REWARD_LABELS[r.kind] ?? r.kind}{" "}
-      <NumericText>{`${formatDecimal(r.amount)} ${r.symbol}`}</NumericText>
+    <div key={`${reward.kind}-${reward.symbol}-${index}`}>
+      {REWARD_LABELS[reward.kind] ?? reward.kind}{" "}
+      <NumericText>{`${formatDecimal(reward.amount)} ${reward.symbol}`}</NumericText>
     </div>
   );
 }
@@ -78,26 +78,7 @@ export function EarnPositionsTable({
     <DataTable
       caption="Earn positions"
       columns={[
-        ...(showAccount
-          ? [
-              {
-                key: "platform",
-                header: "Platform",
-                nowrap: true,
-                headerContent: filters ? (
-                  <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
-                ) : undefined,
-              },
-              {
-                key: "identity",
-                header: "Identity",
-                nowrap: true,
-                headerContent: filters ? (
-                  <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
-                ) : undefined,
-              },
-            ]
-          : []),
+        ...(showAccount ? holdingsAccountColumns(filters) : []),
         {
           key: "asset",
           header: "Asset",
@@ -118,25 +99,25 @@ export function EarnPositionsTable({
       rows={items.map((item) => {
         const name = `${item.assets.map(assetLabel).join(" / ")} ${item.platformPositionRef}`;
         const displayedRates = item.rates.filter(
-          (r) => r.qualifier === "reported" || r.qualifier === "estimated",
+          (rate) => rate.qualifier === "reported" || rate.qualifier === "estimated",
         );
-        const displayedRewards = item.rewards.filter((r) =>
-          ["cumulative", "pending", "estimated"].includes(r.kind),
+        const displayedRewards = item.rewards.filter((reward) =>
+          ["cumulative", "pending", "estimated"].includes(reward.kind),
         );
         return {
           id: `${item.accountId}-${item.platformPositionRef}`,
           platform: platformLabel(platforms.data?.items, item.platform),
-          identity: item.identityName,
-          asset: item.assets.map((a, i) => (
+          identityName: item.identityName,
+          asset: item.assets.map((asset, index) => (
             <div
-              key={`${a.symbol}-${i}`}
+              key={`${asset.symbol}-${index}`}
               title={
-                a.assetSymbol && a.assetSymbol !== a.symbol
-                  ? `Platform listing: ${a.symbol}`
+                asset.assetSymbol && asset.assetSymbol !== asset.symbol
+                  ? `Platform listing: ${asset.symbol}`
                   : undefined
               }
             >
-              {assetLabel(a)}
+              {assetLabel(asset)}
             </div>
           )),
           type: (
@@ -167,8 +148,8 @@ export function EarnPositionsTable({
                         : "Product aggregate"}
                   </dd>
                 </div>
-                {item.details.map((detail, i) => (
-                  <div key={`${detail.label}-${i}`}>
+                {item.details.map((detail, index) => (
+                  <div key={`${detail.label}-${index}`}>
                     <dt>{detail.label}</dt>
                     <dd>
                       {detail.at ? formatInstant(detail.at, timezone) : (detail.value ?? "—")}
@@ -187,9 +168,9 @@ export function EarnPositionsTable({
             <HoverDetails
               label={
                 displayedRates.length
-                  ? displayedRates.map((r, i) => (
-                      <div key={i}>
-                        <NumericText>{rateText(r)}</NumericText>
+                  ? displayedRates.map((rate, index) => (
+                      <div key={index}>
+                        <NumericText>{rateText(rate)}</NumericText>
                       </div>
                     ))
                   : "—"
@@ -197,18 +178,18 @@ export function EarnPositionsTable({
               name={`Rate details for ${name}`}
             >
               {item.rates.length ? (
-                item.rates.map((r, i) => (
-                  <p key={i}>
-                    {r.label}: <NumericText>{rateText(r)}</NumericText>
+                item.rates.map((rate, index) => (
+                  <p key={index}>
+                    {rate.label}: <NumericText>{rateText(rate)}</NumericText>
                   </p>
                 ))
               ) : (
                 <p>The Platform did not supply a comparable return rate.</p>
               )}
               {item.details
-                .filter((d) => d.label === "Rate convention")
-                .map((d) => (
-                  <p key={d.label}>{d.value}</p>
+                .filter((detail) => detail.label === "Rate convention")
+                .map((detail) => (
+                  <p key={detail.label}>{detail.value}</p>
                 ))}
             </HoverDetails>
           ),
@@ -239,9 +220,9 @@ export function EarnPositionsTable({
                 value.
               </p>
               {item.details
-                .filter((d) => d.label === "Cumulative reward scope")
-                .map((d) => (
-                  <p key={d.label}>{d.value}</p>
+                .filter((detail) => detail.label === "Cumulative reward scope")
+                .map((detail) => (
+                  <p key={detail.label}>{detail.value}</p>
                 ))}
             </HoverDetails>
           ),
@@ -289,7 +270,7 @@ export function EarnBalanceSummaries({
           ...(showAccount
             ? [
                 { key: "platform", header: "Platform", nowrap: true },
-                { key: "identity", header: "Identity", nowrap: true },
+                { key: "identityName", header: "Identity", nowrap: true },
               ]
             : []),
           { key: "asset", header: "Asset", nowrap: true },
@@ -299,9 +280,9 @@ export function EarnBalanceSummaries({
         rows={items.map((item) => ({
           id: item.accountId,
           platform: platformLabel(platforms.data?.items, item.platform),
-          identity: item.identityName,
+          identityName: item.identityName,
           asset: item.assets.length
-            ? item.assets.map((a, i) => <div key={i}>{assetLabel(a)}</div>)
+            ? item.assets.map((asset, index) => <div key={index}>{assetLabel(asset)}</div>)
             : "—",
           amount: amountLines(item.assets),
           observed: (

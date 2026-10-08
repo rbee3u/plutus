@@ -1,5 +1,8 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type {
+  ManualBalanceState,
   AccountValuation,
   BalanceRow,
   DualPositionRow,
@@ -19,7 +22,7 @@ async function fixture(page: Page) {
     detailReport: undefined as string | undefined,
     failTree: false,
     failPositions: false,
-    holdPositions: false,
+    positionsReady: Promise.resolve(),
     emptyTree: false,
     stale: false,
     unknown: false,
@@ -127,122 +130,151 @@ async function fixture(page: Page) {
           },
         ],
   });
-  await page.route("**/api/v1/**", async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    state.requests.push(`${request.method()} ${path}`);
-    if (path.endsWith("/auth/me"))
-      return route.fulfill({
-        json: { user: { id: "user", username: "overview", status: "active" }, sessionCount: 1 },
-      });
-    if (path.endsWith("/auth/csrf")) return route.fulfill({ json: { csrfToken: "test" } });
-    const portfolio = {
-      id: portfolioId,
-      name: "Overview check",
-      timezone: "UTC",
-      collectionIntervalSeconds: 3600,
-      undeletable: true,
-      version: 1,
-      createdAt: observed,
-      updatedAt: observed,
-    };
-    if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
-    if (path === `/api/v1/portfolios/${portfolioId}`)
-      return route.fulfill({ json: { item: portfolio } });
-    if (path.endsWith("/overview")) return route.fulfill({ json: overview() });
-    if (path.endsWith("/tree"))
-      return route.fulfill(
-        state.failTree ? { status: 503, json: { detail: "Tree unavailable" } } : { json: tree() },
-      );
-    if (path.includes("/accounts/")) {
-      const dual = path.includes("/accounts/dual/");
-      const a = path.includes("/accounts/earn/")
-        ? {
-            ...account(),
-            accountId: "earn",
-            accountName: "Earn",
-            accountType: "earn",
-            reportId: `${state.point}-earn`,
-          }
-        : account(dual);
-      if (state.detailReport) a.reportId = state.detailReport;
-      if (path.endsWith("/earn-positions"))
+  await mockApi(
+    page,
+    sessionFixture({
+      user: { username: "overview" },
+      portfolio: {
+        id: portfolioId,
+        name: "Overview check",
+        createdAt: observed,
+        updatedAt: observed,
+      },
+    }),
+    async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      state.requests.push(`${request.method()} ${path}`);
+      if (path.endsWith("/overview")) return route.fulfill({ json: overview() });
+      if (path.endsWith("/tree"))
+        return route.fulfill(
+          state.failTree ? { status: 503, json: { detail: "Tree unavailable" } } : { json: tree() },
+        );
+      if (path.includes("/accounts/")) {
+        const dual = path.includes("/accounts/dual/");
+        const a = path.includes("/accounts/earn/")
+          ? {
+              ...account(),
+              accountId: "earn",
+              accountName: "Earn",
+              accountType: "earn",
+              reportId: `${state.point}-earn`,
+            }
+          : account(dual);
+        if (state.detailReport) a.reportId = state.detailReport;
+        if (path.endsWith("/earn-positions"))
+          return route.fulfill({
+            json: {
+              context: context(),
+              account: a,
+              items: state.earns,
+              balanceSummaries: [],
+              detailsCollected: true,
+              issues: [],
+            },
+          });
+        if (path.endsWith("/positions") || path.endsWith("/dual-positions")) {
+          await state.positionsReady;
+          if (state.failPositions)
+            return route.fulfill({ status: 503, json: { detail: "Positions unavailable" } });
+          return route.fulfill({
+            json: {
+              context: context(),
+              account: a,
+              items: dual ? state.dual : state.positions,
+              issues: [],
+            },
+          });
+        }
+        const balance: BalanceRow = {
+          accountId: a.accountId,
+          accountName: a.accountName,
+          accountType: a.accountType,
+          identityId: "owner",
+          identityName: state.ownerName,
+          platform: "binance",
+          listingId: "usd",
+          symbol: "USD",
+          assetSymbol: "USD",
+          equity: a.equity!,
+          equityUsd: a.equity,
+          priceUsd: "1",
+          noPrice: false,
+          freshness: a.freshness,
+          reportObservedAt: observed,
+        };
         return route.fulfill({
-          json: {
-            context: context(),
-            account: a,
-            items: state.earns,
-            balanceSummaries: [],
-            detailsCollected: true,
-            issues: [],
-          },
+          json: { context: context(), account: a, items: [balance], issues: [] },
         });
-      if (path.endsWith("/positions") || path.endsWith("/dual-positions")) {
-        if (state.holdPositions) await new Promise((resolve) => setTimeout(resolve, 500));
-        if (state.failPositions)
-          return route.fulfill({ status: 503, json: { detail: "Positions unavailable" } });
+      }
+      const cycle = {
+        id: "cycle",
+        portfolioId,
+        trigger: "manual",
+        createdAt: observed,
+        startedAt: observed,
+        attempts: 1,
+      };
+      if (path.endsWith("/collection-cycles") && request.method() === "POST")
+        return route.fulfill({ status: 202, json: { ...cycle, status: "queued" } });
+      if (path.endsWith("/collection-cycles/cycle")) {
+        state.point = "point-2";
+        state.value = "200";
         return route.fulfill({
           json: {
-            context: context(),
-            account: a,
-            items: dual ? state.dual : state.positions,
+            cycle: { ...cycle, status: "succeeded", finishedAt: observed, point: overview().point },
+            runs: [],
             issues: [],
           },
         });
       }
-      const balance: BalanceRow = {
-        accountId: a.accountId,
-        accountName: a.accountName,
-        accountType: a.accountType,
-        identityId: "owner",
-        identityName: state.ownerName,
-        platform: "binance",
-        listingId: "usd",
-        symbol: "USD",
-        assetSymbol: "USD",
-        equity: a.equity!,
-        equityUsd: a.equity,
-        priceUsd: "1",
-        noPrice: false,
-        freshness: a.freshness,
-        reportObservedAt: observed,
-      };
-      return route.fulfill({
-        json: { context: context(), account: a, items: [balance], issues: [] },
-      });
-    }
-    const cycle = {
-      id: "cycle",
-      portfolioId,
-      trigger: "manual",
-      createdAt: observed,
-      startedAt: observed,
-      attempts: 1,
-    };
-    if (path.endsWith("/collection-cycles") && request.method() === "POST")
-      return route.fulfill({ status: 202, json: { ...cycle, status: "queued" } });
-    if (path.endsWith("/collection-cycles/cycle")) {
-      state.point = "point-2";
-      state.value = "200";
-      return route.fulfill({
-        json: {
-          cycle: { ...cycle, status: "succeeded", finishedAt: observed, point: overview().point },
-          runs: [],
-          issues: [],
-        },
-      });
-    }
-    return route.fulfill({
-      json: {
-        context: context(),
-        items: [],
-        page: { offset: 0, limit: 50, total: 0 },
-        totalUsd: "0",
-        completeness: "complete",
-        issues: [],
-      },
-    });
-  });
+      if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
+      if (path.endsWith("/history-window"))
+        return route.fulfill({ json: { context: context(), from: observed, to: observed } });
+      if (path.endsWith("/valuation-points"))
+        return route.fulfill({
+          json: { context: context(), from: observed, to: observed, granularity: "raw", items: [] },
+        });
+      if (path.endsWith("/manual-balances")) {
+        const identityId = path.split("/").at(-2)!;
+        return route.fulfill({
+          json: {
+            identityId,
+            accountId: `manual-${identityId}`,
+            version: 1,
+            appliedVersion: null,
+            items: [],
+            appliedItems: [],
+            pending: false,
+          } satisfies ManualBalanceState,
+        });
+      }
+      if (
+        request.method() === "GET" &&
+        (path.endsWith("/collection-cycles") || path.endsWith("/jobs"))
+      )
+        return route.fulfill({
+          json: {
+            items: [],
+            page: { kind: "cursor", limit: 50, nextCursor: null, hasMore: false },
+          },
+        });
+      if (path === `/api/v1/portfolios/${portfolioId}/identities`)
+        return route.fulfill({ json: { items: [] } });
+      if (path === `/api/v1/portfolios/${portfolioId}/balances`)
+        return route.fulfill({
+          json: {
+            context: context(),
+            items: [],
+            page: { kind: "offset", offset: 0, limit: 50, total: 0 },
+            totalUsd: "0",
+            completeness: "complete",
+            issues: [],
+          },
+        });
+      return route.fallback();
+    },
+  );
   return state;
 }
 
@@ -344,16 +376,22 @@ test("empty, loading, failed and newer Account Reports are not treated as empty 
   page,
 }) => {
   const state = await fixture(page);
-  state.holdPositions = true;
+  let releasePositions!: () => void;
+  state.positionsReady = new Promise<void>((resolve) => {
+    releasePositions = resolve;
+  });
   state.failPositions = true;
-  await page.goto(`/p/${portfolioId}/overview`);
-  await openSpot(page);
-  await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
-  await expect(page.getByText("Loading positions.", { exact: true })).toBeVisible();
+  try {
+    await page.goto(`/p/${portfolioId}/overview`);
+    await openSpot(page);
+    await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
+    await expect(page.getByText("Loading positions.", { exact: true })).toBeVisible();
+  } finally {
+    releasePositions();
+  }
   await expect(page.getByRole("alert")).toContainText("Positions unavailable");
   await expect(page.getByRole("heading", { name: "Futures", exact: true })).toBeVisible();
   state.failPositions = false;
-  state.holdPositions = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Futures", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Collapse balances and positions for Spot" }).click();

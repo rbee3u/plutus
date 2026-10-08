@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
+	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -25,7 +25,7 @@ func (a *API) currentSession(ctx context.Context) (auth.User, auth.Session, bool
 }
 
 func (a *API) requireCSRF(ctx context.Context, header *string, session *auth.Session) error {
-	token := headerValue(header)
+	token := stringValue(header)
 	if session != nil {
 		if !auth.CSRFValid(token, session.CSRF) {
 			return auth.ErrCSRF
@@ -139,7 +139,7 @@ func (a *API) PutAuthPassword(ctx context.Context, request api.PutAuthPasswordRe
 	if request.Body == nil {
 		return api.PutAuthPassword400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", "A request body is required."))}, nil
 	}
-	if err := a.Auth.ChangePassword(ctx, user.ID, session.ID, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
+	if err := a.Auth.ChangePassword(ctx, user.ID, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
 		if errors.Is(err, auth.ErrPasswordPolicy) || errors.Is(err, auth.ErrSamePassword) {
 			return api.PutAuthPassword400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 		}

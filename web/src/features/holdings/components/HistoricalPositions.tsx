@@ -22,15 +22,7 @@ export function HistoricalPositions({
   return (
     <>
       <h4>Contract positions</h4>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Historical positions could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Historical positions could not be loaded." />
       <DataTable
         caption="Contract positions at this historical point"
         columns={POSITION_COLUMNS}

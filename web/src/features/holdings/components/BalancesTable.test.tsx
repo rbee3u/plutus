@@ -38,46 +38,56 @@ function render(item: BalanceRow) {
 
 describe("shared balance cells", () => {
   it("prioritizes USD valuation and displays the source time without a fresh badge", () => {
-    expect(BALANCE_COLUMNS.map((column) => column.header)).toEqual([
-      "Asset",
-      "Equity",
-      "Price (USD)",
-      "Equity (USD)",
-      "Liability",
-      "Unrealized PnL",
-      "Observed",
+    expect(BALANCE_COLUMNS.map(({ key, header }) => [key, header])).toEqual([
+      ["symbol", "Asset"],
+      ["equity", "Equity"],
+      ["priceUsd", "Price (USD)"],
+      ["equityUsd", "Equity (USD)"],
+      ["liability", "Liability"],
+      ["unrealizedPnl", "Unrealized PnL"],
+      ["observed", "Observed"],
     ]);
-    const html = render(balance);
-    expect(html).toContain("XBT");
-    expect(html).toContain("as BTC");
-    expect(html).toContain("0.123457");
-    expect(html).toContain("6,172.84");
-    expect(html).toContain("2026-10-03 08:00");
-    expect(html).not.toContain("Withdrawable");
-    expect(html).not.toContain("Tradable");
-    expect(html).not.toContain("Freshness");
-    expect(html).not.toContain(">fresh</span>");
-    expect(html).not.toContain("Stale report");
+    const row = balanceRow(balance, "Asia/Shanghai");
+    expect(row.equity).toBe("0.123457");
+    expect(row.priceUsd).toBe("50,000");
+    expect(row.equityUsd).toBe("6,172.84");
+    expect(row.liability).toBe("0");
+    expect(row.unrealizedPnl).toBe("—");
+    const symbol = renderToStaticMarkup(<>{row.symbol}</>);
+    expect(symbol).toContain("XBT");
+    expect(symbol).toContain("as BTC");
+    const observed = renderToStaticMarkup(<>{row.observed}</>);
+    expect(observed).toContain("2026-10-03 08:00");
+    expect(observed).not.toContain("Stale");
+    expect(observed).not.toContain(">fresh</span>");
+    // Keep one composition check; the named cells above own their financial values.
+    expect(render(balance)).toContain("6,172.84");
   });
 
   it("retains the carried-forward time and exposes a Stale disclosure", () => {
-    const html = render({ ...balance, freshness: "stale" });
+    const row = balanceRow({ ...balance, freshness: "stale" }, "Asia/Shanghai");
+    const html = renderToStaticMarkup(<>{row.observed}</>);
     expect(html).toContain("2026-10-03 08:00");
     expect(html).toContain('aria-label="Stale report for XBT"');
     expect(html).toContain("Stale</span>");
   });
 
   it("keeps unknown time and unpriced equity explicit", () => {
-    const html = render({
-      ...balance,
-      reportObservedAt: null,
-      noPrice: true,
-      priceUsd: null,
-      equityUsd: null,
-    });
-    expect(html).toContain("no price");
-    expect(html).toContain("Account Report observed at an unknown time");
-    expect(html).not.toContain("2026-10-03 08:00");
-    expect(html.match(/<td[^>]*>—<\/td>/g)).toHaveLength(2);
+    const row = balanceRow(
+      {
+        ...balance,
+        reportObservedAt: null,
+        noPrice: true,
+        priceUsd: null,
+        equityUsd: null,
+      },
+      "Asia/Shanghai",
+    );
+    expect(row.equity).toBe("0.123457");
+    expect(row.equityUsd).toBe("—");
+    expect(renderToStaticMarkup(<>{row.priceUsd}</>)).toContain("no price");
+    const observed = renderToStaticMarkup(<>{row.observed}</>);
+    expect(observed).toContain("Account Report observed at an unknown time");
+    expect(observed.replace(/<[^>]*>/g, "")).toBe("—");
   });
 });

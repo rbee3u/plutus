@@ -19,34 +19,24 @@ Two questions, in priority order:
 
 ## Portfolio presentation
 
-Overview presents the latest total, recent Valuation Points, and the ownership
-Tree. Each node presents a name and adjacent USD value without repeated counts
-or status badges. Its default rows show Platform and Identity; expanding an
-Identity shows Accounts, and expanding an Account shows report measures and
-holding details. Confirmed empty Account nodes are hidden after fresh successful
-complete zero valuation with no nonzero Balances or Positions of any kind.
-Uncertain, stale, failed, and offsetting holdings remain visible. Hiding changes
-no selection or history. Balances sections remain available within visible
-nodes. Futures, Earn, and Dual Investment details appear when held; loading and
-collection failures remain explicit inside Account details. Report provenance is
-available in a folded Report details section. Page-level Issues explain
-omissions even when Accounts are folded.
+Overview shows the latest total, recent points, and an expandable Platform →
+Identity → Account Tree. Account details show report measures and holdings;
+page-level Issues name omissions even when Accounts are collapsed. Only freshly
+confirmed empty Accounts hide. See
+[ADR 0016](./adr/0016-overview-and-holdings-navigation.md) and
+[Manual/empty Account rules](../CONTEXT.md#manual-balances).
 
-Holdings presents separate Balances, Futures, Earn, and Dual Investment tables,
-each with independent view filters. Balances is the default view. Earn presents
-currently supported products at their source granularity with qualified rates,
-amounts, rewards, product stages, and observation health. A dedicated Options
-view is not offered. Product descriptions do not expand supported Accounts.
+Holdings has independent Balances, Futures, Earn, and Dual Investment views,
+with Balances as the default. Earn preserves source product granularity and
+qualifies rates, amounts, rewards, and lifecycle stages. Options is not offered.
 
 ## History presentation
 
-History defaults to an explicit rolling seven-day window, with shorter and
-longer presets and Portfolio-timezone custom endpoints. Valuation Points shows
-an automatically grouped full-window curve, Period closes, and independently
-paginated raw points. Value Changes shows complete calendar results in the same
-selected window and retains its independent custom comparison. All three tables
-show newest records first, default to 20 rows, and offer 10/20/50 rows per page.
-See [ADR 0017](./adr/0017-history-windows-and-pagination.md).
+History shows Valuation Points, grouped curves, Period Closes, and Value Changes
+in a selected time window, defaulting to seven days. Tables paginate
+independently; Value Changes also offers a custom comparison. Window and
+pagination choices are recorded in
+[ADR 0017](./adr/0017-history-windows-and-pagination.md).
 
 ## Supported Accounts
 
@@ -65,10 +55,7 @@ and Account Types. Offered scope is distinct from exchange-app validation; see
 
 Each Identity also owns a fixed, always-selected Manual Account, independent of
 Connection health. It supplements API-uncovered signed quantities using public
-Platform prices; it is not an additional exchange Account Structure. Overview
-Identity rows and Manual Balances headings, and the Holdings Balances toolbar,
-share an editor. Pending changes are separate from current Valuation Point
-quantities and values. See
+Platform prices. Pending edits are separate from collected values. See
 [ADR 0019](./adr/0019-manual-balances-and-empty-accounts.md).
 
 ## Product boundaries
@@ -77,7 +64,7 @@ quantities and values. See
   are separate Identities, each with its own read-only credentials.
 - USD is the only Valuation Asset. USDT and USDC count as 1 USD; other
   stablecoins are priced normally.
-- Capital Flows are manual; selection changes are implicit flows. Manual
+- Capital Flows are manual; selection changes produce Boundary Events. Manual
   quantity adjustments create no flow and make crossing comparisons incomplete.
   Value Change is an absolute amount, not an investment return.
 - Trading, transfers, trade history, automatic deposit import, percentage

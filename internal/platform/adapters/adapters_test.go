@@ -2,11 +2,13 @@ package adapters
 
 import (
 	"context"
-	"errors"
 	"math/big"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
 func TestCatalogOffersEachPlatformsStructures(t *testing.T) {
@@ -179,22 +181,6 @@ func TestFieldHelpersNeverTurnUnknownIntoZero(t *testing.T) {
 	if Ratio(big.NewRat(1, 1), big.NewRat(0, 1)) != nil || *Ratio(big.NewRat(1, 1), big.NewRat(3, 1)) != "0.33333333" {
 		t.Fatal("Ratio")
 	}
-	totals := Totals{}
-	for _, add := range []struct {
-		symbol string
-		amount *big.Rat
-	}{{"BTC", big.NewRat(1, 2)}, {"BTC", big.NewRat(1, 2)}, {"ETH", big.NewRat(0, 1)}, {" ", big.NewRat(0, 1)}} {
-		if err := totals.Add("test", add.symbol, add.amount); err != nil {
-			t.Fatal(err)
-		}
-	}
-	balances := totals.Balances()
-	if len(balances) != 1 || balances[0].Symbol != "BTC" || balances[0].Equity != "1" {
-		t.Fatalf("Totals.Balances = %+v", balances)
-	}
-	if class, _ := Classify(totals.Add("test", " ", big.NewRat(5, 1))); class != ClassNormalization {
-		t.Fatalf("a nonzero amount without a coin must fail, not vanish: %q", class)
-	}
 }
 
 func TestQuotePricesPicksTheFirstQuotedPair(t *testing.T) {
@@ -221,27 +207,43 @@ func TestQuotePricesPicksTheFirstQuotedPair(t *testing.T) {
 
 func TestCheckEarnComplete(t *testing.T) {
 	t.Parallel()
-
-	prices := map[string]*big.Rat{"BTC": big.NewRat(60000, 1), "USDT": big.NewRat(1, 1)}
-	price := func(symbol string) (*big.Rat, bool) {
-		p, ok := prices[symbol]
-		return p, ok
-	}
-	balances := []Balance{{Symbol: "BTC", Equity: "0.1"}, {Symbol: "USDT", Equity: "1000"}}
-	if err := CheckEarnComplete(PlatformOKX, big.NewRat(7050, 1), balances, price); err != nil {
-		t.Fatalf("0.7%% above the itemized value is within tolerance: %v", err)
-	}
-	err := CheckEarnComplete(PlatformOKX, big.NewRat(9000, 1), balances, price)
-	if class, detail := Classify(err); class != ClassUnsupported || !strings.Contains(detail, "9000.00") || !strings.Contains(detail, "7000.00") {
-		t.Fatalf("a missing product must fail with both amounts, got %v", err)
-	}
-	if err := CheckEarnComplete(PlatformBybit, big.NewRat(19, 20), nil, price); err != nil {
-		t.Fatalf("the 1 USD floor applies to a tiny Earn: %v", err)
-	}
-	if err := CheckEarnComplete(PlatformBybit, big.NewRat(9000, 1), append(balances, Balance{Symbol: "XYZ", Equity: "5"}), price); err != nil {
-		t.Fatalf("an unpriced Balance skips the check: %v", err)
-	}
-	if err := CheckEarnComplete(PlatformBinance, nil, balances, price); !errors.As(err, new(*Error)) {
-		t.Fatal("a missing Platform valuation is a normalization failure")
+	priced := []Balance{{Symbol: "BTC", Equity: "0.1"}, {Symbol: "USDT", Equity: "1000"}}
+	for _, tc := range []struct {
+		name, platformUSD string
+		balances          []Balance
+		class             string
+		amounts           []string
+	}{
+		{"priced holdings within tolerance", "7050", priced, "", nil},
+		{"missing product", "9000", priced, ClassUnsupported, []string{"9000.00", "7000.00"}},
+		{"exact floor", "1", nil, "", nil},
+		{"above floor", "1.0001", nil, ClassUnsupported, nil},
+		{"exact percentage", "200", []Balance{{Symbol: "USDT", Equity: "198"}}, "", nil},
+		{"above percentage", "200", []Balance{{Symbol: "USDT", Equity: "197.999"}}, ClassUnsupported, nil},
+		{"itemized excess", "100", []Balance{{Symbol: "USDT", Equity: "150"}}, "", nil},
+		{"missing price", "9000", append(slices.Clone(priced), Balance{Symbol: "XYZ", Equity: "5"}), "", nil},
+		{"malformed amount", "10", []Balance{{Symbol: "USDT", Equity: "invalid"}}, ClassNormalization, nil},
+		{"missing valuation", "", priced, ClassNormalization, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var reported *big.Rat
+			if tc.platformUSD != "" {
+				reported = decimal.ParseOrZero(tc.platformUSD)
+			}
+			err := CheckEarnComplete(PlatformOKX, reported, tc.balances, func(symbol string) (*big.Rat, bool) {
+				prices := map[string]*big.Rat{"BTC": big.NewRat(60000, 1), "USDT": big.NewRat(1, 1)}
+				price, ok := prices[symbol]
+				return price, ok
+			})
+			class, detail := Classify(err)
+			if (err == nil) != (tc.class == "") || err != nil && class != tc.class {
+				t.Fatalf("error = %v, want class %q", err, tc.class)
+			}
+			for _, amount := range tc.amounts {
+				if !strings.Contains(detail, amount) {
+					t.Fatalf("error must name amount %s: %v", amount, err)
+				}
+			}
+		})
 	}
 }

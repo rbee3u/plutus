@@ -24,7 +24,4 @@ func TestEarnStrategyRatesStagesAndRewards(t *testing.T) {
 	if p.Granularity != "strategy" || p.Type != "bonded" || p.MaturityAt != nil || p.SubscribedAt != nil || *p.Status != "Bonding / Unbonding" || len(p.Rewards) != 3 || p.Rates[0].Kind != "apr" || p.Rates[0].Upper == nil {
 		t.Fatalf("strategy: %+v", p)
 	}
-	if err := adapters.CheckEarnPositions(report.EarnPositions, report.Balances); err != nil {
-		t.Fatal(err)
-	}
 }

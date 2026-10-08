@@ -3,6 +3,7 @@ package recording
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 )
@@ -162,11 +163,7 @@ func (s *Session) trimMarkets(values []any) {
 			return out
 		}
 		filterMap := func(rows map[string]any) {
-			names := make([]string, 0, len(rows))
-			for name := range rows {
-				names = append(names, name)
-			}
-			slices.Sort(names)
+			names := slices.Sorted(maps.Keys(rows))
 			list := make([]any, 0, len(rows))
 			for _, name := range names {
 				list = append(list, rows[name])

@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { activityTabFromSearch } from "@/app/shell/navigation";
+import { activityTabFromSearch } from "@/features/manage/lib/tabs";
 import { AuditPanel } from "@/features/manage/activity/AuditPanel";
 import { CyclesPanel } from "@/features/manage/activity/CyclesPanel";
 import { JOB_KINDS, JobsPanel } from "@/features/manage/activity/JobsPanel";

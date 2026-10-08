@@ -3,10 +3,10 @@ package httpserver
 import (
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
-// TestMain creates one throwaway plutus_gotest_* database for this package (see mysql.RunTestMain).
+// TestMain creates one throwaway plutus_gotest_* database for this package (see mysqltest.RunTestMain).
 func TestMain(m *testing.M) {
-	mysql.RunTestMain(m)
+	mysqltest.RunTestMain(m)
 }

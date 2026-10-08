@@ -13,15 +13,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
 func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	ctx := t.Context()
 	authentication := auth.NewService(db, time.Hour, 24*time.Hour)
 	name := "history-" + uuid.NewString()[:8]
@@ -59,12 +60,12 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := valuation.NewService(db)
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Valuation: service}})
-	request := func(path string, authenticated bool) *httptest.ResponseRecorder {
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Valuation: service, Financial: financial.NewService(db, service)}})
+	request := func(path string, token string) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
-		if authenticated {
-			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		if token != "" {
+			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: token, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		}
 		result := httptest.NewRecorder()
 		engine.ServeHTTP(result, req)
@@ -73,7 +74,7 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 	base := "/api/v1/portfolios/" + p.ID.String()
 	query := "?from=" + url.QueryEscape(start.Format(time.RFC3339)) + "&to=" + url.QueryEscape(start.Add(560*15*time.Minute).Format(time.RFC3339))
 	for _, offset := range []int{0, 20, 560, 580} {
-		response := request(base+"/valuation-points/page"+query+fmt.Sprintf("&offset=%d&limit=20", offset), true)
+		response := request(base+"/valuation-points/page"+query+fmt.Sprintf("&offset=%d&limit=20", offset), session.Token)
 		if response.Code != http.StatusOK {
 			t.Fatalf("page: %d %s", response.Code, response.Body.String())
 		}
@@ -100,7 +101,7 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 		}
 	}
 	for _, kind := range []string{"raw", "hour", "day"} {
-		response := request(base+"/valuation-points"+query+"&granularity="+kind, true)
+		response := request(base+"/valuation-points"+query+"&granularity="+kind, session.Token)
 		if response.Code != http.StatusOK {
 			t.Fatalf("series %d %s", response.Code, response.Body.String())
 		}
@@ -116,22 +117,23 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 			t.Fatal("hour does not retain its final point")
 		}
 	}
-	window := request(base+"/history-window?fromLocal=2026-10-04T12:00&toLocal=2026-10-04T13:00", true)
+	window := request(base+"/history-window?fromLocal=2026-10-04T12:00&toLocal=2026-10-04T13:00", session.Token)
 	var resolved api.HistoryWindow
 	if window.Code != 200 || json.Unmarshal(window.Body.Bytes(), &resolved) != nil || resolved.From.Format(time.RFC3339) != "2026-10-04T04:00:00Z" {
 		t.Fatalf("window: %d %s", window.Code, window.Body.String())
 	}
 	for _, suffix := range []string{"/valuation-points/page" + query + "&limit=100", "/valuation-points/page" + query + "&offset=-1", "/history-window?fromLocal=2026-10-04T12:00", "/history-window?preset=all", "/history-window?fromLocal=&toLocal="} {
-		response := request(base+suffix, true)
+		response := request(base+suffix, session.Token)
 		if response.Code != 400 {
 			t.Fatalf("invalid %s: %d %s", suffix, response.Code, response.Body.String())
 		}
 	}
+	foreign := otherUserSession(t, authentication)
 	for _, suffix := range []string{"/history-window", "/valuation-points/page"} {
-		if response := request(base+suffix, false); response.Code != 401 {
+		if response := request(base+suffix, ""); response.Code != 401 {
 			t.Fatalf("unauthenticated %d", response.Code)
 		}
-		if response := request("/api/v1/portfolios/"+uuid.NewString()+suffix, true); response.Code != 404 {
+		if response := request(base+suffix, foreign.Token); response.Code != 404 {
 			t.Fatalf("unowned %d", response.Code)
 		}
 	}

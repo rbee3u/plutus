@@ -2,7 +2,7 @@ import type { Platform } from "@/api";
 import { describe, expect, it } from "vitest";
 import { marginModeLabel, structureLabel } from "./usePlatforms";
 
-const platforms: Platform[] = [
+const platforms: Pick<Platform, "id" | "name" | "adapterAvailable" | "accountStructures">[] = [
   {
     id: "okx",
     name: "OKX",

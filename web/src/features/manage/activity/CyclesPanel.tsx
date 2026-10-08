@@ -1,23 +1,23 @@
-import { NumericText } from "@/shared/ui/NumericText";
 import { ChevronRight } from "lucide-react";
 import { getCollectionCycle, keys, listCollectionCycles } from "@/api";
 import type { CollectionCycle, CollectionCycleDetail, CollectionCycleList } from "@/api";
-import { useCursorPages } from "@/features/manage/activity/useCursorPages";
-import { usePlatforms } from "@/shared/lib/usePlatforms";
-import { ACCOUNT_VALUATION_COLUMNS, accountValuationRow } from "@/shared/lib/valuationRows";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { formatBoundaryFlows, formatUsd, formatCount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { accountSummary, capitalize } from "@/shared/lib/text";
+import { usePlatforms } from "@/shared/lib/usePlatforms";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { ACCOUNT_VALUATION_COLUMNS, accountValuationRow } from "@/shared/lib/valuationRows";
 import { CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
-import { iconSize } from "@/shared/icons/iconSizes";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IconButton } from "@/shared/ui/IconButton";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
+import { NumericText } from "@/shared/ui/NumericText";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { useCursorPages } from "../hooks/useCursorPages";
 import shared from "@/shared/styles/page.module.css";
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 const PAGE_SIZE = 25;
 const CYCLE_DETAIL_ID = "collection-cycle-detail";
@@ -34,7 +34,6 @@ export function CyclesPanel({
   const pages = useCursorPages();
   const query = usePortfolioQuery<CollectionCycleList>({
     key: (userId, portfolioId) => keys.collectionCycles(userId, portfolioId, pages.cursor),
-    ready: true,
     load: (portfolioId) =>
       listCollectionCycles({
         path: { portfolioId },
@@ -44,15 +43,7 @@ export function CyclesPanel({
 
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Collection cycles could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Collection cycles could not be loaded." />
       <DataTable
         caption="Collection cycles, newest first"
         columns={[
@@ -168,15 +159,7 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
 
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(detail)}
-        busy={query.isFetching}
-        fallback="The collection cycle could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="The collection cycle could not be loaded." />
       {cycle ? (
         <>
           <dl className={shared.metaList}>

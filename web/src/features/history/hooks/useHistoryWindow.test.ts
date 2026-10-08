@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { historyGranularity, historyLocalValue, presetPeriod } from "./useHistoryWindow";
+import {
+  historyGranularity,
+  historyLocalValue,
+  presetPeriod,
+} from "@/features/history/lib/timeWindow";
 
 describe("History ranges", () => {
   it("matches the curve granularity to the complete window", () => {

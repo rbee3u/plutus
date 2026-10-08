@@ -1,3 +1,5 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type { ValuationPointSummary, ValueChange } from "../src/api/generated/types.gen";
 
@@ -29,17 +31,18 @@ async function fixture(page: Page) {
     failSeries: false,
   };
   const context = { portfolioId, timezone: "Asia/Shanghai" };
-  const portfolio = {
-    id: portfolioId,
-    name: "History check",
-    timezone: context.timezone,
-    collectionIntervalSeconds: 900,
-    undeletable: true,
-    version: 1,
-    createdAt: initialEnd,
-    updatedAt: initialEnd,
-  };
-  await page.route("**/api/v1/**", async (route) => {
+  const session = sessionFixture({
+    user: { username: "history" },
+    portfolio: {
+      id: portfolioId,
+      name: "History check",
+      timezone: context.timezone,
+      collectionIntervalSeconds: 900,
+      createdAt: initialEnd,
+      updatedAt: initialEnd,
+    },
+  });
+  await mockApi(page, session, async (route) => {
     const url = new URL(route.request().url());
     state.requests.push(url);
     const path = url.pathname;
@@ -47,15 +50,7 @@ async function fixture(page: Page) {
     const params = url.searchParams;
     const from = params.get("from") ?? "2026-09-27T04:16:44Z";
     const to = params.get("to") ?? state.now;
-    if (path === "/api/v1/auth/me") {
-      await route.fulfill({
-        json: { user: { id: "user", username: "history", status: "active" }, sessionCount: 1 },
-      });
-    } else if (path === "/api/v1/portfolios") {
-      await route.fulfill({ json: { items: [portfolio] } });
-    } else if (path === base) {
-      await route.fulfill({ json: portfolio });
-    } else if (path === `${base}/history-window`) {
+    if (path === `${base}/history-window`) {
       const localFrom = params.get("fromLocal");
       const localTo = params.get("toLocal");
       if (localFrom && localTo) {
@@ -172,7 +167,7 @@ async function fixture(page: Page) {
     } else if (path === "/api/v1/platforms") {
       await route.fulfill({ json: { items: [] } });
     } else {
-      await route.fulfill({ status: 404, json: { detail: `Fixture missing ${path}` } });
+      await route.fallback();
     }
   });
   return state;

@@ -24,6 +24,24 @@ type Querier interface {
 	DeleteFinishedJobsBefore(ctx context.Context, before sql.NullTime) (int64, error)
 	DeleteManualBalance(ctx context.Context, arg DeleteManualBalanceParams) error
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
+	DeletePortfolioAccountReports(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioAccounts(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioAuditEvents(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioBalances(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioCapitalFlows(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioDualPositions(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioEarnPositions(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioIdempotencyRecords(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioIdentities(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioJobs(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioListingExclusionEvents(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioListingExclusions(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioManualBalances(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioManualCycleAccounts(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioManualCycles(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioPositions(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioValuationPoints(ctx context.Context, portfolioID []byte) error
 	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
 	GetAppliedManualState(ctx context.Context, arg GetAppliedManualStateParams) (GetAppliedManualStateRow, error)
@@ -39,6 +57,7 @@ type Querier interface {
 	GetJob(ctx context.Context, arg GetJobParams) (GetJobRow, error)
 	GetLatestOkReportForAccount(ctx context.Context, arg GetLatestOkReportForAccountParams) (GetLatestOkReportForAccountRow, error)
 	GetLatestValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
+	GetListingExclusion(ctx context.Context, arg GetListingExclusionParams) (GetListingExclusionRow, error)
 	GetManualAccount(ctx context.Context, arg GetManualAccountParams) (GetManualAccountRow, error)
 	GetManualCycle(ctx context.Context, arg GetManualCycleParams) ([]byte, error)
 	GetManualModifiedAt(ctx context.Context, arg GetManualModifiedAtParams) (time.Time, error)
@@ -64,6 +83,7 @@ type Querier interface {
 	InsertEarnPosition(ctx context.Context, arg InsertEarnPositionParams) error
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) error
 	InsertJob(ctx context.Context, arg InsertJobParams) error
+	InsertListingExclusionEvent(ctx context.Context, arg InsertListingExclusionEventParams) error
 	InsertManualCycle(ctx context.Context, arg InsertManualCycleParams) error
 	InsertManualCycleAccount(ctx context.Context, arg InsertManualCycleAccountParams) error
 	InsertManualRevision(ctx context.Context, arg InsertManualRevisionParams) error
@@ -78,8 +98,10 @@ type Querier interface {
 	ListBalancesByJob(ctx context.Context, arg ListBalancesByJobParams) ([]ListBalancesByJobRow, error)
 	ListBalancesByReport(ctx context.Context, reportID []byte) ([]ListBalancesByReportRow, error)
 	ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error)
+	ListCalculatedListingsAtJobs(ctx context.Context, arg ListCalculatedListingsAtJobsParams) ([]ListCalculatedListingsAtJobsRow, error)
 	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
 	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
+	ListCurrentListingExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentListingExclusionsRow, error)
 	ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error)
 	ListDualPositionsByJob(ctx context.Context, arg ListDualPositionsByJobParams) ([]ListDualPositionsByJobRow, error)
 	ListDualPositionsByReport(ctx context.Context, reportID []byte) ([]DualPosition, error)
@@ -88,6 +110,8 @@ type Querier interface {
 	ListInstruments(ctx context.Context, arg ListInstrumentsParams) ([]Instrument, error)
 	ListJobsByPortfolio(ctx context.Context, arg ListJobsByPortfolioParams) ([]ListJobsByPortfolioRow, error)
 	ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]Price, error)
+	ListListingExclusionHistory(ctx context.Context, portfolioID []byte) ([]ListListingExclusionHistoryRow, error)
+	ListListingExclusionsBefore(ctx context.Context, arg ListListingExclusionsBeforeParams) ([]ListListingExclusionsBeforeRow, error)
 	ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error)
 	ListManualCycleAccounts(ctx context.Context, arg ListManualCycleAccountsParams) ([]ListManualCycleAccountsRow, error)
 	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error)
@@ -110,6 +134,7 @@ type Querier interface {
 	ListValuationPointSummariesByIDs(ctx context.Context, arg ListValuationPointSummariesByIDsParams) ([]ListValuationPointSummariesByIDsRow, error)
 	ListValuationPointsBetween(ctx context.Context, arg ListValuationPointsBetweenParams) ([]ValuationPoint, error)
 	LockClaimableJob(ctx context.Context, arg LockClaimableJobParams) (LockClaimableJobRow, error)
+	LockExclusionPortfolio(ctx context.Context, id []byte) ([]byte, error)
 	LockManualAccount(ctx context.Context, arg LockManualAccountParams) (LockManualAccountRow, error)
 	LockManualBoundary(ctx context.Context, portfolioID []byte) ([]LockManualBoundaryRow, error)
 	LockManualCycleJob(ctx context.Context, arg LockManualCycleJobParams) ([]byte, error)
@@ -118,6 +143,9 @@ type Querier interface {
 	MarkJobSucceeded(ctx context.Context, arg MarkJobSucceededParams) (int64, error)
 	PutManualBalance(ctx context.Context, arg PutManualBalanceParams) error
 	RecordIdentityCollection(ctx context.Context, arg RecordIdentityCollectionParams) error
+	// Release self and stale references only inside the Portfolio deletion transaction.
+	// The report CHECK requires the missing method and unknown value together.
+	ReleasePortfolioReportSources(ctx context.Context, portfolioID []byte) error
 	RenewJobLease(ctx context.Context, arg RenewJobLeaseParams) (int64, error)
 	ReportHasHoldings(ctx context.Context, arg ReportHasHoldingsParams) (sql.NullBool, error)
 	RequeueJob(ctx context.Context, arg RequeueJobParams) (int64, error)
@@ -139,6 +167,7 @@ type Querier interface {
 	UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error
 	UpsertAssetListing(ctx context.Context, arg UpsertAssetListingParams) error
 	UpsertInstrument(ctx context.Context, arg UpsertInstrumentParams) error
+	UpsertListingExclusion(ctx context.Context, arg UpsertListingExclusionParams) error
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) error
 	UpsertValuationPoint(ctx context.Context, arg UpsertValuationPointParams) error
 }

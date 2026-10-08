@@ -8,7 +8,7 @@ status: accepted
 
 Each selected Account has one aligned Account Report per Collection Run.
 Reported equity and fixed Plutus-defined measures sit alongside Balances,
-Positions, and Dual Positions. Unsupported measures remain null.
+Positions, Earn Positions, and Dual Positions. Unsupported measures remain null.
 
 Only a successful report defines a Complete Set and removes absent holdings.
 Failed Accounts use their latest earlier successful report with the same scope,

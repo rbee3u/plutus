@@ -214,9 +214,7 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 	if err := rejectRemovedEnv(lookup); err != nil {
 		return err
 	}
-	if err := optionalString(&cfg.Server.ListenAddress, lookup, "PLUTUS_SERVER_LISTEN_ADDRESS"); err != nil {
-		return err
-	}
+	optionalString(&cfg.Server.ListenAddress, lookup, "PLUTUS_SERVER_LISTEN_ADDRESS")
 	if v, ok := lookup("PLUTUS_SERVER_PORT"); ok {
 		port, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil {
@@ -224,18 +222,10 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 		}
 		cfg.Server.Port = port
 	}
-	if err := optionalString(&cfg.Server.TLS.CertFile, lookup, "PLUTUS_SERVER_TLS_CERT_FILE"); err != nil {
-		return err
-	}
-	if err := optionalString(&cfg.Server.TLS.KeyFile, lookup, "PLUTUS_SERVER_TLS_KEY_FILE"); err != nil {
-		return err
-	}
-	if err := optionalString(&cfg.Server.TLS.ClientCAFile, lookup, "PLUTUS_SERVER_TLS_CLIENT_CA_FILE"); err != nil {
-		return err
-	}
-	if err := optionalString(&cfg.Auth.CookieSuffix, lookup, "PLUTUS_AUTH_COOKIE_SUFFIX"); err != nil {
-		return err
-	}
+	optionalString(&cfg.Server.TLS.CertFile, lookup, "PLUTUS_SERVER_TLS_CERT_FILE")
+	optionalString(&cfg.Server.TLS.KeyFile, lookup, "PLUTUS_SERVER_TLS_KEY_FILE")
+	optionalString(&cfg.Server.TLS.ClientCAFile, lookup, "PLUTUS_SERVER_TLS_CLIENT_CA_FILE")
+	optionalString(&cfg.Auth.CookieSuffix, lookup, "PLUTUS_AUTH_COOKIE_SUFFIX")
 	if err := optionalDurationEnv(&cfg.Auth.SessionIdleLifetime, lookup, "PLUTUS_AUTH_SESSION_IDLE_LIFETIME"); err != nil {
 		return err
 	}
@@ -251,12 +241,8 @@ func applyEnv(cfg *Config, lookup func(string) (string, bool)) error {
 	if err := optionalBool(&cfg.Collection.FakeAdapter, lookup, "PLUTUS_COLLECTION_FAKE_ADAPTER"); err != nil {
 		return err
 	}
-	if err := optionalString(&cfg.Collection.Proxy.Mode, lookup, "PLUTUS_COLLECTION_PROXY_MODE"); err != nil {
-		return err
-	}
-	if err := optionalString(&cfg.Collection.Proxy.URL, lookup, "PLUTUS_COLLECTION_PROXY_URL"); err != nil {
-		return err
-	}
+	optionalString(&cfg.Collection.Proxy.Mode, lookup, "PLUTUS_COLLECTION_PROXY_MODE")
+	optionalString(&cfg.Collection.Proxy.URL, lookup, "PLUTUS_COLLECTION_PROXY_URL")
 	if err := optionalBool(&cfg.Database.AllowReset, lookup, "PLUTUS_DATABASE_ALLOW_RESET"); err != nil {
 		return err
 	}
@@ -291,13 +277,10 @@ func rejectRemovedEnv(lookup func(string) (string, bool)) error {
 	return nil
 }
 
-func optionalString(dst *string, lookup func(string) (string, bool), key string) error {
-	v, ok := lookup(key)
-	if !ok {
-		return nil
+func optionalString(dst *string, lookup func(string) (string, bool), key string) {
+	if value, ok := lookup(key); ok {
+		*dst = strings.TrimSpace(value)
 	}
-	*dst = strings.TrimSpace(v)
-	return nil
 }
 
 func optionalBool(dst *bool, lookup func(string) (string, bool), key string) error {

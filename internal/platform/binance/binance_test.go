@@ -12,12 +12,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/fs"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,8 +29,8 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
-	"github.com/rbee3u/plutus/internal/platform/offline"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 const (
@@ -588,36 +590,19 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 
-	rows := body[[]pmBalance](t, r, epPMBalance, nil)
-	nonzero := 0
-	for i := range rows {
-		if rat(t, rows[i].TotalWalletBalance).Sign() != 0 || rat(t, rows[i].UMUnrealizedPNL).Sign() != 0 || rat(t, rows[i].CMUnrealizedPNL).Sign() != 0 {
-			nonzero++
-		}
+	wantBalances := map[string]adapters.Balance{
+		"USDT": {Symbol: "USDT", Equity: "999", Liability: new("10"), Interest: new("1"), UnrealizedPnl: new("10")},
+		"BTC":  {Symbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
 	}
-	if len(report.Balances) != nonzero {
-		t.Fatalf("%d balances, want the %d nonzero rows", len(report.Balances), nonzero)
+	if len(report.Balances) != len(wantBalances) {
+		t.Fatalf("PM Balances = %+v", report.Balances)
 	}
-	sawNegative := false
-	for _, b := range report.Balances {
-		for i := range rows {
-			if rows[i].Asset != b.Symbol {
-				continue
-			}
-			row := &rows[i]
-			want := new(big.Rat).Add(rat(t, row.TotalWalletBalance), rat(t, row.UMUnrealizedPNL))
-			want.Add(want, rat(t, row.CMUnrealizedPNL)).Sub(want, rat(t, row.CrossMarginBorrowed)).Sub(want, rat(t, row.CrossMarginInterest))
-			if rat(t, b.Equity).Cmp(want) != 0 {
-				t.Errorf("%s equity %s, want %s", b.Symbol, b.Equity, decimal.Format(want))
-			}
-			sawNegative = sawNegative || want.Sign() < 0
+	for _, got := range report.Balances {
+		want, exists := wantBalances[got.Symbol]
+		if !exists || !reflect.DeepEqual(got, want) {
+			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
-		if b.AvailableToTrade != nil || b.AvailableToWithdraw != nil || b.Name != "" {
-			t.Errorf("%s: availability and name stay unmapped on the PM account: %+v", b.Symbol, b)
-		}
-	}
-	if !sawNegative {
-		t.Fatal("synthetic PM balances must exercise negative coin equity")
+		delete(wantBalances, got.Symbol)
 	}
 }
 
@@ -643,52 +628,33 @@ func TestCollectMapsPortfolioMarginPositionsAndInstruments(t *testing.T) {
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
 	report := reportOf(t, batch, TypePortfolioMargin)
-	type source struct {
-		m    market
-		rows []positionRisk
+	// Fixed synthetic expectations are independent of the production response decoder.
+	want := map[string]struct {
+		symbol, side, quantity, unit, kind, quote, settlement, contractSize string
+		entry, mark, pnl, leverage                                          string
+	}{
+		"um:BTCUSDT:BOTH":     {"BTCUSDT", adapters.SideLong, "0.01", adapters.UnitBase, adapters.KindLinearPerpetual, "USDT", "USDT", "", "29000", "30000", "10", "5"},
+		"cm:BTCUSD_PERP:BOTH": {"BTCUSD_PERP", adapters.SideShort, "2", adapters.UnitContracts, adapters.KindInversePerpetual, "USD", "BTC", "100", "20000", "25000", "-0.002", "3"},
 	}
-	expected := []source{{marketUM, body[[]positionRisk](t, r, epPMUMPositionRisk, nil)}, {marketCM, body[[]positionRisk](t, r, epPMCMPositionRisk, nil)}}
-	want := 0
-	for _, s := range expected {
-		for _, row := range s.rows {
-			if rat(t, row.PositionAmt).Sign() == 0 {
-				continue
-			}
-			want++
-			ref := string(s.m) + ":" + row.Symbol + ":" + row.PositionSide
-			var got *adapters.Position
-			for i := range report.Positions {
-				if report.Positions[i].PlatformPositionRef == ref {
-					got = &report.Positions[i]
-				}
-			}
-			if got == nil {
-				t.Fatalf("no position %s in %+v", ref, report.Positions)
-			}
-			side := adapters.SideLong
-			if rat(t, row.PositionAmt).Sign() < 0 {
-				side = adapters.SideShort
-			}
-			unit, kind := adapters.UnitBase, adapters.KindLinearPerp
-			if s.m == marketCM {
-				unit, kind = adapters.UnitContracts, adapters.KindInversePerp
-			}
-			if got.Side != side || got.QuantityUnit != unit || rat(t, got.Quantity).Cmp(new(big.Rat).Abs(rat(t, row.PositionAmt))) != 0 {
-				t.Errorf("%s side/unit/quantity %s %s %s", ref, got.Side, got.QuantityUnit, got.Quantity)
-			}
-			if got.Instrument.Symbol != row.Symbol || got.Instrument.Kind != kind || got.Instrument.SettlementSymbol == "" || got.Instrument.BaseSymbol == "" {
-				t.Errorf("%s instrument %+v", ref, got.Instrument)
-			}
-			if (s.m == marketCM) != (got.Instrument.ContractSize != nil) {
-				t.Errorf("%s contract size %v: only COIN-M carries one", ref, got.Instrument.ContractSize)
-			}
-			if got.Margin != nil || got.MarkPrice == nil || got.EntryPrice == nil || got.Leverage == nil || got.UnrealizedPnl == nil {
-				t.Errorf("%s measures %+v", ref, got)
-			}
+	if report.Status != adapters.StatusOK || len(report.Positions) != len(want) {
+		t.Fatalf("PM positions: %+v", report)
+	}
+	for _, got := range report.Positions {
+		expected, ok := want[got.PlatformPositionRef]
+		if !ok {
+			t.Fatalf("unexpected or duplicate position: %+v", got)
 		}
-	}
-	if len(report.Positions) != want {
-		t.Fatalf("%d positions, want %d", len(report.Positions), want)
+		if got.Side != expected.side || got.Quantity != expected.quantity || got.QuantityUnit != expected.unit {
+			t.Errorf("%s holding = %+v, want %+v", got.PlatformPositionRef, got, expected)
+		}
+		instrument := got.Instrument
+		if instrument.Symbol != expected.symbol || instrument.Kind != expected.kind || instrument.BaseSymbol != "BTC" || instrument.QuoteSymbol != expected.quote || instrument.SettlementSymbol != expected.settlement || (expected.contractSize != "" && deref(instrument.ContractSize) != expected.contractSize) || (instrument.ContractSize == nil) != (expected.contractSize == "") {
+			t.Errorf("%s instrument = %+v, want %+v", got.PlatformPositionRef, instrument, expected)
+		}
+		if got.Margin != nil || got.LiquidationPrice != nil || deref(got.EntryPrice) != expected.entry || deref(got.MarkPrice) != expected.mark || deref(got.UnrealizedPnl) != expected.pnl || deref(got.Leverage) != expected.leverage {
+			t.Errorf("%s measures = %+v, want %+v", got.PlatformPositionRef, got, expected)
+		}
+		delete(want, got.PlatformPositionRef)
 	}
 	if r.count(epUMExchangeInfo) != 1 || r.count(epCMExchangeInfo) != 1 {
 		t.Fatalf("exchangeInfo fetched UM %d / CM %d times", r.count(epUMExchangeInfo), r.count(epCMExchangeInfo))
@@ -717,7 +683,7 @@ func TestContractKinds(t *testing.T) {
 	for _, set := range []*instrumentSet{um, cm} {
 		for symbol, in := range set.bySymbol {
 			kinds[in.Kind]++
-			delivery := in.Kind == adapters.KindLinearDeliv || in.Kind == adapters.KindInverseDlv
+			delivery := in.Kind == adapters.KindLinearDelivery || in.Kind == adapters.KindInverseDelivery
 			if delivery != (in.ExpiryAt != nil) {
 				t.Errorf("%s %s expiry %v", symbol, in.Kind, in.ExpiryAt)
 			}
@@ -726,13 +692,13 @@ func TestContractKinds(t *testing.T) {
 			}
 		}
 	}
-	for _, kind := range []string{adapters.KindLinearPerp, adapters.KindLinearDeliv, adapters.KindInversePerp, adapters.KindInverseDlv} {
+	for _, kind := range []string{adapters.KindLinearPerpetual, adapters.KindLinearDelivery, adapters.KindInversePerpetual, adapters.KindInverseDelivery} {
 		if kinds[kind] == 0 {
 			t.Errorf("fixtures cover no %s contract; re-record with the coverage sample", kind)
 		}
 	}
 	for symbol, in := range um.bySymbol {
-		if strings.HasSuffix(symbol, "USDT") && in.Kind != adapters.KindLinearPerp {
+		if strings.HasSuffix(symbol, "USDT") && in.Kind != adapters.KindLinearPerpetual {
 			t.Errorf("%s (including TRADIFI_PERPETUAL) should be linear_perpetual, got %s", symbol, in.Kind)
 		}
 	}
@@ -747,23 +713,21 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	batch := collect(t, a, adapters.StructureBinancePM, TypeSpot, TypeFunding, TypeEarn)
 	for _, tc := range []struct {
 		accountType adapters.AccountType
-		ep          endpoint
-	}{{TypeSpot, epUserAsset}, {TypeFunding, epFundingAsset}} {
+		balances    map[string]struct{ equity, available string }
+	}{
+		{TypeSpot, map[string]struct{ equity, available string }{"USDT": {"110", "100"}, "ETH": {"0.2", "0.2"}}},
+		{TypeFunding, map[string]struct{ equity, available string }{"USDT": {"16", "10"}}},
+	} {
 		report := reportOf(t, batch, tc.accountType)
-		if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || report.UnifiedMarginRatio != nil {
-			t.Fatalf("%s report %+v: wallets carry no account-level figures", tc.accountType, report)
+		if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || report.UnifiedMarginRatio != nil || len(report.Balances) != len(tc.balances) {
+			t.Fatalf("%s wallet report: %+v", tc.accountType, report)
 		}
-		rows := body[[]walletAsset](t, r, tc.ep, nil)
-		if len(report.Balances) != len(rows) {
-			t.Fatalf("%s: %d balances from %d rows", tc.accountType, len(report.Balances), len(rows))
-		}
-		for i, b := range report.Balances {
-			row := rows[i]
-			want := new(big.Rat).Add(rat(t, row.Free), rat(t, row.Locked))
-			want.Add(want, rat(t, row.Freeze)).Add(want, rat(t, row.Withdrawing))
-			if rat(t, b.Equity).Cmp(want) != 0 || deref(b.AvailableToWithdraw) != decimal.Compact(row.Free) || deref(b.AvailableToTrade) != decimal.Compact(row.Free) {
-				t.Errorf("%s %s mapped %+v", tc.accountType, b.Symbol, b)
+		for _, got := range report.Balances {
+			want, ok := tc.balances[got.Symbol]
+			if !ok || got.Equity != want.equity || deref(got.AvailableToWithdraw) != want.available || deref(got.AvailableToTrade) != want.available {
+				t.Errorf("%s balance = %+v, want %+v", tc.accountType, got, want)
 			}
+			delete(tc.balances, got.Symbol)
 		}
 	}
 	// The account endpoint includes a receipt token; collection must use getUserAsset instead.
@@ -791,25 +755,15 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	if earn.Status != adapters.StatusOK {
 		t.Fatalf("earn report %+v", earn)
 	}
-	want := adapters.Totals{}
-	for _, row := range body[earnPage](t, r, epFlexibleEarn, simpleEarnQuery(1)).Rows {
-		if err := want.Add("test", row.Asset, rat(t, row.TotalAmount)); err != nil {
-			t.Fatal(err)
-		}
+	want := map[string]string{"USDT": "2", "ETH": "0.01"}
+	if len(earn.Balances) != len(want) {
+		t.Fatalf("earn balances %+v, want %+v", earn.Balances, want)
 	}
-	for _, row := range body[earnPage](t, r, epLockedEarn, simpleEarnQuery(1)).Rows {
-		if err := want.Add("test", row.Asset, rat(t, row.Amount)); err != nil {
-			t.Fatal(err)
+	for _, got := range earn.Balances {
+		if amount, ok := want[got.Symbol]; !ok || got.Equity != amount {
+			t.Errorf("earn balance %+v, want %s", got, amount)
 		}
-	}
-	wantBalances := want.Balances()
-	if len(earn.Balances) != len(wantBalances) {
-		t.Fatalf("earn balances %+v, want %+v", earn.Balances, wantBalances)
-	}
-	for i, b := range earn.Balances {
-		if b.Symbol != wantBalances[i].Symbol || rat(t, b.Equity).Cmp(rat(t, wantBalances[i].Equity)) != 0 {
-			t.Errorf("earn balance %+v, want %+v", b, wantBalances[i])
-		}
+		delete(want, got.Symbol)
 	}
 	if r.count(epWalletValue) != 1 {
 		t.Fatalf("the Earn valuation was read %d times, want once", r.count(epWalletValue))
@@ -920,7 +874,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 	// A query answered with a finished, undocumented, or other running state no longer shows which
 	// positions are running.
 	unexpected := []string{"EXERCISING", "SETTLING"}
-	for _, state := range adapters.SortedKeys(dualInvestmentStates) {
+	for _, state := range slices.Sorted(maps.Keys(dualInvestmentStates)) {
 		if !dualInvestmentStates[state] {
 			unexpected = append(unexpected, state)
 		}
@@ -1087,7 +1041,7 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 	}
 	p := report.Positions[0]
 	if p.PlatformPositionRef != "um:BTCUSDT:BOTH" || p.QuantityUnit != adapters.UnitBase || p.Quantity != "0.01" || p.Side != adapters.SideLong ||
-		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.Instrument.Kind != adapters.KindLinearPerp {
+		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.Instrument.Kind != adapters.KindLinearPerpetual {
 		t.Fatalf("position %+v", p)
 	}
 	if r.count(epUMSymbolConfig) != 1 {
@@ -1438,7 +1392,7 @@ func TestZeroEquityLeavesMarginRatiosNull(t *testing.T) {
 func TestShortPositionAndZeroLiquidation(t *testing.T) {
 	t.Parallel()
 
-	in := adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerp}
+	in := adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual}
 	row := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "-0.5", PositionSide: "BOTH", EntryPrice: "100", MarkPrice: "90", LiquidationPrice: "0", UnRealizedProfit: "5", Leverage: "3"}
 	p, err := mapPosition(marketUM, epPMUMPositionRisk, row, rat(t, row.PositionAmt), &in)
 	if err != nil {
@@ -1457,5 +1411,5 @@ func decimalOrZero(value string) *big.Rat {
 	if value == "" {
 		return new(big.Rat)
 	}
-	return decimal.MustParse(value)
+	return decimal.ParseOrZero(value)
 }

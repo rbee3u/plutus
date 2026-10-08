@@ -145,19 +145,6 @@ all workers. Migration refuses unfinished cycles. Missing Dual Accounts inherit
 Earn selections; existing Dual selections and history remain. No reset is
 needed. See [report scope rules](../CONTEXT.md#report-scope-compatibility).
 
-## Platform connectivity
-
-Allow the server's public IPv4 address in each Platform API key. Live Adapters
-use IPv4 for HTTP and Kraken WebSocket connections; an external proxy determines
-the address family seen by the Platform.
-
-For an optional instance-wide HTTP/SOCKS proxy, configure
-[`collection.proxy`](./development.md#platform-proxies) and restart Plutus. A
-local sing-box entry point may forward through SS to an allowlisted exit; Plutus
-does not implement SS or fall back to direct access. Verify the actual exit IPv4
-and successful Account Reports separately from readiness. When moving an
-existing database, retain its original credential encryption master key.
-
 ### Position presentation upgrade
 
 Stop the service and apply
@@ -179,3 +166,16 @@ flag starts false for history: the UI shows separate Balance summaries until a
 new successful Earn report supplies normalized descriptions. No scope
 reclassification, historical product reconstruction, or database reset is
 required. See [ADR 0018](./adr/0018-earn-position-presentation.md).
+
+## Platform connectivity
+
+Allow the server's public IPv4 address in each Platform API key. Live Adapters
+use IPv4 for HTTP and Kraken WebSocket connections; an external proxy determines
+the address family seen by the Platform.
+
+For an optional instance-wide HTTP/SOCKS proxy, configure
+[`collection.proxy`](./development.md#platform-proxies) and restart Plutus. A
+local sing-box entry point may forward through SS to an allowlisted exit; Plutus
+does not implement SS or fall back to direct access. Verify the actual exit IPv4
+and successful Account Reports separately from readiness. When moving an
+existing database, retain its original credential encryption master key.

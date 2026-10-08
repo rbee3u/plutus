@@ -58,7 +58,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.MustParse(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -130,7 +130,7 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		if err != nil {
 			return nil, err
 		}
-		subscribed, err := adapters.DualTime(where, "dual subscription time", row.YieldStartAt)
+		subscribed, err := adapters.OptionalMillis(where, "dual subscription time", row.YieldStartAt)
 		if err != nil {
 			return nil, err
 		}
@@ -145,9 +145,9 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		var direction *string
 		switch row.Direction {
 		case "BuyLow":
-			direction = adapters.DualText("buy_low")
+			direction = adapters.OptionalText("buy_low")
 		case "SellHigh":
-			direction = adapters.DualText("sell_high")
+			direction = adapters.OptionalText("sell_high")
 		case "":
 		default:
 			return nil, adapters.Malformed(where, "dual direction")
@@ -156,7 +156,7 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		if row.Status == "Redeeming" {
 			state = "redeeming"
 		}
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.DualText(row.ProductID), OrderRef: adapters.DualText(row.OrderID), BaseSymbol: adapters.DualText(row.BaseCoin), QuoteSymbol: adapters.DualText(row.QuoteCoin), InvestSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.DualText(row.TargetPrice), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: rate, RateKind: adapters.DualText("apy"), Status: state})
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.OptionalText(row.ProductID), OrderRef: adapters.OptionalText(row.OrderID), BaseSymbol: adapters.OptionalText(row.BaseCoin), QuoteSymbol: adapters.OptionalText(row.QuoteCoin), InvestSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.OptionalText(row.TargetPrice), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: rate, RateKind: adapters.OptionalText("apy"), Status: state})
 		if err != nil {
 			return nil, err
 		}

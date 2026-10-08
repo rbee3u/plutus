@@ -1,3 +1,4 @@
+import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useId, useState } from "react";
@@ -7,7 +8,6 @@ import {
   keys,
   listAssetListings,
   problemMessage,
-  refreshCsrf,
   unwrapOrRedirect,
   updateManualBalance,
 } from "@/api";
@@ -21,7 +21,7 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Select, TextInput } from "@/shared/ui/FormControls";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { RequestRecovery } from "@/shared/ui/QueryRecovery";
 import shared from "@/shared/styles/page.module.css";
 
 export function ManualEditor({
@@ -37,6 +37,7 @@ export function ManualEditor({
   const query = useManual(portfolioId, identityId, true);
   const identity = identities.data?.items.find((item) => item.id === identityId);
   const { userId, redirect } = useSessionScope();
+  const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
   const symbolsId = useId();
   const listings = useQuery({
@@ -74,7 +75,7 @@ export function ManualEditor({
             ))}
         </Select>
       </label>
-      <QueryRecovery
+      <RequestRecovery
         error={query.error ?? identities.error}
         hasData={Boolean(query.data)}
         busy={query.isFetching}
@@ -97,23 +98,27 @@ export function ManualEditor({
             void query.refetch();
           }}
           onSave={async (symbol, quantity, action) => {
-            await refreshCsrf();
             const path = { portfolioId, identityId, symbol };
             const headers = { "If-Match": `"manual:${query.data.version}"` };
-            const result =
-              action === "delete"
-                ? await deleteManualBalance({ path, headers })
-                : action === "edit"
-                  ? await updateManualBalance({ path, headers, body: { quantity } })
-                  : await createManualBalance({
-                      path: { portfolioId, identityId },
-                      headers,
-                      body: { symbol, quantity },
-                    });
-            if (result.response?.status === 412)
+            const result = await write(() => {
+              switch (action) {
+                case "delete":
+                  return deleteManualBalance({ path, headers });
+                case "edit":
+                  return updateManualBalance({ path, headers, body: { quantity } });
+                case "add":
+                  return createManualBalance({
+                    path: { portfolioId, identityId },
+                    headers,
+                    body: { symbol, quantity },
+                  });
+              }
+            });
+            if (result.response?.status === 412) {
               throw new Error(
                 "Manual records changed elsewhere. Reload current records before saving again.",
               );
+            }
             const state = unwrapOrRedirect(result, redirect);
             queryClient.setQueryData(query.key, state);
             await queryClient.invalidateQueries({

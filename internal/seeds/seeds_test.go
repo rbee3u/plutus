@@ -10,19 +10,21 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/domain/audit"
-	"github.com/rbee3u/plutus/internal/domain/catalog"
-	"github.com/rbee3u/plutus/internal/domain/collection"
-	"github.com/rbee3u/plutus/internal/domain/identity"
-	"github.com/rbee3u/plutus/internal/domain/jobs"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/application/audit"
+	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fake"
-	"github.com/rbee3u/plutus/internal/platform/offline"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
-func TestMain(m *testing.M) { offline.Install(); mysql.RunTestMain(m) }
+func TestMain(m *testing.M) { offline.Install(); mysqltest.RunTestMain(m) }
 
 func TestBuild(t *testing.T) {
 	anchor := time.Date(2026, 9, 22, 10, 7, 0, 0, time.UTC)
@@ -125,7 +127,7 @@ func TestCalendarTimeline(t *testing.T) {
 }
 
 func TestSeedsApplyRebuildAndCollect(t *testing.T) {
-	db := mysql.OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 	anchor := time.Now().UTC().Truncate(15 * time.Minute)
@@ -157,7 +159,8 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 	assertRebuildEquivalent(ctx, t, db, v)
 	assertWalkthroughReads(ctx, t, db, anchor)
 	queue := jobs.NewService(db)
-	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: catalog.NewService(db), Valuation: v, RetryDelays: []time.Duration{}})
+	listings := catalog.NewService(db, jobs.NewService(db))
+	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: listings, Manual: manual.NewService(db, listings), Valuation: v, RetryDelays: []time.Duration{}})
 	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge, PortfolioAliceLarge} {
 		job, _, err := queue.EnqueueCycle(ctx, p, jobs.TriggerManual, nil)
 		if err != nil {
@@ -198,10 +201,10 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 
 func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, anchor time.Time) {
 	t.Helper()
-	v := valuation.NewService(db)
-	main := valuation.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
-	edge := valuation.PortfolioContext{ID: PortfolioAliceEdge, Timezone: "Europe/Berlin"}
-	large := valuation.PortfolioContext{ID: PortfolioAliceLarge, Timezone: "UTC"}
+	v := financial.NewService(db, valuation.NewService(db))
+	main := financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
+	edge := financial.PortfolioContext{ID: PortfolioAliceEdge, Timezone: "Europe/Berlin"}
+	large := financial.PortfolioContext{ID: PortfolioAliceLarge, Timezone: "UTC"}
 	overview, err := v.Overview(ctx, main)
 	if err != nil {
 		t.Fatal(err)
@@ -216,14 +219,14 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if incomplete.Completeness != valuation.CompletenessIncomplete || incomplete.StaleAccountCount == 0 {
 		t.Fatalf("edge combination lost missing/stale states: %+v", incomplete)
 	}
-	earn, err := v.FlatEarnPositions(ctx, edge, &valuation.ListFilter{Limit: 200})
+	earn, err := v.FlatEarnPositions(ctx, edge, &financial.ListFilter{Limit: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if earn.DetailsComplete || len(earn.BalanceSummaries) == 0 {
 		t.Fatal("legacy Earn summary lost")
 	}
-	empty, err := v.Overview(ctx, valuation.PortfolioContext{ID: PortfolioAliceEmpty, Timezone: "Asia/Shanghai"})
+	empty, err := v.Overview(ctx, financial.PortfolioContext{ID: PortfolioAliceEmpty, Timezone: "Asia/Shanghai"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +234,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 		t.Fatal("empty Portfolio must have no point")
 	}
 	assertLargePages(ctx, t, db, large)
-	closes, err := v.PeriodCloses(ctx, edge, valuation.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
+	closes, err := v.PeriodCloses(ctx, edge, financial.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,12 +318,12 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 
 func accountBytes(name, kind string) []byte { id := accountID(name, kind); return id[:] }
 
-func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p valuation.PortfolioContext) {
+func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial.PortfolioContext) {
 	t.Helper()
-	v := valuation.NewService(db)
+	v := financial.NewService(db, valuation.NewService(db))
 	seenPages := map[int]map[string]bool{}
 	for _, offset := range []int{0, 50} {
-		f := &valuation.ListFilter{Limit: 50, Offset: offset}
+		f := &financial.ListFilter{Limit: 50, Offset: offset}
 		b, err := v.FlatBalances(ctx, p, f)
 		if err != nil {
 			t.Fatal(err)
@@ -337,7 +340,7 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p valuation
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := catalog.NewService(db)
+		c := catalog.NewService(db, jobs.NewService(db))
 		l, err := c.ListListings(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
 		if err != nil {
 			t.Fatal(err)

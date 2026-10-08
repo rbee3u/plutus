@@ -11,13 +11,13 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/recording"
 )
 
-func selectedEndpoints() []endpoint {
+func recordingEndpoints() []endpoint {
 	return []endpoint{epAssets, epAssetPairs, epSpotTicker, epAPIKeyInfo, epBalanceEx, epTradeBalance, epEarnStrategies, epEarnAllocations, epFuturesKey, epOpenPositions, epInstruments, epFuturesTickers, epBalancesSnapshot}
 }
 
 func RecordingRequests() recording.Catalogue {
 	out := recording.Catalogue{}
-	for _, ep := range selectedEndpoints() {
+	for _, ep := range recordingEndpoints() {
 		service := recording.Service(adapters.PlatformKraken, ep.path)
 		var form, query url.Values
 		if ep.family == familyWebSocket {
@@ -41,7 +41,7 @@ func RecordingRequests() recording.Catalogue {
 }
 
 func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
-	for _, ep := range selectedEndpoints() {
+	for _, ep := range recordingEndpoints() {
 		service := recording.Service(adapters.PlatformKraken, ep.path)
 		if ep.family == familyWebSocket {
 			service = "futures-ws"

@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/domain/identity"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/seeds"
 )

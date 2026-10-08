@@ -3,7 +3,9 @@ package binance
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"math/big"
+	"slices"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
@@ -117,7 +119,7 @@ func (t *marginTotals) add(ep endpoint, row *marginAsset) error {
 // coin.
 func (t *marginTotals) balances() []adapters.Balance {
 	out := make([]adapters.Balance, 0, len(t.net))
-	for _, symbol := range adapters.SortedKeys(t.net) {
+	for _, symbol := range slices.Sorted(maps.Keys(t.net)) {
 		if t.net[symbol].Sign() == 0 && t.borrowed[symbol].Sign() == 0 && t.interest[symbol].Sign() == 0 {
 			continue
 		}

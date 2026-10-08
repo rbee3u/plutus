@@ -12,9 +12,7 @@ interface PortfolioQueryOptions<T> extends Omit<
   UseQueryOptions<T>,
   "queryKey" | "queryFn" | "enabled"
 > {
-  /** Key builder receiving the session scope so every read stays Portfolio-scoped. */
   key: (userId: string | undefined, portfolioId: string) => QueryKey;
-  /** The read itself; the hook unwraps it and handles an expired session. */
   load: (portfolioId: string) => Promise<ApiResult<T>>;
   /** Extra readiness on top of the session scope and the route Portfolio. */
   ready?: boolean;
@@ -22,10 +20,7 @@ interface PortfolioQueryOptions<T> extends Omit<
   portfolioId?: string;
 }
 
-/**
- * A Portfolio-scoped read: session scope, cache key, readiness, and result
- * unwrapping in one place, so features only describe their own filters.
- */
+/** Scope reads to the session and Portfolio, handling session expiry. */
 export function usePortfolioQuery<T>({
   key,
   load,

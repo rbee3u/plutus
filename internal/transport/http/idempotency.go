@@ -43,10 +43,6 @@ func (a *API) storeIdempotency(ctx context.Context, userID uuid.UUID, portfolioI
 	})
 }
 
-func etagPtr(value string) *string {
-	return &value
-}
-
 func requestPath(ctx context.Context) string {
 	c := ginFrom(ctx)
 	if c == nil {

@@ -7,7 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/domain/valuation"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -48,7 +49,7 @@ func (a *API) periodWindow(ctx context.Context, portfolioID uuid.UUID, from, to 
 
 func periodKind(v *api.PeriodKind) string {
 	if v == nil {
-		return valuation.PeriodDay
+		return financial.PeriodDay
 	}
 	return string(*v)
 }
@@ -58,7 +59,7 @@ func (a *API) ListValuationPoints(ctx context.Context, request api.ListValuation
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
 	from, to := timeRange(request.Params.From, request.Params.To, 7*24*time.Hour)
@@ -66,11 +67,11 @@ func (a *API) ListValuationPoints(ctx context.Context, request api.ListValuation
 	if request.Params.Granularity != nil {
 		granularity = *request.Params.Granularity
 	}
-	points, err := a.Valuation.Points(ctx, sc.valuation(), from, to, string(granularity))
+	points, err := a.Financial.Points(ctx, sc.portfolioContext(), from, to, string(granularity))
 	if err != nil {
 		return nil, err
 	}
-	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.ListValuationPoints200JSONResponse{Context: toAPIContext(&c), Items: toAPIPoints(points), Granularity: granularity, From: from, To: to}, nil
 }
 
@@ -79,10 +80,10 @@ func (a *API) GetValuationPoint(ctx context.Context, request api.GetValuationPoi
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
-	detail, err := a.Valuation.Detail(ctx, sc.valuation(), request.PointId)
+	detail, err := a.Financial.Detail(ctx, sc.portfolioContext(), request.PointId)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (a *API) ListPeriodCloses(ctx context.Context, request api.ListPeriodCloses
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
 	kind := periodKind(request.Params.PeriodKind)
@@ -107,9 +108,9 @@ func (a *API) ListPeriodCloses(ctx context.Context, request api.ListPeriodCloses
 	if err != nil {
 		return nil, err
 	}
-	var closes []valuation.PeriodClose
+	var closes []financial.PeriodClose
 	if ok {
-		if closes, err = a.Valuation.PeriodCloses(ctx, sc.valuation(), kind, from, to); err != nil {
+		if closes, err = a.Financial.PeriodCloses(ctx, sc.portfolioContext(), kind, from, to); err != nil {
 			return nil, err
 		}
 	}
@@ -117,7 +118,7 @@ func (a *API) ListPeriodCloses(ctx context.Context, request api.ListPeriodCloses
 	for i := range closes {
 		items = append(items, toAPIPeriodClose(&closes[i]))
 	}
-	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.ListPeriodCloses200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
 }
 
@@ -126,7 +127,7 @@ func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChanges
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
 	kind := periodKind(request.Params.PeriodKind)
@@ -134,9 +135,9 @@ func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChanges
 	if err != nil {
 		return nil, err
 	}
-	var changes []valuation.ValueChange
+	var changes []financial.ValueChange
 	if ok {
-		if changes, err = a.Valuation.ValueChanges(ctx, sc.valuation(), kind, from, to); err != nil {
+		if changes, err = a.Financial.ValueChanges(ctx, sc.portfolioContext(), kind, from, to); err != nil {
 			return nil, err
 		}
 	}
@@ -144,7 +145,7 @@ func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChanges
 	for i := range changes {
 		items = append(items, toAPIValueChange(&changes[i]))
 	}
-	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.ListValueChanges200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
 }
 
@@ -153,10 +154,10 @@ func (a *API) GetCustomValueChange(ctx context.Context, request api.GetCustomVal
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
-	change, err := a.Valuation.CustomValueChange(ctx, sc.valuation(), request.Params.From.UTC(), request.Params.To.UTC())
+	change, err := a.Financial.CustomValueChange(ctx, sc.portfolioContext(), request.Params.From.UTC(), request.Params.To.UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -168,11 +169,11 @@ func (a *API) ListBoundaryEvents(ctx context.Context, request api.ListBoundaryEv
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
 	from, to := timeRange(request.Params.From, request.Params.To, 90*24*time.Hour)
-	events, err := a.Valuation.BoundaryEvents(ctx, sc.valuation(), from, to)
+	events, err := a.Financial.BoundaryEvents(ctx, sc.portfolioContext(), from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +183,13 @@ func (a *API) ListBoundaryEvents(ctx context.Context, request api.ListBoundaryEv
 // defaultSpanFor picks a window that shows a useful number of periods.
 func defaultSpanFor(kind string) time.Duration {
 	switch kind {
-	case valuation.PeriodWeek:
+	case financial.PeriodWeek:
 		return 26 * 7 * 24 * time.Hour
-	case valuation.PeriodMonth:
+	case financial.PeriodMonth:
 		return 366 * 24 * time.Hour
-	case valuation.PeriodQuarter:
+	case financial.PeriodQuarter:
 		return 3 * 366 * 24 * time.Hour
-	case valuation.PeriodYear:
+	case financial.PeriodYear:
 		return 5 * 366 * 24 * time.Hour
 	default:
 		return 30 * 24 * time.Hour
@@ -213,11 +214,11 @@ func (a *API) GetHistoryWindow(ctx context.Context, request api.GetHistoryWindow
 	if (request.Params.FromLocal != nil || request.Params.ToLocal != nil) && (request.Params.Preset != nil || fromLocal == "" || toLocal == "") {
 		return nil, validationError("Supply both local endpoints without a preset.")
 	}
-	from, to, err := valuation.ResolveHistoryWindow(sc.portfolio.Timezone, preset, fromLocal, toLocal, time.Now())
+	from, to, err := financial.ResolveHistoryWindow(sc.portfolio.Timezone, preset, fromLocal, toLocal, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.GetHistoryWindow200JSONResponse{Context: toAPIContext(&c), From: from, To: to}, nil
 }
 
@@ -226,7 +227,7 @@ func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuat
 	if err != nil {
 		return nil, err
 	}
-	if a.Valuation == nil {
+	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
 	from, to := timeRange(request.Params.From, request.Params.To, 7*24*time.Hour)
@@ -237,10 +238,10 @@ func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuat
 	if request.Params.Limit != nil {
 		limit = int(*request.Params.Limit)
 	}
-	page, err := a.Valuation.PointsPage(ctx, sc.valuation(), from, to, offset, limit)
+	page, err := a.Financial.PointsPage(ctx, sc.portfolioContext(), from, to, offset, limit)
 	if err != nil {
 		return nil, err
 	}
-	c := valuation.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.ListValuationPointPage200JSONResponse{Context: toAPIContext(&c), From: from, To: to, Items: toAPIPoints(page.Items), Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
 }

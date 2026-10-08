@@ -1,23 +1,19 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { overviewTreeFixture } from "./fixtures/overviewTree";
 import { expect, test, type Page } from "@playwright/test";
-import type { CurrentUser, Overview, Portfolio } from "../src/api/generated/types.gen";
+import type { Overview } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
 const userId = "00000000-0000-7000-8000-000000000002";
-const portfolio = {
-  id: portfolioId,
-  name: "Browser check",
-  timezone: "UTC",
-  collectionIntervalSeconds: 3600,
-  undeletable: true,
-  version: 1,
-  createdAt: "2026-01-01T00:00:00Z",
-  updatedAt: "2026-01-01T00:00:00Z",
-} satisfies Portfolio;
-const currentUser = {
-  user: { id: userId, username: "browser-check", status: "active" },
-  sessionCount: 1,
-} satisfies CurrentUser;
+const session = sessionFixture({
+  user: { id: userId },
+  portfolio: {
+    id: portfolioId,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+  },
+});
 const overview = {
   context: { portfolioId, timezone: "UTC" },
   point: null,
@@ -60,30 +56,28 @@ async function mockShell(page: Page, long = false) {
         })),
       }
     : overview;
-  await page.route("**/api/v1/**", async (route) => {
+  const scenarioSession = {
+    ...session,
+    portfolios: {
+      items: [
+        ...session.portfolios.items,
+        ...(long
+          ? Array.from({ length: 30 }, (_, index) => ({
+              ...session.portfolios.items[0],
+              id: `extra-${index}`,
+              name: `Extra portfolio ${index}`,
+            }))
+          : []),
+      ],
+    },
+  };
+  await mockApi(page, scenarioSession, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() !== "GET") {
       throw new Error(`Unexpected API request: ${request.method()} ${path}`);
     }
-    if (path === "/api/v1/auth/me") {
-      await route.fulfill({ json: currentUser });
-    } else if (path === "/api/v1/portfolios") {
-      await route.fulfill({
-        json: {
-          items: [
-            portfolio,
-            ...(long
-              ? Array.from({ length: 30 }, (_, index) => ({
-                  ...portfolio,
-                  id: `extra-${index}`,
-                  name: `Extra portfolio ${index}`,
-                }))
-              : []),
-          ],
-        },
-      });
-    } else if (path === `/api/v1/portfolios/${portfolioId}/history-window`) {
+    if (path === `/api/v1/portfolios/${portfolioId}/history-window`) {
       await route.fulfill({
         json: { context: data.context, from: "2026-09-30T00:00:00Z", to: "2026-10-03T00:00:00Z" },
       });
@@ -102,7 +96,7 @@ async function mockShell(page: Page, long = false) {
     } else if (path === `/api/v1/portfolios/${portfolioId}/overview`) {
       await route.fulfill({ json: data });
     } else {
-      throw new Error(`Unexpected API request: GET ${path}`);
+      await route.fallback();
     }
   });
 }

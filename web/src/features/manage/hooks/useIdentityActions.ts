@@ -1,3 +1,4 @@
+import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -6,7 +7,6 @@ import {
   enableIdentityConnection,
   keys,
   problemMessage,
-  refreshCsrf,
   validateIdentityConnection,
 } from "@/api";
 import type { Identity, ValidationOutcome } from "@/api";
@@ -15,7 +15,7 @@ import { useSessionScope } from "@/shared/lib/session";
 
 const CONFLICT = "The identity changed in another session. The list was reloaded; retry.";
 
-function isOutcome(value: unknown): value is ValidationOutcome {
+function isValidationOutcome(value: unknown): value is ValidationOutcome {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -38,7 +38,8 @@ function outcomeText(outcome: ValidationOutcome): string {
 
 /** Connection actions of one Identity row: validate, enable, disable, and archive. */
 export function useIdentityActions(portfolioId: string) {
-  const { userId, redirect } = useSessionScope();
+  const { userId } = useSessionScope();
+  const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
   const [archiveTarget, setArchiveTarget] = useState<Identity | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,25 +55,15 @@ export function useIdentityActions(portfolioId: string) {
     setNotice(null);
   }
 
-  function notify(message: string) {
-    setNotice(message);
-  }
-
   async function runAction(
     item: Identity,
     action: () => Promise<{ status: number | undefined; message: string | null; error?: unknown }>,
     fallback: string,
   ) {
     setBusyId(item.id);
-    setError(null);
-    setNotice(null);
+    clearMessages();
     try {
-      await refreshCsrf();
       const outcome = await action();
-      if (outcome.status === 401) {
-        redirect();
-        return;
-      }
       if (outcome.status === 412) {
         setError(CONFLICT);
         await invalidate();
@@ -95,9 +86,11 @@ export function useIdentityActions(portfolioId: string) {
     return runAction(
       item,
       async () => {
-        const result = await validateIdentityConnection({
-          path: { portfolioId, identityId: item.id },
-        });
+        const result = await write(() =>
+          validateIdentityConnection({
+            path: { portfolioId, identityId: item.id },
+          }),
+        );
         if (!result.data) {
           return { status: result.response?.status, message: null, error: result.error };
         }
@@ -114,11 +107,13 @@ export function useIdentityActions(portfolioId: string) {
     return runAction(
       item,
       async () => {
-        const result = await enableIdentityConnection({
-          path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
-        });
-        if (result.response?.status === 422 && isOutcome(result.error)) {
+        const result = await write(() =>
+          enableIdentityConnection({
+            path: { portfolioId, identityId: item.id },
+            headers: { "If-Match": identityEtag(item) },
+          }),
+        );
+        if (result.response?.status === 422 && isValidationOutcome(result.error)) {
           await invalidate();
           return {
             status: 422,
@@ -144,10 +139,12 @@ export function useIdentityActions(portfolioId: string) {
     return runAction(
       item,
       async () => {
-        const result = await disableIdentityConnection({
-          path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
-        });
+        const result = await write(() =>
+          disableIdentityConnection({
+            path: { portfolioId, identityId: item.id },
+            headers: { "If-Match": identityEtag(item) },
+          }),
+        );
         if (!result.data) {
           return { status: result.response?.status, message: null, error: result.error };
         }
@@ -168,10 +165,12 @@ export function useIdentityActions(portfolioId: string) {
     await runAction(
       item,
       async () => {
-        const result = await archiveIdentity({
-          path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
-        });
+        const result = await write(() =>
+          archiveIdentity({
+            path: { portfolioId, identityId: item.id },
+            headers: { "If-Match": identityEtag(item) },
+          }),
+        );
         if (!result.data) {
           return { status: result.response?.status, message: null, error: result.error };
         }
@@ -192,7 +191,7 @@ export function useIdentityActions(portfolioId: string) {
     error,
     notice,
     clearMessages,
-    notify,
+    notify: setNotice,
     invalidate,
     validate,
     enable,

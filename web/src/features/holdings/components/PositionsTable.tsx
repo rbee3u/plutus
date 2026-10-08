@@ -4,7 +4,6 @@ import {
   presentNumber,
   formatDecimal,
   formatLeverage,
-  formatCount,
   parseDecimal,
   plainNumberText,
   type NumberKind,
@@ -14,6 +13,7 @@ import { Badge } from "@/shared/ui/Badge";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import type { DataRow } from "@/shared/ui/DataTable";
 import { NumericText } from "@/shared/ui/NumericText";
+import { ObservedCell } from "./ObservedCell";
 import shared from "@/shared/styles/page.module.css";
 
 export const POSITION_COLUMNS = [
@@ -101,8 +101,6 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
   const inverse = item.kind.startsWith("inverse_");
   const delivery = item.kind.endsWith("_delivery");
   const factorUnit = inverse ? item.quoteSymbol : item.baseSymbol;
-  const anomalies = (item.issues ?? []).filter((issue) => issue.code !== "stale");
-  const stale = (item.issues ?? []).find((issue) => issue.code === "stale");
   const marginLabel =
     item.settleMargin != null && item.settlementSymbol
       ? `${formatDecimal(item.settleMargin)} ${item.settlementSymbol}`
@@ -177,36 +175,13 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
     unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementSymbol ?? null),
     notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),
     observed: (
-      <span className={shared.statusGroup}>
-        <span
-          className={shared.muted}
-          title={`Account Report observed at ${item.reportObservedAt ?? "an unknown time"}; times in ${timezone ?? "the Portfolio timezone"}.`}
-        >
-          {formatInstant(item.reportObservedAt, timezone)}
-        </span>
-        {item.freshness === "stale" ? (
-          <HoverDetails
-            label={<Badge tone="warn">Stale</Badge>}
-            name={`Stale report for ${item.symbol}`}
-          >
-            <p>{stale?.detail ?? "An earlier successful Account Report is carried forward."}</p>
-          </HoverDetails>
-        ) : null}
-        {anomalies.length ? (
-          <HoverDetails
-            label={
-              <Badge tone="warn">
-                {formatCount(anomalies.length)} {anomalies.length === 1 ? "issue" : "issues"}
-              </Badge>
-            }
-            name={`Data issues for ${item.symbol}`}
-          >
-            {anomalies.map((issue, index) => (
-              <p key={`${issue.code}-${index}`}>{issue.detail}</p>
-            ))}
-          </HoverDetails>
-        ) : null}
-      </span>
+      <ObservedCell
+        observedAt={item.reportObservedAt}
+        freshness={item.freshness}
+        issues={item.issues}
+        name={item.symbol}
+        timezone={timezone}
+      />
     ),
   };
 }

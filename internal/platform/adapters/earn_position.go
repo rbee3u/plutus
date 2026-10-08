@@ -94,13 +94,13 @@ func (p *EarnPosition) AddReward(symbol, value, kind string) {
 }
 
 func (p *EarnPosition) AddDetail(label, value string) {
-	if text := DualText(value); text != nil {
+	if text := OptionalText(value); text != nil {
 		p.Details = append(p.Details, EarnDetail{Label: label, Value: text})
 	}
 }
 
 func (p *EarnPosition) Millis(label, value string) *time.Time {
-	at, err := DualTime("Earn position", label, value)
+	at, err := OptionalMillis("Earn position", label, value)
 	if err != nil {
 		p.Problems = append(p.Problems, label+" is invalid.")
 		return nil
@@ -170,7 +170,7 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 		}
 		seen[p.PlatformPositionRef] = true
 		for _, a := range p.Assets {
-			if err := totals.Add("Earn positions", a.Symbol, decimal.MustParse(a.Amount)); err != nil {
+			if err := totals.Add("Earn positions", a.Symbol, decimal.ParseOrZero(a.Amount)); err != nil {
 				return err
 			}
 		}
@@ -185,8 +185,9 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 			return NewError(ClassNormalization, "Earn Balance has an invalid amount.")
 		}
 		found := false
-		for _, k := range known {
-			if strings.EqualFold(k.Symbol, b.Symbol) && decimal.MustParse(k.Equity).Cmp(amount) == 0 {
+		for i, k := range known {
+			if strings.EqualFold(k.Symbol, b.Symbol) && decimal.ParseOrZero(k.Equity).Cmp(amount) == 0 {
+				known = slices.Delete(known, i, i+1)
 				found = true
 				break
 			}

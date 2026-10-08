@@ -1,21 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { BarChart, LineChart } from "echarts/charts";
-import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
-import * as echarts from "echarts/core";
+import type { ReactNode } from "react";
+import { useChart } from "@/shared/lib/useChart";
 import type { EChartsCoreOption } from "echarts/core";
-import { CanvasRenderer } from "echarts/renderers";
-import { withChartTheme } from "@/shared/lib/chartTheme";
 import { DataTable, type DataTableProps } from "@/shared/ui/DataTable";
 import styles from "@/shared/styles/page.module.css";
-
-echarts.use([
-  BarChart,
-  LineChart,
-  GridComponent,
-  LegendComponent,
-  TooltipComponent,
-  CanvasRenderer,
-]);
 
 interface ChartBlockProps extends Partial<Omit<DataTableProps, "caption" | "empty">> {
   title: string;
@@ -37,33 +24,7 @@ export function ChartBlock({
   emptyRows,
   ...table
 }: ChartBlockProps) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [themeTick, setThemeTick] = useState(0);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const observer = new MutationObserver(() => setThemeTick((value) => value + 1));
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-resolved-theme", "data-theme"],
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host || !option) {
-      return;
-    }
-    const chart = echarts.init(host);
-    chart.setOption(withChartTheme(option), true);
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(host);
-    return () => {
-      observer.disconnect();
-      chart.dispose();
-    };
-  }, [option, themeTick]);
+  const hostRef = useChart(option);
 
   return (
     <section className={styles.panel}>

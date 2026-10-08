@@ -189,7 +189,6 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs and performs one request using the client clock.
 func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
@@ -202,7 +201,6 @@ func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentia
 		timestamp := c.clock.timestamp()
 		mac := hmac.New(sha256.New, []byte(creds.APISecret))
 		_, _ = mac.Write([]byte(timestamp + ep.method + ep.request()))
-		// OKX documents these as OK-ACCESS-*; header names are case-insensitive.
 		req.Header.Set("Ok-Access-Key", creds.APIKey)
 		req.Header.Set("Ok-Access-Sign", base64.StdEncoding.EncodeToString(mac.Sum(nil)))
 		req.Header.Set("Ok-Access-Timestamp", timestamp)

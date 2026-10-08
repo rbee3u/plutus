@@ -7,19 +7,13 @@ import {
   problemMessage,
   putAssetListingExclusion,
   putAssetListingMapping,
-  refreshCsrf,
 } from "@/api";
 import type { AssetListing, AssetListingList } from "@/api";
-import {
-  PAGE_SIZE,
-  exclusionEtag,
-  listingEtag,
-  type MappingRequest,
-  type TabProps,
-} from "../lib/catalog";
-import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
 import { useSessionScope } from "@/shared/lib/session";
+import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
+import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Badge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -27,8 +21,14 @@ import { Dialog } from "@/shared/ui/Dialog";
 import { TextArea, TextInput } from "@/shared/ui/FormControls";
 import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import {
+  PAGE_SIZE,
+  exclusionEtag,
+  listingEtag,
+  type MappingRequest,
+  type TabProps,
+} from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 export function ListingsTab({
   portfolioId,
@@ -49,7 +49,6 @@ export function ListingsTab({
   const query = usePortfolioQuery<AssetListingList>({
     key: (userId, portfolioId) =>
       keys.catalogListings(userId, portfolioId, platform, q, ignoredOnly, offset),
-    ready: true,
     load: (portfolioId) =>
       listAssetListings({
         path: { portfolioId },
@@ -74,15 +73,7 @@ export function ListingsTab({
           {notice}
         </p>
       ) : null}
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Asset listings could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Asset listings could not be loaded." />
       <DataTable
         caption="Asset listings"
         columns={[
@@ -232,7 +223,7 @@ function ExclusionForm({
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
-  const { redirect } = useSessionScope();
+  const write = useAuthenticatedWrite();
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -247,16 +238,13 @@ function ExclusionForm({
     setBusy(true);
     setError(null);
     try {
-      await refreshCsrf();
-      const result = await putAssetListingExclusion({
-        path: { portfolioId, listingId: item.id },
-        headers: { "If-Match": exclusionEtag(item) },
-        body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
-      });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
+      const result = await write(() =>
+        putAssetListingExclusion({
+          path: { portfolioId, listingId: item.id },
+          headers: { "If-Match": exclusionEtag(item) },
+          body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
+        }),
+      );
       if (result.response?.status === 412) {
         await onDone(
           "The listing treatment changed in another session. The list was reloaded; open it again.",
@@ -326,7 +314,7 @@ function MappingForm({
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
-  const { redirect } = useSessionScope();
+  const write = useAuthenticatedWrite();
   const platforms = usePlatforms();
   const platform = platformLabel(platforms.data?.items, item.platform);
   const [assetSymbol, setAssetSymbol] = useState(item.assetSymbol);
@@ -343,16 +331,13 @@ function MappingForm({
     setBusy(true);
     setError(null);
     try {
-      await refreshCsrf();
-      const result = await putAssetListingMapping({
-        path: { portfolioId, listingId: item.id },
-        headers: { "If-Match": listingEtag(item) },
-        body: { assetSymbol: symbol },
-      });
-      if (result.response?.status === 401) {
-        redirect();
-        return;
-      }
+      const result = await write(() =>
+        putAssetListingMapping({
+          path: { portfolioId, listingId: item.id },
+          headers: { "If-Match": listingEtag(item) },
+          body: { assetSymbol: symbol },
+        }),
+      );
       if (result.response?.status === 412) {
         await onDone(
           "The listing changed in another session. The list was reloaded; open it again.",

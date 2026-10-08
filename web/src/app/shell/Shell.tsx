@@ -1,21 +1,16 @@
+import { holdingsStateKey } from "@/features/holdings/navigation";
+import { useSessionScope, useSessionActions } from "@/shared/lib/session";
+import { usePortfolios } from "@/shared/lib/usePortfolios";
 import { Menu as MenuIcon, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { listPortfolios, postAuthLogout, problemMessage, refreshCsrf } from "@/api";
-import { PortfolioSwitcher, type PortfolioOption } from "@/app/shell/PortfolioSwitcher";
-import {
-  HoldingsNavigationProvider,
-  SessionLink,
-} from "@/features/holdings/components/HoldingsNavigation";
+import { postAuthLogout, problemMessage, executeWrite } from "@/api";
+import { PortfolioSwitcher } from "@/app/shell/PortfolioSwitcher";
+import { SessionNavigationProvider, SessionLink } from "@/shared/navigation/SessionNavigation";
 import { SidebarUtilities } from "@/app/shell/SidebarUtilities";
 import { UserMenu } from "@/app/shell/UserMenu";
-import {
-  LAST_PORTFOLIO_KEY,
-  isAccountPath,
-  isNavItemActive,
-  navigationFor,
-  pageHeading,
-} from "@/app/shell/navigation";
+import { isAccountPath, isNavItemActive, navigationFor, pageHeading } from "@/app/shell/navigation";
+import { LAST_PORTFOLIO_KEY } from "@/shared/lib/preferences";
 import { useMobileNavigation } from "@/app/shell/useMobileNavigation";
 import { usePersistentTheme } from "@/app/theme/usePersistentTheme";
 import { readPreference, storePreference } from "@/shared/lib/preferences";
@@ -25,10 +20,12 @@ import { IconButton } from "@/shared/ui/IconButton";
 import styles from "@/app/shell/Shell.module.css";
 
 export function Shell() {
+  const { userId } = useSessionScope();
+  const stateKey = useCallback((pathname: string) => holdingsStateKey(userId, pathname), [userId]);
   return (
-    <HoldingsNavigationProvider>
+    <SessionNavigationProvider stateKey={stateKey}>
       <ShellContent />
-    </HoldingsNavigationProvider>
+    </SessionNavigationProvider>
   );
 }
 
@@ -38,13 +35,22 @@ function ShellContent() {
   const navigate = useNavigate();
   const urlPortfolioId = params.portfolioId ?? "";
   const [rememberedId, setRememberedId] = useState(() => readPreference(LAST_PORTFOLIO_KEY) || "");
-  const navPortfolioId = urlPortfolioId || rememberedId;
   const [collapsed, setCollapsed] = useState(
     () => readPreference("plutus-sidebar-collapsed") === "true",
   );
   const [theme, setTheme] = usePersistentTheme();
-  const [portfolios, setPortfolios] = useState<PortfolioOption[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const portfolioList = usePortfolios();
+  const portfolios = portfolioList.data?.items ?? [];
+  const remembered = readPreference(LAST_PORTFOLIO_KEY) || rememberedId;
+  const navPortfolioId =
+    urlPortfolioId ||
+    portfolios.find((item) => item.id === remembered)?.id ||
+    portfolios[0]?.id ||
+    remembered;
+  const loadError = portfolioList.error
+    ? problemMessage(portfolioList.error, "Portfolios could not be loaded.")
+    : null;
+  const { endSession } = useSessionActions();
   const { open, setOpen, close, mobileLayout, sidebarRef, menuButtonRef } = useMobileNavigation();
   const groups = navPortfolioId ? navigationFor(navPortfolioId) : [];
   const heading = pageHeading(location.pathname, location.search);
@@ -58,52 +64,30 @@ function ShellContent() {
   }, [collapsed]);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const result = await listPortfolios();
-        if (result.response?.status === 401) {
-          void navigate("/login", { replace: true });
-          return;
-        }
-        if (result.error || !result.data) {
-          setLoadError(problemMessage(result.error, "Portfolios could not be loaded."));
-          return;
-        }
-        const items = result.data.items.map((item) => ({ id: item.id, name: item.name }));
-        setPortfolios(items);
-        if (urlPortfolioId) {
-          if (!items.some((item) => item.id === urlPortfolioId)) {
-            const remembered = readPreference(LAST_PORTFOLIO_KEY);
-            const next = items.find((item) => item.id === remembered) ?? items[0];
-            if (next) {
-              void navigate(`/p/${next.id}/overview`, { replace: true });
-            }
-          } else {
-            storePreference(LAST_PORTFOLIO_KEY, urlPortfolioId);
-            setRememberedId(urlPortfolioId);
-          }
-        } else if (isAccountPath(location.pathname)) {
-          const remembered = readPreference(LAST_PORTFOLIO_KEY);
-          const next = items.find((item) => item.id === remembered) ?? items[0];
-          if (next) {
-            storePreference(LAST_PORTFOLIO_KEY, next.id);
-            setRememberedId(next.id);
-          }
-        }
-      } catch (error) {
-        setLoadError(
-          problemMessage(error, "Portfolios could not be loaded. Check the network and retry."),
-        );
+    const items = portfolioList.data?.items;
+    if (!items) return;
+    if (urlPortfolioId) {
+      if (!items.some((item) => item.id === urlPortfolioId)) {
+        const remembered = readPreference(LAST_PORTFOLIO_KEY);
+        const next = items.find((item) => item.id === remembered) ?? items[0];
+        if (next) void navigate(`/p/${next.id}/overview`, { replace: true });
+      } else {
+        storePreference(LAST_PORTFOLIO_KEY, urlPortfolioId);
       }
-    })();
-  }, [location.pathname, navigate, urlPortfolioId]);
+    } else if (isAccountPath(location.pathname)) {
+      const remembered = readPreference(LAST_PORTFOLIO_KEY);
+      const next = items.find((item) => item.id === remembered) ?? items[0];
+      if (next) {
+        storePreference(LAST_PORTFOLIO_KEY, next.id);
+      }
+    }
+  }, [portfolioList.data, location.pathname, navigate, urlPortfolioId]);
 
   async function logout() {
     try {
-      await refreshCsrf();
-      await postAuthLogout();
+      await executeWrite(() => postAuthLogout());
     } finally {
-      void navigate("/login", { replace: true });
+      await endSession();
     }
   }
 
@@ -216,7 +200,12 @@ function ShellContent() {
           {loadError ? (
             <div className={styles.startupError} role="alert">
               <p>{loadError}</p>
-              <button type="button" onClick={() => window.location.reload()}>
+              <button
+                type="button"
+                onClick={() => {
+                  void portfolioList.refetch();
+                }}
+              >
                 Retry
               </button>
             </div>

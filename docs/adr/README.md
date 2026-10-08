@@ -7,10 +7,6 @@ and deployment procedures belong in their respective guides.
 
 ## Records
 
-This documentation reorganization numbers the current topic records from 0001.
-Old numbered citations must use the corresponding records below. A number
-identifies a record, not an implementation priority or proof of completion.
-
 | ADR                                                  | Decision                                                                                           |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | [0001](./0001-ownership-and-accounts.md)             | Ownership, selected Accounts, and structure versus mode                                            |
@@ -34,11 +30,12 @@ identifies a record, not an implementation priority or proof of completion.
 | [0019](./0019-manual-balances-and-empty-accounts.md) | Fixed signed Manual ledger, frozen cycle inputs, adjustment intervals, and confirmed empty display |
 | [0020](./0020-architecture-layering.md)              | Backend package layering, composition root, and unified transaction, error, cursor, and ETag seams |
 | [0021](./0021-frontend-structure.md)                 | Frontend feature layout, page stylesheet split, and component seams                                |
+| [0022](./0022-application-boundaries.md)             | Explicit service assembly, Financial read boundaries, and shared browser data/request lifetimes    |
 
 ## Maintenance
 
-Keep these identifiers stable after this reorganization. Update the relevant
-record when a decision changes; add the next numbered record for a durable
-choice that does not fit an existing topic. Keep accepted decisions distinct
-from preferences and unresolved implementation gaps. Preserve useful reasons and
-trade-offs without duplicating field mappings, commands, or runtime details.
+Keep identifiers stable. Update the relevant record when a decision changes. Add
+a record only for a durable, non-obvious trade-off that fits no existing record.
+Preserve the choice, reason, and consequences; link to mappings, procedures, and
+evidence instead of copying them. Distinguish accepted decisions from
+preferences and implementation gaps.

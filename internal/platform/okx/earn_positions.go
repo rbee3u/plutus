@@ -13,7 +13,7 @@ type savingsBalance struct {
 
 func (r *savingsBalance) position(amount string) adapters.EarnPosition {
 	p := adapters.NewEarnPosition("savings:"+r.Ccy, "flexible", "product", "total")
-	p.ProductName = adapters.DualText("Simple Earn Flexible")
+	p.ProductName = adapters.OptionalText("Simple Earn Flexible")
 	p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: r.Ccy, Amount: amount})
 	p.AddRate(r.Rate, "apr", "minimum", "Minimum lending APR configured by the user", nil)
 	p.AddReward(r.Ccy, r.Earnings, "reported")
@@ -51,8 +51,8 @@ func (r *stakingOrder) position() adapters.EarnPosition {
 		ref = "onchain:" + r.ID
 	}
 	p := adapters.NewEarnPosition(ref, "on_chain", "position", "principal")
-	p.ProductRef = adapters.DualText(r.ProductID)
-	p.ProductName = adapters.DualText(r.Protocol)
+	p.ProductRef = adapters.OptionalText(r.ProductID)
+	p.ProductName = adapters.OptionalText(r.Protocol)
 	p.SubscribedAt = p.Millis("Subscription time", r.Purchased)
 	p.AddMillisDetail("Estimated redemption settlement", r.Settlement)
 	p.AddRate(r.APY, "apy", "estimated", "Estimated APY", nil)
@@ -63,7 +63,7 @@ func (r *stakingOrder) position() adapters.EarnPosition {
 	}
 	states := map[string]string{"8": "Pending", "13": "Cancelling", "9": "Onchain", "1": "Earning", "2": "Redeeming"}
 	if status, ok := states[r.State]; ok {
-		p.Status = adapters.DualText(status)
+		p.Status = adapters.OptionalText(status)
 	} else if r.State != "" {
 		p.Problems = append(p.Problems, "Product state is unsupported.")
 	}

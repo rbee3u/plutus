@@ -126,14 +126,14 @@ func contractKind(m market, contractType string) (kind string, delivery, ok bool
 	switch {
 	case strings.Contains(contractType, "PERPETUAL"):
 		if m == marketCM {
-			return adapters.KindInversePerp, false, true
+			return adapters.KindInversePerpetual, false, true
 		}
-		return adapters.KindLinearPerp, false, true
+		return adapters.KindLinearPerpetual, false, true
 	case strings.Contains(contractType, "QUARTER"), strings.Contains(contractType, "MONTH"):
 		if m == marketCM {
-			return adapters.KindInverseDlv, true, true
+			return adapters.KindInverseDelivery, true, true
 		}
-		return adapters.KindLinearDeliv, true, true
+		return adapters.KindLinearDelivery, true, true
 	default:
 		return "", false, false
 	}

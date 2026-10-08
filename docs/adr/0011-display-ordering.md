@@ -16,16 +16,10 @@ ties. Account display names do not affect ordering: Accounts follow the Account
 Type order of their declared Account Structure, then immutable IDs. Margin Mode
 does not affect the order.
 
-The accepted Account orders are:
-
-| Platform / Account Structure        | Account Types in order                                                                              |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Binance / Classic Trading           | Spot, Cross Margin, Isolated Margin, USDⓈ-M Futures, COIN-M Futures, Funding, Earn, Dual Investment |
-| Binance / Portfolio Margin          | Spot, Portfolio Margin, Funding, Earn, Dual Investment                                              |
-| OKX / Unified account               | Trading, Funding, Earn, Dual Investment                                                             |
-| Bybit / Unified Trading Account 2.0 | Unified, Funding, Earn, Dual Investment                                                             |
-| Kraken / Separate wallets           | Main, Multi-M, Coin-M, Derivatives Holding, Earn                                                    |
-| Kraken / Unified Wallet             | Main, Coin-M, Derivatives Holding, Earn                                                             |
+Account Types follow the ordered
+[Platform catalog](../../internal/platform/adapters/catalog.go), with the fixed
+Manual Account last. The [scope matrix](../product-scope.md#supported-accounts)
+lists offered exchange Accounts.
 
 Inside an Account, futures Positions use Base Symbol alphabetically, then linear
 before inverse, and perpetual before delivery within each family. Delivery

@@ -15,12 +15,6 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/okx"
 )
 
-// buildAdapters registers the Platform adapters selected by configuration.
-//
-// `[collection] fake_adapter = true` (dev environments and seeds) registers the deterministic fake
-// for every Platform. `false` (test and prod) registers each implemented live adapter; Platforms
-// without one stay unregistered and report `adapterAvailable = false`, so their Identities can be
-// created but not validated or collected. Binance, OKX, Bybit, and Kraken have live adapters.
 func buildAdapters(cfg *config.Config) *adapters.Registry {
 	registry := adapters.NewRegistry()
 	if cfg.Collection.FakeAdapter {
@@ -37,7 +31,7 @@ func buildAdapters(cfg *config.Config) *adapters.Registry {
 	return registry
 }
 
-// platformHTTPFactory receives validated configuration and creates a separate client per Adapter.
+// The proxy policy must already be validated by config.Load.
 func platformHTTPFactory(policy config.Proxy) func(time.Duration) *http.Client {
 	proxy := http.ProxyFromEnvironment
 	switch policy.Mode {

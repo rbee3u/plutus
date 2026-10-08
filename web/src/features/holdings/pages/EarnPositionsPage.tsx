@@ -2,73 +2,62 @@ import { useParams } from "react-router";
 import { keys, listEarnPositions } from "@/api";
 import type { EarnPositionList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
-import { formatInstant } from "@/shared/lib/datetime";
-import { IssuesPanel } from "@/shared/ui/IssueList";
-import { Pager } from "@/shared/ui/Pager";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { HoldingsFilterFooter, HoldingsFilterRecovery } from "../components/HoldingsFilterControls";
-import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
-import { EarnPositionsTable, EarnBalanceSummaries } from "../components/EarnPositionsTable";
-import styles from "@/features/holdings/styles.module.css";
-import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { IssuesPanel } from "@/shared/ui/IssueList";
+import { EarnPositionsTable, EarnBalanceSummaries } from "../components/EarnPositionsTable";
+import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import { HoldingsSummary } from "../components/HoldingsSummary";
+import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { holdingsListRequest } from "../lib/listRequest";
+import shared from "@/shared/styles/page.module.css";
 
 export function EarnPositionsPage() {
   const { portfolioId = "" } = useParams();
   const filters = useHoldingsFilters(portfolioId);
   const { platform, identityId, symbol } = filters.values;
+  const offset = filters.offset;
   const query = usePortfolioQuery<EarnPositionList>({
     key: (userId, portfolioId) =>
-      keys.earnPositions(userId, portfolioId, platform, identityId, symbol, filters.offset),
-    ready: Boolean(filters.ready),
+      keys.earnPositions(userId, portfolioId, platform, identityId, symbol, offset),
+    ready: filters.ready,
     load: (portfolioId) =>
       listEarnPositions({
         path: { portfolioId },
-        query: {
-          platform: platform || undefined,
-          identityId: identityId || undefined,
-          symbol: symbol || undefined,
-          offset: filters.offset,
-          limit: 50,
-        },
+        query: holdingsListRequest(filters),
       }),
   });
   const data = query.data;
-  const legacy = Boolean(data?.balanceSummaries.length);
+  const hasBalanceSummaries = Boolean(data?.balanceSummaries.length);
+  let empty: string | undefined;
+  if (query.isError && !data) {
+    empty = "Earn positions could not be loaded. Retry above.";
+  } else if (!data?.context.pointId) {
+    empty = "No Collection Cycle has produced a Valuation Point yet.";
+  } else if (hasBalanceSummaries) {
+    empty = "Product details were not collected. Known balances are shown below.";
+  } else if (!data.detailsComplete) {
+    empty = "Some Earn Accounts have no compatible successful report. See Issues below.";
+  }
   return (
     <section className={shared.wide}>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(data)}
-        busy={query.isFetching}
+      <HoldingsListRecovery
+        query={query}
+        filters={filters}
         fallback="Earn positions could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
       />
-      <HoldingsFilterRecovery filters={filters} />
       {data?.context.pointId ? (
-        <div className={styles.holdingsSummaryBar}>
-          <div className={styles.holdingsSummaryAmount}>
-            <span className={styles.holdingsSummaryLabel}>Positions</span>
-            <span className={styles.holdingsSummaryValue}>
-              {!data.detailsComplete ? "Details incomplete" : formatCount(data.page.total)}
-            </span>
-          </div>
-          <div className={styles.holdingsSummaryMeta}>
-            {legacy && data.page.total > 0 ? (
-              <span>
-                {formatCount(data.page.total)} known product positions; additional Balance summaries
-                below
-              </span>
-            ) : null}
+        <HoldingsSummary
+          context={data.context}
+          label="Positions"
+          value={!data.detailsComplete ? "Details incomplete" : formatCount(data.page.total)}
+        >
+          {hasBalanceSummaries && data.page.total > 0 ? (
             <span>
-              {data.context.evaluatedAt
-                ? `Evaluated ${formatInstant(data.context.evaluatedAt, data.context.timezone)} · ${data.context.timezone}`
-                : `Times in ${data.context.timezone}`}
+              {formatCount(data.page.total)} known product positions; additional Balance summaries
+              below
             </span>
-          </div>
-        </div>
+          ) : null}
+        </HoldingsSummary>
       ) : null}
       <EarnPositionsTable
         items={data?.items ?? []}
@@ -76,33 +65,17 @@ export function EarnPositionsPage() {
         showAccount
         loading={query.isPending}
         filters={filters}
-        empty={
-          query.isError && !data
-            ? "Earn positions could not be loaded. Retry above."
-            : !data?.context.pointId
-              ? "No Collection Cycle has produced a Valuation Point yet."
-              : legacy
-                ? "Product details were not collected. Known balances are shown below."
-                : !data.detailsComplete
-                  ? "Some Earn Accounts have no compatible successful report. See Issues below."
-                  : undefined
-        }
+        empty={empty}
       />
       <EarnBalanceSummaries
         items={data?.balanceSummaries ?? []}
         timezone={data?.context.timezone}
         showAccount
       />
-      <HoldingsFilterFooter filters={filters}>
-        {data && (data.detailsComplete || data.page.total > 0) ? (
-          <Pager
-            offset={data.page.offset}
-            limit={data.page.limit}
-            total={data.page.total}
-            onChange={filters.page}
-          />
-        ) : null}
-      </HoldingsFilterFooter>
+      <HoldingsFilterFooter
+        filters={filters}
+        page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
+      />
       {data?.context.pointId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these Earn positions." />
       ) : null}

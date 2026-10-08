@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
+	"slices"
 	"strconv"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -82,7 +84,7 @@ var dualInvestmentStates = map[string]bool{
 // runningDualInvestmentStates lists the running states of dualInvestmentStates in a fixed order.
 func runningDualInvestmentStates() []string {
 	var out []string
-	for _, status := range adapters.SortedKeys(dualInvestmentStates) {
+	for _, status := range slices.Sorted(maps.Keys(dualInvestmentStates)) {
 		if dualInvestmentStates[status] {
 			out = append(out, status)
 		}
@@ -145,7 +147,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.MustParse(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -270,20 +272,20 @@ func mapDualPosition(row *dualInvestmentPosition) (adapters.DualPosition, error)
 	if err != nil {
 		return adapters.DualPosition{}, err
 	}
-	subscribed, err := adapters.DualTime(where, "dual subscription time", dualID(row.SubscriptionTime))
+	subscribed, err := adapters.OptionalMillis(where, "dual subscription time", dualID(row.SubscriptionTime))
 	if err != nil {
 		return adapters.DualPosition{}, err
 	}
-	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.DualText(dualID(row.OrderID)), InvestSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.DualText(row.StrikePrice), AnnualizedRate: adapters.DualText(row.APR), RateKind: adapters.DualText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
+	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.OptionalText(dualID(row.OrderID)), InvestSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.OptionalText(row.StrikePrice), AnnualizedRate: adapters.OptionalText(row.APR), RateKind: adapters.OptionalText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
 	switch row.OptionType {
 	case "PUT":
-		p.Direction = adapters.DualText("buy_low")
-		p.BaseSymbol = adapters.DualText(row.ExercisedCoin)
-		p.QuoteSymbol = adapters.DualText(row.InvestCoin)
+		p.Direction = adapters.OptionalText("buy_low")
+		p.BaseSymbol = adapters.OptionalText(row.ExercisedCoin)
+		p.QuoteSymbol = adapters.OptionalText(row.InvestCoin)
 	case "CALL":
-		p.Direction = adapters.DualText("sell_high")
-		p.BaseSymbol = adapters.DualText(row.InvestCoin)
-		p.QuoteSymbol = adapters.DualText(row.ExercisedCoin)
+		p.Direction = adapters.OptionalText("sell_high")
+		p.BaseSymbol = adapters.OptionalText(row.InvestCoin)
+		p.QuoteSymbol = adapters.OptionalText(row.ExercisedCoin)
 	case "":
 	default:
 		return p, adapters.Malformed(where, "optionType")

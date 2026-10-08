@@ -115,14 +115,12 @@ recordings.
 
 Review request identity, sanitation, critical response shapes and differences
 from official documentation; then the owner reviews before promoting the exact
-response to `evidence/`. Full Adapter replay is not an evidence gate. If new
-evidence exposes a parsing problem, fix it separately with an independently
-constructed regression response. Update the inventory with the actual date,
-observed or owner-declared settings, useful differences and remaining gaps. Do
-not infer generic product applicability from the account used to record it.
-Freeze reviewed evidence; replacements require a coverage-gap, interface-change
-or error-fix reason. Unavailable critical real states remain gaps while other
-work proceeds.
+response to `evidence/`. Full Adapter replay is not an evidence gate. Update the
+inventory with the actual date, observed or owner-declared settings, useful
+differences and remaining gaps. Do not infer generic product applicability from
+the account used to record it. Freeze reviewed evidence; replacements require a
+coverage-gap, interface-change or error-fix reason. Unavailable critical real
+states remain gaps while other work proceeds.
 
 ## Independent synthetic regression tests
 

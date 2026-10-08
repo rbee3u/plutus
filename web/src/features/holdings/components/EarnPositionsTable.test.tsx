@@ -93,9 +93,15 @@ describe("Earn presentation", () => {
         ]}
       />,
     );
-    expect(html).toContain("Redeeming");
-    expect(html).toContain("Stale");
-    expect(html).toContain("1 issue");
+    const headers = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/g)].map((m) => m[1]);
+    const cells = [...html.matchAll(/<td\b[^>]*>(.*?)<\/td>/g)].map((m) => m[1]);
+    const status = cells[headers.indexOf("Status")];
+    const observed = cells[headers.indexOf("Observed")];
+    expect(status).toContain("Redeeming");
+    expect(status).not.toContain("Stale");
+    expect(status).not.toContain("issue");
+    expect(observed).toContain("Stale");
+    expect(observed).toContain("1 issue");
   });
   it("labels legacy Balance summaries separately", () => {
     const html = render(

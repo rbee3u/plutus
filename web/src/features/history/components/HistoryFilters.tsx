@@ -1,15 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput, Select } from "@/shared/ui/FormControls";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { RequestRecovery } from "@/shared/ui/QueryRecovery";
 import { Pager } from "@/shared/ui/Pager";
+import { type useHistoryWindow, type useHistoryPager } from "../hooks/useHistoryWindow";
 import {
   HISTORY_PRESETS,
   HISTORY_PAGE_SIZES,
   historyLocalValue,
-  type useHistoryWindow,
-  type useHistoryPager,
-} from "../hooks/useHistoryWindow";
+} from "@/features/history/lib/timeWindow";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
@@ -40,7 +39,7 @@ export function HistoryFilters({ state }: { state: WindowState }) {
           {state.applyError.message}
         </p>
       ) : null}
-      <QueryRecovery
+      <RequestRecovery
         error={state.error}
         hasData={Boolean(state.window)}
         busy={state.busy || state.applying}

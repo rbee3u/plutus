@@ -1,3 +1,5 @@
+export const LAST_PORTFOLIO_KEY = "plutus-last-portfolio-id";
+
 export function readPreference(key: string): string | null {
   try {
     return window.localStorage.getItem(key);

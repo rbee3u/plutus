@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -23,8 +24,8 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
-	"github.com/rbee3u/plutus/internal/platform/offline"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 const (
@@ -337,9 +338,6 @@ func TestFixturesHaveNoCredentialOrIdentityEcho(t *testing.T) {
 	}
 }
 
-// TestDocumentedFixturesAreNamedAsTheRecorderNamesThem keeps the committed recording and the
-// recorder in step: a successful answer is stored under its endpoint alone, an error answer under
-// its endpoint and scenario.
 func fixtureFile(t *testing.T, ep endpoint, variant string) fixture.File {
 	t.Helper()
 	r, _ := newReplay(t)
@@ -507,32 +505,19 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 		t.Errorf("Σ eqUsd %s differs from totalEq %s", decimal.Format(sumUSD), account.TotalEq)
 	}
 
-	nonzero := 0
-	for i := range account.Details {
-		if rat(t, account.Details[i].Eq).Sign() != 0 {
-			nonzero++
-		}
+	wantBalances := map[string]adapters.Balance{
+		"USDT": {Symbol: "USDT", Equity: "5000", AvailableToTrade: new("4000"), AvailableToWithdraw: new("4000"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
+		"BTC":  {Symbol: "BTC", Equity: "0.1", AvailableToTrade: new("0.08"), AvailableToWithdraw: new("0.08"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
 	}
-	if len(report.Balances) != nonzero {
-		t.Fatalf("%d balances, want the %d nonzero rows", len(report.Balances), nonzero)
+	if len(report.Balances) != len(wantBalances) {
+		t.Fatalf("PM Balances = %+v", report.Balances)
 	}
-	for _, b := range report.Balances {
-		for i := range account.Details {
-			d := &account.Details[i]
-			if d.Ccy != b.Symbol {
-				continue
-			}
-			if rat(t, b.Equity).Cmp(rat(t, d.Eq)) != 0 {
-				t.Errorf("%s equity %s, want eq %s", b.Symbol, b.Equity, d.Eq)
-			}
-			if !sameDecimal(t, b.AvailableToTrade, d.AvailEq) || !sameDecimal(t, b.AvailableToWithdraw, d.AvailBal) ||
-				!sameDecimal(t, b.Liability, d.Liab) || !sameDecimal(t, b.Interest, d.Interest) || !sameDecimal(t, b.UnrealizedPnl, d.Upl) {
-				t.Errorf("%s availability, liability, interest, or PnL differs from the row: %+v vs %+v", b.Symbol, b, *d)
-			}
-			if b.Name != "" {
-				t.Errorf("%s: name stays unmapped", b.Symbol)
-			}
+	for _, got := range report.Balances {
+		want, exists := wantBalances[got.Symbol]
+		if !exists || !reflect.DeepEqual(got, want) {
+			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
+		delete(wantBalances, got.Symbol)
 	}
 
 	// Σ balance equity × spot price lands within 0.5% of totalEq, which ties
@@ -641,7 +626,7 @@ func TestCollectMapsPositionsAndInstruments(t *testing.T) {
 		}
 	}
 	instrument := report.Positions[0].Instrument
-	if instrument.Symbol != "BTC-USDT-SWAP" || instrument.Kind != adapters.KindLinearPerp || instrument.BaseSymbol != "BTC" || instrument.QuoteSymbol != "USDT" ||
+	if instrument.Symbol != "BTC-USDT-SWAP" || instrument.Kind != adapters.KindLinearPerpetual || instrument.BaseSymbol != "BTC" || instrument.QuoteSymbol != "USDT" ||
 		instrument.SettlementSymbol != "USDT" || deref(instrument.ContractSize) != "0.01" || instrument.ExpiryAt != nil {
 		t.Fatalf("DOGE-USDT-SWAP instrument %+v", instrument)
 	}
@@ -664,10 +649,10 @@ func TestInstrumentKinds(t *testing.T) {
 		m                                       market
 		expires                                 bool
 	}{
-		{"BTC-USDT-SWAP", adapters.KindLinearPerp, "BTC", "USDT", "USDT", "0.01", marketSwap, false},
-		{"BTC-USD-SWAP", adapters.KindInversePerp, "BTC", "USD", "BTC", "100", marketSwap, false},
-		{sampleFuture(t, "linear"), adapters.KindLinearDeliv, "BTC", "USDT", "USDT", "0.01", marketFutures, true},
-		{sampleFuture(t, "inverse"), adapters.KindInverseDlv, "BTC", "USD", "BTC", "100", marketFutures, true},
+		{"BTC-USDT-SWAP", adapters.KindLinearPerpetual, "BTC", "USDT", "USDT", "0.01", marketSwap, false},
+		{"BTC-USD-SWAP", adapters.KindInversePerpetual, "BTC", "USD", "BTC", "100", marketSwap, false},
+		{sampleFuture(t, "linear"), adapters.KindLinearDelivery, "BTC", "USDT", "USDT", "0.01", marketFutures, true},
+		{sampleFuture(t, "inverse"), adapters.KindInverseDelivery, "BTC", "USD", "BTC", "100", marketFutures, true},
 	} {
 		row, ok := listed[tc.instID]
 		if !ok {
@@ -705,8 +690,6 @@ func TestInstrumentKinds(t *testing.T) {
 	}
 }
 
-// sampleFuture is the BTC delivery contract of a contract type that the recording's FUTURES
-// sample holds. Futures expire, so every recording samples different ones.
 func sampleFuture(t *testing.T, ctType string) string {
 	t.Helper()
 	for _, row := range rowsIn[instrumentRow](t, fixtureFile(t, epFutures, "")) {
@@ -746,11 +729,11 @@ func TestPositionSidesAndSkippedRows(t *testing.T) {
 		t.Fatalf("positions %+v; the MARGIN row and the zero-size row must be skipped", positions)
 	}
 	inverse, future := positions[0], positions[1]
-	if inverse.Side != adapters.SideShort || inverse.Quantity != "3" || inverse.Instrument.Kind != adapters.KindInversePerp || inverse.PlatformPositionRef != "BTC-USD-SWAP:net" {
+	if inverse.Side != adapters.SideShort || inverse.Quantity != "3" || inverse.Instrument.Kind != adapters.KindInversePerpetual || inverse.PlatformPositionRef != "BTC-USD-SWAP:net" {
 		t.Fatalf("net short position %+v", inverse)
 	}
 	if future.Side != adapters.SideShort || future.Quantity != "2" || deref(future.LiquidationPrice) != "65000" || deref(future.Leverage) != "5" ||
-		deref(future.Margin) != "12.5" || future.Instrument.Kind != adapters.KindLinearDeliv || future.PlatformPositionRef != linear+":short" {
+		deref(future.Margin) != "12.5" || future.Instrument.Kind != adapters.KindLinearDelivery || future.PlatformPositionRef != linear+":short" {
 		t.Fatalf("long/short-mode short position %+v", future)
 	}
 }
@@ -782,64 +765,36 @@ func TestUnstorablePositionFailsTheAccount(t *testing.T) {
 func TestCollectMapsFundingAndEarn(t *testing.T) {
 	t.Parallel()
 
-	r, a := newReplay(t)
+	_, a := newReplay(t)
 	batch, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeFunding, TypeEarn})
 	if err != nil {
 		t.Fatal(err)
 	}
 	funding := reportOf(t, batch, TypeFunding)
-	rows := rowsIn[fundingBalance](t, r.file(epFunding, ""))
-	if funding.Status != adapters.StatusOK || len(funding.Balances) != len(rows) || funding.Equity != nil {
-		t.Fatalf("funding report %+v for %d rows", funding, len(rows))
+	if funding.Status != adapters.StatusOK || len(funding.Balances) != 1 || funding.Equity != nil {
+		t.Fatalf("funding report %+v", funding)
 	}
-	for i, b := range funding.Balances {
-		if b.Symbol != rows[i].Ccy || rat(t, b.Equity).Cmp(rat(t, rows[i].Bal)) != 0 || !sameDecimal(t, b.AvailableToWithdraw, rows[i].AvailBal) || b.AvailableToTrade != nil {
-			t.Errorf("funding balance %+v for row %+v", b, rows[i])
-		}
+	b := funding.Balances[0]
+	if b.Symbol != "USDT" || b.Equity != "100" || b.AvailableToWithdraw == nil || *b.AvailableToWithdraw != "90" || b.AvailableToTrade != nil {
+		t.Fatalf("funding balance %+v", b)
 	}
 	// A successful Earn report has also passed the Earn check against the synthetic valuation.
 	earn := reportOf(t, batch, TypeEarn)
-	want := syntheticOrdinaryEarn(t, r)
+	want := map[string]string{"USDT": "20", "ETH": "0.1"}
 	if earn.Status != adapters.StatusOK || len(earn.Balances) != len(want) || earn.Equity != nil {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
 	for _, b := range earn.Balances {
 		amount, ok := want[b.Symbol]
-		if !ok || rat(t, b.Equity).Cmp(amount) != 0 || b.AvailableToTrade != nil || b.AvailableToWithdraw != nil || b.Liability != nil {
+		if !ok || b.Equity != amount || b.AvailableToTrade != nil || b.AvailableToWithdraw != nil || b.Liability != nil {
 			t.Errorf("earn balance %+v, want %v", b, amount)
 		}
+		delete(want, b.Symbol)
 	}
 }
 
-// syntheticOrdinaryEarn sums Simple Earn and on-chain earn, excluding Dual principal.
-func syntheticOrdinaryEarn(t *testing.T, r *replay) map[string]*big.Rat {
-	t.Helper()
-	sums := map[string]*big.Rat{}
-	add := func(ccy, amount string) {
-		if sums[ccy] == nil {
-			sums[ccy] = new(big.Rat)
-		}
-		sums[ccy].Add(sums[ccy], rat(t, amount))
-	}
-	for _, row := range rowsIn[savingsBalance](t, r.file(epSavings, "")) {
-		add(row.Ccy, row.Amt)
-	}
-	for _, order := range rowsIn[stakingOrder](t, r.file(epStaking, "")) {
-		for _, invested := range order.InvestData {
-			add(invested.Ccy, invested.Amt)
-		}
-	}
-	for ccy, amount := range sums {
-		if amount.Sign() == 0 {
-			delete(sums, ccy)
-		}
-	}
-	return sums
-}
-
-// TestDocumentedValuationCatchesUnreadEarn replays OKX's real valuation answer without the Earn
-// Balances it values, so the check must read the synthetic earn bucket to fail.
-func TestDocumentedValuationCatchesUnreadEarn(t *testing.T) {
+// A nonzero synthetic valuation must expose omitted Earn funds.
+func TestSyntheticValuationCatchesUnreadEarn(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t)
@@ -849,7 +804,7 @@ func TestDocumentedValuationCatchesUnreadEarn(t *testing.T) {
 		} `json:"details"`
 	}](t, r.file(epValuation, ""))[0].Details.Earn)
 	if synthetic.Cmp(big.NewRat(1, 1)) <= 0 {
-		t.Skip("the synthetic account holds no Earn value to leave out")
+		t.Fatal("the synthetic scenario must contain Earn value to detect omitted funds")
 	}
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
@@ -1445,14 +1400,32 @@ func TestDualInvestmentPagesWaitForTheRateLimit(t *testing.T) {
 
 	r, a := newReplay(t)
 	r.earnWithout()
-	r.always(epDCD, ok(dcdOrders("live", "USDT", descending(1000, dcdPageSize)...)))
-	r.always(dcdPage("901"), ok(`[]`))
+	pageTimes := make(chan time.Time, 2)
+	r.always(epDCD, func(w http.ResponseWriter) {
+		select {
+		case pageTimes <- time.Now():
+		default:
+			t.Error("unexpected repeated page request")
+		}
+		ok(dcdOrders("live", "USDT", descending(1000, dcdPageSize)...))(w)
+	})
+	r.always(dcdPage("901"), func(w http.ResponseWriter) {
+		select {
+		case pageTimes <- time.Now():
+		default:
+			t.Error("unexpected repeated page request")
+		}
+		ok(`[]`)(w)
+	})
 	a.pace = 50 * time.Millisecond
-	started := time.Now()
 	if _, err := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeEarn}); err != nil {
 		t.Fatal(err)
 	}
-	if elapsed := time.Since(started); elapsed < a.pace {
+	if first, second := r.count(epDCD), r.count(dcdPage("901")); first != 1 || second != 1 {
+		t.Fatalf("page requests = %d, %d; want exactly one of each", first, second)
+	}
+	first, second := <-pageTimes, <-pageTimes
+	if elapsed := second.Sub(first); elapsed < a.pace {
 		t.Fatalf("two pages %s apart, want at least %s", elapsed, a.pace)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1475,9 +1448,6 @@ func TestEarnCheckComparesWithOKXValuation(t *testing.T) {
 		ok   bool
 	}{
 		{"100", true},
-		{"101.01", true}, // within max(1% of OKX's figure, 1 USD)
-		{"101.5", false},
-		{"99", true}, // Plutus may itemize more than OKX values, such as a dual investment order OKX books elsewhere
 		{"150", false},
 	} {
 		t.Run(tc.earn, func(t *testing.T) {

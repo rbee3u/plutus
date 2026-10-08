@@ -3,11 +3,11 @@ package worker
 import (
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/platform/offline"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 func TestMain(m *testing.M) {
 	offline.Install()
-	mysql.RunTestMain(m)
+	mysqltest.RunTestMain(m)
 }

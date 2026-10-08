@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/domain/identity"
+	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -16,7 +16,7 @@ func toAPIIdentity(item *identity.Identity) api.Identity {
 		Platform:         string(item.Platform),
 		DisplayName:      item.DisplayName,
 		AccountStructure: string(item.AccountStructure),
-		MarginMode:       strPtr(string(item.MarginMode)),
+		MarginMode:       nonEmptyStringPtr(string(item.MarginMode)),
 		ExternalRef:      item.ExternalRef,
 		Status:           api.IdentityStatus(item.Status),
 		ArchivedAt:       item.ArchivedAt,
@@ -50,9 +50,9 @@ func toAPIAccount(item *identity.Account) api.Account {
 func toAPIOutcome(item *identity.Identity, outcome *identity.ValidationOutcome) api.ValidationOutcome {
 	return api.ValidationOutcome{
 		Ok:          outcome.OK,
-		ExternalRef: strPtr(outcome.ExternalRef),
-		ErrorClass:  strPtr(outcome.ErrorClass),
-		ErrorDetail: strPtr(outcome.ErrorDetail),
+		ExternalRef: nonEmptyStringPtr(outcome.ExternalRef),
+		ErrorClass:  nonEmptyStringPtr(outcome.ErrorClass),
+		ErrorDetail: nonEmptyStringPtr(outcome.ErrorDetail),
 		ValidatedAt: outcome.ValidatedAt,
 		Identity:    toAPIIdentity(item),
 	}

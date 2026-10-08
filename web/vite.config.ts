@@ -18,6 +18,6 @@ export default defineConfig({
     cssCodeSplit: false,
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "eslint.boundaries.test.js"],
   },
 });

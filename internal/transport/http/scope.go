@@ -11,10 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/domain/auth"
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
-	"github.com/rbee3u/plutus/internal/domain/valuation"
-	"github.com/rbee3u/plutus/internal/transport/http/api"
+	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
 )
 
 // scope is the authenticated user and the owned Portfolio a request acts on.
@@ -24,8 +23,8 @@ type scope struct {
 	portfolio portfolio.Portfolio
 }
 
-func (sc *scope) valuation() valuation.PortfolioContext {
-	return valuation.PortfolioContext{ID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
+func (sc *scope) portfolioContext() financial.PortfolioContext {
+	return financial.PortfolioContext{ID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 }
 
 // scoped authenticates the caller and loads one owned Portfolio.
@@ -113,47 +112,4 @@ func explicitNulls(ctx context.Context) map[string]bool {
 		}
 	}
 	return out
-}
-
-func stringValue(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return *v
-}
-
-func intValue(v *int) int {
-	if v == nil {
-		return 0
-	}
-	return *v
-}
-
-func strPtr(v string) *string {
-	if v == "" {
-		return nil
-	}
-	return &v
-}
-
-func uuidPtr(v uuid.UUID) *uuid.UUID {
-	if v == uuid.Nil {
-		return nil
-	}
-	return &v
-}
-
-func nonNilStrings(v []string) []string {
-	if v == nil {
-		return []string{}
-	}
-	return v
-}
-
-func toCursorPage(limit int, next *string, hasMore bool) api.CursorPage {
-	return api.CursorPage{Kind: api.Cursor, Limit: limit, NextCursor: next, HasMore: hasMore}
-}
-
-func toOffsetPage(offset, limit, total int) api.OffsetPage {
-	return api.OffsetPage{Kind: api.Offset, Offset: offset, Limit: limit, Total: total}
 }

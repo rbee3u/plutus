@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/domain/portfolio"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

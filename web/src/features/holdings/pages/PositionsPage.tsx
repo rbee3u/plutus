@@ -1,29 +1,26 @@
-import { NumericText } from "@/shared/ui/NumericText";
+import { useParams } from "react-router";
 import { keys, listPositions } from "@/api";
 import type { PositionList } from "@/api";
-import { platformLabel } from "@/shared/lib/usePlatforms";
-import { POSITION_COLUMNS, positionRow } from "@/features/holdings/components/PositionsTable";
-import { HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
-import { HoldingsFilterFooter, HoldingsFilterRecovery } from "../components/HoldingsFilterControls";
-import { useHoldingsFilters, type HoldingsFilters } from "../hooks/useHoldingsFilters";
-import { formatInstant } from "@/shared/lib/datetime";
 import { formatAmount } from "@/shared/lib/amount";
 import { NO_POINT } from "@/shared/lib/text";
+import { platformLabel } from "@/shared/lib/usePlatforms";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
-import { Pager } from "@/shared/ui/Pager";
-import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { DualPositionsPage } from "@/features/holdings/pages/DualPositionsPage";
+import { NumericText } from "@/shared/ui/NumericText";
+import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
+import { HoldingsSummary } from "../components/HoldingsSummary";
+import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
+import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
-import { useParams } from "react-router";
 
-const PAGE_SIZE = 50;
-
-function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
-  const platforms = filters.platforms;
+export function PositionsPage() {
+  const { portfolioId = "" } = useParams();
+  const filters = useHoldingsFilters(portfolioId);
   const { platform, identityId, symbol } = filters.values;
   const offset = filters.offset;
   const query = usePortfolioQuery<PositionList>({
@@ -33,69 +30,45 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
     load: (portfolioId) =>
       listPositions({
         path: { portfolioId },
-        query: {
-          platform: platform || undefined,
-          identityId: identityId || undefined,
-          symbol: symbol || undefined,
-          offset,
-          limit: PAGE_SIZE,
-        },
+        query: holdingsListRequest(filters),
       }),
   });
   const data = query.data;
+  let empty = "No positions match these filters at the latest Valuation Point.";
+  if (query.isPending) {
+    empty = "Loading positions.";
+  } else if (query.isError && !data) {
+    empty = "Positions could not be loaded. Retry above.";
+  } else if (!data?.context.pointId) {
+    empty = NO_POINT;
+  }
 
   return (
-    <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(data)}
-        busy={query.isFetching}
+    <section className={shared.wide}>
+      <HoldingsListRecovery
+        query={query}
+        filters={filters}
         fallback="Positions could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
       />
-      <HoldingsFilterRecovery filters={filters} />
       {data?.context.pointId ? (
-        <div className={styles.holdingsSummaryBar}>
-          <div className={styles.holdingsSummaryAmount}>
-            <span className={styles.holdingsSummaryLabel}>Total Notional</span>
-            <span className={styles.holdingsSummaryValue}>
+        <HoldingsSummary
+          context={data.context}
+          label="Total Notional"
+          value={
+            <>
               {data.totalNotionalUsd ? (
                 <span className={styles.holdingsSummaryCurrency}>$</span>
               ) : null}
               <NumericText>{formatAmount(data.totalNotionalUsd)}</NumericText>
-            </span>
-            <CompletenessBadge value={data.completeness} />
-          </div>
-          <div className={styles.holdingsSummaryMeta}>
-            <span>
-              {data.context.evaluatedAt
-                ? `Evaluated ${formatInstant(data.context.evaluatedAt, data.context.timezone)} · ${data.context.timezone}`
-                : `Times in ${data.context.timezone}`}
-            </span>
-          </div>
-        </div>
+            </>
+          }
+          badge={<CompletenessBadge value={data.completeness} />}
+        />
       ) : null}
       <DataTable
         caption="Positions at the latest Valuation Point"
         columns={[
-          {
-            key: "platform",
-            header: "Platform",
-            nowrap: true,
-            headerContent: (
-              <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
-            ),
-          },
-          {
-            key: "identityName",
-            header: "Identity",
-            nowrap: true,
-            headerContent: (
-              <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
-            ),
-          },
+          ...holdingsAccountColumns(filters),
           { key: "accountName", header: "Account", nowrap: true },
           ...POSITION_COLUMNS.map((column) =>
             column.key === "symbol"
@@ -110,43 +83,16 @@ function FuturesPositionsPage({ filters }: { filters: HoldingsFilters }) {
         ]}
         rows={(data?.items ?? []).map((item) => ({
           ...positionRow(item, data?.context.timezone),
-          platform: platformLabel(platforms.data?.items, item.platform),
+          platform: platformLabel(filters.platforms.data?.items, item.platform),
           identityName: item.identityName,
           accountName: item.accountName,
         }))}
-        empty={
-          query.isPending
-            ? "Loading positions."
-            : query.isError && !data
-              ? "Positions could not be loaded. Retry above."
-              : !data?.context.pointId
-                ? NO_POINT
-                : "No positions match these filters at the latest Valuation Point."
-        }
+        empty={empty}
       />
-      <HoldingsFilterFooter filters={filters}>
-        {data ? (
-          <Pager
-            offset={data.page.offset}
-            limit={data.page.limit}
-            total={data.page.total}
-            onChange={filters.page}
-          />
-        ) : null}
-      </HoldingsFilterFooter>
+      <HoldingsFilterFooter filters={filters} page={data?.page} />
       {data?.context.pointId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these positions." />
       ) : null}
-    </>
-  );
-}
-
-export function PositionsPage({ dual = false }: { dual?: boolean }) {
-  const { portfolioId = "" } = useParams();
-  const filters = useHoldingsFilters(portfolioId);
-  return (
-    <section className={shared.wide}>
-      {dual ? <DualPositionsPage filters={filters} /> : <FuturesPositionsPage filters={filters} />}
     </section>
   );
 }

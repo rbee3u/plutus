@@ -1,4 +1,4 @@
-package mysql
+package mysql_test
 
 import (
 	"bytes"
@@ -8,27 +8,29 @@ import (
 	"time"
 
 	"github.com/rbee3u/plutus/db/migrations"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 func TestMigrateUpAndSeeds(t *testing.T) {
-	db := OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	// Up is idempotent on an already migrated database.
-	if err := Up(db); err != nil {
+	if err := mysql.Up(db); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	if err := CheckEnvironment(ctx, db); err != nil {
+	if err := mysql.CheckEnvironment(ctx, db); err != nil {
 		t.Fatalf("environment: %v", err)
 	}
-	version, err := CurrentVersion(db)
+	version, err := mysql.CurrentVersion(db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != ExpectedSchemaVersion {
-		t.Fatalf("version %d, want %d", version, ExpectedSchemaVersion)
+	if version != mysql.ExpectedSchemaVersion {
+		t.Fatalf("version %d, want %d", version, mysql.ExpectedSchemaVersion)
 	}
 
 	var tables int
@@ -41,10 +43,10 @@ func TestMigrateUpAndSeeds(t *testing.T) {
 }
 
 func TestMigrateStatusOutput(t *testing.T) {
-	db := OpenTestDB(t)
+	db := mysqltest.OpenTestDB(t)
 	var output bytes.Buffer
-	t.Cleanup(func() { SetMigrationLogger(nil) })
-	if err := Status(db, &output); err != nil {
+	t.Cleanup(func() { mysql.SetMigrationLogger(nil) })
+	if err := mysql.Status(db, &output); err != nil {
 		t.Fatalf("status: %v", err)
 	}
 

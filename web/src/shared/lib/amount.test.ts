@@ -24,8 +24,16 @@ describe("numeric presentation", () => {
       expect(presentNumber(input, kind)).toEqual({ text: "—", plainText: "—" });
     const suffix = kind === "percent" ? "%" : kind === "leverage" ? "x" : "";
     expect(presentNumber("-0.000", kind).text).toBe(`0${suffix}`);
-    expect(isZeroDecimal(null)).toBe(false);
-    expect(isZeroDecimal("0")).toBe(true);
+  });
+
+  it.each([
+    [null, false],
+    ["invalid", false],
+    ["0", true],
+    ["-0.000", true],
+    ["0.000000000000000000000000000001", false],
+  ])("identifies exact zero for %s", (input, expected) => {
+    expect(isZeroDecimal(input)).toBe(expected);
   });
 
   it.each([

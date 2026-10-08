@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { keys, listAuditEvents } from "@/api";
 import type { AuditEvent, AuditEventList } from "@/api";
-import { useCursorPages } from "@/features/manage/activity/useCursorPages";
-import { safeJson } from "@/features/manage/lib/json";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { useCurrentUser } from "@/shared/lib/session";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextInput } from "@/shared/ui/FormControls";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { safeJson } from "../lib/json";
+import { useCursorPages } from "../hooks/useCursorPages";
 import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
-import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 const PAGE_SIZE = 50;
 
@@ -87,7 +87,6 @@ function AuditResults({
   const query = usePortfolioQuery<AuditEventList>({
     key: (userId, portfolioId) =>
       keys.auditEvents(userId, portfolioId, action, resourceType, pages.cursor),
-    ready: true,
     load: (portfolioId) =>
       listAuditEvents({
         path: { portfolioId },
@@ -102,15 +101,7 @@ function AuditResults({
 
   return (
     <>
-      <QueryRecovery
-        error={query.error}
-        hasData={Boolean(query.data)}
-        busy={query.isFetching}
-        fallback="Audit events could not be loaded."
-        onRetry={() => {
-          void query.refetch();
-        }}
-      />
+      <QueryRecovery query={query} fallback="Audit events could not be loaded." />
       <DataTable
         caption="Portfolio audit events"
         onRowClick={(key) => {

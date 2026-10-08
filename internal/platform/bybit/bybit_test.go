@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,8 +19,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
-	"github.com/rbee3u/plutus/internal/platform/offline"
-	"github.com/rbee3u/plutus/internal/shared/decimal"
+	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 var testCreds = adapters.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
@@ -245,16 +245,6 @@ func reportOf(t *testing.T, batch *adapters.Batch, accountType adapters.AccountT
 	return adapters.AccountReport{}
 }
 
-// nonzero reports whether any of the decimal fields is nonzero; an empty field counts as zero.
-func nonzero(values ...string) bool {
-	for _, value := range values {
-		if rat, ok := decimal.Parse(value); ok && rat.Sign() != 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func text(value *string) string {
 	if value == nil {
 		return "<nil>"
@@ -263,7 +253,15 @@ func text(value *string) string {
 }
 
 func TestDocumentedPortfolioMarginAccount(t *testing.T) {
-	r := newReplay(t, "", nil)
+	r := newReplay(t, "", map[string]string{epWallet.path: `{"retCode":0,"result":{"list":[{
+        "accountType":"UNIFIED","totalEquity":"10000","totalAvailableBalance":"8000","accountIMRate":"0.1","accountMMRate":"0.01",
+        "coin":[
+            {"coin":"BTC","equity":"1.00","unrealisedPnl":"-0.25","borrowAmount":"0.2","accruedInterest":"0.01"},
+            {"coin":"USDT","equity":"0","borrowAmount":"5"},
+            {"coin":"ETH","equity":"0","accruedInterest":"0.02"},
+            {"coin":"ZERO","equity":"0","borrowAmount":"0","accruedInterest":"0","unrealisedPnl":"0"}
+        ]
+    }]}}`})
 	ctx := context.Background()
 	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
 	if err != nil {
@@ -295,31 +293,26 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 
-	var wallet struct {
-		List []walletAccount `json:"list"`
-	}
-	sampleBody(t, "v5_account_wallet_balance.pm", &wallet)
-	synthetic := wallet.List[0]
 	unified := reportOf(t, &batch, TypeUnified)
-	if text(unified.Equity) != decimal.Compact(synthetic.TotalEquity) || text(unified.AvailableEquity) != decimal.Compact(synthetic.TotalAvailableBalance) ||
-		text(unified.InitialMarginRatio) != decimal.Compact(synthetic.AccountIMRate) || text(unified.MaintenanceMarginRatio) != decimal.Compact(synthetic.AccountMMRate) ||
+	if text(unified.Equity) != "10000" || text(unified.AvailableEquity) != "8000" ||
+		text(unified.InitialMarginRatio) != "0.1" || text(unified.MaintenanceMarginRatio) != "0.01" ||
 		unified.AdjustedEquity != nil || unified.UnifiedMarginRatio != nil {
 		t.Fatalf("Portfolio Margin account figures = %+v", unified)
 	}
-	for _, coin := range synthetic.Coins {
-		found := false
-		for _, balance := range unified.Balances {
-			if balance.Symbol == coin.Coin {
-				found = true
-				if balance.Equity != decimal.Format(decimal.MustParse(coin.Equity)) || text(balance.UnrealizedPnl) != decimal.Compact(coin.UnrealisedPnl) ||
-					text(balance.Liability) != decimal.Compact(coin.BorrowAmount) || text(balance.Interest) != decimal.Compact(coin.AccruedInterest) {
-					t.Fatalf("%s balance = %+v", coin.Coin, balance)
-				}
-			}
+	wantBalances := map[string]adapters.Balance{
+		"BTC":  {Symbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
+		"USDT": {Symbol: "USDT", Equity: "0", Liability: new("5")},
+		"ETH":  {Symbol: "ETH", Equity: "0", Interest: new("0.02")},
+	}
+	if len(unified.Balances) != len(wantBalances) {
+		t.Fatalf("PM Balances = %+v", unified.Balances)
+	}
+	for _, got := range unified.Balances {
+		want, exists := wantBalances[got.Symbol]
+		if !exists || !reflect.DeepEqual(got, want) {
+			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
-		if found != nonzero(coin.Equity, coin.BorrowAmount, coin.AccruedInterest, coin.UnrealisedPnl) {
-			t.Fatalf("%s: exactly the coins with a nonzero figure are kept", coin.Coin)
-		}
+		delete(wantBalances, got.Symbol)
 	}
 	if len(unified.Positions) == 0 {
 		t.Fatal("the synthetic linear position is missing")
@@ -330,48 +323,21 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 			t.Fatalf("%s: a Portfolio Margin position has no leverage, liquidation price, or margin of its own", position.PlatformPositionRef)
 		}
 		if position.EntryPrice == nil || position.MarkPrice == nil ||
-			(position.Instrument.Kind == adapters.KindLinearPerp && position.QuantityUnit != adapters.UnitBase) ||
-			(position.Instrument.Kind == adapters.KindInversePerp && position.QuantityUnit != adapters.UnitQuote) {
+			(position.Instrument.Kind == adapters.KindLinearPerpetual && position.QuantityUnit != adapters.UnitBase) ||
+			(position.Instrument.Kind == adapters.KindInversePerpetual && position.QuantityUnit != adapters.UnitQuote) {
 			t.Fatalf("linear position = %+v", position)
 		}
 	}
 
-	var funding struct {
-		Balance []fundingCoin `json:"balance"`
-	}
-	sampleBody(t, "v5_asset_transfer_query_account_coins_balance", &funding)
-	fundingReport := reportOf(t, &batch, TypeFunding)
-	held := 0
-	for _, coin := range funding.Balance {
-		if decimal.MustParse(coin.WalletBalance).Sign() != 0 {
-			held++
-		}
-	}
-	if len(fundingReport.Balances) != held || fundingReport.Equity != nil {
-		t.Fatalf("Funding keeps every nonzero coin and is calculated from its Balances: %+v", fundingReport)
-	}
-
-	principal := adapters.Totals{}
-	for _, name := range []string{"v5_earn_position", "v5_earn_fixed_term_position.empty"} {
-		var savings struct {
-			List []savingsPosition `json:"list"`
-		}
-		sampleBody(t, name, &savings)
-		for _, position := range savings.List {
-			if err := principal.Add("test", position.Coin, decimal.MustParse(position.Amount)); err != nil {
-				t.Fatal(err)
-			}
-		}
+	funding := reportOf(t, &batch, TypeFunding)
+	wantFunding := []adapters.Balance{{Symbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
+	if funding.Equity != nil || !reflect.DeepEqual(funding.Balances, wantFunding) {
+		t.Fatalf("Funding = %+v, want calculated Balances %+v", funding, wantFunding)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	want := principal.Balances()
-	if len(earn.Balances) != len(want) {
-		t.Fatalf("Earn = %+v, want the summed principal %+v without claimable yield", earn.Balances, want)
-	}
-	for i := range want {
-		if earn.Balances[i].Symbol != want[i].Symbol || earn.Balances[i].Equity != want[i].Equity {
-			t.Fatalf("Earn = %+v, want the summed principal %+v without claimable yield", earn.Balances, want)
-		}
+	wantEarn := []adapters.Balance{{Symbol: "USDT", Equity: "20"}}
+	if !reflect.DeepEqual(earn.Balances, wantEarn) {
+		t.Fatalf("Earn = %+v, want principal %+v without claimable yield", earn.Balances, wantEarn)
 	}
 }
 
@@ -402,7 +368,7 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 	}
 	position := unified.Positions[0]
 	if position.PlatformPositionRef != "BTCUSD:0" || position.Side != adapters.SideShort || position.Quantity != "300" ||
-		position.QuantityUnit != adapters.UnitQuote || position.Instrument.Kind != adapters.KindInversePerp ||
+		position.QuantityUnit != adapters.UnitQuote || position.Instrument.Kind != adapters.KindInversePerpetual ||
 		position.Instrument.SettlementSymbol != "BTC" || text(position.EntryPrice) != "27464.50441675" || text(position.MarkPrice) != "28224.5" ||
 		text(position.LiquidationPrice) != "30191.5" || text(position.Leverage) != "10" || text(position.Margin) != "0.00010923" ||
 		text(position.UnrealizedPnl) != "-0.00029413" {
@@ -653,8 +619,6 @@ func TestEveryRetryableFailureFailsTheBatch(t *testing.T) {
 	}
 }
 
-// TestErrorClasses replays, on the call every run starts with, the refusals Bybit gave the
-// synthetic key and the synthetic ones no recording can provoke.
 func TestErrorClasses(t *testing.T) {
 	for _, tc := range []struct {
 		name, failure, scenario, want string
@@ -694,8 +658,6 @@ func TestErrorClasses(t *testing.T) {
 	}
 }
 
-// TestErrorCodesWithoutAnAnswer classifies the synthetic codes that neither a recording nor a
-// synthetic answer shows.
 func TestErrorCodesWithoutAnAnswer(t *testing.T) {
 	for _, tc := range []struct {
 		status, code int
@@ -742,7 +704,7 @@ func TestPositionMapping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if position.QuantityUnit != adapters.UnitQuote || position.Instrument.Kind != adapters.KindInverseDlv || position.Instrument.ExpiryAt == nil ||
+	if position.QuantityUnit != adapters.UnitQuote || position.Instrument.Kind != adapters.KindInverseDelivery || position.Instrument.ExpiryAt == nil ||
 		position.Side != adapters.SideShort || position.PlatformPositionRef != "BTCUSDZ26:2" || position.LiquidationPrice != nil || text(position.Leverage) != "5" {
 		t.Fatalf("inverse delivery hedge position = %+v", position)
 	}

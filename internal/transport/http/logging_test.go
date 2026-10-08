@@ -149,13 +149,25 @@ func TestGeneratedHandlersCarryRequestCancellation(t *testing.T) {
 func TestRequestIDValidation(t *testing.T) {
 	t.Parallel()
 	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler)})
-	for _, value := range []string{"", "has spaces", "非ASCII", strings.Repeat("x", 129), "contains\nnewline", "valid.ID_42-foo", strings.Repeat("x", 128)} {
+	for _, tc := range []struct {
+		value string
+		valid bool
+	}{
+		{"", false},
+		{"has spaces", false},
+		{"非ASCII", false},
+		{strings.Repeat("x", 129), false},
+		{"contains\nnewline", false},
+		{"valid.ID_42-foo", true},
+		{strings.Repeat("x", 128), true},
+	} {
+		value := tc.value
 		request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/live", nil)
 		request.Header.Set("X-Request-ID", value)
 		response := httptest.NewRecorder()
 		engine.ServeHTTP(response, request)
 		id := response.Header().Get("X-Request-ID")
-		if validTraceID(value) {
+		if tc.valid {
 			if id != value {
 				t.Fatalf("valid id changed: %q", id)
 			}

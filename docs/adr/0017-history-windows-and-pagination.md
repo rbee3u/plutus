@@ -47,7 +47,3 @@ browser, preserving the complete Value Changes chart without recomputing
 financial results on each page change. Aggregated curve reads still scan narrow
 point headers across the selected range; this is not stored preaggregation or a
 retention policy. Query mechanisms belong in architecture documentation.
-
-These changes do not change Period Close, Value Change, completeness, or the
-Portfolio Boundary. Synthetic and agent checks do not establish exchange-app
-validation or native mobile browser coverage.

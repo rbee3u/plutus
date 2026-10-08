@@ -3,6 +3,8 @@ import type { AccountStructure, Platform } from "@/api";
 import { useSessionScope } from "@/shared/lib/session";
 import { useQuery } from "@tanstack/react-query";
 
+type PlatformLabels = Pick<Platform, "id" | "name" | "accountStructures">;
+
 // Display aliases only; API names and identifiers remain canonical.
 const identityLabels: Record<
   string,
@@ -50,12 +52,12 @@ export function usePlatforms() {
   });
 }
 
-export function platformLabel(platforms: Platform[] | undefined, id: string): string {
+export function platformLabel(platforms: PlatformLabels[] | undefined, id: string): string {
   return platforms?.find((item) => item.id === id)?.name ?? id;
 }
 
 function findStructure(
-  platforms: Platform[] | undefined,
+  platforms: PlatformLabels[] | undefined,
   platformId: string,
   structureId: string,
 ): AccountStructure | undefined {
@@ -71,7 +73,7 @@ function findLabels(platformId: string, structureId: string) {
 }
 
 export function structureLabel(
-  platforms: Platform[] | undefined,
+  platforms: PlatformLabels[] | undefined,
   platformId: string,
   structureId: string,
 ): string {
@@ -82,12 +84,9 @@ export function structureLabel(
   );
 }
 
-/**
- * The Margin Mode line of an Identity: the mode the Platform last reported, a notice while a
- * structure that has Margin Modes has not been validated yet, or null for structures without one.
- */
+/** UNKNOWN when a required mode is unavailable; null when no mode applies. */
 export function marginModeLabel(
-  platforms: Platform[] | undefined,
+  platforms: PlatformLabels[] | undefined,
   platformId: string,
   structureId: string,
   marginMode: string | null | undefined,

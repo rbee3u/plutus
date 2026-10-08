@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
-	"github.com/rbee3u/plutus/internal/platform/proxytest"
+	"github.com/rbee3u/plutus/internal/testsupport/proxytest"
 )
 
 func TestHTTPFactoryAndOverride(t *testing.T) {

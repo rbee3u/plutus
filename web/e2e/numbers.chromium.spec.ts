@@ -1,23 +1,14 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { overviewTreeFixture } from "./fixtures/overviewTree";
 import { expect, test, type Page } from "@playwright/test";
-import type {
-  CapitalFlow,
-  Overview,
-  Portfolio,
-  ValuationPointSummary,
-} from "../src/api/generated/types.gen";
+import type { CapitalFlow, Overview, ValuationPointSummary } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
-const portfolio: Portfolio = {
-  id: portfolioId,
-  name: "Numbers check",
-  timezone: "UTC",
-  collectionIntervalSeconds: 3600,
-  undeletable: true,
-  version: 1,
-  createdAt: "2026-10-03T00:00:00Z",
-  updatedAt: "2026-10-03T00:00:00Z",
-};
+const session = sessionFixture({
+  user: { username: "numbers-check" },
+  portfolio: { id: portfolioId, name: "Numbers check" },
+});
 const point: ValuationPointSummary = {
   id: "00000000-0000-7000-8000-000000000003",
   jobId: "00000000-0000-7000-8000-000000000004",
@@ -72,22 +63,11 @@ const flow: CapitalFlow = {
   updatedAt: "2026-10-03T00:00:00Z",
 };
 
-async function mockApi(page: Page) {
+async function fixture(page: Page) {
   let submitted: unknown;
-  await page.route("**/api/v1/**", async (route) => {
+  await mockApi(page, session, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
-    if (path === "/api/v1/auth/me")
-      return route.fulfill({
-        json: {
-          user: { id: "user", username: "numbers-check", status: "active" },
-          sessionCount: 1,
-        },
-      });
-    if (path === "/api/v1/auth/csrf")
-      return route.fulfill({ json: { csrfToken: "offline-check" } });
-    if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
-    if (path === `/api/v1/portfolios/${portfolioId}`) return route.fulfill({ json: portfolio });
     if (path.endsWith("/history-window"))
       return route.fulfill({
         json: {
@@ -119,7 +99,7 @@ async function mockApi(page: Page) {
       return route.fulfill({ json: flow, headers: { ETag: '"capital-flow:1"' } });
     }
     if (path.endsWith("/capital-flows")) return route.fulfill({ json: { items: [flow] } });
-    throw new Error(`Unexpected request ${request.method()} ${path}`);
+    return route.fallback();
   });
   return () => submitted;
 }
@@ -127,7 +107,7 @@ async function mockApi(page: Page) {
 test("cards, tables and source-based chart tooltips share rounding and readable subscripts", async ({
   page,
 }, testInfo) => {
-  await mockApi(page);
+  await fixture(page);
   await page.goto(`/p/${portfolioId}/overview`);
   const total = page
     .getByRole("article")
@@ -175,7 +155,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
 test("Capital Flow editing and submission retain source precision while display is rounded", async ({
   page,
 }) => {
-  const submitted = await mockApi(page);
+  const submitted = await fixture(page);
   await page.goto(`/p/${portfolioId}/capital`);
   const row = page
     .getByRole("row")

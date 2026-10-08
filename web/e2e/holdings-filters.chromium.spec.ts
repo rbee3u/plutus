@@ -1,5 +1,8 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type {
+  ManualBalanceState,
   BalanceRow,
   Issue,
   EarnPositionRow,
@@ -120,105 +123,109 @@ async function fixture(page: Page) {
     failCandidates: false,
     failRows: false,
     noPoint: false,
-    delaySearch: false,
+    searchResponse: null as Promise<void> | null,
     balances: [] as BalanceRow[],
     balanceIssues: [] as Issue[],
     earns: [] as EarnPositionRow[],
     duals: [] as DualPositionRow[],
     earnSummaries: [] as EarnBalanceSummary[],
   };
-  await page.route("**/api/v1/**", async (route) => {
-    const url = new URL(route.request().url());
-    const path = url.pathname;
-    if (route.request().method() !== "GET") state.mutations.push(path);
-    if (path.endsWith("/auth/me"))
-      return route.fulfill({
-        json: { user: { id: "user", username: "filters", status: "active" }, sessionCount: 1 },
-      });
-    if (path === "/api/v1/portfolios")
-      return route.fulfill({
-        json: {
-          items: [
-            {
-              id: portfolioId,
-              name: "Filters",
-              timezone: "Asia/Shanghai",
-              collectionIntervalSeconds: 3600,
-              undeletable: true,
-              version: 1,
-              createdAt: "2026-10-03T00:00:00Z",
-              updatedAt: "2026-10-03T00:00:00Z",
-            },
-          ],
-        },
-      });
-    if (path === "/api/v1/platforms")
-      return route.fulfill({
-        json: {
-          items: [
-            { id: "binance", name: "Binance", accountStructures: [] },
-            { id: "okx", name: "OKX", accountStructures: [] },
-            { id: "kraken", name: "Kraken", accountStructures: [] },
-          ],
-        },
-      });
-    if (path.endsWith("/identities")) {
-      if (state.failCandidates)
-        return route.fulfill({ status: 503, json: { detail: "Candidates unavailable" } });
-      const identity = (id: string, platform: string, displayName: string, status = "enabled") => ({
-        id,
-        platform,
-        displayName,
-        status,
-        accounts: [],
-        connection: { status: "disabled" },
-      });
-      return route.fulfill({
-        json: {
-          items: [
-            identity(bn, "binance", "bn-main"),
-            ...Array.from({ length: 24 }, (_, i) =>
-              identity(`sub-${i}`, "binance", `bn-sub-${String(i).padStart(2, "0")}`),
-            ),
-            identity(ok, "okx", "ok-main"),
-            identity(archived, "kraken", "old", "archived"),
-          ],
-        },
-      });
-    }
-    if (/\/(balances|positions|earn-positions|dual-positions)$/.test(path)) {
-      state.requests.push(url);
-      if (state.delaySearch && url.searchParams.get("symbol"))
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      if (state.failRows)
-        return route.fulfill({ status: 503, json: { detail: "Rows unavailable" } });
-      return route.fulfill({
-        json: {
-          context: {
-            portfolioId,
-            pointId: state.noPoint ? null : portfolioId,
-            evaluatedAt: "2026-10-03T00:00:00Z",
-            timezone: "Asia/Shanghai",
+  await mockApi(
+    page,
+    sessionFixture({
+      user: { username: "filters" },
+      portfolio: { id: portfolioId, name: "Filters", timezone: "Asia/Shanghai" },
+    }),
+    async (route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
+      if (route.request().method() !== "GET") state.mutations.push(path);
+      if (path === "/api/v1/platforms")
+        return route.fulfill({
+          json: {
+            items: [
+              { id: "binance", name: "Binance", accountStructures: [] },
+              { id: "okx", name: "OKX", accountStructures: [] },
+              { id: "kraken", name: "Kraken", accountStructures: [] },
+            ],
           },
-          items: path.endsWith("/balances")
-            ? state.balances
-            : path.endsWith("/earn-positions")
-              ? state.earns
-              : path.endsWith("/dual-positions")
-                ? state.duals
-                : [],
-          balanceSummaries: state.earnSummaries,
-          detailsComplete: state.earnSummaries.length === 0,
-          page: { offset: Number(url.searchParams.get("offset") ?? 0), limit: 50, total: 0 },
-          totalUsd: "0",
-          totalNotionalUsd: "741.37",
-          completeness: "complete",
-          issues: path.endsWith("/balances") ? state.balanceIssues : [],
-        },
-      });
-    }
-    return route.fulfill({ json: {} });
-  });
+        });
+      if (path.endsWith("/identities")) {
+        if (state.failCandidates)
+          return route.fulfill({ status: 503, json: { detail: "Candidates unavailable" } });
+        const identity = (
+          id: string,
+          platform: string,
+          displayName: string,
+          status = "enabled",
+        ) => ({
+          id,
+          platform,
+          displayName,
+          status,
+          accounts: [],
+          connection: { status: "disabled" },
+        });
+        return route.fulfill({
+          json: {
+            items: [
+              identity(bn, "binance", "bn-main"),
+              ...Array.from({ length: 24 }, (_, i) =>
+                identity(`sub-${i}`, "binance", `bn-sub-${String(i).padStart(2, "0")}`),
+              ),
+              identity(ok, "okx", "ok-main"),
+              identity(archived, "kraken", "old", "archived"),
+            ],
+          },
+        });
+      }
+      if (/\/(balances|positions|earn-positions|dual-positions)$/.test(path)) {
+        state.requests.push(url);
+        if (url.searchParams.get("symbol")) await state.searchResponse;
+        if (state.failRows)
+          return route.fulfill({ status: 503, json: { detail: "Rows unavailable" } });
+        return route.fulfill({
+          json: {
+            context: {
+              portfolioId,
+              pointId: state.noPoint ? null : portfolioId,
+              evaluatedAt: "2026-10-03T00:00:00Z",
+              timezone: "Asia/Shanghai",
+            },
+            items: path.endsWith("/balances")
+              ? state.balances
+              : path.endsWith("/earn-positions")
+                ? state.earns
+                : path.endsWith("/dual-positions")
+                  ? state.duals
+                  : [],
+            balanceSummaries: state.earnSummaries,
+            detailsComplete: state.earnSummaries.length === 0,
+            page: { offset: Number(url.searchParams.get("offset") ?? 0), limit: 50, total: 0 },
+            totalUsd: "0",
+            totalNotionalUsd: "741.37",
+            completeness: "complete",
+            issues: path.endsWith("/balances") ? state.balanceIssues : [],
+          },
+        });
+      }
+      if (path.endsWith("/manual-balances")) {
+        const identityId = path.split("/").at(-2)!;
+        return route.fulfill({
+          json: {
+            identityId,
+            accountId: `manual-${identityId}`,
+            version: 1,
+            appliedVersion: null,
+            items: [],
+            appliedItems: [],
+            pending: false,
+          } satisfies ManualBalanceState,
+        });
+      }
+      return route.fallback();
+    },
+  );
   return state;
 }
 
@@ -347,38 +354,56 @@ test("search debounces, respects composition, and keeps its input through loadin
   page,
 }) => {
   const state = await fixture(page);
-  state.delaySearch = true;
-  await page.goto(`/p/${portfolioId}/holdings/futures?offset=50`);
-  await page.getByRole("button", { name: "Filter Symbol: All" }).click();
-  const input = page.getByRole("textbox", { name: "Search Symbol" });
-  await input.fill("btc");
-  await expect(input).toBeFocused();
-  await page.waitForTimeout(100);
-  expect(state.requests.some((url) => url.searchParams.has("symbol"))).toBe(false);
-  await expect
-    .poll(() => state.requests.some((url) => url.searchParams.get("symbol") === "btc"))
-    .toBe(true);
-  await expect(page.getByRole("cell", { name: "Loading positions." })).toBeVisible();
-  await expect(input).toBeFocused();
-  await expect(page).not.toHaveURL(/offset=/);
-  await input.dispatchEvent("compositionstart");
-  await input.fill("牛来");
-  await page.waitForTimeout(350);
-  expect(state.requests.some((url) => url.searchParams.get("symbol") === "牛来")).toBe(false);
-  await input.dispatchEvent("compositionend", { data: "牛来" });
-  await expect
-    .poll(() => state.requests.some((url) => url.searchParams.get("symbol") === "牛来"))
-    .toBe(true);
-  await input.press("Home");
-  await expect(input).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Filter Symbol: 牛来" })).toBeFocused();
-  await page.getByRole("button", { name: "Clear Symbol filter" }).click();
-  await expect(page).not.toHaveURL(/symbol=/);
+  let releaseResponse!: () => void;
+  state.searchResponse = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  const searches = () => state.requests.flatMap((url) => url.searchParams.get("symbol") ?? []);
+  try {
+    await page.goto(`/p/${portfolioId}/holdings/futures?offset=50`);
+    await page.getByRole("button", { name: "Filter Symbol: All" }).click();
+    const input = page.getByRole("textbox", { name: "Search Symbol" });
+    await page.clock.install({ time: new Date("2026-10-08T00:00:00Z") });
+    await page.clock.pauseAt(new Date("2026-10-08T00:00:01Z"));
+    await input.fill("b");
+    await page.clock.runFor(200);
+    await input.fill("btc");
+    await page.clock.runFor(249);
+    expect(searches()).toEqual([]);
+    await page.clock.runFor(1);
+    await expect.poll(searches).toEqual(["btc"]);
+    await expect(page.getByRole("cell", { name: "Loading positions." })).toBeVisible();
+    await expect(input).toBeFocused();
+    await expect(page).not.toHaveURL(/offset=/);
+    releaseResponse();
+    await expect
+      .poll(async () => {
+        // Deliver query notifications as the released response reaches the browser.
+        await page.clock.runFor(1);
+        return page.getByRole("cell", { name: "Loading positions." }).isVisible();
+      })
+      .toBe(false);
+
+    await input.dispatchEvent("compositionstart");
+    await input.fill("牛来");
+    await page.clock.runFor(1000);
+    expect(searches()).toEqual(["btc"]);
+    await input.dispatchEvent("compositionend", { data: "牛来" });
+    await page.clock.runFor(250);
+    await expect.poll(searches).toEqual(["btc", "牛来"]);
+    await input.press("Home");
+    await expect(input).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Filter Symbol: 牛来" })).toBeFocused();
+    await page.getByRole("button", { name: "Clear Symbol filter" }).click();
+    await expect(page).not.toHaveURL(/symbol=/);
+  } finally {
+    releaseResponse();
+  }
 });
 
 test("pending search stays with its own top-level tab and reset cancels it", async ({ page }) => {
-  await fixture(page);
+  const state = await fixture(page);
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const tabs = page.getByRole("navigation", { name: "Holdings views" });
   await expect(tabs.getByRole("link")).toHaveText([
@@ -389,6 +414,8 @@ test("pending search stays with its own top-level tab and reset cancels it", asy
   ]);
   await expect(page.getByRole("tablist")).toHaveCount(0);
   await page.getByRole("button", { name: "Filter Symbol: All" }).click();
+  await page.clock.install({ time: new Date("2026-10-08T00:00:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-08T00:00:01Z"));
   await page.getByRole("textbox", { name: "Search Symbol" }).fill("eth");
   await tabs.getByRole("link", { name: "Dual Investment", exact: true }).click();
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/dual-investment`);
@@ -396,7 +423,8 @@ test("pending search stays with its own top-level tab and reset cancels it", asy
   await page.getByRole("button", { name: "Filter Pair: All" }).click();
   await page.getByRole("textbox", { name: "Search Pair" }).fill("btc");
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
-  await page.waitForTimeout(350);
+  await page.clock.runFor(1000);
+  expect(state.requests.some((url) => url.searchParams.get("symbol") === "btc")).toBe(false);
   await expect(page).not.toHaveURL(/symbol=/);
   await tabs.getByRole("link", { name: "Futures", exact: true }).click();
   await expect(page.getByRole("button", { name: "Filter Symbol: eth" })).toBeVisible();

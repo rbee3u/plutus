@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
 import { useId } from "react";
-import { getManualBalances, keys, unwrapOrRedirect } from "@/api";
+import { getManualBalances, keys } from "@/api";
 import type { ManualBalanceState } from "@/api";
 import { parseDecimal } from "@/shared/lib/amount";
 import { useSessionScope } from "@/shared/lib/session";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { IconButton } from "@/shared/ui/IconButton";
 import shared from "@/shared/styles/page.module.css";
@@ -17,18 +17,18 @@ export interface ManualTarget {
 
 /** The editable manual records of one Identity; `fresh` reads them anew for the editor. */
 export function useManual(portfolioId: string, identityId: string, fresh = false) {
-  const { userId, redirect } = useSessionScope();
+  const { userId } = useSessionScope();
   const editorId = useId();
   const key = fresh
     ? keys.manualEditor(userId, portfolioId, identityId, editorId)
     : keys.manualBalances(userId, portfolioId, identityId);
-  const query = useQuery({
-    queryKey: key,
-    enabled: Boolean(userId && portfolioId && identityId),
+  const query = usePortfolioQuery({
+    portfolioId,
+    key: () => key,
+    ready: Boolean(identityId),
     refetchOnMount: fresh ? "always" : true,
     refetchOnWindowFocus: !fresh,
-    queryFn: async () =>
-      unwrapOrRedirect(await getManualBalances({ path: { portfolioId, identityId } }), redirect),
+    load: (portfolioId) => getManualBalances({ path: { portfolioId, identityId } }),
   });
   return { ...query, key };
 }

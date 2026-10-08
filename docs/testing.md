@@ -5,59 +5,34 @@ agent instance. Automated tests create their own temporary databases.
 
 ## Validation gates
 
-Local Go development follows five validation gates in order. `make format` also
-runs Prettier and `make lint` also runs the frontend typecheck and ESLint:
-
-1. `make format`: rewrite imports and formatting before validating the code.
-2. `make web`: build the SPA for Go embedding.
-3. `make build`: confirm the formatted code compiles and build a static
-   `dist/plutus-<GOOS>-<GOARCH>` binary for the current platform with the git
-   version baked in (`plutus --version`). Override `GOOS` and `GOARCH` to
-   cross-compile for another platform.
-4. `make test`: run Go and frontend Vitest unit tests without cached results
-   after the build passes. This gate is offline: no external requests or live
-   keys; loopback replay and temporary MySQL are allowed.
-5. `make lint`: run the configured linters after tests pass.
-
-Each gate must pass before proceeding to the next. Stop on failure, fix the
-issue, and repeat the sequence:
+Run the gates in order; fix any failure and restart the sequence:
 
 ```sh
 make format && make web && make build && make test && make lint
 ```
 
-`make style` is intended for future GitHub CI, where it replaces `make format`
-as the first gate. It checks formatting without rewriting files and fails when
-formatting corrections are needed; frontend build, Go build, tests, and lint
-follow in the same order:
+- `format` rewrites Go imports/formatting and runs frontend Prettier.
+- `web` builds the SPA required for Go embedding.
+- `build` writes a static, versioned `dist/plutus-<GOOS>-<GOARCH>` binary.
+- `test` runs uncached Go and frontend unit tests. Only loopback replay and
+  temporary MySQL are allowed; no external requests or live keys.
+- `lint` runs Go linters, frontend typecheck, and ESLint.
 
-```sh
-make style && make web && make build && make test && make lint
-```
+Reuse the host's Go cache configuration without overrides or persistent changes.
+Request elevated execution when sandbox restrictions are expected or
+encountered. For future CI, `make style` replaces `make format` with a
+non-mutating check. `make generate` regenerates sqlc and Go/TypeScript API
+bindings; unchanged sources must produce no diff.
 
-Go lint uses a reviewed allowlist focused on correctness, security, and resource
-lifetimes, including test files. Staticcheck runs `SA*` except the `SA6*`
-performance checks. Gocritic retains behavior diagnostics while excluding style,
-performance, comment, builtin-naming, and simplification preferences. Govet also
-runs `nilness` and `unusedwrite` to check nil dereferences, redundant nil
-comparisons, and writes to struct or array copies that are never read.
-Formatting is checked separately; general API-shape preferences and speculative
-micro-optimizations are not lint gates.
-
-Narrowly scoped exclusions allow fixture type assertions, invented credentials,
-and test-owned paths. The SQL compatibility wrapper, incoming test cookies, and
-forbidden network probes have documented file-specific exceptions in
-`.golangci.yml`. Suppressions must name the linter and explain the exception;
-unused suppressions fail lint. Explicitly discarded errors still require review:
-the default errcheck settings allow assignments to `_`.
-
-G115 integer-conversion checks and strict enum exhaustiveness apply across the
-project. Validate externally supplied narrowing conversions before casting.
-Rule-specific `#nosec G115` comments document established bounds or intentional
-signed-bit encodings; revisit those assumptions when changing the caller or
-storage contract. Platform-specific switches may explicitly suppress
-`exhaustive` when they intentionally handle only a subset of shared Account
-Types. Such exceptions never expand supported Accounts.
+Lint prioritizes correctness, security, resource lifetimes, and coarse
+[backend](./adr/0020-architecture-layering.md) and
+[frontend](./adr/0021-frontend-structure.md) import boundaries. The exact
+allowlist and exclusions live in [`.golangci.yml`](../.golangci.yml) and
+[`web/eslint.config.js`](../web/eslint.config.js); style preferences and
+speculative micro-optimizations are outside these gates. Rule-specific
+suppressions must explain their bounds or exception; unused suppressions fail.
+Review discarded errors: default errcheck settings allow `_` assignments.
+Platform-specific `exhaustive` exceptions do not expand supported Accounts.
 
 The optional Chromium check uses a loopback-only Vite server and mocked API
 responses, so it needs no database. It covers mobile navigation behavior that
@@ -68,28 +43,19 @@ npm --prefix web exec playwright install chromium
 npm --prefix web run test:chromium
 ```
 
-It is separate from `make test`, which remains the routine offline gate. Put
-Playwright output in a unique directory under `/tmp/plutus`, for example by
-adding `-- --output=/tmp/plutus/<session>/playwright` to the test command.
+This is separate from `make test`. Put output under `/tmp/plutus`, for example
+`-- --output=/tmp/plutus/<session>/playwright`.
 
-Mobile scroll regressions cover long and short pages, portrait and landscape,
-sticky navigation, horizontal tables, external-scroll menu dismissal, reload
-with URL filters, and transitions back to desktop pane scrolling. A dedicated
-Vite-only fixture exercises overlapping native Dialogs, Strict Mode, component
-unmount, pre-existing inline styles, and breakpoint-dependent lock cleanup.
-These fixtures are test sources and are not included in the embedded SPA.
+Mobile cases cover page and overlay scrolling, orientation changes, URL-backed
+reloads, and return to desktop layout. Vite-only fixtures exercise overlapping
+Dialogs and cleanup; they are excluded from the SPA.
 
-Chromium automation does not prove native iPhone Safari or Android Chrome
-pull-to-refresh or its browser indicator. Check ordinary tabs on actual devices
-with short and long pages, toolbars expanded and collapsed, and drawers/dialogs
-open and closed. Confirm that a pull at the page top reloads the same URL, reads
-existing data, and does not request a Collection Cycle. Record device/browser
-versions and outcomes separately; report this coverage as outstanding until it
-has been observed. Embedded browsers and home-screen mode are outside this
-delivery's acceptance scope.
-
-`make generate` regenerates the sqlc queries, the Go strict server, and the
-TypeScript client; the tree must be unchanged afterwards.
+Chromium cannot establish native Safari or Android Chrome pull-to-refresh. Check
+ordinary tabs on actual devices with short/long pages, expanded/collapsed
+toolbars, and open/closed overlays. Confirm a top-of-page pull reloads the same
+URL without requesting collection. Record device/browser versions and outcomes;
+leave coverage outstanding until observed. Embedded and home-screen modes are
+outside acceptance scope.
 
 ## Documentation verification
 
@@ -114,27 +80,18 @@ includes seed data, valuation reads, the embedded SPA, and history defaults.
 Changes confined to Adapter packages, their tests, or fixtures use offline tests
 and evidence review instead.
 
-1. If `config/agent.toml`, `config/agent.env`, or MySQL database `plutus_agent`
-   is missing, stop and report the setup needed: copy
-   [config/agent-example.toml](../config/agent-example.toml) and
-   [config/agent-example.env](../config/agent-example.env) to their agent
-   counterparts, set `PLUTUS_DSN` and a unique `PLUTUS_MASTER_KEY`, and run
-   `CREATE DATABASE plutus_agent;`. Never substitute `plutus_local`.
+1. Confirm `config/agent.toml`, `config/agent.env`, and `plutus_agent` exist. If
+   missing, report the [agent setup](./development.md#agent-setup) needed; never
+   substitute another instance.
 2. Start `./scripts/agent-wipe-and-serve.sh` in the background, or
-   `./scripts/agent-serve.sh` to keep data. Wait for
+   `./scripts/agent-serve.sh` to retain data. Wait for
    `GET http://127.0.0.1:8081/health/live` to succeed.
-3. Open `http://127.0.0.1:8081` and follow the changed path by clicking, typing,
-   submitting, and navigating. Verify the embedded SPA, not :8080 or Vite. For
-   API-only changes, use `curl` against affected routes on :8081. A screenshot
-   alone is insufficient.
-4. Stop every process started by the session, including child `serve` processes,
-   by terminating their process groups. Confirm
-   `GET http://127.0.0.1:8081/health/live` fails and :8081 is no longer
-   occupied. Leave the user's :8080 processes alone.
-5. Report what was exercised on :8081, what was observed, what remains
-   uncovered, and that the started processes were stopped. If setup or
-   verification was blocked, report that limitation rather than claiming runtime
-   or UI completion.
+3. Exercise the changed flow on the embedded SPA at `http://127.0.0.1:8081`
+   through interaction; screenshots alone are insufficient. API-only changes can
+   use `curl` on affected routes. Do not use :8080 or Vite.
+4. Terminate session-started process groups, including child `serve` processes.
+   Confirm health is unreachable and :8081 has no listener. Leave :8080 alone.
+5. Report exercised paths, observations, gaps or blockers, and process cleanup.
 
 ## Adapter delivery reports
 
@@ -144,6 +101,29 @@ recorded evidence with dates and gaps; independent synthetic test results per
 affected Platform; agent-environment coverage when applicable; and what was not
 covered. Documented or synthetic scenarios must remain distinct from observed
 real coverage.
+
+## Test ownership
+
+- Package-local tests own local rules and private implementation seams.
+- `internal/integration` owns Adapter-to-report-to-read workflows, cross-module
+  presentation, and migration continuity. Its harness shares collaborators from
+  `app.New`; fast retry scenarios explicitly replace only the Collection runner.
+- `internal/testsupport` contains reusable database and offline network helpers.
+  Do not import it from runtime code or move CLI-used fake/recording code there.
+- `web/e2e/support` contains common API routing and generated-type-checked
+  session responses. Call `route.fallback()` for requests the scenario does not
+  own. The common handler fails unknown requests. Keep scenario financial data,
+  failures, and assertions in the suite, including explicit empty responses.
+
+Pure helper tests stay with their implementation. MySQL infrastructure tests use
+an external test package to avoid a cycle through `mysqltest`. Browser tests
+cover session/cache lifetimes, Collection invalidation, and raw write results
+without duplicating generated schemas.
+
+Give each scenario one owner and retain its assertions when moving it. Do not
+export private production methods to relocate tests. Each database-backed
+package needs `mysqltest.RunTestMain`; install `offline.Install` first when
+exercising Platform clients.
 
 ## Test configuration
 
@@ -158,11 +138,10 @@ developer configuration source.
 - `PLUTUS_GOTEST_DSN` is a server-level MySQL DSN with no database name
   (`user:password@tcp(127.0.0.1:3306)/`). Each test package that needs MySQL
   creates its own `plutus_gotest_<unix>_<hex>` database in `TestMain`, migrates
-  it, runs, and drops it. Nothing has to be created by hand, editing the
-  migration never leaves stale tables behind, and packages run in parallel
-  without sharing state. Databases older than an hour, left behind by a killed
-  run, are dropped on the next run. Without the variable those tests skip and
-  `make test` still passes.
+  it, runs, and drops it. Packages share no database; leftovers older than one
+  hour are dropped on the next run. Without the variable, database tests skip
+  and `make test` can pass without database coverage. Do not edit `gotest.env`
+  to fit tests.
 - Real Adapter tests select synthetic response files and replay them through
   loopback servers; higher-level application tests can use the deterministic
   fake. The network guard fails forbidden HTTP/HTTPS/WebSocket, proxy and

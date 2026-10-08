@@ -17,9 +17,8 @@ type recordCall struct {
 	params url.Values
 }
 
-func selectedCalls() []recordCall {
-	calls := make([]recordCall, 0, 28)
-	calls = append(calls, []recordCall{
+func recordingCalls() []recordCall {
+	calls := []recordCall{
 		{epServerTime, nil},
 		{epAccountInfo, nil},
 		{epSpotAccount, spotAccountQuery()},
@@ -44,7 +43,7 @@ func selectedCalls() []recordCall {
 		{epUMExchangeInfo, nil},
 		{epCMExchangeInfo, nil},
 		{endpoint{method: "GET", host: hostAPI, path: "/sapi/v1/dci/product/accounts", signed: true}, nil},
-	}...)
+	}
 	params := dualInvestmentQuery("PURCHASE_SUCCESS", 1)
 	params.Del("status")
 	calls = append(calls, recordCall{epDualInvest, params})
@@ -54,7 +53,7 @@ func selectedCalls() []recordCall {
 // RecordingRequests lists read-only targets without observing or requesting an account.
 func RecordingRequests() recording.Catalogue {
 	out := recording.Catalogue{}
-	for _, call := range selectedCalls() {
+	for _, call := range recordingCalls() {
 		request := fixture.Request{Service: recording.Service(adapters.PlatformBinance, call.ep.path), Method: call.ep.method, Path: call.ep.path, Query: call.params}
 		out.Add(request, call.ep.signed)
 		if call.ep.path == epDualInvest.path {
@@ -69,7 +68,7 @@ func RecordingRequests() recording.Catalogue {
 
 // captureRequest uses native signing with the local clock, without preflight, retry or pagination.
 func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
-	for _, call := range selectedCalls() {
+	for _, call := range recordingCalls() {
 		if request.Service != recording.Service(adapters.PlatformBinance, call.ep.path) || request.Method != call.ep.method || request.Path != call.ep.path || len(request.Form) != 0 {
 			continue
 		}

@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// positionLists are the position/list reads that together cover every contract position of the
-// Unified account: Bybit lists linear positions per settlement coin, and inverse and option
-// positions in one list each.
+// Linear positions require one read per settlement coin; inverse and options
+// each use one list. Include options so unsupported holdings fail explicitly.
 var positionLists = []struct{ category, settleCoin string }{
 	{"linear", "USDT"},
 	{"linear", "USDC"},
@@ -21,12 +22,11 @@ var positionLists = []struct{ category, settleCoin string }{
 	{"option", ""},
 }
 
-// contractKinds maps Bybit's contractType to the Plutus Instrument kind.
 var contractKinds = map[string]string{
-	"LinearPerpetual":  adapters.KindLinearPerp,
-	"InversePerpetual": adapters.KindInversePerp,
-	"LinearFutures":    adapters.KindLinearDeliv,
-	"InverseFutures":   adapters.KindInverseDlv,
+	"LinearPerpetual":  adapters.KindLinearPerpetual,
+	"InversePerpetual": adapters.KindInversePerpetual,
+	"LinearFutures":    adapters.KindLinearDelivery,
+	"InverseFutures":   adapters.KindInverseDelivery,
 }
 
 type openPosition struct {
@@ -42,7 +42,6 @@ type openPosition struct {
 	PositionIM    string `json:"positionIM"`
 }
 
-// instrument is one row of market/instruments-info.
 type instrument struct {
 	Symbol       string `json:"symbol"`
 	ContractType string `json:"contractType"`
@@ -52,10 +51,8 @@ type instrument struct {
 	DeliveryTime string `json:"deliveryTime"`
 }
 
-// positions maps the open contract positions of the Unified account. Every list is read to its
-// last page before any position is kept, and instruments are read only for categories that hold a
-// position. An open option position fails the Account instead of disappearing: Plutus has no
-// Instrument kind for it.
+// Read complete lists before retaining positions; fetch metadata only for held
+// categories. Unsupported options fail the Account instead of disappearing.
 func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.MarginMode) ([]adapters.Position, error) {
 	open := map[string][]openPosition{}
 	sizes := map[string][]*big.Rat{}
@@ -90,7 +87,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 		if len(open[category]) == 0 {
 			continue
 		}
-		instruments, err := a.instruments(ctx, c, category)
+		instruments, err := readInstruments(ctx, c, category)
 		if err != nil {
 			return nil, err
 		}
@@ -115,8 +112,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 	return out, nil
 }
 
-// instruments reads every contract of one category by symbol.
-func (a *Adapter) instruments(ctx context.Context, c *client, category string) (map[string]instrument, error) {
+func readInstruments(ctx context.Context, c *client, category string) (map[string]instrument, error) {
 	rows, err := pages[instrument](ctx, c, epInstruments, url.Values{"category": {category}})
 	if err != nil {
 		return nil, err
@@ -128,10 +124,9 @@ func (a *Adapter) instruments(ctx context.Context, c *client, category string) (
 	return out, nil
 }
 
-// mapPosition maps one open position. Bybit reports `size` positive and the direction in `side`;
-// linear sizes are in the base coin and inverse sizes in USD. Portfolio Margin positions have no
-// leverage, margin, or liquidation price of their own, which Bybit leaves empty, so they stay null.
-// In Cross Margin the liquidation price is Bybit's estimate for the account as a whole.
+// Bybit size is positive: Base units for linear, USD face value for inverse.
+// PM has no position-level leverage, margin, or liquidation price. Cross
+// liquidation price estimates liquidation of the whole Account.
 func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapters.MarginMode) (adapters.Position, error) {
 	kind, ok := contractKinds[info.ContractType]
 	if !ok || strings.TrimSpace(info.BaseCoin) == "" || strings.TrimSpace(info.QuoteCoin) == "" || strings.TrimSpace(info.SettleCoin) == "" {
@@ -158,7 +153,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 		return adapters.Position{}, adapters.Malformed(epPositions.String(), "positionIdx of "+row.Symbol)
 	}
 	unit := adapters.UnitBase
-	if kind == adapters.KindInversePerp || kind == adapters.KindInverseDlv {
+	if kind == adapters.KindInversePerpetual || kind == adapters.KindInverseDelivery {
 		unit = adapters.UnitQuote
 	}
 	position := adapters.Position{
@@ -184,7 +179,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 		}
 		position.PositionMode = "hedged"
 	}
-	if kind == adapters.KindLinearDeliv || kind == adapters.KindInverseDlv {
+	if kind == adapters.KindLinearDelivery || kind == adapters.KindInverseDelivery {
 		expiry, ok := parseMillis(info.DeliveryTime)
 		if !ok {
 			return adapters.Position{}, adapters.Malformed(epInstruments.String(), "the deliveryTime of "+info.Symbol)
@@ -202,4 +197,12 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 		}
 	}
 	return position, nil
+}
+
+func parseMillis(value string) (time.Time, bool) {
+	millis, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	if err != nil || millis <= 0 {
+		return time.Time{}, false
+	}
+	return time.UnixMilli(millis).UTC(), true
 }

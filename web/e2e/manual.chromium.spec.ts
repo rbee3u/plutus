@@ -1,3 +1,5 @@
+import { mockApi } from "./support/api";
+import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type {
   AccountValuation,
@@ -64,168 +66,147 @@ async function fixture(page: Page, initialPoint = true) {
           boundaryWithdrawalUsd: "0",
         }
       : null;
-  await page.route("**/api/v1/**", async (route) => {
-    const req = route.request();
-    const path = new URL(req.url()).pathname;
-    const method = req.method();
-    const portfolio = {
-      id: portfolioId,
-      name: "Manual QA",
-      timezone: "UTC",
-      collectionIntervalSeconds: 3600,
-      undeletable: true,
-      version: 1,
-      createdAt: at,
-      updatedAt: at,
-    };
-    if (path.endsWith("/auth/me"))
-      return route.fulfill({
-        json: { user: { id: "user", username: "alice", status: "active" }, sessionCount: 1 },
-      });
-    if (path.endsWith("/auth/csrf")) return route.fulfill({ json: { token: "test" } });
-    if (path === "/api/v1/portfolios") return route.fulfill({ json: { items: [portfolio] } });
-    if (path === `/api/v1/portfolios/${portfolioId}`) return route.fulfill({ json: portfolio });
-    if (path.endsWith("/identities"))
-      return route.fulfill({
-        json: {
-          items: [
-            {
-              id: "owner",
-              portfolioId,
-              platform: "kraken",
-              displayName: "Owner",
-              accountStructure: "kraken_unified",
-              status: "enabled",
-              version: 1,
-              createdAt: at,
-              updatedAt: at,
-              connection: { status: "unconfigured", credentialsConfigured: false },
-              accounts: [
-                {
-                  id: "manual",
-                  identityId: "owner",
-                  accountType: "manual",
-                  displayName: "Manual",
-                  selected: true,
-                  version: 1,
-                },
-              ],
-            },
-          ],
-        },
-      });
-    if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
-    if (path.endsWith("/asset-listings"))
-      return route.fulfill({ json: { items: [], page: { offset: 0, limit: 200, total: 0 } } });
-    if (path.includes("/manual-balances")) {
-      if (method !== "GET") {
-        if (state.conflict || req.headers()["if-match"] !== `"manual:${state.version}"`) {
-          state.conflict = false;
-          return route.fulfill({ status: 412, json: { detail: "Concurrent update" } });
-        }
-        const body =
-          method === "DELETE"
-            ? null
-            : (req.postDataJSON() as { symbol?: string; quantity: string });
-        const symbol = path.endsWith("/manual-balances")
-          ? (body?.symbol ?? "").trim().toUpperCase()
-          : path.split("/").at(-1)!;
-        const quantity = method === "DELETE" ? "0" : (body?.quantity ?? "0");
-        state.items =
-          quantity === "0"
-            ? []
-            : [{ symbol, quantity, assetSymbol: symbol, listingId: "listing", modifiedAt: at }];
-        state.version++;
-      }
-      return route.fulfill({ json: ledger(), headers: { ETag: `"manual:${state.version}"` } });
-    }
-    if (path.endsWith("/overview"))
-      return route.fulfill({
-        json: {
-          context: context(),
-          point: point(),
-          totalUsd: point()?.totalUsd ?? null,
-          completeness: "complete",
-          accountCount: 1,
-          staleAccountCount: 0,
-          incompleteAccountCount: 0,
-          byPlatform: [],
-          byIdentity: [],
-          issues: [],
-          sparkline: [],
-        },
-      });
-    if (path.endsWith("/tree"))
-      return route.fulfill({
-        json: {
-          context: context(),
-          totalUsd: point()?.totalUsd ?? null,
-          completeness: "complete",
-          issues: [],
-          platforms: [
-            {
-              platform: "kraken",
-              label: "Kraken",
-              valueUsd: point()?.totalUsd ?? "0",
-              completeness: "complete",
-              identities: [
-                {
-                  id: "owner",
-                  displayName: "Owner",
-                  status: "enabled",
-                  connectionStatus: "unconfigured",
-                  valueUsd: point()?.totalUsd ?? "0",
-                  completeness: "complete",
-                  accounts: state.applied.length ? [account()] : [],
-                },
-              ],
-            },
-          ],
-        },
-      });
-    if (path.endsWith("/balances")) {
-      const items = state.applied.map((item) => ({
-        ...item,
-        ...account(),
-        symbol: item.symbol,
-        equity: item.quantity,
-        equityUsd: item.quantity,
-        priceUsd: "1",
-        noPrice: false,
-      }));
-      return route.fulfill({
-        json: {
-          context: context(),
-          account: account(),
-          items,
-          totalUsd: point()?.totalUsd ?? null,
-          completeness: "complete",
-          groups: [],
-          issues: [],
-          page: { offset: 0, limit: 50, total: items.length },
-        },
-      });
-    }
-    if (path.includes("/collection-cycles")) {
-      if (method === "POST") {
-        state.applied = state.items.map((i) => ({ ...i }));
-        state.point = true;
-        state.privateWrites++;
-      }
-      return route.fulfill({
-        json:
-          method === "POST"
-            ? {
-                id: "cycle",
+  await mockApi(
+    page,
+    sessionFixture({
+      user: { username: "alice" },
+      portfolio: { id: portfolioId, name: "Manual QA", createdAt: at, updatedAt: at },
+    }),
+    async (route) => {
+      const req = route.request();
+      const path = new URL(req.url()).pathname;
+      const method = req.method();
+      if (path.endsWith("/identities"))
+        return route.fulfill({
+          json: {
+            items: [
+              {
+                id: "owner",
                 portfolioId,
-                status: "succeeded",
-                trigger: "manual",
-                attempts: 1,
-                maxAttempts: 3,
+                platform: "kraken",
+                displayName: "Owner",
+                accountStructure: "kraken_unified",
+                status: "enabled",
+                version: 1,
                 createdAt: at,
-              }
-            : {
-                cycle: {
+                updatedAt: at,
+                connection: { status: "unconfigured", credentialsConfigured: false },
+                accounts: [
+                  {
+                    id: "manual",
+                    identityId: "owner",
+                    accountType: "manual",
+                    displayName: "Manual",
+                    selected: true,
+                    version: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
+      if (path.endsWith("/asset-listings"))
+        return route.fulfill({ json: { items: [], page: { offset: 0, limit: 200, total: 0 } } });
+      if (path.includes("/manual-balances")) {
+        if (method !== "GET") {
+          if (state.conflict || req.headers()["if-match"] !== `"manual:${state.version}"`) {
+            state.conflict = false;
+            return route.fulfill({ status: 412, json: { detail: "Concurrent update" } });
+          }
+          const body =
+            method === "DELETE"
+              ? null
+              : (req.postDataJSON() as { symbol?: string; quantity: string });
+          const symbol = path.endsWith("/manual-balances")
+            ? (body?.symbol ?? "").trim().toUpperCase()
+            : path.split("/").at(-1)!;
+          const quantity = method === "DELETE" ? "0" : (body?.quantity ?? "0");
+          state.items =
+            quantity === "0"
+              ? []
+              : [{ symbol, quantity, assetSymbol: symbol, listingId: "listing", modifiedAt: at }];
+          state.version++;
+        }
+        return route.fulfill({ json: ledger(), headers: { ETag: `"manual:${state.version}"` } });
+      }
+      if (path.endsWith("/overview"))
+        return route.fulfill({
+          json: {
+            context: context(),
+            point: point(),
+            totalUsd: point()?.totalUsd ?? null,
+            completeness: "complete",
+            accountCount: 1,
+            staleAccountCount: 0,
+            incompleteAccountCount: 0,
+            byPlatform: [],
+            byIdentity: [],
+            issues: [],
+            sparkline: [],
+          },
+        });
+      if (path.endsWith("/tree"))
+        return route.fulfill({
+          json: {
+            context: context(),
+            totalUsd: point()?.totalUsd ?? null,
+            completeness: "complete",
+            issues: [],
+            platforms: [
+              {
+                platform: "kraken",
+                label: "Kraken",
+                valueUsd: point()?.totalUsd ?? "0",
+                completeness: "complete",
+                identities: [
+                  {
+                    id: "owner",
+                    displayName: "Owner",
+                    status: "enabled",
+                    connectionStatus: "unconfigured",
+                    valueUsd: point()?.totalUsd ?? "0",
+                    completeness: "complete",
+                    accounts: state.applied.length ? [account()] : [],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      if (path.endsWith("/balances")) {
+        const items = state.applied.map((item) => ({
+          ...item,
+          ...account(),
+          symbol: item.symbol,
+          equity: item.quantity,
+          equityUsd: item.quantity,
+          priceUsd: "1",
+          noPrice: false,
+        }));
+        return route.fulfill({
+          json: {
+            context: context(),
+            account: account(),
+            items,
+            totalUsd: point()?.totalUsd ?? null,
+            completeness: "complete",
+            groups: [],
+            issues: [],
+            page: { offset: 0, limit: 50, total: items.length },
+          },
+        });
+      }
+      if (path.includes("/collection-cycles")) {
+        if (method === "POST") {
+          state.applied = state.items.map((i) => ({ ...i }));
+          state.point = true;
+          state.privateWrites++;
+        }
+        return route.fulfill({
+          json:
+            method === "POST"
+              ? {
                   id: "cycle",
                   portfolioId,
                   status: "succeeded",
@@ -233,12 +214,29 @@ async function fixture(page: Page, initialPoint = true) {
                   attempts: 1,
                   maxAttempts: 3,
                   createdAt: at,
+                }
+              : {
+                  cycle: {
+                    id: "cycle",
+                    portfolioId,
+                    status: "succeeded",
+                    trigger: "manual",
+                    attempts: 1,
+                    maxAttempts: 3,
+                    createdAt: at,
+                  },
                 },
-              },
-      });
-    }
-    return route.fulfill({ json: { items: [] } });
-  });
+        });
+      }
+      if (path.endsWith("/history-window"))
+        return route.fulfill({ json: { context: context(), from: at, to: at } });
+      if (path.endsWith("/valuation-points"))
+        return route.fulfill({
+          json: { context: context(), from: at, to: at, granularity: "raw", items: [] },
+        });
+      return route.fallback();
+    },
+  );
   return state;
 }
 

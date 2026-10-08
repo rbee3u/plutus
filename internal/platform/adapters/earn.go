@@ -7,19 +7,10 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// CheckEarnComplete is the runtime completeness check of an Earn Account (ADR
-// 0005). A Platform keeps adding Earn products, and a product Plutus cannot
-// read would otherwise vanish from a successful Earn report without a trace.
-// So the adapter also reads the Platform's own USD valuation of Earn,
-// platformUSD, and compares it with the Balances it itemized, each valued with
-// price (the USD value of one unit of a symbol).
-//
-// The check passes when the Platform's valuation is at most max(1% of it, 1
-// USD) above the itemized value; the tolerance absorbs the difference between
-// the Platform's prices and the adapter's. It also passes when a Balance has
-// no price, because no comparison is possible and valuation already marks that
-// Account incomplete. Otherwise it fails with ClassUnsupported, naming both
-// amounts, so the Earn Account goes Stale instead of silently losing value.
+// CheckEarnComplete detects unitemized Earn value, including auxiliary Dual
+// holdings. A shortfall above max(1% of |platformUSD|, 1 USD) is unsupported;
+// the tolerance absorbs price differences. Missing prices skip this comparison
+// and leave financial completeness to valuation. See ADR 0005.
 func CheckEarnComplete(platform Platform, platformUSD *big.Rat, balances []Balance, price func(symbol string) (*big.Rat, bool)) error {
 	if platformUSD == nil {
 		return NewError(ClassNormalization, PlatformName(platform)+" returned no Earn valuation.")

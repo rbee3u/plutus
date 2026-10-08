@@ -6,9 +6,8 @@ import { NumericText } from "@/shared/ui/NumericText";
 import type { AccountBalanceList, AccountValuation, BalanceRow, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { Badge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
-import { HoverDetails } from "@/shared/ui/HoverDetails";
+import { ObservedCell } from "./ObservedCell";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
@@ -123,22 +122,13 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
     ),
     equityUsd: formatAmount(item.equityUsd),
     observed: (
-      <span className={shared.statusGroup}>
-        <span
-          className={shared.muted}
-          title={`Account Report observed at ${item.reportObservedAt ?? "an unknown time"}; times in ${timezone ?? "the Portfolio timezone"}.`}
-        >
-          {formatInstant(item.reportObservedAt, timezone)}
-        </span>
-        {item.freshness === "stale" ? (
-          <HoverDetails
-            label={<Badge tone="warn">Stale</Badge>}
-            name={`Stale report for ${item.symbol}`}
-          >
-            <p>{stale?.detail ?? "An earlier successful Account Report is carried forward."}</p>
-          </HoverDetails>
-        ) : null}
-      </span>
+      <ObservedCell
+        observedAt={item.reportObservedAt}
+        freshness={item.freshness}
+        issues={stale ? [stale] : []}
+        name={item.symbol}
+        timezone={timezone}
+      />
     ),
   };
 }

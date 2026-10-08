@@ -74,9 +74,9 @@ func TestClassicSyntheticScenes(t *testing.T) {
 					t.Fatalf("position %+v", p)
 				}
 				if tc.inverse {
-					kind := adapters.KindInversePerp
+					kind := adapters.KindInversePerpetual
 					if p.PlatformPositionRef == "cm:ETHUSD_261225:BOTH" {
-						kind = adapters.KindInverseDlv
+						kind = adapters.KindInverseDelivery
 						if p.Instrument.ExpiryAt == nil || !p.Instrument.ExpiryAt.Equal(time.UnixMilli(1798185600000).UTC()) {
 							t.Fatalf("delivery expiry %+v", p.Instrument)
 						}
@@ -84,7 +84,7 @@ func TestClassicSyntheticScenes(t *testing.T) {
 					if p.QuantityUnit != adapters.UnitContracts || p.Instrument.Kind != kind || p.Instrument.BaseSymbol != "ETH" || p.Instrument.QuoteSymbol != "USD" || p.Instrument.SettlementSymbol != "ETH" || deref(p.Instrument.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
 						t.Fatalf("inverse terms %+v", p)
 					}
-				} else if p.QuantityUnit != adapters.UnitBase || p.Instrument.Kind != adapters.KindLinearPerp || p.Instrument.BaseSymbol != "DOGE" || p.Instrument.QuoteSymbol != "USDT" || p.Instrument.SettlementSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
+				} else if p.QuantityUnit != adapters.UnitBase || p.Instrument.Kind != adapters.KindLinearPerpetual || p.Instrument.BaseSymbol != "DOGE" || p.Instrument.QuoteSymbol != "USDT" || p.Instrument.SettlementSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
 					t.Fatalf("linear terms %+v", p)
 				}
 				delete(want, p.PlatformPositionRef)
@@ -105,44 +105,5 @@ func TestClassicSyntheticScenes(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestPMAndWalletSyntheticMapping(t *testing.T) {
-	t.Parallel()
-	_, a := newReplay(t, "")
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin, TypeSpot, TypeFunding)
-	pm := reportOf(t, batch, TypePortfolioMargin)
-	if pm.Status != adapters.StatusOK || deref(pm.Equity) != "979" || deref(pm.AdjustedEquity) != "950" || len(pm.Balances) != 2 || len(pm.Positions) != 2 {
-		t.Fatalf("PM %+v", pm)
-	}
-	if b := balanceOf(t, pm, "USDT"); b.Equity != "999" || deref(b.Liability) != "10" || deref(b.Interest) != "1" {
-		t.Fatalf("debt %+v", b)
-	}
-	if b := balanceOf(t, pm, "BTC"); b.Equity != "-0.001" {
-		t.Fatalf("negative coin equity %+v", b)
-	}
-	for _, p := range pm.Positions {
-		if p.LiquidationPrice != nil {
-			t.Fatalf("zero liquidation price must remain unknown %+v", p)
-		}
-		switch p.PlatformPositionRef {
-		case "um:BTCUSDT:BOTH":
-			if p.Side != adapters.SideLong || p.Quantity != "0.01" || p.QuantityUnit != adapters.UnitBase || p.Instrument.Kind != adapters.KindLinearPerp || deref(p.Leverage) != "5" {
-				t.Fatalf("linear %+v", p)
-			}
-		case "cm:BTCUSD_PERP:BOTH":
-			if p.Side != adapters.SideShort || p.Quantity != "2" || p.QuantityUnit != adapters.UnitContracts || p.Instrument.Kind != adapters.KindInversePerp || deref(p.Instrument.ContractSize) != "100" || deref(p.Leverage) != "3" {
-				t.Fatalf("inverse %+v", p)
-			}
-		default:
-			t.Fatalf("unexpected position %+v", p)
-		}
-	}
-	if b := balanceOf(t, reportOf(t, batch, TypeSpot), "USDT"); b.Equity != "110" || deref(b.AvailableToWithdraw) != "100" {
-		t.Fatalf("Spot %+v", b)
-	}
-	if b := balanceOf(t, reportOf(t, batch, TypeFunding), "USDT"); b.Equity != "16" || deref(b.AvailableToWithdraw) != "10" {
-		t.Fatalf("Funding %+v", b)
 	}
 }

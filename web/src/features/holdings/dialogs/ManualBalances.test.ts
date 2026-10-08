@@ -34,8 +34,8 @@ describe("pending manual quantities", () => {
   });
   it("ignores equivalent decimal representations and never rounds a small liability", () => {
     expect(manualChanges(state([balance("BTC", "1.0")], [balance("BTC", "1")]))).toEqual([]);
-    expect(
-      manualChanges(state([balance("BTC", "-0.000000000000000000000000000001")], [])),
-    ).toHaveLength(1);
+    expect(manualChanges(state([balance("BTC", "-0.000000000000000000000000000001")], []))).toEqual(
+      [{ symbol: "BTC", oldQuantity: "0", quantity: "-0.000000000000000000000000000001" }],
+    );
   });
 });

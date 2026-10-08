@@ -37,11 +37,11 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		cohort := demoCohort(anchor, at, i%4)
 		ref := fmt.Sprintf("earn-%02d-%d", i, cohort.Unix())
 		p := adapters.NewEarnPosition(ref, kind, grain, basis)
-		p.ProductRef, p.ProductName = adapters.DualText(fmt.Sprintf("%s-%s-%02d", symbol, kind, i)), adapters.DualText("Offline "+symbol+" "+kind)
+		p.ProductRef, p.ProductName = adapters.OptionalText(fmt.Sprintf("%s-%s-%02d", symbol, kind, i)), adapters.OptionalText("Offline "+symbol+" "+kind)
 		p.Assets = []adapters.EarnAmount{{Symbol: symbol, Amount: amount}}
 		p.AddRate("0.035", "apr", "estimated", "Estimated APR", nil)
 		p.AddReward(symbol, demoMul(amount, "0.002"), "cumulative")
-		p.Status = adapters.DualText("Active")
+		p.Status = adapters.OptionalText("Active")
 		if grain == "position" {
 			p.SubscribedAt = &cohort
 		} else {
@@ -56,19 +56,19 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		if kind == "on_chain" || kind == "bonded" {
 			p.AddDetail("Redemption rule", "Reported seven-day unbonding; maturity is unavailable.")
 			if i%4 == 3 && !at.Before(cohort.AddDate(0, 0, 21)) {
-				p.Status = adapters.DualText("Redeeming")
+				p.Status = adapters.OptionalText("Redeeming")
 				settlement := cohort.AddDate(0, 0, 28)
 				p.Details = append(p.Details, adapters.EarnDetail{Label: "Redemption settlement", At: &settlement})
 			}
 		}
 		if i%4 == 0 {
-			p.Rates = []adapters.EarnRate{{Value: "0.015", Upper: adapters.DualText("0.045"), Kind: "apy", Qualifier: "estimated", Label: "Estimated APY range"}}
+			p.Rates = []adapters.EarnRate{{Value: "0.015", Upper: adapters.OptionalText("0.045"), Kind: "apy", Qualifier: "estimated", Label: "Estimated APY range"}}
 			p.AddReward(symbol, demoMul(amount, "0.0001"), "pending")
 		} else if i%4 == 2 {
 			p.Rates = nil
 			p.AddRate("0.025", "apr", "reported", "Base APR", nil)
 			p.AddRate("0.05", "apr", "tier", "First tier APR", nil)
-			p.AddRate("0.01", "apr", "additional", "Additional reward APR", adapters.DualText("USDT"))
+			p.AddRate("0.01", "apr", "additional", "Additional reward APR", adapters.OptionalText("USDT"))
 			p.AddReward("USDT", "0.12", "estimated")
 			p.AddDetail("Configured minimum lending rate", "0.02; owner preference, not a reported return")
 		}
@@ -85,10 +85,10 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	// A named historical investment is removed only by a successful report.
 	if d.Portfolio != "edge-cases" && !at.Before(DemoEventTime(anchor, -33)) && at.Before(DemoEventTime(anchor, -3)) {
 		p := adapters.NewEarnPosition("historical-earn-redemption", "fixed", "position", "principal")
-		p.ProductName = adapters.DualText("Offline completed term")
+		p.ProductName = adapters.OptionalText("Offline completed term")
 		p.Assets = []adapters.EarnAmount{{Symbol: "USDT", Amount: "400"}}
 		subscribed, maturity := DemoEventTime(anchor, -33), DemoEventTime(anchor, -3)
-		p.SubscribedAt, p.MaturityAt, p.Status = &subscribed, &maturity, adapters.DualText("Active")
+		p.SubscribedAt, p.MaturityAt, p.Status = &subscribed, &maturity, adapters.OptionalText("Active")
 		if d.Platform != adapters.PlatformBinance {
 			p.Type, p.MaturityAt = "on_chain", nil
 			if d.Platform == adapters.PlatformKraken {
@@ -96,7 +96,7 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 			}
 			p.Details = append(p.Details, adapters.EarnDetail{Label: "Redemption settlement", At: &maturity})
 			if !at.Before(DemoEventTime(anchor, -5)) {
-				p.Status = adapters.DualText("Redeeming")
+				p.Status = adapters.OptionalText("Redeeming")
 			}
 		}
 		r.EarnPositions = append(r.EarnPositions, p)
@@ -155,9 +155,9 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 			status = "refunding"
 		}
 		ref := fmt.Sprintf("dual-%02d-%d", i, cohort.Unix())
-		p := adapters.DualPosition{PlatformPositionRef: ref, ProductRef: adapters.DualText("BTC-USDT-" + target), OrderRef: adapters.DualText("offline-" + ref), BaseSymbol: adapters.DualText("BTC"), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: invest, Principal: amount, Direction: adapters.DualText(direction), TargetPrice: adapters.DualText(target), SubscribedAt: &cohort, ExpiryAt: &expiry, AnnualizedRate: adapters.DualText("0.18"), RateKind: adapters.DualText("apr"), Status: status}
+		p := adapters.DualPosition{PlatformPositionRef: ref, ProductRef: adapters.OptionalText("BTC-USDT-" + target), OrderRef: adapters.OptionalText("offline-" + ref), BaseSymbol: adapters.OptionalText("BTC"), QuoteSymbol: adapters.OptionalText("USDT"), InvestSymbol: invest, Principal: amount, Direction: adapters.OptionalText(direction), TargetPrice: adapters.OptionalText(target), SubscribedAt: &cohort, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.18"), RateKind: adapters.OptionalText("apr"), Status: status}
 		if i%3 == 0 {
-			p.RateKind, p.AnnualizedRate = adapters.DualText("apy"), adapters.DualText("0.12")
+			p.RateKind, p.AnnualizedRate = adapters.OptionalText("apy"), adapters.OptionalText("0.12")
 		}
 		if d.Profile == "metadata" && i == 0 {
 			p.TargetPrice, p.ExpiryAt, p.AnnualizedRate, p.RateKind = nil, nil, nil, nil
@@ -166,7 +166,7 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	}
 	if d.Portfolio != "edge-cases" && !at.Before(DemoEventTime(anchor, -10)) && at.Before(DemoEventTime(anchor, -3)) {
 		subscribed, expiry := DemoEventTime(anchor, -10), DemoEventTime(anchor, -3)
-		r.DualPositions = append(r.DualPositions, adapters.DualPosition{PlatformPositionRef: "historical-dual-settlement", BaseSymbol: adapters.DualText("BTC"), QuoteSymbol: adapters.DualText("USDT"), InvestSymbol: "USDT", Principal: "200", Direction: adapters.DualText("buy_low"), TargetPrice: adapters.DualText("10000"), SubscribedAt: &subscribed, ExpiryAt: &expiry, AnnualizedRate: adapters.DualText("0.02"), RateKind: adapters.DualText("apr"), Status: "active"})
+		r.DualPositions = append(r.DualPositions, adapters.DualPosition{PlatformPositionRef: "historical-dual-settlement", BaseSymbol: adapters.OptionalText("BTC"), QuoteSymbol: adapters.OptionalText("USDT"), InvestSymbol: "USDT", Principal: "200", Direction: adapters.OptionalText("buy_low"), TargetPrice: adapters.OptionalText("10000"), SubscribedAt: &subscribed, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.02"), RateKind: adapters.OptionalText("apr"), Status: "active"})
 	}
 	demoAmounts(r)
 }

@@ -1,27 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
-import {
-  keys,
-  listAccountBalances,
-  listAccountDualPositions,
-  listAccountEarnPositions,
-  listAccountPositions,
-  unwrapOrRedirect,
-} from "@/api";
-import type { AccountValuation, ReadContext } from "@/api";
+import type { AccountValuation } from "@/api";
 import { formatAmount, formatDecimal, formatRatio } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
-import { useSessionScope } from "@/shared/lib/session";
 import { AccountHealthBadges } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
-import { EarnPositionsTable, EarnBalanceSummaries } from "./EarnPositionsTable";
-import { BalancesTable } from "./BalancesTable";
-import { DualPositionsTable } from "@/features/holdings/components/DualPositionsTable";
 import type { ManualTarget } from "../dialogs/manual";
+import { useAccountReport } from "../hooks/useAccountReport";
+import { BalancesTable } from "./BalancesTable";
+import { DualPositionsTable } from "./DualPositionsTable";
+import { EarnPositionsTable, EarnBalanceSummaries } from "./EarnPositionsTable";
+import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
@@ -39,60 +30,8 @@ export function AccountDetail({
   timezone?: string;
   onManual?: (target: ManualTarget) => void;
 }) {
-  const { userId, redirect } = useSessionScope();
-  const accountId = account.accountId;
-  const balances = useQuery({
-    queryKey: keys.accountBalances(userId, portfolioId, accountId, pointId, account.reportId),
-    enabled: Boolean(userId && portfolioId && accountId),
-    queryFn: async () =>
-      checkAccountReport(
-        unwrapOrRedirect(await listAccountBalances({ path: { portfolioId, accountId } }), redirect),
-        account,
-        pointId,
-      ),
-  });
-  const isManual = account.accountType === "manual";
-  const isDual = account.accountType === "dual_investment";
-  const isEarn = account.accountType === "earn";
-  const positions = useQuery({
-    queryKey: keys.accountPositions(userId, portfolioId, accountId, pointId, account.reportId),
-    enabled: Boolean(userId && portfolioId && accountId && !isDual && !isEarn && !isManual),
-    queryFn: async () =>
-      checkAccountReport(
-        unwrapOrRedirect(
-          await listAccountPositions({ path: { portfolioId, accountId }, query: { pointId } }),
-          redirect,
-        ),
-        account,
-        pointId,
-      ),
-  });
-  const dualPositions = useQuery({
-    queryKey: keys.accountDualPositions(userId, portfolioId, accountId, pointId, account.reportId),
-    enabled: Boolean(userId && portfolioId && isDual),
-    queryFn: async () =>
-      checkAccountReport(
-        unwrapOrRedirect(
-          await listAccountDualPositions({ path: { portfolioId, accountId } }),
-          redirect,
-        ),
-        account,
-        pointId,
-      ),
-  });
-  const earnPositions = useQuery({
-    queryKey: keys.accountEarnPositions(userId, portfolioId, accountId, pointId, account.reportId),
-    enabled: Boolean(userId && portfolioId && isEarn),
-    queryFn: async () =>
-      checkAccountReport(
-        unwrapOrRedirect(
-          await listAccountEarnPositions({ path: { portfolioId, accountId } }),
-          redirect,
-        ),
-        account,
-        pointId,
-      ),
-  });
+  const { balances, positions, dualPositions, earnPositions, isManual, isDual, isEarn } =
+    useAccountReport(portfolioId, account, pointId);
   const issues = [
     ...(balances.data?.issues ?? []),
     ...(isDual
@@ -102,19 +41,27 @@ export function AccountDetail({
         : (positions.data?.issues ?? [])),
   ];
 
+  const showEarn =
+    isEarn &&
+    (!earnPositions.isSuccess ||
+      earnPositions.data.items.length > 0 ||
+      earnPositions.data.balanceSummaries.length > 0 ||
+      !earnPositions.data.detailsCollected ||
+      earnPositions.isError);
+  const showDual =
+    isDual &&
+    (!dualPositions.isSuccess || dualPositions.data.items.length > 0 || dualPositions.isError);
+  const showFutures =
+    !isDual &&
+    !isEarn &&
+    !isManual &&
+    (!positions.isSuccess || positions.data.items.length > 0 || positions.isError);
+
   return (
     <div className={styles.accountDetail}>
       <AccountMetrics account={account} />
       <AccountFeedback account={account} timezone={timezone} />
-      <QueryRecovery
-        error={balances.error}
-        hasData={Boolean(balances.data)}
-        busy={balances.isFetching}
-        fallback="Account balances could not be loaded."
-        onRetry={() => {
-          void balances.refetch();
-        }}
-      />
+      <QueryRecovery query={balances} fallback="Account balances could not be loaded." />
       <BalancesTable
         account={account}
         data={balances.data}
@@ -123,22 +70,9 @@ export function AccountDetail({
         timezone={timezone}
         onManual={onManual}
       />
-      {isEarn &&
-      (!earnPositions.isSuccess ||
-        earnPositions.data.items.length > 0 ||
-        earnPositions.data.balanceSummaries.length > 0 ||
-        !earnPositions.data.detailsCollected ||
-        earnPositions.isError) ? (
+      {showEarn ? (
         <>
-          <QueryRecovery
-            error={earnPositions.error}
-            hasData={Boolean(earnPositions.data)}
-            busy={earnPositions.isFetching}
-            fallback="Earn positions could not be loaded."
-            onRetry={() => {
-              void earnPositions.refetch();
-            }}
-          />
+          <QueryRecovery query={earnPositions} fallback="Earn positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Earn</h3>
           <EarnPositionsTable
             items={earnPositions.data?.items ?? []}
@@ -160,18 +94,9 @@ export function AccountDetail({
           />
         </>
       ) : null}
-      {isDual &&
-      (!dualPositions.isSuccess || dualPositions.data.items.length > 0 || dualPositions.isError) ? (
+      {showDual ? (
         <>
-          <QueryRecovery
-            error={dualPositions.error}
-            hasData={Boolean(dualPositions.data)}
-            busy={dualPositions.isFetching}
-            fallback="Dual positions could not be loaded."
-            onRetry={() => {
-              void dualPositions.refetch();
-            }}
-          />
+          <QueryRecovery query={dualPositions} fallback="Dual positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Dual Investment</h3>
           {dualPositions.isError && !dualPositions.data ? (
             <p className={shared.muted}>Dual Investment could not be loaded. Retry above.</p>
@@ -183,20 +108,10 @@ export function AccountDetail({
             />
           )}
         </>
-      ) : !isDual &&
-        !isEarn &&
-        !isManual &&
-        (!positions.isSuccess || positions.data.items.length > 0 || positions.isError) ? (
+      ) : null}
+      {showFutures ? (
         <>
-          <QueryRecovery
-            error={positions.error}
-            hasData={Boolean(positions.data)}
-            busy={positions.isFetching}
-            fallback="Account positions could not be loaded."
-            onRetry={() => {
-              void positions.refetch();
-            }}
-          />
+          <QueryRecovery query={positions} fallback="Account positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Futures</h3>
           <DataTable
             caption={`Positions of ${account.accountName}`}
@@ -246,23 +161,6 @@ export function AccountDetail({
       </details>
     </div>
   );
-}
-
-/** A newer latest-only response must not describe an older visible Account row. */
-function checkAccountReport<T extends { context: ReadContext; account: AccountValuation }>(
-  data: T,
-  account: AccountValuation,
-  pointId: string,
-): T {
-  if (
-    data.context.pointId !== pointId ||
-    (data.account.reportId ?? null) !== (account.reportId ?? null)
-  ) {
-    throw new Error(
-      "This Account changed since the displayed Valuation Point. Reload the page to read its latest Account Report.",
-    );
-  }
-  return data;
 }
 
 function AccountMetrics({ account }: { account: AccountValuation }) {

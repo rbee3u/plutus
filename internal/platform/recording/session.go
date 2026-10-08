@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -252,11 +253,7 @@ func (s *Session) finish(creds adapters.Credentials, failure error) (*fixture.Fi
 			}
 		}
 		f.Body = raw
-		var names []string
-		for key := range fields {
-			names = append(names, key)
-		}
-		slices.Sort(names)
+		names := slices.Sorted(maps.Keys(fields))
 		if len(names) > 0 {
 			f.Notes = strings.TrimSpace(f.Notes + " Redacted: " + strings.Join(names, ", ") + ".")
 		}

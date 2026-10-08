@@ -7,30 +7,33 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// Beginner begins a transaction. *sql.DB and *sql.Conn both implement it.
-type Beginner interface {
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+// ExecTx runs a write that has no result in a transaction.
+func ExecTx(ctx context.Context, db *sql.DB, fn func(q *sqlcgen.Queries) error) error {
+	_, err := WithTx(ctx, db, func(q *sqlcgen.Queries) (struct{}, error) {
+		return struct{}{}, fn(q)
+	})
+	return err
 }
 
 // WithTx runs fn in a read-write transaction, committing when fn returns nil and
 // rolling back on any error or panic.
-func WithTx[T any](ctx context.Context, b Beginner, fn func(tx *sql.Tx, q *sqlcgen.Queries) (T, error)) (T, error) {
-	return withTx(ctx, b, nil, fn)
+func WithTx[T any](ctx context.Context, db *sql.DB, fn func(q *sqlcgen.Queries) (T, error)) (T, error) {
+	return withTx(ctx, db, nil, fn)
 }
 
 // WithReadTx runs fn in a read-only transaction.
-func WithReadTx[T any](ctx context.Context, b Beginner, fn func(tx *sql.Tx, q *sqlcgen.Queries) (T, error)) (T, error) {
-	return withTx(ctx, b, &sql.TxOptions{ReadOnly: true}, fn)
+func WithReadTx[T any](ctx context.Context, db *sql.DB, fn func(q *sqlcgen.Queries) (T, error)) (T, error) {
+	return withTx(ctx, db, &sql.TxOptions{ReadOnly: true}, fn)
 }
 
-func withTx[T any](ctx context.Context, b Beginner, opts *sql.TxOptions, fn func(tx *sql.Tx, q *sqlcgen.Queries) (T, error)) (T, error) {
+func withTx[T any](ctx context.Context, db *sql.DB, opts *sql.TxOptions, fn func(q *sqlcgen.Queries) (T, error)) (T, error) {
 	var zero T
-	tx, err := b.BeginTx(ctx, opts)
+	tx, err := db.BeginTx(ctx, opts)
 	if err != nil {
 		return zero, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	result, err := fn(tx, sqlcgen.New(tx))
+	result, err := fn(sqlcgen.New(tx))
 	if err != nil {
 		return zero, err
 	}

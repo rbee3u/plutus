@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/domain/jobs"
+	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/worker"
 )
 
@@ -44,7 +45,7 @@ func newCollectCommand() *cobra.Command {
 	return cmd
 }
 
-func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UUID, out interface{ Write([]byte) (int, error) }, logger *slog.Logger) error {
+func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UUID, out io.Writer, logger *slog.Logger) error {
 	job, created, err := services.Jobs.EnqueueCycle(ctx, portfolioID, jobs.TriggerManual, nil)
 	if err != nil {
 		if errors.Is(err, jobs.ErrNotFound) {

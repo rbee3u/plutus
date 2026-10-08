@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/domain/catalog"
+	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/shared/decimal"

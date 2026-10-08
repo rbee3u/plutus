@@ -1,11 +1,12 @@
 import type { DualPositionRow } from "@/api";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatDecimal, formatPercent, formatPrice } from "@/shared/lib/amount";
+import { capitalize } from "@/shared/lib/text";
 import { formatInstant } from "@/shared/lib/datetime";
 import { ObservedCell } from "./ObservedCell";
 import { NumericText } from "@/shared/ui/NumericText";
 import { DataTable } from "@/shared/ui/DataTable";
-import { HoldingsFilterHeader } from "./HoldingsFilterHeader";
+import { holdingsAccountColumns, HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import type { HoldingsFilters } from "../hooks/useHoldingsFilters";
 
 export function DualPositionsTable({
@@ -26,26 +27,7 @@ export function DualPositionsTable({
     <DataTable
       caption="Dual Investment positions"
       columns={[
-        ...(showAccount
-          ? [
-              {
-                key: "platform",
-                header: "Platform",
-                nowrap: true,
-                headerContent: filters ? (
-                  <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
-                ) : undefined,
-              },
-              {
-                key: "identity",
-                header: "Identity",
-                nowrap: true,
-                headerContent: filters ? (
-                  <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
-                ) : undefined,
-              },
-            ]
-          : []),
+        ...(showAccount ? holdingsAccountColumns(filters) : []),
         {
           key: "pair",
           header: "Pair",
@@ -66,7 +48,7 @@ export function DualPositionsTable({
       rows={items.map((item) => ({
         id: `${item.accountId}-${item.platformPositionRef}`,
         platform: platformLabel(platforms.data?.items, item.platform),
-        identity: item.identityName,
+        identityName: item.identityName,
         pair: `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`,
         expiry: formatInstant(item.expiryAt, timezone),
         strike:
@@ -88,7 +70,7 @@ export function DualPositionsTable({
         ),
         principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
-        status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
+        status: capitalize(item.status),
         observed: (
           <ObservedCell
             observedAt={item.reportObservedAt}

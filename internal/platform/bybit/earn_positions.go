@@ -36,23 +36,23 @@ func (r *savingsPosition) position(category, amount string) adapters.EarnPositio
 		ref = r.Coin
 	}
 	p := adapters.NewEarnPosition("flexible:"+ref+":"+strings.ToUpper(strings.TrimSpace(r.Coin)), "flexible", "product", "principal")
-	p.ProductName = adapters.DualText("Flexible Savings")
-	p.ProductRef = adapters.DualText(r.ProductID)
+	p.ProductName = adapters.OptionalText("Flexible Savings")
+	p.ProductRef = adapters.OptionalText(r.ProductID)
 	if category == "FixedTermSaving" {
 		ref = ""
 		if r.PositionID != "" {
 			ref = "fixed:" + r.PositionID
 		}
 		p = adapters.NewEarnPosition(ref, "fixed", "position", "principal")
-		p.ProductName = adapters.DualText("Fixed-Term Savings")
-		p.ProductRef = adapters.DualText(r.ProductID)
-		p.Status = adapters.DualText(r.Status)
+		p.ProductName = adapters.OptionalText("Fixed-Term Savings")
+		p.ProductRef = adapters.OptionalText(r.ProductID)
+		p.Status = adapters.OptionalText(r.Status)
 		p.SubscribedAt = p.RequiredMillis("Subscription time", r.CreatedAt)
 		p.MaturityAt = p.RequiredMillis("Maturity time", r.SettlementTime)
 		p.AddDetail("Order", r.OrderID)
 		p.AddDetail("Duration", r.Duration)
 		for _, rate := range r.Interest {
-			addPercentRate(&p, rate.APY, "apy", "reported", "APY", adapters.DualText(rate.Coin))
+			addPercentRate(&p, rate.APY, "apy", "reported", "APY", adapters.OptionalText(rate.Coin))
 			p.AddReward(rate.Coin, rate.Expected, "estimated")
 		}
 	} else {
@@ -79,7 +79,7 @@ func addPercentRate(p *adapters.EarnPosition, value, kind, qualifier, label stri
 	if n == nil {
 		return
 	}
-	p.AddRate(decimal.Format(new(big.Rat).Quo(decimal.MustParse(*n), decimal.MustParse("100"))), kind, qualifier, label, symbol)
+	p.AddRate(decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(*n), decimal.ParseOrZero("100"))), kind, qualifier, label, symbol)
 }
 
 // Optional public catalogue enrichment is read once and does not affect funds.

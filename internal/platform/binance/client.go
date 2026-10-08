@@ -211,7 +211,6 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-// send builds, signs and performs one request using the client clock.
 func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, secret string) (response, error) {
 	query := url.Values{}
 	for k, v := range params {

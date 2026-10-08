@@ -32,48 +32,112 @@ custom properties. Toolchain requirements and pinned versions live in
 
 ## Module responsibilities
 
-The composition root builds services, transport, and the worker. Application
-packages separate responsibilities while sharing generated SQL queries and
-transaction-scoped helpers. Dependencies flow one way: `shared` then `infra`,
-`domain`, and `transport`; `platform` is a leaf below `domain`; `internal/app`
-and `internal/cli` are the only packages that wire across layers
-([ADR 0020](./adr/0020-architecture-layering.md)). The HTTP layer maps generated
-wire types to application types; services do not depend on Gin or generated HTTP
-types. Package boundaries do not imply exclusive ownership of tables or queries.
+`internal/app` assembles shared services on one database handle; CLI owns the
+HTTP server, worker, and process lifecycle. Services share sqlc queries and
+transaction helpers without exclusive table ownership. HTTP maps generated wire
+types to application types; services do not depend on Gin or HTTP types.
 
-| Module                                                               | Responsibility                                                         |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `internal/app`                                                       | Composition root: every service built on one database handle           |
-| `internal/cli`, `cmd/plutus`                                         | CLI commands; `cmd/plutus` only starts them                            |
-| `internal/seeds`                                                     | Development seed fixtures for `db seed` and `db reset --seed`          |
-| `internal/transport/http`                                            | API bindings, browser security, HTTP conventions, and SPA serving      |
-| `internal/domain/auth`                                               | Users, password verification, and Sessions                             |
-| `internal/domain/portfolio`, `internal/domain/identity`              | Ownership, Portfolio settings, Identity configuration, and Connections |
-| `internal/domain/catalog`, `internal/domain/listingexclusion`        | Listings, Instruments, prices, and exclusion policy                    |
-| `internal/domain/collection`                                         | Adapter orchestration and normalized report persistence                |
-| `internal/domain/valuation`, `internal/domain/capital`               | Derived values, history, and manual Capital Flows                      |
-| `internal/domain/jobs`, `internal/worker`                            | Persistent jobs, scheduling, leases, and dispatch                      |
-| `internal/domain/audit`                                              | User and system action records                                         |
-| `internal/platform/adapters`                                         | Typed Platform contract, live implementations, and deterministic fake  |
-| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret` | SQL infrastructure, exact arithmetic, and credential encryption        |
+Depguard enforces the [backend boundaries](./adr/0020-architecture-layering.md):
+application code uses the normalized Adapter contract, Valuation cannot import
+Financial, and HTTP cannot import SQL APIs. Runtime code cannot import
+`internal/testsupport`. Within-layer dependencies remain reviewed choices.
+
+| Module                                                                  | Responsibility                                                         |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `internal/app`                                                          | Composition root: every service built on one database handle           |
+| `internal/cli`, `cmd/plutus`                                            | CLI commands; `cmd/plutus` only starts them                            |
+| `internal/seeds`                                                        | Development seed fixtures for `db seed` and `db reset --seed`          |
+| `internal/transport/http`                                               | API bindings, browser security, HTTP conventions, and SPA serving      |
+| `internal/application/auth`                                             | Users, password verification, and Sessions                             |
+| `internal/application/portfolio`, `internal/application/identity`       | Ownership, Portfolio settings, Identity configuration, and Connections |
+| `internal/application/catalog`, `internal/application/listingexclusion` | Listings, Instruments, prices, and exclusion policy                    |
+| `internal/application/collection`                                       | Adapter orchestration and normalized report persistence                |
+| `internal/application/valuation`, `internal/application/capital`        | Derived value writes/rebuilds and manual Capital Flows                 |
+| `internal/application/financial`                                        | Overview, Holdings, history, periods, and financial presentation       |
+| `internal/application/jobs`, `internal/worker`                          | Persistent jobs, scheduling, leases, and dispatch                      |
+| `internal/application/audit`                                            | User and system action records                                         |
+| `internal/platform`                                                     | Typed Platform contract, live implementations, and deterministic fake  |
+| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret`    | SQL infrastructure, exact arithmetic, and credential encryption        |
+
+Financial reads stored Points and Account Valuations through Valuation, sharing
+decoding, Account issues, and an operation-scoped PriceBook. Readers aggregate
+stored decimals; writers retain unrounded rationals privately. Internal source
+metadata is excluded from JSON. Product filters, totals, and completeness stay
+separate. `application/ordering` uses the offered Platform catalog; `shared` has
+no business dependencies.
+
+Within Valuation, `inputs.go` prepares reports, exclusions, and prices from
+ordinary SQL reads or rebuild preloads, retaining lazy price lookup.
+`calculate.go` evaluates those inputs without SQL, clocks, or query callbacks;
+`stored.go` decodes Account rows; `persist.go` commits derived writes
+atomically.
+
+App creates one Catalog and Manual instance and injects them into their
+consumers. One registry reaches Identity, Collection, and HTTP. HTTP does not
+create or mutate application dependencies; CLI owns process startup and cleanup.
+
+Catalog's mapping operation includes exclusion presentation and rebuild
+enqueueing through Jobs. Mapping commits before enqueueing; an enqueue failure
+can leave a committed mapping without its rebuild job.
+
+Portfolio deletion uses explicit sqlc queries in dependency order with foreign
+keys enabled. Account Report self/stale references are released only within the
+same transaction that deletes those reports; all changes roll back on failure.
+New owned tables require an explicit deletion decision. Shared catalogs and
+User-scoped rows remain outside the deletion scope; unexpected foreign ownership
+causes rollback. Fixed Listing Exclusion queries also live in `db/queries`,
+retaining their existing policy owners.
+
+See [test ownership](./testing.md#test-ownership) for cross-module workflows.
 
 ## Frontend structure
 
-`web/src` separates `app` (shell, routes, theme), `features/<name>` (one
-directory per product area with `pages/`, `components/`, `dialogs/`, `hooks/`,
-and `lib/`), and `shared` (API client, UI primitives, libraries, icons, styles).
-Features depend on `shared`, not on each other; the only cross-feature imports
-are embedded display components and the history preset helpers the overview page
-reuses ([ADR 0021](./adr/0021-frontend-structure.md)).
+The [frontend layout](./adr/0021-frontend-structure.md) separates `app`,
+`features`, `shared`, and `api`. ESLint checks these boundaries; browser API
+consumers use `api/index.ts`. Cross-feature entrypoints expose Holdings display,
+History time helpers, and navigation policies.
 
-Page-level CSS lives beside its owner: classes used by two or more features are
-in `shared/styles/page.module.css`, a feature's own classes in
-`features/<name>/styles.module.css`, and design tokens in
-`shared/styles/tokens.css`. CSS-module hashing is per file, so a compound
-selector must stay inside one module; classes that only co-apply with shared
-classes live in the shared module. Cross-module cascade order follows bundle
-module order, so a rule that must win or lose across modules is co-located with
-its counterpart instead of relying on import order.
+QueryClient is the sole User source. The authentication route boundary waits for
+that query before mounting the shell and features. An auth-me 401 yields no
+User; transport failures retain retryable error state. Login seeds the User
+cache; logout, expiry, and password success cancel queries, clear cached data,
+reset the in-memory CSRF token, and return to login. Expiry callbacks retain
+their session generation, so a late 401 cannot end a replacement session,
+including a new login by the same User. The User-scoped Portfolio list is shared
+by bootstrap, shell, and create/rename/delete actions.
+
+Shared write mechanics acquire CSRF and retain raw SDK results. The
+authenticated write hook ends expired sessions, except the password endpoint's
+explicit `invalid_credentials` rejection. Features retain 204, 412, 422, ETag,
+validation, and idempotency handling. Typed named cache builders and Collection
+invalidation flags are defined together; editable resources keep their separate
+lifetimes.
+
+Settings exposes the Portfolio creation dialog to the Shell; the feature owns
+form state, idempotency, and writes, while the Shell owns selection and
+navigation. Security separates password fields from the Session list. Sessions
+use a User-scoped QueryClient entry, discarded when unused or when the browser
+session ends, and load on page entry and after revocation. They do not add
+background retries, focus refresh, or reconnect refresh.
+
+Holdings pages share filter-to-request conversion, recovery, summary layout, and
+pagination controls within the feature. Each page retains its SDK call and
+product semantics. The Account Report hook owns the independent Balance,
+Position, Earn, and Dual queries and checks point/report matching before
+display. Futures and Dual Investment have separate route pages.
+
+Shared session navigation owns links and draft preparation; Holdings supplies
+the route-memory key policy. ECharts module registration is an explicit shared
+runtime dependency for each chart. Business options and visual styles remain
+with their components.
+
+Feature CSS lives in `features/<name>/styles.module.css`; shared page classes
+and tokens live in `shared/styles`. Co-locate compound selectors and rules with
+required cascade ordering: class hashes are module-local, while cross-module
+order follows bundling rather than intended precedence.
+
+Browser fixture ownership and routing rules are in
+[testing](./testing.md#test-ownership).
 
 ## Collection and job lifecycle
 
@@ -110,9 +174,9 @@ The full stale, scope, completeness, and value rules are in
 
 ## Manual persistence and collection
 
-`internal/domain/manual` owns the current signed ledger, immutable revisions,
-and version-guarded audited mutations. Appended migrations create one Manual
-Account for existing Identities and increment Identity versions without
+`internal/application/manual` owns the current signed ledger, immutable
+revisions, and version-guarded audited mutations. Appended migrations create one
+Manual Account for existing Identities and increment Identity versions without
 modifying old reports or points. New Identity creation and seeds include it
 automatically.
 
@@ -132,20 +196,27 @@ private Identity success counters. Manual prices use only the own-Platform
 lookup in live valuation, Balance reads, and rebuilds; the existing pricing
 discrepancy below remains for other Accounts and Capital Flows.
 
-The quantity signature excludes timestamps and mapping. Adjacent effective
-changes create `manual_balance_changed` issues, which mark crossing Value Change
-intervals incomplete without manufacturing flows. The writer and rebuild share
-this logic. Existing Identity continuity suppresses the first Manual boundary
-entry; ordinary new Identity and archive boundaries remain signed.
-
-The ledger API returns current and last-applied quantities, versions, and
-pending state. The shared UI editor fetches the current version before editing.
-Pending changes, including deletions, have a separate quantity table without old
-USD values. Excluded records remain in the editor. Overview tests complete zero
-value and actual report holdings before hiding Account nodes; all stored Account
-counts, selection, and boundary events remain unchanged.
+The quantity signature excludes timestamps and mapping. Writer and rebuild share
+`manual_balance_changed` detection and the
+[Manual continuity rules](../CONTEXT.md#manual-balances). The ledger API returns
+current and last-applied quantities, versions, and pending state; the editor
+fetches the current version before editing. Overview checks both valuation and
+report holdings before hiding an Account.
 
 ## Adapter boundary
+
+An ordered product catalog in `platform/adapters` owns offered Platform names,
+Account Structures, Account Types, Margin Modes, and browser credential input
+metadata. Catalog lookup helpers derive from this declaration and return copies
+of mutable descriptions. Registered runtime Adapters determine availability
+separately; CLI keeps live/fake assembly explicit, and recording has its own
+assembly path.
+
+The Platform API returns a finite credential form description. Manage uses it
+for the existing primary/Futures key inputs, secret presentation, passphrase,
+and Account-dependent requirements. Credential values are never returned.
+Catalog load failures expose recovery. Browser requirements do not replace
+server validation.
 
 Adapters accept typed credentials, Account Structure, and selected Account
 Types, and return normalized reports and market observations. They expose
@@ -252,12 +323,9 @@ when Earn is selected and nonzero flexible holdings exist. Catalogue failure or
 ambiguous matching affects rate metadata alone and cannot invalidate the
 Connection or clear the successful position read.
 
-The cumulative schema is defined by [migrations](../db/migrations); generated
-query access comes from [SQL queries](../db/queries) and
-[sqlc.yaml](../sqlc.yaml). There is no separate handwritten field catalog. The
-baseline migration's comment still refers to the retired `technical-design.md`
-field catalog; the migration files are the current schema source. The baseline
-is preserved during documentation edits.
+[Migrations](../db/migrations) define the schema; [SQL queries](../db/queries)
+and [sqlc.yaml](../sqlc.yaml) generate query access. The frozen baseline's
+`technical-design.md` reference is obsolete; use the migration itself.
 
 Migrations are explicit CLI operations; `serve` never migrates or seeds
 automatically. After prod's first migration, the baseline is frozen and changes
@@ -279,12 +347,12 @@ by OpenAPI. ETag validators are formatted and strictly parsed through
 authenticated User and their Portfolios.
 
 Display ordering is shared by application reads through
-`internal/shared/ordering`. Platform ranks and Account Type ranks come from the
-Adapter capability catalog. Valuation reads sort Accounts first, then order flat
-holdings by those Account ranks before grouping or pagination; Account-detail
-futures use the same contract comparator. Catalog queries receive the shared
-Platform order and apply it in SQL before `LIMIT` and `OFFSET`. The SPA
-preserves API ordering in lists and selectors. See
+`internal/application/ordering`. Platform ranks and Account Type ranks come from
+the Adapter capability catalog. Valuation reads sort Accounts first, then order
+flat holdings by those Account ranks before grouping or pagination;
+Account-detail futures use the same contract comparator. Catalog queries receive
+the shared Platform order and apply it in SQL before `LIMIT` and `OFFSET`. The
+SPA preserves API ordering in lists and selectors. See
 [ADR 0011](./adr/0011-display-ordering.md).
 
 The global Holdings tables keep their filter headers mounted independently of
@@ -311,14 +379,10 @@ only matching absent point IDs are required. Expanded Account queries are keyed
 by point and report, and validate both against the visible Account. A newer
 latest-only response produces a recovery notice instead of mixing reports.
 
-The ownership Tree uses nested lists and native disclosure buttons rather than a
-table or an ARIA tree widget. Buttons span each node row and expose expanded
-state. Names and USD values reflow inside the row; child containers add
-indentation and a vertical guide. Account detail grids use shrinkable columns
-and local table wrappers, so their width never expands the ancestor Tree. Report
-measures render only when present. Provenance lives in a native Report details
-disclosure; exception feedback remains inside Account details, with page-level
-Issues independent of expansion.
+The ownership Tree uses nested lists and native disclosure buttons. Shrinkable
+Account grids and local table scroll wrappers keep wide details within their
+parent. [ADR 0016](./adr/0016-overview-and-holdings-navigation.md) defines
+expansion, provenance, and issue presentation.
 
 Overview and the Activity Cycles/Jobs lists have no periodic display polling.
 Page navigation and browser reload read existing data. Explicit mutations still
@@ -333,22 +397,11 @@ with at most 30 fractional digits. JSON financial values are strings; null means
 unknown or inapplicable. The frontend uses `decimal.js`, converting to
 JavaScript numbers only for chart plotting.
 
-The shared numeric formatter selects a semantic type and explicit half-up
-rounding, then returns display text and its rounded ordinary decimal equivalent.
-Quantity and price wrappers share precision; USD, ratio, percentage, leverage,
-and count wrappers select their own policy. Percentage scaling uses a separate
-Decimal constructor with enough precision for stored values, without changing
-global arithmetic. Unicode subscript digits encode long fractional zero runs.
-`NumericText` exposes the rounded ordinary decimal to screen readers without
-adding a control; numeric table strings use it automatically. Pure numeric
-source-value overlays are removed, while business detail overlays remain.
-
-Chart series keep their source decimal strings in index-based tooltip closures.
-Plotted JavaScript numbers are not used for tooltip rounding. Axis formatting
-uses compact or scientific notation independently of tooltip precision. Inputs,
-API requests, diagnostic JSON, calculations, and ordering retain their existing
-precision. [ADR 0013](./adr/0013-numeric-presentation.md) owns the display
-policy.
+The shared formatter implements [ADR 0013](./adr/0013-numeric-presentation.md),
+returning display text and a rounded ordinary decimal for `NumericText` screen
+reader output. Percentage scaling uses a separate Decimal constructor to avoid
+changing global precision. Chart tooltips retain source decimal strings in
+index-based closures; plotted JavaScript numbers never determine their rounding.
 
 Application-generated UUIDv7 identifiers are stored in binary form. Database
 sessions use UTC; stored instants use microsecond precision and JSON uses
@@ -384,17 +437,11 @@ never the latest report. Shared React cells provide the same columns and units
 in global, Account, and historical tables. Detail overlays render outside table
 scroll containers and support hover, focus, click, and Escape.
 
-Margin uses the numeric cell's right alignment, with no mode tag or reserved
-track. Its cell receives a content-sizing width hint so automatic table layout
-does not assign it spare space. The amount disclosure is one focusable control;
-mode and leverage share a short line in this overlay. Cross uses source
-leverage; Isolated divides absolute USD notional by allocated margin valued in
-USD. The shared display helper uses source decimals before formatting, with 1:1
-USD-equivalent conversion or compatible Base Settle times positive Mark.
-Incomplete inputs show the known mode alone. This derived display never changes
-source leverage or margin. Portfolio accounts show `portfolio margin` unless the
-Position has an actual Isolated setting. Symbol overlays contain contract
-specifications without leverage; margin diagnostics remain in the API.
+Margin cells share numeric alignment and a content-sizing hint. One focusable
+amount control discloses mode and leverage. Display helpers use source decimals
+before formatting; Symbol disclosures contain contract specifications, while
+margin diagnostics stay in the API. The conversion and leverage policy is in
+[ADR 0012](./adr/0012-position-presentation.md).
 
 The appended Position presentation migration restores only byte-exact canonical
 references with compatible stored direction. Legacy Bybit margin is marked as an
@@ -469,7 +516,8 @@ OffsetPage metadata. The existing ascending series interface remains compatible.
 Raw series read scalar summaries; Hour/Day scan only IDs and evaluation times,
 apply the existing timezone sampler, and fetch selected summaries in batches.
 Series reads avoid detail JSON, but the header scan still grows with the
-selected range. No migration, preaggregation, or retention policy is introduced.
+selected range. Series sampling is read-time only; stored history is not
+reduced.
 
 Period closes and Value Changes retain complete intersecting calendar periods
 and the 400-period ceiling. Their full results feed charts while table display
@@ -525,8 +573,8 @@ but falls back to the latest eligible price across Platforms. Manual Account
 valuation enforces own-Platform prices without fallback. Capital Flow valuation
 queries prices across Platforms directly. Both enforce at-or-before time and the
 24-hour age limit. See
-[Account price lookup](../internal/domain/valuation/write.go) and
-[Capital Flow valuation](../internal/domain/capital/service.go).
+[Account price lookup](../internal/application/valuation/prices.go) and
+[Capital Flow valuation](../internal/application/capital/service.go).
 
 This is an unresolved implementation gap, not an accepted change to the pricing
 decision.

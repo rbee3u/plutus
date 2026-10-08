@@ -4,7 +4,7 @@ import { formatUsd } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { StatusBadge } from "@/shared/ui/Badge";
-import { isTerminalStatus } from "../useCollectNow";
+import { isTerminalStatus } from "../hooks/useCollectNow";
 import shared from "@/shared/styles/page.module.css";
 
 /** The banner of the Collection Cycle started from this page. */

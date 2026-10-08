@@ -10,7 +10,8 @@ import { Select } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { CustomPeriodPanel } from "../components/CustomPeriodPanel";
 import { HistoryFilters, HistoryPager } from "../components/HistoryFilters";
-import { PERIOD_KINDS, useHistoryPager, useHistoryWindow } from "../hooks/useHistoryWindow";
+import { useHistoryPager, useHistoryWindow } from "../hooks/useHistoryWindow";
+import { PERIOD_KINDS } from "@/features/history/lib/timeWindow";
 import { VALUE_CHANGE_COLUMNS, valueChangeRow } from "../lib/valueChangeRows";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -89,15 +90,7 @@ export function ValueChangesPage() {
   return (
     <section className={shared.wide}>
       <HistoryFilters state={history} />
-      <QueryRecovery
-        error={changes.error}
-        hasData={Boolean(data)}
-        busy={changes.isFetching}
-        fallback="Value Changes could not be loaded."
-        onRetry={() => {
-          void changes.refetch();
-        }}
-      />
+      <QueryRecovery query={changes} fallback="Value Changes could not be loaded." />
       {changes.isPending && !data ? <p className={shared.muted}>Loading Value Changes.</p> : null}
       {data ? (
         <>
