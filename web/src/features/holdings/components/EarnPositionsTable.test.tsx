@@ -56,7 +56,7 @@ describe("Earn presentation", () => {
       "Rewards",
       "Subscribed",
       "Status",
-      "Observed",
+      "Issues",
     ]);
     expect(html.match(/<tr>/g)).toHaveLength(2);
     expect(html).toContain("1 ETH");
@@ -64,7 +64,7 @@ describe("Earn presentation", () => {
     expect(html).toContain("Est. 4% APY");
     expect(html).toContain("Cumulative");
     expect(html).toContain("Estimated");
-    expect(html).toContain("2026-10-03 08:00");
+    expect(html).toContain("—");
     expect(html).not.toContain("1 issue");
   });
   it("omits ownership in Account details and does not alarm on ordinary missing terms", () => {
@@ -77,7 +77,7 @@ describe("Earn presentation", () => {
     expect(html).not.toContain(">Identity</th>");
     expect(html).not.toContain("issue");
   });
-  it("keeps stale and metadata indicators in Observed", () => {
+  it("keeps stale and metadata indicators in Issues", () => {
     const html = render(
       <EarnPositionsTable
         items={[
@@ -96,12 +96,12 @@ describe("Earn presentation", () => {
     const headers = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/g)].map((m) => m[1]);
     const cells = [...html.matchAll(/<td\b[^>]*>(.*?)<\/td>/g)].map((m) => m[1]);
     const status = cells[headers.indexOf("Status")];
-    const observed = cells[headers.indexOf("Observed")];
+    const issues = cells[headers.indexOf("Issues")];
     expect(status).toContain("Redeeming");
     expect(status).not.toContain("Stale");
     expect(status).not.toContain("issue");
-    expect(observed).toContain("Stale");
-    expect(observed).toContain("1 issue");
+    expect(issues).toContain("Stale");
+    expect(issues).toContain("1 issue");
   });
   it("labels legacy Balance summaries separately", () => {
     const html = render(
@@ -149,7 +149,7 @@ describe("Earn presentation", () => {
       />,
     );
     expect(html).toContain(">Rate</th>");
-    expect(html).toContain(">Observed</th>");
+    expect(html).toContain(">Issues</th>");
     expect(html).toContain("18% APR");
     expect(html).toContain("Active");
     expect(html).toContain("Stale");

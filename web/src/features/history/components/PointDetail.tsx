@@ -8,12 +8,8 @@ import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { HistoricalPositions } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
-import {
-  ACCOUNT_VALUATION_COLUMNS,
-  accountValuationRow,
-  BOUNDARY_COLUMNS,
-  boundaryEventRow,
-} from "@/shared/lib/valuationRows";
+import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
+import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
@@ -51,10 +47,12 @@ export function PointDetail({
         ) : null}
       </dl>
       <h3>Accounts</h3>
-      <DataTable
-        caption="Account valuations at this point"
-        onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
+      <AccountValuationsGrouped
+        accounts={detail.accounts}
+        timezone={timezone}
+        platforms={platforms.data?.items}
         openKey={openAccount}
+        onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
         detailId={`historical-positions-${point.id}`}
         renderDetail={(row) => (
           <HistoricalPositions
@@ -62,25 +60,19 @@ export function PointDetail({
             pointId={point.id}
           />
         )}
-        columns={ACCOUNT_VALUATION_COLUMNS}
-        rows={detail.accounts.map((item) => ({
-          ...accountValuationRow(item, timezone, platforms.data?.items),
-          account: (
-            <button
-              type="button"
-              className={styles.inlineButton}
-              aria-expanded={openAccount === item.accountId}
-              aria-controls={`historical-positions-${point.id}`}
-              onClick={() =>
-                setOpenAccount((current) =>
-                  current === item.accountId ? undefined : item.accountId,
-                )
-              }
-            >
-              {item.identityName} / {item.accountName}
-            </button>
-          ),
-        }))}
+        renderAccountAction={(item) => (
+          <button
+            type="button"
+            className={styles.inlineButton}
+            aria-expanded={openAccount === item.accountId}
+            aria-controls={`historical-positions-${point.id}`}
+            onClick={() =>
+              setOpenAccount((current) => (current === item.accountId ? undefined : item.accountId))
+            }
+          >
+            {item.accountName}
+          </button>
+        )}
         empty="No accounts were inside the boundary at this point."
       />
       <h3>Boundary Events</h3>

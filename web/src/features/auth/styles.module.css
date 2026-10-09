@@ -63,6 +63,12 @@
   font-weight: var(--weight-medium);
 }
 
+@media (pointer: coarse) {
+  .authSubmit {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 900px) {
   .auth {
     min-height: 100vh;

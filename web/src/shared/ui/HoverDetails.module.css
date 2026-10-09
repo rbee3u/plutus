@@ -71,6 +71,13 @@
   border-top: 0;
 }
 
+.panel[data-placement="right"] .arrow {
+  left: -5px;
+  top: var(--arrow-offset-y, 16px);
+  border-top: 0;
+  border-right: 0;
+}
+
 .content {
   box-sizing: border-box;
   max-height: calc(100vh - 24px);
@@ -82,20 +89,27 @@
 @keyframes popoverFadeIn {
   from {
     opacity: 0;
-    transform: translateY(var(--popover-shift, 4px));
+    transform: translate(var(--popover-shift-x, 0), var(--popover-shift-y, 0));
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
 }
 
 .panel[data-placement="below"] {
-  --popover-shift: -4px;
+  --popover-shift-y: -4px;
+  --popover-shift-x: 0;
 }
 
 .panel[data-placement="above"] {
-  --popover-shift: 4px;
+  --popover-shift-y: 4px;
+  --popover-shift-x: 0;
+}
+
+.panel[data-placement="right"] {
+  --popover-shift-y: 0;
+  --popover-shift-x: -4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

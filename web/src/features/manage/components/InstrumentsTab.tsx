@@ -3,15 +3,18 @@ import type { InstrumentList } from "@/api";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
-import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
+import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { DataTable } from "@/shared/ui/DataTable";
-import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
+import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
 
-export function InstrumentsTab({ platform, q, offset, timezone, onOffset }: TabProps) {
-  const platforms = usePlatforms();
+export function InstrumentsTab({ filters, timezone }: TabProps) {
+  const { platform, q } = filters.values;
+  const offset = filters.offset;
+  const platforms = filters.platforms;
   const query = usePortfolioQuery<InstrumentList>({
     key: (userId, portfolioId) => keys.catalogInstruments(userId, portfolioId, platform, q, offset),
     load: (portfolioId) =>
@@ -27,8 +30,47 @@ export function InstrumentsTab({ platform, q, offset, timezone, onOffset }: TabP
       <DataTable
         caption="Instruments"
         columns={[
-          { key: "platform", header: "Platform" },
-          { key: "symbol", header: "Symbol" },
+          {
+            key: "platform",
+            header: "Platform",
+            headerContent: (
+              <TableFilterHeader
+                label="Platform"
+                display={platform ? filters.platformName : "All"}
+                active={Boolean(platform)}
+                open={filters.open === "platform"}
+                type="select"
+                options={filters.platformOptions}
+                selectedValue={platform}
+                onToggle={() => filters.toggle("platform")}
+                onClose={filters.close}
+                onClear={() => filters.change({ platform: "" })}
+                onSelect={(val) => filters.change({ platform: val })}
+              />
+            ),
+          },
+          {
+            key: "symbol",
+            header: "Symbol",
+            headerContent: (
+              <TableFilterHeader
+                label="Symbol"
+                display={filters.qDraft || "All"}
+                active={Boolean(q || filters.qDraft)}
+                open={filters.open === "q"}
+                type="search"
+                searchDraft={filters.qDraft}
+                searchPlaceholder="Symbol or pair, e.g. BTCUSDT"
+                searchHelp="Matches contract symbol, ignoring case."
+                onToggle={() => filters.toggle("q")}
+                onClose={filters.close}
+                onClear={() => filters.change({ q: "" })}
+                onSearchChange={filters.editQuery}
+                onCompositionStart={filters.beginComposition}
+                onCompositionEnd={filters.endComposition}
+              />
+            ),
+          },
           { key: "kind", header: "Kind" },
           { key: "pair", header: "Pair" },
           { key: "settlement", header: "Settlement" },
@@ -58,11 +100,11 @@ export function InstrumentsTab({ platform, q, offset, timezone, onOffset }: TabP
               : "No instruments yet. Instruments appear after a Collection Cycle reports positions."
         }
       />
-      <Pager
-        offset={query.data?.page.offset ?? offset}
-        limit={query.data?.page.limit ?? PAGE_SIZE}
-        total={query.data?.page.total ?? 0}
-        onChange={onOffset}
+      <TableFilterFooter
+        page={query.data?.page}
+        onPageChange={filters.page}
+        hasFilters={filters.hasFilters}
+        onReset={filters.reset}
       />
     </>
   );

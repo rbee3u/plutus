@@ -37,7 +37,7 @@ function render(item: BalanceRow) {
 }
 
 describe("shared balance cells", () => {
-  it("prioritizes USD valuation and displays the source time without a fresh badge", () => {
+  it("prioritizes USD valuation and displays quiet Issues column when healthy", () => {
     expect(BALANCE_COLUMNS.map(({ key, header }) => [key, header])).toEqual([
       ["symbol", "Asset"],
       ["equity", "Equity"],
@@ -45,7 +45,7 @@ describe("shared balance cells", () => {
       ["equityUsd", "Equity (USD)"],
       ["liability", "Liability"],
       ["unrealizedPnl", "Unrealized PnL"],
-      ["observed", "Observed"],
+      ["issues", "Issues"],
     ]);
     const row = balanceRow(balance, "Asia/Shanghai");
     expect(row.equity).toBe("0.123457");
@@ -56,23 +56,22 @@ describe("shared balance cells", () => {
     const symbol = renderToStaticMarkup(<>{row.symbol}</>);
     expect(symbol).toContain("XBT");
     expect(symbol).toContain("as BTC");
-    const observed = renderToStaticMarkup(<>{row.observed}</>);
-    expect(observed).toContain("2026-10-03 08:00");
-    expect(observed).not.toContain("Stale");
-    expect(observed).not.toContain(">fresh</span>");
+    const issues = renderToStaticMarkup(<>{row.issues}</>);
+    expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
+    expect(issues).not.toContain("Stale");
+    expect(issues).not.toContain(">fresh</span>");
     // Keep one composition check; the named cells above own their financial values.
     expect(render(balance)).toContain("6,172.84");
   });
 
-  it("retains the carried-forward time and exposes a Stale disclosure", () => {
+  it("exposes a Stale disclosure in Issues for carried-forward reports", () => {
     const row = balanceRow({ ...balance, freshness: "stale" }, "Asia/Shanghai");
-    const html = renderToStaticMarkup(<>{row.observed}</>);
-    expect(html).toContain("2026-10-03 08:00");
+    const html = renderToStaticMarkup(<>{row.issues}</>);
     expect(html).toContain('aria-label="Stale report for XBT"');
     expect(html).toContain("Stale</span>");
   });
 
-  it("keeps unknown time and unpriced equity explicit", () => {
+  it("keeps healthy issue column quiet and unpriced equity explicit", () => {
     const row = balanceRow(
       {
         ...balance,
@@ -86,8 +85,7 @@ describe("shared balance cells", () => {
     expect(row.equity).toBe("0.123457");
     expect(row.equityUsd).toBe("—");
     expect(renderToStaticMarkup(<>{row.priceUsd}</>)).toContain("no price");
-    const observed = renderToStaticMarkup(<>{row.observed}</>);
-    expect(observed).toContain("Account Report observed at an unknown time");
-    expect(observed.replace(/<[^>]*>/g, "")).toBe("—");
+    const issues = renderToStaticMarkup(<>{row.issues}</>);
+    expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
   });
 });

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -10,11 +11,84 @@ import {
 import { createPortal } from "react-dom";
 import styles from "./HoverDetails.module.css";
 
-interface PositionState {
+export interface PositionState {
   left: number;
   top: number;
-  placement: "below" | "above";
+  placement: "below" | "above" | "right";
   arrowOffset: number;
+  arrowOffsetY?: number;
+}
+
+export function computePosition(
+  anchorRect: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    width: number;
+    height: number;
+  },
+  panelWidth: number,
+  panelHeight: number,
+  preferred: "above" | "below" | "right" = "above",
+  windowWidth: number = typeof window !== "undefined" ? window.innerWidth : 1024,
+  windowHeight: number = typeof window !== "undefined" ? window.innerHeight : 768,
+): PositionState {
+  const canFitAbove = anchorRect.top - 8 - panelHeight >= 8;
+  const canFitBelow = anchorRect.bottom + 8 + panelHeight <= windowHeight - 8;
+  const canFitRight = anchorRect.right + 8 + panelWidth <= windowWidth - 8;
+
+  let placement: "above" | "below" | "right" = preferred;
+
+  if (preferred === "right") {
+    if (canFitRight) {
+      placement = "right";
+    } else if (canFitAbove) {
+      placement = "above";
+    } else {
+      placement = "below";
+    }
+  } else if (preferred === "above") {
+    if (canFitAbove) {
+      placement = "above";
+    } else {
+      placement = "below";
+    }
+  } else {
+    if (canFitBelow) {
+      placement = "below";
+    } else {
+      placement = "above";
+    }
+  }
+
+  if (placement === "right") {
+    const left = anchorRect.right + 8;
+    const idealTop = anchorRect.top - 8;
+    const top = Math.max(8, Math.min(idealTop, windowHeight - panelHeight - 8));
+    const anchorCenterY = anchorRect.top + anchorRect.height / 2;
+    const arrowOffsetY = Math.max(12, Math.min(panelHeight - 20, anchorCenterY - top - 4));
+    return {
+      left,
+      top,
+      placement: "right",
+      arrowOffset: 16,
+      arrowOffsetY,
+    };
+  }
+
+  const left = Math.max(8, Math.min(anchorRect.left, windowWidth - panelWidth - 8));
+  const top =
+    placement === "above" ? Math.max(8, anchorRect.top - panelHeight - 8) : anchorRect.bottom + 8;
+  const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+  const arrowOffset = Math.max(12, Math.min(panelWidth - 20, anchorCenterX - left - 4));
+
+  return {
+    left,
+    top,
+    placement,
+    arrowOffset,
+  };
 }
 
 /** Rich details available to pointer, keyboard, and touch users outside scroll clips. */
@@ -23,63 +97,96 @@ export function HoverDetails({
   children,
   name,
   className,
+  preferredPlacement = "above",
 }: {
   label: ReactNode;
   children: ReactNode;
   name: string;
   className?: string;
+  preferredPlacement?: "above" | "below" | "right";
 }) {
   const id = useId();
   const anchor = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const anchorPosition = useRef({ left: 0, bottom: 0 });
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<PositionState>({
+  const [position, setPosition] = useState<PositionState>(() => ({
     left: 0,
     top: 0,
-    placement: "below",
+    placement: preferredPlacement,
     arrowOffset: 16,
-  });
+  }));
   const pinned = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function cancelClose() {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelTimers() {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
   }
-  function show() {
-    cancelClose();
+
+  function showImmediate() {
+    cancelTimers();
     if (anchor.current) {
       const rect = anchor.current.getBoundingClientRect();
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 300));
-      const top = rect.bottom + 8;
-      const anchorCenter = rect.left + rect.width / 2;
-      const arrowOffset = Math.max(12, Math.min(260, anchorCenter - left - 4));
-      setPosition({ left, top, placement: "below", arrowOffset });
+      anchorPosition.current = { left: rect.left, bottom: rect.bottom };
+      const initial = computePosition(rect, 300, 150, preferredPlacement);
+      setPosition(initial);
     }
     setOpen(true);
   }
-  function leave() {
-    cancelClose();
-    if (!pinned.current) closeTimer.current = setTimeout(() => setOpen(false), 120);
+
+  function handlePointerEnter() {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    if (open) return;
+    if (openTimer.current) clearTimeout(openTimer.current);
+    openTimer.current = setTimeout(() => {
+      showImmediate();
+    }, 120);
   }
-  function close() {
+
+  function handlePointerLeave() {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    if (!pinned.current) {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      closeTimer.current = setTimeout(() => setOpen(false), 120);
+    }
+  }
+
+  const close = useCallback(() => {
     pinned.current = false;
-    cancelClose();
+    cancelTimers();
     setOpen(false);
-  }
+  }, []);
+
   useLayoutEffect(() => {
     if (!open || !anchor.current || !panel.current) return;
     const rect = anchor.current.getBoundingClientRect();
     anchorPosition.current = { left: rect.left, bottom: rect.bottom };
     const bounds = panel.current.getBoundingClientRect();
-    const left = Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8));
-    const below = rect.bottom + 8;
-    const isBelow = below + bounds.height <= window.innerHeight - 8;
-    const top = isBelow ? below : Math.max(8, rect.top - bounds.height - 8);
-    const placement: "below" | "above" = isBelow ? "below" : "above";
-    const anchorCenter = rect.left + rect.width / 2;
-    const arrowOffset = Math.max(12, Math.min(bounds.width - 20, anchorCenter - left - 4));
-    setPosition({ left, top, placement, arrowOffset });
-  }, [open]);
+    const measured = computePosition(
+      rect,
+      bounds.width,
+      bounds.height,
+      preferredPlacement,
+      window.innerWidth,
+      window.innerHeight,
+    );
+    setPosition(measured);
+  }, [open, preferredPlacement]);
+
   useEffect(() => {
     if (!open) return;
     function dismiss(event: Event) {
@@ -102,7 +209,7 @@ export function HoverDetails({
           return;
       }
       pinned.current = false;
-      setOpen(false);
+      close();
     }
     document.addEventListener("keydown", dismiss);
     document.addEventListener("pointerdown", dismiss);
@@ -114,13 +221,15 @@ export function HoverDetails({
       document.removeEventListener("scroll", dismiss, true);
       window.removeEventListener("resize", dismiss);
     };
-  }, [open]);
+  }, [open, close]);
+
   useEffect(
     () => () => {
-      if (closeTimer.current) clearTimeout(closeTimer.current);
+      cancelTimers();
     },
     [],
   );
+
   return (
     <>
       <button
@@ -129,15 +238,15 @@ export function HoverDetails({
         className={`${styles.trigger}${className ? ` ${className}` : ""}`}
         aria-label={name}
         aria-describedby={open ? id : undefined}
-        onPointerEnter={show}
-        onPointerLeave={leave}
-        onFocus={show}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onFocus={showImmediate}
         onBlur={close}
         onClick={() => {
           if (pinned.current) close();
           else {
             pinned.current = true;
-            show();
+            showImmediate();
           }
         }}
       >
@@ -156,10 +265,11 @@ export function HoverDetails({
                   left: position.left,
                   top: position.top,
                   "--arrow-offset": `${position.arrowOffset}px`,
+                  "--arrow-offset-y": `${position.arrowOffsetY ?? 16}px`,
                 } as CSSProperties
               }
-              onPointerEnter={cancelClose}
-              onPointerLeave={leave}
+              onPointerEnter={cancelTimers}
+              onPointerLeave={handlePointerLeave}
             >
               <div className={styles.arrow} aria-hidden="true" />
               <div className={styles.content}>{children}</div>

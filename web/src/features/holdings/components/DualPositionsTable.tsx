@@ -43,7 +43,7 @@ export function DualPositionsTable({
         { key: "principal", header: "Principal", numeric: true, nowrap: true },
         { key: "subscribed", header: "Subscribed", nowrap: true },
         { key: "status", header: "Status" },
-        { key: "observed", header: "Observed", nowrap: true },
+        { key: "issues", header: "Issues", nowrap: true },
       ]}
       rows={items.map((item) => ({
         id: `${item.accountId}-${item.platformPositionRef}`,
@@ -71,7 +71,7 @@ export function DualPositionsTable({
         principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
         status: capitalize(item.status),
-        observed: (
+        issues: (
           <ObservedCell
             observedAt={item.reportObservedAt}
             freshness={item.freshness}

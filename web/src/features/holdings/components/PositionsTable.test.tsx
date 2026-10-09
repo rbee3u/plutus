@@ -62,7 +62,7 @@ describe("shared position cells", () => {
       ["unrealizedPnl", "Unrealized PnL"],
       ["margin", "Margin"],
       ["notionalUsd", "Notional (USD)"],
-      ["observed", "Observed"],
+      ["issues", "Issues"],
     ]);
     const row = positionRow(position, "Asia/Shanghai");
     for (const [key, expected] of Object.entries({
@@ -74,7 +74,7 @@ describe("shared position cells", () => {
       unrealizedPnl: "+0.000123457 BTC",
       margin: "0.002 BTC",
       notionalUsd: "200.00",
-      observed: "2026-10-03 08:00",
+      issues: "—",
     })) {
       const html = renderToStaticMarkup(<>{row[key]}</>);
       expect(html.replace(/<[^>]*>/g, ""), key).toBe(expected);
@@ -105,10 +105,9 @@ describe("shared position cells", () => {
     expect(shortRow.id).not.toBe(longRow.id);
     expect(renderToStaticMarkup(<>{shortRow.side}</>)).toContain("Short");
     expect(renderToStaticMarkup(<>{longRow.side}</>)).toContain("Long");
-    const html = renderToStaticMarkup(<>{shortRow.observed}</>);
+    const html = renderToStaticMarkup(<>{shortRow.issues}</>);
     expect(html).toContain("Stale");
     expect(html).toContain("1 issue");
-    expect(html).toContain("2026-10-03 08:00");
   });
   it.each([
     ["cross", position, "0.002 BTC"],

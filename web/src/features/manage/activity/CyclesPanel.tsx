@@ -5,11 +5,11 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { formatBoundaryFlows, formatUsd, formatCount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
-import { accountSummary, capitalize } from "@/shared/lib/text";
+import { capitalize } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
-import { ACCOUNT_VALUATION_COLUMNS, accountValuationRow } from "@/shared/lib/valuationRows";
-import { CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
+import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
+import { Badge, CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IconButton } from "@/shared/ui/IconButton";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
@@ -17,6 +17,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { useCursorPages } from "../hooks/useCursorPages";
+import manageStyles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 const PAGE_SIZE = 25;
@@ -162,36 +163,73 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
       <QueryRecovery query={query} fallback="The collection cycle could not be loaded." />
       {cycle ? (
         <>
-          <dl className={shared.metaList}>
-            <div>
-              <dt>Attempts</dt>
-              <dd>
-                {formatCount(cycle.attemptCount)}/{formatCount(cycle.maxAttempts)}
-              </dd>
-            </div>
-            <div>
-              <dt>Started</dt>
-              <dd>{formatInstant(cycle.startedAt, timezone)}</dd>
-            </div>
-            <div>
-              <dt>Accounts</dt>
-              <dd>
+          <div className={manageStyles.cycleStatsGrid}>
+            <div className={manageStyles.cycleStatCard}>
+              <span className={manageStyles.cycleStatLabel}>Accounts</span>
+              <span className={manageStyles.cycleStatValue}>
                 {cycle.point
-                  ? accountSummary(
-                      cycle.point.accountCount,
-                      cycle.point.staleAccountCount,
-                      cycle.point.incompleteAccountCount,
-                    )
-                  : "—"}
-              </dd>
+                  ? formatCount(cycle.point.accountCount)
+                  : (detail?.accounts.length ?? "—")}
+              </span>
+              <span className={manageStyles.cycleStatMeta}>
+                {cycle.point &&
+                (cycle.point.staleAccountCount > 0 || cycle.point.incompleteAccountCount > 0) ? (
+                  <span className={shared.statusGroup}>
+                    {cycle.point.staleAccountCount > 0 ? (
+                      <Badge tone="warn">{formatCount(cycle.point.staleAccountCount)} stale</Badge>
+                    ) : null}
+                    {cycle.point.incompleteAccountCount > 0 ? (
+                      <Badge tone="warn">
+                        {formatCount(cycle.point.incompleteAccountCount)} incomplete
+                      </Badge>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className={shared.pnlPositive}>All healthy</span>
+                )}
+              </span>
             </div>
-            <div>
-              <dt>Boundary flows</dt>
-              <dd>
+
+            <div className={manageStyles.cycleStatCard}>
+              <span className={manageStyles.cycleStatLabel}>Valuation Point</span>
+              <span className={manageStyles.cycleStatValue}>
+                {cycle.point?.totalUsd ? (
+                  <NumericText>{formatUsd(cycle.point.totalUsd)}</NumericText>
+                ) : (
+                  "—"
+                )}
+              </span>
+              <span className={manageStyles.cycleStatMeta}>
+                <span>Flows: </span>
                 <NumericText>{cycle.point ? formatBoundaryFlows(cycle.point) : "—"}</NumericText>
-              </dd>
+              </span>
             </div>
-          </dl>
+
+            <div className={manageStyles.cycleStatCard}>
+              <span className={manageStyles.cycleStatLabel}>Execution</span>
+              <span className={manageStyles.cycleStatValue}>{capitalize(cycle.trigger)}</span>
+              <span className={manageStyles.cycleStatMeta}>
+                <StatusBadge value={cycle.status} />
+                <span>·</span>
+                <span>
+                  {formatCount(cycle.attemptCount)}/{formatCount(cycle.maxAttempts)} attempts
+                </span>
+              </span>
+            </div>
+
+            <div className={manageStyles.cycleStatCard}>
+              <span className={manageStyles.cycleStatLabel}>Timing</span>
+              <span className={manageStyles.cycleStatValue}>
+                {formatInstant(cycle.startedAt, timezone)}
+              </span>
+              <span className={manageStyles.cycleStatMeta}>
+                {cycle.finishedAt
+                  ? `Finished ${formatInstant(cycle.finishedAt, timezone)}`
+                  : "In progress"}
+              </span>
+            </div>
+          </div>
+
           {cycle.lastErrorClass ? (
             <p className={shared.alert}>
               <Codes values={[cycle.lastErrorClass]} />
@@ -199,12 +237,10 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
             </p>
           ) : null}
           <h3>Accounts</h3>
-          <DataTable
-            caption="Account valuations of this cycle"
-            columns={ACCOUNT_VALUATION_COLUMNS}
-            rows={(detail?.accounts ?? []).map((item) =>
-              accountValuationRow(item, timezone, platforms.data?.items),
-            )}
+          <AccountValuationsGrouped
+            accounts={detail?.accounts ?? []}
+            timezone={timezone}
+            platforms={platforms.data?.items}
             empty={
               cycle.status === "queued" || cycle.status === "running"
                 ? "The cycle is still running; account valuations appear when it finishes."

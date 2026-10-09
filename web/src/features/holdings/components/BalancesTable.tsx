@@ -88,7 +88,7 @@ export const BALANCE_COLUMNS = [
   { key: "equityUsd", header: "Equity (USD)", numeric: true },
   { key: "liability", header: "Liability", numeric: true },
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true },
-  { key: "observed", header: "Observed", nowrap: true },
+  { key: "issues", header: "Issues", nowrap: true },
 ];
 
 function balancePnl(value: string | null | undefined) {
@@ -153,7 +153,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       formatPrice(item.priceUsd)
     ),
     equityUsd: formatAmount(item.equityUsd),
-    observed: (
+    issues: (
       <ObservedCell
         observedAt={item.reportObservedAt}
         freshness={item.freshness}

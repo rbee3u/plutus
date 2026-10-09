@@ -94,7 +94,7 @@ export function EarnPositionsTable({
         { key: "rewards", header: "Rewards", numeric: true, nowrap: true },
         { key: "subscribed", header: "Subscribed", nowrap: true },
         { key: "status", header: "Status", nowrap: true },
-        { key: "observed", header: "Observed", nowrap: true },
+        { key: "issues", header: "Issues", nowrap: true },
       ]}
       rows={items.map((item) => {
         const name = `${item.assets.map(assetLabel).join(" / ")} ${item.platformPositionRef}`;
@@ -228,7 +228,7 @@ export function EarnPositionsTable({
           ),
           subscribed: formatInstant(item.subscribedAt, timezone),
           status: item.status ?? "—",
-          observed: (
+          issues: (
             <ObservedCell
               observedAt={item.reportObservedAt}
               freshness={item.freshness}
@@ -275,7 +275,7 @@ export function EarnBalanceSummaries({
             : []),
           { key: "asset", header: "Asset", nowrap: true },
           { key: "amount", header: "Amount", numeric: true, nowrap: true },
-          { key: "observed", header: "Observed", nowrap: true },
+          { key: "issues", header: "Issues", nowrap: true },
         ]}
         rows={items.map((item) => ({
           id: item.accountId,
@@ -285,7 +285,7 @@ export function EarnBalanceSummaries({
             ? item.assets.map((asset, index) => <div key={index}>{assetLabel(asset)}</div>)
             : "—",
           amount: amountLines(item.assets),
-          observed: (
+          issues: (
             <ObservedCell
               observedAt={item.reportObservedAt}
               freshness={item.freshness}

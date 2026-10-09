@@ -1,11 +1,9 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { OffsetPage } from "@/api";
-import { Pager } from "@/shared/ui/Pager";
 import type { ReactNode } from "react";
 import type { HoldingsFilters } from "../hooks/useHoldingsFilters";
-import { ActionButton } from "@/shared/ui/ActionButton";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import shared from "@/shared/styles/page.module.css";
+import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 
 export function HoldingsFilterRecovery({ filters }: { filters: HoldingsFilters }) {
   return (
@@ -23,15 +21,14 @@ export function HoldingsFilterFooter({
   page?: OffsetPage;
 }) {
   return (
-    <div className={shared.headingRow}>
-      {page ? (
-        <Pager offset={page.offset} limit={page.limit} total={page.total} onChange={filters.page} />
-      ) : null}
+    <TableFilterFooter
+      page={page}
+      onPageChange={filters.page}
+      hasFilters={filters.hasFilters}
+      onReset={filters.reset}
+    >
       {children}
-      <ActionButton tone="ghost" disabled={!filters.hasFilters} onClick={filters.reset}>
-        Clear filters
-      </ActionButton>
-    </div>
+    </TableFilterFooter>
   );
 }
 

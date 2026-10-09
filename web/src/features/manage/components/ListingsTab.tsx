@@ -19,8 +19,9 @@ import { Badge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextArea, TextInput } from "@/shared/ui/FormControls";
-import { Pager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
+import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import {
   PAGE_SIZE,
   exclusionEtag,
@@ -30,18 +31,12 @@ import {
 } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
 
-export function ListingsTab({
-  portfolioId,
-  platform,
-  q,
-  ignoredOnly,
-  offset,
-  timezone,
-  onOffset,
-}: TabProps) {
+export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
   const { userId } = useSessionScope();
   const queryClient = useQueryClient();
-  const platforms = usePlatforms();
+  const { platform, q, ignoredOnly } = filters.values;
+  const offset = filters.offset;
+  const platforms = filters.platforms;
   const nonce = useRef(0);
   const [request, setRequest] = useState<MappingRequest | null>(null);
   const [exclusionRequest, setExclusionRequest] = useState<MappingRequest | null>(null);
@@ -77,9 +72,66 @@ export function ListingsTab({
       <DataTable
         caption="Asset listings"
         columns={[
-          { key: "platform", header: "Platform" },
-          { key: "asset", header: "Asset" },
-          { key: "treatment", header: "Treatment" },
+          {
+            key: "platform",
+            header: "Platform",
+            headerContent: (
+              <TableFilterHeader
+                label="Platform"
+                display={platform ? filters.platformName : "All"}
+                active={Boolean(platform)}
+                open={filters.open === "platform"}
+                type="select"
+                options={filters.platformOptions}
+                selectedValue={platform}
+                onToggle={() => filters.toggle("platform")}
+                onClose={filters.close}
+                onClear={() => filters.change({ platform: "" })}
+                onSelect={(val) => filters.change({ platform: val })}
+              />
+            ),
+          },
+          {
+            key: "asset",
+            header: "Asset",
+            headerContent: (
+              <TableFilterHeader
+                label="Asset"
+                display={filters.qDraft || "All"}
+                active={Boolean(q || filters.qDraft)}
+                open={filters.open === "q"}
+                type="search"
+                searchDraft={filters.qDraft}
+                searchPlaceholder="Symbol or name, e.g. BTC"
+                searchHelp="Matches symbol or asset name, ignoring case."
+                onToggle={() => filters.toggle("q")}
+                onClose={filters.close}
+                onClear={() => filters.change({ q: "" })}
+                onSearchChange={filters.editQuery}
+                onCompositionStart={filters.beginComposition}
+                onCompositionEnd={filters.endComposition}
+              />
+            ),
+          },
+          {
+            key: "treatment",
+            header: "Treatment",
+            headerContent: (
+              <TableFilterHeader
+                label="Treatment"
+                display={filters.treatmentName}
+                active={ignoredOnly}
+                open={filters.open === "treatment"}
+                type="select"
+                options={filters.treatmentOptions}
+                selectedValue={ignoredOnly ? "true" : ""}
+                onToggle={() => filters.toggle("treatment")}
+                onClose={filters.close}
+                onClear={() => filters.change({ ignoredOnly: false })}
+                onSelect={(val) => filters.change({ ignoredOnly: val === "true" })}
+              />
+            ),
+          },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
           { key: "actions", header: "", nowrap: true },
         ]}
@@ -158,11 +210,11 @@ export function ListingsTab({
               : "No asset listings yet. Listings appear after the first Collection Cycle reports balances."
         }
       />
-      <Pager
-        offset={query.data?.page.offset ?? offset}
-        limit={query.data?.page.limit ?? PAGE_SIZE}
-        total={query.data?.page.total ?? 0}
-        onChange={onOffset}
+      <TableFilterFooter
+        page={query.data?.page}
+        onPageChange={filters.page}
+        hasFilters={filters.hasFilters}
+        onReset={filters.reset}
       />
       <Dialog
         open={request !== null}

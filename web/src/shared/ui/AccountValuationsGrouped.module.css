@@ -1,0 +1,61 @@
+.groupedList {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.identityGroupCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.identityGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface-inset);
+  border-bottom: 1px solid var(--line-soft);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.identityGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.identityGroupPlatform {
+  color: var(--muted);
+  font-weight: var(--weight-medium);
+}
+
+.identityGroupDivider {
+  color: var(--faint);
+}
+
+.identityGroupMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.identityGroupSubtotal {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.identityGroupCard > div {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}

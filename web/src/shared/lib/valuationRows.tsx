@@ -1,48 +1,146 @@
 import type { AccountValuation, BoundaryEvent, Platform } from "@/api";
-import { formatAmount, parseDecimal } from "@/shared/lib/amount";
+import { formatAmount, formatCount, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { platformLabel } from "@/shared/lib/usePlatforms";
-import { CompletenessBadge, DirectionBadge, FreshnessBadge, StatusBadge } from "@/shared/ui/Badge";
+import { Badge, DirectionBadge, StatusBadge } from "@/shared/ui/Badge";
 import type { DataRow } from "@/shared/ui/DataTable";
+import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/shared/styles/page.module.css";
 
 export const ACCOUNT_VALUATION_COLUMNS = [
   { key: "account", header: "Account" },
-  { key: "platform", header: "Platform" },
   { key: "valueUsd", header: "Value (USD)", numeric: true },
-  { key: "method", header: "Method" },
-  { key: "freshness", header: "Freshness" },
-  { key: "completeness", header: "Completeness" },
-  { key: "status", header: "Status" },
-  { key: "error", header: "Error" },
-  { key: "reportObservedAt", header: "Report observed", nowrap: true },
+  { key: "issues", header: "Issues", nowrap: true },
 ];
 
-export function accountValuationRow(
-  item: AccountValuation,
-  timezone?: string,
-  platforms?: Platform[],
-): DataRow {
+export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
+  const isHealthy =
+    item.status === "ok" &&
+    item.freshness === "fresh" &&
+    item.completeness === "complete" &&
+    !item.errorClass &&
+    item.omitted.length === 0;
+
   return {
     id: item.accountId,
-    account: (
-      <span className={styles.cellStack}>
-        <span>{item.accountName}</span>
-        <span className={styles.cellMeta}>{item.identityName}</span>
+    account: item.accountName,
+    valueUsd: item.valueUsd ? formatAmount(item.valueUsd) : "—",
+    issues: isHealthy ? (
+      <span className={styles.muted}>—</span>
+    ) : (
+      <span className={styles.statusGroup}>
+        {item.status === "failed" ? (
+          <HoverDetails
+            label={<Badge tone="bad">Failed</Badge>}
+            name={`Valuation failure for ${item.accountName}`}
+          >
+            <p>{item.errorClass ?? "Account valuation failed."}</p>
+            {item.errorDetail ? <p className={styles.cellMeta}>{item.errorDetail}</p> : null}
+          </HoverDetails>
+        ) : null}
+        {item.freshness === "stale" ? (
+          <HoverDetails
+            label={<Badge tone="warn">Stale</Badge>}
+            name={`Stale report for ${item.accountName}`}
+          >
+            <p>Earlier successful Account Report carried forward.</p>
+            {item.reportObservedAt ? (
+              <p className={styles.cellMeta}>
+                Observed {formatInstant(item.reportObservedAt, timezone)}
+              </p>
+            ) : null}
+          </HoverDetails>
+        ) : null}
+        {item.completeness === "incomplete" ? <Badge tone="warn">Incomplete</Badge> : null}
+        {item.errorClass && item.status !== "failed" ? (
+          <HoverDetails
+            label={<Badge tone="warn">{item.errorClass}</Badge>}
+            name={`Issue for ${item.accountName}`}
+          >
+            {item.errorDetail ? <p>{item.errorDetail}</p> : null}
+          </HoverDetails>
+        ) : null}
+        {item.omitted.length > 0 ? (
+          <HoverDetails
+            label={<Badge tone="warn">{formatCount(item.omitted.length)} omitted</Badge>}
+            name={`Omitted balances for ${item.accountName}`}
+          >
+            {item.omitted.map((om) => (
+              <p key={om.symbol}>
+                {om.symbol}: {om.reason}
+              </p>
+            ))}
+          </HoverDetails>
+        ) : null}
       </span>
     ),
-    platform: platformLabel(platforms, item.platform),
-    valueUsd: formatAmount(item.valueUsd),
-    method: item.method,
-    freshness: <FreshnessBadge value={item.freshness} />,
-    completeness: <CompletenessBadge value={item.completeness} />,
-    status: <StatusBadge value={item.status} silentWhenHealthy />,
-    error: item.errorClass
-      ? `${item.errorClass}${item.errorDetail ? `: ${item.errorDetail}` : ""}`
-      : "—",
-    reportObservedAt: formatInstant(item.reportObservedAt, timezone),
   };
+}
+
+export type AccountValuationGroup = {
+  key: string;
+  platform: string;
+  platformLabel: string;
+  identityId: string;
+  identityName: string;
+  totalUsd: string | null;
+  accounts: AccountValuation[];
+  issuesCount: number;
+};
+
+export function groupAccountValuations(
+  items: AccountValuation[],
+  platforms?: Platform[],
+): AccountValuationGroup[] {
+  const groups: AccountValuationGroup[] = [];
+  const map = new Map<string, AccountValuationGroup>();
+
+  for (const item of items) {
+    const key = `${item.platform}:${item.identityId}`;
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        key,
+        platform: item.platform,
+        platformLabel: platformLabel(platforms, item.platform),
+        identityId: item.identityId,
+        identityName: item.identityName,
+        totalUsd: null,
+        accounts: [],
+        issuesCount: 0,
+      };
+      map.set(key, group);
+      groups.push(group);
+    }
+    group.accounts.push(item);
+    const hasIssue =
+      item.status === "failed" ||
+      item.freshness === "stale" ||
+      item.completeness === "incomplete" ||
+      Boolean(item.errorClass) ||
+      item.omitted.length > 0;
+    if (hasIssue) {
+      group.issuesCount += 1;
+    }
+  }
+
+  for (const group of groups) {
+    let sum = parseDecimal("0");
+    let hasAnyVal = false;
+    for (const acc of group.accounts) {
+      if (acc.valueUsd) {
+        const d = parseDecimal(acc.valueUsd);
+        if (d) {
+          sum = sum ? sum.plus(d) : d;
+          hasAnyVal = true;
+        }
+      }
+    }
+    group.totalUsd = hasAnyVal && sum ? sum.toFixed() : null;
+  }
+
+  return groups;
 }
 
 export const BOUNDARY_COLUMNS = [

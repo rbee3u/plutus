@@ -230,20 +230,19 @@ focus, and click/touch disclosures expose the same supporting information.
 ### Balances
 
 Columns are Platform, Identity, Account, Asset, Equity, Price (USD), Equity
-(USD), Liability, Unrealized PnL, Observed. Account details start at Asset.
-Asset shows the native Symbol with a secondary mapping hint. Withdrawable and
-Tradable remain source/API fields rather than displayed columns.
+(USD), Liability, Unrealized PnL, Issues. Account details start at Asset. Asset
+shows the native Symbol with a secondary mapping hint. Withdrawable and Tradable
+remain source/API fields rather than displayed columns.
 
-Observed is the source Account Report time in the Portfolio timezone, to the
-minute, without a fresh badge. Stale rows retain the earlier time and disclose
-the Account's stale issue or standard carried-forward explanation. Unknown times
-stay unknown. Missing-price hints and page-level Issues remain visible; Balances
-do not add Position-style row issue counts.
+Issues stays quiet (`—`) when healthy, exposing Stale or data issue badges on
+hover and disclosing carried-forward source observation times when applicable.
+Missing-price hints and page-level Issues remain visible; Balances do not add
+Position-style row issue counts.
 
 ### Futures
 
 Columns are Platform, Identity, Account, Symbol, Side, Size, Entry Price, Mark
-Price, Liq. Price, Unrealized PnL, Margin, Notional (USD), Observed.
+Price, Liq. Price, Unrealized PnL, Margin, Notional (USD), Issues.
 
 Symbol disclosures show Base, Quote, Settle, effective Contract Size and its
 currency, linear/inverse payoff, perpetual/delivery term, and delivery time.
@@ -264,21 +263,20 @@ Symbol details do not repeat leverage; margin provenance, conversion facts, and
 unavailable reasons remain in the API. Mode and leverage belong together while
 the visible row prioritizes Unrealized PnL and Margin amount.
 
-Observed uses the source Report time in Portfolio timezone; stale fallback also
-uses its observed Account Margin Mode. Badges identify stale data and missing
-Position Mode, Size, or USD notional. Failures without rows remain in page-level
-Issues. Known notionals are summed before filtering and pagination; missing
-required notionals or missing position-capable Accounts make that total
-incomplete. Balance valuation omissions alone do not make known contract
-notional incomplete.
+Issues remains quiet (`—`) when healthy, exposing Stale or data issue badges on
+hover. Badges identify stale data and missing Position Mode, Size, or USD
+notional. Failures without rows remain in page-level Issues. Known notionals are
+summed before filtering and pagination; missing required notionals or missing
+position-capable Accounts make that total incomplete. Balance valuation
+omissions alone do not make known contract notional incomplete.
 
 ### Earn and Dual Investment
 
 Earn columns are Platform, Identity, Asset, Type, Maturity, Rate, Amount,
-Rewards, Subscribed, Status, Observed. Expanded Earn Accounts share this table
+Rewards, Subscribed, Status, Issues. Expanded Earn Accounts share this table
 without repeated Platform and Identity columns; Balances remain independently
-visible. Both Earn and Dual put source observation time and row-local stale or
-data issues in the final Observed column. Status contains product phases only.
+visible. Both Earn and Dual put row-local stale or data issues in the final
+Issues column. Status contains product phases only.
 
 Earn Type uses Flexible, Fixed, Bonded, Timed, On-chain, with names and lock or
 redemption rules in details. Count Positions, not subscriptions: rows can be

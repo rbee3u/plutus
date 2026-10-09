@@ -82,6 +82,7 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --control-sm: 28px;
   --control-md: 32px;
+  --control-lg: 36px;
   --control-padding-x: 10px;
   --control-gap: 6px;
   /*

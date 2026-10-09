@@ -4,7 +4,7 @@ import { Shield } from "lucide-react";
 import { formatCount } from "@/shared/lib/amount";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { deletePortfolio, keys, patchPortfolio, problemMessage } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/shared/lib/preferences";
@@ -12,17 +12,31 @@ import { type PortfolioView, usePortfolio } from "@/shared/lib/portfolio";
 import { storePreference } from "@/shared/lib/preferences";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { TextInput } from "@/shared/ui/FormControls";
+import { Select, TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/settings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 const MIN_INTERVAL = 60;
 const MAX_INTERVAL = 86_400;
+const DEFAULT_INTERVAL = 900;
 const CONFLICT =
   "The portfolio changed in another session. The latest values were reloaded; review and save again.";
 
+const TIMEZONE_OPTIONS = [
+  { value: "UTC", label: "UTC (UTC+0 · Coordinated Universal Time)" },
+  { value: "Asia/Shanghai", label: "Asia/Shanghai (UTC+8 · Beijing, Shanghai, HK, SG)" },
+  { value: "Asia/Tokyo", label: "Asia/Tokyo (UTC+9 · Tokyo, Seoul)" },
+  { value: "America/New_York", label: "America/New_York (UTC-5/-4 · US Eastern, New York)" },
+  { value: "America/Los_Angeles", label: "America/Los_Angeles (UTC-8/-7 · US Pacific, LA)" },
+  { value: "Europe/London", label: "Europe/London (UTC+0/+1 · London)" },
+  { value: "Europe/Berlin", label: "Europe/Berlin (UTC+1/+2 · Berlin, Frankfurt)" },
+] as const;
+
 const INTERVAL_PRESETS = [
+  { label: "5m", seconds: 300 },
+  { label: "15m", seconds: 900, isDefault: true },
+  { label: "30m", seconds: 1800 },
   { label: "1h", seconds: 3600 },
   { label: "2h", seconds: 7200 },
   { label: "6h", seconds: 21600 },
@@ -142,13 +156,48 @@ function SettingsForms({
     browserTimezone = null;
   }
   const canMatchBrowser = Boolean(browserTimezone && browserTimezone !== timezone.trim());
+  const isKnownTimezone = TIMEZONE_OPTIONS.some((opt) => opt.value === timezone);
 
-  const numSeconds = Number(interval);
+  const numSeconds = interval === "" ? NaN : Number(interval);
   const durationText = formatIntervalDuration(numSeconds);
+  const isIntervalBelowMin = !Number.isNaN(numSeconds) && numSeconds < MIN_INTERVAL;
+  const isIntervalEmpty = interval === "";
+
+  function onIntervalChange(event: ChangeEvent<HTMLInputElement>) {
+    let clean = event.target.value.replace(/\D/g, "");
+    clean = clean.replace(/^0+/, "");
+    if (clean !== "") {
+      const num = Number(clean);
+      if (num > MAX_INTERVAL) {
+        clean = String(MAX_INTERVAL);
+      }
+    }
+    setInterval(clean);
+  }
+
+  function onIntervalBlur() {
+    if (interval === "") {
+      setInterval(String(view.item.collectionIntervalSeconds || DEFAULT_INTERVAL));
+      return;
+    }
+    const num = Number(interval);
+    if (num < MIN_INTERVAL) {
+      setInterval(String(MIN_INTERVAL));
+    } else if (num > MAX_INTERVAL) {
+      setInterval(String(MAX_INTERVAL));
+    }
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const seconds = Number(interval);
+    let seconds = Number(interval);
+    if (interval === "" || seconds < MIN_INTERVAL) {
+      seconds = MIN_INTERVAL;
+      setInterval(String(MIN_INTERVAL));
+    } else if (seconds > MAX_INTERVAL) {
+      seconds = MAX_INTERVAL;
+      setInterval(String(MAX_INTERVAL));
+    }
     if (!Number.isInteger(seconds) || seconds < MIN_INTERVAL || seconds > MAX_INTERVAL) {
       setError(
         `The collection interval must be a whole number of seconds between ${formatCount(MIN_INTERVAL)} and ${formatCount(MAX_INTERVAL)}.`,
@@ -263,41 +312,57 @@ function SettingsForms({
               </button>
             ) : null}
           </div>
-          <TextInput
+          <Select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            placeholder="IANA name such as Asia/Shanghai"
             required
-          />
+          >
+            {!isKnownTimezone && timezone ? (
+              <option value={timezone}>{timezone}</option>
+            ) : null}
+            {TIMEZONE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
         </label>
         <label className={shared.field}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span>Collection interval (seconds)</span>
             {durationText ? (
               <span className={styles.intervalDurationBadge}>{durationText}</span>
+            ) : isIntervalBelowMin || isIntervalEmpty ? (
+              <span className={styles.intervalDurationBadgeWarn}>
+                Min {formatCount(MIN_INTERVAL)}s (1m)
+              </span>
             ) : null}
           </div>
           <TextInput
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={MIN_INTERVAL}
-            max={MAX_INTERVAL}
-            step={1}
+            pattern="[0-9]*"
             value={interval}
-            onChange={(event) => setInterval(event.target.value)}
+            onChange={onIntervalChange}
+            onBlur={onIntervalBlur}
             required
           />
-          <div className={styles.intervalPresets}>
+          <div className={styles.intervalPresets} role="group" aria-label="Interval presets">
             <span className={styles.intervalPresetsLabel}>Presets:</span>
             {INTERVAL_PRESETS.map((p) => {
               const active = interval === String(p.seconds);
+              const presetTitle =
+                "isDefault" in p && p.isDefault
+                  ? `${p.label} (default, ${formatCount(p.seconds)}s)`
+                  : `${p.label} (${formatCount(p.seconds)}s)`;
               return (
                 <button
                   key={p.seconds}
                   type="button"
+                  aria-pressed={active}
                   className={`${styles.intervalPresetBtn} ${active ? styles.intervalPresetActive : ""}`}
                   onClick={() => setInterval(String(p.seconds))}
-                  title={`${p.label} (${formatCount(p.seconds)}s)`}
+                  title={presetTitle}
                 >
                   {p.label}
                 </button>
@@ -305,8 +370,8 @@ function SettingsForms({
             })}
           </div>
           <span className={shared.muted}>
-            Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day).
-            The schedule applies from the next cycle.
+            Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day;
+            default is 15 minutes / 900s). The schedule applies from the next cycle.
           </span>
         </label>
         <div className={shared.actions}>

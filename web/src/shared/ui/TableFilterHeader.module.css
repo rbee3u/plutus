@@ -75,6 +75,7 @@
 
 .trigger:hover:not(:disabled) {
   background: var(--surface-hover);
+  border-color: var(--line-soft);
   color: var(--ink);
 }
 
@@ -98,11 +99,6 @@
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast);
-}
-
-.trigger:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: var(--line-soft);
 }
 
 .clear:hover {

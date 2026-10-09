@@ -63,6 +63,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.intervalDurationBadgeWarn {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--warning);
+  background: var(--warning-soft);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 .intervalPresets {
   display: flex;
   flex-wrap: wrap;
@@ -78,6 +88,10 @@
 }
 
 .intervalPresetBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
   background: var(--surface-inset);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);

@@ -26,7 +26,7 @@ export const POSITION_COLUMNS = [
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, nowrap: true },
   { key: "margin", header: "Margin", numeric: true, nowrap: true },
   { key: "notionalUsd", header: "Notional (USD)", numeric: true, nowrap: true },
-  { key: "observed", header: "Observed", nowrap: true },
+  { key: "issues", header: "Issues", nowrap: true },
 ];
 
 function amountCell(
@@ -108,7 +108,11 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
   return {
     id: `${item.accountId}-${item.instrumentId}-${item.platformPositionRef}`,
     symbol: (
-      <HoverDetails label={item.symbol} name={`Contract details for ${item.symbol}`}>
+      <HoverDetails
+        label={item.symbol}
+        name={`Contract details for ${item.symbol}`}
+        preferredPlacement="right"
+      >
         <HoverCard
           title={item.symbol}
           tags={[inverse ? "Inverse" : "Linear", delivery ? "Delivery" : "Perpetual"]}
@@ -171,7 +175,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
     ),
     unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementSymbol ?? null),
     notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),
-    observed: (
+    issues: (
       <ObservedCell
         observedAt={item.reportObservedAt}
         freshness={item.freshness}

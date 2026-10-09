@@ -1,4 +1,5 @@
 import type { AssetListing } from "@/api";
+import type { CatalogFilters } from "../hooks/useCatalogFilters";
 
 export const PAGE_SIZE = 50;
 
@@ -17,10 +18,6 @@ export interface MappingRequest {
 
 export interface TabProps {
   portfolioId: string;
-  platform: string;
-  q: string;
-  ignoredOnly?: boolean;
-  offset: number;
+  filters: CatalogFilters;
   timezone?: string;
-  onOffset: (offset: number) => void;
 }
