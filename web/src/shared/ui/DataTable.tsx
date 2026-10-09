@@ -27,8 +27,8 @@ export interface DataTableProps {
   caption: string;
   columns: DataColumn[];
   rows: DataRow[];
-  /** Sentence shown when there are no rows, saying what would make rows appear. */
-  empty?: string;
+  /** Content shown when there are no rows, saying what would make rows appear. */
+  empty?: ReactNode;
   rowClassName?: (row: DataRow) => string | undefined;
   /** Key of the row whose detail is open; `renderDetail` fills a full-width row beneath it. */
   openKey?: string;
@@ -99,7 +99,7 @@ export function DataTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className={styles.cellMeta}>
+              <td colSpan={columns.length} className={styles.emptyCell}>
                 {empty}
               </td>
             </tr>

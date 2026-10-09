@@ -136,7 +136,13 @@ export function TableFilterHeader({
         ref={anchor}
         type="button"
         className={`${styles.trigger} ${active ? styles.active : ""}`}
-        aria-label={`Filter ${label}: ${display}`}
+        aria-label={
+          isSearch
+            ? active && display
+              ? `Filter ${label}: ${display}`
+              : `Search ${label}`
+            : `Filter ${label}: ${display}`
+        }
         aria-expanded={open}
         aria-haspopup={isSearch ? "dialog" : "listbox"}
         aria-controls={open ? id : undefined}
@@ -150,7 +156,7 @@ export function TableFilterHeader({
         }}
       >
         <span className={styles.label}>{label}</span>
-        <span className={styles.value}>{display}</span>
+        {(!isSearch || active) && display ? <span className={styles.value}>{display}</span> : null}
         {isSearch ? (
           <Search size={iconSize.xs} className={styles.icon} aria-hidden="true" />
         ) : (

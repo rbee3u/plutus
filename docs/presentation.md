@@ -31,6 +31,12 @@ Shared aliases imply neither identical Account arrangements nor identical risk
 models: Binance Unified is its supported Portfolio Margin structure; Bybit MCM
 is its canonical Cross Margin mode.
 
+### Asset Listing labels
+
+Catalog Asset Listings and mapping dialogs identify Assets by symbol without
+displaying full names. Mapped listings retain their native symbol so the mapping
+remains visible.
+
 ### Ordering
 
 Lists, groups, and selectors use Platform, Identity, then Account order; views
@@ -342,6 +348,15 @@ for day/week shortcuts, Week for 1Month, and Month for 1Year. Users can override
 the period; applying a custom window retains it. Calendar reads calculate whole
 intersecting periods, not clipped intervals. Value Changes also offers an
 independent Custom range comparison.
+
+Period closes columns are Period, Close (USD), Change, Issues. Raw Valuation
+Points columns are Evaluated at, Total (USD), Change, Issues. Value Changes
+columns are Period, Value change (USD), Close (USD), Flows, Issues.
+Point-to-point and period-to-period movements display directional amounts and
+percentages. Flows consolidates external capital and boundary movements into
+compact descriptors. Across History tables, Issues stays quiet (`—`) during
+complete intervals, opening badges and diagnostics for missing periods,
+incomplete data, or stale Accounts.
 
 All three tables default to 20 rows with 10/20/50 choices, Previous / Next, and
 row counts. Range changes reset pagination and open point details; period

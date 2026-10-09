@@ -2,7 +2,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { type FormEvent, useState } from "react";
 import { getCustomValueChange, getHistoryWindow, keys, unwrapOrRedirect } from "@/api";
 import type { ValueChange } from "@/api";
-import { valueChangeCell } from "../lib/valueChangeRows";
+import { combinedFlowsCell, valueChangeCell } from "../lib/valueChangeRows";
 import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import { formatUsd } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
@@ -121,78 +121,90 @@ export function CustomPeriodPanel({
 function CustomResult({ change, timezone }: { change: ValueChange; timezone?: string }) {
   return (
     <div className={styles.detailPanel}>
-      <dl className={shared.metaList}>
-        <div>
-          <dt>Range</dt>
-          <dd>
+      <div className={styles.pointStatsGrid}>
+        <div className={styles.pointStatCard}>
+          <span className={styles.pointStatLabel}>Value Change</span>
+          <div className={styles.pointStatValue}>
+            {valueChangeCell(change.amountUsd, change.startPoint?.totalUsd)}
+          </div>
+          <span className={styles.pointStatMeta}>
             <span className={shared.nowrap}>{formatInstant(change.from, timezone)}</span> –{" "}
             <span className={shared.nowrap}>{formatInstant(change.to, timezone)}</span>
-          </dd>
+          </span>
         </div>
-        <div>
-          <dt>Value change</dt>
-          <dd>{valueChangeCell(change.amountUsd)}</dd>
-        </div>
-        <div>
-          <dt>Start point</dt>
-          <dd>
-            <PointAt point={change.startPoint} timezone={timezone} />
-          </dd>
-        </div>
-        <div>
-          <dt>End point</dt>
-          <dd>
-            <PointAt point={change.endPoint} timezone={timezone} />
-          </dd>
-        </div>
-        <div>
-          <dt>Contributions</dt>
-          <dd>
-            <NumericText>{formatUsd(change.contributionsUsd)}</NumericText>
-          </dd>
-        </div>
-        <div>
-          <dt>Withdrawals</dt>
-          <dd>
-            <NumericText>{formatUsd(change.withdrawalsUsd)}</NumericText>
-          </dd>
-        </div>
-        <div>
-          <dt>Boundary in / out</dt>
-          <dd>
-            <NumericText>{formatUsd(change.boundaryContributionsUsd)}</NumericText> /{" "}
-            <NumericText>{formatUsd(change.boundaryWithdrawalsUsd)}</NumericText>
-          </dd>
-        </div>
-        <div>
-          <dt>Completeness</dt>
-          <dd>
-            <CompletenessBadge value={change.completeness} />
-          </dd>
-        </div>
-      </dl>
-      {change.reasons.length > 0 ? (
-        <p className={shared.notice}>Limitations: {change.reasons.map(reasonText).join(", ")}.</p>
-      ) : null}
-      <DataTable
-        caption="Boundary Events in the range"
-        columns={BOUNDARY_COLUMNS}
-        rows={change.boundaryEvents.map((item) => boundaryEventRow(item, timezone))}
-        empty="No account entered or left the boundary in this range."
-      />
-    </div>
-  );
-}
 
-/** A point's total and instant; a missing point is an unknown value, and the timestamp never breaks. */
-function PointAt({ point, timezone }: { point: ValueChange["startPoint"]; timezone?: string }) {
-  if (!point) {
-    return "—";
-  }
-  return (
-    <>
-      <NumericText>{formatUsd(point.totalUsd)}</NumericText> at{" "}
-      <span className={shared.nowrap}>{formatInstant(point.evaluatedAt, timezone)}</span>
-    </>
+        <div className={styles.pointStatCard}>
+          <span className={styles.pointStatLabel}>Start Point</span>
+          <div className={styles.pointStatValue}>
+            {change.startPoint?.totalUsd ? (
+              <NumericText>{formatUsd(change.startPoint.totalUsd)}</NumericText>
+            ) : (
+              "—"
+            )}
+          </div>
+          <span className={styles.pointStatMeta}>
+            {change.startPoint
+              ? `at ${formatInstant(change.startPoint.evaluatedAt, timezone)}`
+              : "No start point"}
+          </span>
+        </div>
+
+        <div className={styles.pointStatCard}>
+          <span className={styles.pointStatLabel}>End Point</span>
+          <div className={styles.pointStatValue}>
+            {change.endPoint?.totalUsd ? (
+              <NumericText>{formatUsd(change.endPoint.totalUsd)}</NumericText>
+            ) : (
+              "—"
+            )}
+          </div>
+          <span className={styles.pointStatMeta}>
+            {change.endPoint
+              ? `at ${formatInstant(change.endPoint.evaluatedAt, timezone)}`
+              : "No end point"}
+          </span>
+        </div>
+
+        <div className={styles.pointStatCard}>
+          <span className={styles.pointStatLabel}>Flows</span>
+          <div className={styles.pointStatValue}>{combinedFlowsCell(change)}</div>
+          <span className={styles.pointStatMeta}>
+            {change.boundaryEvents.length === 0
+              ? "No boundary events"
+              : `${change.boundaryEvents.length} boundary event(s)`}
+          </span>
+        </div>
+      </div>
+
+      {change.completeness !== "complete" || change.reasons.length > 0 ? (
+        <div className={shared.metaStack}>
+          {change.completeness !== "complete" ? (
+            <div>
+              <span className={shared.cellMeta}>Completeness</span>
+              <div>
+                <CompletenessBadge value={change.completeness} silentWhenHealthy={false} />
+              </div>
+            </div>
+          ) : null}
+          {change.reasons.length > 0 ? (
+            <p className={shared.notice}>
+              Limitations: {change.reasons.map(reasonText).join(", ")}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {change.boundaryEvents.length > 0 ? (
+        <>
+          <h3>Boundary Events</h3>
+          <DataTable
+            caption="Boundary Events in the range"
+            columns={BOUNDARY_COLUMNS}
+            rows={change.boundaryEvents.map((item) => boundaryEventRow(item, timezone))}
+            empty="No account entered or left the boundary in this range."
+          />
+        </>
+      ) : null}
+    </div>
   );
 }

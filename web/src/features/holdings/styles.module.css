@@ -48,9 +48,21 @@
   margin-right: 1px;
 }
 
+.holdingsSummaryEnd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 .holdingsSummaryMeta {
   color: var(--faint);
   font-size: var(--text-xs);
+}
+
+.holdingsActionRow {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* Sub-sections of an expanded row: a quiet label sitting close to its table. */

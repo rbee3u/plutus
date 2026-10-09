@@ -1,5 +1,4 @@
 import type { EChartsCoreOption } from "echarts/core";
-import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import {
   getValuationPoint,
@@ -13,23 +12,25 @@ import type {
   ValuationPointDetail,
   ValuationPointList,
   ValuationPointPage,
-  ValuationPointSummary,
 } from "@/api";
-import { chartNumber, formatAmount, isZeroDecimal } from "@/shared/lib/amount";
+import { chartNumber, formatAmount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { readChoice } from "@/shared/lib/searchParams";
-import { accountSummary, capitalize, reasonText } from "@/shared/lib/text";
-import { CompletenessBadge } from "@/shared/ui/Badge";
+import { capitalize } from "@/shared/lib/text";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
-import { DataTable, type DataRow } from "@/shared/ui/DataTable";
+import { DataTable } from "@/shared/ui/DataTable";
 import { Select } from "@/shared/ui/FormControls";
-import { iconSize } from "@/shared/icons/iconSizes";
-import { IconButton } from "@/shared/ui/IconButton";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { HistoryFilters, HistoryPager } from "../components/HistoryFilters";
 import { PointDetail, POINT_DETAIL_ID } from "../components/PointDetail";
 import { useHistoryPager, useHistoryWindow } from "../hooks/useHistoryWindow";
 import { historyGranularity, PERIOD_KINDS } from "@/features/history/lib/timeWindow";
+import {
+  PERIOD_CLOSE_COLUMNS,
+  RAW_POINT_COLUMNS,
+  periodCloseRow,
+  rawPointRow,
+} from "../lib/valuationPointRows";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
@@ -159,35 +160,14 @@ export function ValuationPointsPage() {
         <QueryRecovery query={closes} fallback="Period closes could not be loaded." />
         <DataTable
           caption={`Period closes per ${periodKind}`}
-          columns={[
-            { key: "label", header: "Period" },
-            { key: "totalUsd", header: "Close (USD)", numeric: true },
-            { key: "evaluatedAt", header: "Point evaluated", nowrap: true },
-            { key: "completeness", header: "Completeness" },
-            { key: "reasons", header: "Missing" },
-          ]}
+          columns={PERIOD_CLOSE_COLUMNS}
           rows={closeItems
             .slice(closePager.offset, closePager.offset + closePager.limit)
-            .map((item) => ({
-              id: `${item.periodKind}-${item.periodStart}`,
-              label: (
-                <span className={shared.cellStack}>
-                  <span>{item.label}</span>
-                  <span className={`${shared.cellMeta} ${shared.nowrap}`}>
-                    {formatInstant(item.periodStart, timezone)} –{" "}
-                    {formatInstant(item.periodEnd, timezone)}
-                  </span>
-                </span>
-              ),
-              totalUsd: item.point ? (
-                formatAmount(item.point.totalUsd)
-              ) : (
-                <span className={shared.cellMeta}>no point</span>
-              ),
-              evaluatedAt: item.point ? formatInstant(item.point.evaluatedAt, timezone) : "—",
-              completeness: item.point ? <CompletenessBadge value={item.completeness} /> : "—",
-              reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
-            }))}
+            .map((item, index) => {
+              const globalIndex = closePager.offset + index;
+              const prevItem = closeItems[globalIndex + 1];
+              return periodCloseRow(item, prevItem, timezone);
+            })}
           empty={
             closes.isPending
               ? "Loading period closes."
@@ -218,17 +198,11 @@ export function ValuationPointsPage() {
               {detail.isPending ? <p className={shared.muted}>Loading the point.</p> : null}
             </>
           )}
-          columns={[
-            { key: "evaluatedAt", header: "Evaluated at", nowrap: true },
-            { key: "totalUsd", header: "Total (USD)", numeric: true },
-            { key: "completeness", header: "Completeness" },
-            { key: "accounts", header: "Accounts" },
-            { key: "boundary", header: "Boundary (USD)", numeric: true },
-            { key: "actions", header: "" },
-          ]}
-          rows={(records.data?.items ?? []).map((item) =>
-            pointRow(item, timezone, pointId, update),
-          )}
+          columns={RAW_POINT_COLUMNS}
+          rows={(records.data?.items ?? []).map((item, index, items) => {
+            const prevItem = items[index + 1];
+            return rawPointRow(item, prevItem, timezone, pointId, update);
+          })}
         />
         <HistoryPager
           label="Raw Valuation Points"
@@ -239,48 +213,4 @@ export function ValuationPointsPage() {
       </section>
     </section>
   );
-}
-
-function pointRow(
-  item: ValuationPointSummary,
-  timezone: string | undefined,
-  selectedId: string,
-  update: (next: Record<string, string>) => void,
-): DataRow {
-  const open = selectedId === item.id;
-  const evaluatedAt = formatInstant(item.evaluatedAt, timezone);
-  return {
-    id: item.id,
-    evaluatedAt,
-    totalUsd: formatAmount(item.totalUsd),
-    completeness: <CompletenessBadge value={item.completeness} />,
-    accounts: accountSummary(
-      item.accountCount,
-      item.staleAccountCount,
-      item.incompleteAccountCount,
-    ),
-    // A known zero on both sides is one quiet figure, not a signed pair.
-    boundary:
-      isZeroDecimal(item.boundaryContributionUsd) && isZeroDecimal(item.boundaryWithdrawalUsd) ? (
-        <span className={shared.cellMeta}>{formatAmount(item.boundaryContributionUsd)}</span>
-      ) : (
-        `+${formatAmount(item.boundaryContributionUsd)} / −${formatAmount(item.boundaryWithdrawalUsd)}`
-      ),
-    actions: (
-      <span className={shared.rowActions}>
-        <IconButton
-          label={`${open ? "Collapse" : "Expand"} the Valuation Point at ${evaluatedAt}`}
-          aria-expanded={open}
-          aria-controls={open ? POINT_DETAIL_ID : undefined}
-          onClick={() => update({ point: open ? "" : item.id })}
-        >
-          <ChevronRight
-            size={iconSize.sm}
-            aria-hidden="true"
-            className={open ? shared.chevronOpen : shared.chevron}
-          />
-        </IconButton>
-      </span>
-    ),
-  };
 }

@@ -10,12 +10,14 @@ export function HoldingsSummary({
   value,
   badge,
   children,
+  action,
 }: {
   context: ReadContext;
   label: string;
   value: ReactNode;
   badge?: ReactNode;
   children?: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className={styles.holdingsSummaryBar}>
@@ -24,13 +26,16 @@ export function HoldingsSummary({
         <span className={styles.holdingsSummaryValue}>{value}</span>
         {badge}
       </div>
-      <div className={styles.holdingsSummaryMeta}>
-        {children}
-        <span>
-          {context.evaluatedAt
-            ? `Evaluated ${formatInstant(context.evaluatedAt, context.timezone)} · ${context.timezone}`
-            : `Times in ${context.timezone}`}
-        </span>
+      <div className={styles.holdingsSummaryEnd}>
+        <div className={styles.holdingsSummaryMeta}>
+          {children}
+          <span>
+            {context.evaluatedAt
+              ? `Evaluated ${formatInstant(context.evaluatedAt, context.timezone)} · ${context.timezone}`
+              : `Times in ${context.timezone}`}
+          </span>
+        </div>
+        {action}
       </div>
     </div>
   );

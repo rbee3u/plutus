@@ -80,6 +80,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   running: "info",
   calculated: "info",
   manual: "info",
+  ignored: "warn",
 };
 
 /** Badge for a server status word; unknown words render neutrally. */

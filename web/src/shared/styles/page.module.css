@@ -269,11 +269,50 @@
 .cellStack {
   display: grid;
   gap: var(--space-2xs);
+  justify-items: start;
 }
 
 .cellMeta {
   color: var(--muted);
   font-size: var(--text-xs);
+}
+
+.emptyCell {
+  padding: 48px var(--space-xl) !important;
+  text-align: center;
+  color: var(--muted);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) 0;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.emptyStateTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+}
+
+.emptyStateHelp {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: var(--line-height-sm);
+}
+
+.tabularDate {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 /* Margin keeps its content width instead of taking a share of spare table space. */
@@ -287,9 +326,22 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2xs);
+  gap: var(--space-xs);
   margin: -4px 0;
   white-space: nowrap;
+  opacity: 0.65;
+  transition: opacity var(--transition-fast);
+}
+
+.tableWrap tr:hover .rowActions,
+.tableWrap tr:focus-within .rowActions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+  }
 }
 
 .rowActions button {

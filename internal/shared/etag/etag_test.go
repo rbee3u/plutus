@@ -38,3 +38,27 @@ func TestParseRejectsMalformed(t *testing.T) {
 		}
 	}
 }
+
+func TestParseAllowZero(t *testing.T) {
+	t.Parallel()
+
+	if version, ok := ParseAllowZero("listing-exclusion", `"listing-exclusion:0"`); !ok || version != 0 {
+		t.Fatalf("ParseAllowZero() = %d, %v; want 0, true", version, ok)
+	}
+	if version, ok := Parse("listing-exclusion", `"listing-exclusion:0"`); ok {
+		t.Fatalf("Parse() = %d, true; want rejected", version)
+	}
+
+	for _, value := range []string{
+		"",
+		`"listing-exclusion:"`,
+		`"listing-exclusion:01"`,
+		`"listing-exclusion:-0"`,
+		`"listing-exclusion:0"x`,
+		`W/"listing-exclusion:0"`,
+	} {
+		if version, ok := ParseAllowZero("listing-exclusion", value); ok {
+			t.Fatalf("ParseAllowZero(%q) = %d, true; want rejected", value, version)
+		}
+	}
+}

@@ -30,6 +30,7 @@ import {
   type TabProps,
 } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
+import manageStyles from "../styles.module.css";
 
 export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
   const { userId } = useSessionScope();
@@ -75,6 +76,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
           {
             key: "platform",
             header: "Platform",
+            nowrap: true,
             headerContent: (
               <TableFilterHeader
                 label="Platform"
@@ -97,13 +99,12 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             headerContent: (
               <TableFilterHeader
                 label="Asset"
-                display={filters.qDraft || "All"}
+                display={filters.qDraft}
                 active={Boolean(q || filters.qDraft)}
                 open={filters.open === "q"}
                 type="search"
                 searchDraft={filters.qDraft}
-                searchPlaceholder="Symbol or name, e.g. BTC"
-                searchHelp="Matches symbol or asset name, ignoring case."
+                searchPlaceholder="Filter symbol or name"
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}
@@ -114,18 +115,19 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             ),
           },
           {
-            key: "treatment",
-            header: "Treatment",
+            key: "status",
+            header: "Status",
+            nowrap: true,
             headerContent: (
               <TableFilterHeader
-                label="Treatment"
-                display={filters.treatmentName}
+                label="Status"
+                display={filters.statusName}
                 active={ignoredOnly}
-                open={filters.open === "treatment"}
+                open={filters.open === "status"}
                 type="select"
-                options={filters.treatmentOptions}
+                options={filters.statusOptions}
                 selectedValue={ignoredOnly ? "true" : ""}
-                onToggle={() => filters.toggle("treatment")}
+                onToggle={() => filters.toggle("status")}
                 onClose={filters.close}
                 onClear={() => filters.change({ ignoredOnly: false })}
                 onSelect={(val) => filters.change({ ignoredOnly: val === "true" })}
@@ -133,81 +135,93 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             ),
           },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
-          { key: "actions", header: "", nowrap: true },
+          { key: "actions", header: "Actions", nowrap: true, numeric: true },
         ]}
-        rows={(query.data?.items ?? []).map((item) => ({
-          id: item.id,
-          platform: platformLabel(platforms.data?.items, item.platform),
-          asset: (
-            <span className={shared.cellStack}>
-              <span
-                style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
-              >
-                <strong>{item.assetSymbol}</strong>
-                {item.mappingSource && item.mappingSource !== "auto" ? (
-                  <Badge tone="info">{item.mappingSource}</Badge>
+        rows={(query.data?.items ?? []).map((item) => {
+          const isMapped = item.symbol !== item.assetSymbol;
+
+          return {
+            id: item.id,
+            platform: platformLabel(platforms.data?.items, item.platform),
+            asset: (
+              <span className={shared.cellStack}>
+                <span
+                  style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
+                >
+                  <strong style={{ letterSpacing: "0.02em" }}>{item.assetSymbol}</strong>
+                  {isMapped ? <Badge tone="info">mapped</Badge> : null}
+                </span>
+                {isMapped ? (
+                  <span className={shared.cellMeta}>Listed as: {item.symbol}</span>
                 ) : null}
               </span>
-              <span className={shared.cellMeta}>
-                {item.name ? item.name : null}
-                {item.symbol !== item.assetSymbol
-                  ? `${item.name ? " · " : ""}platform: ${item.symbol}`
-                  : null}
+            ),
+            status: item.ignored ? (
+              <span className={shared.cellStack}>
+                <StatusBadge value="ignored" />
+                <span className={shared.cellMeta}>
+                  {item.ignoreReason ? `${item.ignoreReason} · ` : ""}
+                  {item.ignoredAt ? formatInstant(item.ignoredAt, timezone) : "Reviewed"}
+                </span>
               </span>
-            </span>
-          ),
-          treatment: item.ignored ? (
-            <span className={shared.cellStack}>
-              <StatusBadge value="ignored" />
-              <span className={shared.cellMeta}>
-                {item.ignoredAt
-                  ? `Reviewed ${formatInstant(item.ignoredAt, timezone)}`
-                  : "Reviewed"}
+            ) : (
+              <span className={shared.cellMeta}>Active</span>
+            ),
+            lastSeenAt: (
+              <span className={shared.tabularDate}>{formatInstant(item.lastSeenAt, timezone)}</span>
+            ),
+            actions: (
+              <span className={shared.rowActions}>
+                <ActionButton
+                  type="button"
+                  tone="ghost"
+                  onClick={() => {
+                    setNotice(null);
+                    nonce.current += 1;
+                    setRequest({ nonce: nonce.current, item });
+                  }}
+                >
+                  Map
+                </ActionButton>
+                <ActionButton
+                  type="button"
+                  tone="ghost"
+                  onClick={() => {
+                    setNotice(null);
+                    nonce.current += 1;
+                    setExclusionRequest({ nonce: nonce.current, item });
+                  }}
+                >
+                  {item.ignored ? "Restore" : "Ignore"}
+                </ActionButton>
               </span>
-              {item.ignoreReason ? (
-                <details>
-                  <summary>Reason</summary>
-                  {item.ignoreReason}
-                </details>
-              ) : null}
-            </span>
-          ) : (
-            "Included"
-          ),
-          lastSeenAt: formatInstant(item.lastSeenAt, timezone),
-          actions: (
-            <span className={shared.rowActions}>
-              <ActionButton
-                type="button"
-                tone="ghost"
-                onClick={() => {
-                  setNotice(null);
-                  nonce.current += 1;
-                  setRequest({ nonce: nonce.current, item });
-                }}
-              >
-                Map
-              </ActionButton>
-              <ActionButton
-                type="button"
-                tone="ghost"
-                onClick={() => {
-                  setNotice(null);
-                  nonce.current += 1;
-                  setExclusionRequest({ nonce: nonce.current, item });
-                }}
-              >
-                {item.ignored ? "Restore" : "Ignore"}
-              </ActionButton>
-            </span>
-          ),
-        }))}
+            ),
+          };
+        })}
         empty={
-          query.isPending
-            ? "Loading asset listings."
-            : q || platform || ignoredOnly
-              ? "No listing matches these filters."
-              : "No asset listings yet. Listings appear after the first Collection Cycle reports balances."
+          query.isPending ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>Loading asset listings...</p>
+            </div>
+          ) : q || platform || ignoredOnly ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No listings match these filters</p>
+              <p className={shared.emptyStateHelp}>
+                Try adjusting your search query, platform, or status filter.
+              </p>
+              <ActionButton type="button" tone="secondary" onClick={filters.reset}>
+                Clear filters
+              </ActionButton>
+            </div>
+          ) : (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No asset listings recorded yet</p>
+              <p className={shared.emptyStateHelp}>
+                Asset listings will appear automatically once platform identities are connected and
+                sync.
+              </p>
+            </div>
+          )
         }
       />
       <TableFilterFooter
@@ -241,7 +255,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
         title={
           exclusionRequest
             ? `${exclusionRequest.item.ignored ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
-            : "Listing treatment"
+            : "Listing status"
         }
         onClose={() => setExclusionRequest(null)}
       >
@@ -264,6 +278,13 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
   );
 }
 
+const EXCLUSION_REASON_PRESETS = [
+  "Dust balance",
+  "Spam / Airdrop",
+  "Delisted asset",
+  "Duplicate listing",
+];
+
 function ExclusionForm({
   portfolioId,
   item,
@@ -276,6 +297,8 @@ function ExclusionForm({
   onDone: (message: string) => Promise<void>;
 }) {
   const write = useAuthenticatedWrite();
+  const platforms = usePlatforms();
+  const platform = platformLabel(platforms.data?.items, item.platform);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -299,19 +322,19 @@ function ExclusionForm({
       );
       if (result.response?.status === 412) {
         await onDone(
-          "The listing treatment changed in another session. The list was reloaded; open it again.",
+          "The listing status changed in another session. The list was reloaded; open it again.",
         );
         return;
       }
       if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The listing treatment could not be saved."));
+        setError(problemMessage(result.error, "The listing status could not be saved."));
         return;
       }
       await onDone(
-        `${result.data.platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
+        `${platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
-      setError(problemMessage(cause, "The listing treatment could not be saved."));
+      setError(problemMessage(cause, "The listing status could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -320,28 +343,50 @@ function ExclusionForm({
   return (
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
-        {ignoring ? "Ignoring" : "Restoring"} {item.platform} {item.symbol} affects this Portfolio
-        from the next Collection Cycle. Only Accounts calculated from Balances change; Accounts
-        using Platform reported equity keep this Balance and their reported total. Earlier Valuation
-        Points remain unchanged.
+        {ignoring
+          ? `Exclude ${platform} · ${item.symbol} from portfolio balances and valuations starting from the next cycle.`
+          : `Include ${platform} · ${item.symbol} in portfolio balances and valuations starting from the next cycle.`}
       </p>
-      {item.ignored && item.ignoreReason ? <p>Review reason: {item.ignoreReason}</p> : null}
+      {item.ignored && item.ignoreReason ? (
+        <div className={manageStyles.reasonCallout}>
+          <span className={manageStyles.reasonCalloutLabel}>Current exclusion reason</span>
+          <span className={manageStyles.reasonCalloutText}>“{item.ignoreReason}”</span>
+        </div>
+      ) : null}
       {error ? (
         <p className={shared.alert} role="alert">
           {error}
         </p>
       ) : null}
       {ignoring ? (
-        <label className={shared.field}>
+        <div className={shared.field}>
           <span>Review reason</span>
+          <div className={manageStyles.presetChips}>
+            <span className={manageStyles.presetLabel}>Quick reasons:</span>
+            {EXCLUSION_REASON_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={manageStyles.presetChip}
+                onClick={() => {
+                  setReason(preset);
+                  setError(null);
+                }}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
           <TextArea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
+            placeholder="Select a quick reason above or enter custom review notes..."
             maxLength={500}
+            rows={3}
             autoFocus
             required
           />
-        </label>
+        </div>
       ) : null}
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
@@ -373,10 +418,13 @@ function MappingForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const trimmedSymbol = assetSymbol.trim().toUpperCase();
+  const isUnchanged = trimmedSymbol === item.assetSymbol;
+  const isCustomMapped = item.symbol !== item.assetSymbol;
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const symbol = assetSymbol.trim().toUpperCase();
-    if (!symbol) {
+    if (!trimmedSymbol) {
       setError("Enter the Asset symbol this listing should merge into.");
       return;
     }
@@ -387,7 +435,7 @@ function MappingForm({
         putAssetListingMapping({
           path: { portfolioId, listingId: item.id },
           headers: { "If-Match": listingEtag(item) },
-          body: { assetSymbol: symbol },
+          body: { assetSymbol: trimmedSymbol },
         }),
       );
       if (result.response?.status === 412) {
@@ -413,9 +461,29 @@ function MappingForm({
   return (
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
-        Assets merge by symbol across Platforms. Map {platform} {item.symbol}
-        {item.name ? ` (${item.name})` : ""} to the symbol that names the same Asset elsewhere.
+        Map {platform} · {item.symbol} to a canonical asset symbol across your portfolio.
       </p>
+      <div className={manageStyles.mappingFlowCard}>
+        <div className={manageStyles.mappingFlowSource}>
+          <span className={manageStyles.mappingFlowLabel}>Source listing</span>
+          <span className={manageStyles.mappingFlowSymbol}>{item.symbol}</span>
+          <span className={manageStyles.mappingFlowPlatform}>{platform}</span>
+        </div>
+        <div className={manageStyles.mappingFlowArrow} aria-hidden="true">
+          ➔
+        </div>
+        <div className={manageStyles.mappingFlowTarget}>
+          <span className={manageStyles.mappingFlowLabel}>Canonical asset</span>
+          <span className={manageStyles.mappingFlowSymbol}>{trimmedSymbol || "—"}</span>
+          <span className={manageStyles.mappingFlowPlatform}>
+            {isCustomMapped && trimmedSymbol !== item.symbol
+              ? "Custom mapped"
+              : isUnchanged
+                ? "Native (1:1)"
+                : "New target"}
+          </span>
+        </div>
+      </div>
       {error ? (
         <p className={shared.alert} role="alert">
           {error}
@@ -425,19 +493,40 @@ function MappingForm({
         <span>Asset symbol</span>
         <TextInput
           value={assetSymbol}
-          onChange={(event) => setAssetSymbol(event.target.value)}
+          onChange={(event) => setAssetSymbol(event.target.value.toUpperCase())}
           maxLength={32}
           autoFocus
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontWeight: "var(--weight-semibold)",
+            letterSpacing: "0.04em",
+          }}
           required
         />
       </label>
+      {isCustomMapped && trimmedSymbol !== item.symbol ? (
+        <p className={shared.cellMeta}>
+          Mapped from native {item.symbol}.{" "}
+          <ActionButton type="button" tone="ghost" onClick={() => setAssetSymbol(item.symbol)}>
+            Reset to native ({item.symbol})
+          </ActionButton>
+        </p>
+      ) : null}
       <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
+        <ActionButton type="submit" tone="primary" disabled={busy || isUnchanged}>
           Save mapping
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
         </ActionButton>
+        {isUnchanged ? (
+          <span className={shared.cellMeta} style={{ marginInlineStart: "auto" }}>
+            Unchanged
+          </span>
+        ) : null}
       </div>
     </form>
   );

@@ -4,7 +4,7 @@ import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
 
-export type CatalogFilterKey = "platform" | "q" | "treatment";
+export type CatalogFilterKey = "platform" | "q" | "treatment" | "status";
 
 export interface CatalogFilterValues {
   platform: string;
@@ -120,10 +120,12 @@ export function useCatalogFilters() {
     })),
   ];
 
-  const treatmentOptions = [
+  const statusOptions = [
     { value: "", label: "All" },
-    { value: "true", label: "Ignored listings" },
+    { value: "true", label: "Ignored only" },
   ];
+
+  const treatmentOptions = statusOptions;
 
   return {
     values,
@@ -166,6 +168,8 @@ export function useCatalogFilters() {
     platforms,
     platformOptions,
     platformName: platformLabel(platforms.data?.items, values.platform),
+    statusOptions,
+    statusName: values.ignoredOnly ? "Ignored" : "All",
     treatmentOptions,
     treatmentName: values.ignoredOnly ? "Ignored" : "All",
   };

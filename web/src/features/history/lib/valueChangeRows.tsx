@@ -3,22 +3,20 @@ import type { ValueChange } from "@/api";
 import { formatAmount, formatUsd, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { reasonText } from "@/shared/lib/text";
-import { CompletenessBadge } from "@/shared/ui/Badge";
+import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
+import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { type DataRow } from "@/shared/ui/DataTable";
 import shared from "@/shared/styles/page.module.css";
 
 export const VALUE_CHANGE_COLUMNS = [
   { key: "label", header: "Period" },
   { key: "amountUsd", header: "Value change (USD)", numeric: true },
-  { key: "start", header: "Start", numeric: true },
-  { key: "end", header: "End", numeric: true },
-  { key: "capitalFlows", header: "Capital flows", numeric: true },
-  { key: "boundaryFlows", header: "Boundary flows", numeric: true },
-  { key: "completeness", header: "Completeness" },
-  { key: "reasons", header: "Limitations" },
+  { key: "end", header: "Close (USD)", numeric: true },
+  { key: "flows", header: "Flows", numeric: true },
+  { key: "issues", header: "Issues" },
 ];
 
-export function valueChangeCell(amount: string | null | undefined) {
+export function valueChangeCell(amount: string | null | undefined, startAmount?: string | null) {
   const parsed = parseDecimal(amount);
   if (!parsed) {
     return <span className={shared.muted}>—</span>;
@@ -31,52 +29,99 @@ export function valueChangeCell(amount: string | null | undefined) {
     : isNegative
       ? shared.pnlNegative
       : shared.pnlNeutral;
+
+  const start = parseDecimal(startAmount);
+  let pctText = "";
+  if (start && !start.isZero()) {
+    const pct = parsed.dividedBy(start.abs()).times(100);
+    const pctSign = pct.gt(0) ? "+" : pct.lt(0) ? "" : "";
+    pctText = ` (${pctSign}${pct.toFixed(2)}%)`;
+  }
+
   return (
     <span className={className}>
-      <NumericText>{`${sign}$${formatAmount(parsed.abs().toFixed())}`}</NumericText>
+      <NumericText>{`${sign}$${formatAmount(parsed.abs().toFixed())}${pctText}`}</NumericText>
     </span>
   );
 }
 
-function balanceCell(point: ValueChange["startPoint"]) {
-  if (!point || !point.totalUsd) {
+export function combinedFlowsCell(item: ValueChange) {
+  const inCap = parseDecimal(item.contributionsUsd);
+  const outCap = parseDecimal(item.withdrawalsUsd);
+  const inBnd = parseDecimal(item.boundaryContributionsUsd);
+  const outBnd = parseDecimal(item.boundaryWithdrawalsUsd);
+
+  const hasCapIn = inCap && !inCap.isZero();
+  const hasCapOut = outCap && !outCap.isZero();
+  const hasBndIn = inBnd && !inBnd.isZero();
+  const hasBndOut = outBnd && !outBnd.isZero();
+
+  if (!hasCapIn && !hasCapOut && !hasBndIn && !hasBndOut) {
     return <span className={shared.muted}>—</span>;
   }
-  return <NumericText>{formatUsd(point.totalUsd)}</NumericText>;
-}
 
-function flowsCell(inflow: string | null | undefined, outflow: string | null | undefined) {
-  const inVal = parseDecimal(inflow);
-  const outVal = parseDecimal(outflow);
-  const hasIn = inVal && !inVal.isZero();
-  const hasOut = outVal && !outVal.isZero();
-
-  if (!hasIn && !hasOut) {
-    return <span className={shared.muted}>—</span>;
-  }
-  if (hasIn && !hasOut) {
-    return (
-      <span className={shared.pnlPositive}>
-        <NumericText>{`+$${formatAmount(inVal.toFixed())}`}</NumericText>
-      </span>
-    );
-  }
-  if (!hasIn && hasOut) {
-    return (
-      <span className={shared.pnlNegative}>
-        <NumericText>{`-$${formatAmount(outVal.toFixed())}`}</NumericText>
-      </span>
-    );
-  }
   return (
     <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
-      <span className={shared.pnlPositive}>
-        <NumericText>{`+$${formatAmount(inVal!.toFixed())}`}</NumericText>
-      </span>
-      <span className={shared.pnlNegative}>
-        <NumericText>{`-$${formatAmount(outVal!.toFixed())}`}</NumericText>
-      </span>
+      {inCap && !inCap.isZero() ? (
+        <span className={shared.pnlPositive}>
+          <NumericText>{`+$${formatAmount(inCap.toFixed())} Cap`}</NumericText>
+        </span>
+      ) : null}
+      {outCap && !outCap.isZero() ? (
+        <span className={shared.pnlNegative}>
+          <NumericText>{`-$${formatAmount(outCap.toFixed())} Cap`}</NumericText>
+        </span>
+      ) : null}
+      {inBnd && !inBnd.isZero() ? (
+        <span className={shared.pnlPositive}>
+          <NumericText>{`+$${formatAmount(inBnd.toFixed())} Bnd`}</NumericText>
+        </span>
+      ) : null}
+      {outBnd && !outBnd.isZero() ? (
+        <span className={shared.pnlNegative}>
+          <NumericText>{`-$${formatAmount(outBnd.toFixed())} Bnd`}</NumericText>
+        </span>
+      ) : null}
     </span>
+  );
+}
+
+export function valueChangeIssuesCell(item: ValueChange) {
+  const isHealthy = item.completeness === "complete" && item.reasons.length === 0;
+  if (isHealthy) {
+    return <span className={shared.muted}>—</span>;
+  }
+
+  const trigger =
+    item.completeness !== "complete" ? (
+      <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
+    ) : (
+      <Badge tone="warn">
+        {item.reasons.length === 1 ? "1 note" : `${item.reasons.length} notes`}
+      </Badge>
+    );
+
+  return (
+    <HoverDetails name={`Issues for ${item.label}`} label={trigger}>
+      <div className={shared.metaStack}>
+        <div>
+          <span className={shared.cellMeta}>Completeness</span>
+          <div>
+            <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
+          </div>
+        </div>
+        {item.reasons.length > 0 ? (
+          <div>
+            <span className={shared.cellMeta}>Limitations</span>
+            <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
+              {item.reasons.map((reason, i) => (
+                <li key={i}>{reasonText(reason)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </HoverDetails>
   );
 }
 
@@ -91,12 +136,20 @@ export function valueChangeRow(item: ValueChange, timezone?: string): DataRow {
         </span>
       </span>
     ),
-    amountUsd: valueChangeCell(item.amountUsd),
-    start: balanceCell(item.startPoint),
-    end: balanceCell(item.endPoint),
-    capitalFlows: flowsCell(item.contributionsUsd, item.withdrawalsUsd),
-    boundaryFlows: flowsCell(item.boundaryContributionsUsd, item.boundaryWithdrawalsUsd),
-    completeness: <CompletenessBadge value={item.completeness} />,
-    reasons: item.reasons.length > 0 ? item.reasons.map(reasonText).join(", ") : "—",
+    amountUsd: valueChangeCell(item.amountUsd, item.startPoint?.totalUsd),
+    end: (
+      <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+        {item.endPoint?.totalUsd ? (
+          <NumericText>{formatUsd(item.endPoint.totalUsd)}</NumericText>
+        ) : (
+          <span className={shared.muted}>—</span>
+        )}
+        {item.startPoint?.totalUsd ? (
+          <span className={shared.cellMeta}>from {formatAmount(item.startPoint.totalUsd)}</span>
+        ) : null}
+      </span>
+    ),
+    flows: combinedFlowsCell(item),
+    issues: valueChangeIssuesCell(item),
   };
 }

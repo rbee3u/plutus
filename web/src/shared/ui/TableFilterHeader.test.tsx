@@ -37,7 +37,26 @@ describe("TableFilterHeader", () => {
     expect(html).toContain('aria-label="Clear Platform filter"');
   });
 
-  it("uses dialog popup for search type", () => {
+  it("renders search type without badge when inactive", () => {
+    const html = renderToStaticMarkup(
+      <TableFilterHeader
+        label="Asset"
+        display=""
+        active={false}
+        open={false}
+        type="search"
+        onToggle={() => {}}
+        onClose={() => {}}
+        onClear={() => {}}
+      />,
+    );
+    expect(html).toContain('aria-label="Search Asset"');
+    expect(html).toContain("Asset");
+    expect(html).not.toContain("All");
+    expect(html).not.toContain('aria-label="Clear Asset filter"');
+  });
+
+  it("uses dialog popup for search type when active", () => {
     const html = renderToStaticMarkup(
       <TableFilterHeader
         label="Asset"
@@ -51,6 +70,8 @@ describe("TableFilterHeader", () => {
       />,
     );
     expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).toContain('aria-label="Filter Asset: BTC"');
+    expect(html).toContain("BTC");
     expect(html).toContain('aria-label="Clear Asset filter"');
   });
 });

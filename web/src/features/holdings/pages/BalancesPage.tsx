@@ -41,14 +41,14 @@ export function BalancesPage() {
   });
   const data = query.data;
   const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
+  const addManualButton = (
+    <ActionButton tone="secondary" onClick={() => setManualTarget({ identityId })}>
+      <Plus size={iconSize.sm} aria-hidden="true" /> Add manual balance
+    </ActionButton>
+  );
+
   return (
     <section className={shared.wide}>
-      <div className={shared.headingRow}>
-        <h2>Balances</h2>
-        <ActionButton tone="secondary" onClick={() => setManualTarget({ identityId })}>
-          <Plus size={iconSize.sm} aria-hidden="true" /> Add manual balance
-        </ActionButton>
-      </div>
       <HoldingsListRecovery
         query={query}
         filters={filters}
@@ -65,8 +65,11 @@ export function BalancesPage() {
             </>
           }
           badge={<CompletenessBadge value={data.completeness} />}
+          action={addManualButton}
         />
-      ) : null}
+      ) : (
+        <div className={styles.holdingsActionRow}>{addManualButton}</div>
+      )}
       <DataTable
         caption="Balances"
         columns={[

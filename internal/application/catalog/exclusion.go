@@ -71,7 +71,7 @@ func (l *Listing) ExclusionETag() string {
 
 // ParseExclusionETag extracts the Portfolio-specific version.
 func ParseExclusionETag(value string) (uint64, bool) {
-	return etag.Parse("listing-exclusion", value)
+	return etag.ParseAllowZero("listing-exclusion", value)
 }
 
 // ExclusionInput changes one Portfolio's treatment of a Platform listing.

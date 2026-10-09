@@ -166,7 +166,7 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
     "Unrealized PnL",
     "Margin",
     "Notional (USD)",
-    "Observed",
+    "Issues",
   ]);
   await symbol.hover();
   const details = page.getByRole("tooltip");

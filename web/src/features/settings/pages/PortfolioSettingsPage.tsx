@@ -312,14 +312,8 @@ function SettingsForms({
               </button>
             ) : null}
           </div>
-          <Select
-            value={timezone}
-            onChange={(event) => setTimezone(event.target.value)}
-            required
-          >
-            {!isKnownTimezone && timezone ? (
-              <option value={timezone}>{timezone}</option>
-            ) : null}
+          <Select value={timezone} onChange={(event) => setTimezone(event.target.value)} required>
+            {!isKnownTimezone && timezone ? <option value={timezone}>{timezone}</option> : null}
             {TIMEZONE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}

@@ -1,4 +1,4 @@
-// Keep the geometry in sync with the favicon SVG variants and their raster ICO.
+// Keep the geometry in sync with the favicon SVG and its raster ICO.
 export function PlutusIcon({ size }: { size: number }) {
   return (
     <svg

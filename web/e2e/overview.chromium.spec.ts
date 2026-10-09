@@ -661,7 +661,7 @@ test("Overview shares Earn columns without ownership and rejects mismatched repo
     "Rewards",
     "Subscribed",
     "Status",
-    "Observed",
+    "Issues",
   ]);
   await expect(table.locator("tbody > tr")).toHaveCount(1);
   expect(state.requests.some((path) => path.includes("/accounts/earn/positions"))).toBe(false);

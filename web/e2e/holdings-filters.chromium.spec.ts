@@ -65,7 +65,7 @@ test("Earn keeps multiasset products and accessible details on mobile", async ({
     "Rewards",
     "Subscribed",
     "Status",
-    "Observed",
+    "Issues",
   ]);
   await expect(page.getByRole("row")).toHaveCount(2);
   await expect(
@@ -293,13 +293,15 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
     "Equity (USD)",
     "Liability",
     "Unrealized PnL",
-    "Observed",
+    "Issues",
   ]);
   await expect(page.getByRole("cell", { name: "XBT as BTC" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "2026-10-02 08:00 Stale" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Stale" })).toBeVisible();
   const stale = page.getByRole("button", { name: "Stale report for XBT" });
   await stale.focus();
-  await expect(page.getByRole("tooltip")).toHaveText("Funding rate limited; previous report used.");
+  await expect(page.getByRole("tooltip")).toContainText(
+    "Funding rate limited; previous report used.",
+  );
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toBeHidden();
   await page.getByRole("button", { name: "Filter Asset: All" }).click();
@@ -314,7 +316,7 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
   state.balanceIssues = [];
   await page.reload();
   await stale.click();
-  await expect(page.getByRole("tooltip")).toHaveText(
+  await expect(page.getByRole("tooltip")).toContainText(
     "An earlier successful Account Report is carried forward.",
   );
   expect(state.mutations).toHaveLength(0);

@@ -1,15 +1,44 @@
 import { keys, listInstruments } from "@/api";
-import type { InstrumentList } from "@/api";
+import type { Instrument, InstrumentList } from "@/api";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { ActionButton } from "@/shared/ui/ActionButton";
+import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
+import shared from "@/shared/styles/page.module.css";
+
+function formatContractSize(item: Instrument): string {
+  const isInverse = item.kind.includes("inverse");
+  const unit = isInverse ? item.quoteSymbol : item.baseSymbol;
+  const size = formatDecimal(item.contractSize);
+  return size !== "—" && unit ? `${size} ${unit}` : size;
+}
+
+function renderInstrumentKind(kind: string) {
+  const isPerp = kind.includes("perpetual");
+  const isDelivery = kind.includes("delivery");
+  const isInverse = kind.includes("inverse");
+  const margin = isInverse ? "Inverse" : "Linear";
+  const typeLabel = isPerp
+    ? "PERP"
+    : isDelivery
+      ? "DELIVERY"
+      : capitalize(kind.replaceAll("_", " "));
+
+  return (
+    <span className={shared.cellStack}>
+      <Badge tone={isPerp ? "info" : isDelivery ? "warn" : "neutral"}>{typeLabel}</Badge>
+      <span className={shared.cellMeta}>{margin}</span>
+    </span>
+  );
+}
 
 export function InstrumentsTab({ filters, timezone }: TabProps) {
   const { platform, q } = filters.values;
@@ -33,6 +62,7 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
           {
             key: "platform",
             header: "Platform",
+            nowrap: true,
             headerContent: (
               <TableFilterHeader
                 label="Platform"
@@ -52,16 +82,16 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
           {
             key: "symbol",
             header: "Symbol",
+            nowrap: true,
             headerContent: (
               <TableFilterHeader
                 label="Symbol"
-                display={filters.qDraft || "All"}
+                display={filters.qDraft}
                 active={Boolean(q || filters.qDraft)}
                 open={filters.open === "q"}
                 type="search"
                 searchDraft={filters.qDraft}
-                searchPlaceholder="Symbol or pair, e.g. BTCUSDT"
-                searchHelp="Matches contract symbol, ignoring case."
+                searchPlaceholder="Filter symbol or pair"
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}
@@ -71,33 +101,75 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
               />
             ),
           },
-          { key: "kind", header: "Kind" },
-          { key: "pair", header: "Pair" },
-          { key: "settlement", header: "Settlement" },
-          { key: "expiryAt", header: "Expiry" },
+          { key: "kind", header: "Kind", nowrap: true },
+          { key: "underlying", header: "Underlying", nowrap: true },
+          { key: "expiryAt", header: "Expiry", nowrap: true },
           { key: "contractSize", header: "Contract size", numeric: true },
           { key: "lastSeenAt", header: "Last seen", nowrap: true },
         ]}
-        rows={(query.data?.items ?? []).map((item) => ({
-          id: item.id,
-          platform: platformLabel(platforms.data?.items, item.platform),
-          symbol: item.symbol,
-          kind: capitalize(item.kind.replaceAll("_", " ")),
-          pair:
+        rows={(query.data?.items ?? []).map((item) => {
+          const pair =
             item.baseSymbol || item.quoteSymbol
               ? `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`
-              : "—",
-          settlement: item.settlementSymbol ?? "—",
-          expiryAt: item.expiryAt ? formatInstant(item.expiryAt, timezone) : "Perpetual",
-          contractSize: formatDecimal(item.contractSize),
-          lastSeenAt: formatInstant(item.lastSeenAt, timezone),
-        }))}
+              : "—";
+
+          return {
+            id: item.id,
+            platform: platformLabel(platforms.data?.items, item.platform),
+            symbol: (
+              <strong
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {item.symbol}
+              </strong>
+            ),
+            kind: renderInstrumentKind(item.kind),
+            underlying: (
+              <span className={shared.cellStack}>
+                <span>{pair}</span>
+                {item.settlementSymbol ? (
+                  <span className={shared.cellMeta}>Settle: {item.settlementSymbol}</span>
+                ) : null}
+              </span>
+            ),
+            expiryAt: item.expiryAt ? (
+              <span className={shared.tabularDate}>{formatInstant(item.expiryAt, timezone)}</span>
+            ) : (
+              "—"
+            ),
+            contractSize: formatContractSize(item),
+            lastSeenAt: (
+              <span className={shared.tabularDate}>{formatInstant(item.lastSeenAt, timezone)}</span>
+            ),
+          };
+        })}
         empty={
-          query.isPending
-            ? "Loading instruments."
-            : q || platform
-              ? "No instrument matches these filters."
-              : "No instruments yet. Instruments appear after a Collection Cycle reports positions."
+          query.isPending ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>Loading instruments...</p>
+            </div>
+          ) : q || platform ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No instruments match these filters</p>
+              <p className={shared.emptyStateHelp}>
+                Try adjusting your search query or platform filter.
+              </p>
+              <ActionButton type="button" tone="secondary" onClick={filters.reset}>
+                Clear filters
+              </ActionButton>
+            </div>
+          ) : (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No instruments recorded yet</p>
+              <p className={shared.emptyStateHelp}>
+                Market contracts will appear automatically once platform identities are connected
+                and sync.
+              </p>
+            </div>
+          )
         }
       />
       <TableFilterFooter

@@ -16,12 +16,22 @@ func Format(kind string, version uint64) string {
 // only the exact validator Format emits, so a malformed or re-spelled value
 // never matches, and rejects version zero.
 func Parse(kind, value string) (uint64, bool) {
+	return parse(kind, value, false)
+}
+
+// ParseAllowZero extracts the version from a validator of the given kind,
+// allowing version zero for resources that start in an uninitialized state.
+func ParseAllowZero(kind, value string) (uint64, bool) {
+	return parse(kind, value, true)
+}
+
+func parse(kind, value string, allowZero bool) (uint64, bool) {
 	prefix := `"` + kind + `:`
 	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, `"`) {
 		return 0, false
 	}
 	version, err := strconv.ParseUint(value[len(prefix):len(value)-1], 10, 64)
-	if err != nil || version == 0 || value != Format(kind, version) {
+	if err != nil || (!allowZero && version == 0) || value != Format(kind, version) {
 		return 0, false
 	}
 	return version, true
