@@ -99,24 +99,6 @@ func (q *Queries) DeletePortfolioJobs(ctx context.Context, portfolioID []byte) e
 	return err
 }
 
-const deletePortfolioListingExclusionEvents = `-- name: DeletePortfolioListingExclusionEvents :exec
-DELETE FROM portfolio_listing_exclusion_events WHERE portfolio_id = ?
-`
-
-func (q *Queries) DeletePortfolioListingExclusionEvents(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioListingExclusionEvents, portfolioID)
-	return err
-}
-
-const deletePortfolioListingExclusions = `-- name: DeletePortfolioListingExclusions :exec
-DELETE FROM portfolio_listing_exclusions WHERE portfolio_id = ?
-`
-
-func (q *Queries) DeletePortfolioListingExclusions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioListingExclusions, portfolioID)
-	return err
-}
-
 const deletePortfolioManualBalances = `-- name: DeletePortfolioManualBalances :exec
 DELETE FROM manual_balances WHERE portfolio_id = ?
 `
@@ -150,6 +132,24 @@ DELETE FROM manual_revisions WHERE portfolio_id = ?
 
 func (q *Queries) DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) error {
 	_, err := q.db.ExecContext(ctx, deletePortfolioManualRevisions, portfolioID)
+	return err
+}
+
+const deletePortfolioPlatformAssetExclusionEvents = `-- name: DeletePortfolioPlatformAssetExclusionEvents :exec
+DELETE FROM portfolio_platform_asset_exclusion_events WHERE portfolio_id = ?
+`
+
+func (q *Queries) DeletePortfolioPlatformAssetExclusionEvents(ctx context.Context, portfolioID []byte) error {
+	_, err := q.db.ExecContext(ctx, deletePortfolioPlatformAssetExclusionEvents, portfolioID)
+	return err
+}
+
+const deletePortfolioPlatformAssetExclusions = `-- name: DeletePortfolioPlatformAssetExclusions :exec
+DELETE FROM portfolio_platform_asset_exclusions WHERE portfolio_id = ?
+`
+
+func (q *Queries) DeletePortfolioPlatformAssetExclusions(ctx context.Context, portfolioID []byte) error {
+	_, err := q.db.ExecContext(ctx, deletePortfolioPlatformAssetExclusions, portfolioID)
 	return err
 }
 

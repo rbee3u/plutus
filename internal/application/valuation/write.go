@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/listingexclusion"
+	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
@@ -47,7 +47,7 @@ func (s *Service) WritePoint(ctx context.Context, portfolioID, jobID uuid.UUID, 
 }
 
 func (s *Service) valueJob(ctx context.Context, portfolioID, jobID uuid.UUID) ([]AccountValuation, error) {
-	ignored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, jobID)
+	ignored, err := platformassetexclusion.ActiveForJob(ctx, s.db, portfolioID, jobID)
 	if err != nil {
 		return nil, err
 	}

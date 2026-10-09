@@ -50,20 +50,6 @@ type AccountReport struct {
 	ManualModifiedAt       sql.NullTime
 }
 
-type AssetListing struct {
-	ID            []byte
-	Platform      string
-	Symbol        string
-	AssetSymbol   string
-	Name          sql.NullString
-	MappingSource string
-	FirstSeenAt   time.Time
-	LastSeenAt    time.Time
-	Version       uint64
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
 type AuditEvent struct {
 	ID           []byte
 	PortfolioID  []byte
@@ -81,7 +67,7 @@ type AuditEvent struct {
 type Balance struct {
 	ReportID            []byte
 	PortfolioID         []byte
-	ListingID           []byte
+	PlatformAssetID     []byte
 	Equity              string
 	AvailableToWithdraw sql.NullString
 	AvailableToTrade    sql.NullString
@@ -107,22 +93,22 @@ type CapitalFlow struct {
 }
 
 type DualPosition struct {
-	ReportID            []byte
-	PortfolioID         []byte
-	PlatformPositionRef string
-	ProductRef          sql.NullString
-	OrderRef            sql.NullString
-	BaseSymbol          sql.NullString
-	QuoteSymbol         sql.NullString
-	InvestSymbol        string
-	Principal           string
-	Direction           sql.NullString
-	TargetPrice         sql.NullString
-	ExpiryAt            sql.NullTime
-	AnnualizedRate      sql.NullString
-	RateKind            sql.NullString
-	Status              string
-	SubscribedAt        sql.NullTime
+	ReportID                  []byte
+	PortfolioID               []byte
+	PlatformPositionRef       string
+	ProductRef                sql.NullString
+	OrderRef                  sql.NullString
+	BasePlatformAssetSymbol   sql.NullString
+	QuotePlatformAssetSymbol  sql.NullString
+	InvestPlatformAssetSymbol string
+	Principal                 string
+	Direction                 sql.NullString
+	TargetPrice               sql.NullString
+	ExpiryAt                  sql.NullTime
+	AnnualizedRate            sql.NullString
+	RateKind                  sql.NullString
+	Status                    string
+	SubscribedAt              sql.NullTime
 }
 
 type EarnPosition struct {
@@ -130,6 +116,22 @@ type EarnPosition struct {
 	PortfolioID         []byte
 	PlatformPositionRef string
 	ObservationJson     sqljson.Column
+}
+
+type FuturesContract struct {
+	ID                            []byte
+	Platform                      string
+	Symbol                        string
+	Kind                          string
+	BasePlatformAssetSymbol       sql.NullString
+	QuotePlatformAssetSymbol      sql.NullString
+	SettlementPlatformAssetSymbol sql.NullString
+	ExpiryAt                      sql.NullTime
+	ContractSize                  sql.NullString
+	FirstSeenAt                   time.Time
+	LastSeenAt                    time.Time
+	CreatedAt                     time.Time
+	UpdatedAt                     time.Time
 }
 
 type IdempotencyRecord struct {
@@ -172,22 +174,6 @@ type Identity struct {
 	ActiveDisplayName     sql.NullString
 }
 
-type Instrument struct {
-	ID               []byte
-	Platform         string
-	Symbol           string
-	Kind             string
-	BaseSymbol       sql.NullString
-	QuoteSymbol      sql.NullString
-	SettlementSymbol sql.NullString
-	ExpiryAt         sql.NullTime
-	ContractSize     sql.NullString
-	FirstSeenAt      time.Time
-	LastSeenAt       time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
-
 type Job struct {
 	ID                []byte
 	PortfolioID       []byte
@@ -212,12 +198,12 @@ type Job struct {
 }
 
 type ManualBalance struct {
-	PortfolioID []byte
-	AccountID   []byte
-	Symbol      string
-	ListingID   []byte
-	Quantity    string
-	ModifiedAt  time.Time
+	PortfolioID         []byte
+	AccountID           []byte
+	PlatformAssetSymbol string
+	PlatformAssetID     []byte
+	Quantity            string
+	ModifiedAt          time.Time
 }
 
 type ManualCycle struct {
@@ -243,6 +229,20 @@ type ManualRevision struct {
 	ModifiedAt   time.Time
 }
 
+type PlatformAsset struct {
+	ID            []byte
+	Platform      string
+	Symbol        string
+	AssetSymbol   string
+	Name          sql.NullString
+	MappingSource string
+	FirstSeenAt   time.Time
+	LastSeenAt    time.Time
+	Version       uint64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
 type Portfolio struct {
 	ID                        []byte
 	UserID                    []byte
@@ -255,52 +255,52 @@ type Portfolio struct {
 	UpdatedAt                 time.Time
 }
 
-type PortfolioListingExclusion struct {
-	PortfolioID []byte
-	ListingID   []byte
-	Ignored     bool
-	Reason      sql.NullString
-	Version     uint64
-	ActorUserID []byte
-	UpdatedAt   time.Time
+type PortfolioPlatformAssetExclusion struct {
+	PortfolioID     []byte
+	PlatformAssetID []byte
+	Ignored         bool
+	Reason          sql.NullString
+	Version         uint64
+	ActorUserID     []byte
+	UpdatedAt       time.Time
 }
 
-type PortfolioListingExclusionEvent struct {
-	PortfolioID []byte
-	ListingID   []byte
-	Version     uint64
-	Ignored     bool
-	Reason      sql.NullString
-	ActorUserID []byte
-	EffectiveAt time.Time
+type PortfolioPlatformAssetExclusionEvent struct {
+	PortfolioID     []byte
+	PlatformAssetID []byte
+	Version         uint64
+	Ignored         bool
+	Reason          sql.NullString
+	ActorUserID     []byte
+	EffectiveAt     time.Time
 }
 
 type Position struct {
-	ReportID            []byte
-	PortfolioID         []byte
-	PlatformPositionRef string
-	InstrumentID        []byte
-	Side                string
-	Quantity            string
-	QuantityUnit        string
-	EntryPrice          sql.NullString
-	MarkPrice           sql.NullString
-	LiquidationPrice    sql.NullString
-	UnrealizedPnl       sql.NullString
-	Leverage            sql.NullString
-	Margin              sql.NullString
-	PositionMode        sql.NullString
-	MarginMode          sql.NullString
-	MarginCurrency      sql.NullString
-	MarginBasis         sql.NullString
+	ReportID                  []byte
+	PortfolioID               []byte
+	PlatformPositionRef       string
+	FuturesContractID         []byte
+	Side                      string
+	Quantity                  string
+	QuantityUnit              string
+	EntryPrice                sql.NullString
+	MarkPrice                 sql.NullString
+	LiquidationPrice          sql.NullString
+	UnrealizedPnl             sql.NullString
+	Leverage                  sql.NullString
+	Margin                    sql.NullString
+	PositionMode              sql.NullString
+	MarginMode                sql.NullString
+	MarginPlatformAssetSymbol sql.NullString
+	MarginBasis               sql.NullString
 }
 
 type Price struct {
-	Platform    string
-	AssetSymbol string
-	ObservedAt  time.Time
-	Price       string
-	QuoteSymbol string
+	Platform         string
+	AssetSymbol      string
+	ObservedAt       time.Time
+	Price            string
+	QuoteAssetSymbol string
 }
 
 type Session struct {

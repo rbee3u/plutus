@@ -20,7 +20,7 @@ import (
 )
 
 // TestOKXFixturesStoreAndValue runs one cycle through the live OKX adapter replaying the committed
-// fixtures, so every synthetic balance, position, instrument, and price must be accepted by the
+// fixtures, so every synthetic balance, position, futures contract, and price must be accepted by the
 // catalog and the database and valued without omissions.
 func TestOKXFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
@@ -73,12 +73,12 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "10320" {
 		t.Fatalf("Portfolio total = %s, want 10320", summary.Point.TotalUSD)
 	}
-	instruments, err := h.catalog.ListInstruments(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformOKX), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformOKX), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(instruments.Items) == 0 {
-		t.Fatal("positions stored no instruments")
+	if len(futuresContracts.Items) == 0 {
+		t.Fatal("positions stored no futures_contracts")
 	}
 	assertOKXTradingPosition(t, h, accounts[string(okx.TypeTrading)].AccountID)
 }

@@ -43,16 +43,16 @@ by the [Adapter boundary](../../architecture.md#adapter-boundary).
 
 ## Endpoints
 
-| Use                                                                                   | Endpoint                                                                                                                                                        | Signed                 |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Validate: customer reference                                                          | Spot `POST /0/private/GetApiKeyInfo`, Futures `GET /api/auth/v1/api-keys/v3/check`                                                                              | yes                    |
-| Account Structure check; Main in Unified Wallet, Multi-M, Coin-M, Derivatives Holding | Futures WebSocket `wss://futures.kraken.com/ws/v1`, feed `balances`, its first `balances_snapshot`                                                              | yes (signed challenge) |
-| Main in Separate wallets                                                              | Spot `POST /0/private/BalanceEx`, `POST /0/private/TradeBalance` with `asset=ZUSD`                                                                              | yes                    |
-| Positions, read once per run                                                          | Futures `GET /derivatives/api/v3/openpositions`                                                                                                                 | yes                    |
-| Instruments and mark prices, fetched once per run and only when a position is open    | Futures `GET /derivatives/api/v3/instruments?contractType=all`, `GET /derivatives/api/v3/tickers`                                                               | no                     |
-| `earn`                                                                                | Spot `POST /0/private/Earn/Strategies`, following `next_cursor`; `POST /0/private/Earn/Allocations` with `converted_asset=USD` and `hide_zero_allocations=true` | yes                    |
-| Asset names                                                                           | Spot `GET /0/public/Assets`                                                                                                                                     | no                     |
-| Prices                                                                                | Spot `GET /0/public/AssetPairs`, `GET /0/public/Ticker` (every pair, one call each, fetched before the Account calls so their time precedes every report)       | no                     |
+| Use                                                                                      | Endpoint                                                                                                                                                        | Signed                 |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Validate: customer reference                                                             | Spot `POST /0/private/GetApiKeyInfo`, Futures `GET /api/auth/v1/api-keys/v3/check`                                                                              | yes                    |
+| Account Structure check; Main in Unified Wallet, Multi-M, Coin-M, Derivatives Holding    | Futures WebSocket `wss://futures.kraken.com/ws/v1`, feed `balances`, its first `balances_snapshot`                                                              | yes (signed challenge) |
+| Main in Separate wallets                                                                 | Spot `POST /0/private/BalanceEx`, `POST /0/private/TradeBalance` with `asset=ZUSD`                                                                              | yes                    |
+| Positions, read once per run                                                             | Futures `GET /derivatives/api/v3/openpositions`                                                                                                                 | yes                    |
+| Futures Contracts and mark prices, fetched once per run and only when a position is open | Futures `GET /derivatives/api/v3/instruments?contractType=all`, `GET /derivatives/api/v3/tickers`                                                               | no                     |
+| `earn`                                                                                   | Spot `POST /0/private/Earn/Strategies`, following `next_cursor`; `POST /0/private/Earn/Allocations` with `converted_asset=USD` and `hide_zero_allocations=true` | yes                    |
+| Asset names                                                                              | Spot `GET /0/public/Assets`                                                                                                                                     | no                     |
+| Prices                                                                                   | Spot `GET /0/public/AssetPairs`, `GET /0/public/Ticker` (every pair, one call each, fetched before the Account calls so their time precedes every report)       | no                     |
 
 - Spot private requests are POST because Kraken signs a form body. Each carries
   a strictly increasing microsecond `nonce`, `API-Key`, and `API-Sign`: the
@@ -118,7 +118,7 @@ Earn is the same Account in both structures.
 
 | Plutus column         | multi-collateral wallet (`flex_futures.currencies`) | `coin_m` (snapshot `futures`)      | `derivatives_holding` (snapshot `holding`) | `main` in Separate wallets (`BalanceEx`) | `earn` (`Earn/Allocations`)                                                                     |
 | --------------------- | --------------------------------------------------- | ---------------------------------- | ------------------------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `symbol`              | currency code                                       | the wallet's `unit`                | currency code                              | asset code                               | `native_asset`                                                                                  |
+| `PlatformAssetSymbol` | currency code                                       | the wallet's `unit`                | currency code                              | asset code                               | `native_asset`                                                                                  |
 | `equity` (coin units) | `quantity`                                          | `portfolio_value`, summed per unit | the amount, summed per symbol              | `balance`, summed with its `.F` row      | `amount_allocated.total.native` of `instant`, `bonded`, and `timed` strategies, summed per coin |
 | `available_to_trade`  | `available`                                         | null                               | null                                       | null                                     | null                                                                                            |
 | other columns         | null                                                | null                               | null                                       | null                                     | null                                                                                            |
@@ -169,7 +169,7 @@ Futures `openpositions` lists every futures wallet's positions. Contracts with
 type `flexible_futures`, including `PF_` perpetuals and `FF_` delivery
 contracts, belong to the multi-collateral wallet: `main` in Unified Wallet,
 `multi_m` in Separate wallets. Inverse and vanilla futures belong to `coin_m`;
-routing uses the instrument type, not its symbol prefix or expiry.
+routing uses the futures contract type, not its symbol prefix or expiry.
 
 | Plutus column                   | Source                                                                                                                                                                           |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -183,18 +183,18 @@ routing uses the instrument type, not its symbol prefix or expiry.
 
 - Rows with `size = 0` are dropped.
 - An open option position fails the multi-collateral report with
-  `normalization`: Plutus has no Instrument kind for options.
-- A position whose contract is missing from the instrument list, or has an
+  `normalization`: Plutus has no Futures Contract kind for options.
+- A position whose contract is missing from the futures contract list, or has an
   undocumented type, fails its report with `normalization`; it is never dropped.
 
-| Instrument column             | Source (`instruments`)                                                                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                      | `symbol`                                                                                                                                                      |
-| `kind`                        | `flexible_futures` and `futures_vanilla` → `linear_perpetual`, `futures_inverse` → `inverse_perpetual`; with a `lastTradingTime`, the `*_delivery` equivalent |
-| `base_symbol`, `quote_symbol` | `base` and `quote`, else the two halves of `pair` (`XBT:USD`), normalized as Balance symbols                                                                  |
-| `settlement_symbol`           | USD for flexible futures, the base coin for inverse futures, the quote for vanilla futures                                                                    |
-| `expiry_at`                   | `lastTradingTime`; a contract without one whose ticker `tag` is not `perpetual` fails with `normalization`                                                    |
-| `contract_size`               | `contractSize`, required: base coins per contract for linear contracts, USD per contract for inverse ones                                                     |
+| Futures Contract column                                     | Source (`instruments`)                                                                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                                    | `symbol`                                                                                                                                                      |
+| `kind`                                                      | `flexible_futures` and `futures_vanilla` → `linear_perpetual`, `futures_inverse` → `inverse_perpetual`; with a `lastTradingTime`, the `*_delivery` equivalent |
+| `base_platform_asset_symbol`, `quote_platform_asset_symbol` | `base` and `quote`, else the two halves of `pair` (`XBT:USD`), normalized as Balance symbols                                                                  |
+| `settlement_platform_asset_symbol`                          | USD for flexible futures, the base coin for inverse futures, the quote for vanilla futures                                                                    |
+| `expiry_at`                                                 | `lastTradingTime`; a contract without one whose ticker `tag` is not `perpetual` fails with `normalization`                                                    |
+| `contract_size`                                             | `contractSize`, required: base coins per contract for linear contracts, USD per contract for inverse ones                                                     |
 
 ## Prices
 

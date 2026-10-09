@@ -45,11 +45,11 @@ type Options struct {
 
 // Adapter is the OKX adapter. It is safe for concurrent use.
 type Adapter struct {
-	host        string
-	http        *http.Client
-	clock       *clock
-	instruments *instrumentCache
-	pace        time.Duration
+	host             string
+	http             *http.Client
+	clock            *clock
+	futuresContracts *futuresContractCache
+	pace             time.Duration
 }
 
 // New constructs an OKX adapter; nil options select production defaults.
@@ -72,11 +72,11 @@ func New(in *Options) *Adapter {
 		opts.Now = time.Now
 	}
 	return &Adapter{
-		host:        strings.TrimSuffix(opts.Host, "/"),
-		http:        opts.HTTP,
-		clock:       &clock{now: opts.Now},
-		instruments: newInstrumentCache(opts.Now),
-		pace:        pageInterval,
+		host:             strings.TrimSuffix(opts.Host, "/"),
+		http:             opts.HTTP,
+		clock:            &clock{now: opts.Now},
+		futuresContracts: newFuturesContractCache(opts.Now),
+		pace:             pageInterval,
 	}
 }
 

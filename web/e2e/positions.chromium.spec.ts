@@ -12,8 +12,8 @@ const position: PositionRow = {
   identityName: "Owner",
   platform: "okx",
   platformPositionRef: "BTC-USD-SWAP:net",
-  instrumentId: "00000000-0000-7000-8000-000000000005",
-  symbol: "BTC-USD-SWAP",
+  futuresContractId: "00000000-0000-7000-8000-000000000005",
+  futuresSymbol: "BTC-USD-SWAP",
   kind: "inverse_perpetual",
   side: "short",
   positionMode: "one_way",
@@ -43,9 +43,9 @@ const position: PositionRow = {
 
 const delivery: PositionRow = {
   ...position,
-  instrumentId: "00000000-0000-7000-8000-000000000007",
+  futuresContractId: "00000000-0000-7000-8000-000000000007",
   platformPositionRef: "BTCUSD_261225:SHORT",
-  symbol: "BTCUSD_261225",
+  futuresSymbol: "BTCUSD_261225",
   kind: "inverse_delivery",
   expiryAt: "2026-12-25T08:00:00Z",
   positionMode: null,
@@ -57,12 +57,12 @@ const delivery: PositionRow = {
 
 const calculated: PositionRow = {
   ...position,
-  symbol: "ZECUSDT",
+  futuresSymbol: "ZECUSDT",
   kind: "linear_perpetual",
   platform: "binance",
   accountType: "portfolio_margin",
   platformPositionRef: "um:ZECUSDT:BOTH",
-  instrumentId: "00000000-0000-7000-8000-000000000008",
+  futuresContractId: "00000000-0000-7000-8000-000000000008",
   baseSymbol: "ZEC",
   quoteSymbol: "USDT",
   settlementSymbol: "USDT",
@@ -85,7 +85,7 @@ const calculated: PositionRow = {
 
 const isolated: PositionRow = {
   ...position,
-  symbol: "ETHUSDT",
+  futuresSymbol: "ETHUSDT",
   kind: "linear_perpetual",
   baseSymbol: "ETH",
   quoteSymbol: "USDT",
@@ -94,7 +94,7 @@ const isolated: PositionRow = {
   notionalUsd: "1880",
   leverage: "10",
   platformPositionRef: "um:ETHUSDT:LONG",
-  instrumentId: "00000000-0000-7000-8000-000000000009",
+  futuresContractId: "00000000-0000-7000-8000-000000000009",
   marginMode: "isolated",
   marginBasis: "allocated",
   margin: "1000",
@@ -106,9 +106,9 @@ const isolated: PositionRow = {
 
 const unavailable: PositionRow = {
   ...position,
-  symbol: "BTCUSDT",
+  futuresSymbol: "BTCUSDT",
   platformPositionRef: "BTCUSDT:0",
-  instrumentId: "00000000-0000-7000-8000-000000000010",
+  futuresContractId: "00000000-0000-7000-8000-000000000010",
   settleMargin: null,
   marginSource: null,
   marginUnavailableReason:

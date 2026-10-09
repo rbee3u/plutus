@@ -43,7 +43,7 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 		}
 	}
 	// A missing linear Mark must not hide the known inverse face notional.
-	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE positions p JOIN instruments n ON n.id=p.instrument_id JOIN account_reports r ON r.id=p.report_id SET p.mark_price=NULL WHERE r.portfolio_id=? AND n.kind='linear_perpetual'", h.portfolioID[:]); err != nil {
+	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE positions p JOIN futures_contracts n ON n.id=p.futures_contract_id JOIN account_reports r ON r.id=p.report_id SET p.mark_price=NULL WHERE r.portfolio_id=? AND n.kind='linear_perpetual'", h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
 	incomplete, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 1})
@@ -135,7 +135,7 @@ func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
 	// Old PM rows retained size/Mark/leverage without margin provenance. Reads
 	// can establish Cross from the immutable supported PM structure.
 	if _, err := h.collection.db.ExecContext(h.ctx, `UPDATE positions p JOIN account_reports r ON r.id=p.report_id
-        SET p.margin_mode=NULL,p.margin_basis=NULL,p.margin_currency=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
+        SET p.margin_mode=NULL,p.margin_basis=NULL,p.margin_platform_asset_symbol=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
 	before, err := h.financial.AccountPositionsAt(h.ctx, pctx, accountID, &first.Point.ID)

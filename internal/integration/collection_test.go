@@ -96,13 +96,13 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	expected := decimal.Zero()
 	for _, b := range report.Balances {
 		qty, _ := decimal.Parse(b.Equity)
-		switch b.Symbol {
+		switch b.PlatformAssetSymbol {
 		case "USDC":
 			expected = decimal.Add(expected, qty)
 		default:
-			price, ok := decimal.Parse(scenario.Price(b.Symbol))
+			price, ok := decimal.Parse(scenario.Price(b.PlatformAssetSymbol))
 			if !ok {
-				t.Fatalf("no fake price for %s", b.Symbol)
+				t.Fatalf("no fake price for %s", b.PlatformAssetSymbol)
 			}
 			expected = decimal.Add(expected, decimal.Mul(qty, price))
 		}
@@ -129,15 +129,15 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 
 	// USDT on a second Platform maps to the same Asset symbol automatically
 	// (ADR 0003).
-	listings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{Query: "USDT", Limit: 50})
+	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{Query: "USDT", Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
 	platforms := map[string]bool{}
-	for _, l := range listings.Items {
+	for _, l := range platformAssets.Items {
 		if l.Symbol == "USDT" {
 			if l.AssetSymbol != "USDT" || l.MappingSource != catalog.MappingAuto {
-				t.Fatalf("USDT listing on %s maps to %s (%s)", l.Platform, l.AssetSymbol, l.MappingSource)
+				t.Fatalf("USDT platform asset on %s maps to %s (%s)", l.Platform, l.AssetSymbol, l.MappingSource)
 			}
 			platforms[l.Platform] = true
 		}
@@ -198,7 +198,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	}
 }
 
-func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
+func TestPlatformAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	h := newHarness(t)
 	assetIdentity := h.createIdentity("Binance reviewed", adapters.PlatformBinance, adapters.StructureBinancePM, "portfolio_margin", "spot")
 	assetIdentity = h.storeCredentials(assetIdentity, "unpriced-reviewed-key")
@@ -215,11 +215,11 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("margin should use reported equity: %+v", firstAccounts["portfolio_margin"])
 	}
 
-	listings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Query: "TOKENX", Limit: 50})
-	if err != nil || len(listings.Items) != 1 {
-		t.Fatalf("TOKENX listing: %+v %v", listings, err)
+	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Query: "TOKENX", Limit: 50})
+	if err != nil || len(platformAssets.Items) != 1 {
+		t.Fatalf("TOKENX platform asset: %+v %v", platformAssets, err)
 	}
-	token := listings.Items[0]
+	token := platformAssets.Items[0]
 	input := catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, RequestID: "test", Ignored: true, Reason: "Reviewed dust balance", Version: 0}
 	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true}); !errors.Is(err, catalog.ErrInvalid) {
 		t.Fatalf("missing review reason: %v", err)
@@ -229,10 +229,10 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("ignore TOKENX: %+v %v", ignored, err)
 	}
 	var auditCount int
-	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.listing.exclude' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
+	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.platform_asset.exclude' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatalf("review audit event count = %d: %v", auditCount, err)
 	}
-	ignoredPage, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, IgnoredOnly: true, Limit: 50})
+	ignoredPage, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, IgnoredOnly: true, Limit: 50})
 	if err != nil || ignoredPage.Total != 1 || ignoredPage.Items[0].ID != token.ID {
 		t.Fatalf("ignored-only catalog filter: %+v %v", ignoredPage, err)
 	}
@@ -243,9 +243,9 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherListings, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: other.ID, Query: "TOKENX", Limit: 50})
-	if err != nil || len(otherListings.Items) != 1 || otherListings.Items[0].Ignored {
-		t.Fatalf("exclusion leaked to another Portfolio: %+v %v", otherListings, err)
+	otherPlatformAssets, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: other.ID, Query: "TOKENX", Limit: 50})
+	if err != nil || len(otherPlatformAssets.Items) != 1 || otherPlatformAssets.Items[0].Ignored {
+		t.Fatalf("exclusion leaked to another Portfolio: %+v %v", otherPlatformAssets, err)
 	}
 	oldPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
 	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
@@ -263,7 +263,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, row := range flat.Items {
-		if row.Symbol == "TOKENX" {
+		if row.PlatformAssetSymbol == "TOKENX" {
 			t.Fatal("ignored TOKENX appeared in ordinary Balances")
 		}
 	}
@@ -272,7 +272,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, row := range view.Balances {
-		if row.Symbol == "TOKENX" {
+		if row.PlatformAssetSymbol == "TOKENX" {
 			t.Fatal("ignored TOKENX appeared in Account Balances")
 		}
 	}
@@ -288,9 +288,9 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("ignored cycle lost during rebuild: %+v %v", secondPoint, err)
 	}
 
-	priced, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "USDC", Limit: 50})
+	priced, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "USDC", Limit: 50})
 	if err != nil || len(priced.Items) != 1 {
-		t.Fatalf("USDC listing: %+v %v", priced, err)
+		t.Fatalf("USDC platform asset: %+v %v", priced, err)
 	}
 	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Reviewed priced balance", Version: 0})
 	if err != nil {
@@ -306,7 +306,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, err := h.financial.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, thirdPoint.EvaluatedAt.Add(time.Microsecond))
-	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "listing_exclusion_changed") {
+	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "platform_asset_exclusion_changed") {
 		t.Fatalf("treatment change must limit Value Change: %+v %v", change, err)
 	}
 	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: false, Version: 1})
@@ -323,9 +323,9 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("matching endpoint rules should allow Value Change: %+v %v", change, err)
 	}
 
-	btc, err := h.catalog.ListListings(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "BTC", Limit: 50})
+	btc, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "BTC", Limit: 50})
 	if err != nil || len(btc.Items) != 1 {
-		t.Fatalf("BTC listing: %+v %v", btc, err)
+		t.Fatalf("BTC platform asset: %+v %v", btc, err)
 	}
 	_, err = h.catalog.PutExclusion(h.ctx, btc.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Test reported equity", Version: 0})
 	if err != nil {
@@ -342,7 +342,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	foundBTC := false
 	for _, row := range marginBalances.Balances {
-		foundBTC = foundBTC || row.Symbol == "BTC"
+		foundBTC = foundBTC || row.PlatformAssetSymbol == "BTC"
 	}
 	if !foundBTC {
 		t.Fatal("reported-equity Account hid BTC")
@@ -352,7 +352,7 @@ func TestListingExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.listing.restore' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
+	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.platform_asset.restore' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatalf("restore audit event count = %d: %v", auditCount, err)
 	}
 	last, lastJob := h.runCycle()

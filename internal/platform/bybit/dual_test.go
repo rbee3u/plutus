@@ -75,10 +75,10 @@ func TestDocumentedDualPosition(t *testing.T) {
 		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
 		t.Fatalf("synthetic Dual Asset terms: %+v", p)
 	}
-	if dual.Balances[0].Symbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
+	if dual.Balances[0].PlatformAssetSymbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
 		t.Fatalf("synthetic Dual Asset principal: %+v", dual.Balances)
 	}
-	if len(earn.Balances) != 1 || earn.Balances[0].Symbol != "USDT" || earn.Balances[0].Equity != "20" {
+	if len(earn.Balances) != 1 || earn.Balances[0].PlatformAssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("ordinary Earn must exclude Dual Asset principal: %+v", earn.Balances)
 	}
 }

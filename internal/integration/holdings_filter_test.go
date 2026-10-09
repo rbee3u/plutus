@@ -25,7 +25,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 		t.Fatalf("positions: %+v %v", full, err)
 	}
 	page, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "uSd", Offset: 1, Limit: 1})
-	if err != nil || page.Total != 2 || len(page.Items) != 1 || page.Items[0].Symbol != "BTCUSD_PERP" || *page.TotalUSD != *full.TotalUSD {
+	if err != nil || page.Total != 2 || len(page.Items) != 1 || page.Items[0].FuturesSymbol != "BTCUSD_PERP" || *page.TotalUSD != *full.TotalUSD {
 		t.Fatalf("substring pagination or total: %+v %v", page, err)
 	}
 	missing, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "no-match"})
@@ -38,7 +38,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	}
 	sum := decimal.Zero()
 	for _, row := range balances.Items {
-		if row.Symbol != "USDT" || row.EquityUSD == nil {
+		if row.PlatformAssetSymbol != "USDT" || row.EquityUSD == nil {
 			t.Fatalf("unexpected filtered balance: %+v", row)
 		}
 		sum = decimal.Add(sum, decimal.ParseOrZero(*row.EquityUSD))

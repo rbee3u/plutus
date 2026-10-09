@@ -323,7 +323,7 @@ func (s *Service) valueInUSD(ctx context.Context, assetSymbol, quantity string, 
 	if err != nil || at.Sub(row.ObservedAt) > maxPriceAge {
 		return nil
 	}
-	switch row.QuoteSymbol {
+	switch row.QuoteAssetSymbol {
 	case "USD", "USDT", "USDC":
 	default:
 		return nil

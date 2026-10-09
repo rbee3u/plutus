@@ -106,15 +106,15 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       ? `${formatDecimal(item.settleMargin)} ${item.settlementSymbol}`
       : "—";
   return {
-    id: `${item.accountId}-${item.instrumentId}-${item.platformPositionRef}`,
+    id: `${item.accountId}-${item.futuresContractId}-${item.platformPositionRef}`,
     symbol: (
       <HoverDetails
-        label={item.symbol}
-        name={`Contract details for ${item.symbol}`}
+        label={item.futuresSymbol}
+        name={`Contract details for ${item.futuresSymbol}`}
         preferredPlacement="right"
       >
         <HoverCard
-          title={item.symbol}
+          title={item.futuresSymbol}
           tags={[inverse ? "Inverse" : "Linear", delivery ? "Delivery" : "Perpetual"]}
         >
           <dl>
@@ -166,7 +166,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       <HoverDetails
         className={shared.positionMarginTrigger}
         label={<NumericText>{marginLabel}</NumericText>}
-        name={`Margin details for ${item.symbol}: ${plainNumberText(marginLabel)}`}
+        name={`Margin details for ${item.futuresSymbol}: ${plainNumberText(marginLabel)}`}
       >
         <p>
           <NumericText>{positionMarginDescription(item)}</NumericText>
@@ -180,7 +180,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
         observedAt={item.reportObservedAt}
         freshness={item.freshness}
         issues={item.issues}
-        name={item.symbol}
+        name={item.futuresSymbol}
         timezone={timezone}
       />
     ),

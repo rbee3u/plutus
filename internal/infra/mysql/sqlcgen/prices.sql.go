@@ -11,7 +11,7 @@ import (
 )
 
 const getNearestPriceAt = `-- name: GetNearestPriceAt :one
-SELECT platform, asset_symbol, observed_at, price, quote_symbol
+SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
 FROM prices
 WHERE asset_symbol = ?
   AND (? = 0 OR platform = ?)
@@ -40,13 +40,13 @@ func (q *Queries) GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtPa
 		&i.AssetSymbol,
 		&i.ObservedAt,
 		&i.Price,
-		&i.QuoteSymbol,
+		&i.QuoteAssetSymbol,
 	)
 	return i, err
 }
 
 const listLatestPricesByPlatformAt = `-- name: ListLatestPricesByPlatformAt :many
-SELECT p.platform, p.asset_symbol, p.observed_at, p.price, p.quote_symbol
+SELECT p.platform, p.asset_symbol, p.observed_at, p.price, p.quote_asset_symbol
 FROM prices p
 INNER JOIN (
     SELECT x.asset_symbol, MAX(x.observed_at) AS observed_at
@@ -76,7 +76,7 @@ func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLate
 			&i.AssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteSymbol,
+			&i.QuoteAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLate
 }
 
 const listPricesForAssetBetween = `-- name: ListPricesForAssetBetween :many
-SELECT platform, asset_symbol, observed_at, price, quote_symbol
+SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
 FROM prices
 WHERE asset_symbol = ? AND observed_at >= ? AND observed_at <= ?
 ORDER BY observed_at ASC
@@ -118,7 +118,7 @@ func (q *Queries) ListPricesForAssetBetween(ctx context.Context, arg ListPricesF
 			&i.AssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteSymbol,
+			&i.QuoteAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -134,17 +134,17 @@ func (q *Queries) ListPricesForAssetBetween(ctx context.Context, arg ListPricesF
 }
 
 const upsertPrice = `-- name: UpsertPrice :exec
-INSERT INTO prices (platform, asset_symbol, observed_at, price, quote_symbol)
+INSERT INTO prices (platform, asset_symbol, observed_at, price, quote_asset_symbol)
 VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE price = VALUES(price), quote_symbol = VALUES(quote_symbol)
+ON DUPLICATE KEY UPDATE price = VALUES(price), quote_asset_symbol = VALUES(quote_asset_symbol)
 `
 
 type UpsertPriceParams struct {
-	Platform    string
-	AssetSymbol string
-	ObservedAt  time.Time
-	Price       string
-	QuoteSymbol string
+	Platform         string
+	AssetSymbol      string
+	ObservedAt       time.Time
+	Price            string
+	QuoteAssetSymbol string
 }
 
 func (q *Queries) UpsertPrice(ctx context.Context, arg UpsertPriceParams) error {
@@ -153,7 +153,7 @@ func (q *Queries) UpsertPrice(ctx context.Context, arg UpsertPriceParams) error 
 		arg.AssetSymbol,
 		arg.ObservedAt,
 		arg.Price,
-		arg.QuoteSymbol,
+		arg.QuoteAssetSymbol,
 	)
 	return err
 }

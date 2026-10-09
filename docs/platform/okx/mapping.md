@@ -51,7 +51,7 @@ checks are in [OKX verification](./verification.md).
 | Clock sync                                                          | `GET /api/v5/public/time`                                                                                                                    | no     | 10 / 2 s per IP          |
 | Validate, and the Margin Mode read that starts every Collection Run | `GET /api/v5/account/config`                                                                                                                 | yes    | 5 / 2 s                  |
 | `trading`                                                           | `GET /api/v5/account/balance`, `GET /api/v5/account/positions`                                                                               | yes    | 10 / 2 s each            |
-| Instruments                                                         | `GET /api/v5/public/instruments?instType=SWAP` and `?instType=FUTURES`, fetched only for open positions and cached in process for one hour   | no     | 20 / 2 s per IP and type |
+| Futures Contracts                                                   | `GET /api/v5/public/instruments?instType=SWAP` and `?instType=FUTURES`, fetched only for open positions and cached in process for one hour   | no     | 20 / 2 s per IP and type |
 | `funding`                                                           | `GET /api/v5/asset/balances`                                                                                                                 | yes    | 6 / s                    |
 | `earn`                                                              | `GET /api/v5/finance/savings/balance` (6 / s), `GET /api/v5/finance/staking-defi/orders-active` (3 / s)                                      | yes    | as listed, per User ID   |
 | `dual_investment`                                                   | `GET /api/v5/finance/sfp/dcd/order-history?limit=100` and its next pages `?endId=<ordId>&limit=100`                                          | yes    | 1 / s per User ID        |
@@ -77,7 +77,7 @@ public calls:
 
 - the tickers, always;
 - server time, before the first signed call and after a clock rejection;
-- the two instrument lists, when an open position needs a list that is not
+- the two futures contract lists, when an open position needs a list that is not
   cached.
 
 ## Account Report
@@ -118,7 +118,7 @@ portfolio margin's `account/risk-state`.
 
 | Plutus column           | Source                                                          | Spot mode | Futures mode | Multi-currency, Portfolio margin |
 | ----------------------- | --------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
-| `symbol`                | `ccy`                                                           | yes       | yes          | yes                              |
+| `PlatformAssetSymbol`   | `ccy`                                                           | yes       | yes          | yes                              |
 | `equity` (coin units)   | `eq` as reported, may be negative                               | yes       | yes          | yes                              |
 | `available_to_trade`    | `availEq`                                                       | null      | yes          | yes                              |
 | `available_to_withdraw` | `availBal`                                                      | yes       | yes          | yes                              |
@@ -127,8 +127,8 @@ portfolio margin's `account/risk-state`.
 | `unrealized_pnl`        | `upl`                                                           | null      | yes          | yes                              |
 | `name`                  | not mapped                                                      |           |              |                                  |
 
-`funding` reads `asset/balances`: `symbol` from `ccy`, `equity` from `bal`, and
-`available_to_withdraw` from `availBal`.
+`funding` reads `asset/balances`: `PlatformAssetSymbol` from `ccy`, `equity`
+from `bal`, and `available_to_withdraw` from `availBal`.
 
 `earn` has one row per coin, summing two sources:
 
@@ -274,7 +274,7 @@ the Balances are priced in.
 
 ## Position
 
-`account/positions`, every instrument type in one call.
+`account/positions`, every futures contract type in one call.
 
 | Plutus column               | Source                                                                                             |
 | --------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -294,24 +294,24 @@ the Balances are priced in.
   Futures mode they are also the only place OKX reports the borrowing (`liab`,
   `liabCcy`, `interest`), which Plutus therefore does not show.
 - **`OPTION` and `EVENTS` rows** fail the `trading` report with `normalization`,
-  naming the instrument, because Plutus has no Instrument kind for them. This
-  includes the options a Spot mode account may buy.
+  naming the futures contract, because Plutus has no Futures Contract kind for
+  them. This includes the options a Spot mode account may buy.
 - **Spot mode** holds no swaps or futures, so its positions list is empty unless
   it holds options.
 
-| Instrument column             | Source (`public/instruments`)                                                                                         |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                      | `instId`                                                                                                              |
-| `kind`                        | `SWAP` → `linear_perpetual` / `inverse_perpetual`, `FUTURES` → `linear_delivery` / `inverse_delivery`, by `ctType`    |
-| `base_symbol`, `quote_symbol` | the two halves of `uly` (`DOGE-USDT`, `BTC-USD`). Contract rows leave `baseCcy` and `quoteCcy` empty.                 |
-| `settlement_symbol`           | `settleCcy`: `USDT` or `USDC` for linear swaps, `USD` for the `-USD_UM-` futures, the base coin for inverse contracts |
-| `expiry_at`                   | `expTime`, futures only (`alias` is deprecated)                                                                       |
-| `contract_size`               | `ctVal × ctMult`: base coins per contract for linear contracts, USD per contract for inverse ones                     |
+| Futures Contract column                                     | Source (`public/instruments`)                                                                                         |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                                    | `instId`                                                                                                              |
+| `kind`                                                      | `SWAP` → `linear_perpetual` / `inverse_perpetual`, `FUTURES` → `linear_delivery` / `inverse_delivery`, by `ctType`    |
+| `base_platform_asset_symbol`, `quote_platform_asset_symbol` | the two halves of `uly` (`DOGE-USDT`, `BTC-USD`). Contract rows leave `baseCcy` and `quoteCcy` empty.                 |
+| `settlement_platform_asset_symbol`                          | `settleCcy`: `USDT` or `USDC` for linear swaps, `USD` for the `-USD_UM-` futures, the base coin for inverse contracts |
+| `expiry_at`                                                 | `expTime`, futures only (`alias` is deprecated)                                                                       |
+| `contract_size`                                             | `ctVal × ctMult`: base coins per contract for linear contracts, USD per contract for inverse ones                     |
 
 Rows are handled as follows:
 
-- **Skipped instruments.** Pre-open rows without an `instId` or a contract type
-  are skipped, and so are futures without `expTime`.
+- **Skipped futures contracts.** Pre-open rows without an `instId` or a contract
+  type are skipped, and so are futures without `expTime`.
 - **Unknown contracts.** A position whose contract is missing from a fresh list
   fails the `trading` report with `normalization`, naming the contract. It is
   never dropped.

@@ -122,11 +122,11 @@ func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
 		pnl := decimal.Add(parsed["umUnrealizedPNL"], parsed["cmUnrealizedPNL"])
 		equity := decimal.Sub(decimal.Sub(decimal.Add(parsed["totalWalletBalance"], pnl), parsed["crossMarginBorrowed"]), parsed["crossMarginInterest"])
 		out = append(out, adapters.Balance{
-			Symbol:        symbol,
-			Equity:        decimal.Format(equity),
-			Liability:     decimal.FormatPtr(parsed["crossMarginBorrowed"]),
-			Interest:      decimal.FormatPtr(parsed["crossMarginInterest"]),
-			UnrealizedPnl: decimal.FormatPtr(pnl),
+			PlatformAssetSymbol: symbol,
+			Equity:              decimal.Format(equity),
+			Liability:           decimal.FormatPtr(parsed["crossMarginBorrowed"]),
+			Interest:            decimal.FormatPtr(parsed["crossMarginInterest"]),
+			UnrealizedPnl:       decimal.FormatPtr(pnl),
 		})
 	}
 	return out, nil
@@ -171,11 +171,11 @@ func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionS
 			if amount.Sign() == 0 {
 				continue
 			}
-			instrument, err := a.instruments.lookup(ctx, c, source.market, row.Symbol)
+			futuresContract, err := a.futuresContracts.lookup(ctx, c, source.market, row.Symbol)
 			if err != nil {
 				return nil, err
 			}
-			position, err := mapPosition(source.market, source.ep, row, amount, &instrument)
+			position, err := mapPosition(source.market, source.ep, row, amount, &futuresContract)
 			if err != nil {
 				return nil, err
 			}
@@ -187,7 +187,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionS
 
 // mapPosition maps one open position. USDⓈ-M quantities are in base units, COIN-M quantities in
 // contracts.
-func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, instrument *adapters.Instrument) (adapters.Position, error) {
+func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futuresContract *adapters.FuturesContract) (adapters.Position, error) {
 	unit := adapters.UnitBase
 	if m == marketCM {
 		unit = adapters.UnitContracts
@@ -217,7 +217,7 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 	}
 	out := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%s:%s", m, row.Symbol, strings.ToUpper(row.PositionSide)),
-		Instrument:          *instrument,
+		FuturesContract:     *futuresContract,
 		Side:                side,
 		PositionMode:        mode,
 		Quantity:            decimal.Format(decimal.Abs(amount)),
@@ -240,7 +240,7 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, inst
 		}
 		out.MarginCurrency = strings.TrimSpace(row.MarginAsset)
 		if m == marketCM && out.MarginCurrency == "" {
-			out.MarginCurrency = instrument.SettlementSymbol
+			out.MarginCurrency = futuresContract.SettlementSymbol
 		}
 	} else if ep == epPMUMPositionRisk || ep == epPMCMPositionRisk {
 		// Retail Portfolio Margin futures use Cross and retain initial leverage.

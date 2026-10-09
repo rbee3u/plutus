@@ -38,11 +38,11 @@ DELETE FROM audit_events WHERE portfolio_id = ?;
 -- name: DeletePortfolioIdempotencyRecords :exec
 DELETE FROM idempotency_records WHERE portfolio_id = ?;
 
--- name: DeletePortfolioListingExclusionEvents :exec
-DELETE FROM portfolio_listing_exclusion_events WHERE portfolio_id = ?;
+-- name: DeletePortfolioPlatformAssetExclusionEvents :exec
+DELETE FROM portfolio_platform_asset_exclusion_events WHERE portfolio_id = ?;
 
--- name: DeletePortfolioListingExclusions :exec
-DELETE FROM portfolio_listing_exclusions WHERE portfolio_id = ?;
+-- name: DeletePortfolioPlatformAssetExclusions :exec
+DELETE FROM portfolio_platform_asset_exclusions WHERE portfolio_id = ?;
 
 -- name: DeletePortfolioAccountReports :exec
 DELETE FROM account_reports WHERE portfolio_id = ?;

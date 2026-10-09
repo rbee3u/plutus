@@ -62,7 +62,7 @@ func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUI
 			at := s.now().UTC()
 			report := adapters.AccountReport{AccountType: adapters.TypeManual, Status: adapters.StatusOK, ObservedAt: at}
 			for _, balance := range account.Items {
-				report.Balances = append(report.Balances, adapters.Balance{Symbol: balance.Symbol, Equity: balance.Quantity})
+				report.Balances = append(report.Balances, adapters.Balance{PlatformAssetSymbol: balance.PlatformAssetSymbol, Equity: balance.Quantity})
 			}
 			if err := s.insertSuccessfulReport(ctx, q, portfolioID, jobID, account.Platform, account.AccountID, &report, "", at, at); err != nil {
 				return err

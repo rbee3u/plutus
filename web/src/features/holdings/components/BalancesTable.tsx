@@ -60,7 +60,7 @@ export function BalancesTable({
                 {item.manualChange !== "deleted" ? (
                   <ManualActions
                     identityId={item.identityId}
-                    symbol={item.symbol}
+                    symbol={item.platformAssetSymbol}
                     onOpen={onManual}
                   />
                 ) : null}
@@ -109,21 +109,21 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
     (issue) => issue.accountId === item.accountId && issue.code === "stale",
   );
   return {
-    id: `${item.accountId}-${item.listingId}`,
-    // The Asset is the Symbol unless a listing remaps it; only the exception earns a second line.
+    id: `${item.accountId}-${item.platformAssetId}`,
+    // The Asset is the Symbol unless a platform asset remaps it; only the exception earns a second line.
     symbol:
-      item.assetSymbol && item.assetSymbol !== item.symbol ? (
+      item.assetSymbol && item.assetSymbol !== item.platformAssetSymbol ? (
         <span className={shared.cellStack}>
-          <span>{item.symbol}</span>
+          <span>{item.platformAssetSymbol}</span>
           <span className={shared.cellMeta}>as {item.assetSymbol}</span>
         </span>
       ) : (
-        item.symbol
+        item.platformAssetSymbol
       ),
     equity:
       item.manualChange || item.excluded ? (
         <HoverDetails
-          name={`Manual ${item.symbol} quantity ${formatDecimal(item.equity)}`}
+          name={`Manual ${item.platformAssetSymbol} quantity ${formatDecimal(item.equity)}`}
           label={<NumericText>{formatDecimal(item.equity)}</NumericText>}
         >
           {item.manualChange ? (
@@ -135,7 +135,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
               ) : (
                 <>
                   Pending: <NumericText>{formatDecimal(item.manualQuantity)}</NumericText>{" "}
-                  {item.symbol}
+                  {item.platformAssetSymbol}
                 </>
               )}
             </p>
@@ -158,7 +158,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
         observedAt={item.reportObservedAt}
         freshness={item.freshness}
         issues={stale ? [stale] : []}
-        name={item.symbol}
+        name={item.platformAssetSymbol}
         timezone={timezone}
       />
     ),

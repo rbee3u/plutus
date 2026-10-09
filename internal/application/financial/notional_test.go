@@ -20,7 +20,7 @@ func nullString(value string) sql.NullString {
 // value is already the USD notional of one contract.
 func TestPositionNotionalPerContractKind(t *testing.T) {
 	t.Parallel()
-	instrumentID := uuid.Must(uuid.NewV7())
+	futuresContractID := uuid.Must(uuid.NewV7())
 	for _, tc := range []struct {
 		name         string
 		kind         string
@@ -54,19 +54,19 @@ func TestPositionNotionalPerContractKind(t *testing.T) {
 			t.Parallel()
 			account := &valuation.AccountValuation{AccountID: uuid.Must(uuid.NewV7()), Freshness: valuation.FreshnessFresh}
 			row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
-				InstrumentID:        instrumentID[:],
-				Platform:            string(adapters.PlatformBinance),
-				Symbol:              "SYMBOL",
-				Kind:                tc.kind,
-				BaseSymbol:          nullString("BASE"),
-				QuoteSymbol:         nullString(tc.quote),
-				SettlementSymbol:    nullString("BASE"),
-				ContractSize:        nullString(tc.contractSize),
-				PlatformPositionRef: "ref",
-				Side:                adapters.SideLong,
-				Quantity:            tc.quantity,
-				QuantityUnit:        tc.unit,
-				MarkPrice:           nullString(tc.mark),
+				FuturesContractID:             futuresContractID[:],
+				Platform:                      string(adapters.PlatformBinance),
+				FuturesSymbol:                 "SYMBOL",
+				Kind:                          tc.kind,
+				BasePlatformAssetSymbol:       nullString("BASE"),
+				QuotePlatformAssetSymbol:      nullString(tc.quote),
+				SettlementPlatformAssetSymbol: nullString("BASE"),
+				ContractSize:                  nullString(tc.contractSize),
+				PlatformPositionRef:           "ref",
+				Side:                          adapters.SideLong,
+				Quantity:                      tc.quantity,
+				QuantityUnit:                  tc.unit,
+				MarkPrice:                     nullString(tc.mark),
 			})
 			if err != nil {
 				t.Fatalf("positionRow: %v", err)

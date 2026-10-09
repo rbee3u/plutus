@@ -12,7 +12,7 @@ import (
 
 type demoAsset struct{ Symbol, Name, Price string }
 
-// These are offline price scales, not recorded quotes or a listing assertion.
+// These are offline price scales, not recorded quotes or a platform asset assertion.
 var demoAssets = []demoAsset{
 	{"BTC", "Bitcoin", "65000"},
 	{"ETH", "Ethereum", "3200"},
@@ -177,10 +177,10 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 			}
 		}
 		if d.Profile == "unpriced" && !at.Before(DemoEventTime(anchor, -5)) || d.Profile == "stale_incomplete" {
-			r.Balances = append(r.Balances, adapters.Balance{Symbol: "DEMO-NOPRICE", Name: "Unpriced synthetic airdrop", Equity: "1000"})
+			r.Balances = append(r.Balances, adapters.Balance{PlatformAssetSymbol: "DEMO-NOPRICE", Name: "Unpriced synthetic airdrop", Equity: "1000"})
 		}
 		if d.Profile == "policy" {
-			r.Balances = append(r.Balances, adapters.Balance{Symbol: "DEMO-BTC", Name: "Reviewed synthetic BTC alias", Equity: "0.01"}, adapters.Balance{Symbol: "DEMO-DUST", Name: "Reviewed unpriced dust", Equity: "0.0000002"})
+			r.Balances = append(r.Balances, adapters.Balance{PlatformAssetSymbol: "DEMO-BTC", Name: "Reviewed synthetic BTC alias", Equity: "0.01"}, adapters.Balance{PlatformAssetSymbol: "DEMO-DUST", Name: "Reviewed unpriced dust", Equity: "0.0000002"})
 		}
 	case "funding", "derivatives_holding":
 		r.Balances = []adapters.Balance{demoBalance("USDT", "1800"), demoBalance("USDC", "3000")}
@@ -206,7 +206,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 			}
 		}
 	case "cross_margin", "isolated_margin":
-		r.Balances = []adapters.Balance{{Symbol: "USDT", Name: "Tether", Equity: "-150", Liability: adapters.OptionalText("150"), Interest: adapters.OptionalText("0.25")}, demoBalance("BTC", "0.04")}
+		r.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Name: "Tether", Equity: "-150", Liability: adapters.OptionalText("150"), Interest: adapters.OptionalText("0.25")}, demoBalance("BTC", "0.04")}
 		if kind == "cross_margin" {
 			r.UnifiedMarginRatio = adapters.OptionalText("4.2")
 		}
@@ -232,7 +232,7 @@ func demoBalance(symbol, amount string) adapters.Balance {
 			break
 		}
 	}
-	return adapters.Balance{Symbol: symbol, Name: name, Equity: amount, AvailableToTrade: adapters.OptionalText(amount), AvailableToWithdraw: adapters.OptionalText(amount)}
+	return adapters.Balance{PlatformAssetSymbol: symbol, Name: name, Equity: amount, AvailableToTrade: adapters.OptionalText(amount), AvailableToWithdraw: adapters.OptionalText(amount)}
 }
 
 func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
@@ -254,7 +254,7 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 			p := demoPosition(d, anchor, at, asset, i, inverse)
 			if d.Profile == "metadata" && i == 0 {
 				p.PositionMode, p.MarginCurrency, p.MarginBasis = "", "", ""
-				p.Instrument.ContractSize, p.MarkPrice, p.Margin = nil, nil, nil
+				p.FuturesContract.ContractSize, p.MarkPrice, p.Margin = nil, nil, nil
 			}
 			r.Positions = append(r.Positions, p)
 		}
@@ -289,7 +289,7 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 		amounts["ETH"] = realizedETH
 	}
 	for _, p := range r.Positions {
-		coin := p.Instrument.SettlementSymbol
+		coin := p.FuturesContract.SettlementSymbol
 		if _, ok := amounts[coin]; !ok {
 			amounts[coin] = "0.05"
 		}
@@ -307,7 +307,7 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 	if !inverse && mode != adapters.MarginBybitIsolated {
 		value := "0"
 		for _, b := range r.Balances {
-			value = demoAdd(value, demoMul(b.Equity, DemoPrice(d.Platform, b.Symbol, at)))
+			value = demoAdd(value, demoMul(b.Equity, DemoPrice(d.Platform, b.PlatformAssetSymbol, at)))
 		}
 		r.Equity = adapters.OptionalText(value)
 		if mode != adapters.MarginOKXFutures {
@@ -337,15 +337,15 @@ func demoPosition(d DemoIdentity, anchor, at time.Time, asset demoAsset, i int, 
 			kind = adapters.KindInverseDelivery
 		}
 	}
-	symbol := demoInstrumentSymbol(d.Platform, asset.Symbol, inverse, expiry)
+	symbol := demoFuturesContractSymbol(d.Platform, asset.Symbol, inverse, expiry)
 	p := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s-%d-%d", symbol, i, cohort.Unix()),
-		Instrument:          adapters.Instrument{Symbol: symbol, Kind: kind, BaseSymbol: asset.Symbol, QuoteSymbol: "USDT", SettlementSymbol: settle, ContractSize: adapters.OptionalText(contract), ExpiryAt: expiry},
+		FuturesContract:     adapters.FuturesContract{Symbol: symbol, Kind: kind, BaseSymbol: asset.Symbol, QuoteSymbol: "USDT", SettlementSymbol: settle, ContractSize: adapters.OptionalText(contract), ExpiryAt: expiry},
 		Side:                adapters.SideLong, PositionMode: "hedged", MarginMode: "cross", MarginCurrency: settle, MarginBasis: "initial",
 		Quantity: qty, QuantityUnit: unit, EntryPrice: adapters.OptionalText(entry), MarkPrice: adapters.OptionalText(mark), Leverage: adapters.OptionalText("3"),
 	}
 	if inverse {
-		p.Instrument.QuoteSymbol = "USD"
+		p.FuturesContract.QuoteSymbol = "USD"
 	}
 	if i%2 == 1 {
 		p.Side = adapters.SideShort
@@ -383,7 +383,7 @@ func demoPositionPnl(p adapters.Position) string {
 	entry, mark := demoString(p.EntryPrice), demoString(p.MarkPrice)
 	value := demoMul(p.Quantity, demoSub(mark, entry))
 	if p.QuantityUnit == adapters.UnitContracts {
-		value = demoMul(demoMul(p.Quantity, demoString(p.Instrument.ContractSize)), demoSub(demoDiv("1", entry), demoDiv("1", mark)))
+		value = demoMul(demoMul(p.Quantity, demoString(p.FuturesContract.ContractSize)), demoSub(demoDiv("1", entry), demoDiv("1", mark)))
 	}
 	if p.Side == adapters.SideShort {
 		value = demoMul(value, "-1")
@@ -391,7 +391,7 @@ func demoPositionPnl(p adapters.Position) string {
 	return value
 }
 
-func demoInstrumentSymbol(platform adapters.Platform, base string, inverse bool, expiry *time.Time) string {
+func demoFuturesContractSymbol(platform adapters.Platform, base string, inverse bool, expiry *time.Time) string {
 	quote, term := "USDT", "PERP"
 	if inverse {
 		quote = "USD"
@@ -470,7 +470,7 @@ func demoAmounts(r *adapters.AccountReport) {
 	totals := adapters.Totals{}
 	for _, p := range r.EarnPositions {
 		for _, a := range p.Assets {
-			if err := totals.Add("demo Earn", a.Symbol, demoNumber(a.Amount)); err != nil {
+			if err := totals.Add("demo Earn", a.PlatformAssetSymbol, demoNumber(a.Amount)); err != nil {
 				panic(err)
 			}
 		}
@@ -482,6 +482,6 @@ func demoAmounts(r *adapters.AccountReport) {
 	}
 	r.Balances = totals.Balances()
 	for i := range r.Balances {
-		r.Balances[i].Name = demoBalance(strings.ToUpper(r.Balances[i].Symbol), "0").Name
+		r.Balances[i].Name = demoBalance(strings.ToUpper(r.Balances[i].PlatformAssetSymbol), "0").Name
 	}
 }

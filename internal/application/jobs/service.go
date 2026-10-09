@@ -91,8 +91,8 @@ type ClaimedJob struct {
 
 // RecalcPayload is the payload of a valuation_recalc job.
 type RecalcPayload struct {
-	Reason    string `json:"reason"`
-	ListingID string `json:"listingId,omitempty"`
+	Reason          string `json:"reason"`
+	PlatformAssetID string `json:"platformAssetId,omitempty"`
 }
 
 // EnqueueCycle inserts one Collection Cycle for a Portfolio or returns the active one.

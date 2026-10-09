@@ -9,16 +9,16 @@ import (
 
 // Kind nibbles keep seeded IDs recognisable: 7 is the UUID version, the low byte is the entity kind.
 const (
-	kindUser        uint16 = 0x7001
-	kindPortfolio   uint16 = 0x7002
-	kindIdentity    uint16 = 0x7003
-	kindAccount     uint16 = 0x7005
-	kindListing     uint16 = 0x7007
-	kindInstrument  uint16 = 0x7008
-	kindJob         uint16 = 0x7010
-	kindReport      uint16 = 0x7011
-	kindAudit       uint16 = 0x7015
-	kindCapitalFlow uint16 = 0x7032
+	kindUser            uint16 = 0x7001
+	kindPortfolio       uint16 = 0x7002
+	kindIdentity        uint16 = 0x7003
+	kindAccount         uint16 = 0x7005
+	kindPlatformAsset   uint16 = 0x7007
+	kindFuturesContract uint16 = 0x7008
+	kindJob             uint16 = 0x7010
+	kindReport          uint16 = 0x7011
+	kindAudit           uint16 = 0x7015
+	kindCapitalFlow     uint16 = 0x7032
 )
 
 // SeedID derives a stable UUID from an entity kind and a sequence number.

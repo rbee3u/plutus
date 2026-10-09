@@ -64,9 +64,9 @@ plutus adapter record --platform kraken --only 0_private_Earn_Strategies \
 override native defaults literally; repeat a key for multiple values. Required
 parameters fail before keys/network. `--variant` affects the filename only and
 neither switches nor verifies account settings. Repeat `--keep-symbol` for
-prepared instruments that must survive local market trimming; these hints are
-never sent to the exchange. Public requests read no keys; private requests read
-only their selected `PLUTUS_RECORD_*` credential group from the process
+prepared futures contracts that must survive local market trimming; these hints
+are never sent to the exchange. Public requests read no keys; private requests
+read only their selected `PLUTUS_RECORD_*` credential group from the process
 environment or gitignored `config/record.env` (copy
 [record-example.env](../../config/record-example.env)). Kraken Spot/Futures use
 separate groups. Recording never falls back to `gotest.env` or old

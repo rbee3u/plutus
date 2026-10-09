@@ -10,9 +10,9 @@ func TestIsolatedAllocationExcludesOrdersAndProfit(t *testing.T) {
 		assets:   assetNames{"BTC": "BTC", "USD": "USD"},
 		snapshot: &snapshot{Flex: multiWallet{Isolated: map[string]isolatedWallet{"PF_BTCUSD": {InitialWithoutOrders: "100"}}}},
 		open: &openBook{
-			positions:   []openPosition{{Symbol: "PF_BTCUSD", Side: "short", Size: "2", UnrealizedPnl: "50", PnlCurrency: "USD"}},
-			instruments: map[string]instrument{"PF_BTCUSD": {Symbol: "PF_BTCUSD", Type: typeFlexible, Base: "BTC", Quote: "USD", ContractSize: "0.01"}},
-			tickers:     map[string]futuresTicker{"PF_BTCUSD": {MarkPrice: "50000", Tag: "perpetual"}},
+			positions:         []openPosition{{Symbol: "PF_BTCUSD", Side: "short", Size: "2", UnrealizedPnl: "50", PnlCurrency: "USD"}},
+			nativeInstruments: map[string]nativeInstrument{"PF_BTCUSD": {Symbol: "PF_BTCUSD", Type: typeFlexible, Base: "BTC", Quote: "USD", ContractSize: "0.01"}},
+			tickers:           map[string]futuresTicker{"PF_BTCUSD": {MarkPrice: "50000", Tag: "perpetual"}},
 		},
 	}
 	positions, err := r.positions(context.Background(), true)

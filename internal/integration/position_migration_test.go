@@ -92,7 +92,7 @@ func TestPositionMigrationOnPopulatedHistory(t *testing.T) {
 	if err := mysql.Up(db.DB); err != nil {
 		t.Fatal(err)
 	}
-	rows, err = db.DB.QueryContext(h.ctx, `SELECT HEX(p.report_id),p.platform_position_ref,p.quantity,p.side,COALESCE(CAST(p.margin AS CHAR),''),COALESCE(p.position_mode,''),COALESCE(p.margin_basis,''),n.platform FROM positions p JOIN instruments n ON n.id=p.instrument_id`)
+	rows, err = db.DB.QueryContext(h.ctx, `SELECT HEX(p.report_id),p.platform_position_ref,p.quantity,p.side,COALESCE(CAST(p.margin AS CHAR),''),COALESCE(p.position_mode,''),COALESCE(p.margin_basis,''),n.platform FROM positions p JOIN futures_contracts n ON n.id=p.futures_contract_id`)
 	if err != nil {
 		t.Fatal(err)
 	}

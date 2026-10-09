@@ -17,29 +17,29 @@ func TestHistoricalPriceSelection(t *testing.T) {
 		{"stablecoin without history", "USDT", "1", nil},
 		{"unknown is not zero", "BTC", "", nil},
 		{"platform before newer fallback", "BTC", "10", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "10", QuoteSymbol: "USD"},
-			{Platform: "okx", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteSymbol: "USDT"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "10", QuoteAssetSymbol: "USD"},
+			{Platform: "okx", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteAssetSymbol: "USDT"},
 		}},
 		{"expired platform uses fallback", "BTC", "20", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-25 * time.Hour), Price: "10", QuoteSymbol: "USD"},
-			{Platform: "okx", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "20", QuoteSymbol: "USDC"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-25 * time.Hour), Price: "10", QuoteAssetSymbol: "USD"},
+			{Platform: "okx", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "20", QuoteAssetSymbol: "USDC"},
 		}},
 		{"exact age boundary", "BTC", "10", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-maxPriceAge), Price: "10", QuoteSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-maxPriceAge), Price: "10", QuoteAssetSymbol: "USD"},
 		}},
 		{"expired is unknown", "BTC", "", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-maxPriceAge - time.Microsecond), Price: "10", QuoteSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-maxPriceAge - time.Microsecond), Price: "10", QuoteAssetSymbol: "USD"},
 		}},
 		{"invalid latest quote does not reuse older quote", "BTC", "", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "10", QuoteSymbol: "USD"},
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteSymbol: "EUR"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(-time.Hour), Price: "10", QuoteAssetSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteAssetSymbol: "EUR"},
 		}},
 		{"future observation excluded", "BTC", "10", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "10", QuoteSymbol: "USD"},
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(time.Microsecond), Price: "20", QuoteSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "10", QuoteAssetSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at.Add(time.Microsecond), Price: "20", QuoteAssetSymbol: "USD"},
 		}},
 		{"known zero retained", "BTC", "0", []sqlcgen.Price{
-			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "0", QuoteSymbol: "USD"},
+			{Platform: "binance", AssetSymbol: "BTC", ObservedAt: at, Price: "0", QuoteAssetSymbol: "USD"},
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestManualHistoricalPricesRequireOwnPlatform(t *testing.T) {
 		{"invalid quote", at, "EUR", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			book := newHistoricalPrices(nil, []sqlcgen.Price{{Platform: "binance", AssetSymbol: "BTC", ObservedAt: tc.ownAt, Price: "10", QuoteSymbol: tc.quote}, {Platform: "okx", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteSymbol: "USD"}})
+			book := newHistoricalPrices(nil, []sqlcgen.Price{{Platform: "binance", AssetSymbol: "BTC", ObservedAt: tc.ownAt, Price: "10", QuoteAssetSymbol: tc.quote}, {Platform: "okx", AssetSymbol: "BTC", ObservedAt: at, Price: "20", QuoteAssetSymbol: "USD"}})
 			_, found, err := book.LookupPlatform(context.Background(), "binance", "BTC", at)
 			if err != nil || found != tc.want {
 				t.Fatalf("qualified price found=%v err=%v", found, err)

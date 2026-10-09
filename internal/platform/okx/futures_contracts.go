@@ -24,20 +24,20 @@ const (
 )
 
 // markets maps the instType of a position row to the market that lists its contract. OPTION and
-// EVENTS positions have no Plutus instrument kind and are refused by name.
+// EVENTS positions have no Plutus Futures Contract kind and are refused by name.
 var markets = map[string]market{
 	string(marketSwap):    marketSwap,
 	string(marketFutures): marketFutures,
 }
 
 const (
-	// instrumentTTL bounds how long an instrument list is reused before a refresh.
-	instrumentTTL = time.Hour
-	// instrumentRetry keeps an unknown contract from refetching the list on every position.
-	instrumentRetry = time.Minute
+	// futuresContractTTL bounds how long a Futures Contract list is reused before a refresh.
+	futuresContractTTL = time.Hour
+	// futuresContractRetry keeps an unknown contract from refetching the list on every position.
+	futuresContractRetry = time.Minute
 )
 
-type instrumentRow struct {
+type nativeInstrumentRow struct {
 	InstID    string `json:"instId"`
 	Uly       string `json:"uly"`
 	CtType    string `json:"ctType"`
@@ -47,83 +47,83 @@ type instrumentRow struct {
 	ExpTime   string `json:"expTime"`
 }
 
-type instrumentSet struct {
-	bySymbol  map[string]adapters.Instrument
+type futuresContractSet struct {
+	bySymbol  map[string]adapters.FuturesContract
 	fetchedAt time.Time
 }
 
-// instrumentCache holds the SWAP and FUTURES lists in process for instrumentTTL. A list is
+// futuresContractCache holds the SWAP and FUTURES lists in process for futuresContractTTL. A list is
 // fetched only when a position needs it.
-type instrumentCache struct {
+type futuresContractCache struct {
 	mu   sync.Mutex
 	now  func() time.Time
-	sets map[market]*instrumentSet
+	sets map[market]*futuresContractSet
 }
 
-func newInstrumentCache(now func() time.Time) *instrumentCache {
-	return &instrumentCache{now: now, sets: map[market]*instrumentSet{}}
+func newFuturesContractCache(now func() time.Time) *futuresContractCache {
+	return &futuresContractCache{now: now, sets: map[market]*futuresContractSet{}}
 }
 
-// lookup returns the instrument of a position. A contract missing from a fresh list is a
+// lookup returns the Futures Contract of a position. A contract missing from a fresh list is a
 // normalization failure, so the position is never dropped silently.
-func (ic *instrumentCache) lookup(ctx context.Context, c *client, m market, instID string) (adapters.Instrument, error) {
+func (ic *futuresContractCache) lookup(ctx context.Context, c *client, m market, instID string) (adapters.FuturesContract, error) {
 	ic.mu.Lock()
 	defer ic.mu.Unlock()
 	set := ic.sets[m]
 	age := time.Duration(0)
 	if set != nil {
 		age = ic.now().Sub(set.fetchedAt)
-		if instrument, ok := set.bySymbol[instID]; ok && age < instrumentTTL {
-			return instrument, nil
+		if futuresContract, ok := set.bySymbol[instID]; ok && age < futuresContractTTL {
+			return futuresContract, nil
 		}
 	}
-	if set == nil || age >= instrumentRetry {
-		fresh, err := fetchInstruments(ctx, c, m)
+	if set == nil || age >= futuresContractRetry {
+		fresh, err := fetchFuturesContracts(ctx, c, m)
 		if err != nil {
-			return adapters.Instrument{}, err
+			return adapters.FuturesContract{}, err
 		}
 		fresh.fetchedAt = ic.now()
 		ic.sets[m] = fresh
 		set = fresh
 	}
-	if instrument, ok := set.bySymbol[instID]; ok {
-		return instrument, nil
+	if futuresContract, ok := set.bySymbol[instID]; ok {
+		return futuresContract, nil
 	}
-	return adapters.Instrument{}, adapters.NewError(adapters.ClassNormalization,
-		fmt.Sprintf("OKX %s instruments have no contract %s for an open position.", m, instID))
+	return adapters.FuturesContract{}, adapters.NewError(adapters.ClassNormalization,
+		fmt.Sprintf("OKX %s market has no contract %s for an open position.", m, instID))
 }
 
-func fetchInstruments(ctx context.Context, c *client, m market) (*instrumentSet, error) {
+func fetchFuturesContracts(ctx context.Context, c *client, m market) (*futuresContractSet, error) {
 	ep := epSwaps
 	if m == marketFutures {
 		ep = epFutures
 	}
-	var rows []instrumentRow
+	var rows []nativeInstrumentRow
 	if err := c.call(ctx, ep, &rows); err != nil {
 		return nil, err
 	}
-	set := &instrumentSet{bySymbol: make(map[string]adapters.Instrument, len(rows))}
+	set := &futuresContractSet{bySymbol: make(map[string]adapters.FuturesContract, len(rows))}
 	for i := range rows {
-		if instrument, ok := mapInstrument(m, &rows[i]); ok {
-			set.bySymbol[instrument.Symbol] = instrument
+		if futuresContract, ok := mapFuturesContract(m, &rows[i]); ok {
+			set.bySymbol[futuresContract.Symbol] = futuresContract
 		}
 	}
 	return set, nil
 }
 
-// mapInstrument converts one listed contract. Rows that cannot be stored are skipped: pre-open
+// mapFuturesContract converts one listed contract. Rows that cannot be stored are skipped: pre-open
 // listings without an id or contract type, and futures without a delivery time. A position in
 // such a contract then fails its Account through lookup.
-func mapInstrument(m market, row *instrumentRow) (adapters.Instrument, bool) {
+func mapFuturesContract(m market, row *nativeInstrumentRow) (adapters.FuturesContract, bool) {
 	instID := strings.TrimSpace(row.InstID)
 	kind, delivery, ok := contractKind(m, row.CtType)
 	if instID == "" || !ok {
-		return adapters.Instrument{}, false
+		return adapters.FuturesContract{}, false
 	}
 	// The underlying is BASE-QUOTE for every swap and future ("DOGE-USDT", "BTC-USD"); the
 	// instrument family carries OKX's settlement suffixes such as "BTC-USD_UM".
 	base, quote, _ := strings.Cut(strings.TrimSpace(row.Uly), "-")
-	instrument := adapters.Instrument{
+	futuresContract := adapters.FuturesContract{
 		Symbol:           instID,
 		Kind:             kind,
 		BaseSymbol:       base,
@@ -134,12 +134,12 @@ func mapInstrument(m market, row *instrumentRow) (adapters.Instrument, bool) {
 	if delivery {
 		millis, err := strconv.ParseInt(strings.TrimSpace(row.ExpTime), 10, 64)
 		if err != nil || millis <= 0 {
-			return adapters.Instrument{}, false
+			return adapters.FuturesContract{}, false
 		}
 		expiry := time.UnixMilli(millis).UTC()
-		instrument.ExpiryAt = &expiry
+		futuresContract.ExpiryAt = &expiry
 	}
-	return instrument, true
+	return futuresContract, true
 }
 
 // contractKind maps an OKX market and contract type. A linear contract is margined and settled

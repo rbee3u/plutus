@@ -85,7 +85,7 @@ var (
 	epCMAccount      = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/account", true}
 	epCMPositionRisk = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/positionRisk", true}
 
-	// Instruments, for both Account Structures.
+	// Futures Contracts, for both Account Structures.
 	epUMExchangeInfo = endpoint{http.MethodGet, hostFAPI, "/fapi/v1/exchangeInfo", false}
 	epCMExchangeInfo = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/exchangeInfo", false}
 )

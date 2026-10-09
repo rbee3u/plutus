@@ -44,7 +44,7 @@ type AccountReport struct {
 
 // Balance is one coin line within an Account Report.
 type Balance struct {
-	Symbol string
+	PlatformAssetSymbol string
 	// Name is the Asset's full name when the Platform reports one; empty otherwise.
 	Name                string
 	Equity              string
@@ -55,8 +55,8 @@ type Balance struct {
 	UnrealizedPnl       *string
 }
 
-// Instrument describes the tradable contract behind a Position.
-type Instrument struct {
+// FuturesContract describes the tradable contract behind a Position.
+type FuturesContract struct {
 	Symbol           string
 	Kind             string
 	BaseSymbol       string
@@ -69,7 +69,7 @@ type Instrument struct {
 // Position is one open position within an Account Report.
 type Position struct {
 	PlatformPositionRef string
-	Instrument          Instrument
+	FuturesContract     FuturesContract
 	Side                string
 	PositionMode        string
 	MarginMode          string

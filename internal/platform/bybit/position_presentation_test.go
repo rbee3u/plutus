@@ -8,7 +8,7 @@ import (
 )
 
 func TestModeAndInitialMarginProvenance(t *testing.T) {
-	info := instrument{Symbol: "BTCUSD", ContractType: "InversePerpetual", BaseCoin: "BTC", QuoteCoin: "USD", SettleCoin: "BTC"}
+	info := nativeInstrument{Symbol: "BTCUSD", ContractType: "InversePerpetual", BaseCoin: "BTC", QuoteCoin: "USD", SettleCoin: "BTC"}
 	index := 0
 	row := openPosition{Symbol: info.Symbol, PositionIdx: &index, Side: "Sell", PositionIM: "0.002"}
 	for _, mode := range []adapters.MarginMode{adapters.MarginBybitCross, adapters.MarginBybitIsolated, adapters.MarginBybitPM} {

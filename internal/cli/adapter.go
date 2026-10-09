@@ -152,7 +152,7 @@ func newAdapterRecordCommand() *cobra.Command {
 	cmd.Flags().StringArrayVar(&form, "form", nil, "business form key=value; repeat for multiple values")
 	cmd.Flags().BoolVar(&list, "list-requests", false, "list read-only interfaces and required parameters without keys or network")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the exact request and filename without keys or network")
-	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "retain a prepared instrument in local market trimming; never sent to the exchange")
+	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "retain a prepared futures contract in local market trimming; never sent to the exchange")
 	cmd.Flags().StringVar(&outFlag, "out", recordingDirectory+"/evidence", "output parent inside /tmp/plutus")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd

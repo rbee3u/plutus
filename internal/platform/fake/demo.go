@@ -48,7 +48,7 @@ func DemoIdentities() []DemoIdentity {
 		{"edge-unconfigured", "edge-cases", "Binance awaiting credentials", adapters.PlatformBinance, adapters.StructureBinancePM, "", "unconfigured", "unconfigured"},
 		{"edge-archive", "edge-cases", "Binance retired sub-account", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "archived", "unconfigured"},
 		{"edge-boundary", "edge-cases", "Binance wallet boundary", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "boundary", "enabled"},
-		{"edge-policy", "edge-cases", "Binance reviewed listing policy", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "policy", "enabled"},
+		{"edge-policy", "edge-cases", "Binance reviewed platform asset policy", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "policy", "enabled"},
 		{"edge-metadata", "edge-cases", "OKX optional metadata unavailable", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "metadata", "enabled"},
 		{"edge-legacy", "edge-cases", "Kraken legacy Earn summary", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "legacy", "disabled"},
 		{"edge-scope", "edge-cases", "OKX Earn scope transition", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "scope", "enabled"},
@@ -187,10 +187,10 @@ func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.Account
 	needed := map[string]bool{}
 	for _, r := range batch.Reports {
 		for _, b := range r.Balances {
-			needed[b.Symbol] = true
+			needed[b.PlatformAssetSymbol] = true
 		}
 		for _, p := range r.Positions {
-			needed[p.Instrument.BaseSymbol], needed[p.Instrument.SettlementSymbol] = true, true
+			needed[p.FuturesContract.BaseSymbol], needed[p.FuturesContract.SettlementSymbol] = true, true
 		}
 		for _, p := range r.DualPositions {
 			if p.BaseSymbol != nil {

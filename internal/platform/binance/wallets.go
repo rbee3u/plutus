@@ -55,7 +55,7 @@ func mapWallet(ep endpoint, rows []walletAsset) ([]adapters.Balance, error) {
 			return nil, err
 		}
 		out = append(out, adapters.Balance{
-			Symbol:              symbol,
+			PlatformAssetSymbol: symbol,
 			Equity:              decimal.Format(total),
 			AvailableToWithdraw: decimal.FormatPtr(parsed["free"]),
 			AvailableToTrade:    decimal.FormatPtr(parsed["free"]),

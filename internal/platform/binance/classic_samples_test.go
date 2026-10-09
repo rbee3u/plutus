@@ -77,14 +77,14 @@ func TestClassicSyntheticScenes(t *testing.T) {
 					kind := adapters.KindInversePerpetual
 					if p.PlatformPositionRef == "cm:ETHUSD_261225:BOTH" {
 						kind = adapters.KindInverseDelivery
-						if p.Instrument.ExpiryAt == nil || !p.Instrument.ExpiryAt.Equal(time.UnixMilli(1798185600000).UTC()) {
-							t.Fatalf("delivery expiry %+v", p.Instrument)
+						if p.FuturesContract.ExpiryAt == nil || !p.FuturesContract.ExpiryAt.Equal(time.UnixMilli(1798185600000).UTC()) {
+							t.Fatalf("delivery expiry %+v", p.FuturesContract)
 						}
 					}
-					if p.QuantityUnit != adapters.UnitContracts || p.Instrument.Kind != kind || p.Instrument.BaseSymbol != "ETH" || p.Instrument.QuoteSymbol != "USD" || p.Instrument.SettlementSymbol != "ETH" || deref(p.Instrument.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
+					if p.QuantityUnit != adapters.UnitContracts || p.FuturesContract.Kind != kind || p.FuturesContract.BaseSymbol != "ETH" || p.FuturesContract.QuoteSymbol != "USD" || p.FuturesContract.SettlementSymbol != "ETH" || deref(p.FuturesContract.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
 						t.Fatalf("inverse terms %+v", p)
 					}
-				} else if p.QuantityUnit != adapters.UnitBase || p.Instrument.Kind != adapters.KindLinearPerpetual || p.Instrument.BaseSymbol != "DOGE" || p.Instrument.QuoteSymbol != "USDT" || p.Instrument.SettlementSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
+				} else if p.QuantityUnit != adapters.UnitBase || p.FuturesContract.Kind != adapters.KindLinearPerpetual || p.FuturesContract.BaseSymbol != "DOGE" || p.FuturesContract.QuoteSymbol != "USDT" || p.FuturesContract.SettlementSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
 					t.Fatalf("linear terms %+v", p)
 				}
 				delete(want, p.PlatformPositionRef)

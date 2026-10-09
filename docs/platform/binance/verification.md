@@ -62,7 +62,7 @@ replacements follow the
   unobserved product/settings combinations remain unverified.
 - Frozen representative UM metadata lacks the exact ETHUSDT and ETHUSDT_261225
   rows. Observed positions do not imply complete runtime metadata coverage;
-  exact CM instruments are present.
+  exact CM futures contracts are present.
 - Difficult transient, pagination, and refusal states remain synthetic or
   documented coverage. Ed25519 signed live access remains unverified.
 - The optional `/sapi/v1/dci/product/accounts` diagnostic was not requested.

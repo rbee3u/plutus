@@ -261,9 +261,9 @@ function AccountFeedback({ account, timezone }: { account: AccountValuation; tim
         <p className={shared.notice}>
           Omitted from the total:{" "}
           {account.omitted.map((item, index) => (
-            <span key={item.symbol}>
+            <span key={item.platformAssetSymbol}>
               {index > 0 ? "; " : ""}
-              {item.symbol}
+              {item.platformAssetSymbol}
               {item.assetSymbol ? ` (mapped to ${item.assetSymbol})` : ""}{" "}
               <NumericText>{formatDecimal(item.equity)}</NumericText>{" "}
               <Codes values={[item.reason]} />

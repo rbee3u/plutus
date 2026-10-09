@@ -32,9 +32,9 @@ func (recoverySource) Collect(_ context.Context, _ adapters.Credentials, _ adapt
 	for _, kind := range types {
 		report := adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, ObservedAt: now}
 		if kind == "earn" {
-			report.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "60"}}
+			report.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "60"}}
 		} else {
-			report.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "40"}}
+			report.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "40"}}
 			expiry := now.Add(24 * time.Hour)
 			report.DualPositions = []adapters.DualPosition{
 				{PlatformPositionRef: "one", InvestSymbol: "USDT", Principal: "15", Status: "active"},
@@ -204,7 +204,7 @@ func TestCycleResumesLegacyPartialAccountReports(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer func() { _ = tx.Rollback() }()
-				report := adapters.AccountReport{AccountType: "earn", Status: adapters.StatusOK, Balances: []adapters.Balance{{Symbol: "USDT", Equity: "60"}}}
+				report := adapters.AccountReport{AccountType: "earn", Status: adapters.StatusOK, Balances: []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "60"}}}
 				if err := h.collection.insertSuccessfulReport(h.ctx, h.collection.q.WithTx(tx), h.portfolioID, claimed.ID, adapters.PlatformOKX, accountID, &report, adapters.MarginOKXPM, now, now); err != nil {
 					t.Fatal(err)
 				}
@@ -284,7 +284,7 @@ func TestIdentityReportsAndOutcomeRollbackTogether(t *testing.T) {
 					if result == "missing_report" && i > 0 {
 						continue
 					}
-					batch.Reports = append(batch.Reports, adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, Balances: []adapters.Balance{{Symbol: "USDT", Equity: "10"}}})
+					batch.Reports = append(batch.Reports, adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, Balances: []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "10"}}})
 				}
 				return batch, nil
 			}

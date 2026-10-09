@@ -44,22 +44,22 @@ application code uses the normalized Adapter contract, Valuation cannot import
 Financial, and HTTP cannot import SQL APIs. Runtime code cannot import
 `internal/testsupport`. Within-layer dependencies remain reviewed choices.
 
-| Module                                                                  | Responsibility                                                         |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `internal/app`                                                          | Composition root: every service built on one database handle           |
-| `internal/cli`, `cmd/plutus`                                            | CLI commands; `cmd/plutus` only starts them                            |
-| `internal/seeds`                                                        | Development seed fixtures for `db seed` and `db reset --seed`          |
-| `internal/transport/http`                                               | API bindings, browser security, HTTP conventions, and SPA serving      |
-| `internal/application/auth`                                             | Users, password verification, and Sessions                             |
-| `internal/application/portfolio`, `internal/application/identity`       | Ownership, Portfolio settings, Identity configuration, and Connections |
-| `internal/application/catalog`, `internal/application/listingexclusion` | Listings, Instruments, prices, and exclusion policy                    |
-| `internal/application/collection`                                       | Adapter orchestration and normalized report persistence                |
-| `internal/application/valuation`, `internal/application/capital`        | Derived value writes/rebuilds and manual Capital Flows                 |
-| `internal/application/financial`                                        | Overview, Holdings, history, periods, and financial presentation       |
-| `internal/application/jobs`, `internal/worker`                          | Persistent jobs, scheduling, leases, and dispatch                      |
-| `internal/application/audit`                                            | User and system action records                                         |
-| `internal/platform`                                                     | Typed Platform contract, live implementations, and deterministic fake  |
-| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret`    | SQL infrastructure, exact arithmetic, and credential encryption        |
+| Module                                                                        | Responsibility                                                         |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `internal/app`                                                                | Composition root: every service built on one database handle           |
+| `internal/cli`, `cmd/plutus`                                                  | CLI commands; `cmd/plutus` only starts them                            |
+| `internal/seeds`                                                              | Development seed fixtures for `db seed` and `db reset --seed`          |
+| `internal/transport/http`                                                     | API bindings, browser security, HTTP conventions, and SPA serving      |
+| `internal/application/auth`                                                   | Users, password verification, and Sessions                             |
+| `internal/application/portfolio`, `internal/application/identity`             | Ownership, Portfolio settings, Identity configuration, and Connections |
+| `internal/application/catalog`, `internal/application/platformassetexclusion` | Platform Assets, Futures Contracts, prices, and exclusion policy       |
+| `internal/application/collection`                                             | Adapter orchestration and normalized report persistence                |
+| `internal/application/valuation`, `internal/application/capital`              | Derived value writes/rebuilds and manual Capital Flows                 |
+| `internal/application/financial`                                              | Overview, Holdings, history, periods, and financial presentation       |
+| `internal/application/jobs`, `internal/worker`                                | Persistent jobs, scheduling, leases, and dispatch                      |
+| `internal/application/audit`                                                  | User and system action records                                         |
+| `internal/platform`                                                           | Typed Platform contract, live implementations, and deterministic fake  |
+| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret`          | SQL infrastructure, exact arithmetic, and credential encryption        |
 
 Financial reads stored Points and Account Valuations through Valuation, sharing
 decoding, Account issues, and an operation-scoped PriceBook. Readers aggregate
@@ -84,6 +84,31 @@ User-scoped rows remain outside the deletion scope; unexpected foreign ownership
 causes rollback.
 
 See [test ownership](./testing.md#test-ownership) for cross-module workflows.
+
+### Persisted Asset references
+
+Catalog objects keep their own `symbol`: `platform_assets.symbol` identifies a
+Platform Asset and `futures_contracts.symbol` identifies a Futures Contract.
+References outside those objects state their namespace explicitly:
+
+| Table               | Asset reference columns                                                                         | Meaning                                                        |
+| ------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `manual_balances`   | `platform_asset_symbol`, `platform_asset_id`                                                    | Entered Platform code and its Catalog record                   |
+| `dual_positions`    | `base_platform_asset_symbol`, `quote_platform_asset_symbol`, `invest_platform_asset_symbol`     | Reported product currencies before Asset mapping               |
+| `futures_contracts` | `base_platform_asset_symbol`, `quote_platform_asset_symbol`, `settlement_platform_asset_symbol` | Reported contract currencies before Asset mapping              |
+| `positions`         | `margin_platform_asset_symbol`                                                                  | Source margin amount's currency before presentation conversion |
+| `platform_assets`   | `asset_symbol`                                                                                  | Current cross-Platform Asset mapping                           |
+| `prices`            | `asset_symbol`, `quote_asset_symbol`                                                            | Valuation lookup Asset and denomination                        |
+| `capital_flows`     | `asset_symbol`                                                                                  | Cross-Platform Asset chosen for the flow                       |
+
+Role prefixes do not imply canonicalization: a retained `XBT` code can map to
+`BTC` for valuation without rewriting contract or Dual terms. These codes do not
+require corresponding Catalog rows; a reported Quote or margin currency can
+exist without a held Balance. Only record IDs have Catalog foreign keys. The
+API's compact role fields (`baseSymbol`, `quoteSymbol`, `settlementSymbol`,
+`investSymbol`, and `marginCurrency`) retain those source meanings. Stored JSON
+compatibility is described in the
+[upgrade guide](./deployment.md#catalog-terminology-upgrade).
 
 ## Frontend structure
 

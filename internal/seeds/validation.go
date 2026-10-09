@@ -13,10 +13,10 @@ func validateReport(r *adapters.AccountReport) error {
 	}
 	seen := map[string]bool{}
 	for _, v := range r.Balances {
-		if v.Symbol == "" || seen[v.Symbol] || !decimal.Valid(v.Equity) {
+		if v.PlatformAssetSymbol == "" || seen[v.PlatformAssetSymbol] || !decimal.Valid(v.Equity) {
 			return fmt.Errorf("invalid or duplicate Balance")
 		}
-		seen[v.Symbol] = true
+		seen[v.PlatformAssetSymbol] = true
 	}
 	if r.EarnDetailsCollected {
 		if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
@@ -26,11 +26,11 @@ func validateReport(r *adapters.AccountReport) error {
 		return fmt.Errorf("Earn descriptions must be marked collected")
 	}
 	for _, p := range r.Positions {
-		if p.PlatformPositionRef == "" || p.Instrument.Symbol == "" || !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
+		if p.PlatformPositionRef == "" || p.FuturesContract.Symbol == "" || !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
 			return fmt.Errorf("invalid Position identity or quantity")
 		}
-		if (p.Instrument.Kind == adapters.KindLinearDelivery || p.Instrument.Kind == adapters.KindInverseDelivery) && p.Instrument.ExpiryAt == nil {
-			return fmt.Errorf("delivery Instrument requires expiry")
+		if (p.FuturesContract.Kind == adapters.KindLinearDelivery || p.FuturesContract.Kind == adapters.KindInverseDelivery) && p.FuturesContract.ExpiryAt == nil {
+			return fmt.Errorf("delivery FuturesContract requires expiry")
 		}
 	}
 	for _, p := range r.DualPositions {

@@ -38,8 +38,8 @@ not proof of all account/mode combinations.
 ## Sanitation and replacements
 
 Configuration UID, mainUID, IP, and label are masked. Market trimming preserves
-whole rows, original counts, and held instruments. No accepted evidence was
-replaced. Corrected Futures positions replaced a temporary candidate missing
+whole rows, original counts, and held futures contracts. No accepted evidence
+was replaced. Corrected Futures positions replaced a temporary candidate missing
 SHORT before promotion; the accepted balance predates the added SHORT and is not
 a matching snapshot. Responses from separate requests are not an atomic
 aggregate proof.

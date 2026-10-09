@@ -31,10 +31,10 @@ func sortBalances(rows []BalanceRow, ranks map[uuid.UUID]int) {
 		if c := strings.Compare(a.AssetSymbol, b.AssetSymbol); c != 0 {
 			return c
 		}
-		if c := strings.Compare(a.Symbol, b.Symbol); c != 0 {
+		if c := strings.Compare(a.PlatformAssetSymbol, b.PlatformAssetSymbol); c != 0 {
 			return c
 		}
-		return bytes.Compare(a.ListingID[:], b.ListingID[:])
+		return bytes.Compare(a.PlatformAssetID[:], b.PlatformAssetID[:])
 	})
 }
 
@@ -75,7 +75,7 @@ func comparePositions(a, b *PositionRow) int {
 			}
 		}
 	}
-	if c := strings.Compare(a.Symbol, b.Symbol); c != 0 {
+	if c := strings.Compare(a.FuturesSymbol, b.FuturesSymbol); c != 0 {
 		return c
 	}
 	if c := strings.Compare(a.Side, b.Side); c != 0 {
@@ -126,9 +126,9 @@ func sortDualPositions(rows []DualPositionRow, ranks map[uuid.UUID]int) {
 
 func earnAssetKey(a adapters.EarnAmount) string {
 	if a.AssetSymbol != nil {
-		return *a.AssetSymbol + "\x00" + a.Symbol
+		return *a.AssetSymbol + "\x00" + a.PlatformAssetSymbol
 	}
-	return a.Symbol + "\x00" + a.Symbol
+	return a.PlatformAssetSymbol + "\x00" + a.PlatformAssetSymbol
 }
 
 func compareEarnAssets(a, b adapters.EarnAmount) int {

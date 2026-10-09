@@ -120,7 +120,7 @@ func (t Totals) Balances() []Balance {
 		if t[symbol].Sign() == 0 {
 			continue
 		}
-		out = append(out, Balance{Symbol: symbol, Equity: decimal.Format(t[symbol])})
+		out = append(out, Balance{PlatformAssetSymbol: symbol, Equity: decimal.Format(t[symbol])})
 	}
 	return out
 }
@@ -145,7 +145,7 @@ func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, a
 	var symbols []string
 	for _, report := range reports {
 		for _, balance := range report.Balances {
-			symbols = append(symbols, balance.Symbol)
+			symbols = append(symbols, balance.PlatformAssetSymbol)
 		}
 	}
 	return SymbolPrices(symbols, quotes, lookup, at)

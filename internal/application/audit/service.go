@@ -73,8 +73,10 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, in *ListFilte
 		PortfolioID:        portfolioID[:],
 		FilterAction:       flagInt(in.Action != ""),
 		Action:             in.Action,
+		LegacyAction:       legacyAction(in.Action),
 		FilterResourceType: flagInt(in.ResourceType != ""),
 		ResourceType:       in.ResourceType,
+		LegacyResourceType: legacyResourceType(in.ResourceType),
 		HasCursor:          0,
 		CursorOccurredAt:   time.Time{},
 		CursorID:           make([]byte, 16),
@@ -182,4 +184,25 @@ func flagInt(on bool) int {
 		return 1
 	}
 	return 0
+}
+
+// Historical audit documents retain their original vocabulary.
+func legacyAction(action string) string {
+	switch action {
+	case "catalog.platform_asset.map":
+		return "catalog.listing.map"
+	case "catalog.platform_asset.exclude":
+		return "catalog.listing.exclude"
+	case "catalog.platform_asset.restore":
+		return "catalog.listing.restore"
+	default:
+		return action
+	}
+}
+
+func legacyResourceType(resource string) string {
+	if resource == "platform_asset" {
+		return "asset_listing"
+	}
+	return resource
 }

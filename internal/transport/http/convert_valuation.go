@@ -65,7 +65,7 @@ func toAPIIssues(issues []valuation.Issue) []api.Issue {
 func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 	omitted := make([]api.OmittedBalance, 0, len(v.Omitted))
 	for i := range v.Omitted {
-		omitted = append(omitted, api.OmittedBalance{Symbol: v.Omitted[i].Symbol, AssetSymbol: nonEmptyStringPtr(v.Omitted[i].AssetSymbol), Equity: v.Omitted[i].Equity, Reason: v.Omitted[i].Reason})
+		omitted = append(omitted, api.OmittedBalance{PlatformAssetSymbol: v.Omitted[i].PlatformAssetSymbol, AssetSymbol: nonEmptyStringPtr(v.Omitted[i].AssetSymbol), Equity: v.Omitted[i].Equity, Reason: v.Omitted[i].Reason})
 	}
 	return api.AccountValuation{
 		ReportId:               nonNilUUIDPtr(v.ReportID),
@@ -139,8 +139,8 @@ func toAPIBalanceRows(rows []financial.BalanceRow) []api.BalanceRow {
 			IdentityId:          r.IdentityID,
 			IdentityName:        r.IdentityName,
 			Platform:            r.Platform,
-			ListingId:           r.ListingID,
-			Symbol:              r.Symbol,
+			PlatformAssetId:     r.PlatformAssetID,
+			PlatformAssetSymbol: r.PlatformAssetSymbol,
 			AssetSymbol:         r.AssetSymbol,
 			Equity:              r.Equity,
 			AvailableToWithdraw: r.AvailableToWithdraw,
@@ -171,8 +171,8 @@ func toAPIPositionRows(rows []financial.PositionRow) []api.PositionRow {
 			IdentityName:            r.IdentityName,
 			Platform:                r.Platform,
 			PlatformPositionRef:     r.PlatformPositionRef,
-			InstrumentId:            r.InstrumentID,
-			Symbol:                  r.Symbol,
+			FuturesContractId:       r.FuturesContractID,
+			FuturesSymbol:           r.FuturesSymbol,
 			Kind:                    r.Kind,
 			BaseSymbol:              r.BaseSymbol,
 			QuoteSymbol:             r.QuoteSymbol,

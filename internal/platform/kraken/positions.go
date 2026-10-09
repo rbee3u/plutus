@@ -32,8 +32,8 @@ type openPosition struct {
 	PnlCurrency   string `json:"pnlCurrency"`
 }
 
-// instrument is the contract metadata Futures instruments reports.
-type instrument struct {
+// nativeInstrument is the contract metadata Futures instruments reports.
+type nativeInstrument struct {
 	Symbol          string     `json:"symbol"`
 	Type            string     `json:"type"`
 	Pair            string     `json:"pair"`
@@ -52,9 +52,9 @@ type futuresTicker struct {
 
 // openBook is the open positions of one run with the metadata and mark prices of their contracts.
 type openBook struct {
-	positions   []openPosition
-	instruments map[string]instrument
-	tickers     map[string]futuresTicker
+	positions         []openPosition
+	nativeInstruments map[string]nativeInstrument
+	tickers           map[string]futuresTicker
 }
 
 // book reads the open positions once per run; the contract lists are fetched only when a position
@@ -75,7 +75,7 @@ func (r *run) book(ctx context.Context) (*openBook, error) {
 	book := &openBook{positions: open.Positions}
 	if len(open.Positions) > 0 {
 		var listed struct {
-			Instruments []instrument `json:"instruments"`
+			Instruments []nativeInstrument `json:"instruments"`
 		}
 		if err := r.c.call(ctx, epInstruments, url.Values{"contractType": {"all"}}, &listed); err != nil {
 			return nil, err
@@ -89,9 +89,9 @@ func (r *run) book(ctx context.Context) (*openBook, error) {
 		if err := r.c.call(ctx, epFuturesTickers, nil, &market); err != nil {
 			return nil, err
 		}
-		book.instruments = make(map[string]instrument, len(listed.Instruments))
+		book.nativeInstruments = make(map[string]nativeInstrument, len(listed.Instruments))
 		for _, row := range listed.Instruments {
-			book.instruments[row.Symbol] = row
+			book.nativeInstruments[row.Symbol] = row
 		}
 		book.tickers = make(map[string]futuresTicker, len(market.Tickers))
 		for _, row := range market.Tickers {
@@ -104,7 +104,7 @@ func (r *run) book(ctx context.Context) (*openBook, error) {
 
 // positions maps the open Futures positions of one wallet family: flexible futures belong to the
 // multi-collateral wallet (Multi-M, or Main in Unified Wallet), inverse and vanilla futures to
-// Coin-M. An option position fails the multi-collateral report, because Plutus has no Instrument
+// Coin-M. An option position fails the multi-collateral report, because Plutus has no Futures Contract
 // kind for it. A contract missing from the instrument list fails the report instead of
 // disappearing.
 func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.Position, error) {
@@ -124,7 +124,7 @@ func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.P
 		if size.Sign() == 0 {
 			continue
 		}
-		contract, ok := book.instruments[row.Symbol]
+		contract, ok := book.nativeInstruments[row.Symbol]
 		if !ok {
 			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: contract %s is missing from the instrument list.", where, row.Symbol))
 		}
@@ -169,7 +169,7 @@ func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.P
 // contract for linear contracts and quote units (USD) per contract for inverse ones. Unrealized
 // profit is kept only when its reported currency is the settlement coin, where a flexible
 // position without pnlCurrency reports USD, Kraken's documented default.
-func mapPosition(row *openPosition, contract *instrument, ticker *futuresTicker, assets assetNames) (adapters.Position, error) {
+func mapPosition(row *openPosition, contract *nativeInstrument, ticker *futuresTicker, assets assetNames) (adapters.Position, error) {
 	where := "Kraken " + epInstruments.String()
 	base, quote := contract.Base, contract.Quote
 	if base == "" || quote == "" {
@@ -227,7 +227,7 @@ func mapPosition(row *openPosition, contract *instrument, ticker *futuresTicker,
 	}
 	out := adapters.Position{
 		PlatformPositionRef: row.Symbol + ":" + row.Side,
-		Instrument: adapters.Instrument{
+		FuturesContract: adapters.FuturesContract{
 			Symbol:           row.Symbol,
 			Kind:             kind,
 			BaseSymbol:       base,

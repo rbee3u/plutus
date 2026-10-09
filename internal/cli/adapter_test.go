@@ -193,9 +193,9 @@ func TestInvalidSelectionFailsBeforeKeys(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "settleCoin") {
 		t.Fatalf("missing required query: %v", err)
 	}
-	_, err = runRecord("--platform", "okx", "--only", "api_v5_public_instruments", "--dry-run")
+	_, err = runRecord("--platform", "okx", "--only", "api_v5_public_futures_contracts", "--dry-run")
 	if err == nil {
-		t.Fatal("missing instrument type accepted")
+		t.Fatal("missing futures contract type accepted")
 	}
 }
 

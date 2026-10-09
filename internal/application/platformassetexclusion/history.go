@@ -1,4 +1,4 @@
-package listingexclusion
+package platformassetexclusion
 
 import (
 	"context"
@@ -15,31 +15,31 @@ type policyEvent struct {
 	ignored bool
 }
 
-// History retains all versions in descending version order for each listing.
+// History retains all versions in descending version order for each platform asset.
 // A newer version wins only when it predates the cycle's creation time.
 type History struct {
-	listings map[uuid.UUID][]policyEvent
+	platformAssets map[uuid.UUID][]policyEvent
 }
 
 func LoadHistory(ctx context.Context, db *sql.DB, portfolioID uuid.UUID) (History, error) {
-	rows, err := sqlcgen.New(db).ListListingExclusionHistory(ctx, portfolioID[:])
+	rows, err := sqlcgen.New(db).ListPlatformAssetExclusionHistory(ctx, portfolioID[:])
 	if err != nil {
 		return History{}, err
 	}
-	h := History{listings: map[uuid.UUID][]policyEvent{}}
+	h := History{platformAssets: map[uuid.UUID][]policyEvent{}}
 	for _, row := range rows {
-		id, err := uuid.FromBytes(row.ListingID)
+		id, err := uuid.FromBytes(row.PlatformAssetID)
 		if err != nil {
 			return History{}, err
 		}
-		h.listings[id] = append(h.listings[id], policyEvent{at: row.EffectiveAt, ignored: row.Ignored})
+		h.platformAssets[id] = append(h.platformAssets[id], policyEvent{at: row.EffectiveAt, ignored: row.Ignored})
 	}
 	return h, nil
 }
 
 func (h History) At(at time.Time) map[uuid.UUID]bool {
 	active := map[uuid.UUID]bool{}
-	for id, events := range h.listings {
+	for id, events := range h.platformAssets {
 		for _, event := range events {
 			if event.at.Before(at) {
 				active[id] = event.ignored

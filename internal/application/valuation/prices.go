@@ -57,7 +57,7 @@ func (b *PriceBook) lookupWithPolicy(ctx context.Context, platform, assetSymbol 
 		}
 		book = map[string]pricePoint{}
 		for i := range rows {
-			if !USDQuote(rows[i].QuoteSymbol) {
+			if !USDQuote(rows[i].QuoteAssetSymbol) {
 				continue
 			}
 			if value, ok := decimal.Parse(rows[i].Price); ok {
@@ -79,7 +79,7 @@ func (b *PriceBook) lookupWithPolicy(ctx context.Context, platform, assetSymbol 
 	if err != nil {
 		return nil, false, err
 	}
-	if !USDQuote(row.QuoteSymbol) || at.Sub(row.ObservedAt) > maxPriceAge {
+	if !USDQuote(row.QuoteAssetSymbol) || at.Sub(row.ObservedAt) > maxPriceAge {
 		return nil, false, nil
 	}
 	value, ok := decimal.Parse(row.Price)

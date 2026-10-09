@@ -22,7 +22,7 @@ import (
 )
 
 // TestBinanceFixturesStoreAndValue runs one cycle through the live Binance adapter replaying the
-// committed synthetic responses, so every selected balance, position, instrument, and price must be
+// committed synthetic responses, so every selected balance, position, futures contract, and price must be
 // accepted by the catalog and the database and valued without omissions.
 func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
@@ -54,12 +54,12 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "1539" {
 		t.Fatalf("Portfolio total = %s, want 1539", summary.Point.TotalUSD)
 	}
-	instruments, err := h.catalog.ListInstruments(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformBinance), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformBinance), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(instruments.Items) == 0 {
-		t.Fatal("positions stored no instruments")
+	if len(futuresContracts.Items) == 0 {
+		t.Fatal("positions stored no futures_contracts")
 	}
 	assertBinancePMPositions(t, h, accounts[string(binance.TypePortfolioMargin)].AccountID)
 	assertSyntheticDualPositions(t, h, accounts[string(binance.TypeDualInvestment)])
@@ -291,7 +291,7 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 				if position.Side == adapters.SideShort && tc.selection != "binance_classic_one_way_isolated" {
 					liquidation = "0.2"
 				}
-				if !ok || position.Symbol != "DOGEUSDT" || position.Kind != adapters.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.Quantity) != expected.quantity || position.QuantityUnit != adapters.UnitBase ||
+				if !ok || position.FuturesSymbol != "DOGEUSDT" || position.Kind != adapters.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.Quantity) != expected.quantity || position.QuantityUnit != adapters.UnitBase ||
 					position.EntryPrice == nil || decimal.Compact(*position.EntryPrice) != expected.entry ||
 					position.UnrealizedPnl == nil || decimal.Compact(*position.UnrealizedPnl) != expected.pnl ||
 					position.Leverage == nil || decimal.Compact(*position.Leverage) != "5" ||

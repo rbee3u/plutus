@@ -8,14 +8,14 @@ import (
 )
 
 func TestPositionMarginUnitAndMode(t *testing.T) {
-	instrument := adapters.Instrument{Symbol: "BTC-USD-SWAP", Kind: adapters.KindInversePerpetual, SettlementSymbol: "BTC"}
-	row := openPosition{InstID: instrument.Symbol, PosSide: " NET ", MgnMode: "cross", IMR: "100", Margin: "0.3", Ccy: "BTC"}
-	cross, err := mapPosition(&row, big.NewRat(-2, 1), &instrument)
+	futuresContract := adapters.FuturesContract{Symbol: "BTC-USD-SWAP", Kind: adapters.KindInversePerpetual, SettlementSymbol: "BTC"}
+	row := openPosition{InstID: futuresContract.Symbol, PosSide: " NET ", MgnMode: "cross", IMR: "100", Margin: "0.3", Ccy: "BTC"}
+	cross, err := mapPosition(&row, big.NewRat(-2, 1), &futuresContract)
 	if err != nil || cross.PositionMode != "one_way" || cross.Side != "short" || cross.Margin == nil || *cross.Margin != "100" || cross.MarginCurrency != "BTC" || cross.MarginBasis != "initial" {
 		t.Fatalf("cross %+v %v", cross, err)
 	}
 	row.MgnMode, row.PosSide = "isolated", "long"
-	isolated, err := mapPosition(&row, big.NewRat(2, 1), &instrument)
+	isolated, err := mapPosition(&row, big.NewRat(2, 1), &futuresContract)
 	if err != nil || isolated.PositionMode != "hedged" || isolated.Margin == nil || *isolated.Margin != "0.3" || isolated.MarginCurrency != "BTC" || isolated.MarginBasis != "allocated" {
 		t.Fatalf("isolated %+v %v", isolated, err)
 	}

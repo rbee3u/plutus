@@ -28,7 +28,7 @@ checks are in [Bybit verification](./verification.md).
 | Prices (every spot pair in one call, fetched right after the structure check so their time precedes every report) | `GET /v5/market/tickers?category=spot`                                                                  | no     | none           | IP limit only  |
 | `unified`                                                                                                         | `GET /v5/account/wallet-balance?accountType=UNIFIED`                                                    | yes    | not documented | 50 / s         |
 | `unified`: positions, paged by 200                                                                                | `GET /v5/position/list` for linear `settleCoin=USDT`, linear `settleCoin=USDC`, `inverse`, and `option` | yes    | not documented | 50 / s         |
-| `unified`: instruments, paged by 1000, fetched only for a category with an open position                          | `GET /v5/market/instruments-info?category=linear` and `category=inverse`                                | no     | none           | IP limit only  |
+| `unified`: futures contracts, paged by 1000, fetched only for a category with an open position                    | `GET /v5/market/instruments-info?category=linear` and `category=inverse`                                | no     | none           | IP limit only  |
 | `funding`                                                                                                         | `GET /v5/asset/transfer/query-account-coins-balance?accountType=FUND`                                   | yes    | not documented | 5 / s          |
 | `earn`: Flexible Savings                                                                                          | `GET /v5/earn/position?category=FlexibleSaving`                                                         | yes    | Earn           | not documented |
 | `earn`: Fixed-Term Savings                                                                                        | `GET /v5/earn/fixed-term/position?category=FixedTermSaving`                                             | yes    | Earn           | 10 / s         |
@@ -111,7 +111,7 @@ hold, which fails only its own Account. `ExternalRef` is `userID` from
 
 | Plutus column           | `unified` (`wallet-balance` `coin[]`)        | `funding` (`query-account-coins-balance`) | `earn`                                         |
 | ----------------------- | -------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `symbol`                | `coin`                                       | `coin`                                    | `coin`; Dual Asset `investCoin`                |
+| `PlatformAssetSymbol`   | `coin`                                       | `coin`                                    | `coin`; Dual Asset `investCoin`                |
 | `equity` (coin units)   | `equity` as reported, may be negative        | `walletBalance`                           | principal, see [Earn](#earn), one row per coin |
 | `available_to_trade`    | null                                         | null                                      | null                                           |
 | `available_to_withdraw` | null                                         | `transferBalance`                         | null                                           |
@@ -239,18 +239,18 @@ inverse, and option positions before any position is kept.
 
 - Rows with `size = 0` are dropped.
 - A nonzero `option` row fails the `unified` report with `normalization`, naming
-  the contract, because Plutus has no Instrument kind for it.
-- A position whose contract is missing from the instrument list fails the
+  the contract, because Plutus has no Futures Contract kind for it.
+- A position whose contract is missing from the futures contract list fails the
   `unified` report with `normalization`, naming the contract. It is never
   dropped. A position reference listed twice fails the report too.
 
-| Instrument column                                  | Source (`/v5/market/instruments-info`)                                                                                                                                       |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                                           | `symbol`                                                                                                                                                                     |
-| `kind`                                             | `contractType`: `LinearPerpetual` → `linear_perpetual`, `InversePerpetual` → `inverse_perpetual`, `LinearFutures` → `linear_delivery`, `InverseFutures` → `inverse_delivery` |
-| `base_symbol`, `quote_symbol`, `settlement_symbol` | `baseCoin`, `quoteCoin`, `settleCoin`                                                                                                                                        |
-| `expiry_at`                                        | `deliveryTime`, delivery contracts only                                                                                                                                      |
-| `contract_size`                                    | not mapped: Bybit sizes positions in coins or USD, not in contracts                                                                                                          |
+| Futures Contract column                                                                         | Source (`/v5/market/instruments-info`)                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                                                                        | `symbol`                                                                                                                                                                     |
+| `kind`                                                                                          | `contractType`: `LinearPerpetual` → `linear_perpetual`, `InversePerpetual` → `inverse_perpetual`, `LinearFutures` → `linear_delivery`, `InverseFutures` → `inverse_delivery` |
+| `base_platform_asset_symbol`, `quote_platform_asset_symbol`, `settlement_platform_asset_symbol` | `baseCoin`, `quoteCoin`, `settleCoin`                                                                                                                                        |
+| `expiry_at`                                                                                     | `deliveryTime`, delivery contracts only                                                                                                                                      |
+| `contract_size`                                                                                 | not mapped: Bybit sizes positions in coins or USD, not in contracts                                                                                                          |
 
 An unknown contract type, a missing coin, or a delivery contract without
 `deliveryTime` fails the `unified` report with `normalization`.

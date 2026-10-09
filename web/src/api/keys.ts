@@ -75,11 +75,11 @@ const registry = {
     "audit-events",
     true,
   ),
-  catalogListings: family<
+  catalogPlatformAssets: family<
     [platform?: string, search?: string, ignoredOnly?: boolean, offset?: number]
-  >("catalog-listings", true),
-  catalogInstruments: family<[platform?: string, search?: string, offset?: number]>(
-    "catalog-instruments",
+  >("catalog-platform-assets", true),
+  catalogFuturesContracts: family<[platform?: string, search?: string, offset?: number]>(
+    "catalog-futures-contracts",
     true,
   ),
   capitalFlows: family<[from?: string, to?: string]>("capital-flows", true),

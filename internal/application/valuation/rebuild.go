@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/listingexclusion"
+	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
@@ -45,7 +45,7 @@ func (s *Service) Rebuild(ctx context.Context, portfolioID uuid.UUID) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	policy, err := listingexclusion.LoadHistory(ctx, s.db, portfolioID)
+	policy, err := platformassetexclusion.LoadHistory(ctx, s.db, portfolioID)
 	if err != nil {
 		return 0, err
 	}

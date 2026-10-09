@@ -19,9 +19,9 @@ func CheckEarnComplete(platform Platform, platformUSD *big.Rat, balances []Balan
 	for _, balance := range balances {
 		amount, ok := decimal.Parse(balance.Equity)
 		if !ok {
-			return NewError(ClassNormalization, fmt.Sprintf("Earn balance %s is not a decimal.", balance.Symbol))
+			return NewError(ClassNormalization, fmt.Sprintf("Earn balance %s is not a decimal.", balance.PlatformAssetSymbol))
 		}
-		unit, ok := price(balance.Symbol)
+		unit, ok := price(balance.PlatformAssetSymbol)
 		if !ok {
 			return nil
 		}

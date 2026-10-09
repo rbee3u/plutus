@@ -16,18 +16,18 @@ func TestPositionsGroupBaseBeforeContractKindAndExpiry(t *testing.T) {
 	near := time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC)
 	far := near.AddDate(0, 3, 0)
 	want := []PositionRow{
-		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, Symbol: "BTCUSDC", Side: "long", PlatformPositionRef: "usdc"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, Symbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-a"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, Symbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-b"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, Symbol: "BTCUSDT", Side: "short", PlatformPositionRef: "short"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, Symbol: "Z_NEAR", ExpiryAt: &near, PlatformPositionRef: "near"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, Symbol: "A_FAR", ExpiryAt: &far, PlatformPositionRef: "far"},
-		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, Symbol: "A_UNKNOWN", PlatformPositionRef: "unknown-expiry"},
-		{BaseSymbol: &btc, Kind: adapters.KindInversePerpetual, Symbol: "BTCUSD_PERP", PlatformPositionRef: "inverse"},
-		{BaseSymbol: &btc, Kind: adapters.KindInverseDelivery, Symbol: "BTCUSD_DELIVERY", ExpiryAt: &near, PlatformPositionRef: "inverse-delivery"},
-		{BaseSymbol: &eth, Kind: adapters.KindLinearPerpetual, Symbol: "A_ETH", PlatformPositionRef: "eth"},
-		{BaseSymbol: &blank, Kind: adapters.KindInverseDelivery, Symbol: "A_NO_BASE", PlatformPositionRef: "missing-a"},
-		{Symbol: "B_NO_BASE", PlatformPositionRef: "missing-b"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDC", Side: "long", PlatformPositionRef: "usdc"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-a"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-b"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "short", PlatformPositionRef: "short"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "Z_NEAR", ExpiryAt: &near, PlatformPositionRef: "near"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_FAR", ExpiryAt: &far, PlatformPositionRef: "far"},
+		{BaseSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_UNKNOWN", PlatformPositionRef: "unknown-expiry"},
+		{BaseSymbol: &btc, Kind: adapters.KindInversePerpetual, FuturesSymbol: "BTCUSD_PERP", PlatformPositionRef: "inverse"},
+		{BaseSymbol: &btc, Kind: adapters.KindInverseDelivery, FuturesSymbol: "BTCUSD_DELIVERY", ExpiryAt: &near, PlatformPositionRef: "inverse-delivery"},
+		{BaseSymbol: &eth, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "A_ETH", PlatformPositionRef: "eth"},
+		{BaseSymbol: &blank, Kind: adapters.KindInverseDelivery, FuturesSymbol: "A_NO_BASE", PlatformPositionRef: "missing-a"},
+		{FuturesSymbol: "B_NO_BASE", PlatformPositionRef: "missing-b"},
 	}
 	got := slices.Clone(want)
 	slices.Reverse(got)
@@ -71,7 +71,7 @@ func TestHoldingsHierarchyPrecedesAssetAndExpiry(t *testing.T) {
 	if duals[0].PlatformPositionRef != "far" || duals[1].PlatformPositionRef != "missing" || duals[2].PlatformPositionRef != "second" {
 		t.Fatalf("Dual Positions crossed hierarchy or lost missing-expiry order: %+v", duals)
 	}
-	positions := []PositionRow{{AccountID: second, Symbol: "AAA"}, {AccountID: first, Symbol: "ZZZ"}}
+	positions := []PositionRow{{AccountID: second, FuturesSymbol: "AAA"}, {AccountID: first, FuturesSymbol: "ZZZ"}}
 	sortPositions(positions, ranks)
 	if positions[0].AccountID != first {
 		t.Fatal("Position Symbol sort crossed the Account hierarchy")

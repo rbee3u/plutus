@@ -15,10 +15,10 @@ import (
 )
 
 const listRebuildBalances = `-- name: ListRebuildBalances :many
-SELECT b.report_id, b.listing_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol, l.asset_symbol
+SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
 FROM balances b
-INNER JOIN asset_listings l ON l.id = b.listing_id
+INNER JOIN platform_assets l ON l.id = b.platform_asset_id
 WHERE b.portfolio_id = ? AND b.report_id IN (/*SLICE:report_ids*/?)
 ORDER BY b.report_id, l.asset_symbol ASC, l.symbol ASC
 `
@@ -30,7 +30,7 @@ type ListRebuildBalancesParams struct {
 
 type ListRebuildBalancesRow struct {
 	ReportID            []byte
-	ListingID           []byte
+	PlatformAssetID     []byte
 	Equity              string
 	AvailableToWithdraw sql.NullString
 	AvailableToTrade    sql.NullString
@@ -38,7 +38,7 @@ type ListRebuildBalancesRow struct {
 	Interest            sql.NullString
 	UnrealizedPnl       sql.NullString
 	Platform            string
-	Symbol              string
+	PlatformAssetSymbol string
 	AssetSymbol         string
 }
 
@@ -64,7 +64,7 @@ func (q *Queries) ListRebuildBalances(ctx context.Context, arg ListRebuildBalanc
 		var i ListRebuildBalancesRow
 		if err := rows.Scan(
 			&i.ReportID,
-			&i.ListingID,
+			&i.PlatformAssetID,
 			&i.Equity,
 			&i.AvailableToWithdraw,
 			&i.AvailableToTrade,
@@ -72,7 +72,7 @@ func (q *Queries) ListRebuildBalances(ctx context.Context, arg ListRebuildBalanc
 			&i.Interest,
 			&i.UnrealizedPnl,
 			&i.Platform,
-			&i.Symbol,
+			&i.PlatformAssetSymbol,
 			&i.AssetSymbol,
 		); err != nil {
 			return nil, err
@@ -123,7 +123,7 @@ func (q *Queries) ListRebuildPointTimes(ctx context.Context, portfolioID []byte)
 }
 
 const listRebuildPrices = `-- name: ListRebuildPrices :many
-SELECT platform, asset_symbol, observed_at, price, quote_symbol
+SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
 FROM prices
 WHERE asset_symbol IN (/*SLICE:asset_symbols*/?)
   AND observed_at >= ? AND observed_at <= ?
@@ -162,7 +162,7 @@ func (q *Queries) ListRebuildPrices(ctx context.Context, arg ListRebuildPricesPa
 			&i.AssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteSymbol,
+			&i.QuoteAssetSymbol,
 		); err != nil {
 			return nil, err
 		}

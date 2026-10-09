@@ -5,7 +5,7 @@ import "testing"
 func TestFormatParseRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	for _, kind := range []string{"identity", "capital-flow", "listing-exclusion"} {
+	for _, kind := range []string{"identity", "capital-flow", "platform-asset-exclusion"} {
 		for _, version := range []uint64{1, 2, 42, 1 << 40} {
 			value := Format(kind, version)
 			got, ok := Parse(kind, value)
@@ -42,22 +42,22 @@ func TestParseRejectsMalformed(t *testing.T) {
 func TestParseAllowZero(t *testing.T) {
 	t.Parallel()
 
-	if version, ok := ParseAllowZero("listing-exclusion", `"listing-exclusion:0"`); !ok || version != 0 {
+	if version, ok := ParseAllowZero("platform-asset-exclusion", `"platform-asset-exclusion:0"`); !ok || version != 0 {
 		t.Fatalf("ParseAllowZero() = %d, %v; want 0, true", version, ok)
 	}
-	if version, ok := Parse("listing-exclusion", `"listing-exclusion:0"`); ok {
+	if version, ok := Parse("platform-asset-exclusion", `"platform-asset-exclusion:0"`); ok {
 		t.Fatalf("Parse() = %d, true; want rejected", version)
 	}
 
 	for _, value := range []string{
 		"",
-		`"listing-exclusion:"`,
-		`"listing-exclusion:01"`,
-		`"listing-exclusion:-0"`,
-		`"listing-exclusion:0"x`,
-		`W/"listing-exclusion:0"`,
+		`"platform-asset-exclusion:"`,
+		`"platform-asset-exclusion:01"`,
+		`"platform-asset-exclusion:-0"`,
+		`"platform-asset-exclusion:0"x`,
+		`W/"platform-asset-exclusion:0"`,
 	} {
-		if version, ok := ParseAllowZero("listing-exclusion", value); ok {
+		if version, ok := ParseAllowZero("platform-asset-exclusion", value); ok {
 			t.Fatalf("ParseAllowZero(%q) = %d, true; want rejected", value, version)
 		}
 	}

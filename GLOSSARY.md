@@ -60,7 +60,7 @@ with its Platform observation time. _Avoid_: raw response, derived value.
 equity and account measures when available, Balances, Positions, Earn Positions,
 and Dual Positions. _Avoid_: equity, snapshot.
 
-**Balance**: An Asset Listing's equity in an Account Report, accompanied by
+**Balance**: A Platform Asset's equity in an Account Report, accompanied by
 availability, liability, and unrealized-profit measures where known. _Avoid_:
 quantity, holding as synonyms for its equity measure.
 
@@ -101,12 +101,23 @@ principal and available product terms. _Avoid_: Balance, futures Position.
 ### Assets and valuation
 
 **Asset**: A unit of financial value identified by normalized symbol across
-Platforms, such as BTC or USDT. _Avoid_: Asset Listing, Instrument.
+Platforms, such as BTC or USDT. _Avoid_: Platform Asset, Futures Contract.
 
-**Asset Listing**: One Platform's native symbol for an Asset.
+**Platform Asset**: An Asset recognized on one Platform under a
+Platform-specific symbol and mapped to a cross-Platform Asset. _Avoid_: Asset
+Listing, Listing.
 
-**Instrument**: A Platform-specific contract or market identified by symbol,
-product kind, settlement Asset, and expiry where applicable. _Avoid_: Asset.
+**Futures Contract**: A Platform-specific perpetual or delivery contract, with
+its symbol, settlement Asset, and expiry where applicable. _Avoid_: Instrument,
+Asset, trading pair.
+
+**Asset Symbol**: The normalized code identifying an Asset across Platforms.
+
+**Platform Asset Symbol**: A Platform Asset's code within its Platform, which
+may differ from the Asset Symbol it maps to.
+
+**Futures Symbol**: A Futures Contract's code within its Platform. It identifies
+the contract, not an open Position or a Base/Quote pair.
 
 **Valuation Asset**: USD, the unit of all derived financial values in Plutus.
 
@@ -124,8 +135,8 @@ Collection Cycle. _Avoid_: snapshot, projection, generation.
 or another required input cannot be determined. _Avoid_: zero, stale as synonyms
 for completeness.
 
-**Listing Exclusion**: A reviewed, reversible Portfolio rule excluding an Asset
-Listing's Balances from future calculated Account Valuations.
+**Platform Asset Exclusion**: A reviewed, reversible Portfolio rule excluding a
+Platform Asset's Balances from future calculated Account Valuations.
 
 ### Flows and periods
 

@@ -282,9 +282,9 @@ export type Issue = {
 };
 
 export type OmittedBalance = {
-    symbol: string;
+    platformAssetSymbol: string;
     /**
-     * The Asset symbol the listing is mapped to, present only when it differs from the Platform symbol.
+     * The Asset symbol the Platform Asset is mapped to, present only when it differs from platformAssetSymbol.
      */
     assetSymbol?: string;
     equity: Decimal;
@@ -388,8 +388,8 @@ export type HoldingsTree = {
 };
 
 export type ManualBalance = {
-    symbol: string;
-    listingId: Uuid;
+    platformAssetSymbol: string;
+    platformAssetId: Uuid;
     assetSymbol: string;
     quantity: Decimal;
     modifiedAt: string;
@@ -406,7 +406,7 @@ export type ManualBalanceState = {
 };
 
 export type CreateManualBalance = {
-    symbol: string;
+    platformAssetSymbol: string;
     quantity: Decimal;
 };
 
@@ -421,8 +421,8 @@ export type BalanceRow = {
     identityId: Uuid;
     identityName: string;
     platform: string;
-    listingId: Uuid;
-    symbol: string;
+    platformAssetId: Uuid;
+    platformAssetSymbol: string;
     assetSymbol: string;
     equity: Decimal;
     availableToWithdraw?: NullableDecimal;
@@ -458,8 +458,8 @@ export type PositionRow = {
     identityName: string;
     platform: string;
     platformPositionRef: string;
-    instrumentId: Uuid;
-    symbol: string;
+    futuresContractId: Uuid;
+    futuresSymbol: string;
     kind: string;
     baseSymbol?: string | null;
     quoteSymbol?: string | null;
@@ -531,7 +531,7 @@ export type DualPositionRow = {
 
 export type EarnAmount = {
     assetSymbol?: string | null;
-    symbol: string;
+    platformAssetSymbol: string;
     amount: Decimal;
 };
 
@@ -541,11 +541,11 @@ export type EarnRate = {
     kind: string;
     qualifier: string;
     label: string;
-    symbol?: string | null;
+    platformAssetSymbol?: string | null;
 };
 
 export type EarnReward = {
-    symbol: string;
+    platformAssetSymbol: string;
     amount: Decimal;
     kind: string;
 };
@@ -786,7 +786,7 @@ export type PatchCapitalFlowRequest = {
     note?: string | null;
 };
 
-export type AssetListing = {
+export type PlatformAsset = {
     id: Uuid;
     platform: string;
     symbol: string;
@@ -802,21 +802,21 @@ export type AssetListing = {
     exclusionVersion: number;
 };
 
-export type AssetListingList = {
-    items: Array<AssetListing>;
+export type PlatformAssetList = {
+    items: Array<PlatformAsset>;
     page: OffsetPage;
 };
 
-export type PutAssetListingMappingRequest = {
+export type PutPlatformAssetMappingRequest = {
     assetSymbol: string;
 };
 
-export type PutAssetListingExclusionRequest = {
+export type PutPlatformAssetExclusionRequest = {
     ignored: boolean;
     reason?: string;
 };
 
-export type Instrument = {
+export type FuturesContract = {
     id: Uuid;
     platform: string;
     symbol: string;
@@ -830,8 +830,8 @@ export type Instrument = {
     lastSeenAt: string;
 };
 
-export type InstrumentList = {
-    items: Array<Instrument>;
+export type FuturesContractList = {
+    items: Array<FuturesContract>;
     page: OffsetPage;
 };
 
@@ -952,7 +952,7 @@ export type FlowId = Uuid;
 
 export type SessionId = Uuid;
 
-export type ListingId = Uuid;
+export type PlatformAssetId = Uuid;
 
 /**
  * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
@@ -2174,7 +2174,7 @@ export type ListBalancesData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the native listing or mapped Asset Symbol.
+         * Case-insensitive literal substring of the native platform asset or mapped Asset Symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2860,7 +2860,7 @@ export type ListBoundaryEventsResponses = {
 
 export type ListBoundaryEventsResponse = ListBoundaryEventsResponses[keyof ListBoundaryEventsResponses];
 
-export type ListAssetListingsData = {
+export type ListPlatformAssetsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
@@ -2872,10 +2872,10 @@ export type ListAssetListingsData = {
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets';
 };
 
-export type ListAssetListingsErrors = {
+export type ListPlatformAssetsErrors = {
     /**
      * Problem details.
      */
@@ -2890,32 +2890,32 @@ export type ListAssetListingsErrors = {
     404: Problem;
 };
 
-export type ListAssetListingsError = ListAssetListingsErrors[keyof ListAssetListingsErrors];
+export type ListPlatformAssetsError = ListPlatformAssetsErrors[keyof ListPlatformAssetsErrors];
 
-export type ListAssetListingsResponses = {
+export type ListPlatformAssetsResponses = {
     /**
-     * Asset listings.
+     * Platform assets.
      */
-    200: AssetListingList;
+    200: PlatformAssetList;
 };
 
-export type ListAssetListingsResponse = ListAssetListingsResponses[keyof ListAssetListingsResponses];
+export type ListPlatformAssetsResponse = ListPlatformAssetsResponses[keyof ListPlatformAssetsResponses];
 
-export type PutAssetListingMappingData = {
-    body: PutAssetListingMappingRequest;
+export type PutPlatformAssetMappingData = {
+    body: PutPlatformAssetMappingRequest;
     headers: {
         'If-Match': string;
         'X-CSRF-Token'?: string;
     };
     path: {
         portfolioId: Uuid;
-        listingId: Uuid;
+        platformAssetId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/mapping';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/mapping';
 };
 
-export type PutAssetListingMappingErrors = {
+export type PutPlatformAssetMappingErrors = {
     /**
      * Problem details.
      */
@@ -2934,32 +2934,32 @@ export type PutAssetListingMappingErrors = {
     412: Problem;
 };
 
-export type PutAssetListingMappingError = PutAssetListingMappingErrors[keyof PutAssetListingMappingErrors];
+export type PutPlatformAssetMappingError = PutPlatformAssetMappingErrors[keyof PutPlatformAssetMappingErrors];
 
-export type PutAssetListingMappingResponses = {
+export type PutPlatformAssetMappingResponses = {
     /**
-     * Updated listing.
+     * Updated platform asset.
      */
-    200: AssetListing;
+    200: PlatformAsset;
 };
 
-export type PutAssetListingMappingResponse = PutAssetListingMappingResponses[keyof PutAssetListingMappingResponses];
+export type PutPlatformAssetMappingResponse = PutPlatformAssetMappingResponses[keyof PutPlatformAssetMappingResponses];
 
-export type PutAssetListingExclusionData = {
-    body: PutAssetListingExclusionRequest;
+export type PutPlatformAssetExclusionData = {
+    body: PutPlatformAssetExclusionRequest;
     headers: {
         'If-Match': string;
         'X-CSRF-Token'?: string;
     };
     path: {
         portfolioId: Uuid;
-        listingId: Uuid;
+        platformAssetId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/asset-listings/{listingId}/exclusion';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/exclusion';
 };
 
-export type PutAssetListingExclusionErrors = {
+export type PutPlatformAssetExclusionErrors = {
     /**
      * Problem details.
      */
@@ -2978,18 +2978,18 @@ export type PutAssetListingExclusionErrors = {
     412: Problem;
 };
 
-export type PutAssetListingExclusionError = PutAssetListingExclusionErrors[keyof PutAssetListingExclusionErrors];
+export type PutPlatformAssetExclusionError = PutPlatformAssetExclusionErrors[keyof PutPlatformAssetExclusionErrors];
 
-export type PutAssetListingExclusionResponses = {
+export type PutPlatformAssetExclusionResponses = {
     /**
-     * Updated Portfolio listing rule.
+     * Updated Portfolio platform asset rule.
      */
-    200: AssetListing;
+    200: PlatformAsset;
 };
 
-export type PutAssetListingExclusionResponse = PutAssetListingExclusionResponses[keyof PutAssetListingExclusionResponses];
+export type PutPlatformAssetExclusionResponse = PutPlatformAssetExclusionResponses[keyof PutPlatformAssetExclusionResponses];
 
-export type ListInstrumentsData = {
+export type ListFuturesContractsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
@@ -3000,10 +3000,10 @@ export type ListInstrumentsData = {
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/instruments';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/futures-contracts';
 };
 
-export type ListInstrumentsErrors = {
+export type ListFuturesContractsErrors = {
     /**
      * Problem details.
      */
@@ -3018,16 +3018,16 @@ export type ListInstrumentsErrors = {
     404: Problem;
 };
 
-export type ListInstrumentsError = ListInstrumentsErrors[keyof ListInstrumentsErrors];
+export type ListFuturesContractsError = ListFuturesContractsErrors[keyof ListFuturesContractsErrors];
 
-export type ListInstrumentsResponses = {
+export type ListFuturesContractsResponses = {
     /**
-     * Instruments.
+     * Futures contracts.
      */
-    200: InstrumentList;
+    200: FuturesContractList;
 };
 
-export type ListInstrumentsResponse = ListInstrumentsResponses[keyof ListInstrumentsResponses];
+export type ListFuturesContractsResponse = ListFuturesContractsResponses[keyof ListFuturesContractsResponses];
 
 export type ListJobsData = {
     body?: never;
@@ -3249,10 +3249,10 @@ export type DeleteManualBalanceData = {
     path: {
         portfolioId: Uuid;
         identityId: Uuid;
-        symbol: string;
+        platformAssetSymbol: string;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol}';
 };
 
 export type DeleteManualBalanceErrors = {
@@ -3302,10 +3302,10 @@ export type UpdateManualBalanceData = {
     path: {
         portfolioId: Uuid;
         identityId: Uuid;
-        symbol: string;
+        platformAssetSymbol: string;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{symbol}';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol}';
 };
 
 export type UpdateManualBalanceErrors = {

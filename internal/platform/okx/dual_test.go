@@ -92,7 +92,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			}
 			if r.AccountType == TypeEarn {
 				for _, b := range r.Balances {
-					if b.Symbol == "BTC" || (b.Symbol == "ETH" && b.Equity != "0.1") {
+					if b.PlatformAssetSymbol == "BTC" || (b.PlatformAssetSymbol == "ETH" && b.Equity != "0.1") {
 						t.Fatal("dual principal in Earn")
 					}
 				}

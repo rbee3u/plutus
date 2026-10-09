@@ -84,12 +84,12 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	}{
 		{base, etag, false, true, 401}, {base, etag, true, false, 403}, {base, "", true, true, 400}, {base, `"identity:1"`, true, true, 400}, {"/api/v1/portfolios/" + uuid.NewString() + "/identities/" + item.ID.String() + "/manual-balances", etag, true, true, 404},
 	} {
-		res := request("POST", tc.path, `{"symbol":"USD","quantity":"100"}`, tc.etag, tc.auth, tc.csrf)
+		res := request("POST", tc.path, `{"platformAssetSymbol":"USD","quantity":"100"}`, tc.etag, tc.auth, tc.csrf)
 		if res.Code != tc.code {
 			t.Fatalf("precondition want %d got %d %s", tc.code, res.Code, res.Body.String())
 		}
 	}
-	added := request("POST", base, `{"symbol":"usd","quantity":"100"}`, etag, true, true)
+	added := request("POST", base, `{"platformAssetSymbol":"usd","quantity":"100"}`, etag, true, true)
 	var state api.ManualBalanceState
 	if added.Code != 200 || json.Unmarshal(added.Body.Bytes(), &state) != nil || !state.Pending || state.Items[0].Quantity != "100" {
 		t.Fatalf("add %d %s", added.Code, added.Body.String())
@@ -99,7 +99,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	session = otherUserSession(t, authentication)
 	for _, tc := range []struct{ method, suffix, body string }{
 		{"GET", "", ""},
-		{"POST", "", `{"symbol":"BTC","quantity":"2"}`},
+		{"POST", "", `{"platformAssetSymbol":"BTC","quantity":"2"}`},
 		{"PATCH", "/USD", `{"quantity":"-999"}`},
 		{"DELETE", "/USD", ""},
 	} {
@@ -116,7 +116,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if unchanged.Code != 200 || json.Unmarshal(unchanged.Body.Bytes(), &after) != nil || !reflect.DeepEqual(state, after) || unchanged.Header().Get("ETag") != next {
 		t.Fatalf("rejected writes changed Manual balances: %d %s", unchanged.Code, unchanged.Body.String())
 	}
-	if res := request("POST", base, `{"symbol":"USD","quantity":"10"}`, next, true, true); res.Code != 409 {
+	if res := request("POST", base, `{"platformAssetSymbol":"USD","quantity":"10"}`, next, true, true); res.Code != 409 {
 		t.Fatalf("duplicate %d %s", res.Code, res.Body.String())
 	}
 	if res := request("PATCH", base+"/USD", `{"quantity":"-100"}`, etag, true, true); res.Code != 412 {

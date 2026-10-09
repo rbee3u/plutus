@@ -44,10 +44,10 @@ type Options struct {
 
 // Adapter is the Binance adapter. It is safe for concurrent use.
 type Adapter struct {
-	hosts       Hosts
-	http        *http.Client
-	clock       *clock
-	instruments *instrumentCache
+	hosts            Hosts
+	http             *http.Client
+	clock            *clock
+	futuresContracts *futuresContractCache
 }
 
 // New constructs a Binance adapter; nil options select production defaults.
@@ -70,10 +70,10 @@ func New(in *Options) *Adapter {
 		opts.Now = time.Now
 	}
 	return &Adapter{
-		hosts:       opts.Hosts,
-		http:        opts.HTTP,
-		clock:       &clock{now: opts.Now},
-		instruments: newInstrumentCache(opts.Now),
+		hosts:            opts.Hosts,
+		http:             opts.HTTP,
+		clock:            &clock{now: opts.Now},
+		futuresContracts: newFuturesContractCache(opts.Now),
 	}
 }
 

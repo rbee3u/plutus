@@ -24,11 +24,11 @@ import (
 
 // Balance is a user-entered quantity, never an editable exchange observation.
 type Balance struct {
-	Symbol      string    `json:"symbol"`
-	ListingID   uuid.UUID `json:"listingId"`
-	AssetSymbol string    `json:"assetSymbol"`
-	Quantity    string    `json:"quantity"`
-	ModifiedAt  time.Time `json:"modifiedAt"`
+	PlatformAssetSymbol string    `json:"platformAssetSymbol"`
+	PlatformAssetID     uuid.UUID `json:"platformAssetId"`
+	AssetSymbol         string    `json:"assetSymbol"`
+	Quantity            string    `json:"quantity"`
+	ModifiedAt          time.Time `json:"modifiedAt"`
 }
 
 // State separates the editable ledger from the last completed valuation.
@@ -52,11 +52,11 @@ func ParseETag(value string) (uint64, bool) {
 
 // Input carries a balance mutation and its authenticated audit actor.
 type Input struct {
-	Symbol      string
-	Quantity    string
-	Version     uint64
-	ActorUserID uuid.UUID
-	RequestID   string
+	PlatformAssetSymbol string
+	Quantity            string
+	Version             uint64
+	ActorUserID         uuid.UUID
+	RequestID           string
 }
 
 // Service owns manual ledger and revision persistence.
@@ -67,8 +67,8 @@ type Service struct {
 }
 
 // NewService constructs a manual ledger service.
-func NewService(db *sql.DB, listings *catalog.Service) *Service {
-	return &Service{db: db, now: time.Now, catalog: listings}
+func NewService(db *sql.DB, platformAssets *catalog.Service) *Service {
+	return &Service{db: db, now: time.Now, catalog: platformAssets}
 }
 
 func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uuid.UUID) ([]Balance, error) {
@@ -78,11 +78,11 @@ func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uu
 	}
 	out := make([]Balance, 0, len(rows))
 	for _, row := range rows {
-		id, err := uuid.FromBytes(row.ListingID)
+		id, err := uuid.FromBytes(row.PlatformAssetID)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Balance{Symbol: row.Symbol, ListingID: id, AssetSymbol: row.AssetSymbol, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ModifiedAt})
+		out = append(out, Balance{PlatformAssetSymbol: row.PlatformAssetSymbol, PlatformAssetID: id, AssetSymbol: row.AssetSymbol, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ModifiedAt})
 	}
 	return out, nil
 }
@@ -91,7 +91,7 @@ func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uu
 func Quantities(items []Balance) (sqljson.Column, error) {
 	amounts := map[string]string{}
 	for _, item := range items {
-		amounts[item.Symbol] = decimal.Compact(item.Quantity)
+		amounts[item.PlatformAssetSymbol] = decimal.Compact(item.Quantity)
 	}
 	raw, err := json.Marshal(amounts)
 	return sqljson.Column(raw), err
@@ -128,7 +128,8 @@ func (s *Service) Get(ctx context.Context, portfolioID, identityID uuid.UUID) (S
 		}
 		if err == nil {
 			state.AppliedVersion = &applied.Version
-			if err := json.Unmarshal(applied.BalancesJson, &state.AppliedItems); err != nil {
+			state.AppliedItems, err = decodeBalances(applied.BalancesJson)
+			if err != nil {
 				return State{}, err
 			}
 		}
@@ -154,7 +155,7 @@ func (s *Service) Delete(ctx context.Context, portfolioID, identityID uuid.UUID,
 }
 
 func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID, in Input, action string) (State, error) {
-	symbol, err := catalog.NormalizeSymbol(in.Symbol)
+	symbol, err := catalog.NormalizeSymbol(in.PlatformAssetSymbol)
 	if err != nil {
 		return State{}, err
 	}
@@ -191,7 +192,7 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		}
 		var previous *Balance
 		for i := range before {
-			if before[i].Symbol == symbol {
+			if before[i].PlatformAssetSymbol == symbol {
 				previous = &before[i]
 				break
 			}
@@ -208,13 +209,13 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		}
 		now := s.now().UTC().Truncate(time.Microsecond)
 		if amount.Sign() == 0 {
-			err = q.DeleteManualBalance(ctx, sqlcgen.DeleteManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, Symbol: symbol})
+			err = q.DeleteManualBalance(ctx, sqlcgen.DeleteManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, PlatformAssetSymbol: symbol})
 		} else {
-			listingID, _, listingErr := s.catalog.EnsureListing(ctx, q, adapters.Platform(account.Platform), symbol, "", now)
-			if listingErr != nil {
-				return listingErr
+			platformAssetID, _, platformAssetErr := s.catalog.EnsurePlatformAsset(ctx, q, adapters.Platform(account.Platform), symbol, "", now)
+			if platformAssetErr != nil {
+				return platformAssetErr
 			}
-			err = q.PutManualBalance(ctx, sqlcgen.PutManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, Symbol: symbol, ListingID: listingID[:], Quantity: quantity, ModifiedAt: now})
+			err = q.PutManualBalance(ctx, sqlcgen.PutManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, PlatformAssetSymbol: symbol, PlatformAssetID: platformAssetID[:], Quantity: quantity, ModifiedAt: now})
 		}
 		if err != nil {
 			return err
@@ -310,7 +311,8 @@ func (s *Service) Freeze(ctx context.Context, portfolioID, jobID uuid.UUID) ([]C
 				return nil, err
 			}
 			item := CycleAccount{AccountID: accountID, IdentityID: identityID, Platform: adapters.Platform(row.Platform), Version: row.Version, ModifiedAt: row.ModifiedAt}
-			if err := json.Unmarshal(row.BalancesJson, &item.Items); err != nil {
+			item.Items, err = decodeBalances(row.BalancesJson)
+			if err != nil {
 				return nil, err
 			}
 			out = append(out, item)

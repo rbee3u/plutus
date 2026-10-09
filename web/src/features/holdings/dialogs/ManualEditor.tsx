@@ -83,7 +83,7 @@ export function ManualEditor({
             return result.data!;
           }}
           onSave={async (symbol, quantity, action) => {
-            const path = { portfolioId, identityId, symbol };
+            const path = { portfolioId, identityId, platformAssetSymbol: symbol };
             const headers = { "If-Match": `"manual:${query.data.version}"` };
             const result = await write(() => {
               switch (action) {
@@ -95,7 +95,7 @@ export function ManualEditor({
                   return createManualBalance({
                     path: { portfolioId, identityId },
                     headers,
-                    body: { symbol, quantity },
+                    body: { platformAssetSymbol: symbol, quantity },
                   });
               }
             });
@@ -133,8 +133,8 @@ function ManualForm({
   onReload: () => Promise<ManualBalanceState>;
   onClose?: () => void;
 }) {
-  const initial = state.items.find((item) => item.symbol === target.symbol);
-  const [symbol, setSymbol] = useState(initial?.symbol ?? "");
+  const initial = state.items.find((item) => item.platformAssetSymbol === target.symbol);
+  const [symbol, setSymbol] = useState(initial?.platformAssetSymbol ?? "");
   const [quantity, setQuantity] = useState(initial?.quantity ?? "");
   const action = target.action ?? (initial ? "edit" : "add");
   const [busy, setBusy] = useState(false);
@@ -144,7 +144,8 @@ function ManualForm({
   const [saved, setSaved] = useState(false);
   const [needsReload, setNeedsReload] = useState(false);
   const existing =
-    !saved && Boolean(state.items.find((item) => item.symbol === symbol.trim().toUpperCase()));
+    !saved &&
+    Boolean(state.items.find((item) => item.platformAssetSymbol === symbol.trim().toUpperCase()));
 
   async function save() {
     setBusy(true);
@@ -168,7 +169,9 @@ function ManualForm({
     try {
       const latest = await onReload();
       if (action !== "add") {
-        setQuantity(latest.items.find((item) => item.symbol === symbol)?.quantity ?? "");
+        setQuantity(
+          latest.items.find((item) => item.platformAssetSymbol === symbol)?.quantity ?? "",
+        );
       }
       setMessage("");
       setNeedsReload(false);

@@ -28,7 +28,7 @@ type openPosition struct {
 
 // positions maps the open contract positions of the trading account. MARGIN rows are skipped:
 // they are borrow-backed spot exposure whose value is already in the Balances' equity. An
-// instrument kind Plutus cannot store fails the Account instead of disappearing.
+// contract kind Plutus cannot store fails the Account instead of disappearing.
 func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.MarginMode) ([]adapters.Position, error) {
 	var rows []openPosition
 	if err := c.call(ctx, epPositions, &rows); err != nil {
@@ -54,11 +54,11 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 		if amount.Sign() == 0 {
 			continue
 		}
-		instrument, err := a.instruments.lookup(ctx, c, market, row.InstID)
+		futuresContract, err := a.futuresContracts.lookup(ctx, c, market, row.InstID)
 		if err != nil {
 			return nil, err
 		}
-		position, err := mapPosition(row, amount, &instrument)
+		position, err := mapPosition(row, amount, &futuresContract)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 	return out, nil
 }
 
-func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instrument) (adapters.Position, error) {
+func mapPosition(row *openPosition, amount *big.Rat, futuresContract *adapters.FuturesContract) (adapters.Position, error) {
 	if _, err := optionalFields(epPositions.String(), row.InstID,
 		field{"avgPx", row.AvgPx}, field{"markPx", row.MarkPx}, field{"liqPx", row.LiqPx},
 		field{"upl", row.Upl}, field{"lever", row.Lever}, field{"margin", row.Margin}, field{"imr", row.IMR}); err != nil {
@@ -96,7 +96,7 @@ func mapPosition(row *openPosition, amount *big.Rat, instrument *adapters.Instru
 	}
 	out := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%s", row.InstID, strings.ToLower(strings.TrimSpace(row.PosSide))),
-		Instrument:          *instrument,
+		FuturesContract:     *futuresContract,
 		Side:                side,
 		PositionMode:        mode,
 		Quantity:            decimal.Format(decimal.Abs(amount)),

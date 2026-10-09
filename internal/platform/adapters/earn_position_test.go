@@ -9,18 +9,18 @@ func TestEarnDetailsMatchBalancesExactly(t *testing.T) {
 		balances []Balance
 		valid    bool
 	}{
-		{"matching", []Balance{{Symbol: "BTC", Equity: "1"}, {Symbol: "ETH", Equity: "2"}}, true},
-		{"reordered and equivalent", []Balance{{Symbol: "eth", Equity: "2.00"}, {Symbol: "btc", Equity: "1.0"}}, true},
-		{"missing asset", []Balance{{Symbol: "BTC", Equity: "1"}}, false},
-		{"extra asset", []Balance{{Symbol: "BTC", Equity: "1"}, {Symbol: "ETH", Equity: "2"}, {Symbol: "USDT", Equity: "3"}}, false},
-		{"duplicate masks missing asset", []Balance{{Symbol: "BTC", Equity: "1"}, {Symbol: "btc", Equity: "1"}}, false},
-		{"invalid amount", []Balance{{Symbol: "BTC", Equity: "invalid"}, {Symbol: "ETH", Equity: "2"}}, false},
-		{"mismatched amount", []Balance{{Symbol: "BTC", Equity: "9"}, {Symbol: "ETH", Equity: "2"}}, false},
-		{"negative amount", []Balance{{Symbol: "BTC", Equity: "-1"}, {Symbol: "ETH", Equity: "2"}}, false},
+		{"matching", []Balance{{PlatformAssetSymbol: "BTC", Equity: "1"}, {PlatformAssetSymbol: "ETH", Equity: "2"}}, true},
+		{"reordered and equivalent", []Balance{{PlatformAssetSymbol: "eth", Equity: "2.00"}, {PlatformAssetSymbol: "btc", Equity: "1.0"}}, true},
+		{"missing asset", []Balance{{PlatformAssetSymbol: "BTC", Equity: "1"}}, false},
+		{"extra asset", []Balance{{PlatformAssetSymbol: "BTC", Equity: "1"}, {PlatformAssetSymbol: "ETH", Equity: "2"}, {PlatformAssetSymbol: "USDT", Equity: "3"}}, false},
+		{"duplicate masks missing asset", []Balance{{PlatformAssetSymbol: "BTC", Equity: "1"}, {PlatformAssetSymbol: "btc", Equity: "1"}}, false},
+		{"invalid amount", []Balance{{PlatformAssetSymbol: "BTC", Equity: "invalid"}, {PlatformAssetSymbol: "ETH", Equity: "2"}}, false},
+		{"mismatched amount", []Balance{{PlatformAssetSymbol: "BTC", Equity: "9"}, {PlatformAssetSymbol: "ETH", Equity: "2"}}, false},
+		{"negative amount", []Balance{{PlatformAssetSymbol: "BTC", Equity: "-1"}, {PlatformAssetSymbol: "ETH", Equity: "2"}}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := NewEarnPosition("product:pair", "flexible", "product", "total")
-			p.Assets = []EarnAmount{{Symbol: "BTC", Amount: "1"}, {Symbol: "ETH", Amount: "2"}}
+			p.Assets = []EarnAmount{{PlatformAssetSymbol: "BTC", Amount: "1"}, {PlatformAssetSymbol: "ETH", Amount: "2"}}
 			err := CheckEarnPositions([]EarnPosition{p}, tc.balances)
 			if (err == nil) != tc.valid {
 				t.Fatalf("CheckEarnPositions = %v, want valid %v", err, tc.valid)

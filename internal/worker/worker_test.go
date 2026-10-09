@@ -33,7 +33,7 @@ func (a *leaseAdapter) Collect(ctx context.Context, _ adapters.Credentials, _ ad
 	if a.duplicate {
 		return adapters.Batch{ObservedAt: time.Now().UTC(), Reports: []adapters.AccountReport{{
 			AccountType: "spot", Status: adapters.StatusOK,
-			Balances: []adapters.Balance{{Symbol: "USDT", Equity: "1"}, {Symbol: "USDT", Equity: "2"}},
+			Balances: []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "1"}, {PlatformAssetSymbol: "USDT", Equity: "2"}},
 		}}}, nil
 	}
 	close(a.started)
@@ -84,8 +84,8 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 				t.Fatal(err)
 			}
 			value := valuation.NewService(db)
-			listings := catalog.NewService(db, jobs.NewService(db))
-			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: listings, Manual: manual.NewService(db, listings), Valuation: value, RetryDelays: []time.Duration{}})
+			platformAssets := catalog.NewService(db, jobs.NewService(db))
+			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: platformAssets, Manual: manual.NewService(db, platformAssets), Valuation: value, RetryDelays: []time.Duration{}})
 			w := New(&Options{Jobs: jobService, Collection: collect, Valuation: value, Lease: 3 * time.Second})
 			if duplicate {
 				if ok, err := w.ProcessOnce(ctx); err != nil || !ok {

@@ -394,7 +394,7 @@ func reportOf(t *testing.T, batch adapters.Batch, accountType adapters.AccountTy
 func balanceOf(t *testing.T, report adapters.AccountReport, symbol string) adapters.Balance {
 	t.Helper()
 	for _, b := range report.Balances {
-		if b.Symbol == symbol {
+		if b.PlatformAssetSymbol == symbol {
 			return b
 		}
 	}
@@ -591,18 +591,18 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 	}
 
 	wantBalances := map[string]adapters.Balance{
-		"USDT": {Symbol: "USDT", Equity: "999", Liability: new("10"), Interest: new("1"), UnrealizedPnl: new("10")},
-		"BTC":  {Symbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
+		"USDT": {PlatformAssetSymbol: "USDT", Equity: "999", Liability: new("10"), Interest: new("1"), UnrealizedPnl: new("10")},
+		"BTC":  {PlatformAssetSymbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
 	}
 	if len(report.Balances) != len(wantBalances) {
 		t.Fatalf("PM Balances = %+v", report.Balances)
 	}
 	for _, got := range report.Balances {
-		want, exists := wantBalances[got.Symbol]
+		want, exists := wantBalances[got.PlatformAssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
 			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
-		delete(wantBalances, got.Symbol)
+		delete(wantBalances, got.PlatformAssetSymbol)
 	}
 }
 
@@ -622,7 +622,7 @@ func TestCollectPMBorrowingAndInterest(t *testing.T) {
 	}
 }
 
-func TestCollectMapsPortfolioMarginPositionsAndInstruments(t *testing.T) {
+func TestCollectMapsPortfolioMarginPositionsAndFuturesContracts(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
@@ -647,9 +647,9 @@ func TestCollectMapsPortfolioMarginPositionsAndInstruments(t *testing.T) {
 		if got.Side != expected.side || got.Quantity != expected.quantity || got.QuantityUnit != expected.unit {
 			t.Errorf("%s holding = %+v, want %+v", got.PlatformPositionRef, got, expected)
 		}
-		instrument := got.Instrument
-		if instrument.Symbol != expected.symbol || instrument.Kind != expected.kind || instrument.BaseSymbol != "BTC" || instrument.QuoteSymbol != expected.quote || instrument.SettlementSymbol != expected.settlement || (expected.contractSize != "" && deref(instrument.ContractSize) != expected.contractSize) || (instrument.ContractSize == nil) != (expected.contractSize == "") {
-			t.Errorf("%s instrument = %+v, want %+v", got.PlatformPositionRef, instrument, expected)
+		futuresContract := got.FuturesContract
+		if futuresContract.Symbol != expected.symbol || futuresContract.Kind != expected.kind || futuresContract.BaseSymbol != "BTC" || futuresContract.QuoteSymbol != expected.quote || futuresContract.SettlementSymbol != expected.settlement || (expected.contractSize != "" && deref(futuresContract.ContractSize) != expected.contractSize) || (futuresContract.ContractSize == nil) != (expected.contractSize == "") {
+			t.Errorf("%s futures contract = %+v, want %+v", got.PlatformPositionRef, futuresContract, expected)
 		}
 		if got.Margin != nil || got.LiquidationPrice != nil || deref(got.EntryPrice) != expected.entry || deref(got.MarkPrice) != expected.mark || deref(got.UnrealizedPnl) != expected.pnl || deref(got.Leverage) != expected.leverage {
 			t.Errorf("%s measures = %+v, want %+v", got.PlatformPositionRef, got, expected)
@@ -670,17 +670,17 @@ func TestContractKinds(t *testing.T) {
 
 	_, a := newReplay(t, "")
 	c := a.client(testCreds)
-	um, err := fetchInstruments(context.Background(), c, marketUM)
+	um, err := fetchFuturesContracts(context.Background(), c, marketUM)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, cmAdapter := newReplay(t, classicCoinM)
-	cm, err := fetchInstruments(context.Background(), cmAdapter.client(testCreds), marketCM)
+	cm, err := fetchFuturesContracts(context.Background(), cmAdapter.client(testCreds), marketCM)
 	if err != nil {
 		t.Fatal(err)
 	}
 	kinds := map[string]int{}
-	for _, set := range []*instrumentSet{um, cm} {
+	for _, set := range []*futuresContractSet{um, cm} {
 		for symbol, in := range set.bySymbol {
 			kinds[in.Kind]++
 			delivery := in.Kind == adapters.KindLinearDelivery || in.Kind == adapters.KindInverseDelivery
@@ -723,11 +723,11 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 			t.Fatalf("%s wallet report: %+v", tc.accountType, report)
 		}
 		for _, got := range report.Balances {
-			want, ok := tc.balances[got.Symbol]
+			want, ok := tc.balances[got.PlatformAssetSymbol]
 			if !ok || got.Equity != want.equity || deref(got.AvailableToWithdraw) != want.available || deref(got.AvailableToTrade) != want.available {
 				t.Errorf("%s balance = %+v, want %+v", tc.accountType, got, want)
 			}
-			delete(tc.balances, got.Symbol)
+			delete(tc.balances, got.PlatformAssetSymbol)
 		}
 	}
 	// The account endpoint includes a receipt token; collection must use getUserAsset instead.
@@ -744,8 +744,8 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		hasReceipt = hasReceipt || strings.HasPrefix(b.Asset, "LD")
 	}
 	for _, b := range reportOf(t, batch, TypeSpot).Balances {
-		if strings.HasPrefix(b.Symbol, "LD") && b.Symbol != "LDO" {
-			t.Errorf("spot balance %s is a Simple Earn receipt", b.Symbol)
+		if strings.HasPrefix(b.PlatformAssetSymbol, "LD") && b.PlatformAssetSymbol != "LDO" {
+			t.Errorf("spot balance %s is a Simple Earn receipt", b.PlatformAssetSymbol)
 		}
 	}
 	if !hasReceipt {
@@ -760,10 +760,10 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		t.Fatalf("earn balances %+v, want %+v", earn.Balances, want)
 	}
 	for _, got := range earn.Balances {
-		if amount, ok := want[got.Symbol]; !ok || got.Equity != amount {
+		if amount, ok := want[got.PlatformAssetSymbol]; !ok || got.Equity != amount {
 			t.Errorf("earn balance %+v, want %s", got, amount)
 		}
-		delete(want, got.Symbol)
+		delete(want, got.PlatformAssetSymbol)
 	}
 	if r.count(epWalletValue) != 1 {
 		t.Fatalf("the Earn valuation was read %d times, want once", r.count(epWalletValue))
@@ -810,7 +810,7 @@ func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, b := range append(earn.Balances, dual.Balances...) {
-		got[b.Symbol] = decimal.Format(decimal.Add(decimalOrZero(got[b.Symbol]), rat(t, b.Equity)))
+		got[b.PlatformAssetSymbol] = decimal.Format(decimal.Add(decimalOrZero(got[b.PlatformAssetSymbol]), rat(t, b.Equity)))
 	}
 	if len(got) != len(want) {
 		t.Fatalf("earn balances %v, want %v", got, want)
@@ -1041,7 +1041,7 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 	}
 	p := report.Positions[0]
 	if p.PlatformPositionRef != "um:BTCUSDT:BOTH" || p.QuantityUnit != adapters.UnitBase || p.Quantity != "0.01" || p.Side != adapters.SideLong ||
-		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.Instrument.Kind != adapters.KindLinearPerpetual {
+		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.FuturesContract.Kind != adapters.KindLinearPerpetual {
 		t.Fatalf("position %+v", p)
 	}
 	if r.count(epUMSymbolConfig) != 1 {
@@ -1123,8 +1123,8 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
-			if !adapters.USDEquivalent(b.Symbol) && !priced[b.Symbol] {
-				t.Errorf("%s balance %s has no price", report.AccountType, b.Symbol)
+			if !adapters.USDEquivalent(b.PlatformAssetSymbol) && !priced[b.PlatformAssetSymbol] {
+				t.Errorf("%s balance %s has no price", report.AccountType, b.PlatformAssetSymbol)
 			}
 		}
 	}
@@ -1180,9 +1180,9 @@ func TestCollectPrices(t *testing.T) {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
-			if !adapters.USDEquivalent(b.Symbol) {
-				if _, ok := priced[b.Symbol]; !ok {
-					t.Errorf("%s balance %s has no price", report.AccountType, b.Symbol)
+			if !adapters.USDEquivalent(b.PlatformAssetSymbol) {
+				if _, ok := priced[b.PlatformAssetSymbol]; !ok {
+					t.Errorf("%s balance %s has no price", report.AccountType, b.PlatformAssetSymbol)
 				}
 			}
 		}
@@ -1192,7 +1192,7 @@ func TestCollectPrices(t *testing.T) {
 func TestPricesFallBackToUSDC(t *testing.T) {
 	t.Parallel()
 
-	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{Symbol: "AAA"}, {Symbol: "BBB"}, {Symbol: "CCC"}, {Symbol: "USDT"}}}}
+	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{PlatformAssetSymbol: "AAA"}, {PlatformAssetSymbol: "BBB"}, {PlatformAssetSymbol: "CCC"}, {PlatformAssetSymbol: "USDT"}}}}
 	table := lastPrices{"AAAUSDT": "2", "AAAUSDC": "2.1", "BBBUSDC": "3", "CCCFDUSD": "4"}
 	prices := adapters.QuotePrices(reports, quotes, table.quote, time.Unix(1, 0))
 	if len(prices) != 2 || prices[0].AssetSymbol != "AAA" || prices[0].QuoteSymbol != "USDT" || prices[1].AssetSymbol != "BBB" || prices[1].QuoteSymbol != "USDC" {
@@ -1212,7 +1212,7 @@ func TestDelistedPairIsNotAPrice(t *testing.T) {
 	}
 	r.always(epTickerPrice, status(http.StatusOK, `[{"symbol":"AAAUSDT","price":"0.00000000"},{"symbol":"AAAUSDC","price":"2.5"}]`))
 	prices, _ := a.lastPrices(context.Background(), a.client(testCreds))
-	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{Symbol: "AAA"}}}}
+	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{PlatformAssetSymbol: "AAA"}}}}
 	got := adapters.QuotePrices(reports, quotes, prices.quote, time.Unix(1, 0))
 	if len(got) != 1 || got[0].QuoteSymbol != "USDC" || got[0].Price != "2.5" {
 		t.Fatalf("prices %+v: the delisted USDT pair must give way to the USDC one", got)
@@ -1340,7 +1340,7 @@ func TestEveryAccountRetryableFailureFailsTheBatch(t *testing.T) {
 	}
 }
 
-func TestUnknownInstrumentFailsTheAccount(t *testing.T) {
+func TestUnknownFuturesContractFailsTheAccount(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
@@ -1392,7 +1392,7 @@ func TestZeroEquityLeavesMarginRatiosNull(t *testing.T) {
 func TestShortPositionAndZeroLiquidation(t *testing.T) {
 	t.Parallel()
 
-	in := adapters.Instrument{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual}
+	in := adapters.FuturesContract{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual}
 	row := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "-0.5", PositionSide: "BOTH", EntryPrice: "100", MarkPrice: "90", LiquidationPrice: "0", UnRealizedProfit: "5", Leverage: "3"}
 	p, err := mapPosition(marketUM, epPMUMPositionRisk, row, rat(t, row.PositionAmt), &in)
 	if err != nil {

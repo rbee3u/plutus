@@ -257,7 +257,7 @@ func portfolioMargin(account *valuation.AccountValuation) *bool {
 }
 
 func rowIssue(row *PositionRow, code, detail string) valuation.Issue {
-	return valuation.Issue{Code: code, AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.Symbol, Detail: detail}
+	return valuation.Issue{Code: code, AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.FuturesSymbol, Detail: detail}
 }
 
 func positionAccountIssues(account *valuation.AccountValuation) []valuation.Issue {

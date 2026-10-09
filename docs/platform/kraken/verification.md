@@ -93,7 +93,8 @@ fixture, or selectable exchange Account was added.
   listed flex strategy does not prove nonzero Auto Earn. Null first-page cursors
   do not establish pagination boundaries.
 - Option and inverse-delivery metadata establish no nonempty holdings in those
-  products. No vanilla instrument was returned; options remain unsupported.
+  products. No vanilla futures contract was returned; options remain
+  unsupported.
 
 ## Sanitation and replacements
 

@@ -95,14 +95,14 @@ func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sq
 	input := preparedReport{account: item, balances: make([]preparedBalance, 0, len(balances))}
 	for i := range balances {
 		balance := &balances[i]
-		listingID, err := uuid.FromBytes(balance.ListingID)
+		platformAssetID, err := uuid.FromBytes(balance.PlatformAssetID)
 		if err != nil {
 			return preparedReport{}, err
 		}
-		if ignored[listingID] {
+		if ignored[platformAssetID] {
 			continue
 		}
-		row := preparedBalance{symbol: balance.Symbol, assetSymbol: balance.AssetSymbol, rawEquity: balance.Equity}
+		row := preparedBalance{platformAssetSymbol: balance.PlatformAssetSymbol, assetSymbol: balance.AssetSymbol, rawEquity: balance.Equity}
 		equity, ok := decimal.Parse(balance.Equity)
 		if !ok {
 			input.balances = append(input.balances, row)

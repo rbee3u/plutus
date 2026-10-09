@@ -59,7 +59,6 @@ const (
 	UnitContracts        = "contracts"
 	UnitBase             = "base"
 	UnitQuote            = "quote"
-	KindSpot             = "spot"
 	KindLinearPerpetual  = "linear_perpetual"
 	KindInversePerpetual = "inverse_perpetual"
 	KindLinearDelivery   = "linear_delivery"

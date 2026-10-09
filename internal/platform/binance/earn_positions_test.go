@@ -17,7 +17,7 @@ func TestEarnDetailsPreserveDatesRateKindsAndRewardScopes(t *testing.T) {
 		t.Fatalf("report: %+v", report)
 	}
 	fixed := report.EarnPositions[1]
-	if fixed.Granularity != "position" || fixed.Rates[0].Kind != "apy" || fixed.MaturityAt.UnixMilli() != 1776385800000 || fixed.SubscribedAt == nil || fixed.Rewards[0].Kind != "reported" || fixed.Rewards[0].Symbol != "BNB" {
+	if fixed.Granularity != "position" || fixed.Rates[0].Kind != "apy" || fixed.MaturityAt.UnixMilli() != 1776385800000 || fixed.SubscribedAt == nil || fixed.Rewards[0].Kind != "reported" || fixed.Rewards[0].PlatformAssetSymbol != "BNB" {
 		t.Fatalf("fixed: %+v", fixed)
 	}
 	flexible := report.EarnPositions[0]

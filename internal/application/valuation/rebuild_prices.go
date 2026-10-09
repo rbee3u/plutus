@@ -44,7 +44,7 @@ func newHistoricalPrices(q *sqlcgen.Queries, rows []sqlcgen.Price) *historicalPr
 	h := &historicalPrices{q: q, platform: map[priceAsset][]historicalPrice{}, global: map[string][]historicalPrice{}, cache: map[priceLookup]priceResult{}}
 	for _, row := range rows {
 		value, _ := decimal.Parse(row.Price)
-		p := historicalPrice{at: row.ObservedAt, value: value, quote: row.QuoteSymbol}
+		p := historicalPrice{at: row.ObservedAt, value: value, quote: row.QuoteAssetSymbol}
 		key := priceAsset{platform: row.Platform, symbol: row.AssetSymbol}
 		h.platform[key] = append(h.platform[key], p)
 		h.global[row.AssetSymbol] = append(h.global[row.AssetSymbol], p)
@@ -106,7 +106,7 @@ func (h *historicalPrices) Lookup(ctx context.Context, platform, symbol string, 
 		}
 		if err == nil {
 			value, _ := decimal.Parse(row.Price)
-			candidate := historicalPrice{at: row.ObservedAt, value: value, quote: row.QuoteSymbol}
+			candidate := historicalPrice{at: row.ObservedAt, value: value, quote: row.QuoteAssetSymbol}
 			if eligiblePrice(candidate, at) {
 				p = priceResult{value: value, found: true}
 			}

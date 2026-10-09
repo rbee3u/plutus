@@ -11,27 +11,27 @@ import (
 )
 
 const insertDualPosition = `-- name: InsertDualPosition :exec
-INSERT INTO dual_positions (report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at)
+INSERT INTO dual_positions (report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_platform_asset_symbol, quote_platform_asset_symbol, invest_platform_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertDualPositionParams struct {
-	ReportID            []byte
-	PortfolioID         []byte
-	PlatformPositionRef string
-	ProductRef          sql.NullString
-	OrderRef            sql.NullString
-	BaseSymbol          sql.NullString
-	QuoteSymbol         sql.NullString
-	InvestSymbol        string
-	Principal           string
-	Direction           sql.NullString
-	TargetPrice         sql.NullString
-	ExpiryAt            sql.NullTime
-	AnnualizedRate      sql.NullString
-	RateKind            sql.NullString
-	Status              string
-	SubscribedAt        sql.NullTime
+	ReportID                  []byte
+	PortfolioID               []byte
+	PlatformPositionRef       string
+	ProductRef                sql.NullString
+	OrderRef                  sql.NullString
+	BasePlatformAssetSymbol   sql.NullString
+	QuotePlatformAssetSymbol  sql.NullString
+	InvestPlatformAssetSymbol string
+	Principal                 string
+	Direction                 sql.NullString
+	TargetPrice               sql.NullString
+	ExpiryAt                  sql.NullTime
+	AnnualizedRate            sql.NullString
+	RateKind                  sql.NullString
+	Status                    string
+	SubscribedAt              sql.NullTime
 }
 
 func (q *Queries) InsertDualPosition(ctx context.Context, arg InsertDualPositionParams) error {
@@ -41,9 +41,9 @@ func (q *Queries) InsertDualPosition(ctx context.Context, arg InsertDualPosition
 		arg.PlatformPositionRef,
 		arg.ProductRef,
 		arg.OrderRef,
-		arg.BaseSymbol,
-		arg.QuoteSymbol,
-		arg.InvestSymbol,
+		arg.BasePlatformAssetSymbol,
+		arg.QuotePlatformAssetSymbol,
+		arg.InvestPlatformAssetSymbol,
 		arg.Principal,
 		arg.Direction,
 		arg.TargetPrice,
@@ -57,7 +57,7 @@ func (q *Queries) InsertDualPosition(ctx context.Context, arg InsertDualPosition
 }
 
 const listDualPositionsByJob = `-- name: ListDualPositionsByJob :many
-SELECT p.report_id, p.portfolio_id, p.platform_position_ref, p.product_ref, p.order_ref, p.base_symbol, p.quote_symbol, p.invest_symbol, p.principal, p.direction, p.target_price, p.expiry_at, p.annualized_rate, p.rate_kind, p.status, p.subscribed_at, cur.account_id, src.observed_at,
+SELECT p.report_id, p.portfolio_id, p.platform_position_ref, p.product_ref, p.order_ref, p.base_platform_asset_symbol, p.quote_platform_asset_symbol, p.invest_platform_asset_symbol, p.principal, p.direction, p.target_price, p.expiry_at, p.annualized_rate, p.rate_kind, p.status, p.subscribed_at, cur.account_id, src.observed_at,
        a.identity_id, a.account_type, a.display_name AS account_name,
        i.platform, i.display_name AS identity_name
 FROM account_reports cur
@@ -100,9 +100,9 @@ func (q *Queries) ListDualPositionsByJob(ctx context.Context, arg ListDualPositi
 			&i.DualPosition.PlatformPositionRef,
 			&i.DualPosition.ProductRef,
 			&i.DualPosition.OrderRef,
-			&i.DualPosition.BaseSymbol,
-			&i.DualPosition.QuoteSymbol,
-			&i.DualPosition.InvestSymbol,
+			&i.DualPosition.BasePlatformAssetSymbol,
+			&i.DualPosition.QuotePlatformAssetSymbol,
+			&i.DualPosition.InvestPlatformAssetSymbol,
 			&i.DualPosition.Principal,
 			&i.DualPosition.Direction,
 			&i.DualPosition.TargetPrice,
@@ -133,7 +133,7 @@ func (q *Queries) ListDualPositionsByJob(ctx context.Context, arg ListDualPositi
 }
 
 const listDualPositionsByReport = `-- name: ListDualPositionsByReport :many
-SELECT report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_symbol, quote_symbol, invest_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at FROM dual_positions WHERE report_id = ?
+SELECT report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_platform_asset_symbol, quote_platform_asset_symbol, invest_platform_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at FROM dual_positions WHERE report_id = ?
 ORDER BY expiry_at IS NULL, expiry_at, platform_position_ref
 `
 
@@ -152,9 +152,9 @@ func (q *Queries) ListDualPositionsByReport(ctx context.Context, reportID []byte
 			&i.PlatformPositionRef,
 			&i.ProductRef,
 			&i.OrderRef,
-			&i.BaseSymbol,
-			&i.QuoteSymbol,
-			&i.InvestSymbol,
+			&i.BasePlatformAssetSymbol,
+			&i.QuotePlatformAssetSymbol,
+			&i.InvestPlatformAssetSymbol,
 			&i.Principal,
 			&i.Direction,
 			&i.TargetPrice,

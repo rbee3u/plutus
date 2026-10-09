@@ -20,7 +20,7 @@ func TestTotalsCombineBalancesAndRejectMissingSymbols(t *testing.T) {
 		}
 	}
 	balances := totals.Balances()
-	if len(balances) != 1 || balances[0].Symbol != "BTC" || balances[0].Equity != "1" {
+	if len(balances) != 1 || balances[0].PlatformAssetSymbol != "BTC" || balances[0].Equity != "1" {
 		t.Fatalf("Totals.Balances = %+v", balances)
 	}
 	if class, _ := Classify(totals.Add("test", " ", big.NewRat(5, 1))); class != ClassNormalization {
@@ -45,7 +45,7 @@ func FuzzTotalsConserveBalances(f *testing.F) {
 		for i, cents := range sums {
 			if cents != 0 {
 				amount := big.NewRat(cents, 100).FloatString(2)
-				want = append(want, Balance{Symbol: symbols[i], Equity: strings.TrimRight(strings.TrimRight(amount, "0"), ".")})
+				want = append(want, Balance{PlatformAssetSymbol: symbols[i], Equity: strings.TrimRight(strings.TrimRight(amount, "0"), ".")})
 			}
 		}
 		for _, split := range []bool{false, true} {

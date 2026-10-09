@@ -26,18 +26,18 @@ func TestPositionSizeDirectionAndUnknowns(t *testing.T) {
 			account := &valuation.AccountValuation{AccountID: uuid.New(), Freshness: valuation.FreshnessFresh, AccountStructure: string(adapters.StructureBinanceClassic)}
 			id := uuid.New()
 			row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
-				InstrumentID:        id[:],
-				Platform:            "binance",
-				Symbol:              "BTCUSD",
-				Kind:                tc.kind,
-				BaseSymbol:          nullString("BTC"),
-				QuoteSymbol:         nullString("USD"),
-				SettlementSymbol:    nullString("BTC"),
-				ContractSize:        nullString(tc.factor),
-				PlatformPositionRef: "ref",
-				Side:                tc.side,
-				Quantity:            tc.quantity,
-				QuantityUnit:        tc.unit,
+				FuturesContractID:             id[:],
+				Platform:                      "binance",
+				FuturesSymbol:                 "BTCUSD",
+				Kind:                          tc.kind,
+				BasePlatformAssetSymbol:       nullString("BTC"),
+				QuotePlatformAssetSymbol:      nullString("USD"),
+				SettlementPlatformAssetSymbol: nullString("BTC"),
+				ContractSize:                  nullString(tc.factor),
+				PlatformPositionRef:           "ref",
+				Side:                          tc.side,
+				Quantity:                      tc.quantity,
+				QuantityUnit:                  tc.unit,
 			})
 			if err != nil {
 				t.Fatal(err)

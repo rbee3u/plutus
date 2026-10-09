@@ -5,14 +5,14 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func toAPIListing(l *catalog.Listing) api.AssetListing {
-	return api.AssetListing{
+func toAPIPlatformAsset(l *catalog.PlatformAsset) api.PlatformAsset {
+	return api.PlatformAsset{
 		Id:               l.ID,
 		Platform:         l.Platform,
 		Symbol:           l.Symbol,
 		AssetSymbol:      l.AssetSymbol,
 		Name:             l.Name,
-		MappingSource:    api.AssetListingMappingSource(l.MappingSource),
+		MappingSource:    api.PlatformAssetMappingSource(l.MappingSource),
 		FirstSeenAt:      l.FirstSeenAt,
 		LastSeenAt:       l.LastSeenAt,
 		Version:          int(l.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
@@ -23,8 +23,8 @@ func toAPIListing(l *catalog.Listing) api.AssetListing {
 	}
 }
 
-func toAPIInstrument(i *catalog.Instrument) api.Instrument {
-	return api.Instrument{
+func toAPIFuturesContract(i *catalog.FuturesContract) api.FuturesContract {
+	return api.FuturesContract{
 		Id:               i.ID,
 		Platform:         i.Platform,
 		Symbol:           i.Symbol,

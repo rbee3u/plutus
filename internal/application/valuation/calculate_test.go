@@ -20,18 +20,18 @@ func TestEvaluationPreservesExactAmountsAndOmissions(t *testing.T) {
 	source := uuid.New()
 	price := big.NewRat(1, 3)
 	input := preparedReport{account: AccountValuation{SourceReportID: &source, Freshness: FreshnessStale}, balances: []preparedBalance{
-		{symbol: "A", equity: big.NewRat(1, 1), price: price},
-		{symbol: "B", equity: big.NewRat(1, 1), price: price},
-		{symbol: "C", equity: big.NewRat(1, 1), price: price},
-		{symbol: "DEBT", equity: big.NewRat(-2, 1), price: big.NewRat(1, 10)},
-		{symbol: "UNKNOWN", assetSymbol: "MAPPED", rawEquity: "2.00", equity: big.NewRat(2, 1)},
-		{symbol: "INVALID", rawEquity: "invalid"},
+		{platformAssetSymbol: "A", equity: big.NewRat(1, 1), price: price},
+		{platformAssetSymbol: "B", equity: big.NewRat(1, 1), price: price},
+		{platformAssetSymbol: "C", equity: big.NewRat(1, 1), price: price},
+		{platformAssetSymbol: "DEBT", equity: big.NewRat(-2, 1), price: big.NewRat(1, 10)},
+		{platformAssetSymbol: "UNKNOWN", assetSymbol: "MAPPED", rawEquity: "2.00", equity: big.NewRat(2, 1)},
+		{platformAssetSymbol: "INVALID", rawEquity: "invalid"},
 	}}
 	got := evaluateReport(input)
 	if got.ValueUSD == nil || *got.ValueUSD != "0.8" || got.valueRat.Cmp(big.NewRat(4, 5)) != 0 || got.Method != MethodCalculated || got.Freshness != FreshnessStale {
 		t.Fatalf("unexpected calculated value: %+v", got)
 	}
-	want := []Omitted{{Symbol: "UNKNOWN", AssetSymbol: "MAPPED", Equity: "2", Reason: "no_price"}, {Symbol: "INVALID", Equity: "invalid", Reason: "invalid_equity"}}
+	want := []Omitted{{PlatformAssetSymbol: "UNKNOWN", AssetSymbol: "MAPPED", Equity: "2", Reason: "no_price"}, {PlatformAssetSymbol: "INVALID", Equity: "invalid", Reason: "invalid_equity"}}
 	if !reflect.DeepEqual(got.Omitted, want) || got.Completeness() != CompletenessIncomplete {
 		t.Fatalf("omissions: %+v", got.Omitted)
 	}
@@ -53,16 +53,16 @@ func FuzzCalculatedValueConservation(f *testing.F) {
 		want := new(big.Rat).SetFrac(
 			new(big.Int).Mul(sum, big.NewInt(priceNumerator)), big.NewInt(100000))
 		price := big.NewRat(priceNumerator, 1000)
-		a := preparedBalance{symbol: "A", equity: big.NewRat(left, 100), price: price}
-		b := preparedBalance{symbol: "B", equity: big.NewRat(right, 100), price: price}
-		zero := preparedBalance{symbol: "ZERO", equity: new(big.Rat), price: price}
+		a := preparedBalance{platformAssetSymbol: "A", equity: big.NewRat(left, 100), price: price}
+		b := preparedBalance{platformAssetSymbol: "B", equity: big.NewRat(right, 100), price: price}
+		zero := preparedBalance{platformAssetSymbol: "ZERO", equity: new(big.Rat), price: price}
 		source := uuid.MustParse("01a0bdfc-1fa4-7a54-9fa1-24f4721a71af")
 		input := preparedReport{account: AccountValuation{SourceReportID: &source, Freshness: FreshnessFresh}}
 		for _, tc := range []struct {
 			name     string
 			balances []preparedBalance
 		}{
-			{"combined", []preparedBalance{{symbol: "SUM", equity: new(big.Rat).SetFrac(sum, big.NewInt(100)), price: price}}},
+			{"combined", []preparedBalance{{platformAssetSymbol: "SUM", equity: new(big.Rat).SetFrac(sum, big.NewInt(100)), price: price}}},
 			{"split", []preparedBalance{a, b}},
 			{"reversed with zero", []preparedBalance{b, zero, a}},
 		} {
@@ -80,7 +80,7 @@ func FuzzCalculatedValueConservation(f *testing.F) {
 			}
 		}
 
-		input.balances = []preparedBalance{a, b, {symbol: "UNKNOWN", rawEquity: "1", equity: big.NewRat(1, 1)}}
+		input.balances = []preparedBalance{a, b, {platformAssetSymbol: "UNKNOWN", rawEquity: "1", equity: big.NewRat(1, 1)}}
 		got := evaluateReport(input)
 		if got.ValueUSD == nil {
 			t.Fatal("a missing price erased the known subtotal")
@@ -89,7 +89,7 @@ func FuzzCalculatedValueConservation(f *testing.F) {
 		if !ok || value.Cmp(want) != 0 {
 			t.Fatalf("a missing price changed the known subtotal to %q, want %s", *got.ValueUSD, want.RatString())
 		}
-		omitted := []Omitted{{Symbol: "UNKNOWN", Equity: "1", Reason: "no_price"}}
+		omitted := []Omitted{{PlatformAssetSymbol: "UNKNOWN", Equity: "1", Reason: "no_price"}}
 		if got.Completeness() != CompletenessIncomplete || !reflect.DeepEqual(got.Omitted, omitted) {
 			t.Fatalf("missing price must make the result incomplete and name the omission: %+v", got)
 		}
@@ -125,9 +125,9 @@ func TestPreparationDoesNotIntroduceUnusedPriceReads(t *testing.T) {
 	}
 	row.Equity = sql.NullString{}
 	preload := &reportInputs{balances: map[uuid.UUID][]sqlcgen.ListBalancesByReportRow{report: {
-		{ListingID: excluded[:], Equity: "10", Symbol: "EXCLUDED"},
-		{ListingID: zero[:], Equity: "0", Symbol: "ZERO"},
-		{ListingID: invalid[:], Equity: "invalid", Symbol: "INVALID"},
+		{PlatformAssetID: excluded[:], Equity: "10", PlatformAssetSymbol: "EXCLUDED"},
+		{PlatformAssetID: zero[:], Equity: "0", PlatformAssetSymbol: "ZERO"},
+		{PlatformAssetID: invalid[:], Equity: "invalid", PlatformAssetSymbol: "INVALID"},
 	}}}
 	input, err = service.prepareReport(context.Background(), book, &row, map[uuid.UUID]bool{excluded: true}, preload)
 	if err != nil {
@@ -159,15 +159,15 @@ func TestWriteAndRebuildUseEquivalentPreparedInputs(t *testing.T) {
 	f.report(firstJob, accounts["funding"], f.at, "ok", 2, "2.25")
 	f.report(firstJob, accounts["earn"], f.at, "failed", 2, nil)
 	symbol := "PREPARED-" + uuid.NewString()[:8]
-	listing, missing := uuid.New(), uuid.New()
+	platformAsset, missing := uuid.New(), uuid.New()
 	for _, item := range []struct {
 		id     uuid.UUID
 		symbol string
-	}{{listing, symbol}, {missing, symbol + "-MISSING"}} {
-		f.exec("INSERT INTO asset_listings (id,platform,symbol,asset_symbol,first_seen_at,last_seen_at,created_at,updated_at) VALUES (?,'binance',?,?,?,?,?,?)", item.id[:], item.symbol, item.symbol, f.at, f.at, f.at, f.at)
+	}{{platformAsset, symbol}, {missing, symbol + "-MISSING"}} {
+		f.exec("INSERT INTO platform_assets (id,platform,symbol,asset_symbol,first_seen_at,last_seen_at,created_at,updated_at) VALUES (?,'binance',?,?,?,?,?,?)", item.id[:], item.symbol, item.symbol, f.at, f.at, f.at, f.at)
 	}
-	f.exec("INSERT INTO balances (report_id,portfolio_id,listing_id,equity) VALUES (?,?,?,-3),(?,?,?,7)", source[:], f.portfolio[:], listing[:], source[:], f.portfolio[:], missing[:])
-	f.exec("INSERT INTO prices (platform,asset_symbol,observed_at,price,quote_symbol) VALUES ('binance',?,?,0.125,'USD')", symbol, f.at)
+	f.exec("INSERT INTO balances (report_id,portfolio_id,platform_asset_id,equity) VALUES (?,?,?,-3),(?,?,?,7)", source[:], f.portfolio[:], platformAsset[:], source[:], f.portfolio[:], missing[:])
+	f.exec("INSERT INTO prices (platform,asset_symbol,observed_at,price,quote_asset_symbol) VALUES ('binance',?,?,0.125,'USD')", symbol, f.at)
 	secondJob := f.job(f.at.Add(time.Minute), "succeeded")
 	f.report(secondJob, accounts["spot"], f.at.Add(time.Minute), "failed", 2, nil)
 	f.report(secondJob, accounts["funding"], f.at.Add(time.Minute), "ok", 2, "2.25")

@@ -37,7 +37,7 @@ func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, ac
 		if err != nil {
 			return AccountView{}, err
 		}
-		completePosition(&row, &view.Account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		completePosition(&row, &view.Account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginPlatformAssetSymbol, r.MarginBasis})
 		view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
 		view.Positions = append(view.Positions, row)
 	}
@@ -46,7 +46,7 @@ func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, ac
 }
 
 func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositionsByReportRow) (PositionRow, error) {
-	id, err := uuid.FromBytes(source.InstrumentID)
+	id, err := uuid.FromBytes(source.FuturesContractID)
 	if err != nil {
 		return PositionRow{}, err
 	}
@@ -58,12 +58,12 @@ func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositi
 		IdentityName:        account.IdentityName,
 		Platform:            source.Platform,
 		PlatformPositionRef: source.PlatformPositionRef,
-		InstrumentID:        id,
-		Symbol:              source.Symbol,
+		FuturesContractID:   id,
+		FuturesSymbol:       source.FuturesSymbol,
 		Kind:                source.Kind,
-		BaseSymbol:          nullStringPtr(source.BaseSymbol),
-		QuoteSymbol:         nullStringPtr(source.QuoteSymbol),
-		SettlementSymbol:    nullStringPtr(source.SettlementSymbol),
+		BaseSymbol:          nullStringPtr(source.BasePlatformAssetSymbol),
+		QuoteSymbol:         nullStringPtr(source.QuotePlatformAssetSymbol),
+		SettlementSymbol:    nullStringPtr(source.SettlementPlatformAssetSymbol),
 		ContractSize:        nullDecimal(source.ContractSize),
 		Side:                source.Side,
 		Quantity:            decimal.Compact(source.Quantity),
@@ -82,7 +82,7 @@ func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositi
 		row.ExpiryAt = &t
 	}
 	size, _ := normalizedPositionSize(&row)
-	if size == nil || !source.QuoteSymbol.Valid || !valuation.USDQuote(source.QuoteSymbol.String) {
+	if size == nil || !source.QuotePlatformAssetSymbol.Valid || !valuation.USDQuote(source.QuotePlatformAssetSymbol.String) {
 		return row, nil
 	}
 	qty, ok := decimal.Parse(*size)
@@ -143,30 +143,30 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 			continue
 		}
 		row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
-			InstrumentID:        r.InstrumentID,
-			Platform:            r.Platform,
-			Symbol:              r.Symbol,
-			Kind:                r.Kind,
-			BaseSymbol:          r.BaseSymbol,
-			QuoteSymbol:         r.QuoteSymbol,
-			SettlementSymbol:    r.SettlementSymbol,
-			ExpiryAt:            r.ExpiryAt,
-			ContractSize:        r.ContractSize,
-			PlatformPositionRef: r.PlatformPositionRef,
-			Side:                r.Side,
-			Quantity:            r.Quantity,
-			QuantityUnit:        r.QuantityUnit,
-			EntryPrice:          r.EntryPrice,
-			MarkPrice:           r.MarkPrice,
-			LiquidationPrice:    r.LiquidationPrice,
-			UnrealizedPnl:       r.UnrealizedPnl,
-			Leverage:            r.Leverage,
-			Margin:              r.Margin,
+			FuturesContractID:             r.FuturesContractID,
+			Platform:                      r.Platform,
+			FuturesSymbol:                 r.FuturesSymbol,
+			Kind:                          r.Kind,
+			BasePlatformAssetSymbol:       r.BasePlatformAssetSymbol,
+			QuotePlatformAssetSymbol:      r.QuotePlatformAssetSymbol,
+			SettlementPlatformAssetSymbol: r.SettlementPlatformAssetSymbol,
+			ExpiryAt:                      r.ExpiryAt,
+			ContractSize:                  r.ContractSize,
+			PlatformPositionRef:           r.PlatformPositionRef,
+			Side:                          r.Side,
+			Quantity:                      r.Quantity,
+			QuantityUnit:                  r.QuantityUnit,
+			EntryPrice:                    r.EntryPrice,
+			MarkPrice:                     r.MarkPrice,
+			LiquidationPrice:              r.LiquidationPrice,
+			UnrealizedPnl:                 r.UnrealizedPnl,
+			Leverage:                      r.Leverage,
+			Margin:                        r.Margin,
 		})
 		if err != nil {
 			return FlatList[PositionRow]{}, err
 		}
-		completePosition(&row, account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginCurrency, r.MarginBasis})
+		completePosition(&row, account, positionMetadata{r.PositionMode, r.MarginMode, r.MarginPlatformAssetSymbol, r.MarginBasis})
 		out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
 		if row.NotionalUSD == nil {
 			out.Completeness = valuation.CompletenessIncomplete
@@ -174,7 +174,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		if row.NotionalUSD != nil {
 			total = decimal.Add(total, decimal.ParseOrZero(*row.NotionalUSD))
 		}
-		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.Symbol) {
+		if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.FuturesSymbol) {
 			continue
 		}
 		all = append(all, row)

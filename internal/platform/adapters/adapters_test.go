@@ -192,7 +192,7 @@ func TestQuotePricesPicksTheFirstQuotedPair(t *testing.T) {
 		return price, ok
 	}
 	at := time.Date(2026, 9, 25, 0, 0, 0, 0, time.UTC)
-	reports := []AccountReport{{Balances: []Balance{{Symbol: "ETH"}, {Symbol: "BTC"}, {Symbol: "USDT"}, {Symbol: "DOGE"}}}}
+	reports := []AccountReport{{Balances: []Balance{{PlatformAssetSymbol: "ETH"}, {PlatformAssetSymbol: "BTC"}, {PlatformAssetSymbol: "USDT"}, {PlatformAssetSymbol: "DOGE"}}}}
 	prices := QuotePrices(reports, []string{"USDT", "USDC"}, lookup, at)
 	if len(prices) != 2 || prices[0].AssetSymbol != "BTC" || prices[0].QuoteSymbol != "USDT" || prices[1].QuoteSymbol != "USDC" {
 		t.Fatalf("prices = %+v", prices)
@@ -207,7 +207,7 @@ func TestQuotePricesPicksTheFirstQuotedPair(t *testing.T) {
 
 func TestCheckEarnComplete(t *testing.T) {
 	t.Parallel()
-	priced := []Balance{{Symbol: "BTC", Equity: "0.1"}, {Symbol: "USDT", Equity: "1000"}}
+	priced := []Balance{{PlatformAssetSymbol: "BTC", Equity: "0.1"}, {PlatformAssetSymbol: "USDT", Equity: "1000"}}
 	for _, tc := range []struct {
 		name, platformUSD string
 		balances          []Balance
@@ -218,11 +218,11 @@ func TestCheckEarnComplete(t *testing.T) {
 		{"missing product", "9000", priced, ClassUnsupported, []string{"9000.00", "7000.00"}},
 		{"exact floor", "1", nil, "", nil},
 		{"above floor", "1.0001", nil, ClassUnsupported, nil},
-		{"exact percentage", "200", []Balance{{Symbol: "USDT", Equity: "198"}}, "", nil},
-		{"above percentage", "200", []Balance{{Symbol: "USDT", Equity: "197.999"}}, ClassUnsupported, nil},
-		{"itemized excess", "100", []Balance{{Symbol: "USDT", Equity: "150"}}, "", nil},
-		{"missing price", "9000", append(slices.Clone(priced), Balance{Symbol: "XYZ", Equity: "5"}), "", nil},
-		{"malformed amount", "10", []Balance{{Symbol: "USDT", Equity: "invalid"}}, ClassNormalization, nil},
+		{"exact percentage", "200", []Balance{{PlatformAssetSymbol: "USDT", Equity: "198"}}, "", nil},
+		{"above percentage", "200", []Balance{{PlatformAssetSymbol: "USDT", Equity: "197.999"}}, ClassUnsupported, nil},
+		{"itemized excess", "100", []Balance{{PlatformAssetSymbol: "USDT", Equity: "150"}}, "", nil},
+		{"missing price", "9000", append(slices.Clone(priced), Balance{PlatformAssetSymbol: "XYZ", Equity: "5"}), "", nil},
+		{"malformed amount", "10", []Balance{{PlatformAssetSymbol: "USDT", Equity: "invalid"}}, ClassNormalization, nil},
 		{"missing valuation", "", priced, ClassNormalization, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

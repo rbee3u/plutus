@@ -115,14 +115,14 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 	}
 	for _, balance := range report.Balances {
 		if !decimal.Valid(balance.Equity) {
-			return fmt.Errorf("%w: balance %s equity %q", catalog.ErrInvalid, balance.Symbol, balance.Equity)
+			return fmt.Errorf("%w: balance %s equity %q", catalog.ErrInvalid, balance.PlatformAssetSymbol, balance.Equity)
 		}
-		listingID, _, err := s.catalog.EnsureListing(ctx, q, platform, balance.Symbol, balance.Name, observed)
+		platformAssetID, _, err := s.catalog.EnsurePlatformAsset(ctx, q, platform, balance.PlatformAssetSymbol, balance.Name, observed)
 		if err != nil {
 			return err
 		}
 		if err := q.InsertBalance(ctx, sqlcgen.InsertBalanceParams{
-			ReportID: id[:], PortfolioID: portfolioID[:], ListingID: listingID[:], Equity: balance.Equity,
+			ReportID: id[:], PortfolioID: portfolioID[:], PlatformAssetID: platformAssetID[:], Equity: balance.Equity,
 			AvailableToWithdraw: decimalColumn(balance.AvailableToWithdraw), AvailableToTrade: decimalColumn(balance.AvailableToTrade),
 			Liability: decimalColumn(balance.Liability), Interest: decimalColumn(balance.Interest), UnrealizedPnl: decimalColumn(balance.UnrealizedPnl),
 		}); err != nil {
@@ -132,16 +132,16 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 	for i := range report.Positions {
 		position := &report.Positions[i]
 		if !decimal.Valid(position.Quantity) || position.PlatformPositionRef == "" {
-			return fmt.Errorf("%w: position %s", catalog.ErrInvalid, position.Instrument.Symbol)
+			return fmt.Errorf("%w: position %s", catalog.ErrInvalid, position.FuturesContract.Symbol)
 		}
-		instrumentID, err := s.catalog.EnsureInstrument(ctx, q, platform, &position.Instrument, observed)
+		futuresContractID, err := s.catalog.EnsureFuturesContract(ctx, q, platform, &position.FuturesContract, observed)
 		if err != nil {
 			return err
 		}
 		if err := q.InsertPosition(ctx, sqlcgen.InsertPositionParams{
-			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: truncate(position.PlatformPositionRef, 128), InstrumentID: instrumentID[:],
+			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: truncate(position.PlatformPositionRef, 128), FuturesContractID: futuresContractID[:],
 			PositionMode: nonEmptyStringColumn(position.PositionMode), MarginMode: nonEmptyStringColumn(position.MarginMode),
-			MarginCurrency: nonEmptyStringColumn(position.MarginCurrency), MarginBasis: nonEmptyStringColumn(position.MarginBasis),
+			MarginPlatformAssetSymbol: nonEmptyStringColumn(position.MarginCurrency), MarginBasis: nonEmptyStringColumn(position.MarginBasis),
 			Side: position.Side, Quantity: position.Quantity, QuantityUnit: position.QuantityUnit,
 			EntryPrice: decimalColumn(position.EntryPrice), MarkPrice: decimalColumn(position.MarkPrice), LiquidationPrice: decimalColumn(position.LiquidationPrice),
 			UnrealizedPnl: decimalColumn(position.UnrealizedPnl), Leverage: decimalColumn(position.Leverage), Margin: decimalColumn(position.Margin),
@@ -167,8 +167,8 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 		}
 		if err := q.InsertDualPosition(ctx, sqlcgen.InsertDualPositionParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: p.PlatformPositionRef,
-			ProductRef: stringColumn(p.ProductRef), OrderRef: stringColumn(p.OrderRef), BaseSymbol: stringColumn(p.BaseSymbol), QuoteSymbol: stringColumn(p.QuoteSymbol),
-			InvestSymbol: p.InvestSymbol, Principal: p.Principal, Direction: stringColumn(p.Direction), TargetPrice: decimalColumn(p.TargetPrice), ExpiryAt: expiry,
+			ProductRef: stringColumn(p.ProductRef), OrderRef: stringColumn(p.OrderRef), BasePlatformAssetSymbol: stringColumn(p.BaseSymbol), QuotePlatformAssetSymbol: stringColumn(p.QuoteSymbol),
+			InvestPlatformAssetSymbol: p.InvestSymbol, Principal: p.Principal, Direction: stringColumn(p.Direction), TargetPrice: decimalColumn(p.TargetPrice), ExpiryAt: expiry,
 			AnnualizedRate: decimalColumn(p.AnnualizedRate), RateKind: stringColumn(p.RateKind), Status: p.Status,
 			SubscribedAt: subscribed,
 		}); err != nil {

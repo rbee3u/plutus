@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/listingexclusion"
+	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
@@ -289,26 +289,26 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 }
 
 func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startJobID, endJobID uuid.UUID) ([]string, error) {
-	startIgnored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
+	startIgnored, err := platformassetexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
 	if err != nil {
 		return nil, err
 	}
-	endIgnored, err := listingexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
+	endIgnored, err := platformassetexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.ListCalculatedListingsAtJobs(ctx, sqlcgen.ListCalculatedListingsAtJobsParams{PortfolioID: portfolioID[:], StartJobID: startJobID[:], EndJobID: endJobID[:]})
+	rows, err := s.q.ListCalculatedPlatformAssetsAtJobs(ctx, sqlcgen.ListCalculatedPlatformAssetsAtJobsParams{PortfolioID: portfolioID[:], StartJobID: startJobID[:], EndJobID: endJobID[:]})
 	if err != nil {
 		return nil, err
 	}
 	reasons := []string{}
 	for _, row := range rows {
-		listingID, err := uuid.FromBytes(row.ID)
+		platformAssetID, err := uuid.FromBytes(row.ID)
 		if err != nil {
 			return nil, err
 		}
-		if startIgnored[listingID] != endIgnored[listingID] {
-			reasons = append(reasons, "listing_exclusion_changed: "+row.Platform+" "+row.Symbol)
+		if startIgnored[platformAssetID] != endIgnored[platformAssetID] {
+			reasons = append(reasons, "platform_asset_exclusion_changed: "+row.Platform+" "+row.Symbol)
 		}
 	}
 	return reasons, nil

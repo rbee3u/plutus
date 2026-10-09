@@ -3,12 +3,12 @@ import { type FormEvent, useRef, useState } from "react";
 import {
   invalidatePortfolioReads,
   keys,
-  listAssetListings,
+  listPlatformAssets,
   problemMessage,
-  putAssetListingExclusion,
-  putAssetListingMapping,
+  putPlatformAssetExclusion,
+  putPlatformAssetMapping,
 } from "@/api";
-import type { AssetListing, AssetListingList } from "@/api";
+import type { PlatformAsset, PlatformAssetList } from "@/api";
 import { formatInstant } from "@/shared/lib/datetime";
 import { useSessionScope } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
@@ -25,14 +25,14 @@ import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import {
   PAGE_SIZE,
   exclusionEtag,
-  listingEtag,
+  platformAssetEtag,
   type MappingRequest,
   type TabProps,
 } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
 import manageStyles from "../styles.module.css";
 
-export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
+export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const { userId } = useSessionScope();
   const queryClient = useQueryClient();
   const { platform, q, ignoredOnly } = filters.values;
@@ -42,11 +42,11 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
   const [request, setRequest] = useState<MappingRequest | null>(null);
   const [exclusionRequest, setExclusionRequest] = useState<MappingRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const query = usePortfolioQuery<AssetListingList>({
+  const query = usePortfolioQuery<PlatformAssetList>({
     key: (userId, portfolioId) =>
-      keys.catalogListings(userId, portfolioId, platform, q, ignoredOnly, offset),
+      keys.catalogPlatformAssets(userId, portfolioId, platform, q, ignoredOnly, offset),
     load: (portfolioId) =>
-      listAssetListings({
+      listPlatformAssets({
         path: { portfolioId },
         query: {
           platform: platform || undefined,
@@ -58,8 +58,10 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
       }),
   });
 
-  async function invalidateListings() {
-    await queryClient.invalidateQueries({ queryKey: keys.catalogListings(userId, portfolioId) });
+  async function invalidatePlatformAssets() {
+    await queryClient.invalidateQueries({
+      queryKey: keys.catalogPlatformAssets(userId, portfolioId),
+    });
   }
 
   return (
@@ -69,9 +71,9 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
           {notice}
         </p>
       ) : null}
-      <QueryRecovery query={query} fallback="Asset listings could not be loaded." />
+      <QueryRecovery query={query} fallback="Assets could not be loaded." />
       <DataTable
-        caption="Asset listings"
+        caption="Assets"
         columns={[
           {
             key: "platform",
@@ -201,11 +203,11 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
         empty={
           query.isPending ? (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading asset listings...</p>
+              <p className={shared.emptyStateTitle}>Loading assets...</p>
             </div>
           ) : q || platform || ignoredOnly ? (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No listings match these filters</p>
+              <p className={shared.emptyStateTitle}>No assets match these filters</p>
               <p className={shared.emptyStateHelp}>
                 Try adjusting your search query, platform, or status filter.
               </p>
@@ -215,10 +217,9 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             </div>
           ) : (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No asset listings recorded yet</p>
+              <p className={shared.emptyStateTitle}>No assets recorded yet</p>
               <p className={shared.emptyStateHelp}>
-                Asset listings will appear automatically once platform identities are connected and
-                sync.
+                Assets will appear automatically once platform identities are connected and sync.
               </p>
             </div>
           )
@@ -232,7 +233,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
       />
       <Dialog
         open={request !== null}
-        title={request ? `Map ${request.item.symbol}` : "Map listing"}
+        title={request ? `Map ${request.item.symbol}` : "Map platform asset"}
         onClose={() => setRequest(null)}
       >
         {request ? (
@@ -244,7 +245,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             onDone={async (message) => {
               setRequest(null);
               setNotice(message);
-              await invalidateListings();
+              await invalidatePlatformAssets();
               await invalidatePortfolioReads(queryClient, userId, portfolioId);
             }}
           />
@@ -255,7 +256,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
         title={
           exclusionRequest
             ? `${exclusionRequest.item.ignored ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
-            : "Listing status"
+            : "PlatformAsset status"
         }
         onClose={() => setExclusionRequest(null)}
       >
@@ -268,7 +269,7 @@ export function ListingsTab({ portfolioId, filters, timezone }: TabProps) {
             onDone={async (message) => {
               setExclusionRequest(null);
               setNotice(message);
-              await invalidateListings();
+              await invalidatePlatformAssets();
               await invalidatePortfolioReads(queryClient, userId, portfolioId);
             }}
           />
@@ -282,7 +283,7 @@ const EXCLUSION_REASON_PRESETS = [
   "Dust balance",
   "Spam / Airdrop",
   "Delisted asset",
-  "Duplicate listing",
+  "Duplicate platform asset",
 ];
 
 function ExclusionForm({
@@ -292,7 +293,7 @@ function ExclusionForm({
   onDone,
 }: {
   portfolioId: string;
-  item: AssetListing;
+  item: PlatformAsset;
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
@@ -314,27 +315,27 @@ function ExclusionForm({
     setError(null);
     try {
       const result = await write(() =>
-        putAssetListingExclusion({
-          path: { portfolioId, listingId: item.id },
+        putPlatformAssetExclusion({
+          path: { portfolioId, platformAssetId: item.id },
           headers: { "If-Match": exclusionEtag(item) },
           body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
         }),
       );
       if (result.response?.status === 412) {
         await onDone(
-          "The listing status changed in another session. The list was reloaded; open it again.",
+          "The platform asset status changed in another session. The list was reloaded; open it again.",
         );
         return;
       }
       if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The listing status could not be saved."));
+        setError(problemMessage(result.error, "The platform asset status could not be saved."));
         return;
       }
       await onDone(
         `${platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
-      setError(problemMessage(cause, "The listing status could not be saved."));
+      setError(problemMessage(cause, "The platform asset status could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -390,7 +391,7 @@ function ExclusionForm({
       ) : null}
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
-          {ignoring ? "Ignore listing" : "Restore listing"}
+          {ignoring ? "Ignore platform asset" : "Restore platform asset"}
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
@@ -407,7 +408,7 @@ function MappingForm({
   onDone,
 }: {
   portfolioId: string;
-  item: AssetListing;
+  item: PlatformAsset;
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
@@ -425,22 +426,22 @@ function MappingForm({
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!trimmedSymbol) {
-      setError("Enter the Asset symbol this listing should merge into.");
+      setError("Enter the Asset symbol this platform asset should merge into.");
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const result = await write(() =>
-        putAssetListingMapping({
-          path: { portfolioId, listingId: item.id },
-          headers: { "If-Match": listingEtag(item) },
+        putPlatformAssetMapping({
+          path: { portfolioId, platformAssetId: item.id },
+          headers: { "If-Match": platformAssetEtag(item) },
           body: { assetSymbol: trimmedSymbol },
         }),
       );
       if (result.response?.status === 412) {
         await onDone(
-          "The listing changed in another session. The list was reloaded; open it again.",
+          "The platform asset changed in another session. The list was reloaded; open it again.",
         );
         return;
       }
@@ -465,7 +466,7 @@ function MappingForm({
       </p>
       <div className={manageStyles.mappingFlowCard}>
         <div className={manageStyles.mappingFlowSource}>
-          <span className={manageStyles.mappingFlowLabel}>Source listing</span>
+          <span className={manageStyles.mappingFlowLabel}>Source platform asset</span>
           <span className={manageStyles.mappingFlowSymbol}>{item.symbol}</span>
           <span className={manageStyles.mappingFlowPlatform}>{platform}</span>
         </div>

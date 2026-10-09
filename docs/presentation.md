@@ -31,11 +31,17 @@ Shared aliases imply neither identical Account arrangements nor identical risk
 models: Binance Unified is its supported Portfolio Margin structure; Bybit MCM
 is its canonical Cross Margin mode.
 
-### Asset Listing labels
+### Catalog labels
 
-Catalog Asset Listings and mapping dialogs identify Assets by symbol without
-displaying full names. Mapped listings retain their native symbol so the mapping
-remains visible.
+Catalog uses Assets and Futures tabs, with Asset and Symbol as their main column
+labels. Assets is the compact UI label for Platform Assets; Futures contains
+perpetual and delivery Futures Contracts. Holdings retains Balances and Futures
+with Asset and Symbol columns.
+
+Catalog Assets and mapping dialogs omit full names. The Asset column displays
+the mapped Asset Symbol, with `Listed as: ...` only when the Platform Asset
+Symbol differs. Holdings Balances retains the Platform Asset Symbol first and
+shows a secondary mapping hint when needed.
 
 ### Ordering
 
@@ -48,15 +54,17 @@ with fewer dimensions use the corresponding part of that hierarchy.
   immutable ID. The [Platform catalog](../internal/platform/adapters/catalog.go)
   owns type order; Manual is last. Account names and Margin Mode do not affect
   order.
-- Balances within an Account: Asset Symbol, native listing Symbol, listing ID.
+- Balances within an Account: Asset Symbol, native platform asset Symbol,
+  platform asset ID.
 - Futures within an Account: Base Symbol; linear before inverse; perpetual
   before delivery within each family; delivery expiry nearest first, unknown
   last; native Symbol; long before short; Platform Position reference. Missing
   Base follows known Bases and uses native Symbol, side, and reference. Do not
   infer Base from Symbol or merge SHIB with 1000SHIB.
-- Earn within an Account: sorted invested Asset sequence, with native listing
-  breaking Asset ties; Flexible, Fixed, Bonded, Timed, On-chain; maturity with
-  unknown last; stable source reference. Multi-Asset products stay together.
+- Earn within an Account: sorted invested Asset sequence, with native platform
+  asset breaking Asset ties; Flexible, Fixed, Bonded, Timed, On-chain; maturity
+  with unknown last; stable source reference. Multi-Asset products stay
+  together.
 - Dual within an Account: expiry with unknown last, then Position reference.
 
 Ordering precedes pagination and ignores value, freshness, and collection

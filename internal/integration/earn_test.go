@@ -30,14 +30,14 @@ func (a *earnScenario) Collect(_ context.Context, _ adapters.Credentials, _ adap
 		}
 		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, ObservedAt: at, EarnDetailsCollected: !a.legacy}
 		if !a.empty {
-			r.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "40"}, {Symbol: "USDC", Equity: "10"}}
+			r.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "40"}, {PlatformAssetSymbol: "USDC", Equity: "10"}}
 			if !a.legacy {
 				p := adapters.NewEarnPosition("multi", "on_chain", "position", "principal")
-				p.Assets = []adapters.EarnAmount{{Symbol: "USDT", Amount: "15"}, {Symbol: "USDC", Amount: "10"}}
+				p.Assets = []adapters.EarnAmount{{PlatformAssetSymbol: "USDT", Amount: "15"}, {PlatformAssetSymbol: "USDC", Amount: "10"}}
 				p.AddReward("USDT", "100", "estimated")
 				p.Problems = append(p.Problems, "Estimated APR could not be read.")
 				q := adapters.NewEarnPosition("fixed", "fixed", "position", "principal")
-				q.Assets = []adapters.EarnAmount{{Symbol: "USDT", Amount: "25"}}
+				q.Assets = []adapters.EarnAmount{{PlatformAssetSymbol: "USDT", Amount: "25"}}
 				r.EarnPositions = []adapters.EarnPosition{p, q}
 			}
 		}

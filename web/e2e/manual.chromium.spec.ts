@@ -26,8 +26,8 @@ async function fixture(page: Page, initialPoint = true) {
     items: state.items,
     appliedItems: state.applied,
     pending:
-      JSON.stringify(state.items.map((i) => [i.symbol, i.quantity])) !==
-      JSON.stringify(state.applied.map((i) => [i.symbol, i.quantity])),
+      JSON.stringify(state.items.map((i) => [i.platformAssetSymbol, i.quantity])) !==
+      JSON.stringify(state.applied.map((i) => [i.platformAssetSymbol, i.quantity])),
   });
   const account = (): AccountValuation => ({
     accountId: "manual",
@@ -107,7 +107,7 @@ async function fixture(page: Page, initialPoint = true) {
           },
         });
       if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
-      if (path.endsWith("/asset-listings"))
+      if (path.endsWith("/platform-assets"))
         return route.fulfill({ json: { items: [], page: { offset: 0, limit: 200, total: 0 } } });
       if (path.includes("/manual-balances")) {
         if (method !== "GET") {
@@ -118,15 +118,23 @@ async function fixture(page: Page, initialPoint = true) {
           const body =
             method === "DELETE"
               ? null
-              : (req.postDataJSON() as { symbol?: string; quantity: string });
+              : (req.postDataJSON() as { platformAssetSymbol?: string; quantity: string });
           const symbol = path.endsWith("/manual-balances")
-            ? (body?.symbol ?? "").trim().toUpperCase()
+            ? (body?.platformAssetSymbol ?? "").trim().toUpperCase()
             : path.split("/").at(-1)!;
           const quantity = method === "DELETE" ? "0" : (body?.quantity ?? "0");
           state.items =
             quantity === "0"
               ? []
-              : [{ symbol, quantity, assetSymbol: symbol, listingId: "listing", modifiedAt: at }];
+              : [
+                  {
+                    platformAssetSymbol: symbol,
+                    quantity,
+                    assetSymbol: symbol,
+                    platformAssetId: "platform-asset",
+                    modifiedAt: at,
+                  },
+                ];
           state.version++;
         }
         return route.fulfill({ json: ledger(), headers: { ETag: `"manual:${state.version}"` } });
@@ -179,25 +187,34 @@ async function fixture(page: Page, initialPoint = true) {
         const items: BalanceRow[] = state.applied.map((item) => ({
           ...item,
           ...account(),
-          symbol: item.symbol,
+          platformAssetSymbol: item.platformAssetSymbol,
           equity: item.quantity,
           equityUsd: item.quantity,
           priceUsd: "1",
           noPrice: false,
-          manualChange: !state.items.some((current) => current.symbol === item.symbol)
+          manualChange: !state.items.some(
+            (current) => current.platformAssetSymbol === item.platformAssetSymbol,
+          )
             ? "deleted"
-            : state.items.find((current) => current.symbol === item.symbol)?.quantity !==
-                item.quantity
+            : state.items.find(
+                  (current) => current.platformAssetSymbol === item.platformAssetSymbol,
+                )?.quantity !== item.quantity
               ? "updated"
               : undefined,
-          manualQuantity: state.items.find((current) => current.symbol === item.symbol)?.quantity,
+          manualQuantity: state.items.find(
+            (current) => current.platformAssetSymbol === item.platformAssetSymbol,
+          )?.quantity,
         }));
         for (const item of state.items) {
-          if (!state.applied.some((applied) => applied.symbol === item.symbol)) {
+          if (
+            !state.applied.some(
+              (applied) => applied.platformAssetSymbol === item.platformAssetSymbol,
+            )
+          ) {
             items.push({
               ...item,
               ...account(),
-              symbol: item.symbol,
+              platformAssetSymbol: item.platformAssetSymbol,
               equity: item.quantity,
               priceUsd: null,
               equityUsd: null,

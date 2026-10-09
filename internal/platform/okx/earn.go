@@ -51,7 +51,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 				return adapters.AccountReport{}, adapters.AccountReport{}, err
 			}
 			if amount.Sign() != 0 {
-				p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: invested.Ccy, Amount: decimal.Format(amount)})
+				p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: invested.Ccy, Amount: decimal.Format(amount)})
 			}
 		}
 		if len(p.Assets) > 0 {

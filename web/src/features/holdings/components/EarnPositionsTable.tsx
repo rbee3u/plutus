@@ -31,12 +31,12 @@ const REWARD_LABELS: Record<string, string> = {
 };
 
 function assetLabel(asset: EarnAmount): string {
-  return asset.assetSymbol ?? asset.symbol;
+  return asset.assetSymbol ?? asset.platformAssetSymbol;
 }
 function amountLines(assets: EarnAmount[]) {
   return assets.length
     ? assets.map((asset, index) => (
-        <div key={`${asset.symbol}-${index}`}>
+        <div key={`${asset.platformAssetSymbol}-${index}`}>
           <NumericText>{`${formatDecimal(asset.amount)} ${assetLabel(asset)}`}</NumericText>
         </div>
       ))
@@ -47,13 +47,13 @@ function rateText(rate: EarnRate): string {
     rate.upper && rate.upper !== rate.value
       ? `${formatPercent(rate.value)}–${formatPercent(rate.upper)}`
       : formatPercent(rate.value);
-  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.symbol ? ` ${rate.symbol}` : ""}`;
+  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.platformAssetSymbol ? ` ${rate.platformAssetSymbol}` : ""}`;
 }
 function rewardLine(reward: EarnReward, index: number) {
   return (
-    <div key={`${reward.kind}-${reward.symbol}-${index}`}>
+    <div key={`${reward.kind}-${reward.platformAssetSymbol}-${index}`}>
       {REWARD_LABELS[reward.kind] ?? reward.kind}{" "}
-      <NumericText>{`${formatDecimal(reward.amount)} ${reward.symbol}`}</NumericText>
+      <NumericText>{`${formatDecimal(reward.amount)} ${reward.platformAssetSymbol}`}</NumericText>
     </div>
   );
 }
@@ -110,10 +110,10 @@ export function EarnPositionsTable({
           identityName: item.identityName,
           asset: item.assets.map((asset, index) => (
             <div
-              key={`${asset.symbol}-${index}`}
+              key={`${asset.platformAssetSymbol}-${index}`}
               title={
-                asset.assetSymbol && asset.assetSymbol !== asset.symbol
-                  ? `Platform listing: ${asset.symbol}`
+                asset.assetSymbol && asset.assetSymbol !== asset.platformAssetSymbol
+                  ? `Platform asset: ${asset.platformAssetSymbol}`
                   : undefined
               }
             >

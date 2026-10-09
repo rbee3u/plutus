@@ -37,9 +37,10 @@ type Issue struct {
 }
 
 // Omitted names one Balance excluded from an Account Valuation.
+// Its symbol JSON tag preserves stored valuations; HTTP uses platformAssetSymbol.
 type Omitted struct {
-	Symbol string `json:"symbol"`
-	// AssetSymbol is set only when the listing is mapped to a different Asset symbol.
+	PlatformAssetSymbol string `json:"symbol"`
+	// AssetSymbol is set only when the platform asset is mapped to a different Asset symbol.
 	AssetSymbol string `json:"assetSymbol,omitempty"`
 	Equity      string `json:"equity"`
 	Reason      string `json:"reason"`

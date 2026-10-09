@@ -134,6 +134,35 @@ cd /opt/plutus-test
 ./plutus --config test.toml --env-file test.env db reset
 ```
 
+### Catalog terminology upgrade
+
+Back up the database and stop all services before applying
+[20261009010000_catalog_terminology.sql](../db/migrations/20261009010000_catalog_terminology.sql)
+and
+[20261009020000_asset_reference_columns.sql](../db/migrations/20261009020000_asset_reference_columns.sql)
+with `plutus migrate up`. The command rejects historical spot instruments before
+any pending DDL; resolve unsupported records explicitly before retrying. Use
+this command, not direct Goose or SQL execution. MySQL DDL is not transactional;
+a failed partial migration requires inspection or restoration before retrying.
+
+The upgrade renames catalog tables and references while retaining IDs, versions,
+amounts, timestamps, and history. The follow-up migration makes persisted Asset
+reference namespaces explicit and clarifies index and check names without
+changing their rules; see
+[persisted references](./architecture.md#persisted-asset-references). New code
+reads both historical and current Manual revision formats without rewriting
+retained JSON or audit documents. Stored Earn metadata and omitted Balance JSON
+keep their historical `symbol` keys; their Go fields and HTTP responses use
+`PlatformAssetSymbol` and `platformAssetSymbol`, respectively.
+
+Deploy the server and embedded SPA together. API paths, reference fields, and
+catalog ETags change together without old API aliases. Refresh existing browser
+sessions. Old Catalog tab links retain their filters and resolve to the new
+tabs. Check readiness and exercise Catalog mapping/exclusion, Manual editing,
+and Holdings after startup. For a full rollback, restore the pre-upgrade backup
+with the previous binary; reversing table names alone does not undo new JSON
+writes.
+
 ### Dual Investment split upgrade
 
 Before applying

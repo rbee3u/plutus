@@ -7,7 +7,7 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func (a *API) ListAssetListings(ctx context.Context, request api.ListAssetListingsRequestObject) (api.ListAssetListingsResponseObject, error) {
+func (a *API) ListPlatformAssets(ctx context.Context, request api.ListPlatformAssetsRequestObject) (api.ListPlatformAssetsResponseObject, error) {
 	sc, err := a.scoped(ctx, request.PortfolioId)
 	if err != nil {
 		return nil, err
@@ -15,18 +15,18 @@ func (a *API) ListAssetListings(ctx context.Context, request api.ListAssetListin
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListListings(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), IgnoredOnly: boolValue(request.Params.IgnoredOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	page, err := a.Catalog.ListPlatformAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), IgnoredOnly: boolValue(request.Params.IgnoredOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]api.AssetListing, 0, len(page.Items))
+	items := make([]api.PlatformAsset, 0, len(page.Items))
 	for i := range page.Items {
-		items = append(items, toAPIListing(&page.Items[i]))
+		items = append(items, toAPIPlatformAsset(&page.Items[i]))
 	}
-	return api.ListAssetListings200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+	return api.ListPlatformAssets200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
 }
 
-func (a *API) PutAssetListingMapping(ctx context.Context, request api.PutAssetListingMappingRequestObject) (api.PutAssetListingMappingResponseObject, error) {
+func (a *API) PutPlatformAssetMapping(ctx context.Context, request api.PutPlatformAssetMappingRequestObject) (api.PutPlatformAssetMappingResponseObject, error) {
 	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
 	if err != nil {
 		return nil, err
@@ -34,14 +34,14 @@ func (a *API) PutAssetListingMapping(ctx context.Context, request api.PutAssetLi
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := catalog.ParseListingETag(request.Params.IfMatch)
+	version, ok := catalog.ParsePlatformAssetETag(request.Params.IfMatch)
 	if !ok {
-		return nil, validationError("If-Match must be a listing ETag.")
+		return nil, validationError("If-Match must be a platform asset ETag.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	item, err := a.Catalog.PutMapping(ctx, request.ListingId, catalog.MappingInput{
+	item, err := a.Catalog.PutMapping(ctx, request.PlatformAssetId, catalog.MappingInput{
 		ActorUserID: sc.user.ID,
 		PortfolioID: sc.portfolio.ID,
 		RequestID:   requestTraceID(ctx),
@@ -51,10 +51,10 @@ func (a *API) PutAssetListingMapping(ctx context.Context, request api.PutAssetLi
 	if err != nil {
 		return nil, err
 	}
-	return api.PutAssetListingMapping200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PutPlatformAssetMapping200JSONResponse{Body: toAPIPlatformAsset(&item), Headers: api.PutPlatformAssetMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
-func (a *API) PutAssetListingExclusion(ctx context.Context, request api.PutAssetListingExclusionRequestObject) (api.PutAssetListingExclusionResponseObject, error) {
+func (a *API) PutPlatformAssetExclusion(ctx context.Context, request api.PutPlatformAssetExclusionRequestObject) (api.PutPlatformAssetExclusionResponseObject, error) {
 	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
 	if err != nil {
 		return nil, err
@@ -64,35 +64,35 @@ func (a *API) PutAssetListingExclusion(ctx context.Context, request api.PutAsset
 	}
 	version, ok := catalog.ParseExclusionETag(request.Params.IfMatch)
 	if !ok {
-		return nil, validationError("If-Match must be a listing exclusion ETag.")
+		return nil, validationError("If-Match must be a platform asset exclusion ETag.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	item, err := a.Catalog.PutExclusion(ctx, request.ListingId, &catalog.ExclusionInput{
+	item, err := a.Catalog.PutExclusion(ctx, request.PlatformAssetId, &catalog.ExclusionInput{
 		PortfolioID: sc.portfolio.ID, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx),
 		Ignored: request.Body.Ignored, Reason: stringValue(request.Body.Reason), Version: version,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.PutAssetListingExclusion200JSONResponse{Body: toAPIListing(&item), Headers: api.PutAssetListingExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
+	return api.PutPlatformAssetExclusion200JSONResponse{Body: toAPIPlatformAsset(&item), Headers: api.PutPlatformAssetExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
 }
 
-func (a *API) ListInstruments(ctx context.Context, request api.ListInstrumentsRequestObject) (api.ListInstrumentsResponseObject, error) {
+func (a *API) ListFuturesContracts(ctx context.Context, request api.ListFuturesContractsRequestObject) (api.ListFuturesContractsResponseObject, error) {
 	if _, err := a.scoped(ctx, request.PortfolioId); err != nil {
 		return nil, err
 	}
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListInstruments(ctx, catalog.ListFilter{Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	page, err := a.Catalog.ListFuturesContracts(ctx, catalog.ListFilter{Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]api.Instrument, 0, len(page.Items))
+	items := make([]api.FuturesContract, 0, len(page.Items))
 	for i := range page.Items {
-		items = append(items, toAPIInstrument(&page.Items[i]))
+		items = append(items, toAPIFuturesContract(&page.Items[i]))
 	}
-	return api.ListInstruments200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+	return api.ListFuturesContracts200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
 }

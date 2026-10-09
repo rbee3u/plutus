@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -136,5 +137,24 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 		if response := request(base+suffix, foreign.Token); response.Code != 404 {
 			t.Fatalf("unowned %d", response.Code)
 		}
+	}
+}
+
+func TestStoredOmissionUsesExplicitAPIReference(t *testing.T) {
+	var omitted []valuation.Omitted
+	if err := json.Unmarshal([]byte(`[{"symbol":"DEMO-BTC","assetSymbol":"BTC","equity":"2","reason":"missing_price"}]`), &omitted); err != nil {
+		t.Fatal(err)
+	}
+	out := toAPIAccountValuation(&valuation.AccountValuation{Omitted: omitted})
+	if len(out.Omitted) != 1 || out.Omitted[0].PlatformAssetSymbol != "DEMO-BTC" || out.Omitted[0].AssetSymbol == nil || *out.Omitted[0].AssetSymbol != "BTC" || out.Omitted[0].Equity != "2" {
+		t.Fatalf("lost stored omission: %+v", out.Omitted)
+	}
+	encoded, err := json.Marshal(out.Omitted)
+	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || !bytes.Contains(encoded, []byte(`"platformAssetSymbol":"DEMO-BTC"`)) {
+		t.Fatalf("API omission: %s (%v)", encoded, err)
+	}
+	encoded, err = json.Marshal(omitted)
+	if err != nil || !bytes.Contains(encoded, []byte(`"symbol":"DEMO-BTC"`)) {
+		t.Fatalf("stored omission: %s (%v)", encoded, err)
 	}
 }

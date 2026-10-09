@@ -104,8 +104,8 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Manage",
     defaultPathSuffix: "/data/catalog",
     subviews: [
-      { label: "Asset Listings", pathSuffix: "/data/catalog", tab: CATALOG_TABS[0] },
-      { label: "Instruments", pathSuffix: "/data/catalog", tab: CATALOG_TABS[1] },
+      { label: "Assets", pathSuffix: "/data/catalog", tab: CATALOG_TABS[0] },
+      { label: "Futures", pathSuffix: "/data/catalog", tab: CATALOG_TABS[1] },
     ],
   },
   {

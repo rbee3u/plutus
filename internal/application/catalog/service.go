@@ -1,4 +1,4 @@
-// Package catalog owns Asset Listings, Instruments, and Platform prices.
+// Package catalog owns Platform Assets, Futures Contracts, and Platform prices.
 package catalog
 
 import (
@@ -25,13 +25,13 @@ const (
 	defaultLimit = 50
 	maxSymbol    = 64
 
-	// MappingAuto means the Asset symbol equals the normalized listing symbol.
+	// MappingAuto means the Asset symbol equals the normalized platform asset symbol.
 	MappingAuto = "auto"
 	// MappingManual means a User overrode the Asset symbol.
 	MappingManual = "manual"
 )
 
-// symbolPattern accepts letters of any script, so listings such as Binance's 牛来USDT contract are
+// symbolPattern accepts letters of any script, so symbols such as Binance's 牛来USDT contract are
 // kept; maxSymbol bounds the byte length, which keeps it within the VARCHAR(64) columns.
 var symbolPattern = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._-]*$`)
 
@@ -48,8 +48,8 @@ func NewService(db *sql.DB, jobService *jobs.Service) *Service {
 	return &Service{jobs: jobService, db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
-// Listing is one Platform coin symbol and the Asset it maps to.
-type Listing struct {
+// PlatformAsset is an asset available on a Platform, with its own Symbol and a mapping to an Asset.
+type PlatformAsset struct {
 	ID               uuid.UUID
 	Platform         string
 	Symbol           string
@@ -66,18 +66,18 @@ type Listing struct {
 	ExclusionVersion uint64
 }
 
-// ETag returns the listing validator.
-func (l *Listing) ETag() string {
-	return etag.Format("listing", l.Version)
+// ETag returns the platform asset validator.
+func (l *PlatformAsset) ETag() string {
+	return etag.Format("platform-asset", l.Version)
 }
 
-// ParseListingETag extracts the version from a listing ETag.
-func ParseListingETag(value string) (uint64, bool) {
-	return etag.Parse("listing", value)
+// ParsePlatformAssetETag extracts the version from a platform asset ETag.
+func ParsePlatformAssetETag(value string) (uint64, bool) {
+	return etag.Parse("platform-asset", value)
 }
 
-// Instrument is one Platform contract.
-type Instrument struct {
+// FuturesContract is one Platform contract.
+type FuturesContract struct {
 	ID               uuid.UUID
 	Platform         string
 	Symbol           string
@@ -109,14 +109,14 @@ type ListFilter struct {
 	Limit       int
 }
 
-// ListListings returns an offset page of listings.
-func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing], error) {
+// ListPlatformAssets returns an offset page of platform assets.
+func (s *Service) ListPlatformAssets(ctx context.Context, in ListFilter) (Page[PlatformAsset], error) {
 	limit, offset, err := normalizePage(in.Limit, in.Offset)
 	if err != nil {
-		return Page[Listing]{}, err
+		return Page[PlatformAsset]{}, err
 	}
 	query := likePattern(in.Query)
-	rows, err := s.q.ListAssetListings(ctx, sqlcgen.ListAssetListingsParams{
+	rows, err := s.q.ListPlatformAssets(ctx, sqlcgen.ListPlatformAssetsParams{
 		PlatformOrder:  ordering.PlatformsCSV(),
 		PortfolioID:    in.PortfolioID[:],
 		IgnoredOnly:    flag(in.IgnoredOnly),
@@ -128,9 +128,9 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
 	if err != nil {
-		return Page[Listing]{}, err
+		return Page[PlatformAsset]{}, err
 	}
-	total, err := s.q.CountAssetListings(ctx, sqlcgen.CountAssetListingsParams{
+	total, err := s.q.CountPlatformAssets(ctx, sqlcgen.CountPlatformAssetsParams{
 		PortfolioID:    in.PortfolioID[:],
 		IgnoredOnly:    flag(in.IgnoredOnly),
 		FilterPlatform: flag(in.Platform != ""),
@@ -139,44 +139,44 @@ func (s *Service) ListListings(ctx context.Context, in ListFilter) (Page[Listing
 		Query:          query,
 	})
 	if err != nil {
-		return Page[Listing]{}, err
+		return Page[PlatformAsset]{}, err
 	}
-	items := make([]Listing, 0, len(rows))
+	items := make([]PlatformAsset, 0, len(rows))
 	states, err := s.currentExclusions(ctx, in.PortfolioID)
 	if err != nil {
-		return Page[Listing]{}, err
+		return Page[PlatformAsset]{}, err
 	}
 	for i := range rows {
-		item, err := listingFromRow(&rows[i])
+		item, err := platformAssetFromRow(&rows[i])
 		if err != nil {
-			return Page[Listing]{}, err
+			return Page[PlatformAsset]{}, err
 		}
 		applyExclusion(&item, states[item.ID])
 		items = append(items, item)
 	}
-	return Page[Listing]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
+	return Page[PlatformAsset]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
 }
 
-// GetListing returns one listing.
-func (s *Service) GetListing(ctx context.Context, id uuid.UUID) (Listing, error) {
-	row, err := s.q.GetAssetListing(ctx, id[:])
+// GetPlatformAsset returns one platform asset.
+func (s *Service) GetPlatformAsset(ctx context.Context, id uuid.UUID) (PlatformAsset, error) {
+	row, err := s.q.GetPlatformAsset(ctx, id[:])
 	if errors.Is(err, sql.ErrNoRows) {
-		return Listing{}, ErrNotFound
+		return PlatformAsset{}, ErrNotFound
 	}
 	if err != nil {
-		return Listing{}, err
+		return PlatformAsset{}, err
 	}
-	return listingFromRow(&row)
+	return platformAssetFromRow(&row)
 }
 
-// ListInstruments returns an offset page of instruments.
-func (s *Service) ListInstruments(ctx context.Context, in ListFilter) (Page[Instrument], error) {
+// ListFuturesContracts returns an offset page of futures contracts.
+func (s *Service) ListFuturesContracts(ctx context.Context, in ListFilter) (Page[FuturesContract], error) {
 	limit, offset, err := normalizePage(in.Limit, in.Offset)
 	if err != nil {
-		return Page[Instrument]{}, err
+		return Page[FuturesContract]{}, err
 	}
 	query := likePattern(in.Query)
-	rows, err := s.q.ListInstruments(ctx, sqlcgen.ListInstrumentsParams{
+	rows, err := s.q.ListFuturesContracts(ctx, sqlcgen.ListFuturesContractsParams{
 		PlatformOrder:  ordering.PlatformsCSV(),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
@@ -186,34 +186,34 @@ func (s *Service) ListInstruments(ctx context.Context, in ListFilter) (Page[Inst
 		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
 	if err != nil {
-		return Page[Instrument]{}, err
+		return Page[FuturesContract]{}, err
 	}
-	total, err := s.q.CountInstruments(ctx, sqlcgen.CountInstrumentsParams{
+	total, err := s.q.CountFuturesContracts(ctx, sqlcgen.CountFuturesContractsParams{
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
 		Query:          query,
 	})
 	if err != nil {
-		return Page[Instrument]{}, err
+		return Page[FuturesContract]{}, err
 	}
-	items := make([]Instrument, 0, len(rows))
+	items := make([]FuturesContract, 0, len(rows))
 	for i := range rows {
-		item, err := instrumentFromRow(&rows[i])
+		item, err := futuresContractFromRow(&rows[i])
 		if err != nil {
-			return Page[Instrument]{}, err
+			return Page[FuturesContract]{}, err
 		}
 		items = append(items, item)
 	}
-	return Page[Instrument]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
+	return Page[FuturesContract]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
 }
 
-func listingFromRow(row *sqlcgen.AssetListing) (Listing, error) {
+func platformAssetFromRow(row *sqlcgen.PlatformAsset) (PlatformAsset, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
-		return Listing{}, err
+		return PlatformAsset{}, err
 	}
-	item := Listing{
+	item := PlatformAsset{
 		ID:            id,
 		Platform:      row.Platform,
 		Symbol:        row.Symbol,
@@ -231,19 +231,19 @@ func listingFromRow(row *sqlcgen.AssetListing) (Listing, error) {
 	return item, nil
 }
 
-func instrumentFromRow(row *sqlcgen.Instrument) (Instrument, error) {
+func futuresContractFromRow(row *sqlcgen.FuturesContract) (FuturesContract, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
-		return Instrument{}, err
+		return FuturesContract{}, err
 	}
-	item := Instrument{
+	item := FuturesContract{
 		ID:               id,
 		Platform:         row.Platform,
 		Symbol:           row.Symbol,
 		Kind:             row.Kind,
-		BaseSymbol:       nullStringPtr(row.BaseSymbol),
-		QuoteSymbol:      nullStringPtr(row.QuoteSymbol),
-		SettlementSymbol: nullStringPtr(row.SettlementSymbol),
+		BaseSymbol:       nullStringPtr(row.BasePlatformAssetSymbol),
+		QuoteSymbol:      nullStringPtr(row.QuotePlatformAssetSymbol),
+		SettlementSymbol: nullStringPtr(row.SettlementPlatformAssetSymbol),
 		ContractSize:     nullStringPtr(row.ContractSize),
 		FirstSeenAt:      row.FirstSeenAt,
 		LastSeenAt:       row.LastSeenAt,

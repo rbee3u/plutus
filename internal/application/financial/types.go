@@ -84,8 +84,8 @@ type BalanceRow struct {
 	IdentityID          uuid.UUID
 	IdentityName        string
 	Platform            string
-	ListingID           uuid.UUID
-	Symbol              string
+	PlatformAssetID     uuid.UUID
+	PlatformAssetSymbol string
 	AssetSymbol         string
 	Equity              string
 	AvailableToWithdraw *string
@@ -111,8 +111,8 @@ type PositionRow struct {
 	IdentityName            string
 	Platform                string
 	PlatformPositionRef     string
-	InstrumentID            uuid.UUID
-	Symbol                  string
+	FuturesContractID       uuid.UUID
+	FuturesSymbol           string
 	Kind                    string
 	BaseSymbol              *string
 	QuoteSymbol             *string

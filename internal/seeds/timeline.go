@@ -91,18 +91,18 @@ func (b *builder) demoEvents(anchor time.Time) {
 	} {
 		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: event.action, ResourceType: "identity", ResourceID: identityID(event.identity), At: anchor.AddDate(0, 0, event.days), Before: event.before, After: event.after, System: event.action == "identity.margin_mode.change"})
 	}
-	b.demoListingPolicy(anchor)
+	b.demoPlatformAssetPolicy(anchor)
 	// Independent Catalog reviews provide useful audit pagination without
 	// inventing dozens of meaningless Identity renames.
 	reviewed := 0
-	for _, key := range b.listingKeys {
-		row := b.listings[key]
+	for _, key := range b.platformAssetKeys {
+		row := b.platformAssets[key]
 		if row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
 			continue
 		}
 		reviewed++
 		row.source = catalog.MappingManual
-		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.listing.map", ResourceType: "asset_listing", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingManual, "version": 2}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.platform_asset.map", ResourceType: "platform_asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingManual, "version": 2}})
 	}
 	if reviewed != 60 {
 		b.fail(fmt.Errorf("large scenario needs 60 independent Catalog reviews"))
@@ -114,17 +114,17 @@ func (b *builder) demoEvents(anchor time.Time) {
 	}
 }
 
-func (b *builder) demoListingPolicy(anchor time.Time) {
-	alias := b.listings["binance|DEMO-BTC"]
+func (b *builder) demoPlatformAssetPolicy(anchor time.Time) {
+	alias := b.platformAssets["binance|DEMO-BTC"]
 	if alias == nil {
-		b.fail(fmt.Errorf("demo alias listing is missing"))
+		b.fail(fmt.Errorf("demo alias platform asset is missing"))
 		return
 	}
 	alias.asset, alias.source = "BTC", catalog.MappingManual
-	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.listing.map", ResourceType: "asset_listing", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "assetSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "assetSymbol": "BTC", "mappingSource": catalog.MappingManual}})
-	dust := b.listings["binance|DEMO-DUST"]
+	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.platform_asset.map", ResourceType: "platform_asset", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "assetSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "assetSymbol": "BTC", "mappingSource": catalog.MappingManual}})
+	dust := b.platformAssets["binance|DEMO-DUST"]
 	if dust == nil {
-		b.fail(fmt.Errorf("demo dust listing is missing"))
+		b.fail(fmt.Errorf("demo dust platform asset is missing"))
 		return
 	}
 	for i, days := range []int{-6, -4, -2} {
@@ -134,14 +134,14 @@ func (b *builder) demoListingPolicy(anchor time.Time) {
 			reason = "Reviewed synthetic dust; intentionally omitted from calculated value."
 		}
 		at := anchor.AddDate(0, 0, days)
-		b.add("portfolio_listing_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
-		action := "catalog.listing.restore"
+		b.add("portfolio_platform_asset_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
+		action := "catalog.platform_asset.restore"
 		if ignored {
-			action = "catalog.listing.exclude"
+			action = "catalog.platform_asset.exclude"
 		}
-		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "asset_listing", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "ignored": !ignored, "version": i}, After: map[string]any{"symbol": dust.symbol, "ignored": ignored, "reason": reason, "version": i + 1}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "platform_asset", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "ignored": !ignored, "version": i}, After: map[string]any{"symbol": dust.symbol, "ignored": ignored, "reason": reason, "version": i + 1}})
 		if i == 2 {
-			b.add("portfolio_listing_exclusions", bin(PortfolioAliceEdge), bin(dust.id), boolean(ignored), qn(reason), "3", bin(UserAlice), ts(at))
+			b.add("portfolio_platform_asset_exclusions", bin(PortfolioAliceEdge), bin(dust.id), boolean(ignored), qn(reason), "3", bin(UserAlice), ts(at))
 		}
 	}
 }

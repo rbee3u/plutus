@@ -61,7 +61,7 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 	}
 	assetSymbols := map[string]string{}
 	for _, balance := range balances {
-		assetSymbols[balance.Symbol] = balance.AssetSymbol
+		assetSymbols[balance.PlatformAssetSymbol] = balance.AssetSymbol
 	}
 	if !collected {
 		issue := valuation.Issue{
@@ -81,7 +81,7 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 			Issues:           []valuation.Issue{issue},
 		}
 		for _, balance := range balances {
-			summary.Assets = append(summary.Assets, adapters.EarnAmount{Symbol: balance.Symbol, Amount: balance.Equity, AssetSymbol: adapters.OptionalText(balance.AssetSymbol)})
+			summary.Assets = append(summary.Assets, adapters.EarnAmount{PlatformAssetSymbol: balance.PlatformAssetSymbol, Amount: balance.Equity, AssetSymbol: adapters.OptionalText(balance.AssetSymbol)})
 		}
 		if account.Freshness == valuation.FreshnessStale {
 			summary.Issues = append(summary.Issues, staleAccountIssue(account))
@@ -102,7 +102,7 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 		}
 		for i := range position.Assets {
 			asset := &position.Assets[i]
-			asset.AssetSymbol = adapters.OptionalText(assetSymbols[asset.Symbol])
+			asset.AssetSymbol = adapters.OptionalText(assetSymbols[asset.PlatformAssetSymbol])
 		}
 		slices.SortFunc(position.Assets, compareEarnAssets)
 		row := EarnPositionRow{
@@ -152,7 +152,7 @@ func matchesEarnAssets(f *ListFilter, assets []adapters.EarnAmount) bool {
 		return true
 	}
 	for _, asset := range assets {
-		if matchesSymbol(f.Symbol, asset.Symbol, optionalSymbol(asset.AssetSymbol)) {
+		if matchesSymbol(f.Symbol, asset.PlatformAssetSymbol, optionalSymbol(asset.AssetSymbol)) {
 			return true
 		}
 	}
@@ -212,7 +212,7 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 			}
 			if f.Symbol != "" {
 				summary.Assets = slices.DeleteFunc(summary.Assets, func(asset adapters.EarnAmount) bool {
-					return !matchesSymbol(f.Symbol, asset.Symbol, optionalSymbol(asset.AssetSymbol))
+					return !matchesSymbol(f.Symbol, asset.PlatformAssetSymbol, optionalSymbol(asset.AssetSymbol))
 				})
 			}
 			out.BalanceSummaries = append(out.BalanceSummaries, summary)

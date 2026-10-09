@@ -1,5 +1,5 @@
-import { keys, listInstruments } from "@/api";
-import type { Instrument, InstrumentList } from "@/api";
+import { keys, listFuturesContracts } from "@/api";
+import type { FuturesContract, FuturesContractList } from "@/api";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
@@ -14,14 +14,14 @@ import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
 
-function formatContractSize(item: Instrument): string {
+function formatContractSize(item: FuturesContract): string {
   const isInverse = item.kind.includes("inverse");
   const unit = isInverse ? item.quoteSymbol : item.baseSymbol;
   const size = formatDecimal(item.contractSize);
   return size !== "—" && unit ? `${size} ${unit}` : size;
 }
 
-function renderInstrumentKind(kind: string) {
+function renderFuturesContractKind(kind: string) {
   const isPerp = kind.includes("perpetual");
   const isDelivery = kind.includes("delivery");
   const isInverse = kind.includes("inverse");
@@ -40,14 +40,15 @@ function renderInstrumentKind(kind: string) {
   );
 }
 
-export function InstrumentsTab({ filters, timezone }: TabProps) {
+export function FuturesTab({ filters, timezone }: TabProps) {
   const { platform, q } = filters.values;
   const offset = filters.offset;
   const platforms = filters.platforms;
-  const query = usePortfolioQuery<InstrumentList>({
-    key: (userId, portfolioId) => keys.catalogInstruments(userId, portfolioId, platform, q, offset),
+  const query = usePortfolioQuery<FuturesContractList>({
+    key: (userId, portfolioId) =>
+      keys.catalogFuturesContracts(userId, portfolioId, platform, q, offset),
     load: (portfolioId) =>
-      listInstruments({
+      listFuturesContracts({
         path: { portfolioId },
         query: { platform: platform || undefined, q: q || undefined, offset, limit: PAGE_SIZE },
       }),
@@ -55,9 +56,9 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
 
   return (
     <>
-      <QueryRecovery query={query} fallback="Instruments could not be loaded." />
+      <QueryRecovery query={query} fallback="Futures could not be loaded." />
       <DataTable
-        caption="Instruments"
+        caption="Futures"
         columns={[
           {
             key: "platform",
@@ -126,7 +127,7 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
                 {item.symbol}
               </strong>
             ),
-            kind: renderInstrumentKind(item.kind),
+            kind: renderFuturesContractKind(item.kind),
             underlying: (
               <span className={shared.cellStack}>
                 <span>{pair}</span>
@@ -149,11 +150,11 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
         empty={
           query.isPending ? (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading instruments...</p>
+              <p className={shared.emptyStateTitle}>Loading futures...</p>
             </div>
           ) : q || platform ? (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No instruments match these filters</p>
+              <p className={shared.emptyStateTitle}>No futures contracts match these filters</p>
               <p className={shared.emptyStateHelp}>
                 Try adjusting your search query or platform filter.
               </p>
@@ -163,7 +164,7 @@ export function InstrumentsTab({ filters, timezone }: TabProps) {
             </div>
           ) : (
             <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No instruments recorded yet</p>
+              <p className={shared.emptyStateTitle}>No futures contracts recorded yet</p>
               <p className={shared.emptyStateHelp}>
                 Market contracts will appear automatically once platform identities are connected
                 and sync.

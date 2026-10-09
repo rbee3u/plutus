@@ -10,11 +10,11 @@ func toAPIManual(state manual.State) api.ManualBalanceState {
 		rows := make([]api.ManualBalance, 0, len(items))
 		for _, item := range items {
 			rows = append(rows, api.ManualBalance{
-				Symbol:      item.Symbol,
-				ListingId:   item.ListingID,
-				AssetSymbol: item.AssetSymbol,
-				Quantity:    item.Quantity,
-				ModifiedAt:  item.ModifiedAt,
+				PlatformAssetSymbol: item.PlatformAssetSymbol,
+				PlatformAssetId:     item.PlatformAssetID,
+				AssetSymbol:         item.AssetSymbol,
+				Quantity:            item.Quantity,
+				ModifiedAt:          item.ModifiedAt,
 			})
 		}
 		return rows

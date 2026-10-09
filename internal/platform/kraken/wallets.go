@@ -113,9 +113,9 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapters.AccountT
 			return adapters.AccountReport{}, err
 		}
 		report.Balances = append(report.Balances, adapters.Balance{
-			Symbol:           symbol,
-			Equity:           decimal.Format(quantity),
-			AvailableToTrade: adapters.Plain(string(row.Available)),
+			PlatformAssetSymbol: symbol,
+			Equity:              decimal.Format(quantity),
+			AvailableToTrade:    adapters.Plain(string(row.Available)),
 		})
 	}
 	positions, err := r.positions(ctx, true)
@@ -256,7 +256,7 @@ func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) 
 	report := adapters.AccountReport{AccountType: TypeMain, Status: adapters.StatusOK, ObservedAt: observedAt, Balances: totals.Balances()}
 	equity, complete := net, true
 	for _, balance := range report.Balances {
-		price, ok := adapters.USDPrice(balance.Symbol, priceQuotes, r.prices.lookup)
+		price, ok := adapters.USDPrice(balance.PlatformAssetSymbol, priceQuotes, r.prices.lookup)
 		if !ok {
 			complete = false
 			continue

@@ -46,11 +46,11 @@ func (a *API) CreateManualBalance(ctx context.Context, request api.CreateManualB
 		return nil, err
 	}
 	state, err := a.Manual.Create(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{
-		Symbol:      request.Body.Symbol,
-		Quantity:    request.Body.Quantity,
-		Version:     version,
-		ActorUserID: sc.user.ID,
-		RequestID:   requestTraceID(ctx),
+		PlatformAssetSymbol: request.Body.PlatformAssetSymbol,
+		Quantity:            request.Body.Quantity,
+		Version:             version,
+		ActorUserID:         sc.user.ID,
+		RequestID:           requestTraceID(ctx),
 	})
 	if err != nil {
 		return nil, err
@@ -74,11 +74,11 @@ func (a *API) UpdateManualBalance(ctx context.Context, request api.UpdateManualB
 		return nil, err
 	}
 	state, err := a.Manual.Update(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{
-		Symbol:      request.Symbol,
-		Quantity:    request.Body.Quantity,
-		Version:     version,
-		ActorUserID: sc.user.ID,
-		RequestID:   requestTraceID(ctx),
+		PlatformAssetSymbol: request.PlatformAssetSymbol,
+		Quantity:            request.Body.Quantity,
+		Version:             version,
+		ActorUserID:         sc.user.ID,
+		RequestID:           requestTraceID(ctx),
 	})
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (a *API) DeleteManualBalance(ctx context.Context, request api.DeleteManualB
 	if err != nil {
 		return nil, err
 	}
-	state, err := a.Manual.Delete(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{Symbol: request.Symbol, Version: version, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
+	state, err := a.Manual.Delete(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{PlatformAssetSymbol: request.PlatformAssetSymbol, Version: version, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if err != nil {
 		return nil, err
 	}

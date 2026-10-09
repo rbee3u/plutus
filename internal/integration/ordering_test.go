@@ -174,20 +174,20 @@ func TestCatalogBusinessOrderBeforePagination(t *testing.T) {
 	q := sqlcgen.New(h.db)
 	symbol := "ORDER" + uuid.NewString()[:8]
 	for _, platform := range []adapters.Platform{adapters.PlatformKraken, adapters.PlatformBybit, adapters.PlatformOKX, adapters.PlatformBinance} {
-		if _, _, err := h.catalog.EnsureListing(h.ctx, q, platform, symbol, "", time.Now()); err != nil {
+		if _, _, err := h.catalog.EnsurePlatformAsset(h.ctx, q, platform, symbol, "", time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.catalog.EnsureInstrument(h.ctx, q, platform, &adapters.Instrument{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseSymbol: "BTC"}, time.Now()); err != nil {
+		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseSymbol: "BTC"}, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}
 	filter := catalog.ListFilter{Query: symbol, Offset: 1, Limit: 2}
-	listings, err := h.catalog.ListListings(h.ctx, filter)
-	if err != nil || len(listings.Items) != 2 || listings.Items[0].Platform != "okx" || listings.Items[1].Platform != "bybit" || listings.Total != 4 {
-		t.Fatalf("Listing page = %+v, %v", listings, err)
+	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, filter)
+	if err != nil || len(platformAssets.Items) != 2 || platformAssets.Items[0].Platform != "okx" || platformAssets.Items[1].Platform != "bybit" || platformAssets.Total != 4 {
+		t.Fatalf("PlatformAsset page = %+v, %v", platformAssets, err)
 	}
-	instruments, err := h.catalog.ListInstruments(h.ctx, filter)
-	if err != nil || len(instruments.Items) != 2 || instruments.Items[0].Platform != "okx" || instruments.Items[1].Platform != "bybit" || instruments.Total != 4 {
-		t.Fatalf("Instrument page = %+v, %v", instruments, err)
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, filter)
+	if err != nil || len(futuresContracts.Items) != 2 || futuresContracts.Items[0].Platform != "okx" || futuresContracts.Items[1].Platform != "bybit" || futuresContracts.Total != 4 {
+		t.Fatalf("FuturesContract page = %+v, %v", futuresContracts, err)
 	}
 }

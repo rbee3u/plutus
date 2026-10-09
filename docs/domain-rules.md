@@ -67,8 +67,8 @@ double counts.
 
 Opposing long and short Positions remain separate. A Position does not add
 another Balance to Account equity. Linear Position Size is Base quantity;
-inverse Size is Quote face amount. Source contract counts require the
-Instrument's effective per-contract size exactly once; normalized quantities do
+inverse Size is Quote face amount. Source contract counts require the Futures
+Contract's effective per-contract size exactly once; normalized quantities do
 not. Mark Price does not change Size.
 
 Cross Position Margin means the initial requirement excluding orders. Isolated
@@ -107,18 +107,18 @@ bank assets are outside scope. It remains selected with disabled, invalid, or
 unconfigured Connections. Identity archive removes it from the boundary while
 retaining its history and current records.
 
-One normalized Asset code has one current signed quantity. Duplicate addition
-requires editing; zero clears it. Negative quantities represent liabilities or
-offsets. Revisions are immutable. Changing an Asset code requires deleting and
-creating a record. Saving takes effect at the next Collection Cycle, whose
-chosen inputs remain fixed across retries. Manual complete-set reports are
-distinct from exchange Observations; collection time is separate from the last
-User modification time. A successful Manual report does not count as successful
-private Identity collection.
+One normalized Platform Asset code has one current signed quantity. Duplicate
+addition requires editing; zero clears it. Negative quantities represent
+liabilities or offsets. Revisions are immutable. Changing a Platform Asset code
+requires deleting and creating a record. Saving takes effect at the next
+Collection Cycle, whose chosen inputs remain fixed across retries. Manual
+complete-set reports are distinct from exchange Observations; collection time is
+separate from the last User modification time. A successful Manual report does
+not count as successful private Identity collection.
 
 Manual uses calculated valuation and eligible own-Platform public prices,
-including Assets held only in Manual. Mapping and Listing Exclusions apply;
-excluded current records remain editable. Missing prices retain signed
+including Assets held only in Manual. Mapping and Platform Asset Exclusions
+apply; excluded current records remain editable. Missing prices retain signed
 quantities, name omissions, and make totals incomplete.
 
 Effective quantity changes mark comparisons crossing their Valuation Point
@@ -142,9 +142,9 @@ or Account counts.
 
 Assets are identified by normalized symbol across Platforms. Different symbols
 remain distinct even when economically related; USD and USDT share valuation,
-not identity. Asset Listings map automatically by normalized symbol unless the
-User overrides them. Instruments are discovered from Positions; perpetual and
-delivery contracts remain distinct from each other and from Assets.
+not identity. Platform Assets map automatically by normalized symbol unless the
+User overrides them. Futures Contracts are discovered from Positions; perpetual
+and delivery contracts remain distinct from each other and from Assets.
 
 USD is the only Valuation Asset. USD, USDT, and USDC count as exactly 1 USD;
 Plutus does not detect stablecoin de-pegs. Other Assets, including other
@@ -169,19 +169,19 @@ Portfolio totals sum known value and name omissions, including missing Accounts
 and Balances without equity or prices. A missing Account's own value is unknown.
 Unknown is never zero or silently omitted.
 
-### Listing Exclusions and mapping changes
+### Platform Asset Exclusions and mapping changes
 
-A Listing Exclusion requires an auditable reason and applies to cycles created
-after the change. It removes the listing from calculated values and ordinary
-Balance reads without inventing a zero price. Observations remain stored;
-reported equity, Positions, and Capital Flows are unaffected. The Catalog and
-audit trail expose the rule and reason.
+A Platform Asset Exclusion requires an auditable reason and applies to cycles
+created after the change. It removes the platform asset from calculated values
+and ordinary Balance reads without inventing a zero price. Observations remain
+stored; reported equity, Positions, and Capital Flows are unaffected. The
+Catalog and audit trail expose the rule and reason.
 
 Exclusions do not rewrite existing points. Rebuilding uses the policy effective
-at each cycle's creation. Value Change is incomplete when a relevant listing's
-treatment differs between endpoint cycles; exclusion and restoration between
-endpoints with matching treatment do not alone make it incomplete. Policy
-changes are neither Capital Flows nor Boundary Events.
+at each cycle's creation. Value Change is incomplete when a relevant platform
+asset's treatment differs between endpoint cycles; exclusion and restoration
+between endpoints with matching treatment do not alone make it incomplete.
+Policy changes are neither Capital Flows nor Boundary Events.
 
 Mapping corrections rebuild affected Portfolios. Evaluation times and observed
 facts remain; derived Account values, Boundary Events, and totals can change.
@@ -231,7 +231,7 @@ aggregate gaps fail both selected dependents; unrelated Accounts retain failure
 isolation.
 
 The check compares combined principal with the Platform's Earn aggregate before
-Listing Exclusions. A shortfall greater than
+Platform Asset Exclusions. A shortfall greater than
 `max(1% of the absolute Platform total, 1 USD)` fails explicitly. Missing prices
 skip the comparison; selected unpriced Balances retain normal omissions.
 Binance's dedicated Dual aggregate is optional diagnostics, not reported equity

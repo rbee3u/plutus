@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"bytes"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -69,5 +71,26 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	}
 	if res := request(base+"/accounts/"+uuid.NewString()+"/earn-positions", session.Token); res.Code != 404 {
 		t.Fatal("unknown Account read")
+	}
+}
+
+// Old report JSON must survive the Go/API terminology change without losing codes.
+func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
+	var stored adapters.EarnPosition
+	legacy := []byte(`{"assets":[{"symbol":"XBT","assetSymbol":"BTC","amount":"1"}],"rates":[{"symbol":"XBT","value":"0.02","kind":"apr","qualifier":"estimated","label":"APR"}],"rewards":[{"symbol":"XBT","amount":"0.1","kind":"cumulative"}]}`)
+	if err := json.Unmarshal(legacy, &stored); err != nil {
+		t.Fatal(err)
+	}
+	rows := toAPIEarnPositions([]financial.EarnPositionRow{{EarnPosition: stored}})
+	if rows[0].Assets[0].PlatformAssetSymbol != "XBT" || rows[0].Assets[0].AssetSymbol == nil || *rows[0].Assets[0].AssetSymbol != "BTC" || rows[0].Rates[0].PlatformAssetSymbol == nil || *rows[0].Rates[0].PlatformAssetSymbol != "XBT" || rows[0].Rewards[0].PlatformAssetSymbol != "XBT" {
+		t.Fatalf("lost stored symbols: %+v", rows[0])
+	}
+	encoded, err := json.Marshal(rows)
+	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || bytes.Count(encoded, []byte(`"platformAssetSymbol":"XBT"`)) != 3 {
+		t.Fatalf("API symbols: %s (%v)", encoded, err)
+	}
+	encoded, err = json.Marshal(stored)
+	if err != nil || bytes.Contains(encoded, []byte(`"platformAssetSymbol"`)) || bytes.Count(encoded, []byte(`"symbol":"XBT"`)) != 3 {
+		t.Fatalf("stored symbols: %s (%v)", encoded, err)
 	}
 }

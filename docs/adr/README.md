@@ -13,7 +13,7 @@ own setup, validation, and deployment procedures.
 | -------------------------------------------------- | ------------------------------------------------------- |
 | [0001](./0001-ownership-and-account-boundaries.md) | Ownership and Account boundaries                        |
 | [0002](./0002-reports-and-compatible-history.md)   | Aligned reports and compatible history                  |
-| [0003](./0003-valuation-and-asset-policy.md)       | USD valuation and Asset Listing policy                  |
+| [0003](./0003-valuation-and-asset-policy.md)       | USD valuation and Platform Asset policy                 |
 | [0004](./0004-value-change-and-boundary-flows.md)  | Absolute Value Change and boundary flows                |
 | [0005](./0005-earn-and-dual-products.md)           | Earn and Dual product boundaries and descriptions       |
 | [0006](./0006-manual-balances.md)                  | Manual quantities within exchange Identities            |

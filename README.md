@@ -24,7 +24,7 @@ Implemented capabilities:
 - Overview ownership Tree; Balances, Futures, Earn, and Dual Investment tables;
   Manual balances for API-uncovered quantities.
 - Historical points, calendar comparisons, manual Capital Flows, Asset mapping,
-  Listing Exclusions, and audit history.
+  Platform Asset Exclusions, and audit history.
 - Rotating application, access, and SQL logs, plus a deterministic
   [development dataset](./docs/seeds.md).
 

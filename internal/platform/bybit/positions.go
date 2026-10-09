@@ -42,7 +42,7 @@ type openPosition struct {
 	PositionIM    string `json:"positionIM"`
 }
 
-type instrument struct {
+type nativeInstrument struct {
 	Symbol       string `json:"symbol"`
 	ContractType string `json:"contractType"`
 	BaseCoin     string `json:"baseCoin"`
@@ -87,13 +87,13 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 		if len(open[category]) == 0 {
 			continue
 		}
-		instruments, err := readInstruments(ctx, c, category)
+		nativeInstruments, err := readNativeInstruments(ctx, c, category)
 		if err != nil {
 			return nil, err
 		}
 		for i := range open[category] {
 			row := &open[category][i]
-			info, ok := instruments[row.Symbol]
+			info, ok := nativeInstruments[row.Symbol]
 			if !ok {
 				return nil, adapters.NewError(adapters.ClassNormalization,
 					fmt.Sprintf("%s: Bybit lists no %s contract %s for an open position.", epInstruments, category, row.Symbol))
@@ -112,12 +112,12 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 	return out, nil
 }
 
-func readInstruments(ctx context.Context, c *client, category string) (map[string]instrument, error) {
-	rows, err := pages[instrument](ctx, c, epInstruments, url.Values{"category": {category}})
+func readNativeInstruments(ctx context.Context, c *client, category string) (map[string]nativeInstrument, error) {
+	rows, err := pages[nativeInstrument](ctx, c, epInstruments, url.Values{"category": {category}})
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]instrument, len(rows))
+	out := make(map[string]nativeInstrument, len(rows))
 	for _, row := range rows {
 		out[row.Symbol] = row
 	}
@@ -127,7 +127,7 @@ func readInstruments(ctx context.Context, c *client, category string) (map[strin
 // Bybit size is positive: Base units for linear, USD face value for inverse.
 // PM has no position-level leverage, margin, or liquidation price. Cross
 // liquidation price estimates liquidation of the whole Account.
-func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapters.MarginMode) (adapters.Position, error) {
+func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode adapters.MarginMode) (adapters.Position, error) {
 	kind, ok := contractKinds[info.ContractType]
 	if !ok || strings.TrimSpace(info.BaseCoin) == "" || strings.TrimSpace(info.QuoteCoin) == "" || strings.TrimSpace(info.SettleCoin) == "" {
 		return adapters.Position{}, adapters.Malformed(epInstruments.String(), "the contract type and coins of "+info.Symbol)
@@ -158,7 +158,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 	}
 	position := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%d", row.Symbol, *row.PositionIdx),
-		Instrument: adapters.Instrument{
+		FuturesContract: adapters.FuturesContract{
 			Symbol:           info.Symbol,
 			Kind:             kind,
 			BaseSymbol:       info.BaseCoin,
@@ -184,7 +184,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *instrument, mode adapte
 		if !ok {
 			return adapters.Position{}, adapters.Malformed(epInstruments.String(), "the deliveryTime of "+info.Symbol)
 		}
-		position.Instrument.ExpiryAt = &expiry
+		position.FuturesContract.ExpiryAt = &expiry
 	}
 	if mode != adapters.MarginBybitPM {
 		position.LiquidationPrice = adapters.NonZero(row.LiqPrice)

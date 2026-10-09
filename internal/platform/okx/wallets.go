@@ -117,7 +117,7 @@ func mapTradingBalances(rows []tradingBalance) ([]adapters.Balance, error) {
 			continue
 		}
 		out = append(out, adapters.Balance{
-			Symbol:              row.Ccy,
+			PlatformAssetSymbol: row.Ccy,
 			Equity:              decimal.Format(equity),
 			AvailableToTrade:    adapters.Reported(row.AvailEq, parsed["availEq"]),
 			AvailableToWithdraw: adapters.Reported(row.AvailBal, parsed["availBal"]),
@@ -179,7 +179,7 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 			continue
 		}
 		balances = append(balances, adapters.Balance{
-			Symbol:              row.Ccy,
+			PlatformAssetSymbol: row.Ccy,
 			Equity:              decimal.Format(total),
 			AvailableToWithdraw: adapters.Reported(row.AvailBal, available),
 		})

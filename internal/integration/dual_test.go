@@ -33,9 +33,9 @@ func (a *dualScenario) Collect(_ context.Context, _ adapters.Credentials, _ adap
 		}
 		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, ObservedAt: now}
 		if kind == "earn" {
-			r.Balances = []adapters.Balance{{Symbol: "USDT", Equity: a.earn}}
+			r.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: a.earn}}
 		} else if !a.empty {
-			r.Balances = []adapters.Balance{{Symbol: "USDT", Equity: "40"}}
+			r.Balances = []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "40"}}
 			r.DualPositions = []adapters.DualPosition{{PlatformPositionRef: "one", InvestSymbol: "USDT", Principal: "15", Status: "active"}, {PlatformPositionRef: "two", InvestSymbol: "USDT", Principal: "25", Status: "active"}}
 			expiry := now.Add(24 * time.Hour)
 			r.DualPositions[1].ExpiryAt = &expiry

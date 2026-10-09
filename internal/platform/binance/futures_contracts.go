@@ -21,10 +21,10 @@ const (
 )
 
 const (
-	// instrumentTTL bounds how long exchangeInfo is reused before a refresh.
-	instrumentTTL = time.Hour
-	// instrumentRetry keeps an unknown symbol from refetching exchangeInfo on every position.
-	instrumentRetry = time.Minute
+	// futuresContractTTL bounds how long exchangeInfo is reused before a refresh.
+	futuresContractTTL = time.Hour
+	// futuresContractRetry keeps an unknown symbol from refetching exchangeInfo on every position.
+	futuresContractRetry = time.Minute
 )
 
 type exchangeInfo struct {
@@ -39,53 +39,53 @@ type exchangeInfo struct {
 	} `json:"symbols"`
 }
 
-type instrumentSet struct {
-	bySymbol  map[string]adapters.Instrument
+type futuresContractSet struct {
+	bySymbol  map[string]adapters.FuturesContract
 	fetchedAt time.Time
 }
 
-// instrumentCache holds UM and CM exchangeInfo in process for instrumentTTL. It is fetched only
+// futuresContractCache holds UM and CM exchangeInfo in process for futuresContractTTL. It is fetched only
 // when a position needs it.
-type instrumentCache struct {
+type futuresContractCache struct {
 	mu   sync.Mutex
 	now  func() time.Time
-	sets map[market]*instrumentSet
+	sets map[market]*futuresContractSet
 }
 
-func newInstrumentCache(now func() time.Time) *instrumentCache {
-	return &instrumentCache{now: now, sets: map[market]*instrumentSet{}}
+func newFuturesContractCache(now func() time.Time) *futuresContractCache {
+	return &futuresContractCache{now: now, sets: map[market]*futuresContractSet{}}
 }
 
-// lookup returns the instrument of a position symbol. A symbol missing from a fresh exchangeInfo
+// lookup returns the Futures Contract of a position symbol. A symbol missing from a fresh exchangeInfo
 // is a normalization failure, so the position is never dropped silently.
-func (ic *instrumentCache) lookup(ctx context.Context, c *client, m market, symbol string) (adapters.Instrument, error) {
+func (ic *futuresContractCache) lookup(ctx context.Context, c *client, m market, symbol string) (adapters.FuturesContract, error) {
 	ic.mu.Lock()
 	defer ic.mu.Unlock()
 	set := ic.sets[m]
 	age := time.Duration(0)
 	if set != nil {
 		age = ic.now().Sub(set.fetchedAt)
-		if instrument, ok := set.bySymbol[symbol]; ok && age < instrumentTTL {
-			return instrument, nil
+		if futuresContract, ok := set.bySymbol[symbol]; ok && age < futuresContractTTL {
+			return futuresContract, nil
 		}
 	}
-	if set == nil || age >= instrumentRetry {
-		fresh, err := fetchInstruments(ctx, c, m)
+	if set == nil || age >= futuresContractRetry {
+		fresh, err := fetchFuturesContracts(ctx, c, m)
 		if err != nil {
-			return adapters.Instrument{}, err
+			return adapters.FuturesContract{}, err
 		}
 		fresh.fetchedAt = ic.now()
 		ic.sets[m] = fresh
 		set = fresh
 	}
-	if instrument, ok := set.bySymbol[symbol]; ok {
-		return instrument, nil
+	if futuresContract, ok := set.bySymbol[symbol]; ok {
+		return futuresContract, nil
 	}
-	return adapters.Instrument{}, adapters.NewError(adapters.ClassNormalization,
+	return adapters.FuturesContract{}, adapters.NewError(adapters.ClassNormalization,
 		fmt.Sprintf("Binance %s exchangeInfo has no contract %s for an open position.", strings.ToUpper(string(m)), symbol))
 }
 
-func fetchInstruments(ctx context.Context, c *client, m market) (*instrumentSet, error) {
+func fetchFuturesContracts(ctx context.Context, c *client, m market) (*futuresContractSet, error) {
 	ep := epUMExchangeInfo
 	if m == marketCM {
 		ep = epCMExchangeInfo
@@ -94,13 +94,13 @@ func fetchInstruments(ctx context.Context, c *client, m market) (*instrumentSet,
 	if err := c.call(ctx, ep, nil, &info); err != nil {
 		return nil, err
 	}
-	set := &instrumentSet{bySymbol: make(map[string]adapters.Instrument, len(info.Symbols))}
+	set := &futuresContractSet{bySymbol: make(map[string]adapters.FuturesContract, len(info.Symbols))}
 	for _, s := range info.Symbols {
 		kind, delivery, ok := contractKind(m, s.ContractType)
 		if !ok {
 			continue
 		}
-		instrument := adapters.Instrument{
+		futuresContract := adapters.FuturesContract{
 			Symbol:           s.Symbol,
 			Kind:             kind,
 			BaseSymbol:       s.BaseAsset,
@@ -109,13 +109,13 @@ func fetchInstruments(ctx context.Context, c *client, m market) (*instrumentSet,
 		}
 		if delivery && s.DeliveryDate > 0 {
 			expiry := time.UnixMilli(s.DeliveryDate).UTC()
-			instrument.ExpiryAt = &expiry
+			futuresContract.ExpiryAt = &expiry
 		}
 		if m == marketCM && s.ContractSize > 0 {
 			size := strconv.FormatInt(s.ContractSize, 10)
-			instrument.ContractSize = &size
+			futuresContract.ContractSize = &size
 		}
-		set.bySymbol[s.Symbol] = instrument
+		set.bySymbol[s.Symbol] = futuresContract
 	}
 	return set, nil
 }

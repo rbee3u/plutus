@@ -10,18 +10,18 @@ WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.identity_id = sqlc.arg(ident
 FOR UPDATE;
 
 -- name: ListManualBalances :many
-SELECT b.symbol, b.listing_id, b.quantity, b.modified_at, l.asset_symbol
-FROM manual_balances b JOIN asset_listings l ON l.id = b.listing_id
+SELECT b.platform_asset_symbol, b.platform_asset_id, b.quantity, b.modified_at, l.asset_symbol
+FROM manual_balances b JOIN platform_assets l ON l.id = b.platform_asset_id
 WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.account_id = sqlc.arg(account_id)
-ORDER BY b.symbol;
+ORDER BY b.platform_asset_symbol;
 
 -- name: PutManualBalance :exec
-INSERT INTO manual_balances (portfolio_id, account_id, symbol, listing_id, quantity, modified_at)
-VALUES (sqlc.arg(portfolio_id), sqlc.arg(account_id), sqlc.arg(symbol), sqlc.arg(listing_id), sqlc.arg(quantity), sqlc.arg(modified_at))
+INSERT INTO manual_balances (portfolio_id, account_id, platform_asset_symbol, platform_asset_id, quantity, modified_at)
+VALUES (sqlc.arg(portfolio_id), sqlc.arg(account_id), sqlc.arg(platform_asset_symbol), sqlc.arg(platform_asset_id), sqlc.arg(quantity), sqlc.arg(modified_at))
 ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), modified_at = VALUES(modified_at);
 
 -- name: DeleteManualBalance :exec
-DELETE FROM manual_balances WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND symbol = sqlc.arg(symbol);
+DELETE FROM manual_balances WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND platform_asset_symbol = sqlc.arg(platform_asset_symbol);
 
 -- name: AdvanceManualVersion :exec
 UPDATE accounts SET version = version + 1, updated_at = sqlc.arg(at)
@@ -83,10 +83,10 @@ SELECT (
 ) AS has_holdings;
 
 -- name: ListPortfolioManualBalances :many
-SELECT b.account_id, b.symbol, b.listing_id, b.quantity, b.modified_at,
+SELECT b.account_id, b.platform_asset_symbol, b.platform_asset_id, b.quantity, b.modified_at,
        l.asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
 FROM manual_balances b
-JOIN asset_listings l ON l.id = b.listing_id
-LEFT JOIN portfolio_listing_exclusions e ON e.portfolio_id = b.portfolio_id AND e.listing_id = b.listing_id
+JOIN platform_assets l ON l.id = b.platform_asset_id
+LEFT JOIN portfolio_platform_asset_exclusions e ON e.portfolio_id = b.portfolio_id AND e.platform_asset_id = b.platform_asset_id
 WHERE b.portfolio_id = sqlc.arg(portfolio_id)
-ORDER BY b.account_id, b.symbol;
+ORDER BY b.account_id, b.platform_asset_symbol;

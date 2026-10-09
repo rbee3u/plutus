@@ -33,15 +33,15 @@ WHERE failed.portfolio_id = sqlc.arg(portfolio_id)
   AND failed.id IN (sqlc.slice('failed_ids'));
 
 -- name: ListRebuildBalances :many
-SELECT b.report_id, b.listing_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol, l.asset_symbol
+SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
 FROM balances b
-INNER JOIN asset_listings l ON l.id = b.listing_id
+INNER JOIN platform_assets l ON l.id = b.platform_asset_id
 WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id IN (sqlc.slice('report_ids'))
 ORDER BY b.report_id, l.asset_symbol ASC, l.symbol ASC;
 
 -- name: ListRebuildPrices :many
-SELECT platform, asset_symbol, observed_at, price, quote_symbol
+SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
 FROM prices
 WHERE asset_symbol IN (sqlc.slice('asset_symbols'))
   AND observed_at >= sqlc.arg(from_at) AND observed_at <= sqlc.arg(to_at)

@@ -62,7 +62,7 @@ func (r *savingsPosition) position(category, amount string) adapters.EarnPositio
 		p.AddReward(r.Coin, r.TotalPNL, "reported")
 		p.AddReward(r.Coin, r.YesterdayYield, "yesterday")
 	}
-	p.Assets = append(p.Assets, adapters.EarnAmount{Symbol: r.Coin, Amount: amount})
+	p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: r.Coin, Amount: amount})
 	return p
 }
 
@@ -114,7 +114,7 @@ func enrichFlexible(ctx context.Context, c *client, positions []adapters.EarnPos
 		matches := 0
 		value := ""
 		for _, r := range result.List {
-			if p.ProductRef != nil && r.ProductID == *p.ProductRef && r.Coin == p.Assets[0].Symbol && r.Category == "FlexibleSaving" {
+			if p.ProductRef != nil && r.ProductID == *p.ProductRef && r.Coin == p.Assets[0].PlatformAssetSymbol && r.Category == "FlexibleSaving" {
 				matches++
 				value = r.APR
 			}
