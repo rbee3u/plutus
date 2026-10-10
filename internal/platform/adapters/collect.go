@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"strings"
+	"time"
 )
 
 // CollectAccount collects one requested Account of a batch.
@@ -11,13 +12,14 @@ type CollectAccount func(ctx context.Context, accountType AccountType) (AccountR
 // CollectAccounts returns reports in request order. Failures stay Account-local
 // unless authentication, authorization, cancellation, or all-retryable failures
 // require the caller to handle the whole batch.
-func CollectAccounts(ctx context.Context, accounts []AccountType, collect CollectAccount) ([]AccountReport, error) {
+func CollectAccounts(ctx context.Context, accounts []AccountType, now func() time.Time, collect CollectAccount) ([]AccountReport, error) {
 	reports := make([]AccountReport, 0, len(accounts))
 	var firstErr error
 	allRetryable := len(accounts) > 0
 	for _, accountType := range accounts {
 		report, err := collect(ctx, accountType)
 		if err == nil {
+			report.CollectedAt = now().UTC()
 			allRetryable = false
 			reports = append(reports, report)
 			continue

@@ -14,7 +14,7 @@ type ValidationResult struct {
 
 // Batch is one normalized collection result for one Identity.
 type Batch struct {
-	ObservedAt time.Time
+	CollectedAt time.Time
 	// MarginMode is the Margin Mode the Platform reported at the start of the run, empty for a
 	// structure that has none.
 	MarginMode MarginMode
@@ -24,29 +24,30 @@ type Batch struct {
 
 // AccountReport is the normalized state of one Account, or its structured failure.
 type AccountReport struct {
-	AccountType            AccountType
-	Status                 string
-	ErrorClass             string
-	ErrorDetail            string
-	ObservedAt             time.Time
-	Equity                 *string
-	AdjustedEquity         *string
-	AvailableEquity        *string
-	InitialMarginRatio     *string
-	MaintenanceMarginRatio *string
-	UnifiedMarginRatio     *string
-	Balances               []Balance
-	Positions              []Position
-	DualPositions          []DualPosition
-	EarnDetailsCollected   bool
-	EarnPositions          []EarnPosition
+	SourceObservedAt                *time.Time
+	AccountType                     AccountType
+	Status                          string
+	ErrorClass                      string
+	ErrorDetail                     string
+	CollectedAt                     time.Time
+	Equity                          *string
+	AdjustedEquity                  *string
+	InitialMarginRequirementUSD     *string
+	MaintenanceMarginRequirementUSD *string
+	SpotMarginUnrealizedPnlUSD      *string
+	AvailableEquity                 *string
+	ReportedInitialMarginRatio      *string
+	ReportedMaintenanceMarginRatio  *string
+	ReportedMarginRatio             *string
+	Balances                        []Balance
+	Positions                       []Position
+	DualPositions                   []DualPosition
+	EarnPositions                   []EarnPosition
 }
 
 // Balance is one coin line within an Account Report.
 type Balance struct {
-	AssetSymbol string
-	// Name is the Asset's full name when the Platform reports one; empty otherwise.
-	Name                string
+	AssetSymbol         string
 	Equity              string
 	AvailableToWithdraw *string
 	AvailableToTrade    *string
@@ -57,32 +58,32 @@ type Balance struct {
 
 // FuturesContract describes the tradable contract behind a Position.
 type FuturesContract struct {
-	Symbol                string
-	Kind                  string
-	BaseAssetSymbol       string
-	QuoteAssetSymbol      string
-	SettlementAssetSymbol string
-	ExpiryAt              *time.Time
-	ContractSize          *string
+	Symbol                string     `json:"symbol"`
+	Kind                  string     `json:"kind"`
+	BaseAssetSymbol       string     `json:"baseAssetSymbol"`
+	QuoteAssetSymbol      string     `json:"quoteAssetSymbol"`
+	SettlementAssetSymbol string     `json:"settlementAssetSymbol"`
+	ExpiryAt              *time.Time `json:"expiryAt"`
+	ContractSize          *string    `json:"contractSize"`
 }
 
 // Position is one open position within an Account Report.
 type Position struct {
-	PlatformPositionRef string
-	FuturesContract     FuturesContract
-	Side                string
-	PositionMode        string
-	MarginMode          string
-	MarginAssetSymbol   string
-	MarginBasis         string
-	Quantity            string
-	QuantityUnit        string
-	EntryPrice          *string
-	MarkPrice           *string
-	LiquidationPrice    *string
-	UnrealizedPnl       *string
-	Leverage            *string
-	Margin              *string
+	PositionKey        string
+	FuturesContract    FuturesContract
+	Side               string
+	PositionMode       string
+	MarginSetting      string
+	MarginAssetSymbol  string
+	MarginBasis        string
+	SourceQuantity     string
+	SourceQuantityUnit string
+	EntryPrice         *string
+	MarkPrice          *string
+	LiquidationPrice   *string
+	UnrealizedPnl      *string
+	Leverage           *string
+	Margin             *string
 }
 
 // Price is a Platform market price for a Canonical Asset, quoted in another Canonical Asset.
@@ -90,5 +91,7 @@ type Price struct {
 	CanonicalAssetSymbol      string
 	Price                     string
 	QuoteCanonicalAssetSymbol string
-	ObservedAt                time.Time
+	RetrievedAt               time.Time
+	SourceObservedAt          *time.Time
+	SourceMarketRef           string
 }

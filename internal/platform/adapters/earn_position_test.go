@@ -1,6 +1,9 @@
 package adapters
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestEarnDetailsMatchBalancesExactly(t *testing.T) {
 	t.Parallel()
@@ -34,5 +37,26 @@ func TestEarnOptionalMetadataPreservesSignedReportedValues(t *testing.T) {
 	p.AddReward("USDT", "-0.25", "reported")
 	if len(p.Rewards) != 1 || p.Rewards[0].Amount != "-0.25" || len(p.Problems) != 0 {
 		t.Fatalf("signed source reward was lost: %+v", p)
+	}
+}
+
+func TestEarnOptionalTextLimitsPreserveAmounts(t *testing.T) {
+	for _, length := range []int{255, 256} {
+		p := NewEarnPosition("product:BTC", "flexible", "product", "principal")
+		p.Assets = []EarnAmount{{AssetSymbol: "BTC", Amount: "1"}}
+		p.ProductName = new(strings.Repeat("币", length))
+		p.Status = new(strings.Repeat("x", length-191))
+		if err := NormalizeEarnPosition(&p); err != nil {
+			t.Fatal(err)
+		}
+		if p.Assets[0].Amount != "1" {
+			t.Fatal("optional text changed amounts")
+		}
+		if length == 255 && (p.ProductName == nil || p.Status == nil || len(p.Problems) != 0) {
+			t.Fatalf("valid limits lost: %+v", p)
+		}
+		if length == 256 && (p.ProductName != nil || p.Status != nil || len(p.Problems) != 2) {
+			t.Fatalf("invalid metadata survived: %+v", p)
+		}
 	}
 }

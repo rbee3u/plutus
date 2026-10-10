@@ -73,7 +73,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -86,7 +86,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	if err := adapters.CheckEarnComplete(adapters.PlatformOKX, valuation, combined, usdPrice); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // readEarnValuation reads OKX's own valuation of the Earn bucket in USDT, which Plutus counts as USD.

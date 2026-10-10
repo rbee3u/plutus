@@ -34,7 +34,7 @@ func (a *Adapter) wallet(ctx context.Context, c *client, accountType adapters.Ac
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
+	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances}, nil
 }
 
 func mapWallet(ep endpoint, rows []walletAsset) ([]adapters.Balance, error) {
@@ -147,7 +147,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -156,7 +156,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	if err := checkEarn(ctx, c, combined, prices); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // simpleEarn adds flexible (totalAmount) and locked (amount) positions, paged by 100.
@@ -224,13 +224,13 @@ func dualInvestment(ctx context.Context, c *client) ([]adapters.DualPosition, er
 				if err != nil {
 					return nil, err
 				}
-				if previous, exists := counted[p.PlatformPositionRef]; exists {
+				if previous, exists := counted[p.PositionKey]; exists {
 					if !sameDualTerms(&out[previous], &p) {
 						return nil, adapters.Malformed(epDualInvest.String(), "conflicting dual subscription terms")
 					}
 					continue
 				}
-				counted[p.PlatformPositionRef] = len(out)
+				counted[p.PositionKey] = len(out)
 				out = append(out, p)
 			}
 			seen += len(page.List)
@@ -244,7 +244,7 @@ func dualInvestment(ctx context.Context, c *client) ([]adapters.DualPosition, er
 
 // Running states may overlap while reads are in progress, but subscription terms must agree.
 func sameDualTerms(a, b *adapters.DualPosition) bool {
-	if a.InvestAssetSymbol != b.InvestAssetSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) || (a.SubscribedAt != nil && b.SubscribedAt != nil && !a.SubscribedAt.Equal(*b.SubscribedAt)) {
+	if a.PrincipalAssetSymbol != b.PrincipalAssetSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) || (a.SubscribedAt != nil && b.SubscribedAt != nil && !a.SubscribedAt.Equal(*b.SubscribedAt)) {
 		return false
 	}
 	for _, pair := range [][2]*string{{a.ProductRef, b.ProductRef}, {a.OrderRef, b.OrderRef}, {a.BaseAssetSymbol, b.BaseAssetSymbol}, {a.QuoteAssetSymbol, b.QuoteAssetSymbol}, {a.Direction, b.Direction}, {a.TargetPrice, b.TargetPrice}, {a.AnnualizedRate, b.AnnualizedRate}, {a.RateKind, b.RateKind}} {
@@ -276,7 +276,7 @@ func mapDualPosition(row *dualInvestmentPosition) (adapters.DualPosition, error)
 	if err != nil {
 		return adapters.DualPosition{}, err
 	}
-	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.OptionalText(dualID(row.OrderID)), InvestAssetSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.OptionalText(row.StrikePrice), AnnualizedRate: adapters.OptionalText(row.APR), RateKind: adapters.OptionalText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
+	p := adapters.DualPosition{PositionKey: dualID(row.ID), OrderRef: adapters.OptionalText(dualID(row.OrderID)), PrincipalAssetSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.OptionalText(row.StrikePrice), AnnualizedRate: adapters.OptionalText(row.APR), RateKind: adapters.OptionalText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
 	switch row.OptionType {
 	case "PUT":
 		p.Direction = adapters.OptionalText("buy_low")

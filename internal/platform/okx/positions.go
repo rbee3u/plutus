@@ -62,7 +62,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 		if err != nil {
 			return nil, err
 		}
-		if mode == adapters.MarginOKXPM && position.MarginMode == "cross" {
+		if mode == adapters.MarginOKXPM && position.MarginSetting == "cross" {
 			position.Margin, position.MarginBasis, position.MarginAssetSymbol = nil, "", ""
 		}
 		out = append(out, position)
@@ -95,24 +95,24 @@ func mapPosition(row *openPosition, amount *big.Rat, futuresContract *adapters.F
 		mode = "one_way"
 	}
 	out := adapters.Position{
-		PlatformPositionRef: fmt.Sprintf("%s:%s", row.InstID, strings.ToLower(strings.TrimSpace(row.PosSide))),
-		FuturesContract:     *futuresContract,
-		Side:                side,
-		PositionMode:        mode,
-		Quantity:            decimal.Format(decimal.Abs(amount)),
-		QuantityUnit:        adapters.UnitContracts,
-		EntryPrice:          adapters.Plain(row.AvgPx),
-		MarkPrice:           adapters.Plain(row.MarkPx),
-		LiquidationPrice:    adapters.NonZero(row.LiqPx),
-		UnrealizedPnl:       adapters.Plain(row.Upl),
+		PositionKey:        fmt.Sprintf("%s:%s", row.InstID, strings.ToLower(strings.TrimSpace(row.PosSide))),
+		FuturesContract:    *futuresContract,
+		Side:               side,
+		PositionMode:       mode,
+		SourceQuantity:     decimal.Format(decimal.Abs(amount)),
+		SourceQuantityUnit: adapters.UnitContracts,
+		EntryPrice:         adapters.Plain(row.AvgPx),
+		MarkPrice:          adapters.Plain(row.MarkPx),
+		LiquidationPrice:   adapters.NonZero(row.LiqPx),
+		UnrealizedPnl:      adapters.Plain(row.Upl),
 		// Portfolio margin reports no leverage for cross positions and fills the field with "0".
 		Leverage: adapters.NonZero(row.Lever),
 	}
 	switch row.MgnMode {
 	case "cross":
-		out.MarginMode, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "cross", "initial", strings.TrimSpace(row.Ccy), adapters.Plain(row.IMR)
+		out.MarginSetting, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "cross", "initial", strings.TrimSpace(row.Ccy), adapters.Plain(row.IMR)
 	case "isolated":
-		out.MarginMode, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
+		out.MarginSetting, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
 	}
 	return out, nil
 }

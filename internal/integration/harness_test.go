@@ -12,9 +12,9 @@ import (
 	"github.com/rbee3u/plutus/internal/app"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
@@ -37,7 +37,7 @@ type harness struct {
 	valuation   *valuation.Service
 	financial   *financial.Service
 	manual      *manual.Service
-	jobs        *jobs.Service
+	cycles      *cycles.Service
 	collection  *collection.Service
 	registry    *adapters.Registry
 	fakes       map[adapters.Platform]*fake.Adapter
@@ -45,9 +45,20 @@ type harness struct {
 
 func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	t.Helper()
-	db := mysqltest.OpenTestDB(t)
+	var db *sql.DB
 	if len(databases) > 0 {
 		db = databases[0]
+	} else {
+		database, err := mysqltest.CreateTestDatabase(t.Context(), mysqltest.GotestDSN(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := database.Drop(context.Background()); err != nil {
+				t.Error(err)
+			}
+		})
+		db = database.DB
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
@@ -84,7 +95,7 @@ func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 		ctx: ctx, t: t, db: db, userID: user.ID, portfolioID: portfolios[0].ID,
 		services: services, identities: services.Identities, catalog: services.Catalog,
 		valuation: services.Valuation, financial: services.Financial, manual: services.Manual,
-		jobs: services.Jobs, collection: runner, registry: registry, fakes: fakes,
+		cycles: services.Cycles, collection: runner, registry: registry, fakes: fakes,
 	}
 }
 
@@ -110,28 +121,27 @@ func (h *harness) storeCredentials(item identity.Identity, apiKey string) identi
 
 func (h *harness) runCycle() (collection.Summary, uuid.UUID) {
 	h.t.Helper()
-	job, _, err := h.jobs.EnqueueCycle(h.ctx, h.portfolioID, jobs.TriggerManual, nil)
+	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, job.ID)
+	// Install a lease on this fixture's cycle without claiming unrelated test work.
+	now := time.Now().UTC()
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE collection_cycles SET status='running',lease_owner='test-worker',lease_expires_at=?,attempt_count=1,started_at=? WHERE portfolio_id=? AND id=?", now.Add(time.Minute), now, h.portfolioID[:], cycle.ID[:]); err != nil {
+		h.t.Fatal(err)
+	}
+	cycle.Status, cycle.AttemptCount = cycles.StatusRunning, 1
+	claimed := cycles.Claim{Cycle: cycle, WorkerID: "test-worker"}
+	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, cycle.ID, &claimed)
 	if err != nil {
 		h.t.Fatalf("run cycle: %v", err)
 	}
-	// Finish the job so the next enqueue creates a new cycle instead of returning this one.
-	claimed, ok, err := h.jobs.ClaimOne(h.ctx, "test-worker", time.Minute)
-	if err != nil || !ok || claimed.ID != job.ID {
-		h.t.Fatalf("claim cycle job: ok=%v err=%v", ok, err)
-	}
-	if err := h.jobs.Finish(h.ctx, &claimed, jobs.Result{OK: true, Detail: summary.String()}); err != nil {
-		h.t.Fatal(err)
-	}
-	return summary, job.ID
+	return summary, cycle.ID
 }
 
-func (h *harness) accountsByType(jobID uuid.UUID, identityID uuid.UUID) map[string]valuation.AccountValuation {
+func (h *harness) accountsByType(cycleID uuid.UUID, identityID uuid.UUID) map[string]valuation.AccountValuation {
 	h.t.Helper()
-	accounts, err := h.valuation.Accounts(h.ctx, h.portfolioID, jobID)
+	accounts, err := h.valuation.Accounts(h.ctx, h.portfolioID, cycleID)
 	if err != nil {
 		h.t.Fatal(err)
 	}

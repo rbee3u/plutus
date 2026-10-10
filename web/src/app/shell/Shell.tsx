@@ -209,8 +209,12 @@ function ShellContent() {
                 Retry
               </button>
             </div>
+          ) : // Page state (notices, open rows, a followed cycle) belongs to one Portfolio.
+          portfolios.some((item) => item.id === urlPortfolioId && item.deletionRequestedAt) ? (
+            <p role="status">
+              This portfolio is being deleted. Cleanup will continue in the background.
+            </p>
           ) : (
-            // Page state (notices, open rows, a followed cycle) belongs to one Portfolio.
             <Outlet key={urlPortfolioId} />
           )}
         </main>

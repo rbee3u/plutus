@@ -1,6 +1,7 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { type FormEvent, useRef, useState } from "react";
 import { createCapitalFlow, getCapitalFlow, patchCapitalFlow, problemMessage } from "@/api";
+import { usePlatforms } from "@/shared/lib/usePlatforms";
 import type { CapitalFlow } from "@/api";
 import type { AccountOption } from "@/shared/lib/useIdentities";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
@@ -28,6 +29,7 @@ interface FlowFields {
   valueUsd: string;
   effectiveAt: string;
   accountId: string;
+  pricingPlatform: string;
   note: string;
 }
 
@@ -38,6 +40,7 @@ const emptyForm: FlowFields = {
   valueUsd: "",
   effectiveAt: "",
   accountId: "",
+  pricingPlatform: "",
   note: "",
 };
 
@@ -46,9 +49,10 @@ function formFromFlow(item: CapitalFlow): FlowFields {
     direction: item.direction,
     canonicalAssetSymbol: item.canonicalAssetSymbol,
     quantity: item.quantity,
-    valueUsd: item.valueUsd ?? "",
+    valueUsd: item.pricingMethod === "explicit" ? (item.valueUsd ?? "") : "",
     effectiveAt: toDatetimeLocalValue(item.effectiveAt),
     accountId: item.accountId ?? "",
+    pricingPlatform: item.pricingPlatform ?? "",
     note: item.note ?? "",
   };
 }
@@ -100,6 +104,7 @@ function FlowForm({
   onSaved: (message: string) => Promise<void>;
 }) {
   const { redirect } = useSessionScope();
+  const platforms = usePlatforms();
   const write = useAuthenticatedWrite();
   const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<FlowFields>(() =>
@@ -169,13 +174,26 @@ function FlowForm({
             path: { portfolioId, flowId: baseline.id },
             headers: { "If-Match": flowEtag(baseline) },
             body: {
-              direction: form.direction,
-              canonicalAssetSymbol,
-              quantity,
-              valueUsd: valueUsd ? valueUsd : null,
-              effectiveAt,
-              accountId: form.accountId ? form.accountId : null,
-              note: note ? note : null,
+              ...(form.direction !== baseline.direction ? { direction: form.direction } : {}),
+              ...(canonicalAssetSymbol !== baseline.canonicalAssetSymbol
+                ? { canonicalAssetSymbol }
+                : {}),
+              ...(quantity !== baseline.quantity ? { quantity } : {}),
+              ...(valueUsd !== formFromFlow(baseline).valueUsd
+                ? { valueUsd: valueUsd || null }
+                : {}),
+              ...(form.effectiveAt !== toDatetimeLocalValue(baseline.effectiveAt)
+                ? { effectiveAt }
+                : {}),
+              ...(form.accountId !== (baseline.accountId ?? "")
+                ? { accountId: form.accountId || null }
+                : {}),
+              ...(!form.accountId &&
+              (form.accountId !== (baseline.accountId ?? "") ||
+                form.pricingPlatform !== (baseline.pricingPlatform ?? ""))
+                ? { pricingPlatform: form.pricingPlatform || null }
+                : {}),
+              ...(note !== (baseline.note ?? "") ? { note: note || null } : {}),
             },
           }),
         );
@@ -203,6 +221,9 @@ function FlowForm({
               effectiveAt,
               ...(valueUsd ? { valueUsd } : {}),
               ...(form.accountId ? { accountId: form.accountId } : {}),
+              ...(!form.accountId && form.pricingPlatform
+                ? { pricingPlatform: form.pricingPlatform }
+                : {}),
               ...(note ? { note } : {}),
             },
           }),
@@ -280,12 +301,12 @@ function FlowForm({
           />
         </label>
         <label className={shared.field}>
-          <span>Value (USD, optional)</span>
+          <span>Manual value (USD, optional)</span>
           <TextInput
             disabled={busy}
             value={form.valueUsd}
             inputMode="decimal"
-            placeholder="Leave empty when unknown"
+            placeholder="Leave empty for automatic valuation"
             onChange={(event) => set({ valueUsd: event.target.value })}
           />
         </label>
@@ -306,12 +327,34 @@ function FlowForm({
           ))}
         </Select>
       </label>
+      {!form.accountId && !form.valueUsd ? (
+        <label className={shared.field}>
+          <span>Pricing Platform (optional)</span>
+          <Select
+            disabled={busy}
+            value={form.pricingPlatform}
+            onChange={(event) => set({ pricingPlatform: event.target.value })}
+          >
+            <option value="">No Platform price</option>
+            {platforms.data?.items.map((platform) => (
+              <option key={platform.id} value={platform.id}>
+                {platform.name}
+              </option>
+            ))}
+          </Select>
+          <span className={shared.muted}>
+            USD, USDT, and USDC use 1 USD. Other assets remain unknown without an eligible price
+            from this Platform.
+          </span>
+        </label>
+      ) : null}
       <label className={shared.field}>
         <span>Note</span>
         <TextArea
           disabled={busy}
           value={form.note}
           rows={2}
+          maxLength={500}
           placeholder="Optional notes"
           onChange={(event) => set({ note: event.target.value })}
         />

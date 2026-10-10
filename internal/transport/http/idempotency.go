@@ -1,46 +1,62 @@
 package httpserver
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
 
-	"github.com/google/uuid"
-
+	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 )
 
-func (a *API) lookupIdempotency(ctx context.Context, userID uuid.UUID, key, method, path string, body []byte) (*idempotency.Record, []byte, error) {
-	if a.Idempotency == nil || key == "" {
-		return nil, nil, nil
+// createIdempotent authenticates before replay and looks up resources only for a
+// fresh request. Typed request JSON defines the hash, including omitted values.
+func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key string, request any, status int, create func(context.Context, auth.User) (T, string, error)) (T, string, error) {
+	var zero T
+	user, session, ok := a.currentSession(ctx)
+	if !ok {
+		return zero, "", errUnauthenticated
 	}
-	hash := idempotency.Hash(body)
-	rec, storedHash, err := a.Idempotency.Get(ctx, userID, method, path, key)
+	if err := a.requireCSRF(ctx, csrf, &session); err != nil {
+		return zero, "", err
+	}
+	raw, err := json.Marshal(request)
 	if err != nil {
-		return nil, nil, err
+		return zero, "", err
 	}
-	if rec == nil {
-		return nil, hash, nil
+	run := func(ctx context.Context) (idempotency.Record, error) {
+		body, etag, err := create(ctx, user)
+		if err != nil {
+			return idempotency.Record{}, err
+		}
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return idempotency.Record{}, err
+		}
+		headers := map[string]string{}
+		if etag != "" {
+			headers["ETag"] = etag
+		}
+		return idempotency.Record{Status: status, Headers: headers, Body: encoded}, nil
 	}
-	if !bytes.Equal(storedHash, hash) {
-		return nil, nil, idempotency.ErrConflict
+	var record idempotency.Record
+	if a.Idempotency == nil {
+		record, err = run(ctx)
+	} else {
+		record, err = a.Idempotency.Run(ctx, user.ID, http.MethodPost, requestPath(ctx), key, raw, run)
 	}
-	return rec, hash, nil
-}
-
-func (a *API) storeIdempotency(ctx context.Context, userID uuid.UUID, portfolioID *uuid.UUID, key, method, path string, hash []byte, status int, headers map[string]string, body any) {
-	if a.Idempotency == nil || key == "" || len(hash) == 0 {
-		return
+	if errors.Is(err, idempotency.ErrConflict) {
+		return zero, "", newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
 	}
-	raw, err := json.Marshal(body)
 	if err != nil {
-		return
+		return zero, "", err
 	}
-	_ = a.Idempotency.Put(ctx, userID, portfolioID, method, path, key, hash, idempotency.Record{
-		Status:  status,
-		Headers: headers,
-		Body:    raw,
-	})
+	var body T
+	if err := json.Unmarshal(record.Body, &body); err != nil {
+		return zero, "", err
+	}
+	return body, record.Headers["ETag"], nil
 }
 
 func requestPath(ctx context.Context) string {

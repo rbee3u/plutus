@@ -54,7 +54,7 @@ export type Session = {
     lastSeenAt: string;
     idleExpiresAt: string;
     absoluteExpiresAt: string;
-    clientLabel?: string | null;
+    userAgent?: string | null;
     current: boolean;
 };
 
@@ -63,6 +63,7 @@ export type SessionList = {
 };
 
 export type Portfolio = {
+    deletionRequestedAt?: string | null;
     id: Uuid;
     name: string;
     timezone: string;
@@ -152,9 +153,9 @@ export type PlatformList = {
 export type Connection = {
     status: 'unconfigured' | 'disabled' | 'enabled' | 'invalid';
     credentialsConfigured: boolean;
-    credentialsUpdatedAt?: string | null;
-    lastValidatedAt?: string | null;
-    lastCollectedAt?: string | null;
+    credentialsSetAt?: string | null;
+    lastValidationSucceededAt?: string | null;
+    lastCollectionFinishedAt?: string | null;
     lastErrorClass?: string | null;
     lastErrorDetail?: string | null;
 };
@@ -165,7 +166,6 @@ export type Account = {
     accountType: string;
     displayName: string;
     selected: boolean;
-    version: number;
 };
 
 export type Identity = {
@@ -202,7 +202,6 @@ export type CreateIdentityRequest = {
 export type AccountPatch = {
     id: Uuid;
     selected?: boolean;
-    displayName?: string;
 };
 
 export type PatchIdentityRequest = {
@@ -239,15 +238,20 @@ export type ValidationOutcome = {
 export type CollectionCycle = {
     id: Uuid;
     portfolioId: Uuid;
-    status: JobStatus;
-    trigger: 'schedule' | 'manual' | 'system';
-    attemptCount: number;
-    maxAttempts: number;
-    lastErrorClass?: string | null;
+    status: CollectionCycleStatus;
+    trigger: 'schedule' | 'user';
     /**
-     * Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
+     * Claimed attempts so far; a cycle fails after its third.
      */
-    lastDetail?: string | null;
+    attemptCount: number;
+    /**
+     * Error class of the latest failed attempt; null once the cycle succeeds.
+     */
+    errorClass?: string | null;
+    /**
+     * Sanitized error of the latest failed attempt; null once the cycle succeeds.
+     */
+    errorDetail?: string | null;
     createdAt: string;
     startedAt?: string | null;
     finishedAt?: string | null;
@@ -266,10 +270,13 @@ export type CollectionCycleDetail = {
 };
 
 export type ReadContext = {
+    /**
+     * Identity of the immutable valuation result, equal to its Collection Cycle ID.
+     */
+    valuationRevision?: string | null;
     portfolioId: Uuid;
     timezone: string;
-    pointId?: string | null;
-    jobId?: string | null;
+    cycleId?: string | null;
     evaluatedAt?: string | null;
 };
 
@@ -302,8 +309,12 @@ export type GroupTotal = {
 };
 
 export type ValuationPointSummary = {
-    id: Uuid;
-    jobId: Uuid;
+    /**
+     * Identity of the immutable valuation result, equal to its Collection Cycle ID.
+     */
+    valuationRevision: string;
+    calculationVersion: number;
+    cycleId: Uuid;
     evaluatedAt: string;
     totalUsd: Decimal;
     completeness: Completeness;
@@ -312,7 +323,7 @@ export type ValuationPointSummary = {
     incompleteAccountCount: number;
     boundaryContributionUsd: Decimal;
     boundaryWithdrawalUsd: Decimal;
-    recalculatedAt?: string | null;
+    detailState: 'full' | 'daily' | 'expired';
 };
 
 export type Overview = {
@@ -340,7 +351,7 @@ export type AccountValuation = {
     identityStatus?: string | null;
     connectionStatus?: string | null;
     platform: string;
-    status: 'ok' | 'failed';
+    status: 'succeeded' | 'failed';
     errorClass?: string | null;
     errorDetail?: string | null;
     method: 'reported' | 'calculated' | 'missing';
@@ -353,7 +364,10 @@ export type AccountValuation = {
     availableEquity?: NullableDecimal;
     initialMarginRatio?: NullableDecimal;
     maintenanceMarginRatio?: NullableDecimal;
-    unifiedMarginRatio?: NullableDecimal;
+    /**
+     * Platform-reported, unscaled Account margin ratio. Its label and denominator depend on the immutable Platform and Account scope.
+     */
+    marginRatio?: NullableDecimal;
     omitted: Array<OmittedBalance>;
     /**
      * Last user quantity adjustment, distinct from report observation time.
@@ -457,7 +471,7 @@ export type PositionRow = {
     identityId: Uuid;
     identityName: string;
     platform: string;
-    platformPositionRef: string;
+    positionKey: string;
     futuresContractId: Uuid;
     futuresSymbol: string;
     kind: string;
@@ -468,7 +482,7 @@ export type PositionRow = {
     contractSize?: NullableDecimal;
     side: 'long' | 'short';
     positionMode?: 'one_way' | 'hedged' | null;
-    marginMode?: 'cross' | 'isolated' | null;
+    marginSetting?: 'cross' | 'isolated' | null;
     marginAssetSymbol?: string | null;
     marginBasis?: 'initial' | 'allocated' | null;
     portfolioMargin?: boolean | null;
@@ -490,8 +504,11 @@ export type PositionRow = {
      */
     marginUnavailableReason?: string | null;
     issues: Array<Issue>;
-    quantity: Decimal;
-    quantityUnit: 'contracts' | 'base' | 'quote';
+    /**
+     * Positive source quantity magnitude, retaining the source unit; direction is stored separately.
+     */
+    sourceQuantity: Decimal;
+    sourceQuantityUnit: 'contracts' | 'base' | 'quote';
     entryPrice?: NullableDecimal;
     markPrice?: NullableDecimal;
     liquidationPrice?: NullableDecimal;
@@ -511,12 +528,12 @@ export type DualPositionRow = {
     identityId: Uuid;
     identityName: string;
     platform: string;
-    platformPositionRef: string;
+    positionKey: string;
     productRef?: string | null;
     orderRef?: string | null;
     baseAssetSymbol?: string | null;
     quoteAssetSymbol?: string | null;
-    investAssetSymbol: string;
+    principalAssetSymbol: string;
     principal: Decimal;
     direction?: string | null;
     targetPrice?: NullableDecimal;
@@ -563,7 +580,7 @@ export type EarnPositionRow = {
     accountType: string;
     identityName: string;
     platform: string;
-    platformPositionRef: string;
+    positionKey: string;
     productRef?: string | null;
     productName?: string | null;
     type: string;
@@ -581,20 +598,7 @@ export type EarnPositionRow = {
     maturityAt?: string | null;
 };
 
-export type EarnBalanceSummary = {
-    accountId: Uuid;
-    accountName: string;
-    identityName: string;
-    platform: string;
-    assets: Array<EarnAmount>;
-    freshness: Freshness;
-    reportObservedAt?: string | null;
-    issues: Array<Issue>;
-};
-
 export type AccountEarnPositionList = {
-    detailsCollected: boolean;
-    balanceSummaries: Array<EarnBalanceSummary>;
     context: ReadContext;
     account: AccountValuation;
     items: Array<EarnPositionRow>;
@@ -603,7 +607,6 @@ export type AccountEarnPositionList = {
 
 export type EarnPositionList = {
     detailsComplete: boolean;
-    balanceSummaries: Array<EarnBalanceSummary>;
     context: ReadContext;
     items: Array<EarnPositionRow>;
     page: OffsetPage;
@@ -684,7 +687,7 @@ export type ValuationPointList = {
 };
 
 export type BoundaryEvent = {
-    pointId: Uuid;
+    cycleId: Uuid;
     evaluatedAt: string;
     accountId: Uuid;
     accountName: string;
@@ -693,6 +696,7 @@ export type BoundaryEvent = {
     platform?: string | null;
     direction: 'contribution' | 'withdrawal';
     valueUsd?: NullableDecimal;
+    completeness: Completeness;
     method: string;
 };
 
@@ -753,6 +757,14 @@ export type CapitalFlow = {
     canonicalAssetSymbol: string;
     quantity: Decimal;
     valueUsd?: NullableDecimal;
+    pricingMethod: 'explicit' | 'usd_parity' | 'market_price' | 'unavailable';
+    pricingPlatform?: string | null;
+    priceObservationId?: string | null;
+    /**
+     * Time of the latest pricing attempt, including an unavailable result. Note-only edits preserve it.
+     */
+    pricingAttemptedAt: string;
+    calculationVersion: number;
     effectiveAt: string;
     accountId?: string | null;
     accountName?: string | null;
@@ -771,6 +783,7 @@ export type CreateCapitalFlowRequest = {
     canonicalAssetSymbol: string;
     quantity: Decimal;
     valueUsd?: Decimal;
+    pricingPlatform?: string;
     effectiveAt: string;
     accountId?: Uuid;
     note?: string;
@@ -781,6 +794,7 @@ export type PatchCapitalFlowRequest = {
     canonicalAssetSymbol?: string;
     quantity?: Decimal;
     valueUsd?: NullableDecimal;
+    pricingPlatform?: string | null;
     effectiveAt?: string;
     accountId?: string | null;
     note?: string | null;
@@ -790,15 +804,14 @@ export type Asset = {
     id: Uuid;
     platform: string;
     symbol: string;
-    canonicalSymbol: string;
-    name?: string | null;
+    canonicalAssetSymbol: string;
     mappingSource: 'auto' | 'manual';
-    firstSeenAt: string;
-    lastSeenAt: string;
-    version: number;
-    ignored: boolean;
-    ignoreReason?: string | null;
-    ignoredAt?: string | null;
+    firstObservedAt: string;
+    lastObservedAt: string;
+    mappingVersion: number;
+    excluded: boolean;
+    exclusionReason?: string | null;
+    excludedAt?: string | null;
     exclusionVersion: number;
 };
 
@@ -808,11 +821,11 @@ export type AssetList = {
 };
 
 export type PutAssetMappingRequest = {
-    canonicalSymbol: string;
+    canonicalAssetSymbol: string;
 };
 
 export type PutAssetExclusionRequest = {
-    ignored: boolean;
+    excluded: boolean;
     reason?: string;
 };
 
@@ -826,8 +839,8 @@ export type FuturesContract = {
     settlementAssetSymbol?: string | null;
     expiryAt?: string | null;
     contractSize?: NullableDecimal;
-    firstSeenAt: string;
-    lastSeenAt: string;
+    firstObservedAt: string;
+    lastObservedAt: string;
 };
 
 export type FuturesContractList = {
@@ -835,32 +848,7 @@ export type FuturesContractList = {
     page: OffsetPage;
 };
 
-export type Job = {
-    id: Uuid;
-    portfolioId: Uuid;
-    kind: JobKind;
-    status: JobStatus;
-    trigger: 'schedule' | 'manual' | 'system';
-    attemptCount: number;
-    maxAttempts: number;
-    lastErrorClass?: string | null;
-    /**
-     * Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
-     */
-    lastDetail?: string | null;
-    createdAt: string;
-    startedAt?: string | null;
-    finishedAt?: string | null;
-};
-
-export type JobList = {
-    items: Array<Job>;
-    page: CursorPage;
-};
-
-export type JobKind = 'collection_cycle' | 'valuation_recalc';
-
-export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type CollectionCycleStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 
 export type Decimal = string;
 
@@ -890,7 +878,7 @@ export type OffsetPage = {
 
 export type AuditEvent = {
     id: Uuid;
-    portfolioId?: string | null;
+    portfolioId: Uuid;
     actorUserId?: string | null;
     action: string;
     resourceType: string;
@@ -932,6 +920,9 @@ export type FieldError = {
 
 export type CsrfToken = string;
 
+/**
+ * An opaque token of at most 255 visible ASCII characters.
+ */
 export type IdempotencyKey = string;
 
 export type IfMatch = string;
@@ -943,10 +934,6 @@ export type IdentityId = Uuid;
 export type AccountId = Uuid;
 
 export type CycleId = Uuid;
-
-export type PointId = Uuid;
-
-export type JobId = Uuid;
 
 export type FlowId = Uuid;
 
@@ -1256,6 +1243,9 @@ export type ListPortfoliosResponse = ListPortfoliosResponses[keyof ListPortfolio
 export type CreatePortfolioData = {
     body: CreatePortfolioRequest;
     headers?: {
+        /**
+         * An opaque token of at most 255 visible ASCII characters.
+         */
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
     };
@@ -1326,12 +1316,10 @@ export type DeletePortfolioError = DeletePortfolioErrors[keyof DeletePortfolioEr
 
 export type DeletePortfolioResponses = {
     /**
-     * Deleted.
+     * Deletion accepted; cleanup continues in the background.
      */
-    204: void;
+    202: unknown;
 };
-
-export type DeletePortfolioResponse = DeletePortfolioResponses[keyof DeletePortfolioResponses];
 
 export type GetPortfolioData = {
     body?: never;
@@ -1466,6 +1454,9 @@ export type ListIdentitiesResponse = ListIdentitiesResponses[keyof ListIdentitie
 export type CreateIdentityData = {
     body: CreateIdentityRequest;
     headers?: {
+        /**
+         * An opaque token of at most 255 visible ASCII characters.
+         */
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
     };
@@ -1906,6 +1897,9 @@ export type ListCollectionCyclesResponse = ListCollectionCyclesResponses[keyof L
 export type CreateCollectionCycleData = {
     body?: never;
     headers?: {
+        /**
+         * An opaque token of at most 255 visible ASCII characters.
+         */
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
     };
@@ -2074,7 +2068,7 @@ export type ListAccountPositionsData = {
         /**
          * Historical Valuation Point; omitted for the latest point.
          */
-        pointId?: Uuid;
+        cycleId?: Uuid;
     };
     url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions';
 };
@@ -2465,14 +2459,54 @@ export type ListValuationPointsResponses = {
 
 export type ListValuationPointsResponse = ListValuationPointsResponses[keyof ListValuationPointsResponses];
 
+export type GetValuationSnapshotData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query: {
+        /**
+         * Calendar date in the current Portfolio timezone; may fall back to an earlier day.
+         */
+        day: string;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/valuation-snapshot';
+};
+
+export type GetValuationSnapshotErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+};
+
+export type GetValuationSnapshotError = GetValuationSnapshotErrors[keyof GetValuationSnapshotErrors];
+
+export type GetValuationSnapshotResponses = {
+    /**
+     * A complete retained snapshot with its actual cycle, time and total.
+     */
+    200: ValuationPointDetail;
+};
+
+export type GetValuationSnapshotResponse = GetValuationSnapshotResponses[keyof GetValuationSnapshotResponses];
+
 export type GetValuationPointData = {
     body?: never;
     path: {
         portfolioId: Uuid;
-        pointId: Uuid;
+        cycleId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{pointId}';
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{cycleId}';
 };
 
 export type GetValuationPointErrors = {
@@ -2663,6 +2697,9 @@ export type ListCapitalFlowsResponse = ListCapitalFlowsResponses[keyof ListCapit
 export type CreateCapitalFlowData = {
     body: CreateCapitalFlowRequest;
     headers?: {
+        /**
+         * An opaque token of at most 255 visible ASCII characters.
+         */
         'Idempotency-Key'?: string;
         'X-CSRF-Token'?: string;
     };
@@ -2868,7 +2905,7 @@ export type ListAssetsData = {
     query?: {
         platform?: string;
         q?: string;
-        ignoredOnly?: boolean;
+        excludedOnly?: boolean;
         offset?: number;
         limit?: number;
     };
@@ -3028,77 +3065,6 @@ export type ListFuturesContractsResponses = {
 };
 
 export type ListFuturesContractsResponse = ListFuturesContractsResponses[keyof ListFuturesContractsResponses];
-
-export type ListJobsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: {
-        kind?: JobKind;
-        limit?: number;
-        cursor?: string;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/jobs';
-};
-
-export type ListJobsErrors = {
-    /**
-     * Problem details.
-     */
-    400: Problem;
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListJobsError = ListJobsErrors[keyof ListJobsErrors];
-
-export type ListJobsResponses = {
-    /**
-     * Jobs, newest first.
-     */
-    200: JobList;
-};
-
-export type ListJobsResponse = ListJobsResponses[keyof ListJobsResponses];
-
-export type GetJobData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        jobId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}';
-};
-
-export type GetJobErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type GetJobError = GetJobErrors[keyof GetJobErrors];
-
-export type GetJobResponses = {
-    /**
-     * The job.
-     */
-    200: Job;
-};
-
-export type GetJobResponse = GetJobResponses[keyof GetJobResponses];
 
 export type ListAuditEventsData = {
     body?: never;

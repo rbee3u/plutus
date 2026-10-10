@@ -15,7 +15,7 @@ func TestEarnMultiAssetOrderAndSavingsPreference(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := reportOf(t, batch, TypeEarn)
-	if report.Status != adapters.StatusOK || !report.EarnDetailsCollected || len(report.EarnPositions) != 2 {
+	if report.Status != adapters.StatusSucceeded || len(report.EarnPositions) != 2 {
 		t.Fatalf("report: %+v", report)
 	}
 	p := report.EarnPositions[1]

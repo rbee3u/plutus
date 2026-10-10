@@ -8,6 +8,7 @@ import (
 func toAPIPortfolio(item *portfolio.Portfolio) api.Portfolio {
 	return api.Portfolio{
 		Id:                        item.ID,
+		DeletionRequestedAt:       item.DeletionRequestedAt,
 		Name:                      item.Name,
 		Timezone:                  item.Timezone,
 		CollectionIntervalSeconds: item.CollectionIntervalSeconds,

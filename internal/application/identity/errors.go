@@ -9,6 +9,8 @@ var (
 	ErrInvalid = apperr.Invalid("identity request is invalid")
 	// ErrConflict is returned when the display name is already used on the Platform.
 	ErrConflict = apperr.Conflict("identity display name already exists")
+	// ErrLoginConflict prevents duplicate active bindings within one Portfolio and Platform.
+	ErrLoginConflict = apperr.Conflict("this login is already bound to an active Identity in this Portfolio")
 	// ErrPrecondition is returned when If-Match does not match the current version.
 	ErrPrecondition = apperr.Precondition("identity version mismatch")
 	// ErrArchived is returned when mutating an archived identity.

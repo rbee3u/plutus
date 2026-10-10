@@ -11,7 +11,7 @@ import (
 )
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
+SELECT id, username, username_key, status, password_hash, created_at, updated_at
 FROM users
 WHERE id = ?
 `
@@ -22,7 +22,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id []byte) (User, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
-		&i.UsernameNormalized,
+		&i.UsernameKey,
 		&i.Status,
 		&i.PasswordHash,
 		&i.CreatedAt,
@@ -31,19 +31,19 @@ func (q *Queries) GetUserByID(ctx context.Context, id []byte) (User, error) {
 	return i, err
 }
 
-const getUserByNormalizedUsername = `-- name: GetUserByNormalizedUsername :one
-SELECT id, username, username_normalized, status, password_hash, created_at, updated_at
+const getUserByUsernameKey = `-- name: GetUserByUsernameKey :one
+SELECT id, username, username_key, status, password_hash, created_at, updated_at
 FROM users
-WHERE username_normalized = ?
+WHERE username_key = ?
 `
 
-func (q *Queries) GetUserByNormalizedUsername(ctx context.Context, usernameNormalized string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByNormalizedUsername, usernameNormalized)
+func (q *Queries) GetUserByUsernameKey(ctx context.Context, usernameKey string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsernameKey, usernameKey)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
-		&i.UsernameNormalized,
+		&i.UsernameKey,
 		&i.Status,
 		&i.PasswordHash,
 		&i.CreatedAt,
@@ -53,7 +53,7 @@ func (q *Queries) GetUserByNormalizedUsername(ctx context.Context, usernameNorma
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, username, username_normalized, status, password_hash, created_at, updated_at)
+INSERT INTO users (id, username, username_key, status, password_hash, created_at, updated_at)
 VALUES (
     ?, ?, ?, ?,
     ?, ?, ?
@@ -61,26 +61,45 @@ VALUES (
 `
 
 type InsertUserParams struct {
-	ID                 []byte
-	Username           string
-	UsernameNormalized string
-	Status             string
-	PasswordHash       string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID           []byte
+	Username     string
+	UsernameKey  string
+	Status       string
+	PasswordHash string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 	_, err := q.db.ExecContext(ctx, insertUser,
 		arg.ID,
 		arg.Username,
-		arg.UsernameNormalized,
+		arg.UsernameKey,
 		arg.Status,
 		arg.PasswordHash,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const lockUser = `-- name: LockUser :one
+SELECT id, username, username_key, status, password_hash, created_at, updated_at FROM users WHERE id = ? FOR UPDATE
+`
+
+func (q *Queries) LockUser(ctx context.Context, id []byte) (User, error) {
+	row := q.db.QueryRowContext(ctx, lockUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.UsernameKey,
+		&i.Status,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const setUserStatus = `-- name: SetUserStatus :exec

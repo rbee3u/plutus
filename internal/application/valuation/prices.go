@@ -7,13 +7,21 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
 type priceResolver interface {
-	Lookup(context.Context, string, string, time.Time) (*big.Rat, bool, error)
-	LookupPlatform(context.Context, string, string, time.Time) (*big.Rat, bool, error)
+	Resolve(context.Context, string, string, time.Time) (PriceSelection, error)
+}
+
+// PriceSelection identifies the exact evidence adopted by a valuation.
+type PriceSelection struct {
+	Value         *big.Rat
+	ObservationID *uuid.UUID
+	Method        string
 }
 
 type priceKey struct {
@@ -21,81 +29,128 @@ type priceKey struct {
 	at       time.Time
 }
 
-// PriceBook resolves stored prices with an operation-scoped cache.
+// PriceBook caches only eligible observations from the requested Platform.
 type PriceBook struct {
-	q     *sqlcgen.Queries
-	cache map[priceKey]map[string]pricePoint
+	q            *sqlcgen.Queries
+	portfolioID  uuid.UUID
+	cache        map[priceKey]map[string]PriceSelection
+	observations map[uuid.UUID]*big.Rat
 }
 
-type pricePoint struct {
-	value      *big.Rat
-	observedAt time.Time
-}
-
-// Lookup prefers own-Platform prices, then falls back across Platforms.
-// This fallback is the unresolved pricing gap in docs/architecture.md.
-func (b *PriceBook) Lookup(ctx context.Context, platform, canonicalAssetSymbol string, at time.Time) (*big.Rat, bool, error) {
-	return b.lookupWithPolicy(ctx, platform, canonicalAssetSymbol, at, false)
-}
-
-// LookupPlatform requires an eligible own-Platform price.
-func (b *PriceBook) LookupPlatform(ctx context.Context, platform, canonicalAssetSymbol string, at time.Time) (*big.Rat, bool, error) {
-	return b.lookupWithPolicy(ctx, platform, canonicalAssetSymbol, at, true)
-}
-
-func (b *PriceBook) lookupWithPolicy(ctx context.Context, platform, canonicalAssetSymbol string, at time.Time, ownPlatform bool) (*big.Rat, bool, error) {
-	switch canonicalAssetSymbol {
-	case "USD", "USDT", "USDC":
-		return big.NewRat(1, 1), true, nil
+func (b *PriceBook) Resolve(ctx context.Context, platform, symbol string, at time.Time) (PriceSelection, error) {
+	if USDQuote(symbol) {
+		return PriceSelection{Value: big.NewRat(1, 1), Method: "usd_parity"}, nil
 	}
+	if err := b.Preload(ctx, platform, []string{symbol}, at); err != nil {
+		return PriceSelection{}, err
+	}
+	return b.cache[priceKey{platform: platform, at: at}][symbol], nil
+}
+
+// Preload bounds price selection to the symbols actually used by this report.
+func (b *PriceBook) Preload(ctx context.Context, platform string, symbols []string, at time.Time) error {
 	key := priceKey{platform: platform, at: at}
-	book, ok := b.cache[key]
-	if !ok {
-		rows, err := b.q.ListLatestPricesByPlatformAt(ctx, sqlcgen.ListLatestPricesByPlatformAtParams{Platform: platform, At: at})
-		if err != nil {
-			return nil, false, err
-		}
-		book = map[string]pricePoint{}
-		for i := range rows {
-			if !USDQuote(rows[i].QuoteCanonicalAssetSymbol) {
-				continue
-			}
-			if value, ok := decimal.Parse(rows[i].Price); ok {
-				book[rows[i].CanonicalAssetSymbol] = pricePoint{value: value, observedAt: rows[i].ObservedAt}
-			}
-		}
+	book := b.cache[key]
+	if book == nil {
+		book = map[string]PriceSelection{}
 		b.cache[key] = book
 	}
-	if p, ok := book[canonicalAssetSymbol]; ok && at.Sub(p.observedAt) <= maxPriceAge {
-		return p.value, true, nil
+	missing := []string{}
+	for _, symbol := range symbols {
+		if USDQuote(symbol) {
+			continue
+		}
+		if _, ok := book[symbol]; ok {
+			continue
+		}
+		book[symbol] = PriceSelection{Method: "unavailable"}
+		missing = append(missing, symbol)
 	}
-	if ownPlatform {
-		return nil, false, nil
+	for start := 0; start < len(missing); start += 256 {
+		rows, err := b.q.ListLatestPricesByPlatformAt(ctx, sqlcgen.ListLatestPricesByPlatformAtParams{PortfolioID: b.portfolioID[:], Platform: platform, At: at, PriceCutoff: sql.NullTime{Time: at, Valid: true}, Symbols: missing[start:min(start+256, len(missing))]})
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			value, valid := decimal.Parse(row.Price)
+			if !valid || value.Sign() <= 0 {
+				continue
+			}
+			id, err := uuid.FromBytes(row.ID)
+			if err != nil {
+				return err
+			}
+			book[row.RequestedCanonicalAssetSymbol] = PriceSelection{Value: value, ObservationID: &id, Method: "market_price"}
+			b.observations[id] = value
+		}
 	}
-	row, err := b.q.GetNearestPriceAt(ctx, sqlcgen.GetNearestPriceAtParams{CanonicalAssetSymbol: canonicalAssetSymbol, FilterPlatform: 0, At: at})
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, false, nil
+	return nil
+}
+
+// Lookup returns the eligible price, retaining unknown as an explicit false flag.
+func (b *PriceBook) Lookup(ctx context.Context, platform, symbol string, at time.Time) (*big.Rat, bool, error) {
+	p, err := b.Resolve(ctx, platform, symbol, at)
+	return p.Value, p.Value != nil, err
+}
+
+func (b *PriceBook) LookupPlatform(ctx context.Context, platform, symbol string, at time.Time) (*big.Rat, bool, error) {
+	return b.Lookup(ctx, platform, symbol, at)
+}
+
+func USDQuote(symbol string) bool { return symbol == "USD" || symbol == "USDT" || symbol == "USDC" }
+
+func NewPriceBook(q *sqlcgen.Queries, portfolioID uuid.UUID) *PriceBook {
+	return &PriceBook{q: q, portfolioID: portfolioID, cache: map[priceKey]map[string]PriceSelection{}, observations: map[uuid.UUID]*big.Rat{}}
+}
+
+// Observation reads the adopted immutable price; it never selects a replacement.
+func (b *PriceBook) Observation(ctx context.Context, id uuid.UUID) (*big.Rat, error) {
+	if value, ok := b.observations[id]; ok {
+		return value, nil
 	}
+	row, err := b.q.GetPriceObservation(ctx, sqlcgen.GetPriceObservationParams{PortfolioID: b.portfolioID[:], ID: id[:]})
 	if err != nil {
-		return nil, false, err
-	}
-	if !USDQuote(row.QuoteCanonicalAssetSymbol) || at.Sub(row.ObservedAt) > maxPriceAge {
-		return nil, false, nil
+		return nil, err
 	}
 	value, ok := decimal.Parse(row.Price)
-	return value, ok, nil
-}
-
-// USDQuote reports whether the quote is treated as USD.
-func USDQuote(quoteCanonicalAssetSymbol string) bool {
-	switch quoteCanonicalAssetSymbol {
-	case "USD", "USDT", "USDC":
-		return true
+	if !ok || value.Sign() <= 0 {
+		return nil, errors.New("invalid adopted price observation")
 	}
-	return false
+	b.observations[id] = value
+	return value, nil
 }
 
-// NewPriceBook creates a cache for one valuation or financial read operation.
-func NewPriceBook(q *sqlcgen.Queries) *PriceBook {
-	return &PriceBook{q: q, cache: map[priceKey]map[string]pricePoint{}}
+// PreloadObservations reads adopted evidence once per batch, never per balance.
+func (b *PriceBook) PreloadObservations(ctx context.Context, accounts []AccountValuation) error {
+	ids := [][]byte{}
+	seen := map[uuid.UUID]bool{}
+	for _, account := range accounts {
+		for _, line := range account.BalanceValuations {
+			if line.PriceObservationID != nil {
+				id := *line.PriceObservationID
+				if !seen[id] {
+					seen[id] = true
+					ids = append(ids, id[:])
+				}
+			}
+		}
+	}
+	for start := 0; start < len(ids); start += 256 {
+		rows, err := b.q.ListPriceObservationsByIDs(ctx, sqlcgen.ListPriceObservationsByIDsParams{PortfolioID: b.portfolioID[:], Ids: ids[start:min(start+256, len(ids))]})
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			id, err := uuid.FromBytes(row.ID)
+			if err != nil {
+				return err
+			}
+			value, ok := decimal.Parse(row.Price)
+			if !ok || value.Sign() <= 0 {
+				return errors.New("invalid adopted price observation")
+			}
+			b.observations[id] = value
+		}
+	}
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
@@ -12,27 +13,26 @@ import (
 // EarnPosition describes value already represented in Earn Balances. References
 // identify a source product aggregate, strategy, or individual position.
 type EarnPosition struct {
-	PlatformPositionRef string       `json:"platformPositionRef"`
-	ProductRef          *string      `json:"productRef"`
-	ProductName         *string      `json:"productName"`
-	Type                string       `json:"type"`
-	Granularity         string       `json:"granularity"`
-	AmountBasis         string       `json:"amountBasis"`
-	Assets              []EarnAmount `json:"assets"`
-	Rates               []EarnRate   `json:"rates"`
-	Rewards             []EarnReward `json:"rewards"`
-	SubscribedAt        *time.Time   `json:"subscribedAt"`
-	MaturityAt          *time.Time   `json:"maturityAt"`
-	Status              *string      `json:"status"`
-	Details             []EarnDetail `json:"details"`
-	Problems            []string     `json:"problems"`
+	PositionKey  string       `json:"positionKey"`
+	ProductRef   *string      `json:"productRef"`
+	ProductName  *string      `json:"productName"`
+	Type         string       `json:"type"`
+	Granularity  string       `json:"granularity"`
+	AmountBasis  string       `json:"amountBasis"`
+	Assets       []EarnAmount `json:"assets"`
+	Rates        []EarnRate   `json:"rates"`
+	Rewards      []EarnReward `json:"rewards"`
+	SubscribedAt *time.Time   `json:"subscribedAt"`
+	MaturityAt   *time.Time   `json:"maturityAt"`
+	Status       *string      `json:"status"`
+	Details      []EarnDetail `json:"details"`
+	Problems     []string     `json:"problems"`
 }
 
-// Earn amount, rate, and reward JSON tags retain the stored report format.
-// HTTP responses expose the explicit assetSymbol field.
+// Earn amounts, rates, and rewards use explicit Asset Symbols in typed details.
 type EarnAmount struct {
-	AssetSymbol          string  `json:"symbol"`
-	CanonicalAssetSymbol *string `json:"assetSymbol,omitempty"`
+	AssetSymbol          string  `json:"assetSymbol"`
+	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
 	Amount               string  `json:"amount"`
 }
 
@@ -42,11 +42,11 @@ type EarnRate struct {
 	Kind        string  `json:"kind"`
 	Qualifier   string  `json:"qualifier"`
 	Label       string  `json:"label"`
-	AssetSymbol *string `json:"symbol"`
+	AssetSymbol *string `json:"assetSymbol"`
 }
 
 type EarnReward struct {
-	AssetSymbol string `json:"symbol"`
+	AssetSymbol string `json:"assetSymbol"`
 	Amount      string `json:"amount"`
 	Kind        string `json:"kind"`
 }
@@ -60,7 +60,7 @@ type EarnDetail struct {
 
 func NewEarnPosition(ref, kind, grain, basis string) EarnPosition {
 	return EarnPosition{
-		PlatformPositionRef: ref, Type: kind, Granularity: grain, AmountBasis: basis,
+		PositionKey: ref, Type: kind, Granularity: grain, AmountBasis: basis,
 		Assets: []EarnAmount{}, Rates: []EarnRate{}, Rewards: []EarnReward{}, Details: []EarnDetail{}, Problems: []string{},
 	}
 }
@@ -125,9 +125,28 @@ func (p *EarnPosition) RequiredMillis(label, value string) *time.Time {
 }
 
 // NormalizeEarnPosition enforces the core identity and quantity boundary. Optional
-// fields have already been normalized by their Platform mapping.
+// description lengths are checked here; invalid descriptions become diagnostics.
 func NormalizeEarnPosition(p *EarnPosition) error {
-	if p.PlatformPositionRef == "" || len(p.PlatformPositionRef) > 128 ||
+	for _, field := range []struct {
+		label string
+		value **string
+		limit int
+	}{
+		{"Product name", &p.ProductName, 255},
+		{"Product status", &p.Status, 64},
+	} {
+		if *field.value == nil {
+			continue
+		}
+		value := strings.TrimSpace(**field.value)
+		if !utf8.ValidString(value) || utf8.RuneCountInString(value) > field.limit {
+			p.Problems = append(p.Problems, field.label+" is invalid.")
+			*field.value = nil
+		} else {
+			*field.value = OptionalText(value)
+		}
+	}
+	if p.PositionKey == "" || len(p.PositionKey) > 255 || (p.ProductRef != nil && len(*p.ProductRef) > 255) ||
 		!slices.Contains([]string{"flexible", "fixed", "bonded", "timed", "on_chain"}, p.Type) ||
 		!slices.Contains([]string{"product", "position", "strategy"}, p.Granularity) ||
 		!slices.Contains([]string{"principal", "total", "allocated"}, p.AmountBasis) || len(p.Assets) == 0 {
@@ -167,10 +186,10 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 		if err := NormalizeEarnPosition(p); err != nil {
 			return err
 		}
-		if seen[p.PlatformPositionRef] {
+		if seen[p.PositionKey] {
 			return NewError(ClassNormalization, "Earn position references are duplicated.")
 		}
-		seen[p.PlatformPositionRef] = true
+		seen[p.PositionKey] = true
 		for _, a := range p.Assets {
 			if err := totals.Add("Earn positions", a.AssetSymbol, decimal.ParseOrZero(a.Amount)); err != nil {
 				return err
@@ -199,4 +218,13 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 		}
 	}
 	return nil
+}
+
+// EarnDetails is the normalized variable-width portion of one Earn position.
+type EarnDetails struct {
+	Assets  []EarnAmount `json:"assets"`
+	Rates   []EarnRate   `json:"rates"`
+	Rewards []EarnReward `json:"rewards"`
+	Details []EarnDetail `json:"details"`
+	Issues  []string     `json:"issues"`
 }

@@ -148,18 +148,18 @@ func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.P
 		}
 		if multiCollateral {
 			if isolated, exists := r.snapshot.Flex.Isolated[row.Symbol]; exists {
-				position.MarginMode, position.MarginBasis, position.MarginAssetSymbol = "isolated", "allocated", "USD"
+				position.MarginSetting, position.MarginBasis, position.MarginAssetSymbol = "isolated", "allocated", "USD"
 				position.Margin = adapters.Plain(string(isolated.InitialWithoutOrders))
 			} else if r.snapshot.Flex.Isolated != nil {
-				position.MarginMode = "cross"
+				position.MarginSetting = "cross"
 			}
 		} else {
-			position.MarginMode = "cross"
+			position.MarginSetting = "cross"
 		}
-		if seen[position.PlatformPositionRef] {
-			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: position %s appears twice.", where, position.PlatformPositionRef))
+		if seen[position.PositionKey] {
+			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: position %s appears twice.", where, position.PositionKey))
 		}
-		seen[position.PlatformPositionRef] = true
+		seen[position.PositionKey] = true
 		out = append(out, position)
 	}
 	return out, nil
@@ -226,7 +226,7 @@ func mapPosition(row *openPosition, contract *nativeInstrument, ticker *futuresT
 		return adapters.Position{}, err
 	}
 	out := adapters.Position{
-		PlatformPositionRef: row.Symbol + ":" + row.Side,
+		PositionKey: row.Symbol + ":" + row.Side,
 		FuturesContract: adapters.FuturesContract{
 			Symbol:                row.Symbol,
 			Kind:                  kind,
@@ -236,12 +236,12 @@ func mapPosition(row *openPosition, contract *nativeInstrument, ticker *futuresT
 			ExpiryAt:              expiry,
 			ContractSize:          contractSize,
 		},
-		Side:         side,
-		PositionMode: "one_way",
-		Quantity:     decimal.Format(decimal.Abs(size)),
-		QuantityUnit: adapters.UnitContracts,
-		EntryPrice:   adapters.Plain(string(row.Price)),
-		MarkPrice:    adapters.Plain(string(ticker.MarkPrice)),
+		Side:               side,
+		PositionMode:       "one_way",
+		SourceQuantity:     decimal.Format(decimal.Abs(size)),
+		SourceQuantityUnit: adapters.UnitContracts,
+		EntryPrice:         adapters.Plain(string(row.Price)),
+		MarkPrice:          adapters.Plain(string(ticker.MarkPrice)),
 	}
 	pnlCurrency := row.PnlCurrency
 	if pnlCurrency == "" && contract.Type == typeFlexible {

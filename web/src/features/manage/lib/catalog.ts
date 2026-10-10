@@ -4,7 +4,7 @@ import type { CatalogFilters } from "../hooks/useCatalogFilters";
 export const PAGE_SIZE = 50;
 
 export function assetEtag(item: Asset): string {
-  return `"asset:${String(item.version)}"`;
+  return `"asset:${String(item.mappingVersion)}"`;
 }
 
 export function exclusionEtag(item: Asset): string {

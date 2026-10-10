@@ -11,39 +11,39 @@ import (
 )
 
 const insertDualPosition = `-- name: InsertDualPosition :exec
-INSERT INTO dual_positions (report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, invest_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at)
+INSERT INTO dual_positions (report_id, portfolio_id, position_key, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, principal_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertDualPositionParams struct {
-	ReportID            []byte
-	PortfolioID         []byte
-	PlatformPositionRef string
-	ProductRef          sql.NullString
-	OrderRef            sql.NullString
-	BaseAssetSymbol     sql.NullString
-	QuoteAssetSymbol    sql.NullString
-	InvestAssetSymbol   string
-	Principal           string
-	Direction           sql.NullString
-	TargetPrice         sql.NullString
-	ExpiryAt            sql.NullTime
-	AnnualizedRate      sql.NullString
-	RateKind            sql.NullString
-	Status              string
-	SubscribedAt        sql.NullTime
+	ReportID             []byte
+	PortfolioID          []byte
+	PositionKey          string
+	ProductRef           sql.NullString
+	OrderRef             sql.NullString
+	BaseAssetSymbol      sql.NullString
+	QuoteAssetSymbol     sql.NullString
+	PrincipalAssetSymbol string
+	Principal            string
+	Direction            sql.NullString
+	TargetPrice          sql.NullString
+	ExpiryAt             sql.NullTime
+	AnnualizedRate       sql.NullString
+	RateKind             sql.NullString
+	Status               string
+	SubscribedAt         sql.NullTime
 }
 
 func (q *Queries) InsertDualPosition(ctx context.Context, arg InsertDualPositionParams) error {
 	_, err := q.db.ExecContext(ctx, insertDualPosition,
 		arg.ReportID,
 		arg.PortfolioID,
-		arg.PlatformPositionRef,
+		arg.PositionKey,
 		arg.ProductRef,
 		arg.OrderRef,
 		arg.BaseAssetSymbol,
 		arg.QuoteAssetSymbol,
-		arg.InvestAssetSymbol,
+		arg.PrincipalAssetSymbol,
 		arg.Principal,
 		arg.Direction,
 		arg.TargetPrice,
@@ -56,25 +56,26 @@ func (q *Queries) InsertDualPosition(ctx context.Context, arg InsertDualPosition
 	return err
 }
 
-const listDualPositionsByJob = `-- name: ListDualPositionsByJob :many
-SELECT p.report_id, p.portfolio_id, p.platform_position_ref, p.product_ref, p.order_ref, p.base_asset_symbol, p.quote_asset_symbol, p.invest_asset_symbol, p.principal, p.direction, p.target_price, p.expiry_at, p.annualized_rate, p.rate_kind, p.status, p.subscribed_at, cur.account_id, src.observed_at,
-       a.identity_id, a.account_type, a.display_name AS account_name,
+const listDualPositionsByCycle = `-- name: ListDualPositionsByCycle :many
+SELECT p.portfolio_id, p.report_id, p.position_key, p.product_ref, p.order_ref, p.base_asset_symbol, p.quote_asset_symbol, p.principal_asset_symbol, p.principal, p.direction, p.target_price, p.expiry_at, p.annualized_rate, p.rate_kind, p.status, p.subscribed_at, cur.account_id, COALESCE(src.source_observed_at, src.collected_at) AS observed_at,
+       a.identity_id, a.account_type, a.account_type AS account_name,
        i.platform, i.display_name AS identity_name
 FROM account_reports cur
-JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = cur.source_report_id
-JOIN dual_positions p ON p.report_id = src.id
+JOIN account_valuations v ON v.portfolio_id = cur.portfolio_id AND v.cycle_id = cur.cycle_id AND v.account_id = cur.account_id
+JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = v.source_report_id
+JOIN dual_positions p ON p.portfolio_id = src.portfolio_id AND p.report_id = src.id
 JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE cur.portfolio_id = ? AND cur.job_id = ?
-ORDER BY cur.account_id, p.platform_position_ref
+WHERE cur.portfolio_id = ? AND cur.cycle_id = ?
+ORDER BY cur.account_id, p.position_key
 `
 
-type ListDualPositionsByJobParams struct {
+type ListDualPositionsByCycleParams struct {
 	PortfolioID []byte
-	JobID       []byte
+	CycleID     []byte
 }
 
-type ListDualPositionsByJobRow struct {
+type ListDualPositionsByCycleRow struct {
 	DualPosition DualPosition
 	AccountID    []byte
 	ObservedAt   sql.NullTime
@@ -85,24 +86,24 @@ type ListDualPositionsByJobRow struct {
 	IdentityName string
 }
 
-func (q *Queries) ListDualPositionsByJob(ctx context.Context, arg ListDualPositionsByJobParams) ([]ListDualPositionsByJobRow, error) {
-	rows, err := q.db.QueryContext(ctx, listDualPositionsByJob, arg.PortfolioID, arg.JobID)
+func (q *Queries) ListDualPositionsByCycle(ctx context.Context, arg ListDualPositionsByCycleParams) ([]ListDualPositionsByCycleRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDualPositionsByCycle, arg.PortfolioID, arg.CycleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListDualPositionsByJobRow{}
+	items := []ListDualPositionsByCycleRow{}
 	for rows.Next() {
-		var i ListDualPositionsByJobRow
+		var i ListDualPositionsByCycleRow
 		if err := rows.Scan(
-			&i.DualPosition.ReportID,
 			&i.DualPosition.PortfolioID,
-			&i.DualPosition.PlatformPositionRef,
+			&i.DualPosition.ReportID,
+			&i.DualPosition.PositionKey,
 			&i.DualPosition.ProductRef,
 			&i.DualPosition.OrderRef,
 			&i.DualPosition.BaseAssetSymbol,
 			&i.DualPosition.QuoteAssetSymbol,
-			&i.DualPosition.InvestAssetSymbol,
+			&i.DualPosition.PrincipalAssetSymbol,
 			&i.DualPosition.Principal,
 			&i.DualPosition.Direction,
 			&i.DualPosition.TargetPrice,
@@ -133,12 +134,17 @@ func (q *Queries) ListDualPositionsByJob(ctx context.Context, arg ListDualPositi
 }
 
 const listDualPositionsByReport = `-- name: ListDualPositionsByReport :many
-SELECT report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, invest_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at FROM dual_positions WHERE report_id = ?
-ORDER BY expiry_at IS NULL, expiry_at, platform_position_ref
+SELECT portfolio_id, report_id, position_key, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, principal_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at FROM dual_positions WHERE portfolio_id = ? AND report_id = ?
+ORDER BY expiry_at IS NULL, expiry_at, position_key
 `
 
-func (q *Queries) ListDualPositionsByReport(ctx context.Context, reportID []byte) ([]DualPosition, error) {
-	rows, err := q.db.QueryContext(ctx, listDualPositionsByReport, reportID)
+type ListDualPositionsByReportParams struct {
+	PortfolioID []byte
+	ReportID    []byte
+}
+
+func (q *Queries) ListDualPositionsByReport(ctx context.Context, arg ListDualPositionsByReportParams) ([]DualPosition, error) {
+	rows, err := q.db.QueryContext(ctx, listDualPositionsByReport, arg.PortfolioID, arg.ReportID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,14 +153,14 @@ func (q *Queries) ListDualPositionsByReport(ctx context.Context, reportID []byte
 	for rows.Next() {
 		var i DualPosition
 		if err := rows.Scan(
-			&i.ReportID,
 			&i.PortfolioID,
-			&i.PlatformPositionRef,
+			&i.ReportID,
+			&i.PositionKey,
 			&i.ProductRef,
 			&i.OrderRef,
 			&i.BaseAssetSymbol,
 			&i.QuoteAssetSymbol,
-			&i.InvestAssetSymbol,
+			&i.PrincipalAssetSymbol,
 			&i.Principal,
 			&i.Direction,
 			&i.TargetPrice,

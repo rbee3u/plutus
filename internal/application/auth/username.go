@@ -1,22 +1,15 @@
 package auth
 
-import (
-	"strings"
+import "github.com/rbee3u/plutus/internal/shared/textkey"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/unicode/norm"
-)
-
-// NormalizeUsername trims, applies Unicode NFC, and returns display and login keys.
+// NormalizeUsername returns the display name and its exact case-folded login key.
 func NormalizeUsername(raw string) (display, normalized string, err error) {
-	display = strings.TrimSpace(norm.NFC.String(raw))
+	display, valid := textkey.Name(raw, 191)
 	if display == "" {
 		return "", "", ErrUsernameRequired
 	}
-	if len(display) > 191 {
+	if !valid {
 		return "", "", ErrUsernameTooLong
 	}
-	normalized = cases.Fold().String(display)
-	normalized = norm.NFC.String(normalized)
-	return display, normalized, nil
+	return display, textkey.Key(display), nil
 }

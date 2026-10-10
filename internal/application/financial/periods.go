@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rbee3u/plutus/internal/infra/mysql"
+
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/assetexclusion"
@@ -107,70 +109,76 @@ func periodLabel(kind string, start time.Time) string {
 
 // PeriodCloses returns the Period Close of every period of kind between two instants.
 func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]PeriodClose, error) {
-	loc := p.location()
-	periods, err := periodsBetween(kind, from, to, loc)
-	if err != nil {
-		return nil, err
-	}
-	if len(periods) == 0 {
-		return []PeriodClose{}, nil
-	}
-	points, err := s.pointsInRange(ctx, p.ID, periods[0].start, periods[len(periods)-1].end)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]PeriodClose, 0, len(periods))
-	for _, per := range periods {
-		item := PeriodClose{PeriodKind: kind, Label: per.label, PeriodStart: per.start, PeriodEnd: per.end, Completeness: valuation.CompletenessComplete, Reasons: []string{}}
-		point := lastPointBefore(points, per.end, per.start)
-		if point == nil {
-			item.Completeness = valuation.CompletenessIncomplete
-			item.Reasons = append(item.Reasons, "no_point_in_period")
-		} else {
-			item.Point = point
-			if point.Completeness() == valuation.CompletenessIncomplete {
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]PeriodClose, error) {
+		loc := p.location()
+		periods, err := periodsBetween(kind, from, to, loc)
+		if err != nil {
+			return nil, err
+		}
+		if len(periods) == 0 {
+			return []PeriodClose{}, nil
+		}
+		points, err := s.pointsInRange(ctx, p.ID, periods[0].start, periods[len(periods)-1].end)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]PeriodClose, 0, len(periods))
+		for _, per := range periods {
+			item := PeriodClose{PeriodKind: kind, Label: per.label, PeriodStart: per.start, PeriodEnd: per.end, Completeness: valuation.CompletenessComplete, Reasons: []string{}}
+			point := lastPointBefore(points, per.end, per.start)
+			if point == nil {
 				item.Completeness = valuation.CompletenessIncomplete
-				item.Reasons = append(item.Reasons, "point_incomplete")
-			}
-			if kind != PeriodDay {
-				if missing := daysWithoutPoints(points, per.start, per.end, loc); len(missing) > 0 {
+				item.Reasons = append(item.Reasons, "no_point_in_period")
+			} else {
+				item.Point = point
+				if point.Completeness() == valuation.CompletenessIncomplete {
 					item.Completeness = valuation.CompletenessIncomplete
-					item.Reasons = append(item.Reasons, "days_without_points: "+joinDays(missing))
+					item.Reasons = append(item.Reasons, "point_incomplete")
+				}
+				if kind != PeriodDay {
+					if missing := daysWithoutPoints(points, per.start, per.end, loc); len(missing) > 0 {
+						item.Completeness = valuation.CompletenessIncomplete
+						item.Reasons = append(item.Reasons, "days_without_points: "+joinDays(missing))
+					}
 				}
 			}
+			out = append(out, item)
 		}
-		out = append(out, item)
-	}
-	return out, nil
+		return out, nil
+	})
 }
 
 // ValueChanges returns the Value Change of every period of kind between two instants.
 func (s *Service) ValueChanges(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]ValueChange, error) {
-	loc := p.location()
-	periods, err := periodsBetween(kind, from, to, loc)
-	if err != nil {
-		return nil, err
-	}
-	if len(periods) == 0 {
-		return []ValueChange{}, nil
-	}
-	out := make([]ValueChange, 0, len(periods))
-	for _, per := range periods {
-		change, err := s.valueChange(ctx, p, kind, per.label, per.start, per.end)
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]ValueChange, error) {
+		loc := p.location()
+		periods, err := periodsBetween(kind, from, to, loc)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, change)
-	}
-	return out, nil
+		if len(periods) == 0 {
+			return []ValueChange{}, nil
+		}
+		out := make([]ValueChange, 0, len(periods))
+		for _, per := range periods {
+			change, err := s.valueChange(ctx, p, kind, per.label, per.start, per.end)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, change)
+		}
+		return out, nil
+	})
 }
 
 // CustomValueChange returns one Value Change between the last points at or before two instants.
 func (s *Service) CustomValueChange(ctx context.Context, p PortfolioContext, from, to time.Time) (ValueChange, error) {
-	if !to.After(from) {
-		return ValueChange{}, ErrInvalid
-	}
-	return s.valueChange(ctx, p, PeriodCustom, "custom", from, to)
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (ValueChange, error) {
+		if !to.After(from) {
+			return ValueChange{}, ErrInvalid
+		}
+		return s.valueChange(ctx, p, PeriodCustom, "custom", from, to)
+	})
 }
 
 // Calendar endpoints use strictly earlier points; custom endpoints also accept
@@ -221,7 +229,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 			change.Reasons = append(change.Reasons, "days_without_points: "+joinDays(missing))
 		}
 	}
-	policyReasons, err := s.exclusionChangeReasons(ctx, p.ID, startPoint.JobID, endPoint.JobID)
+	policyReasons, err := s.exclusionChangeReasons(ctx, p.ID, startPoint.CycleID, endPoint.CycleID)
 	if err != nil {
 		return ValueChange{}, err
 	}
@@ -230,7 +238,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 		change.Reasons = append(change.Reasons, policyReasons...)
 	}
 	contributions, withdrawals := decimal.Zero(), decimal.Zero()
-	flows, err := s.q.ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: p.ID[:], FromAt: startPoint.EvaluatedAt.Add(time.Microsecond), ToAt: endPoint.EvaluatedAt.Add(time.Microsecond)})
+	flows, err := mysql.Queries(ctx, s.db).ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: p.ID[:], FromAt: startPoint.EvaluatedAt.Add(time.Microsecond), ToAt: endPoint.EvaluatedAt.Add(time.Microsecond)})
 	if err != nil {
 		return ValueChange{}, err
 	}
@@ -257,14 +265,23 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	}
 	for i := range points {
 		for _, issue := range points[i].Issues {
-			if issue.Code == "account_scope_changed" || issue.Code == "manual_balance_changed" {
+			if issue.Code == "asset_mapping_changed" || issue.Code == "calculation_version_changed" {
 				change.Completeness = valuation.CompletenessIncomplete
 				change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
 			}
 		}
+		for _, adjustment := range points[i].ManualAdjustments {
+			change.Completeness = valuation.CompletenessIncomplete
+			issue := adjustment.Issue()
+			change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
+		}
 		for j := range points[i].BoundaryEvents {
 			event := &points[i].BoundaryEvents[j]
 			change.BoundaryEvents = append(change.BoundaryEvents, *event)
+			if !event.ValuationComplete {
+				change.Completeness = valuation.CompletenessIncomplete
+				change.Reasons = append(change.Reasons, "boundary_incomplete: "+event.AccountName)
+			}
 			if event.ValueUSD == nil {
 				change.Completeness = valuation.CompletenessIncomplete
 				change.Reasons = append(change.Reasons, "unvalued_boundary_event: "+event.AccountName)
@@ -288,16 +305,16 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	return change, nil
 }
 
-func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startJobID, endJobID uuid.UUID) ([]string, error) {
-	startIgnored, err := assetexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
+func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startCycleID, endCycleID uuid.UUID) ([]string, error) {
+	startIgnored, err := assetexclusion.ActiveForCycle(ctx, s.db, portfolioID, startCycleID)
 	if err != nil {
 		return nil, err
 	}
-	endIgnored, err := assetexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
+	endIgnored, err := assetexclusion.ActiveForCycle(ctx, s.db, portfolioID, endCycleID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.ListCalculatedAssetsAtJobs(ctx, sqlcgen.ListCalculatedAssetsAtJobsParams{PortfolioID: portfolioID[:], StartJobID: startJobID[:], EndJobID: endJobID[:]})
+	rows, err := mysql.Queries(ctx, s.db).ListCalculatedAssetsAtCycles(ctx, sqlcgen.ListCalculatedAssetsAtCyclesParams{PortfolioID: portfolioID[:], StartCycleID: startCycleID[:], EndCycleID: endCycleID[:]})
 	if err != nil {
 		return nil, err
 	}
@@ -320,9 +337,9 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 		err error
 	)
 	if inclusive {
-		row, err = s.q.GetValuationPointAtOrBefore(ctx, sqlcgen.GetValuationPointAtOrBeforeParams{PortfolioID: portfolioID[:], At: at.UTC()})
+		row, err = mysql.Queries(ctx, s.db).GetValuationPointAtOrBefore(ctx, sqlcgen.GetValuationPointAtOrBeforeParams{PortfolioID: portfolioID[:], At: at.UTC()})
 	} else {
-		row, err = s.q.GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: at.UTC()})
+		row, err = mysql.Queries(ctx, s.db).GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: at.UTC(), CycleID: make([]byte, 16)})
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil //nolint:nilnil // no point at or before the instant is a valid, checked outcome.
@@ -330,7 +347,7 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 	if err != nil {
 		return nil, err
 	}
-	point, err := valuation.PointFromRow(&row)
+	point, err := s.valuation.PointWithEvents(ctx, &row)
 	if err != nil {
 		return nil, err
 	}
@@ -338,11 +355,11 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 }
 
 func (s *Service) pointsInRange(ctx context.Context, portfolioID uuid.UUID, from, to time.Time) ([]valuation.Point, error) {
-	rows, err := s.q.ListValuationPointsBetween(ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+	rows, err := mysql.Queries(ctx, s.db).ListValuationPointsBetween(ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 	if err != nil {
 		return nil, err
 	}
-	return pointsFromRows(rows)
+	return s.pointsFromRows(ctx, rows)
 }
 
 func lastPointBefore(points []valuation.Point, before, notBefore time.Time) *valuation.Point {

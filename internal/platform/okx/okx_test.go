@@ -430,7 +430,7 @@ func TestLevelChangedInsideOKXIsObserved(t *testing.T) {
 		t.Fatalf("collect after a switch to acctLv 3: %v, margin mode %q", err, batch.MarginMode)
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed: %+v", report.AccountType, report)
 		}
 	}
@@ -448,7 +448,7 @@ func TestUnknownAccountTypeFailsOnlyItsAccount(t *testing.T) {
 	if unknown.Status != adapters.StatusFailed || unknown.ErrorClass != adapters.ClassUnsupported || !strings.Contains(unknown.ErrorDetail, "margin") {
 		t.Fatalf("unknown Account Type report %+v", unknown)
 	}
-	if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatal("funding must not fail with an unknown Account Type")
 	}
 }
@@ -462,18 +462,18 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := reportOf(t, batch, TypeTrading)
-	if report.Status != adapters.StatusOK || report.ObservedAt.IsZero() {
+	if report.Status != adapters.StatusSucceeded || report.CollectedAt.IsZero() {
 		t.Fatalf("report %+v", report)
 	}
 	accounts := rowsIn[tradingAccount](t, r.file(epBalance, ""))
 	account := accounts[0]
 	checks := map[string][2]string{
-		"equity":             {deref(report.Equity), decimal.Compact(account.TotalEq)},
-		"adjustedEquity":     {deref(report.AdjustedEquity), decimal.Compact(account.AdjEq)},
-		"availableEquity":    {deref(report.AvailableEquity), decimal.Compact(account.AvailEq)},
-		"unifiedMarginRatio": {deref(report.UnifiedMarginRatio), decimal.Compact(account.MgnRatio)},
-		"initialMarginRatio": {deref(report.InitialMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.IMR), rat(t, account.AdjEq)).FloatString(8))},
-		"maintMarginRatio":   {deref(report.MaintenanceMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.MMR), rat(t, account.AdjEq)).FloatString(8))},
+		"equity":                       {deref(report.Equity), decimal.Compact(account.TotalEq)},
+		"adjustedEquity":               {deref(report.AdjustedEquity), decimal.Compact(account.AdjEq)},
+		"availableEquity":              {deref(report.AvailableEquity), decimal.Compact(account.AvailEq)},
+		"marginRatio":                  {deref(report.ReportedMarginRatio), decimal.Compact(account.MgnRatio)},
+		"initialMarginRequirement":     {deref(report.InitialMarginRequirementUSD), decimal.Compact(account.IMR)},
+		"maintenanceMarginRequirement": {deref(report.MaintenanceMarginRequirementUSD), decimal.Compact(account.MMR)},
 	}
 	for name, pair := range checks {
 		if pair[0] != pair[1] {
@@ -559,7 +559,7 @@ func TestEmptyFieldsStayUnknown(t *testing.T) {
 	}
 	report := reportOf(t, batch, TypeTrading)
 	if deref(report.Equity) != "100" || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
-		report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || report.UnifiedMarginRatio != nil {
+		report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || report.ReportedMarginRatio != nil {
 		t.Fatalf("empty account figures must stay nil: %+v", report)
 	}
 	if len(report.Balances) != 2 {
@@ -585,7 +585,7 @@ func TestZeroAdjustedEquityLeavesMarginRatiosNull(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := reportOf(t, batch, TypeTrading)
-	if report.Status != adapters.StatusOK || report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || deref(report.Equity) != "0" {
+	if report.Status != adapters.StatusSucceeded || report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || deref(report.Equity) != "0" {
 		t.Fatalf("report %+v", report)
 	}
 }
@@ -611,11 +611,11 @@ func TestCollectMapsPositionsAndFuturesContracts(t *testing.T) {
 				p = candidate
 			}
 		}
-		if p.PlatformPositionRef != row.InstID+":"+row.PosSide || p.QuantityUnit != adapters.UnitContracts {
+		if p.PositionKey != row.InstID+":"+row.PosSide || p.SourceQuantityUnit != adapters.UnitContracts {
 			t.Fatalf("position %+v for row %+v", p, *row)
 		}
-		if rat(t, p.Quantity).Cmp(new(big.Rat).Abs(rat(t, row.Pos))) != 0 || p.Side != adapters.SideLong {
-			t.Errorf("%s side %s quantity %s from pos %s", row.InstID, p.Side, p.Quantity, row.Pos)
+		if rat(t, p.SourceQuantity).Cmp(new(big.Rat).Abs(rat(t, row.Pos))) != 0 || p.Side != adapters.SideLong {
+			t.Errorf("%s side %s quantity %s from pos %s", row.InstID, p.Side, p.SourceQuantity, row.Pos)
 		}
 		if !sameDecimal(t, p.EntryPrice, row.AvgPx) || !sameDecimal(t, p.MarkPrice, row.MarkPx) || !sameDecimal(t, p.UnrealizedPnl, row.Upl) {
 			t.Errorf("%s prices %+v", row.InstID, p)
@@ -729,11 +729,11 @@ func TestPositionSidesAndSkippedRows(t *testing.T) {
 		t.Fatalf("positions %+v; the MARGIN row and the zero-size row must be skipped", positions)
 	}
 	inverse, future := positions[0], positions[1]
-	if inverse.Side != adapters.SideShort || inverse.Quantity != "3" || inverse.FuturesContract.Kind != adapters.KindInversePerpetual || inverse.PlatformPositionRef != "BTC-USD-SWAP:net" {
+	if inverse.Side != adapters.SideShort || inverse.SourceQuantity != "3" || inverse.FuturesContract.Kind != adapters.KindInversePerpetual || inverse.PositionKey != "BTC-USD-SWAP:net" {
 		t.Fatalf("net short position %+v", inverse)
 	}
-	if future.Side != adapters.SideShort || future.Quantity != "2" || deref(future.LiquidationPrice) != "65000" || deref(future.Leverage) != "5" ||
-		deref(future.Margin) != "12.5" || future.FuturesContract.Kind != adapters.KindLinearDelivery || future.PlatformPositionRef != linear+":short" {
+	if future.Side != adapters.SideShort || future.SourceQuantity != "2" || deref(future.LiquidationPrice) != "65000" || deref(future.Leverage) != "5" ||
+		deref(future.Margin) != "12.5" || future.FuturesContract.Kind != adapters.KindLinearDelivery || future.PositionKey != linear+":short" {
 		t.Fatalf("long/short-mode short position %+v", future)
 	}
 }
@@ -755,7 +755,7 @@ func TestUnstorablePositionFailsTheAccount(t *testing.T) {
 				!strings.Contains(trading.ErrorDetail, "BTC-USD-261225-100000-C") || !strings.Contains(trading.ErrorDetail, instType) {
 				t.Fatalf("trading report %+v", trading)
 			}
-			if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+			if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 				t.Fatal("funding must not fail with the trading account")
 			}
 		})
@@ -771,7 +771,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 		t.Fatal(err)
 	}
 	funding := reportOf(t, batch, TypeFunding)
-	if funding.Status != adapters.StatusOK || len(funding.Balances) != 1 || funding.Equity != nil {
+	if funding.Status != adapters.StatusSucceeded || len(funding.Balances) != 1 || funding.Equity != nil {
 		t.Fatalf("funding report %+v", funding)
 	}
 	b := funding.Balances[0]
@@ -781,7 +781,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	// A successful Earn report has also passed the Earn check against the synthetic valuation.
 	earn := reportOf(t, batch, TypeEarn)
 	want := map[string]string{"USDT": "20", "ETH": "0.1"}
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != len(want) || earn.Equity != nil {
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != len(want) || earn.Equity != nil {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
 	for _, b := range earn.Balances {
@@ -864,11 +864,11 @@ func TestCollectPrices(t *testing.T) {
 		t.Fatalf("prices %+v for held coins %v", batch.Prices, held)
 	}
 	for _, p := range batch.Prices {
-		if !held[p.CanonicalAssetSymbol] || p.QuoteCanonicalAssetSymbol != "USDT" || p.Price != last[p.CanonicalAssetSymbol+"-USDT"] || p.ObservedAt.IsZero() || p.ObservedAt.After(batch.ObservedAt) {
+		if !held[p.CanonicalAssetSymbol] || p.QuoteCanonicalAssetSymbol != "USDT" || p.Price != last[p.CanonicalAssetSymbol+"-USDT"] || p.RetrievedAt.IsZero() || p.RetrievedAt.After(batch.CollectedAt) {
 			t.Errorf("price %+v", p)
 		}
 		for _, report := range batch.Reports {
-			if p.ObservedAt.After(report.ObservedAt) {
+			if p.RetrievedAt.After(report.CollectedAt) {
 				t.Errorf("price %s observed after the %s report", p.CanonicalAssetSymbol, report.AccountType)
 			}
 		}
@@ -899,7 +899,7 @@ func TestTickerFailureKeepsReports(t *testing.T) {
 		t.Fatalf("prices %+v after a ticker failure", batch.Prices)
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed with the ticker: %+v", report.AccountType, report)
 		}
 	}
@@ -968,7 +968,7 @@ func TestStaleTimestampResyncsAndRetries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reportOf(t, batch, TypeTrading).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeTrading).Status != adapters.StatusSucceeded {
 		t.Fatal("the retried call must succeed")
 	}
 	if r.count(epTime) != 2 || r.count(epBalance) != 2 {
@@ -1039,7 +1039,7 @@ func TestOneFailingAccountLeavesSiblingsOK(t *testing.T) {
 		t.Fatalf("earn report %+v", earn)
 	}
 	for _, sibling := range []adapters.AccountType{TypeTrading, TypeFunding} {
-		if reportOf(t, batch, sibling).Status != adapters.StatusOK {
+		if reportOf(t, batch, sibling).Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed with earn", sibling)
 		}
 	}
@@ -1071,7 +1071,7 @@ func TestUnknownFuturesContractFailsTheAccount(t *testing.T) {
 	if trading.Status != adapters.StatusFailed || trading.ErrorClass != adapters.ClassNormalization || !strings.Contains(trading.ErrorDetail, "NOPE-USDT-SWAP") {
 		t.Fatalf("trading report %+v", trading)
 	}
-	if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatal("funding must not fail with an unknown contract")
 	}
 }
@@ -1126,7 +1126,7 @@ func TestEmptyAmountFailsItsAccount(t *testing.T) {
 			}
 			for _, report := range batch.Reports {
 				if report.AccountType != tc.account {
-					if report.Status != adapters.StatusOK {
+					if report.Status != adapters.StatusSucceeded {
 						t.Errorf("%s report %+v must not fail", report.AccountType, report)
 					}
 					continue
@@ -1156,12 +1156,12 @@ func TestSpotModeMapsBorrowingFigures(t *testing.T) {
 	// Spot mode reports the adjusted equity, the margin requirements of its borrowings, and the
 	// margin ratio, but no account-level available equity.
 	if !sameDecimal(t, report.Equity, account.TotalEq) || !sameDecimal(t, report.AdjustedEquity, account.AdjEq) ||
-		!sameDecimal(t, report.UnifiedMarginRatio, account.MgnRatio) || report.AvailableEquity != nil {
+		!sameDecimal(t, report.ReportedMarginRatio, account.MgnRatio) || report.AvailableEquity != nil {
 		t.Fatalf("account figures %+v", report)
 	}
-	if deref(report.InitialMarginRatio) != decimal.Compact(new(big.Rat).Quo(rat(t, account.IMR), rat(t, account.AdjEq)).FloatString(8)) ||
-		deref(report.MaintenanceMarginRatio) != decimal.Compact(new(big.Rat).Quo(rat(t, account.MMR), rat(t, account.AdjEq)).FloatString(8)) {
-		t.Fatalf("margin ratios %s, %s", deref(report.InitialMarginRatio), deref(report.MaintenanceMarginRatio))
+	if report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil ||
+		!sameDecimal(t, report.InitialMarginRequirementUSD, account.IMR) || !sameDecimal(t, report.MaintenanceMarginRequirementUSD, account.MMR) {
+		t.Fatalf("source requirements and ratios: %+v", report)
 	}
 	if len(report.Balances) != len(account.Details) || len(report.Positions) != 0 {
 		t.Fatalf("balances %+v, positions %+v", report.Balances, report.Positions)
@@ -1188,7 +1188,7 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 	account := rowsIn[tradingAccount](t, r.file(epBalance, ""))[0]
 	// Futures mode reports only totalEq at account level; margin is assessed per coin.
 	if !sameDecimal(t, report.Equity, account.TotalEq) || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
-		report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || report.UnifiedMarginRatio != nil {
+		report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || report.ReportedMarginRatio != nil {
 		t.Fatalf("account figures %+v", report)
 	}
 	if len(report.Balances) != len(account.Details) {
@@ -1204,8 +1204,8 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 		t.Fatalf("positions %+v; the MARGIN row must be skipped", report.Positions)
 	}
 	swap := report.Positions[0]
-	if swap.FuturesContract.Symbol != "BTC-USDT-SWAP" || swap.PlatformPositionRef != "BTC-USDT-SWAP:long" || swap.Side != adapters.SideLong ||
-		swap.Quantity != "2" || deref(swap.Leverage) != "10" || deref(swap.LiquidationPrice) != "31012.5" ||
+	if swap.FuturesContract.Symbol != "BTC-USDT-SWAP" || swap.PositionKey != "BTC-USDT-SWAP:long" || swap.Side != adapters.SideLong ||
+		swap.SourceQuantity != "2" || deref(swap.Leverage) != "10" || deref(swap.LiquidationPrice) != "31012.5" ||
 		deref(swap.Margin) != "125.7838" || swap.MarginAssetSymbol != "USDT" || swap.MarginBasis != "initial" {
 		t.Fatalf("cross swap position %+v", swap)
 	}
@@ -1246,7 +1246,7 @@ func TestDualInvestmentCountsInvestedPrincipal(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK {
+	if earn.Status != adapters.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	want := map[string]*big.Rat{}
@@ -1294,7 +1294,7 @@ func TestDualInvestmentStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK {
+	if earn.Status != adapters.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	got := map[string]string{}
@@ -1317,7 +1317,7 @@ func TestDualInvestmentStates(t *testing.T) {
 	if earn := reportOf(t, batch, TypeDualInvestment); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"ExPiReD"`) {
 		t.Fatalf("an undocumented state must fail Earn by name: %+v", earn)
 	}
-	if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatal("funding must not fail with Earn")
 	}
 }
@@ -1334,7 +1334,7 @@ func TestDualInvestmentReadsEveryPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Equity != "103" {
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].Equity != "103" {
 		t.Fatalf("earn report %+v; want every order of both pages", earn)
 	}
 	if r.count(epDCD) != 1 || r.count(dcdPage("901")) != 1 {
@@ -1462,13 +1462,13 @@ func TestEarnCheckComparesWithOKXValuation(t *testing.T) {
 				t.Fatal(err)
 			}
 			earn := reportOf(t, batch, TypeEarn)
-			if tc.ok != (earn.Status == adapters.StatusOK) {
+			if tc.ok != (earn.Status == adapters.StatusSucceeded) {
 				t.Fatalf("OKX values Earn at %s against 100 itemized: %+v", tc.earn, earn)
 			}
 			if !tc.ok && (earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, "100.00 USD")) {
 				t.Fatalf("the failure must name both amounts: %+v", earn)
 			}
-			if reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+			if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 				t.Fatal("funding must not fail with the Earn check")
 			}
 		})
@@ -1514,7 +1514,7 @@ func TestEarnCheckIsSkippedWithoutPrices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusOK {
+	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusSucceeded {
 		t.Fatalf("an unpriced Balance cannot be compared, so the check must pass: %+v", earn)
 	}
 }

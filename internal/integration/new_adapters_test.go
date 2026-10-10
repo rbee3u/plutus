@@ -115,7 +115,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 				if json.Unmarshal(answers[(fixture.Request{Service: "futures-ws", Method: "WS", Path: "/ws/v1/balances_snapshot"}).Key()].Body, &snap) != nil {
 					t.Fatal("invalid snapshot fixture")
 				}
-				h.registry.Register(platform, kraken.New(&kraken.Options{SpotHost: server.URL, FuturesHost: server.URL, WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1", HTTP: offline.Client(t, server), Now: func() time.Time { return time.UnixMilli(snap.Timestamp).Add(-time.Second) }}))
+				h.registry.Register(platform, kraken.New(&kraken.Options{SpotHost: server.URL, FuturesHost: server.URL, WebSocketURL: strings.Replace(server.URL, "http:", "ws:", 1) + "/ws/v1", HTTP: offline.Client(t, server), Now: func() time.Time { return time.Now().UTC() }}))
 			}
 			item := h.createIdentity("synthetic "+string(platform), platform, structure, types...)
 			item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, creds)
@@ -125,11 +125,11 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 			if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 				t.Fatalf("enable: %v", err)
 			}
-			summary, jobID := h.runCycle()
+			summary, cycleID := h.runCycle()
 			if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 				t.Fatalf("fixture cycle incomplete: %s", summary.String())
 			}
-			assertFixtureAccountValues(t, h.accountsByType(jobID, item.ID), tc.accounts)
+			assertFixtureAccountValues(t, h.accountsByType(cycleID, item.ID), tc.accounts)
 			if summary.Point.TotalUSD != tc.total {
 				t.Fatalf("Portfolio total = %s, want %s", summary.Point.TotalUSD, tc.total)
 			}

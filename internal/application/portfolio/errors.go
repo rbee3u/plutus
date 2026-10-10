@@ -13,8 +13,8 @@ var (
 	ErrUndeletable = apperr.Undeletable("portfolio is undeletable")
 	// ErrInvalidTimezone is returned when the timezone is not a valid IANA name.
 	ErrInvalidTimezone = apperr.Invalid("timezone is invalid")
-	// ErrInvalidInterval is returned when the collection interval is outside 60..86400 seconds.
-	ErrInvalidInterval = apperr.Invalid("collection interval must be between 60 and 86400 seconds")
+	// ErrInvalidInterval is returned when the collection interval is outside 900..86400 seconds.
+	ErrInvalidInterval = apperr.Invalid("collection interval must be between 900 and 86400 seconds")
 	// ErrInvalidName is returned when the portfolio name is empty or too long.
 	ErrInvalidName = apperr.Invalid("portfolio name is invalid")
 )

@@ -25,6 +25,7 @@ own setup, validation, and deployment procedures.
 | [0012](./0012-process-logging.md)                  | Unified process logging and sink ownership              |
 | [0013](./0013-frontend-architecture.md)            | Feature ownership and shared browser mechanisms         |
 | [0014](./0014-position-provenance.md)              | Contract quantities and margin provenance               |
+| [0015](./0015-prelaunch-schema.md)                 | Prelaunch schema and retained financial provenance      |
 
 ## Maintenance
 

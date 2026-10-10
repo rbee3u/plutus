@@ -3,7 +3,6 @@ package kraken
 import (
 	"context"
 	"maps"
-	"math/big"
 	"net/url"
 	"slices"
 	"time"
@@ -23,12 +22,13 @@ type snapshot struct {
 	FuturesUPnLCashValue number `json:"futures_upnl_cash_value"`
 }
 
-// observedAt is Kraken's own time of the balance state, or now when the snapshot has none.
-func (s *snapshot) observedAt(now time.Time) time.Time {
-	if s.Timestamp > 0 {
-		return time.UnixMilli(s.Timestamp).UTC()
+// observedAt is the optional source timestamp, never a local substitute.
+func (s *snapshot) observedAt() *time.Time {
+	if s.Timestamp <= 0 {
+		return nil
 	}
-	return now
+	at := time.UnixMilli(s.Timestamp).UTC()
+	return &at
 }
 
 // multiWallet is the multi-collateral wallet: Multi-M in Separate wallets, Main in Unified Wallet.
@@ -73,32 +73,24 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapters.AccountT
 		return adapters.AccountReport{}, adapters.Malformed(where, "flex_futures.currencies")
 	}
 	figures := map[string]number{"margin_equity": wallet.MarginEquity, "initial_margin": wallet.InitialMargin, "maintenance_margin": wallet.MaintenanceMargin}
-	parsed := map[string]*big.Rat{}
 	for name, value := range figures {
-		rat, err := adapters.OptionalDecimal(where, "flex_futures."+name, string(value))
+		_, err := adapters.OptionalDecimal(where, "flex_futures."+name, string(value))
 		if err != nil {
 			return adapters.AccountReport{}, err
 		}
-		parsed[name] = rat
 	}
 	report := adapters.AccountReport{
-		AccountType:     accountType,
-		Status:          adapters.StatusOK,
-		ObservedAt:      r.snapshot.observedAt(r.a.now()),
-		Equity:          adapters.Plain(string(wallet.PortfolioValue)),
-		AdjustedEquity:  adapters.Plain(string(wallet.MarginEquity)),
-		AvailableEquity: adapters.Plain(string(wallet.AvailableMargin)),
+		AccountType:      accountType,
+		Status:           adapters.StatusSucceeded,
+		CollectedAt:      r.a.now(),
+		SourceObservedAt: r.snapshot.observedAt(),
+		Equity:           adapters.Plain(string(wallet.PortfolioValue)),
+		AdjustedEquity:   adapters.Plain(string(wallet.MarginEquity)),
+		AvailableEquity:  adapters.Plain(string(wallet.AvailableMargin)),
 	}
-	// Kraken reports the margin requirements as USD amounts, like Binance and OKX, so the stored
-	// ratios are derived against the adjusted equity.
-	if adjusted := parsed["margin_equity"]; adjusted.Sign() > 0 {
-		if wallet.InitialMargin != "" {
-			report.InitialMarginRatio = adapters.Ratio(parsed["initial_margin"], adjusted)
-		}
-		if wallet.MaintenanceMargin != "" {
-			report.MaintenanceMarginRatio = adapters.Ratio(parsed["maintenance_margin"], adjusted)
-		}
-	}
+	report.InitialMarginRequirementUSD = adapters.Plain(string(wallet.InitialMargin))
+	report.MaintenanceMarginRequirementUSD = adapters.Plain(string(wallet.MaintenanceMargin))
+
 	for _, code := range slices.Sorted(maps.Keys(wallet.Currencies)) {
 		row := wallet.Currencies[code]
 		quantity, err := adapters.Decimal(where, "flex_futures.currencies."+code+".quantity", string(row.Quantity))
@@ -156,12 +148,13 @@ func (r *run) coinM(ctx context.Context) (adapters.AccountReport, error) {
 		return adapters.AccountReport{}, err
 	}
 	return adapters.AccountReport{
-		AccountType: TypeCoinM,
-		Status:      adapters.StatusOK,
-		ObservedAt:  r.snapshot.observedAt(r.a.now()),
-		Equity:      adapters.Plain(string(r.snapshot.FuturesUPnLCashValue)),
-		Balances:    totals.Balances(),
-		Positions:   positions,
+		AccountType:      TypeCoinM,
+		Status:           adapters.StatusSucceeded,
+		CollectedAt:      r.a.now(),
+		SourceObservedAt: r.snapshot.observedAt(),
+		Equity:           adapters.Plain(string(r.snapshot.FuturesUPnLCashValue)),
+		Balances:         totals.Balances(),
+		Positions:        positions,
 	}, nil
 }
 
@@ -187,10 +180,11 @@ func (r *run) derivativesHolding() (adapters.AccountReport, error) {
 		}
 	}
 	return adapters.AccountReport{
-		AccountType: TypeDerivativesHolding,
-		Status:      adapters.StatusOK,
-		ObservedAt:  r.snapshot.observedAt(r.a.now()),
-		Balances:    totals.Balances(),
+		AccountType:      TypeDerivativesHolding,
+		Status:           adapters.StatusSucceeded,
+		CollectedAt:      r.a.now(),
+		SourceObservedAt: r.snapshot.observedAt(),
+		Balances:         totals.Balances(),
 	}, nil
 }
 
@@ -218,7 +212,6 @@ func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) 
 	if rows == nil {
 		return adapters.AccountReport{}, adapters.Malformed(where, "the balance list")
 	}
-	observedAt := r.a.now()
 	totals := adapters.Totals{}
 	for _, code := range slices.Sorted(maps.Keys(rows)) {
 		row := rows[code]
@@ -253,23 +246,7 @@ func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) 
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report := adapters.AccountReport{AccountType: TypeMain, Status: adapters.StatusOK, ObservedAt: observedAt, Balances: totals.Balances()}
-	equity, complete := net, true
-	for _, balance := range report.Balances {
-		price, ok := adapters.USDPrice(balance.AssetSymbol, priceQuotes, r.prices.lookup)
-		if !ok {
-			complete = false
-			continue
-		}
-		equity = decimal.Add(equity, decimal.Mul(decimal.ParseOrZero(balance.Equity), price))
-	}
-	switch {
-	case complete:
-		report.Equity = decimal.FormatPtr(equity)
-	case net.Sign() != 0:
-		// Without an equity the value is calculated from the Balances, which cannot hold the
-		// margin result; valued incomplete, it would silently lose that profit or loss.
-		return adapters.AccountReport{}, adapters.NewError(adapters.ClassNormalization, "Kraken Main has an open Spot Margin result and a balance without a price, so its net equity cannot be determined.")
-	}
+	report := adapters.AccountReport{AccountType: TypeMain, Status: adapters.StatusSucceeded, CollectedAt: r.a.now(), Balances: totals.Balances()}
+	report.SpotMarginUnrealizedPnlUSD = decimal.FormatPtr(net)
 	return report, nil
 }

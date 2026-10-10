@@ -7,19 +7,18 @@ import (
 
 func toAPIAsset(asset *catalog.Asset) api.Asset {
 	return api.Asset{
-		Id:               asset.ID,
-		Platform:         asset.Platform,
-		Symbol:           asset.Symbol,
-		CanonicalSymbol:  asset.CanonicalSymbol,
-		Name:             asset.Name,
-		MappingSource:    api.AssetMappingSource(asset.MappingSource),
-		FirstSeenAt:      asset.FirstSeenAt,
-		LastSeenAt:       asset.LastSeenAt,
-		Version:          int(asset.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
-		Ignored:          asset.Ignored,
-		IgnoreReason:     asset.IgnoreReason,
-		IgnoredAt:        asset.IgnoredAt,
-		ExclusionVersion: int(asset.ExclusionVersion), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
+		Id:                   asset.ID,
+		Platform:             asset.Platform,
+		Symbol:               asset.Symbol,
+		CanonicalAssetSymbol: asset.CanonicalAssetSymbol,
+		MappingSource:        api.AssetMappingSource(asset.MappingSource),
+		FirstObservedAt:      asset.FirstObservedAt,
+		LastObservedAt:       asset.LastObservedAt,
+		MappingVersion:       int(asset.MappingVersion), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
+		Excluded:             asset.Excluded,
+		ExclusionReason:      asset.ExclusionReason,
+		ExcludedAt:           asset.ExcludedAt,
+		ExclusionVersion:     int(asset.ExclusionVersion), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 	}
 }
 
@@ -34,7 +33,7 @@ func toAPIFuturesContract(contract *catalog.FuturesContract) api.FuturesContract
 		SettlementAssetSymbol: contract.SettlementAssetSymbol,
 		ExpiryAt:              contract.ExpiryAt,
 		ContractSize:          contract.ContractSize,
-		FirstSeenAt:           contract.FirstSeenAt,
-		LastSeenAt:            contract.LastSeenAt,
+		FirstObservedAt:       contract.FirstObservedAt,
+		LastObservedAt:        contract.LastObservedAt,
 	}
 }

@@ -58,11 +58,11 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 		t.Fatalf("enable: err=%v outcome=%+v ref=%v", err, outcome, enabled.ExternalRef)
 	}
 
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 		t.Fatalf("summary %+v", summary)
 	}
-	accounts := h.accountsByType(jobID, item.ID)
+	accounts := h.accountsByType(cycleID, item.ID)
 	// Earn = 20 USDT in savings + 0.1 ETH at 2000 USD in staking.
 	assertFixtureAccountValues(t, accounts, map[string]fixtureAccountValue{
 		"trading": {valuation.MethodReported, "10000"},
@@ -73,7 +73,7 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "10320" {
 		t.Fatalf("Portfolio total = %s, want 10320", summary.Point.TotalUSD)
 	}
-	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformOKX), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapters.PlatformOKX), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +94,8 @@ func assertOKXTradingPosition(t *testing.T, h *harness, accountID uuid.UUID) {
 		t.Fatalf("stored positions %+v, want one synthetic swap", view.Positions)
 	}
 	position := view.Positions[0]
-	if position.PlatformPositionRef != "BTC-USDT-SWAP:net" || position.Kind != adapters.KindLinearPerpetual || position.Side != adapters.SideLong ||
-		position.QuantityUnit != adapters.UnitContracts || decimal.Compact(position.Quantity) != "1" ||
+	if position.PositionKey != "BTC-USDT-SWAP:net" || position.Kind != adapters.KindLinearPerpetual || position.Side != adapters.SideLong ||
+		position.SourceQuantityUnit != adapters.UnitContracts || decimal.Compact(position.SourceQuantity) != "1" ||
 		position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "0.01" ||
 		position.MarkPrice == nil || decimal.Compact(*position.MarkPrice) != "50000" ||
 		position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != "500" {

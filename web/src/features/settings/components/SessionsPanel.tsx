@@ -42,13 +42,13 @@ export function SessionsPanel({ onError: setError }: { onError: (error: string |
                 }}
               >
                 <strong>
-                  {session.clientLabel ? clientSummary(session.clientLabel) : "Unknown client"}
+                  {session.userAgent ? clientSummary(session.userAgent) : "Unknown client"}
                 </strong>
                 {session.current ? (
                   <span className={styles.currentSessionBadge}>Current</span>
                 ) : null}
               </div>
-              <p className={shared.muted} title={session.clientLabel ?? undefined}>
+              <p className={shared.muted} title={session.userAgent ?? undefined}>
                 Signed in {formatInstant(session.createdAt)} · last seen{" "}
                 {formatInstant(session.lastSeenAt)}
               </p>

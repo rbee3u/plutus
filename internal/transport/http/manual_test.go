@@ -16,7 +16,6 @@ import (
 	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -53,7 +52,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db, catalog.NewService(db, jobs.NewService(db)))}})
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db, catalog.NewService(db))}})
 	request := func(method, path, body, etag string, authenticated, csrfPresent bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")

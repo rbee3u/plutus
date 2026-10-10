@@ -13,7 +13,7 @@ func TestEarnDetailsPreserveDatesRateKindsAndRewardScopes(t *testing.T) {
 	r.always(epFlexibleEarn, status(http.StatusOK, `{"total":1,"rows":[{"productId":"USDT001","asset":"USDT","totalAmount":"2","latestAnnualPercentageRate":"0.03","tierAnnualPercentageRate":{"0-100":"0.02"},"cumulativeTotalRewards":"0.4","cumulativeRealTimeRewards":"0.3","cumulativeBonusRewards":"0.1"}]}`))
 	r.always(epLockedEarn, status(http.StatusOK, `{"total":1,"rows":[{"positionId":1,"projectId":"ETH001","asset":"ETH","amount":"0.01","APY":"0.05","purchaseTime":1776068177000,"rewardsEndDate":1776385800000,"deliverDate":1776472200000,"rewardAsset":"BNB","rewardAmt":"0.1","status":"HOLDING"}]}`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn)
-	if report.Status != adapters.StatusOK || !report.EarnDetailsCollected || len(report.EarnPositions) != 2 {
+	if report.Status != adapters.StatusSucceeded || len(report.EarnPositions) != 2 {
 		t.Fatalf("report: %+v", report)
 	}
 	fixed := report.EarnPositions[1]

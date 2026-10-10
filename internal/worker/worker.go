@@ -1,4 +1,4 @@
-// Package worker claims durable jobs, runs Collection Cycles and recalculations, and schedules cycles.
+// Package worker claims Collection Cycles, drains Portfolio deletions, and schedules cycles.
 package worker
 
 import (
@@ -14,9 +14,12 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/application/collection"
-	"github.com/rbee3u/plutus/internal/application/jobs"
-	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/application/cycles"
+	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/application/retention"
+	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/logging"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
@@ -32,33 +35,36 @@ const (
 // ErrUnavailable means the worker loop is not heartbeating.
 var ErrUnavailable = errors.New("worker_unavailable")
 
-// Worker claims durable jobs and runs the handlers.
+// Worker claims durable work and runs the handlers.
 type Worker struct {
-	jobs       *jobs.Service
-	collection *collection.Service
-	valuation  *valuation.Service
-	poll       time.Duration
-	lease      time.Duration
-	id         string
-	logger     *slog.Logger
-	lastBeat   atomic.Int64
-	scheduler  bool
-	retention  time.Duration
+	auth        *auth.Service
+	idempotency *idempotency.Store
+	cycles      *cycles.Service
+	collection  *collection.Service
+	portfolios  *portfolio.Service
+	maintenance *retention.Service
+	poll        time.Duration
+	lease       time.Duration
+	id          string
+	logger      *slog.Logger
+	lastBeat    atomic.Int64
+	scheduler   bool
 }
 
 // Options configures a worker.
 type Options struct {
-	Jobs       *jobs.Service
-	Collection *collection.Service
-	Valuation  *valuation.Service
-	Poll       time.Duration
-	Lease      time.Duration
-	Logger     *slog.Logger
-	ID         string
+	Auth        *auth.Service
+	Idempotency *idempotency.Store
+	Cycles      *cycles.Service
+	Collection  *collection.Service
+	Portfolios  *portfolio.Service
+	Maintenance *retention.Service
+	Poll        time.Duration
+	Lease       time.Duration
+	Logger      *slog.Logger
+	ID          string
 	// Scheduler enables the per-Portfolio Collection Cycle scheduler.
 	Scheduler bool
-	// Retention prunes finished jobs without reports or points after this age; zero disables pruning.
-	Retention time.Duration
 }
 
 // New constructs a worker.
@@ -76,7 +82,7 @@ func New(opts *Options) *Worker {
 	if id == "" {
 		id = defaultWorkerID()
 	}
-	return &Worker{jobs: opts.Jobs, collection: opts.Collection, valuation: opts.Valuation, poll: opts.Poll, lease: opts.Lease, id: id, logger: opts.Logger, scheduler: opts.Scheduler, retention: opts.Retention}
+	return &Worker{auth: opts.Auth, idempotency: opts.Idempotency, cycles: opts.Cycles, collection: opts.Collection, portfolios: opts.Portfolios, maintenance: opts.Maintenance, poll: opts.Poll, lease: opts.Lease, id: id, logger: opts.Logger, scheduler: opts.Scheduler}
 }
 
 // Run claims work and schedules cycles until ctx is cancelled.
@@ -92,19 +98,31 @@ func (w *Worker) Run(ctx context.Context) error {
 			}
 			lastSchedule = time.Now()
 		}
-		if w.scheduler && w.retention > 0 && time.Since(lastPrune) >= pruneInterval {
+		if w.scheduler && time.Since(lastPrune) >= pruneInterval {
 			if err := w.Prune(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				w.logger.Error("job pruning failed", slog.Any("err", err))
+				w.logger.Error("maintenance pruning failed", slog.Any("err", err))
 			}
 			lastPrune = time.Now()
 		}
-		claimed, err := w.ProcessOnce(ctx)
+		worked, err := w.ProcessOnce(ctx)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			w.logger.Error("job worker iteration failed", slog.Any("err", err), slog.String("worker_id", w.id))
+			w.logger.Error("worker iteration failed", slog.Any("err", err), slog.String("worker_id", w.id))
 		}
 		w.beat()
-		if claimed {
+		if worked {
 			continue
+		}
+		if w.maintenance != nil {
+			deadline := time.Now().Add(250 * time.Millisecond)
+			for range 16 {
+				if err := w.maintenance.Step(ctx, time.Now().UTC()); err != nil {
+					w.logger.Error("history maintenance failed", slog.Any("err", err))
+					break
+				}
+				if time.Now().After(deadline) {
+					break
+				}
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -116,10 +134,10 @@ func (w *Worker) Run(ctx context.Context) error {
 
 // Schedule enqueues one Collection Cycle for every Portfolio whose interval elapsed.
 func (w *Worker) Schedule(ctx context.Context) error {
-	if w.jobs == nil {
+	if w.cycles == nil {
 		return nil
 	}
-	rows, err := w.jobs.ListForScheduling(ctx)
+	rows, err := w.cycles.ListForScheduling(ctx)
 	if err != nil {
 		return err
 	}
@@ -128,7 +146,7 @@ func (w *Worker) Schedule(ctx context.Context) error {
 		if row.LastCycleAt != nil && now.Sub(*row.LastCycleAt) < row.Interval {
 			continue
 		}
-		if _, created, err := w.jobs.EnqueueCycle(ctx, row.PortfolioID, jobs.TriggerSchedule, nil); err != nil {
+		if _, created, err := w.cycles.Enqueue(ctx, row.PortfolioID, cycles.TriggerSchedule); err != nil {
 			return err
 		} else if created {
 			w.logger.Info("collection cycle scheduled", slog.String("portfolio_id", row.PortfolioID.String()))
@@ -137,17 +155,17 @@ func (w *Worker) Schedule(ctx context.Context) error {
 	return nil
 }
 
-// Prune deletes finished jobs older than the retention that hold no reports or points.
+// Prune deletes expired sessions and idempotency records.
 func (w *Worker) Prune(ctx context.Context) error {
-	if w.jobs == nil || w.retention <= 0 {
-		return nil
+	if w.auth != nil {
+		if err := w.auth.PruneExpired(ctx); err != nil {
+			return err
+		}
 	}
-	deleted, err := w.jobs.PruneFinished(ctx, time.Now().UTC().Add(-w.retention))
-	if err != nil {
-		return err
-	}
-	if deleted > 0 {
-		w.logger.Info("finished jobs pruned", slog.Int64("deleted", deleted))
+	if w.idempotency != nil {
+		if err := w.idempotency.PruneExpired(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -169,73 +187,56 @@ func (w *Worker) beat() {
 	w.lastBeat.Store(time.Now().UnixNano())
 }
 
-// ProcessOnce claims and executes at most one job.
+// ProcessOnce runs at most one cycle attempt or one Portfolio deletion batch.
+// Cycles take precedence so deletions never delay collection.
 func (w *Worker) ProcessOnce(ctx context.Context) (bool, error) {
-	if w.jobs == nil {
+	if w.cycles != nil {
+		claimed, ok, err := w.cycles.ClaimOne(ctx, w.id, w.lease)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, w.runCycle(ctx, &claimed)
+		}
+	}
+	if w.portfolios == nil {
 		return false, nil
 	}
-	claimed, ok, err := w.jobs.ClaimOne(ctx, w.id, w.lease)
-	if err != nil {
-		return false, err
-	}
-	if !ok {
-		return false, nil
-	}
-	ctx = logging.WithFields(ctx, slog.String("job_id", claimed.ID.String()), slog.String("portfolio_id", claimed.PortfolioID.String()))
-	if claimed.Kind == jobs.KindCollectionCycle {
-		ctx = logging.WithFields(ctx, slog.String("cycle_id", claimed.ID.String()))
-	}
-	result := w.handle(ctx, &claimed)
-	if err := w.jobs.Finish(ctx, &claimed, result); err != nil {
-		return true, err
-	}
-	return true, nil
+	return w.portfolios.DeleteBatch(ctx)
 }
 
-func (w *Worker) handle(ctx context.Context, claimed *jobs.ClaimedJob) jobs.Result {
+func (w *Worker) runCycle(ctx context.Context, claimed *cycles.Claim) error {
+	ctx = logging.WithFields(ctx, slog.String("portfolio_id", claimed.PortfolioID.String()), slog.String("cycle_id", claimed.ID.String()))
+	result := w.attempt(ctx, claimed)
+	// Point persistence completes a successful cycle atomically.
+	if result.OK {
+		return nil
+	}
+	return w.cycles.Finish(ctx, claimed, result)
+}
+
+func (w *Worker) attempt(ctx context.Context, claimed *cycles.Claim) cycles.Result {
 	ctx, cancel := context.WithCancel(ctx)
 	renewDone := make(chan struct{})
 	go func() { defer close(renewDone); w.renewLoop(ctx, claimed, cancel) }()
 	defer func() { cancel(); <-renewDone }()
 
-	switch claimed.Kind {
-	case jobs.KindCollectionCycle:
-		return w.handleCycle(ctx, claimed)
-	case jobs.KindValuationRecalc:
-		return w.handleRecalc(ctx, claimed)
-	default:
-		return jobs.Result{ErrorClass: "unsupported", Detail: "The job kind is not supported."}
-	}
-}
-
-func (w *Worker) handleCycle(ctx context.Context, claimed *jobs.ClaimedJob) jobs.Result {
 	if w.collection == nil {
-		return jobs.Result{ErrorClass: "unsupported", Detail: "Collection is not configured."}
+		return cycles.Result{ErrorClass: "unsupported", ErrorDetail: "Collection is not configured."}
 	}
-	summary, err := w.collection.RunCycle(ctx, claimed.PortfolioID, claimed.ID)
+	summary, err := w.collection.RunCycle(ctx, claimed.PortfolioID, claimed.ID, claimed)
 	if err != nil {
-		w.logger.ErrorContext(ctx, "collection cycle failed", slog.String("job_id", claimed.ID.String()), slog.Any("err", err))
+		w.logger.ErrorContext(ctx, "collection cycle failed", slog.Any("err", err))
 		if mysql.IsDuplicate(err) {
-			return jobs.Result{ErrorClass: "persistence", Detail: safeDetail(err)}
+			return cycles.Result{ErrorClass: "persistence", ErrorDetail: safeDetail(err)}
 		}
-		return jobs.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", Detail: safeDetail(err)}
+		return cycles.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", ErrorDetail: safeDetail(err)}
 	}
-	return jobs.Result{OK: true, Detail: summary.String()}
+	w.logger.InfoContext(ctx, "collection cycle succeeded", slog.String("summary", summary.String()))
+	return cycles.Result{OK: true}
 }
 
-func (w *Worker) handleRecalc(ctx context.Context, claimed *jobs.ClaimedJob) jobs.Result {
-	if w.valuation == nil {
-		return jobs.Result{ErrorClass: "unsupported", Detail: "Valuation is not configured."}
-	}
-	count, err := w.valuation.Rebuild(ctx, claimed.PortfolioID)
-	if err != nil {
-		w.logger.ErrorContext(ctx, "valuation recalculation failed", slog.String("job_id", claimed.ID.String()), slog.Any("err", err))
-		return jobs.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", Detail: safeDetail(err)}
-	}
-	return jobs.Result{OK: true, Detail: fmt.Sprintf("recalculated %d valuation points", count)}
-}
-
-func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob, cancel context.CancelFunc) {
+func (w *Worker) renewLoop(ctx context.Context, claimed *cycles.Claim, cancel context.CancelFunc) {
 	interval := w.lease / 3
 	if interval < time.Second {
 		interval = time.Second
@@ -247,8 +248,13 @@ func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob, cancel
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := w.jobs.RenewLease(ctx, claimed, w.lease); err != nil {
-				w.logger.ErrorContext(ctx, "job lease renewal failed", slog.Any("err", err))
+			if err := w.cycles.RenewLease(ctx, claimed, w.lease); err != nil {
+				// Point persistence may already have completed this cycle atomically.
+				current, readErr := w.cycles.Get(ctx, claimed.PortfolioID, claimed.ID)
+				if readErr == nil && current.Status == cycles.StatusSucceeded {
+					return
+				}
+				w.logger.ErrorContext(ctx, "cycle lease renewal failed", slog.Any("err", err))
 				cancel()
 				return
 			}
@@ -256,7 +262,7 @@ func (w *Worker) renewLoop(ctx context.Context, claimed *jobs.ClaimedJob, cancel
 	}
 }
 
-// safeDetail keeps job details short and free of payloads.
+// safeDetail keeps error details short and free of payloads.
 func safeDetail(err error) string {
 	msg := err.Error()
 	if len(msg) > 300 {

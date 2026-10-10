@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Plutus API
   version: 0.1.0
-  description: Transport contract for authentication, Portfolios, Identities with embedded Connections, Collection Cycles, holdings, history, Capital Flows, catalog, jobs, and audit.
+  description: Transport contract for authentication, Portfolios, Identities with embedded Connections, Collection Cycles, holdings, history, Capital Flows, catalog, and audit.
 servers:
   - url: /
 paths:
@@ -273,8 +273,8 @@ paths:
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
-        "204":
-          description: Deleted.
+        "202":
+          description: Deletion accepted; cleanup continues in the background.
         "401":
           $ref: "#/components/responses/Problem"
         "404":
@@ -733,7 +733,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AccountID"
-        - name: pointId
+        - name: cycleId
           in: query
           description: Historical Valuation Point; omitted for the latest point.
           schema:
@@ -1069,14 +1069,41 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/valuation-points/{pointId}:
+  /api/v1/portfolios/{portfolioId}/valuation-snapshot:
+    get:
+      operationId: getValuationSnapshot
+      tags: [history]
+      summary: Get the latest retained snapshot before a local day's end
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - in: query
+          name: day
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Calendar date in the current Portfolio timezone; may fall back to an earlier day.
+      responses:
+        "200":
+          description: A complete retained snapshot with its actual cycle, time and total.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValuationPointDetail"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId}:
     get:
       operationId: getValuationPoint
       tags: [history]
       summary: One valuation point with its account valuations
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/PointID"
+        - $ref: "#/components/parameters/CycleID"
       responses:
         "200":
           description: Valuation point detail.
@@ -1333,7 +1360,7 @@ paths:
           in: query
           schema:
             type: string
-        - name: ignoredOnly
+        - name: excludedOnly
           in: query
           schema:
             type: boolean
@@ -1368,7 +1395,7 @@ paths:
     put:
       operationId: putAssetMapping
       tags: [catalog]
-      summary: Override the Canonical Asset mapping of an Asset and recalculate affected points
+      summary: Override the Canonical Asset mapping for future Valuation Points
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AssetID"
@@ -1471,60 +1498,6 @@ paths:
                 $ref: "#/components/schemas/FuturesContractList"
         "400":
           $ref: "#/components/responses/Problem"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/jobs:
-    get:
-      operationId: listJobs
-      tags: [jobs]
-      summary: List durable jobs
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - name: kind
-          in: query
-          schema:
-            $ref: "#/components/schemas/JobKind"
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-        - name: cursor
-          in: query
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Jobs, newest first.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JobList"
-        "400":
-          $ref: "#/components/responses/Problem"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/jobs/{jobId}:
-    get:
-      operationId: getJob
-      tags: [jobs]
-      summary: Get a job
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/JobID"
-      responses:
-        "200":
-          description: The job.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Job"
         "401":
           $ref: "#/components/responses/Problem"
         "404":
@@ -1735,9 +1708,11 @@ components:
       name: Idempotency-Key
       in: header
       required: false
+      description: An opaque token of at most 255 visible ASCII characters.
       schema:
         type: string
         maxLength: 255
+        pattern: '^[!-~]*$'
     IfMatch:
       name: If-Match
       in: header
@@ -1768,18 +1743,7 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UUID"
-    PointID:
-      name: pointId
-      in: path
-      required: true
-      schema:
-        $ref: "#/components/schemas/UUID"
-    JobID:
-      name: jobId
-      in: path
-      required: true
-      schema:
-        $ref: "#/components/schemas/UUID"
+
     FlowID:
       name: flowId
       in: path
@@ -1928,7 +1892,7 @@ components:
         absoluteExpiresAt:
           type: string
           format: date-time
-        clientLabel:
+        userAgent:
           type: [string, "null"]
         current:
           type: boolean
@@ -1946,6 +1910,9 @@ components:
       additionalProperties: false
       required: [id, name, timezone, collectionIntervalSeconds, undeletable, version, createdAt, updatedAt]
       properties:
+        deletionRequestedAt:
+          type: [string, "null"]
+          format: date-time
         id:
           $ref: "#/components/schemas/UUID"
         name:
@@ -1954,7 +1921,7 @@ components:
           type: string
         collectionIntervalSeconds:
           type: integer
-          minimum: 60
+          minimum: 900
           maximum: 86400
         undeletable:
           type: boolean
@@ -1988,7 +1955,7 @@ components:
           type: string
         collectionIntervalSeconds:
           type: integer
-          minimum: 60
+          minimum: 900
           maximum: 86400
     PatchPortfolioRequest:
       type: object
@@ -2002,7 +1969,7 @@ components:
           type: string
         collectionIntervalSeconds:
           type: integer
-          minimum: 60
+          minimum: 900
           maximum: 86400
     Platform:
       type: object
@@ -2121,13 +2088,13 @@ components:
           enum: [unconfigured, disabled, enabled, invalid]
         credentialsConfigured:
           type: boolean
-        credentialsUpdatedAt:
+        credentialsSetAt:
           type: [string, "null"]
           format: date-time
-        lastValidatedAt:
+        lastValidationSucceededAt:
           type: [string, "null"]
           format: date-time
-        lastCollectedAt:
+        lastCollectionFinishedAt:
           type: [string, "null"]
           format: date-time
         lastErrorClass:
@@ -2137,7 +2104,7 @@ components:
     Account:
       type: object
       additionalProperties: false
-      required: [id, identityId, accountType, displayName, selected, version]
+      required: [id, identityId, accountType, displayName, selected]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -2149,8 +2116,6 @@ components:
           type: string
         selected:
           type: boolean
-        version:
-          type: integer
     Identity:
       type: object
       additionalProperties: false
@@ -2228,10 +2193,6 @@ components:
           $ref: "#/components/schemas/UUID"
         selected:
           type: boolean
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 120
     PatchIdentityRequest:
       type: object
       additionalProperties: false
@@ -2288,26 +2249,26 @@ components:
     CollectionCycle:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, status, trigger, attemptCount, maxAttempts, createdAt]
+      required: [id, portfolioId, status, trigger, attemptCount, createdAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
         portfolioId:
           $ref: "#/components/schemas/UUID"
         status:
-          $ref: "#/components/schemas/JobStatus"
+          $ref: "#/components/schemas/CollectionCycleStatus"
         trigger:
           type: string
-          enum: [schedule, manual, system]
+          enum: [schedule, user]
         attemptCount:
           type: integer
-        maxAttempts:
-          type: integer
-        lastErrorClass:
+          description: Claimed attempts so far; a cycle fails after its third.
+        errorClass:
           type: [string, "null"]
-        lastDetail:
+          description: Error class of the latest failed attempt; null once the cycle succeeds.
+        errorDetail:
           type: [string, "null"]
-          description: "Outcome of the last attempt: a short summary on success, the sanitized error otherwise."
+          description: Sanitized error of the latest failed attempt; null once the cycle succeeds.
         createdAt:
           type: string
           format: date-time
@@ -2352,14 +2313,14 @@ components:
       additionalProperties: false
       required: [portfolioId, timezone]
       properties:
+        valuationRevision:
+          type: [string, "null"]
+          description: Identity of the immutable valuation result, equal to its Collection Cycle ID.
         portfolioId:
           $ref: "#/components/schemas/UUID"
         timezone:
           type: string
-        pointId:
-          type: [string, "null"]
-          format: uuid
-        jobId:
+        cycleId:
           type: [string, "null"]
           format: uuid
         evaluatedAt:
@@ -2417,11 +2378,15 @@ components:
     ValuationPointSummary:
       type: object
       additionalProperties: false
-      required: [id, jobId, evaluatedAt, totalUsd, completeness, accountCount, staleAccountCount, incompleteAccountCount, boundaryContributionUsd, boundaryWithdrawalUsd]
+      required: [valuationRevision, calculationVersion, cycleId, evaluatedAt, totalUsd, completeness, accountCount, staleAccountCount, incompleteAccountCount, boundaryContributionUsd, boundaryWithdrawalUsd, detailState]
       properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        jobId:
+        valuationRevision:
+          type: string
+          description: Identity of the immutable valuation result, equal to its Collection Cycle ID.
+        calculationVersion:
+          type: integer
+          format: int64
+        cycleId:
           $ref: "#/components/schemas/UUID"
         evaluatedAt:
           type: string
@@ -2440,9 +2405,9 @@ components:
           $ref: "#/components/schemas/Decimal"
         boundaryWithdrawalUsd:
           $ref: "#/components/schemas/Decimal"
-        recalculatedAt:
-          type: [string, "null"]
-          format: date-time
+        detailState:
+          type: string
+          enum: [full, daily, expired]
     Overview:
       type: object
       additionalProperties: false
@@ -2508,7 +2473,7 @@ components:
           type: string
         status:
           type: string
-          enum: [ok, failed]
+          enum: [succeeded, failed]
         errorClass:
           type: [string, "null"]
         errorDetail:
@@ -2535,8 +2500,9 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         maintenanceMarginRatio:
           $ref: "#/components/schemas/NullableDecimal"
-        unifiedMarginRatio:
+        marginRatio:
           $ref: "#/components/schemas/NullableDecimal"
+          description: Platform-reported, unscaled Account margin ratio. Its label and denominator depend on the immutable Platform and Account scope.
         omitted:
           type: array
           items:
@@ -2729,7 +2695,7 @@ components:
     PositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, futuresContractId, futuresSymbol, kind, side, quantity, quantityUnit, freshness, issues]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, futuresContractId, futuresSymbol, kind, side, sourceQuantity, sourceQuantityUnit, freshness, issues]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2743,7 +2709,7 @@ components:
           type: string
         platform:
           type: string
-        platformPositionRef:
+        positionKey:
           type: string
         futuresContractId:
           $ref: "#/components/schemas/UUID"
@@ -2768,7 +2734,7 @@ components:
         positionMode:
           type: [string, "null"]
           enum: [one_way, hedged, null]
-        marginMode:
+        marginSetting:
           type: [string, "null"]
           enum: [cross, isolated, null]
         marginAssetSymbol:
@@ -2797,9 +2763,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
-        quantity:
+        sourceQuantity:
+          description: Positive source quantity magnitude, retaining the source unit; direction is stored separately.
           $ref: "#/components/schemas/Decimal"
-        quantityUnit:
+        sourceQuantityUnit:
           type: string
           enum: [contracts, base, quote]
         entryPrice:
@@ -2824,7 +2791,7 @@ components:
     DualPositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, investAssetSymbol, principal, status, freshness]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, principalAssetSymbol, principal, status, freshness]
       properties:
         issues:
           type: array
@@ -2842,7 +2809,7 @@ components:
           type: string
         platform:
           type: string
-        platformPositionRef:
+        positionKey:
           type: string
         productRef:
           type: [string, "null"]
@@ -2852,7 +2819,7 @@ components:
           type: [string, "null"]
         quoteAssetSymbol:
           type: [string, "null"]
-        investAssetSymbol:
+        principalAssetSymbol:
           type: string
         principal:
           $ref: "#/components/schemas/Decimal"
@@ -2931,7 +2898,7 @@ components:
     EarnPositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, type, granularity, amountBasis, assets, rates, rewards, details, freshness, issues]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, type, granularity, amountBasis, assets, rates, rewards, details, freshness, issues]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2945,7 +2912,7 @@ components:
           type: string
         platform:
           type: string
-        platformPositionRef:
+        positionKey:
           type: string
         productRef:
           type: [string, "null"]
@@ -2990,44 +2957,11 @@ components:
         maturityAt:
           type: [string, "null"]
           format: date-time
-    EarnBalanceSummary:
-      type: object
-      additionalProperties: false
-      required: [accountId, accountName, identityName, platform, assets, freshness, issues]
-      properties:
-        accountId:
-          $ref: "#/components/schemas/UUID"
-        accountName:
-          type: string
-        identityName:
-          type: string
-        platform:
-          type: string
-        assets:
-          type: array
-          items:
-            $ref: "#/components/schemas/EarnAmount"
-        freshness:
-          $ref: "#/components/schemas/Freshness"
-        reportObservedAt:
-          type: [string, "null"]
-          format: date-time
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
-
     AccountEarnPositionList:
       type: object
       additionalProperties: false
-      required: [context, account, items, balanceSummaries, detailsCollected, issues]
+      required: [context, account, items, issues]
       properties:
-        detailsCollected:
-          type: boolean
-        balanceSummaries:
-          type: array
-          items:
-            $ref: "#/components/schemas/EarnBalanceSummary"
         context:
           $ref: "#/components/schemas/ReadContext"
         account:
@@ -3044,14 +2978,10 @@ components:
     EarnPositionList:
       type: object
       additionalProperties: false
-      required: [context, items, page, balanceSummaries, detailsComplete, completeness, issues]
+      required: [context, items, page, detailsComplete, completeness, issues]
       properties:
         detailsComplete:
           type: boolean
-        balanceSummaries:
-          type: array
-          items:
-            $ref: "#/components/schemas/EarnBalanceSummary"
         context:
           $ref: "#/components/schemas/ReadContext"
         items:
@@ -3233,9 +3163,9 @@ components:
     BoundaryEvent:
       type: object
       additionalProperties: false
-      required: [pointId, evaluatedAt, accountId, accountName, direction, method]
+      required: [cycleId, evaluatedAt, accountId, accountName, direction, method, completeness]
       properties:
-        pointId:
+        cycleId:
           $ref: "#/components/schemas/UUID"
         evaluatedAt:
           type: string
@@ -3256,6 +3186,8 @@ components:
           enum: [contribution, withdrawal]
         valueUsd:
           $ref: "#/components/schemas/NullableDecimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
         method:
           type: string
     BoundaryEventList:
@@ -3383,7 +3315,7 @@ components:
     CapitalFlow:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, direction, canonicalAssetSymbol, quantity, effectiveAt, version, createdAt, updatedAt]
+      required: [id, portfolioId, direction, canonicalAssetSymbol, quantity, effectiveAt, pricingMethod, pricingAttemptedAt, calculationVersion, version, createdAt, updatedAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3398,6 +3330,20 @@ components:
           $ref: "#/components/schemas/Decimal"
         valueUsd:
           $ref: "#/components/schemas/NullableDecimal"
+        pricingMethod:
+          type: string
+          enum: [explicit, usd_parity, market_price, unavailable]
+        pricingPlatform:
+          type: [string, "null"]
+        priceObservationId:
+          type: [string, "null"]
+          format: uuid
+        pricingAttemptedAt:
+          type: string
+          format: date-time
+          description: Time of the latest pricing attempt, including an unavailable result. Note-only edits preserve it.
+        calculationVersion:
+          type: integer
         effectiveAt:
           type: string
           format: date-time
@@ -3439,6 +3385,8 @@ components:
           $ref: "#/components/schemas/Decimal"
         valueUsd:
           $ref: "#/components/schemas/Decimal"
+        pricingPlatform:
+          type: string
         effectiveAt:
           type: string
           format: date-time
@@ -3460,6 +3408,8 @@ components:
           $ref: "#/components/schemas/Decimal"
         valueUsd:
           $ref: "#/components/schemas/NullableDecimal"
+        pricingPlatform:
+          type: [string, "null"]
         effectiveAt:
           type: string
           format: date-time
@@ -3471,7 +3421,7 @@ components:
     Asset:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, canonicalSymbol, mappingSource, firstSeenAt, lastSeenAt, version, ignored, exclusionVersion]
+      required: [id, platform, symbol, canonicalAssetSymbol, mappingSource, firstObservedAt, lastObservedAt, mappingVersion, excluded, exclusionVersion]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3479,26 +3429,24 @@ components:
           type: string
         symbol:
           type: string
-        canonicalSymbol:
+        canonicalAssetSymbol:
           type: string
-        name:
-          type: [string, "null"]
         mappingSource:
           type: string
           enum: [auto, manual]
-        firstSeenAt:
+        firstObservedAt:
           type: string
           format: date-time
-        lastSeenAt:
+        lastObservedAt:
           type: string
           format: date-time
-        version:
+        mappingVersion:
           type: integer
-        ignored:
+        excluded:
           type: boolean
-        ignoreReason:
+        exclusionReason:
           type: [string, "null"]
-        ignoredAt:
+        excludedAt:
           type: [string, "null"]
           format: date-time
         exclusionVersion:
@@ -3517,18 +3465,18 @@ components:
     PutAssetMappingRequest:
       type: object
       additionalProperties: false
-      required: [canonicalSymbol]
+      required: [canonicalAssetSymbol]
       properties:
-        canonicalSymbol:
+        canonicalAssetSymbol:
           type: string
           minLength: 1
           maxLength: 64
     PutAssetExclusionRequest:
       type: object
       additionalProperties: false
-      required: [ignored]
+      required: [excluded]
       properties:
-        ignored:
+        excluded:
           type: boolean
         reason:
           type: string
@@ -3536,7 +3484,7 @@ components:
     FuturesContract:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, kind, firstSeenAt, lastSeenAt]
+      required: [id, platform, symbol, kind, firstObservedAt, lastObservedAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3557,10 +3505,10 @@ components:
           format: date-time
         contractSize:
           $ref: "#/components/schemas/NullableDecimal"
-        firstSeenAt:
+        firstObservedAt:
           type: string
           format: date-time
-        lastSeenAt:
+        lastObservedAt:
           type: string
           format: date-time
     FuturesContractList:
@@ -3574,57 +3522,9 @@ components:
             $ref: "#/components/schemas/FuturesContract"
         page:
           $ref: "#/components/schemas/OffsetPage"
-    Job:
-      type: object
-      additionalProperties: false
-      required: [id, portfolioId, kind, status, trigger, attemptCount, maxAttempts, createdAt]
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        portfolioId:
-          $ref: "#/components/schemas/UUID"
-        kind:
-          $ref: "#/components/schemas/JobKind"
-        status:
-          $ref: "#/components/schemas/JobStatus"
-        trigger:
-          type: string
-          enum: [schedule, manual, system]
-        attemptCount:
-          type: integer
-        maxAttempts:
-          type: integer
-        lastErrorClass:
-          type: [string, "null"]
-        lastDetail:
-          type: [string, "null"]
-          description: "Outcome of the last attempt: a short summary on success, the sanitized error otherwise."
-        createdAt:
-          type: string
-          format: date-time
-        startedAt:
-          type: [string, "null"]
-          format: date-time
-        finishedAt:
-          type: [string, "null"]
-          format: date-time
-    JobList:
-      type: object
-      additionalProperties: false
-      required: [items, page]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/Job"
-        page:
-          $ref: "#/components/schemas/CursorPage"
-    JobKind:
+    CollectionCycleStatus:
       type: string
-      enum: [collection_cycle, valuation_recalc]
-    JobStatus:
-      type: string
-      enum: [queued, running, succeeded, failed, cancelled]
+      enum: [queued, running, succeeded, failed]
     Decimal:
       type: string
       pattern: '^-?[0-9]+(\.[0-9]+)?$'
@@ -3677,13 +3577,12 @@ components:
     AuditEvent:
       type: object
       additionalProperties: false
-      required: [id, action, resourceType, occurredAt]
+      required: [id, portfolioId, action, resourceType, occurredAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
         portfolioId:
-          type: [string, "null"]
-          format: uuid
+          $ref: "#/components/schemas/UUID"
         actorUserId:
           type: [string, "null"]
           format: uuid

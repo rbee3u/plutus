@@ -110,6 +110,11 @@ func spotAccountQuery() url.Values {
 }
 
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+	// Market terms are reused only within this Collection Run.
+	run := *a
+	run.futuresContracts = newFuturesContractCache(a.now)
+	a = &run
+
 	if !adapters.ValidStructure(adapters.PlatformBinance, structure) {
 		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformBinance, structure)
 	}
@@ -123,7 +128,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
 		return a.earn(ctx, c, prices)
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		if accountType == TypeEarn || accountType == TypeDualInvestment {
 			return earnPair(ctx, accountType)
 		}
@@ -132,7 +137,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	if err != nil {
 		return adapters.Batch{}, err
 	}
-	return adapters.Batch{ObservedAt: a.now(), Reports: reports, Prices: adapters.QuotePrices(reports, quotes, prices.quote, pricedAt)}, nil
+	return adapters.Batch{CollectedAt: a.now(), Reports: reports, Prices: adapters.QuotePrices(reports, quotes, prices.quote, pricedAt)}, nil
 }
 
 func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapters.AccountStructure, info *accountInfo, accountType adapters.AccountType) (adapters.AccountReport, error) {
@@ -171,7 +176,7 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 // closed is the report of a Classic wallet Binance says is not opened: it cannot hold anything,
 // so the Account is reported empty instead of failing on an endpoint that refuses it.
 func (a *Adapter) closed(accountType adapters.AccountType) adapters.AccountReport {
-	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusOK, ObservedAt: a.now()}
+	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
 }
 
 // accountInfo is /sapi/v1/account/info: the account's Account Structure and whether its Classic

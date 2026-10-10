@@ -2,12 +2,12 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
+	"github.com/rbee3u/plutus/internal/application/auth"
+
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -32,52 +32,28 @@ func (a *API) ListIdentities(ctx context.Context, request api.ListIdentitiesRequ
 }
 
 func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequestObject) (api.CreateIdentityResponseObject, error) {
-	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
-	if err != nil {
-		return nil, err
-	}
 	if a.Identities == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	raw, err := json.Marshal(request.Body)
-	if err != nil {
-		return nil, err
-	}
-	key := stringValue(request.Params.IdempotencyKey)
-	rec, hash, err := a.lookupIdempotency(ctx, sc.user.ID, key, http.MethodPost, requestPath(ctx), raw)
-	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
-	}
-	if err != nil {
-		return nil, err
-	}
-	if rec != nil {
-		var body api.Identity
-		if err := json.Unmarshal(rec.Body, &body); err != nil {
-			return nil, err
+	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Identity, string, error) {
+		sc, err := a.scoped(ctx, request.PortfolioId)
+		if err != nil {
+			return api.Identity{}, "", err
 		}
-		etag := rec.Headers["ETag"]
-		return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: &etag}}, nil
-	}
-	types := make([]adapters.AccountType, 0, len(request.Body.SelectedAccountTypes))
-	for _, t := range request.Body.SelectedAccountTypes {
-		types = append(types, adapters.AccountType(t))
-	}
-	item, err := a.Identities.Create(ctx, sc.portfolio.ID, &identity.CreateInput{
-		ActorUserID:          sc.user.ID,
-		RequestID:            requestTraceID(ctx),
-		Platform:             adapters.Platform(request.Body.Platform),
-		DisplayName:          request.Body.DisplayName,
-		AccountStructure:     adapters.AccountStructure(request.Body.AccountStructure),
-		SelectedAccountTypes: types,
+		types := make([]adapters.AccountType, 0, len(request.Body.SelectedAccountTypes))
+		for _, kind := range request.Body.SelectedAccountTypes {
+			types = append(types, adapters.AccountType(kind))
+		}
+		item, err := a.Identities.Create(ctx, sc.portfolio.ID, &identity.CreateInput{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Platform: adapters.Platform(request.Body.Platform), DisplayName: request.Body.DisplayName, AccountStructure: adapters.AccountStructure(request.Body.AccountStructure), SelectedAccountTypes: types})
+		if err != nil {
+			return api.Identity{}, "", err
+		}
+		return toAPIIdentity(&item), item.ETag(), nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	body := toAPIIdentity(&item)
-	etag := item.ETag()
-	a.storeIdempotency(ctx, sc.user.ID, &sc.portfolio.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: new(etag)}}, nil
+	return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: &etag}}, nil
 }
 
 func (a *API) GetIdentity(ctx context.Context, request api.GetIdentityRequestObject) (api.GetIdentityResponseObject, error) {
@@ -113,7 +89,7 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 	in := identity.PatchInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx), DisplayName: request.Body.DisplayName}
 	if request.Body.Accounts != nil {
 		for _, patch := range *request.Body.Accounts {
-			in.Accounts = append(in.Accounts, identity.AccountPatch{ID: patch.Id, Selected: patch.Selected, DisplayName: patch.DisplayName})
+			in.Accounts = append(in.Accounts, identity.AccountPatch{ID: patch.Id, Selected: patch.Selected})
 		}
 	}
 	item, err := a.Identities.Patch(ctx, sc.portfolio.ID, request.IdentityId, version, in)

@@ -92,7 +92,7 @@ in each Platform's verification document. The new displayed margin amounts and
 conversion policy have no completed exchange-app reconciliation. Synthetic
 results and prior field observations do not close those gaps.
 
-For an existing environment, stop the service and run `migrate up` before using
-the new binary; see
-[the upgrade procedure](../deployment.md#position-presentation-upgrade). The
-baseline and original quantities, directions, and amounts are retained.
+This historical report describes the previous additive migration. The current
+prelaunch build consolidates its fields into the new baseline; follow
+[the reset procedure](../deployment.md#upgrades-and-resets) and
+[the current delivery report](./schema-provenance-delivery.md).

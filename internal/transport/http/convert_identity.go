@@ -21,13 +21,13 @@ func toAPIIdentity(item *identity.Identity) api.Identity {
 		Status:           api.IdentityStatus(item.Status),
 		ArchivedAt:       item.ArchivedAt,
 		Connection: api.Connection{
-			Status:                api.ConnectionStatus(item.Connection.Status),
-			CredentialsConfigured: item.Connection.CredentialsConfigured,
-			CredentialsUpdatedAt:  item.Connection.CredentialsUpdatedAt,
-			LastValidatedAt:       item.Connection.LastValidatedAt,
-			LastCollectedAt:       item.Connection.LastCollectedAt,
-			LastErrorClass:        item.Connection.LastErrorClass,
-			LastErrorDetail:       item.Connection.LastErrorDetail,
+			Status:                    api.ConnectionStatus(item.Connection.Status),
+			CredentialsConfigured:     item.Connection.CredentialsConfigured,
+			CredentialsSetAt:          item.Connection.CredentialsSetAt,
+			LastValidationSucceededAt: item.Connection.LastValidationSucceededAt,
+			LastCollectionFinishedAt:  item.Connection.LastCollectionFinishedAt,
+			LastErrorClass:            item.Connection.LastErrorClass,
+			LastErrorDetail:           item.Connection.LastErrorDetail,
 		},
 		Accounts:  accounts,
 		Version:   int(item.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
@@ -43,7 +43,6 @@ func toAPIAccount(item *identity.Account) api.Account {
 		AccountType: string(item.AccountType),
 		DisplayName: item.DisplayName,
 		Selected:    item.Selected,
-		Version:     int(item.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 	}
 }
 

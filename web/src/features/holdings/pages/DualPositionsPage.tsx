@@ -33,7 +33,7 @@ export function DualPositionsPage() {
         filters={filters}
         fallback="Dual positions could not be loaded."
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
           label="Active Subscriptions"
@@ -48,7 +48,7 @@ export function DualPositionsPage() {
         filters={filters}
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these dual positions." />
       ) : null}
     </section>

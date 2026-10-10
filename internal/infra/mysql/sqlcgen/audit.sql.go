@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
@@ -14,7 +15,7 @@ import (
 
 const insertAuditEvent = `-- name: InsertAuditEvent :exec
 INSERT INTO audit_events (
-    id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id,
+    portfolio_id, id, actor_user_id, action, resource_type, resource_id, request_id,
     before_json, after_json, metadata_json, occurred_at
 ) VALUES (
     ?, ?, ?, ?,
@@ -24,13 +25,13 @@ INSERT INTO audit_events (
 `
 
 type InsertAuditEventParams struct {
-	ID           []byte
 	PortfolioID  []byte
+	ID           []byte
 	ActorUserID  []byte
 	Action       string
 	ResourceType string
 	ResourceID   []byte
-	RequestID    string
+	RequestID    sql.NullString
 	BeforeJson   sqljson.Column
 	AfterJson    sqljson.Column
 	MetadataJson sqljson.Column
@@ -39,8 +40,8 @@ type InsertAuditEventParams struct {
 
 func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error {
 	_, err := q.db.ExecContext(ctx, insertAuditEvent,
-		arg.ID,
 		arg.PortfolioID,
+		arg.ID,
 		arg.ActorUserID,
 		arg.Action,
 		arg.ResourceType,
@@ -55,12 +56,12 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 }
 
 const listAuditEventsByPortfolio = `-- name: ListAuditEventsByPortfolio :many
-SELECT id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id,
+SELECT portfolio_id, id, actor_user_id, action, resource_type, resource_id, request_id,
        before_json, after_json, metadata_json, occurred_at
 FROM audit_events
 WHERE portfolio_id = ?
-  AND (? = 0 OR action IN (?, ?, ?))
-  AND (? = 0 OR resource_type IN (?, ?, ?))
+  AND (? = 0 OR action = ?)
+  AND (? = 0 OR resource_type = ?)
   AND (
       ? = 0
       OR occurred_at < ?
@@ -71,19 +72,15 @@ LIMIT ?
 `
 
 type ListAuditEventsByPortfolioParams struct {
-	PortfolioID               []byte
-	FilterAction              interface{}
-	Action                    string
-	LegacyAction              string
-	PlatformAssetAction       string
-	FilterResourceType        interface{}
-	ResourceType              string
-	LegacyResourceType        string
-	PlatformAssetResourceType string
-	HasCursor                 interface{}
-	CursorOccurredAt          time.Time
-	CursorID                  []byte
-	Limit                     int32
+	PortfolioID        []byte
+	FilterAction       interface{}
+	Action             string
+	FilterResourceType interface{}
+	ResourceType       string
+	HasCursor          interface{}
+	CursorOccurredAt   time.Time
+	CursorID           []byte
+	Limit              int32
 }
 
 func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditEventsByPortfolioParams) ([]AuditEvent, error) {
@@ -91,12 +88,8 @@ func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditE
 		arg.PortfolioID,
 		arg.FilterAction,
 		arg.Action,
-		arg.LegacyAction,
-		arg.PlatformAssetAction,
 		arg.FilterResourceType,
 		arg.ResourceType,
-		arg.LegacyResourceType,
-		arg.PlatformAssetResourceType,
 		arg.HasCursor,
 		arg.CursorOccurredAt,
 		arg.CursorOccurredAt,
@@ -111,8 +104,8 @@ func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditE
 	for rows.Next() {
 		var i AuditEvent
 		if err := rows.Scan(
-			&i.ID,
 			&i.PortfolioID,
+			&i.ID,
 			&i.ActorUserID,
 			&i.Action,
 			&i.ResourceType,

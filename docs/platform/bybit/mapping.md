@@ -83,15 +83,16 @@ hold, which fails only its own Account. `ExternalRef` is `userID` from
 
 ## Account Report
 
-| Plutus column              | `unified`, Cross and Portfolio Margin                            | `unified`, Isolated Margin                       | `funding`, `earn`                                |
-| -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| `equity`                   | `totalEquity` (USD, before collateral haircuts)                  | null, so the value is `calculated` from Balances | null, so the value is `calculated` from Balances |
-| `adjusted_equity`          | null                                                             | null                                             | null                                             |
-| `available_equity`         | `totalAvailableBalance` (USD, after haircuts and initial margin) | null                                             | null                                             |
-| `initial_margin_ratio`     | `accountIMRate` as reported                                      | null                                             | null                                             |
-| `maintenance_margin_ratio` | `accountMMRate` as reported                                      | null                                             | null                                             |
-| `unified_margin_ratio`     | null                                                             | null                                             | null                                             |
-| `observed_at`              | local time when the Account's responses arrived                  | same                                             | same                                             |
+| Plutus column                       | `unified`, Cross and Portfolio Margin                            | `unified`, Isolated Margin                       | `funding`, `earn`                                |
+| ----------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| `reported_equity_usd`               | `totalEquity` (USD, before collateral haircuts)                  | null, so the value is `calculated` from Balances | null, so the value is `calculated` from Balances |
+| `adjusted_equity_usd`               | null                                                             | null                                             | null                                             |
+| `available_equity_usd`              | `totalAvailableBalance` (USD, after haircuts and initial margin) | null                                             | null                                             |
+| `reported_initial_margin_ratio`     | `accountIMRate` as reported                                      | null                                             | null                                             |
+| `reported_maintenance_margin_ratio` | `accountMMRate` as reported                                      | null                                             | null                                             |
+| `reported_margin_ratio`             | null                                                             | null                                             | null                                             |
+| `collected_at`                      | local time when the Account's responses arrived                  | same                                             | same                                             |
+| `source_observed_at`                | null                                                             | null                                             | null                                             |
 
 - Bybit documents every account-wide field as not applicable to Isolated Margin,
   so the adapter ignores them there, whatever Bybit returns.
@@ -101,7 +102,7 @@ hold, which fails only its own Account. `ExternalRef` is `userID` from
   initial or maintenance margin by the margin balance in Cross Margin, and by
   the collateral-adjusted equity in Portfolio Margin.
 - `totalMarginBalance` is the wallet balance plus perpetual and futures
-  unrealized PnL, not a haircut-adjusted equity, so `adjusted_equity` stays
+  unrealized PnL, not a haircut-adjusted equity, so `adjusted_equity_usd` stays
   null.
 - Not stored: `totalWalletBalance`, `totalMarginBalance`, `totalPerpUPL`,
   `totalInitialMargin`, `totalMaintenanceMargin`, the `…ByMp` duplicates, and
@@ -226,16 +227,16 @@ refunds are not added to principal without evidence of where their funds reside.
 `/v5/position/list` is read to its last page for linear USDT, linear USDC,
 inverse, and option positions before any position is kept.
 
-| Plutus column               | Source                                                                                                                                                                                  |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_position_ref`     | `<symbol>:<positionIdx>`, such as `DOGEUSDT:0`. `positionIdx` 1 and 2 are the buy and sell sides of hedge mode                                                                          |
-| `side`                      | `side` `Buy` → long, `Sell` → short                                                                                                                                                     |
-| `quantity`, `quantity_unit` | `size`, always positive: in the base coin (`base`) for linear contracts, in USD (`quote`) for inverse contracts                                                                         |
-| `entry_price`, `mark_price` | `avgPrice`, `markPrice`                                                                                                                                                                 |
-| `unrealized_pnl`            | `unrealisedPnl`, in the settlement coin                                                                                                                                                 |
-| `liquidation_price`         | Isolated Margin: `liqPrice`, the position's own. Cross Margin: `liqPrice`, Bybit's estimate for the whole account. Portfolio Margin: null, as Bybit provides none. Empty or `0` is null |
-| `leverage`                  | `leverage`; null in Portfolio Margin, and when empty or `0`                                                                                                                             |
-| `margin`                    | `positionIM`; null in Portfolio Margin, and when empty                                                                                                                                  |
+| Plutus column                             | Source                                                                                                                                                                                  |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `position_key`                            | `<symbol>:<positionIdx>`, such as `DOGEUSDT:0`. `positionIdx` 1 and 2 are the buy and sell sides of hedge mode                                                                          |
+| `side`                                    | `side` `Buy` → long, `Sell` → short                                                                                                                                                     |
+| `source_quantity`, `source_quantity_unit` | `size`, always positive: in the base coin (`base`) for linear contracts, in USD (`quote`) for inverse contracts                                                                         |
+| `entry_price`, `mark_price`               | `avgPrice`, `markPrice`                                                                                                                                                                 |
+| `unrealized_pnl`                          | `unrealisedPnl`, in the settlement coin                                                                                                                                                 |
+| `liquidation_price`                       | Isolated Margin: `liqPrice`, the position's own. Cross Margin: `liqPrice`, Bybit's estimate for the whole account. Portfolio Margin: null, as Bybit provides none. Empty or `0` is null |
+| `leverage`                                | `leverage`; null in Portfolio Margin, and when empty or `0`                                                                                                                             |
+| `margin`                                  | `positionIM`; null in Portfolio Margin, and when empty                                                                                                                                  |
 
 - Rows with `size = 0` are dropped.
 - A nonzero `option` row fails the `unified` report with `normalization`, naming

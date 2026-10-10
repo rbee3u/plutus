@@ -221,3 +221,20 @@
   color: var(--ink);
   font-style: italic;
 }
+
+/* Single-line presentation for excluded Asset status */
+.statusExcluded {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 100%;
+}
+
+.exclusionReason {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}

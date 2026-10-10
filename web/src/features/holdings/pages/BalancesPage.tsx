@@ -54,7 +54,7 @@ export function BalancesPage() {
         filters={filters}
         fallback="Balances could not be loaded."
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
           label="Collected balance total"
@@ -111,7 +111,7 @@ export function BalancesPage() {
             ? "Loading balances."
             : query.isError && !data
               ? "Balances could not be loaded. Retry above."
-              : !data?.context.pointId
+              : !data?.context.cycleId
                 ? NO_POINT
                 : "No balances match these filters at the latest Valuation Point."
         }
@@ -122,7 +122,7 @@ export function BalancesPage() {
         target={manualTarget}
         onClose={() => setManualTarget(null)}
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these balances." />
       ) : null}
     </section>

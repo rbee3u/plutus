@@ -278,16 +278,11 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		t.Fatalf("batch Margin Mode %q with %d reports", batch.MarginMode, len(batch.Reports))
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
-		for _, balance := range report.Balances {
-			if balance.Name != "" {
-				t.Fatalf("%s %s: Bybit reports no full name", report.AccountType, balance.AssetSymbol)
-			}
-		}
 		for _, price := range batch.Prices {
-			if price.ObservedAt.After(report.ObservedAt) {
+			if price.RetrievedAt.After(report.CollectedAt) {
 				t.Fatal("a price must be observed before the reports it values")
 			}
 		}
@@ -295,8 +290,8 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 
 	unified := reportOf(t, &batch, TypeUnified)
 	if text(unified.Equity) != "10000" || text(unified.AvailableEquity) != "8000" ||
-		text(unified.InitialMarginRatio) != "0.1" || text(unified.MaintenanceMarginRatio) != "0.01" ||
-		unified.AdjustedEquity != nil || unified.UnifiedMarginRatio != nil {
+		text(unified.ReportedInitialMarginRatio) != "0.1" || text(unified.ReportedMaintenanceMarginRatio) != "0.01" ||
+		unified.AdjustedEquity != nil || unified.ReportedMarginRatio != nil {
 		t.Fatalf("Portfolio Margin account figures = %+v", unified)
 	}
 	wantBalances := map[string]adapters.Balance{
@@ -320,11 +315,11 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	for i := range unified.Positions {
 		position := &unified.Positions[i]
 		if position.Leverage != nil || position.LiquidationPrice != nil || position.Margin != nil {
-			t.Fatalf("%s: a Portfolio Margin position has no leverage, liquidation price, or margin of its own", position.PlatformPositionRef)
+			t.Fatalf("%s: a Portfolio Margin position has no leverage, liquidation price, or margin of its own", position.PositionKey)
 		}
 		if position.EntryPrice == nil || position.MarkPrice == nil ||
-			(position.FuturesContract.Kind == adapters.KindLinearPerpetual && position.QuantityUnit != adapters.UnitBase) ||
-			(position.FuturesContract.Kind == adapters.KindInversePerpetual && position.QuantityUnit != adapters.UnitQuote) {
+			(position.FuturesContract.Kind == adapters.KindLinearPerpetual && position.SourceQuantityUnit != adapters.UnitBase) ||
+			(position.FuturesContract.Kind == adapters.KindInversePerpetual && position.SourceQuantityUnit != adapters.UnitQuote) {
 			t.Fatalf("linear position = %+v", position)
 		}
 	}
@@ -353,10 +348,10 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 		t.Fatal(err)
 	}
 	unified := reportOf(t, &batch, TypeUnified)
-	if batch.MarginMode != adapters.MarginBybitIsolated || unified.Status != adapters.StatusOK {
+	if batch.MarginMode != adapters.MarginBybitIsolated || unified.Status != adapters.StatusSucceeded {
 		t.Fatalf("batch = %+v", batch)
 	}
-	if unified.Equity != nil || unified.AvailableEquity != nil || unified.InitialMarginRatio != nil || unified.MaintenanceMarginRatio != nil {
+	if unified.Equity != nil || unified.AvailableEquity != nil || unified.ReportedInitialMarginRatio != nil || unified.ReportedMaintenanceMarginRatio != nil {
 		t.Fatal("Bybit documents the account-wide figures as not applicable to Isolated Margin")
 	}
 	if len(unified.Balances) != 1 || unified.Balances[0].AssetSymbol != "BTC" || unified.Balances[0].Equity != "0.00990587" ||
@@ -367,8 +362,8 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 		t.Fatalf("positions = %+v", unified.Positions)
 	}
 	position := unified.Positions[0]
-	if position.PlatformPositionRef != "BTCUSD:0" || position.Side != adapters.SideShort || position.Quantity != "300" ||
-		position.QuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInversePerpetual ||
+	if position.PositionKey != "BTCUSD:0" || position.Side != adapters.SideShort || position.SourceQuantity != "300" ||
+		position.SourceQuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInversePerpetual ||
 		position.FuturesContract.SettlementAssetSymbol != "BTC" || text(position.EntryPrice) != "27464.50441675" || text(position.MarkPrice) != "28224.5" ||
 		text(position.LiquidationPrice) != "30191.5" || text(position.Leverage) != "10" || text(position.Margin) != "0.00010923" ||
 		text(position.UnrealizedPnl) != "-0.00029413" {
@@ -383,11 +378,11 @@ func TestCrossMarginMapsAccountFigures(t *testing.T) {
 		t.Fatal(err)
 	}
 	unified := reportOf(t, &batch, TypeUnified)
-	if batch.MarginMode != adapters.MarginBybitCross || unified.Status != adapters.StatusOK {
+	if batch.MarginMode != adapters.MarginBybitCross || unified.Status != adapters.StatusSucceeded {
 		t.Fatalf("batch = %+v", batch)
 	}
 	if text(unified.Equity) != "3.31216591" || text(unified.AvailableEquity) != "3.00326056" ||
-		text(unified.InitialMarginRatio) != "0" || text(unified.MaintenanceMarginRatio) != "0" || unified.AdjustedEquity != nil {
+		text(unified.ReportedInitialMarginRatio) != "0" || text(unified.ReportedMaintenanceMarginRatio) != "0" || unified.AdjustedEquity != nil {
 		t.Fatalf("Cross Margin account figures = %+v", unified)
 	}
 	if len(unified.Balances) != 0 {
@@ -468,7 +463,7 @@ func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("Earn = %+v: only the synthetic 20 USDT Dual Asset principal", earn)
 	}
 }
@@ -491,7 +486,7 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || earn.Balances[0].AssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 || earn.Balances[0].AssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
 		earn.Balances[1].AssetSymbol != "USDT" || earn.Balances[1].Equity != "100" {
 		t.Fatalf("Earn = %+v: both pages, Active and Redeeming", earn)
 	}
@@ -509,7 +504,7 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusOK {
+			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
 				t.Fatalf("only Earn fails with normalization: %+v", batch.Reports)
 			}
 		})
@@ -523,7 +518,7 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
 		t.Fatalf("Earn = %+v: the synthetic 20 USDT of savings plus 201 active and 80 redeeming", earn)
 	}
 	for _, path := range r.paths() {
@@ -545,7 +540,7 @@ func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 		!strings.Contains(earn.ErrorDetail, "500.00") || !strings.Contains(earn.ErrorDetail, "20.00") {
 		t.Fatalf("Earn = %+v: Bybit's valuation exceeds the itemized principal", earn)
 	}
-	if reportOf(t, &batch, TypeUnified).Status != adapters.StatusOK || reportOf(t, &batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, &batch, TypeUnified).Status != adapters.StatusSucceeded || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatal("the Earn check fails only Earn")
 	}
 
@@ -560,7 +555,7 @@ func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if earn := reportOf(t, &batch, TypeEarn); earn.Status != adapters.StatusOK {
+			if earn := reportOf(t, &batch, TypeEarn); earn.Status != adapters.StatusSucceeded {
 				t.Fatalf("Earn = %+v", earn)
 			}
 		})
@@ -704,8 +699,8 @@ func TestPositionMapping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if position.QuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInverseDelivery || position.FuturesContract.ExpiryAt == nil ||
-		position.Side != adapters.SideShort || position.PlatformPositionRef != "BTCUSDZ26:2" || position.LiquidationPrice != nil || text(position.Leverage) != "5" {
+	if position.SourceQuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInverseDelivery || position.FuturesContract.ExpiryAt == nil ||
+		position.Side != adapters.SideShort || position.PositionKey != "BTCUSDZ26:2" || position.LiquidationPrice != nil || text(position.Leverage) != "5" {
 		t.Fatalf("inverse delivery hedge position = %+v", position)
 	}
 

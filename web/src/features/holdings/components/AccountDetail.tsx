@@ -11,7 +11,7 @@ import type { ManualTarget } from "../dialogs/manual";
 import { useAccountReport } from "../hooks/useAccountReport";
 import { BalancesTable } from "./BalancesTable";
 import { DualPositionsTable } from "./DualPositionsTable";
-import { EarnPositionsTable, EarnBalanceSummaries } from "./EarnPositionsTable";
+import { EarnPositionsTable } from "./EarnPositionsTable";
 import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -20,18 +20,20 @@ import shared from "@/shared/styles/page.module.css";
 export function AccountDetail({
   portfolioId,
   account,
-  pointId,
+  cycleId,
+  valuationRevision,
   timezone,
   onManual,
 }: {
   portfolioId: string;
   account: AccountValuation;
-  pointId: string;
+  cycleId: string;
+  valuationRevision: string | null;
   timezone?: string;
   onManual?: (target: ManualTarget) => void;
 }) {
   const { balances, positions, dualPositions, earnPositions, isManual, isDual, isEarn } =
-    useAccountReport(portfolioId, account, pointId);
+    useAccountReport(portfolioId, account, cycleId, valuationRevision);
   const issues = [
     ...(balances.data?.issues ?? []),
     ...(isDual
@@ -44,18 +46,18 @@ export function AccountDetail({
   const showEarn =
     isEarn &&
     (!earnPositions.isSuccess ||
-      earnPositions.data.items.length > 0 ||
-      earnPositions.data.balanceSummaries.length > 0 ||
-      !earnPositions.data.detailsCollected ||
+      (earnPositions.data?.items.length ?? 0) > 0 ||
       earnPositions.isError);
   const showDual =
     isDual &&
-    (!dualPositions.isSuccess || dualPositions.data.items.length > 0 || dualPositions.isError);
+    (!dualPositions.isSuccess ||
+      (dualPositions.data?.items.length ?? 0) > 0 ||
+      dualPositions.isError);
   const showFutures =
     !isDual &&
     !isEarn &&
     !isManual &&
-    (!positions.isSuccess || positions.data.items.length > 0 || positions.isError);
+    (!positions.isSuccess || (positions.data?.items.length ?? 0) > 0 || positions.isError);
 
   return (
     <div className={styles.accountDetail}>
@@ -81,18 +83,8 @@ export function AccountDetail({
             timezone={earnPositions.data?.context.timezone}
             loading={earnPositions.isPending}
             empty={
-              earnPositions.isError
-                ? "Earn positions could not be loaded. Retry above."
-                : earnPositions.data?.balanceSummaries.length
-                  ? "Product details were not collected. Known balances are shown below."
-                  : !earnPositions.data?.detailsCollected
-                    ? "No successful Earn report with product details is available."
-                    : undefined
+              earnPositions.isError ? "Earn positions could not be loaded. Retry above." : undefined
             }
-          />
-          <EarnBalanceSummaries
-            items={earnPositions.data?.balanceSummaries ?? []}
-            timezone={earnPositions.data?.context.timezone}
           />
         </>
       ) : null}
@@ -166,7 +158,6 @@ export function AccountDetail({
 }
 
 function AccountMetrics({ account }: { account: AccountValuation }) {
-  // Short labels keep the six figures on one line.
   const figures = [
     { label: "Equity", value: account.equity, format: formatAmount },
     {
@@ -190,8 +181,8 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
       format: formatRatio,
     },
     {
-      label: "UniMMR",
-      value: account.unifiedMarginRatio,
+      label: marginRatioLabel(account),
+      value: account.marginRatio,
       format: formatRatio,
     },
   ];
@@ -209,6 +200,18 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
       ))}
     </div>
   );
+}
+
+function marginRatioLabel(account: AccountValuation) {
+  if (account.platform === "binance") {
+    if (account.accountType === "cross_margin") {
+      return "Margin level";
+    }
+    if (account.accountType === "portfolio_margin") {
+      return "UniMMR";
+    }
+  }
+  return "Margin ratio";
 }
 
 function AccountFeedback({ account, timezone }: { account: AccountValuation; timezone?: string }) {

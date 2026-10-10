@@ -47,7 +47,7 @@ func (a *Adapter) trading(ctx context.Context, c *client, mode adapters.MarginMo
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report.ObservedAt = a.now()
+	report.CollectedAt = a.now()
 	if report.Balances, err = mapTradingBalances(account.Details); err != nil {
 		return adapters.AccountReport{}, err
 	}
@@ -64,29 +64,22 @@ func mapTradingAccount(in *tradingAccount) (adapters.AccountReport, error) {
 	if _, err := adapters.Decimal(where, "totalEq", in.TotalEq); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	parsed, err := optionalFields(where, "",
+	_, err := optionalFields(where, "",
 		field{"adjEq", in.AdjEq}, field{"availEq", in.AvailEq}, field{"imr", in.IMR}, field{"mmr", in.MMR}, field{"mgnRatio", in.MgnRatio})
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
 	report := adapters.AccountReport{
-		AccountType:        TypeTrading,
-		Status:             adapters.StatusOK,
-		Equity:             adapters.Plain(in.TotalEq),
-		AdjustedEquity:     adapters.Plain(in.AdjEq),
-		AvailableEquity:    adapters.Plain(in.AvailEq),
-		UnifiedMarginRatio: adapters.Plain(in.MgnRatio),
+		AccountType:         TypeTrading,
+		Status:              adapters.StatusSucceeded,
+		Equity:              adapters.Plain(in.TotalEq),
+		AdjustedEquity:      adapters.Plain(in.AdjEq),
+		AvailableEquity:     adapters.Plain(in.AvailEq),
+		ReportedMarginRatio: adapters.Plain(in.MgnRatio),
 	}
-	// OKX reports the margin requirements as USD amounts, like Binance, so the stored ratios are
-	// derived against the adjusted equity that OKX itself divides by.
-	if adjusted := parsed["adjEq"]; adjusted.Sign() > 0 {
-		if strings.TrimSpace(in.IMR) != "" {
-			report.InitialMarginRatio = adapters.Ratio(parsed["imr"], adjusted)
-		}
-		if strings.TrimSpace(in.MMR) != "" {
-			report.MaintenanceMarginRatio = adapters.Ratio(parsed["mmr"], adjusted)
-		}
-	}
+	report.InitialMarginRequirementUSD = adapters.Plain(in.IMR)
+	report.MaintenanceMarginRequirementUSD = adapters.Plain(in.MMR)
+
 	return report, nil
 }
 
@@ -113,8 +106,11 @@ func mapTradingBalances(rows []tradingBalance) ([]adapters.Balance, error) {
 		for _, value := range parsed {
 			nonzero = nonzero || value.Sign() != 0
 		}
-		if !nonzero || strings.TrimSpace(row.Ccy) == "" {
+		if !nonzero {
 			continue
+		}
+		if strings.TrimSpace(row.Ccy) == "" {
+			return nil, adapters.Malformed(where, "the currency of a nonzero balance")
 		}
 		out = append(out, adapters.Balance{
 			AssetSymbol:         row.Ccy,
@@ -175,8 +171,11 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 		if err != nil {
 			return adapters.AccountReport{}, err
 		}
-		if total.Sign() == 0 || strings.TrimSpace(row.Ccy) == "" {
+		if total.Sign() == 0 && available.Sign() == 0 {
 			continue
+		}
+		if strings.TrimSpace(row.Ccy) == "" {
+			return adapters.AccountReport{}, adapters.Malformed(where, "the currency of a nonzero balance")
 		}
 		balances = append(balances, adapters.Balance{
 			AssetSymbol:         row.Ccy,
@@ -184,5 +183,5 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 			AvailableToWithdraw: adapters.Reported(row.AvailBal, available),
 		})
 	}
-	return adapters.AccountReport{AccountType: TypeFunding, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
+	return adapters.AccountReport{AccountType: TypeFunding, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances}, nil
 }

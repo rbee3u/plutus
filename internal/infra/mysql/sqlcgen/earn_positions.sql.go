@@ -7,52 +7,52 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
-const getEarnDetailsCollected = `-- name: GetEarnDetailsCollected :one
-SELECT earn_details_collected FROM account_reports
-WHERE portfolio_id = ? AND id = ?
-`
-
-type GetEarnDetailsCollectedParams struct {
-	PortfolioID []byte
-	ID          []byte
-}
-
-func (q *Queries) GetEarnDetailsCollected(ctx context.Context, arg GetEarnDetailsCollectedParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, getEarnDetailsCollected, arg.PortfolioID, arg.ID)
-	var earn_details_collected bool
-	err := row.Scan(&earn_details_collected)
-	return earn_details_collected, err
-}
-
 const insertEarnPosition = `-- name: InsertEarnPosition :exec
-INSERT INTO earn_positions (report_id, portfolio_id, platform_position_ref, observation_json)
-VALUES (?, ?, ?, ?)
+INSERT INTO earn_positions (portfolio_id, report_id, position_key, product_ref, product_name, product_type, granularity, amount_basis, status, subscribed_at, maturity_at, details_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertEarnPositionParams struct {
-	ReportID            []byte
-	PortfolioID         []byte
-	PlatformPositionRef string
-	ObservationJson     sqljson.Column
+	PortfolioID  []byte
+	ReportID     []byte
+	PositionKey  string
+	ProductRef   sql.NullString
+	ProductName  sql.NullString
+	ProductType  string
+	Granularity  string
+	AmountBasis  string
+	Status       sql.NullString
+	SubscribedAt sql.NullTime
+	MaturityAt   sql.NullTime
+	DetailsJson  sqljson.Column
 }
 
 func (q *Queries) InsertEarnPosition(ctx context.Context, arg InsertEarnPositionParams) error {
 	_, err := q.db.ExecContext(ctx, insertEarnPosition,
-		arg.ReportID,
 		arg.PortfolioID,
-		arg.PlatformPositionRef,
-		arg.ObservationJson,
+		arg.ReportID,
+		arg.PositionKey,
+		arg.ProductRef,
+		arg.ProductName,
+		arg.ProductType,
+		arg.Granularity,
+		arg.AmountBasis,
+		arg.Status,
+		arg.SubscribedAt,
+		arg.MaturityAt,
+		arg.DetailsJson,
 	)
 	return err
 }
 
 const listEarnPositionsByReport = `-- name: ListEarnPositionsByReport :many
-SELECT report_id, portfolio_id, platform_position_ref, observation_json FROM earn_positions WHERE portfolio_id = ? AND report_id = ?
-ORDER BY platform_position_ref
+SELECT portfolio_id, report_id, position_key, product_ref, product_name, product_type, granularity, amount_basis, status, subscribed_at, maturity_at, details_json FROM earn_positions WHERE portfolio_id = ? AND report_id = ?
+ORDER BY position_key
 `
 
 type ListEarnPositionsByReportParams struct {
@@ -70,10 +70,18 @@ func (q *Queries) ListEarnPositionsByReport(ctx context.Context, arg ListEarnPos
 	for rows.Next() {
 		var i EarnPosition
 		if err := rows.Scan(
-			&i.ReportID,
 			&i.PortfolioID,
-			&i.PlatformPositionRef,
-			&i.ObservationJson,
+			&i.ReportID,
+			&i.PositionKey,
+			&i.ProductRef,
+			&i.ProductName,
+			&i.ProductType,
+			&i.Granularity,
+			&i.AmountBasis,
+			&i.Status,
+			&i.SubscribedAt,
+			&i.MaturityAt,
+			&i.DetailsJson,
 		); err != nil {
 			return nil, err
 		}

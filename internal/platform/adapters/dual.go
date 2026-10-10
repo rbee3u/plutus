@@ -10,31 +10,23 @@ import (
 
 const TypeDualInvestment AccountType = "dual_investment"
 
-// ReportScope identifies the holdings represented by a newly collected report.
-func ReportScope(platform Platform, account AccountType) uint16 {
-	if (platform == PlatformBinance || platform == PlatformOKX || platform == PlatformBybit) && (account == "earn" || account == TypeDualInvestment) {
-		return 2
-	}
-	return 1
-}
-
 // DualPosition is one outstanding subscription. Principal is also represented in
 // Balances; the position is descriptive and never adds to Account Valuation.
 type DualPosition struct {
-	PlatformPositionRef string
-	ProductRef          *string
-	OrderRef            *string
-	BaseAssetSymbol     *string
-	QuoteAssetSymbol    *string
-	InvestAssetSymbol   string
-	Principal           string
-	Direction           *string
-	TargetPrice         *string
-	ExpiryAt            *time.Time
-	AnnualizedRate      *string
-	RateKind            *string
-	Status              string
-	SubscribedAt        *time.Time
+	PositionKey          string
+	ProductRef           *string
+	OrderRef             *string
+	BaseAssetSymbol      *string
+	QuoteAssetSymbol     *string
+	PrincipalAssetSymbol string
+	Principal            string
+	Direction            *string
+	TargetPrice          *string
+	ExpiryAt             *time.Time
+	AnnualizedRate       *string
+	RateKind             *string
+	Status               string
+	SubscribedAt         *time.Time
 }
 
 // MissingFields names unavailable product terms without making known principal unknown.
@@ -65,20 +57,19 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 		return DualPosition{}, Malformed(where, "dual position")
 	}
 	p := *input
-	p.PlatformPositionRef = strings.TrimSpace(p.PlatformPositionRef)
-	if p.PlatformPositionRef == "" || len(p.PlatformPositionRef) > 128 {
+	if p.PositionKey == "" || len(p.PositionKey) > 255 {
 		return p, Malformed(where, "dual position id")
 	}
 	for _, ref := range []*string{p.ProductRef, p.OrderRef} {
-		if ref != nil && len(*ref) > 128 {
+		if ref != nil && len(*ref) > 255 {
 			return p, Malformed(where, "dual product or order id")
 		}
 	}
-	p.InvestAssetSymbol = strings.ToUpper(strings.TrimSpace(p.InvestAssetSymbol))
-	if p.InvestAssetSymbol == "" {
+	p.PrincipalAssetSymbol = strings.ToUpper(strings.TrimSpace(p.PrincipalAssetSymbol))
+	if p.PrincipalAssetSymbol == "" {
 		return p, Malformed(where, "dual investment currency")
 	}
-	principal, err := Decimal(where, "dual principal of "+p.InvestAssetSymbol, p.Principal)
+	principal, err := Decimal(where, "dual principal of "+p.PrincipalAssetSymbol, p.Principal)
 	if err != nil {
 		return p, err
 	}
@@ -134,7 +125,7 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 		if *p.Direction == "sell_high" {
 			expected = p.BaseAssetSymbol
 		}
-		if expected != nil && *expected != p.InvestAssetSymbol {
+		if expected != nil && *expected != p.PrincipalAssetSymbol {
 			return p, Malformed(where, "dual direction matching principal currency")
 		}
 	}
@@ -143,7 +134,7 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 			return p, Malformed(where, "distinct dual currencies")
 		}
 		var direction string
-		switch p.InvestAssetSymbol {
+		switch p.PrincipalAssetSymbol {
 		case *p.BaseAssetSymbol:
 			direction = "sell_high"
 		case *p.QuoteAssetSymbol:

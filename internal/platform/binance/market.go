@@ -23,9 +23,9 @@ func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapte
 type lastPrices map[string]string
 
 // quote returns the last price of symbol in quote; it is the batch's adapters.QuoteLookup.
-func (p lastPrices) quote(symbol, quote string) (string, bool) {
+func (p lastPrices) quote(symbol, quote string) (adapters.Quote, bool) {
 	price, ok := p[symbol+quote]
-	return price, ok
+	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
 // usd returns the USD value of one unit of symbol, for the Earn completeness check.

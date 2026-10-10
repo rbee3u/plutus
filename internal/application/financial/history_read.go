@@ -20,36 +20,41 @@ type PointPage struct {
 
 // PointsPage reads only the requested raw page. Count and page use one read snapshot.
 func (s *Service) PointsPage(ctx context.Context, p PortfolioContext, from, to time.Time, offset, limit int) (PointPage, error) {
-	if limit == 0 {
-		limit = 20
-	}
-	if !to.After(from) || offset < 0 || offset > math.MaxInt32 || (limit != 10 && limit != 20 && limit != 50) {
-		return PointPage{}, ErrInvalid
-	}
-	return mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (PointPage, error) {
-		total, err := q.CountValuationPointsBetween(ctx, sqlcgen.CountValuationPointsBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
-		if err != nil {
-			return PointPage{}, err
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PointPage, error) {
+		if limit == 0 {
+			limit = 20
 		}
-		rows, err := q.ListValuationPointPage(ctx, sqlcgen.ListValuationPointPageParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC(), Offset: int32(offset), Limit: int32(limit)}) // #nosec G115 -- offset and limit are bounded above.
-		if err != nil {
-			return PointPage{}, err
+		if !to.After(from) || offset < 0 || offset > math.MaxInt32 || (limit != 10 && limit != 20 && limit != 50) {
+			return PointPage{}, ErrInvalid
 		}
-		items := make([]valuation.Point, 0, len(rows))
-		for _, row := range rows {
-			point, err := pointSummaryFromRow(sqlcgen.ListValuationPointSummariesBetweenRow(row))
+		return mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (PointPage, error) {
+			total, err := q.CountValuationPointsBetween(ctx, sqlcgen.CountValuationPointsBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 			if err != nil {
 				return PointPage{}, err
 			}
-			items = append(items, point)
-		}
-		return PointPage{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
+			rows, err := q.ListValuationPointPage(ctx, sqlcgen.ListValuationPointPageParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC(), Offset: int32(offset), Limit: int32(limit)}) // #nosec G115 -- offset and limit are bounded above.
+			if err != nil {
+				return PointPage{}, err
+			}
+			items := make([]valuation.Point, 0, len(rows))
+			for _, row := range rows {
+				point, err := pointSummaryFromRow(sqlcgen.ValuationPoint(row))
+				if err != nil {
+					return PointPage{}, err
+				}
+				items = append(items, point)
+			}
+			if err := s.valuation.WithBoundaryTotals(ctx, items); err != nil {
+				return PointPage{}, err
+			}
+			return PointPage{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
+		})
 	})
 }
 
 func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to time.Time, granularity string) ([]valuation.Point, error) {
 	if granularity == "raw" || granularity == "" {
-		rows, err := s.q.ListValuationPointSummariesBetween(ctx, sqlcgen.ListValuationPointSummariesBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+		rows, err := mysql.Queries(ctx, s.db).ListValuationPointSummariesBetween(ctx, sqlcgen.ListValuationPointSummariesBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 		if err != nil {
 			return nil, err
 		}
@@ -61,19 +66,19 @@ func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to 
 			}
 			out = append(out, point)
 		}
-		return out, nil
+		return out, s.valuation.WithBoundaryTotals(ctx, out)
 	}
-	headers, err := s.q.ListValuationPointHeadersBetween(ctx, sqlcgen.ListValuationPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+	headers, err := mysql.Queries(ctx, s.db).ListValuationPointHeadersBetween(ctx, sqlcgen.ListValuationPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 	if err != nil {
 		return nil, err
 	}
 	points := make([]valuation.Point, 0, len(headers))
 	for _, header := range headers {
-		id, err := uuid.FromBytes(header.ID)
+		id, err := uuid.FromBytes(header.CycleID)
 		if err != nil {
 			return nil, err
 		}
-		points = append(points, valuation.Point{ID: id, EvaluatedAt: header.EvaluatedAt})
+		points = append(points, valuation.Point{CycleID: id, EvaluatedAt: header.EvaluatedAt})
 	}
 	selected := sample(points, granularity, p.location())
 	out := make([]valuation.Point, 0, len(selected))
@@ -82,28 +87,27 @@ func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to 
 		batch := selected[start:min(start+500, len(selected))]
 		ids := make([][]byte, 0, len(batch))
 		for _, point := range batch {
-			ids = append(ids, point.ID[:])
+			ids = append(ids, point.CycleID[:])
 		}
-		rows, err := s.q.ListValuationPointSummariesByIDs(ctx, sqlcgen.ListValuationPointSummariesByIDsParams{PortfolioID: p.ID[:], Ids: ids})
+		rows, err := mysql.Queries(ctx, s.db).ListValuationPointSummariesByIDs(ctx, sqlcgen.ListValuationPointSummariesByIDsParams{PortfolioID: p.ID[:], Ids: ids})
 		if err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
-			point, err := pointSummaryFromRow(sqlcgen.ListValuationPointSummariesBetweenRow(row))
+			point, err := pointSummaryFromRow(sqlcgen.ValuationPoint(row))
 			if err != nil {
 				return nil, err
 			}
 			out = append(out, point)
 		}
 	}
-	return out, nil
+	return out, s.valuation.WithBoundaryTotals(ctx, out)
 }
 
-func pointSummaryFromRow(row sqlcgen.ListValuationPointSummariesBetweenRow) (valuation.Point, error) {
+func pointSummaryFromRow(row sqlcgen.ValuationPoint) (valuation.Point, error) {
 	return valuation.PointFromRow(&sqlcgen.ValuationPoint{
-		ID: row.ID, PortfolioID: row.PortfolioID, JobID: row.JobID, EvaluatedAt: row.EvaluatedAt,
+		PortfolioID: row.PortfolioID, CycleID: row.CycleID, EvaluatedAt: row.EvaluatedAt,
 		TotalUsd: row.TotalUsd, AccountCount: row.AccountCount, StaleAccountCount: row.StaleAccountCount,
-		IncompleteAccountCount: row.IncompleteAccountCount, BoundaryContributionUsd: row.BoundaryContributionUsd,
-		BoundaryWithdrawalUsd: row.BoundaryWithdrawalUsd, RecalculatedAt: row.RecalculatedAt, CreatedAt: row.CreatedAt,
+		IncompleteAccountCount: row.IncompleteAccountCount, DetailState: row.DetailState, CalculationVersion: row.CalculationVersion,
 	})
 }

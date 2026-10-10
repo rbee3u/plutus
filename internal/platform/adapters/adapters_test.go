@@ -130,17 +130,17 @@ func TestCollectAccountsFailsOnlyTheFailingAccount(t *testing.T) {
 
 	ctx := context.Background()
 	accounts := []AccountType{"spot", "earn"}
-	reports, err := CollectAccounts(ctx, accounts, func(_ context.Context, accountType AccountType) (AccountReport, error) {
+	reports, err := CollectAccounts(ctx, accounts, time.Now, func(_ context.Context, accountType AccountType) (AccountReport, error) {
 		if accountType == "earn" {
 			return AccountReport{}, NewError(ClassUnsupported, "no")
 		}
-		return AccountReport{AccountType: accountType, Status: StatusOK}, nil
+		return AccountReport{AccountType: accountType, Status: StatusSucceeded}, nil
 	})
-	if err != nil || len(reports) != 2 || reports[0].Status != StatusOK || reports[1].Status != StatusFailed || reports[1].ErrorClass != ClassUnsupported {
+	if err != nil || len(reports) != 2 || reports[0].Status != StatusSucceeded || reports[1].Status != StatusFailed || reports[1].ErrorClass != ClassUnsupported {
 		t.Fatalf("reports = %+v, err = %v", reports, err)
 	}
 
-	_, err = CollectAccounts(ctx, accounts, func(context.Context, AccountType) (AccountReport, error) {
+	_, err = CollectAccounts(ctx, accounts, time.Now, func(context.Context, AccountType) (AccountReport, error) {
 		return AccountReport{}, NewError(ClassTemporary, "down")
 	})
 	if class, _ := Classify(err); class != ClassTemporary {
@@ -148,7 +148,7 @@ func TestCollectAccountsFailsOnlyTheFailingAccount(t *testing.T) {
 	}
 
 	calls := 0
-	_, err = CollectAccounts(ctx, accounts, func(context.Context, AccountType) (AccountReport, error) {
+	_, err = CollectAccounts(ctx, accounts, time.Now, func(context.Context, AccountType) (AccountReport, error) {
 		calls++
 		return AccountReport{}, NewError(ClassAuthentication, "bad key")
 	})
@@ -187,9 +187,9 @@ func TestQuotePricesPicksTheFirstQuotedPair(t *testing.T) {
 	t.Parallel()
 
 	quotes := map[string]string{"BTC/USDT": "60000", "ETH/USDC": "3000"}
-	lookup := func(symbol, quote string) (string, bool) {
+	lookup := func(symbol, quote string) (Quote, bool) {
 		price, ok := quotes[symbol+"/"+quote]
-		return price, ok
+		return Quote{Price: price, SourceMarketRef: symbol + "/" + quote}, ok
 	}
 	at := time.Date(2026, 9, 25, 0, 0, 0, 0, time.UTC)
 	reports := []AccountReport{{Balances: []Balance{{AssetSymbol: "ETH"}, {AssetSymbol: "BTC"}, {AssetSymbol: "USDT"}, {AssetSymbol: "DOGE"}}}}

@@ -75,8 +75,10 @@ describe("valuationPointRows", () => {
 
   it("renders rawPointIssuesCell quietly when healthy", () => {
     const item: ValuationPointSummary = {
-      id: "pt1",
-      jobId: "jb1",
+      cycleId: "pt1",
+      valuationRevision: "pt1:1",
+      calculationVersion: 1,
+      detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
       totalUsd: "132055.51",
       completeness: "complete",
@@ -92,8 +94,10 @@ describe("valuationPointRows", () => {
 
   it("renders rawPointIssuesCell badges when stale or incomplete accounts exist", () => {
     const item: ValuationPointSummary = {
-      id: "pt2",
-      jobId: "jb2",
+      cycleId: "pt2",
+      valuationRevision: "pt2:1",
+      calculationVersion: 1,
+      detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
       totalUsd: "132055.51",
       completeness: "complete",
@@ -115,8 +119,10 @@ describe("valuationPointRows", () => {
       periodStart: "2026-10-09T00:00:00Z",
       periodEnd: "2026-10-10T00:00:00Z",
       point: {
-        id: "p2",
-        jobId: "j2",
+        cycleId: "p2",
+        valuationRevision: "p2:1",
+        calculationVersion: 1,
+        detailState: "full" as const,
         evaluatedAt: "2026-10-09T14:12:00Z",
         totalUsd: "132055.51",
         completeness: "complete",
@@ -135,8 +141,10 @@ describe("valuationPointRows", () => {
       periodStart: "2026-10-08T00:00:00Z",
       periodEnd: "2026-10-09T00:00:00Z",
       point: {
-        id: "p1",
-        jobId: "j1",
+        cycleId: "p1",
+        valuationRevision: "p1:1",
+        calculationVersion: 1,
+        detailState: "full" as const,
         evaluatedAt: "2026-10-08T23:37:00Z",
         totalUsd: "131558.05",
         completeness: "complete",
@@ -159,8 +167,10 @@ describe("valuationPointRows", () => {
 
   it("constructs rawPointRow with change from previous point", () => {
     const item: ValuationPointSummary = {
-      id: "pt2",
-      jobId: "jb2",
+      cycleId: "pt2",
+      valuationRevision: "pt2:1",
+      calculationVersion: 1,
+      detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
       totalUsd: "132055.51",
       completeness: "complete",
@@ -171,8 +181,10 @@ describe("valuationPointRows", () => {
       boundaryWithdrawalUsd: "0",
     };
     const prev: ValuationPointSummary = {
-      id: "pt1",
-      jobId: "jb1",
+      cycleId: "pt1",
+      valuationRevision: "pt1:1",
+      calculationVersion: 1,
+      detailState: "full" as const,
       evaluatedAt: "2026-10-09T12:17:00Z",
       totalUsd: "131989.18",
       completeness: "complete",

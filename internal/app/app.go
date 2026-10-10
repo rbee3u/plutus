@@ -11,11 +11,12 @@ import (
 	"github.com/rbee3u/plutus/internal/application/capital"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/application/retention"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
@@ -38,7 +39,8 @@ type Services struct {
 	Valuation   *valuation.Service
 	Financial   *financial.Service
 	Collection  *collection.Service
-	Jobs        *jobs.Service
+	Cycles      *cycles.Service
+	Retention   *retention.Service
 	Audit       *audit.Service
 	Idempotency *idempotency.Store
 }
@@ -56,8 +58,7 @@ func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *sl
 	if err != nil {
 		return nil, err
 	}
-	jobsSvc := jobs.NewService(db)
-	catalogSvc := catalog.NewService(db, jobsSvc)
+	catalogSvc := catalog.NewService(db)
 	valuationSvc := valuation.NewService(db)
 	manualSvc := manual.NewService(db, catalogSvc)
 	return &Services{
@@ -72,7 +73,8 @@ func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *sl
 		Valuation:   valuationSvc,
 		Financial:   financial.NewService(db, valuationSvc),
 		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manualSvc, Valuation: valuationSvc, Stagger: collection.IdentityDelay, Logger: logger}),
-		Jobs:        jobsSvc,
+		Cycles:      cycles.NewService(db),
+		Retention:   retention.NewService(db),
 		Audit:       audit.NewService(db),
 		Idempotency: idempotency.NewStore(db),
 	}, nil

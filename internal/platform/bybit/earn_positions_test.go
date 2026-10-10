@@ -29,7 +29,7 @@ func TestEarnCatalogueMetadataIsOptionalAndSelected(t *testing.T) {
 				t.Fatal(err)
 			}
 			earn := reportOf(t, &batch, TypeEarn)
-			if earn.Status != adapters.StatusOK || !earn.EarnDetailsCollected || r.count(epEarnProduct.path) != 1 || earn.Balances[0].Equity != "20" || reportOf(t, &batch, TypeDualInvestment).Status != adapters.StatusOK {
+			if earn.Status != adapters.StatusSucceeded || r.count(epEarnProduct.path) != 1 || earn.Balances[0].Equity != "20" || reportOf(t, &batch, TypeDualInvestment).Status != adapters.StatusSucceeded {
 				t.Fatalf("optional failure changed funds: %+v", earn)
 			}
 			p := earn.EarnPositions[0]
@@ -64,11 +64,11 @@ func TestEarnFixedPositionsKeepAPYAndEarlyRedemption(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	if earn.Status != adapters.StatusOK || len(earn.EarnPositions) != 3 {
+	if earn.Status != adapters.StatusSucceeded || len(earn.EarnPositions) != 3 {
 		t.Fatalf("report: %+v", earn)
 	}
 	p := earn.EarnPositions[2]
-	if p.PlatformPositionRef != "fixed:4065" || *p.Status != "EarlyRedemptionProcessing" || p.MaturityAt == nil || p.SubscribedAt == nil || p.Rates[0].Kind != "apy" || p.Rewards[0].Kind != "estimated" {
+	if p.PositionKey != "fixed:4065" || *p.Status != "EarlyRedemptionProcessing" || p.MaturityAt == nil || p.SubscribedAt == nil || p.Rates[0].Kind != "apy" || p.Rewards[0].Kind != "estimated" {
 		t.Fatalf("fixed: %+v", p)
 	}
 }

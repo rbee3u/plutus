@@ -223,7 +223,7 @@ export function OverviewPage() {
               </div>
               <h2 className={styles.emptyHeroTitle}>No Valuation Data Yet</h2>
               <p className={styles.emptyHeroText}>
-                This portfolio has no valuation history. Connect an exchange identity in Settings,
+                This portfolio has no valuation history. Add an exchange identity under Identities,
                 or run a collection cycle to record your first valuation point.
               </p>
               <div className={styles.emptyHeroActions}>
@@ -241,7 +241,7 @@ export function OverviewPage() {
                   />
                   Collect now
                 </ActionButton>
-                <Link to={`/p/${portfolioId}/identities`} className={styles.emptyHeroLink}>
+                <Link to={`/p/${portfolioId}/data/identities`} className={styles.emptyHeroLink}>
                   Manage identities
                   <ArrowRight size={iconSize.xs} aria-hidden="true" />
                 </Link>

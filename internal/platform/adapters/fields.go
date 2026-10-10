@@ -137,7 +137,14 @@ func USDEquivalent(symbol string) bool {
 }
 
 // QuoteLookup returns the Platform's last price of symbol in quote, if it has one.
-type QuoteLookup func(symbol, quote string) (string, bool)
+type Quote struct {
+	Price            string
+	SourceMarketRef  string
+	SourceObservedAt *time.Time
+}
+
+// QuoteLookup preserves the source market reference while resolving normalized symbols.
+type QuoteLookup func(symbol, quote string) (Quote, bool)
 
 // QuotePrices selects the first available quote per Balance symbol. USD
 // equivalents and unpriced symbols emit no row; the latter remain unvalued.
@@ -167,7 +174,11 @@ func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time
 		seen[symbol] = true
 		for _, quote := range quotes {
 			if price, ok := lookup(symbol, quote); ok {
-				out = append(out, Price{CanonicalAssetSymbol: symbol, Price: price, QuoteCanonicalAssetSymbol: quote, ObservedAt: at})
+				value, valid := decimal.Parse(price.Price)
+				if !decimal.Valid(price.Price) || !valid || value.Sign() <= 0 {
+					continue
+				}
+				out = append(out, Price{CanonicalAssetSymbol: symbol, Price: price.Price, QuoteCanonicalAssetSymbol: quote, RetrievedAt: at, SourceMarketRef: price.SourceMarketRef, SourceObservedAt: price.SourceObservedAt})
 				break
 			}
 		}
@@ -188,7 +199,7 @@ func USDPrice(symbol string, quotes []string, lookup QuoteLookup) (*big.Rat, boo
 	}
 	for _, quote := range quotes {
 		if price, ok := lookup(symbol, quote); ok {
-			if rat, ok := decimal.Parse(price); ok && rat.Sign() > 0 {
+			if rat, ok := decimal.Parse(price.Price); ok && rat.Sign() > 0 {
 				return rat, true
 			}
 		}

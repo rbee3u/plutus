@@ -140,17 +140,14 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 	}
 	if c.creds.FuturesKey() != "" {
 		var key struct {
-			IBAN       string `json:"iiban"`
-			AccountUID string `json:"accountUid"`
+			IBAN string `json:"iiban"`
 		}
 		if err := c.call(ctx, epFuturesKey, nil, &key); err != nil {
 			return adapters.ValidationResult{}, err
 		}
 		futuresRef = normalizeRef(key.IBAN)
-		if futuresRef == "" && spotRef == "" {
-			if futuresRef = strings.TrimSpace(key.AccountUID); futuresRef == "" {
-				return adapters.ValidationResult{}, adapters.Malformed("Kraken "+epFuturesKey.String(), "iiban and accountUid")
-			}
+		if futuresRef == "" {
+			return adapters.ValidationResult{}, adapters.Malformed("Kraken "+epFuturesKey.String(), "iiban")
 		}
 		s, err := c.balancesSnapshot(ctx)
 		if err != nil {
@@ -213,7 +210,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		}
 		r.snapshot = &s
 	}
-	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		if !adapters.ValidAccountType(structure, accountType) {
 			return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformKraken, structure, accountType)
 		}
@@ -226,9 +223,9 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		return adapters.Batch{}, err
 	}
 	return adapters.Batch{
-		ObservedAt: a.now(),
-		Reports:    reports,
-		Prices:     adapters.QuotePrices(reports, priceQuotes, r.prices.lookup, pricedAt),
+		CollectedAt: a.now(),
+		Reports:     reports,
+		Prices:      adapters.QuotePrices(reports, priceQuotes, r.prices.lookup, pricedAt),
 	}, nil
 }
 

@@ -11,14 +11,14 @@ const position: PositionRow = {
   identityId: "identity",
   identityName: "Owner",
   platform: "okx",
-  platformPositionRef: "BTC-USD-SWAP:net",
+  positionKey: "BTC-USD-SWAP:net",
   futuresContractId: "futuresContract",
   futuresSymbol: "BTC-USD-SWAP",
   kind: "inverse_perpetual",
   side: "short",
   positionMode: "one_way",
-  quantity: "2",
-  quantityUnit: "contracts",
+  sourceQuantity: "2",
+  sourceQuantityUnit: "contracts",
   size: "-200",
   sizeSymbol: "USD",
   baseAssetSymbol: "BTC",
@@ -26,7 +26,7 @@ const position: PositionRow = {
   settlementAssetSymbol: "BTC",
   markPrice: "50000",
   unrealizedPnl: "0.000123456789",
-  marginMode: "cross",
+  marginSetting: "cross",
   portfolioMargin: false,
   settleMargin: "0.002",
   margin: "100",
@@ -85,7 +85,7 @@ describe("shared position cells", () => {
   it("gives hedged sides distinct row keys and preserves stale and issue badges", () => {
     const short: PositionRow = {
       ...position,
-      platformPositionRef: "BTC-USD-SWAP:short",
+      positionKey: "BTC-USD-SWAP:short",
       positionMode: "hedged",
       size: "200",
       freshness: "stale",
@@ -97,7 +97,7 @@ describe("shared position cells", () => {
     };
     const long: PositionRow = {
       ...short,
-      platformPositionRef: "BTC-USD-SWAP:long",
+      positionKey: "BTC-USD-SWAP:long",
       side: "long",
     };
     const shortRow = positionRow(short, "Asia/Shanghai");
@@ -113,7 +113,7 @@ describe("shared position cells", () => {
     ["cross", position, "0.002 BTC"],
     [
       "isolated",
-      { ...position, marginMode: "isolated" as const, marginBasis: "allocated" as const },
+      { ...position, marginSetting: "isolated" as const, marginBasis: "allocated" as const },
       "0.002 BTC",
     ],
     ["portfolio", { ...position, portfolioMargin: true }, "0.002 BTC"],
@@ -139,7 +139,7 @@ describe("Margin mode and leverage", () => {
   it("uses actual isolated funds and source precision rather than configured leverage", () => {
     const isolated: PositionRow = {
       ...position,
-      marginMode: "isolated",
+      marginSetting: "isolated",
       marginBasis: "allocated",
       settlementAssetSymbol: "USDT",
       settleMargin: "1000",
@@ -163,7 +163,11 @@ describe("Margin mode and leverage", () => {
   });
 
   it("converts Base-settled isolated margin to the same unit as USD notional", () => {
-    const isolated: PositionRow = { ...position, marginMode: "isolated", marginBasis: "allocated" };
+    const isolated: PositionRow = {
+      ...position,
+      marginSetting: "isolated",
+      marginBasis: "allocated",
+    };
     // 0.002 BTC at 50,000 USD/BTC is 100 USD of allocated margin.
     expect(positionMarginDescription(isolated)).toBe("2x isolated");
     expect(isolated.settleMargin).toBe("0.002");
@@ -171,7 +175,11 @@ describe("Margin mode and leverage", () => {
   });
 
   it("keeps the known mode when actual leverage cannot be established", () => {
-    const isolated: PositionRow = { ...position, marginMode: "isolated", marginBasis: "allocated" };
+    const isolated: PositionRow = {
+      ...position,
+      marginSetting: "isolated",
+      marginBasis: "allocated",
+    };
     for (const change of [
       { settleMargin: null },
       { settleMargin: "0" },
@@ -192,7 +200,7 @@ describe("Margin mode and leverage", () => {
     for (const leverage of [null, "0", "-1", "NaN"]) {
       expect(positionMarginDescription({ ...position, leverage })).toBe("cross");
     }
-    expect(positionMarginDescription({ ...position, marginMode: null })).toBe(
+    expect(positionMarginDescription({ ...position, marginSetting: null })).toBe(
       "margin mode unavailable",
     );
   });

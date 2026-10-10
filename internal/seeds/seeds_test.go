@@ -13,9 +13,9 @@ import (
 	"github.com/rbee3u/plutus/internal/application/audit"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -65,7 +65,7 @@ func TestDefinitionFailures(t *testing.T) {
 		t.Fatal("serialization failure silently discarded")
 	}
 	b = newBuilder()
-	b.add("prices", "'binance'", "'BTC'", "'2026-01-01'", "oops", "'USDT'")
+	b.add("price_observations", bin(uuid.New()), q("binance"), q("BTC"), q("BTCUSDT"), q("USDT"), "oops", ts(time.Now()))
 	if b.err == nil {
 		t.Fatal("invalid decimal accepted")
 	}
@@ -74,7 +74,7 @@ func TestDefinitionFailures(t *testing.T) {
 	if b.err == nil {
 		t.Fatal("unknown Identity accepted")
 	}
-	r := adapters.AccountReport{Status: adapters.StatusOK, ObservedAt: time.Now(), Balances: []adapters.Balance{{AssetSymbol: "BTC", Equity: ""}}}
+	r := adapters.AccountReport{Status: adapters.StatusSucceeded, CollectedAt: time.Now(), Balances: []adapters.Balance{{AssetSymbol: "BTC", Equity: ""}}}
 	if validateReport(&r) == nil {
 		t.Fatal("unknown Balance equity accepted")
 	}
@@ -126,7 +126,7 @@ func TestCalendarTimeline(t *testing.T) {
 	}
 }
 
-func TestSeedsApplyRebuildAndCollect(t *testing.T) {
+func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	db := mysqltest.OpenTestDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
@@ -151,30 +151,25 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 		t.Fatal(err)
 	}
 	v := valuation.NewService(db)
-	for _, p := range seed.Portfolios {
-		if _, err := v.Rebuild(ctx, p); err != nil {
-			t.Fatalf("rebuild %s: %v", p, err)
-		}
-	}
-	assertRebuildEquivalent(ctx, t, db, v)
+	assertImmutableRetries(ctx, t, db, v)
 	assertWalkthroughReads(ctx, t, db, anchor)
-	queue := jobs.NewService(db)
-	assets := catalog.NewService(db, jobs.NewService(db))
+	queue := cycles.NewService(db)
+	assets := catalog.NewService(db)
 	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, RetryDelays: []time.Duration{}})
 	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge, PortfolioAliceLarge} {
-		job, _, err := queue.EnqueueCycle(ctx, p, jobs.TriggerManual, nil)
+		cycle, _, err := queue.Enqueue(ctx, p, cycles.TriggerUser)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if cycle.Trigger != cycles.TriggerUser {
+			t.Fatalf("collection trigger lost: %s", cycle.Trigger)
 		}
 		claimed, ok, err := queue.ClaimOne(ctx, "seed-test", time.Minute)
-		if err != nil || !ok || claimed.ID != job.ID {
+		if err != nil || !ok || claimed.ID != cycle.ID {
 			t.Fatalf("claim: %v %v", ok, err)
 		}
-		summary, err := runner.RunCycle(ctx, p, job.ID)
+		_, err = runner.RunCycle(ctx, p, cycle.ID, &claimed)
 		if err != nil {
-			t.Fatal(err)
-		}
-		if err := queue.Finish(ctx, &claimed, jobs.Result{OK: true, Detail: summary.String()}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -223,8 +218,8 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if err != nil {
 		t.Fatal(err)
 	}
-	if earn.DetailsComplete || len(earn.BalanceSummaries) == 0 {
-		t.Fatal("legacy Earn summary lost")
+	if len(earn.Items) == 0 {
+		t.Fatal("Earn details lost")
 	}
 	empty, err := v.Overview(ctx, financial.PortfolioContext{ID: PortfolioAliceEmpty, Timezone: "Asia/Shanghai"})
 	if err != nil {
@@ -279,7 +274,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 		t.Fatal("unvalued flow comparison must be incomplete")
 	}
 	reasons := strings.Join(change.Reasons, "\n")
-	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "account_scope_changed:", "asset_exclusion_changed:"} {
+	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "asset_exclusion_changed:"} {
 		if !strings.Contains(reasons, reason) {
 			t.Fatalf("missing comparison reason %s: %v", reason, change.Reasons)
 		}
@@ -311,12 +306,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil || count != 1 {
 		t.Fatalf("Alice-only ownership: %d %v", count, err)
 	}
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports WHERE scope_version=1 AND account_id=?", accountBytes("edge-scope", "earn")).Scan(&count); err != nil || count == 0 {
-		t.Fatalf("legacy scope: %d %v", count, err)
-	}
 }
-
-func accountBytes(name, kind string) []byte { id := accountID(name, kind); return id[:] }
 
 func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial.PortfolioContext) {
 	t.Helper()
@@ -340,7 +330,7 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := catalog.NewService(db, jobs.NewService(db))
+		c := catalog.NewService(db)
 		l, err := c.ListAssets(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
 		if err != nil {
 			t.Fatal(err)
@@ -356,13 +346,13 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 			keys[0] = append(keys[0], r.AccountID.String()+"/"+r.AssetID.String())
 		}
 		for _, r := range s.Items {
-			keys[1] = append(keys[1], r.AccountID.String()+"/"+r.PlatformPositionRef)
+			keys[1] = append(keys[1], r.AccountID.String()+"/"+r.PositionKey)
 		}
 		for _, r := range e.Items {
-			keys[2] = append(keys[2], r.AccountID.String()+"/"+r.PlatformPositionRef)
+			keys[2] = append(keys[2], r.AccountID.String()+"/"+r.PositionKey)
 		}
 		for _, r := range d.Items {
-			keys[3] = append(keys[3], r.AccountID.String()+"/"+r.PlatformPositionRef)
+			keys[3] = append(keys[3], r.AccountID.String()+"/"+r.PositionKey)
 		}
 		for _, r := range l.Items {
 			keys[4] = append(keys[4], r.ID.String())
@@ -407,6 +397,36 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 	for _, row := range second.Items {
 		if seen[row.ID] {
 			t.Fatal("audit cursor repeated an event")
+		}
+	}
+}
+
+func TestSeedManualRevisionKeysAndReportDecimalColumns(t *testing.T) {
+	b := newBuilder()
+	portfolioID, accountID := uuid.New(), uuid.New()
+	for _, revision := range []string{"1", "2"} {
+		b.add("manual_revisions", bin(portfolioID), bin(accountID), revision, "NULL")
+	}
+	if b.err != nil {
+		t.Fatalf("distinct revisions collide: %v", b.err)
+	}
+	b.add("manual_revisions", bin(portfolioID), bin(accountID), "2", "NULL")
+	if b.err == nil {
+		t.Fatal("duplicate revision accepted")
+	}
+	for _, col := range []string{"reported_equity_usd", "adjusted_equity_usd", "available_equity_usd", "initial_margin_requirement_usd", "maintenance_margin_requirement_usd", "reported_initial_margin_ratio", "reported_maintenance_margin_ratio", "reported_margin_ratio", "spot_margin_unrealized_pnl_usd"} {
+		b = newBuilder()
+		columns := strings.Split(tableColumns["account_reports"], ", ")
+		row := make([]string, len(columns))
+		for i, name := range columns {
+			row[i] = "NULL"
+			if name == col {
+				row[i] = "invalid"
+			}
+		}
+		b.add("account_reports", row...)
+		if b.err == nil {
+			t.Fatalf("invalid %s skipped decimal validation", col)
 		}
 	}
 }

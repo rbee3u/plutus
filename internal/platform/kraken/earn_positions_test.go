@@ -17,7 +17,7 @@ func TestEarnStrategyRatesStagesAndRewards(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := reportsByType(t, &batch)[TypeEarn]
-	if report.Status != adapters.StatusOK || !report.EarnDetailsCollected || len(report.EarnPositions) != 1 {
+	if report.Status != adapters.StatusSucceeded || len(report.EarnPositions) != 1 {
 		t.Fatalf("report: %+v", report)
 	}
 	p := report.EarnPositions[0]

@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -122,5 +124,86 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	}
 	if _, _, err := svc.Authenticate(ctx, newSession.Token); !errors.Is(err, ErrUserDisabled) && !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("disabled session: %v", err)
+	}
+}
+
+func TestPasswordResetSerializesWithLoginAndUTF8SessionLabels(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	ctx := t.Context()
+	for range 3 {
+		svc := NewService(db, time.Hour, 24*time.Hour)
+		name := "race-" + uuid.NewString()[:8]
+		if _, err := svc.CreateUser(ctx, name, "Correct=123456"); err != nil {
+			t.Fatal(err)
+		}
+		type outcome struct {
+			session Session
+			err     error
+		}
+		login := make(chan outcome, 1)
+		reset := make(chan error, 1)
+		start := make(chan struct{})
+		go func() {
+			<-start
+			_, session, err := svc.Login(ctx, name, "Correct=123456", "127.0.0.1", strings.Repeat("币", 260)+"\xff")
+			login <- outcome{session, err}
+		}()
+		go func() { <-start; reset <- svc.ResetPassword(ctx, name, "Replacement=123456") }()
+		close(start)
+		result := <-login
+		if err := <-reset; err != nil {
+			t.Fatal(err)
+		}
+		if result.err != nil && !errors.Is(result.err, ErrInvalidCredentials) {
+			t.Fatal(result.err)
+		}
+		if result.err == nil {
+			if result.session.UserAgent == nil || !utf8.ValidString(*result.session.UserAgent) || utf8.RuneCountInString(*result.session.UserAgent) != 255 {
+				t.Fatalf("invalid session label: %+v", result.session.UserAgent)
+			}
+			if _, _, err := svc.Authenticate(ctx, result.session.Token); err == nil {
+				t.Fatal("old-password login survived reset")
+			}
+		}
+		if _, _, err := svc.Login(ctx, name, "Replacement=123456", "127.0.0.1", "new password"); err != nil {
+			t.Fatalf("password replacement overwritten: %v", err)
+		}
+	}
+}
+
+func TestPasswordAndRevocationRollbackTogether(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	ctx := t.Context()
+	svc := NewService(db, time.Hour, 24*time.Hour)
+	name := "atomic-" + uuid.NewString()[:8]
+	user, err := svc.CreateUser(ctx, name, "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, session, err := svc.Login(ctx, name, "Correct=123456", "127.0.0.1", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	trigger := "revoke_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if _, err := db.ExecContext(ctx, "CREATE TRIGGER "+trigger+" BEFORE UPDATE ON sessions FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test revocation failure'"); err != nil {
+		t.Fatal(err)
+	} // #nosec G202 -- generated internal identifier.
+	defer func() { _, _ = db.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+trigger) }() // #nosec G202 -- generated internal identifier.
+	if err := svc.ResetPassword(ctx, name, "Replacement=123456"); err == nil {
+		t.Fatal("injected failure ignored")
+	}
+	row, err := svc.q.GetUserByID(ctx, user.ID[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid, _, err := VerifyPassword("Correct=123456", row.PasswordHash)
+	if err != nil || !valid {
+		t.Fatal("password committed despite failed revocation")
+	}
+	if _, err := db.ExecContext(ctx, "DROP TRIGGER "+trigger); err != nil {
+		t.Fatal(err)
+	} // #nosec G202 -- generated internal identifier.
+	if _, _, err := svc.Authenticate(ctx, session.Token); err != nil {
+		t.Fatalf("session changed after rollback: %v", err)
 	}
 }

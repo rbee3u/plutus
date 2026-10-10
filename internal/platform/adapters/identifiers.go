@@ -48,8 +48,8 @@ const (
 
 // Report statuses.
 const (
-	StatusOK     = "ok"
-	StatusFailed = "failed"
+	StatusSucceeded = "succeeded"
+	StatusFailed    = "failed"
 )
 
 // Position sides and quantity units.

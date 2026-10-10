@@ -1,4 +1,4 @@
-// Package valuation calculates, stores, and rebuilds Valuation Points from Account Reports.
+// Package valuation calculates, and stores immutable Valuation Points from Account Reports.
 package valuation
 
 import (
@@ -32,51 +32,55 @@ type Issue struct {
 	Code        string     `json:"code"`
 	Detail      string     `json:"detail"`
 	AccountID   *uuid.UUID `json:"accountId,omitempty"`
-	AccountName string     `json:"accountName,omitempty"`
-	Symbol      string     `json:"symbol,omitempty"`
+	AccountName string     `json:"-"`
+	// AssetID is stored; Symbol is its display form.
+	AssetID *uuid.UUID `json:"-"`
+	Symbol  string     `json:"symbol,omitempty"`
 }
 
 // Omitted names one Balance excluded from an Account Valuation.
-// Its symbol JSON tag preserves stored valuations; HTTP uses assetSymbol.
 type Omitted struct {
-	AssetSymbol string `json:"symbol"`
+	AssetID     uuid.UUID `json:"-"`
+	AssetSymbol string    `json:"assetSymbol"`
 	// CanonicalAssetSymbol is set only when it differs from AssetSymbol.
-	CanonicalAssetSymbol string `json:"assetSymbol,omitempty"`
+	CanonicalAssetSymbol string `json:"canonicalAssetSymbol,omitempty"`
 	Equity               string `json:"equity"`
 	Reason               string `json:"reason"`
 }
 
 // BoundaryEvent is an Account entering or leaving the Portfolio Boundary.
 type BoundaryEvent struct {
-	PointID      uuid.UUID `json:"-"`
-	EvaluatedAt  time.Time `json:"-"`
-	AccountID    uuid.UUID `json:"accountId"`
-	AccountName  string    `json:"accountName"`
-	IdentityID   uuid.UUID `json:"identityId"`
-	IdentityName string    `json:"identityName"`
-	Platform     string    `json:"platform"`
-	Direction    string    `json:"direction"`
-	ValueUSD     *string   `json:"valueUsd"`
-	Method       string    `json:"method"`
-	valueRat     *big.Rat
+	CycleID           uuid.UUID `json:"-"`
+	EvaluatedAt       time.Time `json:"-"`
+	AccountID         uuid.UUID `json:"accountId"`
+	AccountName       string    `json:"accountName"`
+	IdentityID        uuid.UUID `json:"identityId"`
+	IdentityName      string    `json:"identityName"`
+	Platform          string    `json:"platform"`
+	Direction         string    `json:"direction"`
+	ValueUSD          *string   `json:"valueUsd"`
+	Method            string    `json:"method"`
+	ValuationComplete bool      `json:"valuationComplete"`
+	valueRat          *big.Rat
 }
 
 // Point is one stored Valuation Point.
 type Point struct {
-	ID                      uuid.UUID
-	PortfolioID             uuid.UUID
-	JobID                   uuid.UUID
-	EvaluatedAt             time.Time
-	TotalUSD                string
-	AccountCount            int
-	StaleAccountCount       int
-	IncompleteAccountCount  int
+	CalculationVersion     uint64
+	PortfolioID            uuid.UUID
+	CycleID                uuid.UUID
+	EvaluatedAt            time.Time
+	TotalUSD               string
+	AccountCount           int
+	StaleAccountCount      int
+	IncompleteAccountCount int
+	// Boundary totals are derived from the point's Boundary Events on read.
 	BoundaryContributionUSD string
 	BoundaryWithdrawalUSD   string
 	BoundaryEvents          []BoundaryEvent
 	Issues                  []Issue
-	RecalculatedAt          *time.Time
-	CreatedAt               time.Time
+	ManualAdjustments       []ManualAdjustment
+	DetailState             string
 }
 
 // Completeness returns complete or incomplete for the point.
@@ -89,9 +93,8 @@ func (p *Point) Completeness() string {
 
 // AccountValuation is one Account's report and value at a point.
 type AccountValuation struct {
+	BalanceValuations      []BalanceValuation
 	ManualModifiedAt       *time.Time
-	manualState            string
-	ScopeVersion           uint16
 	ReportID               uuid.UUID
 	AccountID              uuid.UUID
 	AccountName            string
@@ -115,7 +118,7 @@ type AccountValuation struct {
 	AvailableEquity        *string
 	InitialMarginRatio     *string
 	MaintenanceMarginRatio *string
-	UnifiedMarginRatio     *string
+	MarginRatio            *string
 	Omitted                []Omitted
 	valueRat               *big.Rat
 	AccountStructure       string  `json:"-"`
@@ -124,8 +127,47 @@ type AccountValuation struct {
 
 // Completeness returns complete or incomplete for the account.
 func (a *AccountValuation) Completeness() string {
+	for _, line := range a.BalanceValuations {
+		if line.Treatment == "included" && line.MissingReason != "" {
+			return CompletenessIncomplete
+		}
+	}
 	if a.Method == MethodMissing || len(a.Omitted) > 0 {
 		return CompletenessIncomplete
 	}
 	return CompletenessComplete
+}
+
+// CalculationVersion changes only when valuation policy or arithmetic changes.
+const CalculationVersion uint64 = 1
+
+// BalanceValuation records decisions without copying quantities or price payloads.
+type BalanceValuation struct {
+	AssetID              uuid.UUID  `json:"assetId"`
+	CanonicalAssetSymbol string     `json:"canonicalAssetSymbol"`
+	Treatment            string     `json:"treatment"`
+	PricingMethod        string     `json:"pricingMethod"`
+	PriceObservationID   *uuid.UUID `json:"priceObservationId,omitempty"`
+	ValueUSD             *string    `json:"valueUsd,omitempty"`
+	MissingReason        string     `json:"missingReason,omitempty"`
+}
+
+// Revision identifies a committed result, independently of its algorithm version.
+func (p *Point) Revision() string {
+	return p.CycleID.String()
+}
+
+// ManualAdjustment identifies an effective quantity change within an existing
+// Identity. It is frozen at first commit, independently of issue text.
+type ManualAdjustment struct {
+	AccountID   uuid.UUID
+	AccountName string
+}
+
+func (a ManualAdjustment) Issue() Issue {
+	return Issue{
+		Code: "manual_balance_changed", AccountID: &a.AccountID,
+		AccountName: a.AccountName,
+		Detail:      "Manual quantities changed; value changes across this point include a user adjustment.",
+	}
 }

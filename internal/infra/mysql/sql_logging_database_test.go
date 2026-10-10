@@ -39,7 +39,7 @@ func TestLoggedMySQLExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	ctx := logging.WithFields(context.Background(), slog.String("trace_id", "sql-test"), slog.String("job_id", "job-test"))
+	ctx := logging.WithFields(context.Background(), slog.String("trace_id", "sql-test"), slog.String("cycle_id", "cycle-test"))
 	var number uint64
 	var binary []byte
 	var nullable sql.NullString
@@ -98,7 +98,7 @@ func TestLoggedMySQLExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := string(raw)
-	for _, want := range []string{"SET time_zone", "trace_id=sql-test", "job_id=job-test", "BEGIN", "COMMIT", "ROLLBACK", "level=ERROR", "O''Brien", "X'00ff'", "SELECT NULL, '2026-10-02 01:02:03.123456789'"} {
+	for _, want := range []string{"SET time_zone", "trace_id=sql-test", "cycle_id=cycle-test", "BEGIN", "COMMIT", "ROLLBACK", "level=ERROR", "O''Brien", "X'00ff'", "SELECT NULL, '2026-10-02 01:02:03.123456789'"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("missing %q in SQL log", want)
 		}

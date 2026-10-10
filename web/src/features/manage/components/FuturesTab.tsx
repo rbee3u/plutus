@@ -106,7 +106,7 @@ export function FuturesTab({ filters, timezone }: TabProps) {
           { key: "underlying", header: "Underlying", nowrap: true },
           { key: "expiryAt", header: "Expiry", nowrap: true },
           { key: "contractSize", header: "Contract size", numeric: true },
-          { key: "lastSeenAt", header: "Last seen", nowrap: true },
+          { key: "lastObservedAt", header: "Last observed", nowrap: true },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
           const pair =
@@ -142,8 +142,10 @@ export function FuturesTab({ filters, timezone }: TabProps) {
               "—"
             ),
             contractSize: formatContractSize(item),
-            lastSeenAt: (
-              <span className={shared.tabularDate}>{formatInstant(item.lastSeenAt, timezone)}</span>
+            lastObservedAt: (
+              <span className={shared.tabularDate}>
+                {formatInstant(item.lastObservedAt, timezone)}
+              </span>
             ),
           };
         })}

@@ -11,11 +11,11 @@ import (
 
 // Context describes which point a read was answered from.
 type Context struct {
-	PortfolioID uuid.UUID
-	Timezone    string
-	PointID     *uuid.UUID
-	JobID       *uuid.UUID
-	EvaluatedAt *time.Time
+	ValuationRevision *string
+	PortfolioID       uuid.UUID
+	Timezone          string
+	CycleID           *uuid.UUID
+	EvaluatedAt       *time.Time
 }
 
 // GroupTotal is a backend-computed subtotal.
@@ -110,7 +110,7 @@ type PositionRow struct {
 	IdentityID              uuid.UUID
 	IdentityName            string
 	Platform                string
-	PlatformPositionRef     string
+	PositionKey             string
 	FuturesContractID       uuid.UUID
 	FuturesSymbol           string
 	Kind                    string
@@ -121,7 +121,7 @@ type PositionRow struct {
 	ContractSize            *string
 	Side                    string
 	PositionMode            *string
-	MarginMode              *string
+	MarginSetting           *string
 	MarginAssetSymbol       *string
 	MarginBasis             *string
 	PortfolioMargin         *bool
@@ -131,8 +131,8 @@ type PositionRow struct {
 	MarginSource            *string
 	MarginUnavailableReason *string
 	Issues                  []valuation.Issue
-	Quantity                string
-	QuantityUnit            string
+	SourceQuantity          string
+	SourceQuantityUnit      string
 	EntryPrice              *string
 	MarkPrice               *string
 	LiquidationPrice        *string
@@ -146,15 +146,13 @@ type PositionRow struct {
 
 // AccountView is one Account's current report with its Balances or Positions.
 type AccountView struct {
-	Context              Context
-	Account              valuation.AccountValuation
-	Balances             []BalanceRow
-	Positions            []PositionRow
-	DualPositions        []DualPositionRow
-	EarnPositions        []EarnPositionRow
-	EarnBalanceSummaries []EarnBalanceSummary
-	EarnDetailsCollected bool
-	Issues               []valuation.Issue
+	Context       Context
+	Account       valuation.AccountValuation
+	Balances      []BalanceRow
+	Positions     []PositionRow
+	DualPositions []DualPositionRow
+	EarnPositions []EarnPositionRow
+	Issues        []valuation.Issue
 }
 
 // ListFilter selects flat Balance or Position rows.

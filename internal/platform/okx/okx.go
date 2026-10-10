@@ -156,6 +156,11 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 }
 
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+	// Market terms are reused only within this Collection Run.
+	run := *a
+	run.futuresContracts = newFuturesContractCache(a.now)
+	a = &run
+
 	if structure != adapters.StructureOKXUnified {
 		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformOKX, structure)
 	}
@@ -170,7 +175,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
 		return a.earn(ctx, c, usdPrice)
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		//nolint:exhaustive // Manual is application-owned and outside the private Adapter report fixture.
 		switch accountType {
 		case TypeTrading:
@@ -187,9 +192,9 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		return adapters.Batch{}, err
 	}
 	return adapters.Batch{
-		ObservedAt: a.now(),
-		MarginMode: mode,
-		Reports:    reports,
-		Prices:     adapters.QuotePrices(reports, quotes, lookup, pricedAt),
+		CollectedAt: a.now(),
+		MarginMode:  mode,
+		Reports:     reports,
+		Prices:      adapters.QuotePrices(reports, quotes, lookup, pricedAt),
 	}, nil
 }

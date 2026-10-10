@@ -1,42 +1,24 @@
 package manual
 
 import (
-	"encoding/json"
-	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-func TestDecodeHistoricalBalances(t *testing.T) {
-	const id = "01900000-0000-7000-8000-000000000001"
-	for _, fields := range []string{
-		`"listingId":"` + id + `","symbol":"DEMO-BTC"`,
-		`"platformAssetId":"` + id + `","platformAssetSymbol":"DEMO-BTC"`,
-		`"listingId":"` + id + `","platformAssetId":"` + id + `","symbol":"DEMO-BTC","platformAssetSymbol":"DEMO-BTC"`,
-	} {
-		input := `[{` + fields + `,"assetSymbol":"BTC","quantity":"-2","modifiedAt":"2026-10-09T00:00:00Z"}]`
-		rows, err := decodeBalances([]byte(input))
-		if err != nil || len(rows) != 1 {
-			t.Fatalf("decode: %+v %v", rows, err)
-		}
-		got := rows[0]
-		if got.AssetID.String() != id || got.AssetSymbol != "DEMO-BTC" || got.CanonicalAssetSymbol != "BTC" || got.Quantity != "-2" || got.ModifiedAt.IsZero() {
-			t.Fatalf("lost history: %+v", got)
-		}
-		encoded, err := json.Marshal(rows)
-		if err != nil || strings.Contains(string(encoded), `"listingId"`) || strings.Contains(string(encoded), `"symbol"`) || !strings.Contains(string(encoded), `"platformAssetSymbol":"DEMO-BTC"`) || !strings.Contains(string(encoded), `"assetSymbol":"BTC"`) {
-			t.Fatalf("legacy write: %s %v", encoded, err)
-		}
+func TestQuantityComparisonIgnoresLabelsAndEditTimes(t *testing.T) {
+	id := uuid.New()
+	original := []Balance{{AssetID: id, Quantity: "-2", AssetSymbol: "BTC", CanonicalAssetSymbol: "BTC", ModifiedAt: time.Now()}}
+	revised := []Balance{{AssetID: id, Quantity: "-2.00", AssetSymbol: "BTC", CanonicalAssetSymbol: "ETH", ModifiedAt: time.Now().Add(time.Hour)}}
+	if !sameQuantities(original, revised) {
+		t.Fatal("mapping or edit time became a quantity adjustment")
 	}
-}
-
-func TestDecodeHistoricalBalancesRejectsAmbiguousIdentity(t *testing.T) {
-	for _, input := range []string{
-		`null`, `[{}]`,
-		`[{"listingId":"01900000-0000-7000-8000-000000000001","platformAssetId":"01900000-0000-7000-8000-000000000002","symbol":"BTC","assetSymbol":"BTC"}]`,
-		`[{"listingId":"01900000-0000-7000-8000-000000000001","symbol":"BTC","platformAssetSymbol":"ETH","assetSymbol":"BTC"}]`,
-	} {
-		if _, err := decodeBalances([]byte(input)); err == nil {
-			t.Fatalf("accepted %s", input)
-		}
+	revised[0].Quantity = "-3"
+	if sameQuantities(original, revised) {
+		t.Fatal("changed signed quantity was ignored")
+	}
+	if !sameQuantities(nil, []Balance{}) {
+		t.Fatal("initial revision is not empty")
 	}
 }

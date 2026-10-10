@@ -10,8 +10,10 @@ const base = `/api/v1/portfolios/${portfolioId}`;
 const historyPath = `/p/${portfolioId}/history`;
 const initialEnd = "2026-10-04T04:16:44Z";
 const point = (index: number): ValuationPointSummary => ({
-  id: `point-${index}`,
-  jobId: `job-${index}`,
+  cycleId: `point-${index}`,
+  valuationRevision: `point-${index}:1`,
+  calculationVersion: 1,
+  detailState: "full" as const,
   evaluatedAt: new Date(Date.parse(initialEnd) - (560 - index) * 900_000).toISOString(),
   totalUsd: String(100_000 + index),
   completeness: "complete",
@@ -29,6 +31,8 @@ async function fixture(page: Page) {
     requests: [] as URL[],
     failPage: false,
     failSeries: false,
+    revision: 1,
+    rebuildOnDetail: false,
   };
   const context = { portfolioId, timezone: "Asia/Shanghai" };
   const session = sessionFixture({
@@ -97,7 +101,10 @@ async function fixture(page: Page) {
       }
       const offset = Number(params.get("offset") ?? 0);
       const limit = Number(params.get("limit") ?? 20);
-      const items = Array.from({ length: state.count }, (_, index) => point(index))
+      const items = Array.from({ length: state.count }, (_, index) => ({
+        ...point(index),
+        valuationRevision: `point-${index}:${state.revision}`,
+      }))
         .reverse()
         .slice(offset, offset + limit);
       await route.fulfill({
@@ -155,10 +162,17 @@ async function fixture(page: Page) {
       }));
       await route.fulfill({ json: { context, periodKind: params.get("periodKind"), items } });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
+      if (state.rebuildOnDetail) {
+        state.revision = 2;
+        state.rebuildOnDetail = false;
+      }
       await route.fulfill({
         json: {
           context,
-          point: point(Number(path.split("point-")[1])),
+          point: {
+            ...point(Number(path.split("point-")[1])),
+            valuationRevision: `point-${Number(path.split("point-")[1])}:${state.revision}`,
+          },
           accounts: [],
           issues: [],
           boundaryEvents: [],
@@ -352,3 +366,27 @@ for (const theme of ["light", "dark"]) {
     ).toBeEnabled();
   });
 }
+
+test("a rebuild between list and detail refreshes the entire read family", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto(historyPath);
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
+  const before = state.requests.filter(
+    (url) => url.pathname === `${base}/valuation-points/page`,
+  ).length;
+  state.rebuildOnDetail = true;
+  await rawTable(page)
+    .getByRole("button", { name: /Expand the Valuation Point/ })
+    .first()
+    .click();
+  await expect
+    .poll(
+      () => state.requests.filter((url) => url.pathname === `${base}/valuation-points/page`).length,
+    )
+    .toBeGreaterThan(before);
+  await expect(rawTable(page)).toContainText("No accounts were inside the boundary at this point.");
+  expect(
+    state.requests.filter((url) => url.pathname.startsWith(`${base}/valuation-points/point-`))
+      .length,
+  ).toBeLessThan(5);
+});

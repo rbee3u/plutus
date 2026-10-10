@@ -8,7 +8,7 @@ import (
 )
 
 func validateReport(r *adapters.AccountReport) error {
-	if r.Status != adapters.StatusOK || r.ObservedAt.IsZero() {
+	if r.Status != adapters.StatusSucceeded || r.CollectedAt.IsZero() {
 		return fmt.Errorf("successful report needs status and observation time")
 	}
 	seen := map[string]bool{}
@@ -18,15 +18,15 @@ func validateReport(r *adapters.AccountReport) error {
 		}
 		seen[v.AssetSymbol] = true
 	}
-	if r.EarnDetailsCollected {
+	if r.AccountType == "earn" {
 		if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
 			return err
 		}
 	} else if len(r.EarnPositions) != 0 {
-		return fmt.Errorf("Earn descriptions must be marked collected")
+		return fmt.Errorf("Earn descriptions require an Earn Account")
 	}
 	for _, p := range r.Positions {
-		if p.PlatformPositionRef == "" || p.FuturesContract.Symbol == "" || !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
+		if p.PositionKey == "" || p.FuturesContract.Symbol == "" || !decimal.Valid(p.SourceQuantity) || decimal.ParseOrZero(p.SourceQuantity).Sign() <= 0 {
 			return fmt.Errorf("invalid Position identity or quantity")
 		}
 		if (p.FuturesContract.Kind == adapters.KindLinearDelivery || p.FuturesContract.Kind == adapters.KindInverseDelivery) && p.FuturesContract.ExpiryAt == nil {
@@ -34,7 +34,7 @@ func validateReport(r *adapters.AccountReport) error {
 		}
 	}
 	for _, p := range r.DualPositions {
-		if p.PlatformPositionRef == "" || !decimal.Valid(p.Principal) || decimal.ParseOrZero(p.Principal).Sign() <= 0 {
+		if p.PositionKey == "" || !decimal.Valid(p.Principal) || decimal.ParseOrZero(p.Principal).Sign() <= 0 {
 			return fmt.Errorf("invalid Dual subscription")
 		}
 	}

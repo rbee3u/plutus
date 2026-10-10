@@ -16,7 +16,7 @@ type Adapter interface {
 }
 
 // MarketData reads normalized public prices independently of private credentials.
-// Manual collection supplies Canonical Asset Symbols from its frozen inputs.
+// Manual collection supplies Canonical Asset Symbols from immutable Manual revisions.
 type MarketData interface {
 	CollectPrices(context.Context, []string) ([]Price, error)
 }

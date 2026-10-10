@@ -39,7 +39,7 @@ export function PositionsPage() {
     empty = "Loading positions.";
   } else if (query.isError && !data) {
     empty = "Positions could not be loaded. Retry above.";
-  } else if (!data?.context.pointId) {
+  } else if (!data?.context.cycleId) {
     empty = NO_POINT;
   }
 
@@ -50,7 +50,7 @@ export function PositionsPage() {
         filters={filters}
         fallback="Positions could not be loaded."
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
           label="Total Notional"
@@ -90,7 +90,7 @@ export function PositionsPage() {
         empty={empty}
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these positions." />
       ) : null}
     </section>

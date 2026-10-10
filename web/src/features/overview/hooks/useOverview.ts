@@ -18,8 +18,9 @@ export function useOverview(portfolioId: string) {
         ),
       ]);
       if (
-        (overview.context.pointId ?? null) !== (tree.context.pointId ?? null) ||
-        (overview.context.pointId &&
+        (overview.context.cycleId ?? null) !== (tree.context.cycleId ?? null) ||
+        (overview.context.valuationRevision ?? null) !== (tree.context.valuationRevision ?? null) ||
+        (overview.context.cycleId &&
           (overview.totalUsd !== tree.totalUsd || overview.completeness !== tree.completeness))
       ) {
         throw new Error(

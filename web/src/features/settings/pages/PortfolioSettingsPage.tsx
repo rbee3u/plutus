@@ -17,7 +17,7 @@ import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/settings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-const MIN_INTERVAL = 60;
+const MIN_INTERVAL = 900;
 const MAX_INTERVAL = 86_400;
 const DEFAULT_INTERVAL = 900;
 const CONFLICT =
@@ -34,7 +34,6 @@ const TIMEZONE_OPTIONS = [
 ] as const;
 
 const INTERVAL_PRESETS = [
-  { label: "5m", seconds: 300 },
   { label: "15m", seconds: 900, isDefault: true },
   { label: "30m", seconds: 1800 },
   { label: "1h", seconds: 3600 },
@@ -273,7 +272,7 @@ function SettingsForms({
         setError(CONFLICT);
         return;
       }
-      if (result.error || result.response?.status !== 204) {
+      if (result.error || result.response?.status !== 202) {
         setError(problemMessage(result.error, "The portfolio could not be deleted."));
         return;
       }
@@ -363,7 +362,7 @@ function SettingsForms({
               <span className={styles.intervalDurationBadge}>{durationText}</span>
             ) : isIntervalBelowMin || isIntervalEmpty ? (
               <span className={styles.intervalDurationBadgeWarn}>
-                Min {formatCount(MIN_INTERVAL)}s (1m)
+                Min {formatCount(MIN_INTERVAL)}s (15m)
               </span>
             ) : null}
           </div>
@@ -419,9 +418,9 @@ function SettingsForms({
             style={{ flexShrink: 0, marginTop: 2 }}
           />
           <div>
-            <strong>Default portfolio</strong>
+            <strong>Initial portfolio</strong>
             <p className={shared.muted}>
-              This default portfolio was created with the account and cannot be deleted.
+              This initial portfolio was created with the account and cannot be deleted.
             </p>
           </div>
         </div>

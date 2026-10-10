@@ -283,9 +283,7 @@ func TestUnsupportedTOMLFields(t *testing.T) {
 		{"server.tls", "mtls_ca_path", "\"\""},
 		{"auth", "session_cookie_name", "\"old\""},
 		{"auth", "csrf_cookie_name", "\"old\""},
-		{"jobs", "worker_poll_interval", "\"1s\""},
-		{"jobs", "lease_duration", "\"2m\""},
-		{"jobs", "completed_retention", "\"2160h\""},
+		{"jobs", "finished_retention", "\"2160h\""},
 		{"collection", "default_interval", "\"15m\""},
 		{"collection", "stagger", "\"3s\""},
 		{"collection", "validate_timeout", "\"15s\""},
@@ -300,7 +298,7 @@ func TestUnsupportedTOMLFields(t *testing.T) {
 				}),
 			})
 			want := tc.table + "." + tc.key
-			if tc.table == "unknown" {
+			if tc.table == "unknown" || tc.table == "jobs" {
 				want = tc.table
 			}
 			if err == nil || !strings.Contains(err.Error(), "unsupported fields") || !strings.Contains(err.Error(), want) {
@@ -366,9 +364,6 @@ func TestInvalidExplicitValuesRejected(t *testing.T) {
 		{"server", "listen_address", `""`},
 		{"auth", "session_idle_lifetime", `""`},
 		{"auth", "session_absolute_lifetime", `" "`},
-		{"jobs", "finished_retention", `""`},
-		{"jobs", "finished_retention", `"0s"`},
-		{"jobs", "finished_retention", `"1h"`},
 		{"collection", "connection_validation_timeout", `""`},
 		{"collection", "connection_validation_timeout", `"0s"`},
 	}
@@ -409,8 +404,6 @@ port = 8081
 cookie_suffix = "agent"
 session_idle_lifetime = "24h"
 session_absolute_lifetime = "48h"
-[jobs]
-finished_retention = "48h"
 [collection]
 connection_validation_timeout = "20s"
 fake_adapter = true

@@ -43,6 +43,9 @@ func (a *API) scoped(ctx context.Context, portfolioID uuid.UUID) (scope, error) 
 	if err != nil {
 		return scope{}, err
 	}
+	if item.DeletionRequestedAt != nil {
+		return scope{}, errNotFound
+	}
 	return scope{user: user, session: session, portfolio: item}, nil
 }
 

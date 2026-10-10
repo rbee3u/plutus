@@ -39,6 +39,10 @@ Margin Mode.
 within an Account Structure. _Avoid_: Account Structure, Position Margin
 Setting.
 
+**Reported Margin Ratio**: An Account-level margin ratio supplied by its
+Platform, with the meaning specific to that Platform and Account Type. _Avoid_:
+a universal risk ratio across Platforms.
+
 **Connection**: An Identity's read-only Platform credentials, bound to an
 external login after successful validation. _Avoid_: Identity, Account.
 
@@ -63,6 +67,11 @@ and Dual Positions. _Avoid_: equity, snapshot.
 **Balance**: An Asset's equity in an Account Report, accompanied by
 availability, liability, and unrealized-profit measures where known. _Avoid_:
 quantity, holding as synonyms for its equity measure.
+
+**Price Observation**: One stored market quote, retaining the requested
+Canonical Asset, actual source market, retrieval time, and optional source time.
+A cycle attempt stores one per Platform and Canonical Asset; retrievals in other
+cycles remain separate observations.
 
 **Position**: An open directional contract holding with side, size, prices, and
 margin measures in an Account Report. _Avoid_: Balance, Earn Position, Dual
@@ -100,17 +109,21 @@ principal and available product terms. _Avoid_: Balance, futures Position.
 
 ### Assets and valuation
 
-**Asset**: A unit of financial value recognized within one Platform under its
-own symbol and mapped to a Canonical Asset. Assets on different Platforms remain
-distinct even when their symbols match. _Avoid_: Platform Asset, Asset Listing,
-Listing.
+**Asset**: A unit of financial value recognized within one Portfolio and
+Platform under its own symbol and mapped to a Canonical Asset. Assets on
+different Platforms remain distinct even when their symbols match. _Avoid_:
+Platform Asset, Asset Listing, Listing.
 
-**Canonical Asset**: A cross-Platform financial identity identified by a
-normalized symbol, such as BTC or USDT. _Avoid_: Asset as a synonym.
+**Canonical Asset**: A financial identity across Platforms within one Portfolio,
+identified by a normalized symbol, such as BTC or USDT. _Avoid_: Asset as a
+synonym.
 
-**Futures Contract**: A Platform-specific perpetual or delivery contract, with
-its symbol, settlement Asset, and expiry where applicable. _Avoid_: Instrument,
-Asset, trading pair.
+**Futures Contract**: A Portfolio-owned, Platform-specific perpetual or delivery
+contract: one symbol with one immutable set of observed terms, including
+settlement Asset, expiry, and contract size. Changed terms record another
+Futures Contract under the same symbol; identical terms reuse it, including A →
+B → A. Observation times do not establish when the Platform made those terms
+effective. _Avoid_: Instrument, Asset, trading pair, contract version.
 
 **Asset Symbol**: An Asset's code within its Platform, which may differ from its
 Canonical Asset Symbol.
@@ -118,14 +131,12 @@ Canonical Asset Symbol.
 **Canonical Asset Symbol**: The normalized code identifying a Canonical Asset
 across Platforms.
 
-**Futures Symbol**: A Futures Contract's code within its Platform. It identifies
-the contract, not an open Position or a Base/Quote pair.
+**Futures Symbol**: A Futures Contract's code within its Platform. Contracts
+with different terms can share it; it identifies neither an open Position nor a
+Base/Quote pair.
 
 **Valuation Asset**: USD, the Canonical Asset used as the unit of all derived
 financial values in Plutus.
-
-**Price Observation**: A Canonical Asset's market price on a Platform at an
-observation time, quoted in a stated Canonical Asset.
 
 **Account Valuation**: One Account's USD value at a Valuation Point, qualified
 by valuation method, freshness, and completeness. _Avoid_: unqualified equity,
@@ -157,3 +168,7 @@ return, performance.
 
 **Period Close**: The last Valuation Point within a calendar day, ISO week,
 month, quarter, or year in the Portfolio's timezone.
+
+**Daily Snapshot**: The final whole Valuation Point retained for an older local
+day when detail cleanup runs. Its cycle, timestamp, total, and source evidence
+remain unchanged; timezone edits do not replace it.

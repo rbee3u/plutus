@@ -16,37 +16,37 @@ func TestPositionsGroupBaseBeforeContractKindAndExpiry(t *testing.T) {
 	near := time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC)
 	far := near.AddDate(0, 3, 0)
 	want := []PositionRow{
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDC", Side: "long", PlatformPositionRef: "usdc"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-a"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PlatformPositionRef: "long-b"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "short", PlatformPositionRef: "short"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "Z_NEAR", ExpiryAt: &near, PlatformPositionRef: "near"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_FAR", ExpiryAt: &far, PlatformPositionRef: "far"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_UNKNOWN", PlatformPositionRef: "unknown-expiry"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindInversePerpetual, FuturesSymbol: "BTCUSD_PERP", PlatformPositionRef: "inverse"},
-		{BaseAssetSymbol: &btc, Kind: adapters.KindInverseDelivery, FuturesSymbol: "BTCUSD_DELIVERY", ExpiryAt: &near, PlatformPositionRef: "inverse-delivery"},
-		{BaseAssetSymbol: &eth, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "A_ETH", PlatformPositionRef: "eth"},
-		{BaseAssetSymbol: &blank, Kind: adapters.KindInverseDelivery, FuturesSymbol: "A_NO_BASE", PlatformPositionRef: "missing-a"},
-		{FuturesSymbol: "B_NO_BASE", PlatformPositionRef: "missing-b"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDC", Side: "long", PositionKey: "usdc"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PositionKey: "long-a"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "long", PositionKey: "long-b"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "BTCUSDT", Side: "short", PositionKey: "short"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "Z_NEAR", ExpiryAt: &near, PositionKey: "near"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_FAR", ExpiryAt: &far, PositionKey: "far"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindLinearDelivery, FuturesSymbol: "A_UNKNOWN", PositionKey: "unknown-expiry"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindInversePerpetual, FuturesSymbol: "BTCUSD_PERP", PositionKey: "inverse"},
+		{BaseAssetSymbol: &btc, Kind: adapters.KindInverseDelivery, FuturesSymbol: "BTCUSD_DELIVERY", ExpiryAt: &near, PositionKey: "inverse-delivery"},
+		{BaseAssetSymbol: &eth, Kind: adapters.KindLinearPerpetual, FuturesSymbol: "A_ETH", PositionKey: "eth"},
+		{BaseAssetSymbol: &blank, Kind: adapters.KindInverseDelivery, FuturesSymbol: "A_NO_BASE", PositionKey: "missing-a"},
+		{FuturesSymbol: "B_NO_BASE", PositionKey: "missing-b"},
 	}
 	got := slices.Clone(want)
 	slices.Reverse(got)
 	sortPositions(got, nil)
 	for i := range want {
-		if got[i].PlatformPositionRef != want[i].PlatformPositionRef {
-			t.Fatalf("Position %d = %s, want %s", i, got[i].PlatformPositionRef, want[i].PlatformPositionRef)
+		if got[i].PositionKey != want[i].PositionKey {
+			t.Fatalf("Position %d = %s, want %s", i, got[i].PositionKey, want[i].PositionKey)
 		}
 	}
 	// Changed financial measures and arrival order must not move rows.
 	for i := range got {
-		got[i].Quantity = "999"
+		got[i].SourceQuantity = "999"
 		got[i].Freshness = valuation.FreshnessStale
 		got[i].UnrealizedPnl = new("-123")
 	}
 	slices.Reverse(got)
 	sortPositions(got, nil)
 	for i := range want {
-		if got[i].PlatformPositionRef != want[i].PlatformPositionRef {
+		if got[i].PositionKey != want[i].PositionKey {
 			t.Fatalf("financial changes moved Position %d", i)
 		}
 	}
@@ -63,12 +63,12 @@ func TestHoldingsHierarchyPrecedesAssetAndExpiry(t *testing.T) {
 	near := time.Now()
 	far := near.Add(time.Hour)
 	duals := []DualPositionRow{
-		{AccountID: second, DualPosition: adapters.DualPosition{ExpiryAt: &near, PlatformPositionRef: "second"}},
-		{AccountID: first, DualPosition: adapters.DualPosition{PlatformPositionRef: "missing"}},
-		{AccountID: first, DualPosition: adapters.DualPosition{ExpiryAt: &far, PlatformPositionRef: "far"}},
+		{AccountID: second, DualPosition: adapters.DualPosition{ExpiryAt: &near, PositionKey: "second"}},
+		{AccountID: first, DualPosition: adapters.DualPosition{PositionKey: "missing"}},
+		{AccountID: first, DualPosition: adapters.DualPosition{ExpiryAt: &far, PositionKey: "far"}},
 	}
 	sortDualPositions(duals, ranks)
-	if duals[0].PlatformPositionRef != "far" || duals[1].PlatformPositionRef != "missing" || duals[2].PlatformPositionRef != "second" {
+	if duals[0].PositionKey != "far" || duals[1].PositionKey != "missing" || duals[2].PositionKey != "second" {
 		t.Fatalf("Dual Positions crossed hierarchy or lost missing-expiry order: %+v", duals)
 	}
 	positions := []PositionRow{{AccountID: second, FuturesSymbol: "AAA"}, {AccountID: first, FuturesSymbol: "ZZZ"}}
@@ -88,11 +88,11 @@ func TestHoldingsOrderUsesAssetBeforeCanonicalAsset(t *testing.T) {
 		t.Fatal("Canonical Asset displaced the displayed Asset")
 	}
 	rows := []EarnPositionRow{
-		{EarnPosition: adapters.EarnPosition{PlatformPositionRef: "z", Assets: []adapters.EarnAmount{{AssetSymbol: "ZZZ", CanonicalAssetSymbol: new("AAA")}}}},
-		{EarnPosition: adapters.EarnPosition{PlatformPositionRef: "a", Assets: []adapters.EarnAmount{{AssetSymbol: "AAA", CanonicalAssetSymbol: new("ZZZ")}, {AssetSymbol: "BBB"}}}},
+		{EarnPosition: adapters.EarnPosition{PositionKey: "z", Assets: []adapters.EarnAmount{{AssetSymbol: "ZZZ", CanonicalAssetSymbol: new("AAA")}}}},
+		{EarnPosition: adapters.EarnPosition{PositionKey: "a", Assets: []adapters.EarnAmount{{AssetSymbol: "AAA", CanonicalAssetSymbol: new("ZZZ")}, {AssetSymbol: "BBB"}}}},
 	}
 	sortEarnPositions(rows, nil)
-	if rows[0].PlatformPositionRef != "a" || len(rows[0].Assets) != 2 {
+	if rows[0].PositionKey != "a" || len(rows[0].Assets) != 2 {
 		t.Fatal("Earn ordering lost Asset priority or split a multi-Asset Position")
 	}
 }

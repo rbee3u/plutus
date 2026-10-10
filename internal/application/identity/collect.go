@@ -11,6 +11,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/application/audit"
 	"github.com/rbee3u/plutus/internal/application/ordering"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
@@ -26,7 +27,7 @@ type Collectable struct {
 // ListCollectable returns enabled Identities with an enabled Connection and their selected Accounts.
 // Credentials that cannot be opened are reported through OpenError instead of failing the cycle.
 func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([]Collectable, error) {
-	rows, err := s.q.ListCollectableIdentities(ctx, portfolioID[:])
+	rows, err := mysql.Queries(ctx, s.db).ListCollectableIdentities(ctx, portfolioID[:])
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +39,10 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 		}
 		item := Collectable{Identity: Identity{
 			ID: id, PortfolioID: portfolioID, Platform: adapters.Platform(rows[i].Platform), DisplayName: rows[i].DisplayName,
-			AccountStructure: adapters.AccountStructure(rows[i].AccountStructure), MarginMode: adapters.MarginMode(rows[i].MarginMode.String),
-			ExternalRef: nullStringPtr(rows[i].ExternalRef),
+			AccountStructure: adapters.AccountStructure(rows[i].AccountStructure), MarginMode: adapters.MarginMode(rows[i].LastObservedMarginMode.String),
+			ExternalRef: nullStringPtr(rows[i].PlatformLoginRef), Version: rows[i].Version,
 		}}
-		accounts, err := s.q.ListAccountsByIdentity(ctx, sqlcgen.ListAccountsByIdentityParams{PortfolioID: portfolioID[:], IdentityID: id[:]})
+		accounts, err := mysql.Queries(ctx, s.db).ListAccountsByIdentity(ctx, sqlcgen.ListAccountsByIdentityParams{PortfolioID: portfolioID[:], IdentityID: id[:]})
 		if err != nil {
 			return nil, err
 		}
@@ -49,14 +50,14 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 			if !accounts[j].Selected || accounts[j].AccountType == string(adapters.TypeManual) {
 				continue
 			}
-			account, err := accountFromFields(accounts[j].ID, accounts[j].IdentityID, accounts[j].AccountType, accounts[j].DisplayName, accounts[j].Selected, accounts[j].Version)
+			account, err := accountFromFields(accounts[j].ID, accounts[j].IdentityID, accounts[j].AccountType, accounts[j].Selected)
 			if err != nil {
 				return nil, err
 			}
 			item.Accounts = append(item.Accounts, account)
 		}
 		sortIdentityAccounts(&item.Identity, item.Accounts)
-		item.Credentials, item.OpenError = s.open(id, portfolioID, rows[i].CredentialKeyVersion, rows[i].CredentialsCiphertext, rows[i].CredentialsNonce)
+		item.Credentials, item.OpenError = s.open(id, portfolioID, rows[i].CredentialsKeyVersion, rows[i].CredentialsCiphertext, rows[i].CredentialsNonce)
 		out = append(out, item)
 	}
 	slices.SortFunc(out, func(a, b Collectable) int {
@@ -66,13 +67,13 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 }
 
 // RecordCollection stores an Identity's outcome in the report transaction.
-func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, at time.Time, errorClass, errorDetail string, invalidate bool) error {
+func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, version uint64, at time.Time, errorClass, errorDetail string, invalidate bool) error {
 	params := sqlcgen.RecordIdentityCollectionParams{
-		LastCollectedAt: sql.NullTime{Time: at.UTC(), Valid: true},
-		Invalidate:      0,
-		UpdatedAt:       s.now().UTC(),
-		PortfolioID:     portfolioID[:],
-		ID:              id[:],
+		LastCollectionFinishedAt: sql.NullTime{Time: at.UTC(), Valid: true},
+		Invalidate:               0,
+		UpdatedAt:                s.now().UTC(),
+		PortfolioID:              portfolioID[:],
+		ID:                       id[:], Version: version,
 	}
 	if invalidate {
 		params.Invalidate = 1
@@ -88,13 +89,13 @@ func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, port
 // is written to the audit log with the system as the actor, because nobody
 // changed it in Plutus: the owner switched it on the Platform (ADR 0001). It uses
 // the report transaction. An empty mode from structures without one is ignored.
-func (s *Service) RecordMarginMode(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, mode adapters.MarginMode) error {
+func (s *Service) RecordMarginMode(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, version uint64, mode adapters.MarginMode) error {
 	if mode == "" {
 		return nil
 	}
-	stored, err := q.GetIdentityMarginModeForUpdate(ctx, sqlcgen.GetIdentityMarginModeForUpdateParams{PortfolioID: portfolioID[:], ID: id[:]})
+	stored, err := q.GetIdentityMarginModeForUpdate(ctx, sqlcgen.GetIdentityMarginModeForUpdateParams{PortfolioID: portfolioID[:], ID: id[:], Version: version})
 	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
+		return nil // A concurrent identity edit supersedes these diagnostics.
 	}
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func (s *Service) RecordMarginMode(ctx context.Context, q *sqlcgen.Queries, port
 	}
 	now := s.now().UTC()
 	if err := q.SetIdentityMarginMode(ctx, sqlcgen.SetIdentityMarginModeParams{
-		MarginMode: sql.NullString{String: string(mode), Valid: true}, UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:],
+		LastObservedMarginMode: sql.NullString{String: string(mode), Valid: true}, UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version,
 	}); err != nil {
 		return err
 	}
@@ -136,13 +137,13 @@ type BoundaryAccount struct {
 
 // ListBoundary returns every selected Account of enabled Identities.
 func (s *Service) ListBoundary(ctx context.Context, portfolioID uuid.UUID) ([]BoundaryAccount, error) {
-	rows, err := s.q.ListBoundaryAccounts(ctx, portfolioID[:])
+	rows, err := mysql.Queries(ctx, s.db).ListBoundaryAccounts(ctx, portfolioID[:])
 	if err != nil {
 		return nil, err
 	}
 	out := make([]BoundaryAccount, 0, len(rows))
 	for i := range rows {
-		account, err := accountFromFields(rows[i].ID, rows[i].IdentityID, rows[i].AccountType, rows[i].DisplayName, true, 0)
+		account, err := accountFromFields(rows[i].ID, rows[i].IdentityID, rows[i].AccountType, true)
 		if err != nil {
 			return nil, err
 		}

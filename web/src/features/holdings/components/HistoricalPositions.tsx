@@ -1,3 +1,4 @@
+import { useValuationRevision } from "@/shared/lib/useValuationRevision";
 import { keys, listAccountPositions } from "@/api";
 import type { AccountPositionList } from "@/api";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -8,17 +9,22 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 export function HistoricalPositions({
   accountId,
-  pointId,
+  cycleId,
+  valuationRevision,
 }: {
   accountId: string;
-  pointId: string;
+  cycleId: string;
+  valuationRevision: string;
 }) {
   const query = usePortfolioQuery<AccountPositionList>({
-    key: (userId, portfolioId) => keys.accountPositions(userId, portfolioId, accountId, pointId),
-    ready: Boolean(accountId && pointId),
+    key: (userId, portfolioId) =>
+      keys.accountPositions(userId, portfolioId, accountId, cycleId, undefined, valuationRevision),
+    ready: Boolean(accountId && cycleId),
     load: (portfolioId) =>
-      listAccountPositions({ path: { portfolioId, accountId }, query: { pointId } }),
+      listAccountPositions({ path: { portfolioId, accountId }, query: { cycleId } }),
   });
+  const matches = useValuationRevision(valuationRevision, query.data?.context.valuationRevision);
+  const data = matches ? query.data : undefined;
   return (
     <>
       <h4>Contract positions</h4>
@@ -26,14 +32,12 @@ export function HistoricalPositions({
       <DataTable
         caption="Contract positions at this historical point"
         columns={POSITION_COLUMNS}
-        rows={(query.data?.items ?? []).map((item) =>
-          positionRow(item, query.data?.context.timezone),
-        )}
+        rows={(data?.items ?? []).map((item) => positionRow(item, data?.context.timezone))}
         empty={
           query.isPending ? "Loading historical positions." : "No positions in this Account Report."
         }
       />
-      {query.data ? <IssuesPanel issues={query.data.issues} empty="No position issues." /> : null}
+      {data ? <IssuesPanel issues={data.issues} empty="No position issues." /> : null}
     </>
   );
 }

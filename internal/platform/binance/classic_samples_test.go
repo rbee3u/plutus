@@ -25,14 +25,14 @@ func TestClassicSyntheticScenes(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, tc.selection)
 			report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, tc.account), tc.account)
-			if report.Status != adapters.StatusOK || report.Equity != nil || report.UnifiedMarginRatio != nil {
+			if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
 				t.Fatalf("report %+v", report)
 			}
 			if tc.multi {
-				if deref(report.AdjustedEquity) != "121.5" || deref(report.AvailableEquity) != "100" || deref(report.InitialMarginRatio) != "0.1" || deref(report.MaintenanceMarginRatio) != "0.02" || len(report.Balances) != 2 {
+				if deref(report.AdjustedEquity) != "121.5" || deref(report.AvailableEquity) != "100" || deref(report.InitialMarginRequirementUSD) != "12.15" || deref(report.MaintenanceMarginRequirementUSD) != "2.43" || report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || len(report.Balances) != 2 {
 					t.Fatalf("Multi-Assets measures and coin balances %+v", report)
 				}
-			} else if report.AdjustedEquity != nil || report.AvailableEquity != nil || report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || len(report.Balances) != 1 {
+			} else if report.AdjustedEquity != nil || report.AvailableEquity != nil || report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || len(report.Balances) != 1 {
 				t.Fatalf("Single-Asset/COIN-M must omit USD account measures %+v", report)
 			}
 			symbol, available, withdraw, pnl := "USDT", "90", "80", "1.5"
@@ -69,25 +69,25 @@ func TestClassicSyntheticScenes(t *testing.T) {
 				t.Fatalf("positions %+v", report.Positions)
 			}
 			for _, p := range report.Positions {
-				expected, ok := want[p.PlatformPositionRef]
-				if !ok || p.Side != expected.side || p.Quantity != expected.quantity || deref(p.EntryPrice) != expected.entry || deref(p.UnrealizedPnl) != expected.pnl || deref(p.LiquidationPrice) != expected.liquidation || deref(p.Leverage) != "5" {
+				expected, ok := want[p.PositionKey]
+				if !ok || p.Side != expected.side || p.SourceQuantity != expected.quantity || deref(p.EntryPrice) != expected.entry || deref(p.UnrealizedPnl) != expected.pnl || deref(p.LiquidationPrice) != expected.liquidation || deref(p.Leverage) != "5" {
 					t.Fatalf("position %+v", p)
 				}
 				if tc.inverse {
 					kind := adapters.KindInversePerpetual
-					if p.PlatformPositionRef == "cm:ETHUSD_261225:BOTH" {
+					if p.PositionKey == "cm:ETHUSD_261225:BOTH" {
 						kind = adapters.KindInverseDelivery
 						if p.FuturesContract.ExpiryAt == nil || !p.FuturesContract.ExpiryAt.Equal(time.UnixMilli(1798185600000).UTC()) {
 							t.Fatalf("delivery expiry %+v", p.FuturesContract)
 						}
 					}
-					if p.QuantityUnit != adapters.UnitContracts || p.FuturesContract.Kind != kind || p.FuturesContract.BaseAssetSymbol != "ETH" || p.FuturesContract.QuoteAssetSymbol != "USD" || p.FuturesContract.SettlementAssetSymbol != "ETH" || deref(p.FuturesContract.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
+					if p.SourceQuantityUnit != adapters.UnitContracts || p.FuturesContract.Kind != kind || p.FuturesContract.BaseAssetSymbol != "ETH" || p.FuturesContract.QuoteAssetSymbol != "USD" || p.FuturesContract.SettlementAssetSymbol != "ETH" || deref(p.FuturesContract.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
 						t.Fatalf("inverse terms %+v", p)
 					}
-				} else if p.QuantityUnit != adapters.UnitBase || p.FuturesContract.Kind != adapters.KindLinearPerpetual || p.FuturesContract.BaseAssetSymbol != "DOGE" || p.FuturesContract.QuoteAssetSymbol != "USDT" || p.FuturesContract.SettlementAssetSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
+				} else if p.SourceQuantityUnit != adapters.UnitBase || p.FuturesContract.Kind != adapters.KindLinearPerpetual || p.FuturesContract.BaseAssetSymbol != "DOGE" || p.FuturesContract.QuoteAssetSymbol != "USDT" || p.FuturesContract.SettlementAssetSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
 					t.Fatalf("linear terms %+v", p)
 				}
-				delete(want, p.PlatformPositionRef)
+				delete(want, p.PositionKey)
 			}
 			if len(want) != 0 {
 				t.Fatalf("missing positions %+v", want)

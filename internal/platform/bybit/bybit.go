@@ -146,7 +146,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
 		return a.earn(ctx, c, prices, slices.Contains(accounts, TypeEarn))
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 		//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
 		switch accountType {
 		case TypeUnified:
@@ -163,9 +163,9 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		return adapters.Batch{}, err
 	}
 	return adapters.Batch{
-		ObservedAt: a.now(),
-		MarginMode: mode,
-		Reports:    reports,
-		Prices:     adapters.QuotePrices(reports, quotes, prices.lookup, pricedAt),
+		CollectedAt: a.now(),
+		MarginMode:  mode,
+		Reports:     reports,
+		Prices:      adapters.QuotePrices(reports, quotes, prices.lookup, pricedAt),
 	}, nil
 }

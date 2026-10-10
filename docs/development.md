@@ -116,7 +116,6 @@ than reverting to defaults. Durations use Go notation such as `15s`, `2m`, and
 | `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                        |
 | `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                   |
 | `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
-| `jobs.finished_retention`                  | `"2160h"`   | Retain finished jobs without report or point references; 1 to 365 days                 |
 | `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
 | `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                               |
 | `collection.proxy.mode`                    | `"direct"`  | Runtime Platform proxy policy: direct or proxy                                         |
@@ -147,9 +146,9 @@ key_file = "/etc/plutus/server-key.pem"
 # client_ca_file = "/etc/plutus/client-ca.pem"
 ```
 
-Finished-job retention includes succeeded, failed, and cancelled jobs, but never
-deletes jobs referenced by Account Reports, Valuation Points, or frozen Manual
-cycle inputs. It does not set a retention period for financial history.
+Collection Cycles are permanent execution history: Account Reports and Valuation
+Points reference them. Financial summaries are permanent; detailed snapshots
+follow the [retention policy](./domain-rules.md#historical-detail-retention).
 
 ### Platform proxies
 
@@ -209,8 +208,8 @@ Access logs include request ID, method, path, status, and duration for normal,
 rejected, and recovered requests, including health checks and static files.
 Valid `X-Request-Id` values are reused; otherwise an ID is generated under the
 [middleware rules](../internal/transport/http/middleware.go). Request context
-correlates application and SQL records. Jobs use job/Portfolio/cycle IDs rather
-than retaining the originating request ID.
+correlates application and SQL records. Collection Cycles use Portfolio and
+cycle IDs rather than retaining the originating request ID.
 
 SQL logs include full parameter values, duration, errors, transactions,
 migrations, seeds, and UTC initialization, but no result rows. Binary values use
@@ -245,11 +244,11 @@ migration.
 | `server.tls.mtls_ca_path`                             | `server.tls.client_ca_file`                                                            |
 | `server.tls.https_enabled`, `server.tls.mtls_enabled` | Remove; transport mode follows the configured certificate and CA files                 |
 | `auth.session_cookie_name`, `auth.csrf_cookie_name`   | `auth.cookie_suffix`; use `local`, `agent`, `test`, or empty for the supplied examples |
-| `jobs.completed_retention`                            | `jobs.finished_retention`                                                              |
+| `jobs.completed_retention`, `jobs.finished_retention` | Remove; Collection Cycles remain as permanent history                                  |
 | `collection.validate_timeout`                         | `collection.connection_validation_timeout`                                             |
 | `database.dsn`                                        | `PLUTUS_DSN` or `PLUTUS_DSN_FILE` outside TOML                                         |
 | `jobs.worker_poll_interval`                           | Remove; the serving worker polls an idle queue every 1 second                          |
-| `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long jobs                      |
+| `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long cycles                    |
 | `collection.default_interval`                         | Remove; new Portfolios start at 15 minutes; edit each Portfolio's interval in settings |
 | `collection.stagger`                                  | Remove; Collection Cycles wait 3 seconds between Identities                            |
 
@@ -270,10 +269,11 @@ Portfolios. See [seeds](./seeds.md) for scenarios, history windows, expected
 results, and measured reset times.
 
 Seeding requires the fake Adapter and a master key. It writes source facts and
-uses real valuation code to rebuild points. Continued fake collection shares the
-original anchor. `db seed` requires an empty migrated database; replace old dev
-data with the wipe script or `db reset --seed`. The retired `--profile` flag is
-rejected. See [ADR 0010](./adr/0010-environments-and-configuration.md).
+uses real valuation code to initialize immutable points. Continued fake
+collection shares the original anchor. `db seed` requires an empty migrated
+database; replace old dev data with the wipe script or `db reset --seed`. The
+retired `--profile` flag is rejected. See
+[ADR 0010](./adr/0010-environments-and-configuration.md).
 
 Equivalent commands without dropping the database:
 

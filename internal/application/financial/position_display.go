@@ -10,19 +10,19 @@ import (
 )
 
 type positionMetadata struct {
-	mode, marginMode, currency, basis sql.NullString
+	mode, marginSetting, currency, basis sql.NullString
 }
 
 // completePosition derives presentation from retained source facts. It does not
 // change the original quantity, direction, or margin amount.
 func completePosition(row *PositionRow, account *valuation.AccountValuation, metadata positionMetadata) {
-	row.PositionMode, row.MarginMode = nullStringPtr(metadata.mode), nullStringPtr(metadata.marginMode)
+	row.PositionMode, row.MarginSetting = nullStringPtr(metadata.mode), nullStringPtr(metadata.marginSetting)
 	row.MarginAssetSymbol, row.MarginBasis = nullStringPtr(metadata.currency), nullStringPtr(metadata.basis)
 	row.PortfolioMargin = portfolioMargin(account)
-	if row.Platform == string(adapters.PlatformBinance) && row.AccountType == "portfolio_margin" && row.PortfolioMargin != nil && *row.PortfolioMargin && row.MarginMode == nil {
+	if row.Platform == string(adapters.PlatformBinance) && row.AccountType == "portfolio_margin" && row.PortfolioMargin != nil && *row.PortfolioMargin && row.MarginSetting == nil {
 		// The supported retail PM structure only has Cross futures. This also
 		// establishes the setting for old PM Reports without rewriting them.
-		row.MarginMode = new("cross")
+		row.MarginSetting = new("cross")
 	}
 	row.Issues = []valuation.Issue{}
 	if account.Freshness == valuation.FreshnessStale {
@@ -38,14 +38,14 @@ func completePosition(row *PositionRow, account *valuation.AccountValuation, met
 	if row.NotionalUSD == nil {
 		row.Issues = append(row.Issues, rowIssue(row, "position_notional_unknown", "USD notional cannot be determined: a required currency, Contract Size, or positive Mark Price is unavailable."))
 	}
-	if row.Platform == string(adapters.PlatformOKX) && row.MarginMode != nil && *row.MarginMode == "cross" && row.PortfolioMargin != nil && !*row.PortfolioMargin {
+	if row.Platform == string(adapters.PlatformOKX) && row.MarginSetting != nil && *row.MarginSetting == "cross" && row.PortfolioMargin != nil && !*row.PortfolioMargin {
 		row.MarginAssetSymbol = verifiedOKXMarginAssetSymbol(row)
 	}
 	row.SettleMargin = settlePositionMargin(row)
 }
 
 func normalizedPositionSize(row *PositionRow) (*string, *string) {
-	quantity, ok := decimal.Parse(row.Quantity)
+	quantity, ok := decimal.Parse(row.SourceQuantity)
 	if !ok {
 		return nil, nil
 	}
@@ -57,7 +57,7 @@ func normalizedPositionSize(row *PositionRow) (*string, *string) {
 		return nil, symbol
 	}
 	quantity = decimal.Abs(quantity)
-	switch row.QuantityUnit {
+	switch row.SourceQuantityUnit {
 	case adapters.UnitContracts:
 		if row.ContractSize == nil {
 			return nil, symbol
@@ -79,22 +79,22 @@ func normalizedPositionSize(row *PositionRow) (*string, *string) {
 
 func settlePositionMargin(row *PositionRow) *string {
 	row.MarginSource, row.MarginUnavailableReason = nil, nil
-	if row.MarginMode == nil {
+	if row.MarginSetting == nil {
 		return unavailablePositionMargin(row, "The position's Cross or Isolated setting was not recorded.")
 	}
-	if *row.MarginMode == "cross" {
+	if *row.MarginSetting == "cross" {
 		if row.PortfolioMargin == nil {
 			return unavailablePositionMargin(row, "The source Report's Account Margin Mode is unknown, so an individual initial requirement cannot be verified.")
 		}
 		if *row.PortfolioMargin && !binanceCrossMargin(row) {
 			return unavailablePositionMargin(row, "This Portfolio Margin regime does not provide an independent position initial requirement. Portfolio risk is not allocated to individual positions.")
 		}
-	} else if *row.MarginMode != "isolated" {
+	} else if *row.MarginSetting != "isolated" {
 		return unavailablePositionMargin(row, "The position margin setting is unsupported.")
 	} else if row.MarginBasis == nil || *row.MarginBasis != "allocated" {
 		return unavailablePositionMargin(row, "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.")
 	}
-	if row.Margin != nil && row.MarginAssetSymbol != nil && row.MarginBasis != nil && (*row.MarginMode != "cross" || *row.MarginBasis == "initial") {
+	if row.Margin != nil && row.MarginAssetSymbol != nil && row.MarginBasis != nil && (*row.MarginSetting != "cross" || *row.MarginBasis == "initial") {
 		amount, ok := decimal.Parse(*row.Margin)
 		if !ok || amount.Sign() < 0 {
 			return unavailablePositionMargin(row, "The reported position margin amount is invalid.")
@@ -110,7 +110,7 @@ func settlePositionMargin(row *PositionRow) *string {
 	if row.Margin == nil {
 		return unavailablePositionMargin(row, "The Platform did not provide this position margin amount.")
 	}
-	if row.MarginBasis == nil || *row.MarginMode == "cross" && *row.MarginBasis != "initial" {
+	if row.MarginBasis == nil || *row.MarginSetting == "cross" && *row.MarginBasis != "initial" {
 		return unavailablePositionMargin(row, "A position initial requirement excluding orders was not recorded.")
 	}
 	if row.MarginAssetSymbol == nil || row.SettlementAssetSymbol == nil {
@@ -137,7 +137,7 @@ func convertPositionMargin(row *PositionRow, amount *big.Rat, from string) *stri
 }
 
 func binanceCrossMargin(row *PositionRow) bool {
-	if row.Platform != string(adapters.PlatformBinance) || row.MarginMode == nil || *row.MarginMode != "cross" || row.PortfolioMargin == nil {
+	if row.Platform != string(adapters.PlatformBinance) || row.MarginSetting == nil || *row.MarginSetting != "cross" || row.PortfolioMargin == nil {
 		return false
 	}
 	switch row.AccountType {

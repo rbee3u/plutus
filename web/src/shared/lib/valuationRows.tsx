@@ -16,7 +16,7 @@ export const ACCOUNT_VALUATION_COLUMNS = [
 
 export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
   const isHealthy =
-    item.status === "ok" &&
+    item.status === "succeeded" &&
     item.freshness === "fresh" &&
     item.completeness === "complete" &&
     !item.errorClass &&
@@ -160,7 +160,7 @@ export function boundaryEventRow(
   const dec = parseDecimal(item.valueUsd);
   const isContribution = item.direction.toLowerCase() === "contribution";
   return {
-    id: `${item.pointId}-${item.accountId}-${item.direction}`,
+    id: `${item.cycleId}-${item.accountId}-${item.direction}`,
     evaluatedAt: formatInstant(item.evaluatedAt, timezone),
     account: (
       <span className={styles.cellStack}>

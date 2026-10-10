@@ -43,7 +43,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, r := range batch.Reports {
-				if r.Status != adapters.StatusOK {
+				if r.Status != adapters.StatusSucceeded {
 					continue
 				}
 				coins := map[string]bool{}
@@ -53,13 +53,13 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 					}
 					coins[b.AssetSymbol] = true
 				}
-				if r.EarnDetailsCollected {
+				if r.AccountType == "earn" {
 					if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
 						t.Fatalf("%s: %v", d.ID, err)
 					}
 				}
 				for _, p := range r.Positions {
-					if !decimal.Valid(p.Quantity) || decimal.ParseOrZero(p.Quantity).Sign() <= 0 {
+					if !decimal.Valid(p.SourceQuantity) || decimal.ParseOrZero(p.SourceQuantity).Sign() <= 0 {
 						t.Fatal("invalid position quantity")
 					}
 					if p.FuturesContract.Kind == adapters.KindLinearDelivery || p.FuturesContract.Kind == adapters.KindInverseDelivery {
@@ -175,10 +175,6 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	if failed.Status != adapters.StatusFailed || len(failed.Positions) != 0 {
 		t.Fatal("failure invented a Complete Set")
 	}
-	legacy := demoReport(demoByID(t, "edge-scope"), anchor, anchor.AddDate(0, 0, -5), "earn")
-	if legacy.EarnDetailsCollected || len(legacy.EarnPositions) != 0 {
-		t.Fatal("old combined scope gained invented details")
-	}
 }
 
 func TestDemoTimeAndMarketDeterminism(t *testing.T) {
@@ -252,10 +248,10 @@ func TestDemoDualStagesAndRollover(t *testing.T) {
 	if initial.DualPositions[0].Status != "active" || later.DualPositions[0].Status != "redeeming" {
 		t.Fatal("product phase does not follow actual time")
 	}
-	if !initial.DualPositions[0].ExpiryAt.Equal(*later.DualPositions[0].ExpiryAt) || initial.DualPositions[0].PlatformPositionRef != later.DualPositions[0].PlatformPositionRef {
+	if !initial.DualPositions[0].ExpiryAt.Equal(*later.DualPositions[0].ExpiryAt) || initial.DualPositions[0].PositionKey != later.DualPositions[0].PositionKey {
 		t.Fatal("existing term changed identity/date")
 	}
-	if initial.DualPositions[0].PlatformPositionRef == rolled.DualPositions[0].PlatformPositionRef || rolled.DualPositions[0].Status != "pending" {
+	if initial.DualPositions[0].PositionKey == rolled.DualPositions[0].PositionKey || rolled.DualPositions[0].Status != "pending" {
 		t.Fatal("settled subscription was not replaced by new subscription")
 	}
 	if !reflect.DeepEqual(initial.Balances, rolled.Balances) {

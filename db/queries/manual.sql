@@ -1,92 +1,68 @@
 -- name: GetManualAccount :one
-SELECT a.id, a.version, i.platform, i.status
+SELECT a.id, i.platform, i.archived_at
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.identity_id = sqlc.arg(identity_id) AND a.account_type = 'manual';
 
 -- name: LockManualAccount :one
-SELECT a.id, a.version, i.platform, i.status
+SELECT a.id, i.platform, i.archived_at
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.identity_id = sqlc.arg(identity_id) AND a.account_type = 'manual'
 FOR UPDATE;
 
--- name: ListManualBalances :many
-SELECT b.asset_symbol, b.asset_id, b.quantity, b.modified_at, asset.canonical_symbol AS canonical_asset_symbol
-FROM manual_balances b JOIN assets asset ON asset.id = b.asset_id
-WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.account_id = sqlc.arg(account_id)
-ORDER BY b.asset_symbol;
-
--- name: PutManualBalance :exec
-INSERT INTO manual_balances (portfolio_id, account_id, asset_symbol, asset_id, quantity, modified_at)
-VALUES (sqlc.arg(portfolio_id), sqlc.arg(account_id), sqlc.arg(asset_symbol), sqlc.arg(asset_id), sqlc.arg(quantity), sqlc.arg(modified_at))
-ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), modified_at = VALUES(modified_at);
-
--- name: DeleteManualBalance :exec
-DELETE FROM manual_balances WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id) AND asset_symbol = sqlc.arg(asset_symbol);
-
--- name: AdvanceManualVersion :exec
-UPDATE accounts SET version = version + 1, updated_at = sqlc.arg(at)
-WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(account_id) AND account_type = 'manual';
+-- name: GetCurrentManualRevision :one
+SELECT * FROM manual_revisions
+WHERE portfolio_id = ? AND account_id = ? ORDER BY revision_number DESC LIMIT 1;
 
 -- name: InsertManualRevision :exec
-INSERT INTO manual_revisions (portfolio_id, account_id, version, balances_json, modified_at)
-VALUES (sqlc.arg(portfolio_id), sqlc.arg(account_id), sqlc.arg(version), sqlc.arg(balances_json), sqlc.arg(modified_at));
+INSERT INTO manual_revisions (portfolio_id, account_id, revision_number, changed_at)
+VALUES (sqlc.arg(portfolio_id), sqlc.arg(account_id), sqlc.arg(revision_number), sqlc.narg(changed_at));
 
--- name: GetManualModifiedAt :one
-SELECT modified_at FROM manual_revisions
-WHERE portfolio_id = sqlc.arg(portfolio_id) AND account_id = sqlc.arg(account_id)
-ORDER BY version DESC LIMIT 1;
+-- name: LockCycleManualReportedAt :one
+SELECT manual_reported_at FROM collection_cycles
+WHERE portfolio_id = ? AND id = ? FOR UPDATE;
 
--- name: LockManualCycleJob :one
-SELECT id FROM jobs WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(job_id) FOR UPDATE;
+-- name: MarkCycleManualReported :exec
+UPDATE collection_cycles SET manual_reported_at = sqlc.arg(at)
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
--- name: GetManualCycle :one
-SELECT job_id FROM manual_cycles WHERE portfolio_id = sqlc.arg(portfolio_id) AND job_id = sqlc.arg(job_id);
-
--- name: InsertManualCycle :exec
-INSERT INTO manual_cycles (portfolio_id, job_id, captured_at)
-VALUES (sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(captured_at));
-
--- name: LockManualBoundary :many
-SELECT a.id, a.identity_id, a.version, i.platform
+-- name: ListManualBoundary :many
+SELECT a.id, i.platform
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.account_type = 'manual' AND i.status = 'enabled'
-ORDER BY a.id FOR UPDATE;
+WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.account_type = 'manual' AND i.archived_at IS NULL
+ORDER BY a.id;
 
--- name: InsertManualCycleAccount :exec
-INSERT INTO manual_cycle_accounts (portfolio_id, job_id, account_id, version, balances_json, modified_at)
-VALUES (sqlc.arg(portfolio_id), sqlc.arg(job_id), sqlc.arg(account_id), sqlc.arg(version), sqlc.arg(balances_json), sqlc.narg(modified_at));
+-- The applied revision is the latest one whose own cycle committed a point.
+-- Serialized cycles make report time follow point order. The Account's
+-- fallback range stops at its latest committed report; the optimizer can
+-- prefer a Portfolio-wide time scan that walks every newer report of other
+-- Accounts, so the fallback index is forced.
+-- name: GetAppliedManualRevision :one
+SELECT r.manual_revision_number
+FROM account_reports r FORCE INDEX (idx_account_reports_fallback)
+JOIN valuation_points p ON p.portfolio_id = r.portfolio_id AND p.cycle_id = r.cycle_id
+WHERE r.portfolio_id = sqlc.arg(portfolio_id) AND r.account_id = sqlc.arg(account_id) AND r.status = 'succeeded' AND r.manual_revision_number IS NOT NULL
+ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1;
 
--- name: ListManualCycleAccounts :many
-SELECT m.account_id, m.version, m.balances_json, m.modified_at, a.identity_id, i.platform
-FROM manual_cycle_accounts m
-JOIN accounts a ON a.portfolio_id = m.portfolio_id AND a.id = m.account_id
-JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE m.portfolio_id = sqlc.arg(portfolio_id) AND m.job_id = sqlc.arg(job_id)
-ORDER BY m.account_id;
-
--- name: GetAppliedManualState :one
-SELECT m.version, m.balances_json
-FROM valuation_points p JOIN manual_cycle_accounts m ON m.portfolio_id = p.portfolio_id AND m.job_id = p.job_id
-WHERE p.portfolio_id = sqlc.arg(portfolio_id) AND m.account_id = sqlc.arg(account_id)
-ORDER BY p.evaluated_at DESC, p.id DESC LIMIT 1;
-
--- name: SetManualReportMetadata :exec
-UPDATE account_reports SET manual_state_json = sqlc.arg(state_json), manual_modified_at = sqlc.narg(modified_at)
-WHERE portfolio_id = sqlc.arg(portfolio_id) AND job_id = sqlc.arg(job_id) AND account_id = sqlc.arg(account_id);
+-- name: ListPortfolioManualRevisions :many
+SELECT r.account_id, r.revision_number, r.changed_at
+FROM manual_revisions r
+WHERE r.portfolio_id = sqlc.arg(portfolio_id)
+AND r.revision_number = (SELECT MAX(v.revision_number) FROM manual_revisions v WHERE v.portfolio_id = r.portfolio_id AND v.account_id = r.account_id)
+ORDER BY r.account_id;
 
 -- name: ReportHasHoldings :one
 SELECT (
-    EXISTS(SELECT 1 FROM balances b WHERE b.report_id = sqlc.arg(source_id) AND (b.equity IS NULL OR b.equity <> 0 OR COALESCE(b.liability, 0) <> 0 OR COALESCE(b.interest, 0) <> 0 OR COALESCE(b.unrealized_pnl, 0) <> 0 OR COALESCE(b.available_to_trade, 0) <> 0 OR COALESCE(b.available_to_withdraw, 0) <> 0))
-    OR EXISTS(SELECT 1 FROM positions p WHERE p.report_id = sqlc.arg(source_id))
-    OR EXISTS(SELECT 1 FROM earn_positions e WHERE e.report_id = sqlc.arg(source_id))
-    OR EXISTS(SELECT 1 FROM dual_positions d WHERE d.report_id = sqlc.arg(source_id))
+    EXISTS(SELECT 1 FROM balances b WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id = sqlc.arg(source_id) AND (b.equity IS NULL OR b.equity <> 0 OR COALESCE(b.liability, 0) <> 0 OR COALESCE(b.interest, 0) <> 0 OR COALESCE(b.unrealized_pnl, 0) <> 0 OR COALESCE(b.available_to_trade, 0) <> 0 OR COALESCE(b.available_to_withdraw, 0) <> 0))
+    OR EXISTS(SELECT 1 FROM futures_positions p WHERE p.portfolio_id = sqlc.arg(portfolio_id) AND p.report_id = sqlc.arg(source_id))
+    OR EXISTS(SELECT 1 FROM earn_positions e WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.report_id = sqlc.arg(source_id))
+    OR EXISTS(SELECT 1 FROM dual_positions d WHERE d.portfolio_id = sqlc.arg(portfolio_id) AND d.report_id = sqlc.arg(source_id))
 ) AS has_holdings;
 
--- name: ListPortfolioManualBalances :many
-SELECT b.account_id, b.asset_symbol, b.asset_id, b.quantity, b.modified_at,
-       asset.canonical_symbol AS canonical_asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
-FROM manual_balances b
-JOIN assets asset ON asset.id = b.asset_id
-LEFT JOIN portfolio_asset_exclusions e ON e.portfolio_id = b.portfolio_id AND e.asset_id = b.asset_id
-WHERE b.portfolio_id = sqlc.arg(portfolio_id)
-ORDER BY b.account_id, b.asset_symbol;
+-- name: InsertManualRevisionBalance :exec
+INSERT INTO manual_revision_balances (portfolio_id, account_id, revision_number, asset_id, quantity, changed_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: ListManualRevisionBalances :many
+SELECT b.asset_id, b.quantity, b.changed_at, a.symbol AS asset_symbol, a.canonical_asset_symbol
+FROM manual_revision_balances b JOIN assets a ON a.portfolio_id = b.portfolio_id AND a.id = b.asset_id
+WHERE b.portfolio_id = ? AND b.account_id = ? AND b.revision_number = ? ORDER BY a.symbol, b.asset_id;

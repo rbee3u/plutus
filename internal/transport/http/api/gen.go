@@ -45,8 +45,8 @@ func (e AccountValuationMethod) Valid() bool {
 
 // Defines values for AccountValuationStatus.
 const (
-	AccountValuationStatusFailed AccountValuationStatus = "failed"
-	AccountValuationStatusOk     AccountValuationStatus = "ok"
+	AccountValuationStatusFailed    AccountValuationStatus = "failed"
+	AccountValuationStatusSucceeded AccountValuationStatus = "succeeded"
 )
 
 // Valid indicates whether the value is a known member of the AccountValuationStatus enum.
@@ -54,7 +54,7 @@ func (e AccountValuationStatus) Valid() bool {
 	switch e {
 	case AccountValuationStatusFailed:
 		return true
-	case AccountValuationStatusOk:
+	case AccountValuationStatusSucceeded:
 		return true
 	default:
 		return false
@@ -63,16 +63,16 @@ func (e AccountValuationStatus) Valid() bool {
 
 // Defines values for AssetMappingSource.
 const (
-	AssetMappingSourceAuto   AssetMappingSource = "auto"
-	AssetMappingSourceManual AssetMappingSource = "manual"
+	Auto   AssetMappingSource = "auto"
+	Manual AssetMappingSource = "manual"
 )
 
 // Valid indicates whether the value is a known member of the AssetMappingSource enum.
 func (e AssetMappingSource) Valid() bool {
 	switch e {
-	case AssetMappingSourceAuto:
+	case Auto:
 		return true
-	case AssetMappingSourceManual:
+	case Manual:
 		return true
 	default:
 		return false
@@ -136,21 +136,66 @@ func (e CapitalFlowDirection) Valid() bool {
 	}
 }
 
+// Defines values for CapitalFlowPricingMethod.
+const (
+	Explicit    CapitalFlowPricingMethod = "explicit"
+	MarketPrice CapitalFlowPricingMethod = "market_price"
+	Unavailable CapitalFlowPricingMethod = "unavailable"
+	UsdParity   CapitalFlowPricingMethod = "usd_parity"
+)
+
+// Valid indicates whether the value is a known member of the CapitalFlowPricingMethod enum.
+func (e CapitalFlowPricingMethod) Valid() bool {
+	switch e {
+	case Explicit:
+		return true
+	case MarketPrice:
+		return true
+	case Unavailable:
+		return true
+	case UsdParity:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectionCycleTrigger.
 const (
-	CollectionCycleTriggerManual   CollectionCycleTrigger = "manual"
 	CollectionCycleTriggerSchedule CollectionCycleTrigger = "schedule"
-	CollectionCycleTriggerSystem   CollectionCycleTrigger = "system"
+	CollectionCycleTriggerUser     CollectionCycleTrigger = "user"
 )
 
 // Valid indicates whether the value is a known member of the CollectionCycleTrigger enum.
 func (e CollectionCycleTrigger) Valid() bool {
 	switch e {
-	case CollectionCycleTriggerManual:
-		return true
 	case CollectionCycleTriggerSchedule:
 		return true
-	case CollectionCycleTriggerSystem:
+	case CollectionCycleTriggerUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CollectionCycleStatus.
+const (
+	CollectionCycleStatusFailed    CollectionCycleStatus = "failed"
+	CollectionCycleStatusQueued    CollectionCycleStatus = "queued"
+	CollectionCycleStatusRunning   CollectionCycleStatus = "running"
+	CollectionCycleStatusSucceeded CollectionCycleStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the CollectionCycleStatus enum.
+func (e CollectionCycleStatus) Valid() bool {
+	switch e {
+	case CollectionCycleStatusFailed:
+		return true
+	case CollectionCycleStatusQueued:
+		return true
+	case CollectionCycleStatusRunning:
+		return true
+	case CollectionCycleStatusSucceeded:
 		return true
 	default:
 		return false
@@ -373,72 +418,6 @@ func (e IdentityStatus) Valid() bool {
 	}
 }
 
-// Defines values for JobTrigger.
-const (
-	JobTriggerManual   JobTrigger = "manual"
-	JobTriggerSchedule JobTrigger = "schedule"
-	JobTriggerSystem   JobTrigger = "system"
-)
-
-// Valid indicates whether the value is a known member of the JobTrigger enum.
-func (e JobTrigger) Valid() bool {
-	switch e {
-	case JobTriggerManual:
-		return true
-	case JobTriggerSchedule:
-		return true
-	case JobTriggerSystem:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for JobKind.
-const (
-	JobKindCollectionCycle JobKind = "collection_cycle"
-	JobKindValuationRecalc JobKind = "valuation_recalc"
-)
-
-// Valid indicates whether the value is a known member of the JobKind enum.
-func (e JobKind) Valid() bool {
-	switch e {
-	case JobKindCollectionCycle:
-		return true
-	case JobKindValuationRecalc:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for JobStatus.
-const (
-	JobStatusCancelled JobStatus = "cancelled"
-	JobStatusFailed    JobStatus = "failed"
-	JobStatusQueued    JobStatus = "queued"
-	JobStatusRunning   JobStatus = "running"
-	JobStatusSucceeded JobStatus = "succeeded"
-)
-
-// Valid indicates whether the value is a known member of the JobStatus enum.
-func (e JobStatus) Valid() bool {
-	switch e {
-	case JobStatusCancelled:
-		return true
-	case JobStatusFailed:
-		return true
-	case JobStatusQueued:
-		return true
-	case JobStatusRunning:
-		return true
-	case JobStatusSucceeded:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for OffsetPageKind.
 const (
 	Offset OffsetPageKind = "offset"
@@ -520,21 +499,21 @@ func (e PositionRowMarginBasis) Valid() bool {
 	}
 }
 
-// Defines values for PositionRowMarginMode.
+// Defines values for PositionRowMarginSetting.
 const (
-	PositionRowMarginModeCross       PositionRowMarginMode = "cross"
-	PositionRowMarginModeIsolated    PositionRowMarginMode = "isolated"
-	PositionRowMarginModeLessThannil PositionRowMarginMode = "<nil>"
+	PositionRowMarginSettingCross       PositionRowMarginSetting = "cross"
+	PositionRowMarginSettingIsolated    PositionRowMarginSetting = "isolated"
+	PositionRowMarginSettingLessThannil PositionRowMarginSetting = "<nil>"
 )
 
-// Valid indicates whether the value is a known member of the PositionRowMarginMode enum.
-func (e PositionRowMarginMode) Valid() bool {
+// Valid indicates whether the value is a known member of the PositionRowMarginSetting enum.
+func (e PositionRowMarginSetting) Valid() bool {
 	switch e {
-	case PositionRowMarginModeCross:
+	case PositionRowMarginSettingCross:
 		return true
-	case PositionRowMarginModeIsolated:
+	case PositionRowMarginSettingIsolated:
 		return true
-	case PositionRowMarginModeLessThannil:
+	case PositionRowMarginSettingLessThannil:
 		return true
 	default:
 		return false
@@ -583,27 +562,6 @@ func (e PositionRowPositionMode) Valid() bool {
 	}
 }
 
-// Defines values for PositionRowQuantityUnit.
-const (
-	Base      PositionRowQuantityUnit = "base"
-	Contracts PositionRowQuantityUnit = "contracts"
-	Quote     PositionRowQuantityUnit = "quote"
-)
-
-// Valid indicates whether the value is a known member of the PositionRowQuantityUnit enum.
-func (e PositionRowQuantityUnit) Valid() bool {
-	switch e {
-	case Base:
-		return true
-	case Contracts:
-		return true
-	case Quote:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PositionRowSide.
 const (
 	Long  PositionRowSide = "long"
@@ -616,6 +574,27 @@ func (e PositionRowSide) Valid() bool {
 	case Long:
 		return true
 	case Short:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PositionRowSourceQuantityUnit.
+const (
+	Base      PositionRowSourceQuantityUnit = "base"
+	Contracts PositionRowSourceQuantityUnit = "contracts"
+	Quote     PositionRowSourceQuantityUnit = "quote"
+)
+
+// Valid indicates whether the value is a known member of the PositionRowSourceQuantityUnit enum.
+func (e PositionRowSourceQuantityUnit) Valid() bool {
+	switch e {
+	case Base:
+		return true
+	case Contracts:
+		return true
+	case Quote:
 		return true
 	default:
 		return false
@@ -655,6 +634,27 @@ func (e UserStatus) Valid() bool {
 	case UserStatusActive:
 		return true
 	case UserStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ValuationPointSummaryDetailState.
+const (
+	Daily   ValuationPointSummaryDetailState = "daily"
+	Expired ValuationPointSummaryDetailState = "expired"
+	Full    ValuationPointSummaryDetailState = "full"
+)
+
+// Valid indicates whether the value is a known member of the ValuationPointSummaryDetailState enum.
+func (e ValuationPointSummaryDetailState) Valid() bool {
+	switch e {
+	case Daily:
+		return true
+	case Expired:
+		return true
+	case Full:
 		return true
 	default:
 		return false
@@ -740,7 +740,6 @@ type Account struct {
 	Id          UUID   `json:"id"`
 	IdentityId  UUID   `json:"identityId"`
 	Selected    bool   `json:"selected"`
-	Version     int    `json:"version"`
 }
 
 // AccountBalanceList defines model for AccountBalanceList.
@@ -761,19 +760,16 @@ type AccountDualPositionList struct {
 
 // AccountEarnPositionList defines model for AccountEarnPositionList.
 type AccountEarnPositionList struct {
-	Account          AccountValuation     `json:"account"`
-	BalanceSummaries []EarnBalanceSummary `json:"balanceSummaries"`
-	Context          ReadContext          `json:"context"`
-	DetailsCollected bool                 `json:"detailsCollected"`
-	Issues           []Issue              `json:"issues"`
-	Items            []EarnPositionRow    `json:"items"`
+	Account AccountValuation  `json:"account"`
+	Context ReadContext       `json:"context"`
+	Issues  []Issue           `json:"issues"`
+	Items   []EarnPositionRow `json:"items"`
 }
 
 // AccountPatch defines model for AccountPatch.
 type AccountPatch struct {
-	DisplayName *string `json:"displayName,omitempty"`
-	Id          UUID    `json:"id"`
-	Selected    *bool   `json:"selected,omitempty"`
+	Id       UUID  `json:"id"`
+	Selected *bool `json:"selected,omitempty"`
 }
 
 // AccountPositionList defines model for AccountPositionList.
@@ -820,16 +816,18 @@ type AccountValuation struct {
 	MaintenanceMarginRatio *NullableDecimal `json:"maintenanceMarginRatio,omitempty"`
 
 	// ManualModifiedAt Last user quantity adjustment, distinct from report observation time.
-	ManualModifiedAt   *time.Time             `json:"manualModifiedAt,omitempty"`
-	Method             AccountValuationMethod `json:"method"`
-	Omitted            []OmittedBalance       `json:"omitted"`
-	Platform           string                 `json:"platform"`
-	ReportId           *openapi_types.UUID    `json:"reportId,omitempty"`
-	ReportObservedAt   *time.Time             `json:"reportObservedAt,omitempty"`
-	Selected           bool                   `json:"selected"`
-	Status             AccountValuationStatus `json:"status"`
-	UnifiedMarginRatio *NullableDecimal       `json:"unifiedMarginRatio,omitempty"`
-	ValueUsd           *NullableDecimal       `json:"valueUsd,omitempty"`
+	ManualModifiedAt *time.Time `json:"manualModifiedAt,omitempty"`
+
+	// MarginRatio Platform-reported, unscaled Account margin ratio. Its label and denominator depend on the immutable Platform and Account scope.
+	MarginRatio      *NullableDecimal       `json:"marginRatio,omitempty"`
+	Method           AccountValuationMethod `json:"method"`
+	Omitted          []OmittedBalance       `json:"omitted"`
+	Platform         string                 `json:"platform"`
+	ReportId         *openapi_types.UUID    `json:"reportId,omitempty"`
+	ReportObservedAt *time.Time             `json:"reportObservedAt,omitempty"`
+	Selected         bool                   `json:"selected"`
+	Status           AccountValuationStatus `json:"status"`
+	ValueUsd         *NullableDecimal       `json:"valueUsd,omitempty"`
 }
 
 // AccountValuationMethod defines model for AccountValuation.Method.
@@ -840,19 +838,18 @@ type AccountValuationStatus string
 
 // Asset defines model for Asset.
 type Asset struct {
-	CanonicalSymbol  string             `json:"canonicalSymbol"`
-	ExclusionVersion int                `json:"exclusionVersion"`
-	FirstSeenAt      time.Time          `json:"firstSeenAt"`
-	Id               UUID               `json:"id"`
-	IgnoreReason     *string            `json:"ignoreReason,omitempty"`
-	Ignored          bool               `json:"ignored"`
-	IgnoredAt        *time.Time         `json:"ignoredAt,omitempty"`
-	LastSeenAt       time.Time          `json:"lastSeenAt"`
-	MappingSource    AssetMappingSource `json:"mappingSource"`
-	Name             *string            `json:"name,omitempty"`
-	Platform         string             `json:"platform"`
-	Symbol           string             `json:"symbol"`
-	Version          int                `json:"version"`
+	CanonicalAssetSymbol string             `json:"canonicalAssetSymbol"`
+	Excluded             bool               `json:"excluded"`
+	ExcludedAt           *time.Time         `json:"excludedAt,omitempty"`
+	ExclusionReason      *string            `json:"exclusionReason,omitempty"`
+	ExclusionVersion     int                `json:"exclusionVersion"`
+	FirstObservedAt      time.Time          `json:"firstObservedAt"`
+	Id                   UUID               `json:"id"`
+	LastObservedAt       time.Time          `json:"lastObservedAt"`
+	MappingSource        AssetMappingSource `json:"mappingSource"`
+	MappingVersion       int                `json:"mappingVersion"`
+	Platform             string             `json:"platform"`
+	Symbol               string             `json:"symbol"`
 }
 
 // AssetMappingSource defines model for Asset.MappingSource.
@@ -873,7 +870,7 @@ type AuditEvent struct {
 	Id           UUID                    `json:"id"`
 	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
 	OccurredAt   time.Time               `json:"occurredAt"`
-	PortfolioId  *openapi_types.UUID     `json:"portfolioId,omitempty"`
+	PortfolioId  UUID                    `json:"portfolioId"`
 	RequestId    *string                 `json:"requestId,omitempty"`
 	ResourceId   *openapi_types.UUID     `json:"resourceId,omitempty"`
 	ResourceType string                  `json:"resourceType"`
@@ -941,13 +938,14 @@ type BalanceRowManualChange string
 type BoundaryEvent struct {
 	AccountId    UUID                   `json:"accountId"`
 	AccountName  string                 `json:"accountName"`
+	Completeness Completeness           `json:"completeness"`
+	CycleId      UUID                   `json:"cycleId"`
 	Direction    BoundaryEventDirection `json:"direction"`
 	EvaluatedAt  time.Time              `json:"evaluatedAt"`
 	IdentityId   *openapi_types.UUID    `json:"identityId,omitempty"`
 	IdentityName *string                `json:"identityName,omitempty"`
 	Method       string                 `json:"method"`
 	Platform     *string                `json:"platform,omitempty"`
-	PointId      UUID                   `json:"pointId"`
 	ValueUsd     *NullableDecimal       `json:"valueUsd,omitempty"`
 }
 
@@ -963,6 +961,7 @@ type BoundaryEventList struct {
 type CapitalFlow struct {
 	AccountId            *openapi_types.UUID  `json:"accountId,omitempty"`
 	AccountName          *string              `json:"accountName,omitempty"`
+	CalculationVersion   int                  `json:"calculationVersion"`
 	CanonicalAssetSymbol string               `json:"canonicalAssetSymbol"`
 	CreatedAt            time.Time            `json:"createdAt"`
 	Direction            CapitalFlowDirection `json:"direction"`
@@ -970,14 +969,23 @@ type CapitalFlow struct {
 	Id                   UUID                 `json:"id"`
 	Note                 *string              `json:"note,omitempty"`
 	PortfolioId          UUID                 `json:"portfolioId"`
-	Quantity             Decimal              `json:"quantity"`
-	UpdatedAt            time.Time            `json:"updatedAt"`
-	ValueUsd             *NullableDecimal     `json:"valueUsd,omitempty"`
-	Version              int                  `json:"version"`
+	PriceObservationId   *openapi_types.UUID  `json:"priceObservationId,omitempty"`
+
+	// PricingAttemptedAt Time of the latest pricing attempt, including an unavailable result. Note-only edits preserve it.
+	PricingAttemptedAt time.Time                `json:"pricingAttemptedAt"`
+	PricingMethod      CapitalFlowPricingMethod `json:"pricingMethod"`
+	PricingPlatform    *string                  `json:"pricingPlatform,omitempty"`
+	Quantity           Decimal                  `json:"quantity"`
+	UpdatedAt          time.Time                `json:"updatedAt"`
+	ValueUsd           *NullableDecimal         `json:"valueUsd,omitempty"`
+	Version            int                      `json:"version"`
 }
 
 // CapitalFlowDirection defines model for CapitalFlow.Direction.
 type CapitalFlowDirection string
+
+// CapitalFlowPricingMethod defines model for CapitalFlow.PricingMethod.
+type CapitalFlowPricingMethod string
 
 // CapitalFlowList defines model for CapitalFlowList.
 type CapitalFlowList struct {
@@ -992,20 +1000,22 @@ type ChangePasswordRequest struct {
 
 // CollectionCycle defines model for CollectionCycle.
 type CollectionCycle struct {
-	AttemptCount int        `json:"attemptCount"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	FinishedAt   *time.Time `json:"finishedAt,omitempty"`
-	Id           UUID       `json:"id"`
+	// AttemptCount Claimed attempts so far; a cycle fails after its third.
+	AttemptCount int       `json:"attemptCount"`
+	CreatedAt    time.Time `json:"createdAt"`
 
-	// LastDetail Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
-	LastDetail     *string                `json:"lastDetail,omitempty"`
-	LastErrorClass *string                `json:"lastErrorClass,omitempty"`
-	MaxAttempts    int                    `json:"maxAttempts"`
-	Point          *ValuationPointSummary `json:"point,omitempty"`
-	PortfolioId    UUID                   `json:"portfolioId"`
-	StartedAt      *time.Time             `json:"startedAt,omitempty"`
-	Status         JobStatus              `json:"status"`
-	Trigger        CollectionCycleTrigger `json:"trigger"`
+	// ErrorClass Error class of the latest failed attempt; null once the cycle succeeds.
+	ErrorClass *string `json:"errorClass,omitempty"`
+
+	// ErrorDetail Sanitized error of the latest failed attempt; null once the cycle succeeds.
+	ErrorDetail *string                `json:"errorDetail,omitempty"`
+	FinishedAt  *time.Time             `json:"finishedAt,omitempty"`
+	Id          UUID                   `json:"id"`
+	Point       *ValuationPointSummary `json:"point,omitempty"`
+	PortfolioId UUID                   `json:"portfolioId"`
+	StartedAt   *time.Time             `json:"startedAt,omitempty"`
+	Status      CollectionCycleStatus  `json:"status"`
+	Trigger     CollectionCycleTrigger `json:"trigger"`
 }
 
 // CollectionCycleTrigger defines model for CollectionCycle.Trigger.
@@ -1024,18 +1034,21 @@ type CollectionCycleList struct {
 	Page  CursorPage        `json:"page"`
 }
 
+// CollectionCycleStatus defines model for CollectionCycleStatus.
+type CollectionCycleStatus string
+
 // Completeness defines model for Completeness.
 type Completeness string
 
 // Connection defines model for Connection.
 type Connection struct {
-	CredentialsConfigured bool             `json:"credentialsConfigured"`
-	CredentialsUpdatedAt  *time.Time       `json:"credentialsUpdatedAt,omitempty"`
-	LastCollectedAt       *time.Time       `json:"lastCollectedAt,omitempty"`
-	LastErrorClass        *string          `json:"lastErrorClass,omitempty"`
-	LastErrorDetail       *string          `json:"lastErrorDetail,omitempty"`
-	LastValidatedAt       *time.Time       `json:"lastValidatedAt,omitempty"`
-	Status                ConnectionStatus `json:"status"`
+	CredentialsConfigured     bool             `json:"credentialsConfigured"`
+	CredentialsSetAt          *time.Time       `json:"credentialsSetAt,omitempty"`
+	LastCollectionFinishedAt  *time.Time       `json:"lastCollectionFinishedAt,omitempty"`
+	LastErrorClass            *string          `json:"lastErrorClass,omitempty"`
+	LastErrorDetail           *string          `json:"lastErrorDetail,omitempty"`
+	LastValidationSucceededAt *time.Time       `json:"lastValidationSucceededAt,omitempty"`
+	Status                    ConnectionStatus `json:"status"`
 }
 
 // ConnectionStatus defines model for Connection.Status.
@@ -1048,6 +1061,7 @@ type CreateCapitalFlowRequest struct {
 	Direction            CreateCapitalFlowRequestDirection `json:"direction"`
 	EffectiveAt          time.Time                         `json:"effectiveAt"`
 	Note                 *string                           `json:"note,omitempty"`
+	PricingPlatform      *string                           `json:"pricingPlatform,omitempty"`
 	Quantity             Decimal                           `json:"quantity"`
 	ValueUsd             *Decimal                          `json:"valueUsd,omitempty"`
 }
@@ -1144,29 +1158,29 @@ type DualPositionList struct {
 
 // DualPositionRow defines model for DualPositionRow.
 type DualPositionRow struct {
-	AccountId           UUID             `json:"accountId"`
-	AccountName         string           `json:"accountName"`
-	AccountType         string           `json:"accountType"`
-	AnnualizedRate      *NullableDecimal `json:"annualizedRate,omitempty"`
-	BaseAssetSymbol     *string          `json:"baseAssetSymbol,omitempty"`
-	Direction           *string          `json:"direction,omitempty"`
-	ExpiryAt            *time.Time       `json:"expiryAt,omitempty"`
-	Freshness           Freshness        `json:"freshness"`
-	IdentityId          UUID             `json:"identityId"`
-	IdentityName        string           `json:"identityName"`
-	InvestAssetSymbol   string           `json:"investAssetSymbol"`
-	Issues              *[]Issue         `json:"issues,omitempty"`
-	OrderRef            *string          `json:"orderRef,omitempty"`
-	Platform            string           `json:"platform"`
-	PlatformPositionRef string           `json:"platformPositionRef"`
-	Principal           Decimal          `json:"principal"`
-	ProductRef          *string          `json:"productRef,omitempty"`
-	QuoteAssetSymbol    *string          `json:"quoteAssetSymbol,omitempty"`
-	RateKind            *string          `json:"rateKind,omitempty"`
-	ReportObservedAt    *time.Time       `json:"reportObservedAt,omitempty"`
-	Status              string           `json:"status"`
-	SubscribedAt        *time.Time       `json:"subscribedAt,omitempty"`
-	TargetPrice         *NullableDecimal `json:"targetPrice,omitempty"`
+	AccountId            UUID             `json:"accountId"`
+	AccountName          string           `json:"accountName"`
+	AccountType          string           `json:"accountType"`
+	AnnualizedRate       *NullableDecimal `json:"annualizedRate,omitempty"`
+	BaseAssetSymbol      *string          `json:"baseAssetSymbol,omitempty"`
+	Direction            *string          `json:"direction,omitempty"`
+	ExpiryAt             *time.Time       `json:"expiryAt,omitempty"`
+	Freshness            Freshness        `json:"freshness"`
+	IdentityId           UUID             `json:"identityId"`
+	IdentityName         string           `json:"identityName"`
+	Issues               *[]Issue         `json:"issues,omitempty"`
+	OrderRef             *string          `json:"orderRef,omitempty"`
+	Platform             string           `json:"platform"`
+	PositionKey          string           `json:"positionKey"`
+	Principal            Decimal          `json:"principal"`
+	PrincipalAssetSymbol string           `json:"principalAssetSymbol"`
+	ProductRef           *string          `json:"productRef,omitempty"`
+	QuoteAssetSymbol     *string          `json:"quoteAssetSymbol,omitempty"`
+	RateKind             *string          `json:"rateKind,omitempty"`
+	ReportObservedAt     *time.Time       `json:"reportObservedAt,omitempty"`
+	Status               string           `json:"status"`
+	SubscribedAt         *time.Time       `json:"subscribedAt,omitempty"`
+	TargetPrice          *NullableDecimal `json:"targetPrice,omitempty"`
 }
 
 // EarnAmount defines model for EarnAmount.
@@ -1174,18 +1188,6 @@ type EarnAmount struct {
 	Amount               Decimal `json:"amount"`
 	AssetSymbol          string  `json:"assetSymbol"`
 	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
-}
-
-// EarnBalanceSummary defines model for EarnBalanceSummary.
-type EarnBalanceSummary struct {
-	AccountId        UUID         `json:"accountId"`
-	AccountName      string       `json:"accountName"`
-	Assets           []EarnAmount `json:"assets"`
-	Freshness        Freshness    `json:"freshness"`
-	IdentityName     string       `json:"identityName"`
-	Issues           []Issue      `json:"issues"`
-	Platform         string       `json:"platform"`
-	ReportObservedAt *time.Time   `json:"reportObservedAt,omitempty"`
 }
 
 // EarnDetail defines model for EarnDetail.
@@ -1197,39 +1199,38 @@ type EarnDetail struct {
 
 // EarnPositionList defines model for EarnPositionList.
 type EarnPositionList struct {
-	BalanceSummaries []EarnBalanceSummary `json:"balanceSummaries"`
-	Completeness     Completeness         `json:"completeness"`
-	Context          ReadContext          `json:"context"`
-	DetailsComplete  bool                 `json:"detailsComplete"`
-	Issues           []Issue              `json:"issues"`
-	Items            []EarnPositionRow    `json:"items"`
-	Page             OffsetPage           `json:"page"`
+	Completeness    Completeness      `json:"completeness"`
+	Context         ReadContext       `json:"context"`
+	DetailsComplete bool              `json:"detailsComplete"`
+	Issues          []Issue           `json:"issues"`
+	Items           []EarnPositionRow `json:"items"`
+	Page            OffsetPage        `json:"page"`
 }
 
 // EarnPositionRow defines model for EarnPositionRow.
 type EarnPositionRow struct {
-	AccountId           UUID         `json:"accountId"`
-	AccountName         string       `json:"accountName"`
-	AccountType         string       `json:"accountType"`
-	AmountBasis         string       `json:"amountBasis"`
-	Assets              []EarnAmount `json:"assets"`
-	Details             []EarnDetail `json:"details"`
-	Freshness           Freshness    `json:"freshness"`
-	Granularity         string       `json:"granularity"`
-	IdentityId          UUID         `json:"identityId"`
-	IdentityName        string       `json:"identityName"`
-	Issues              []Issue      `json:"issues"`
-	MaturityAt          *time.Time   `json:"maturityAt,omitempty"`
-	Platform            string       `json:"platform"`
-	PlatformPositionRef string       `json:"platformPositionRef"`
-	ProductName         *string      `json:"productName,omitempty"`
-	ProductRef          *string      `json:"productRef,omitempty"`
-	Rates               []EarnRate   `json:"rates"`
-	ReportObservedAt    *time.Time   `json:"reportObservedAt,omitempty"`
-	Rewards             []EarnReward `json:"rewards"`
-	Status              *string      `json:"status,omitempty"`
-	SubscribedAt        *time.Time   `json:"subscribedAt,omitempty"`
-	Type                string       `json:"type"`
+	AccountId        UUID         `json:"accountId"`
+	AccountName      string       `json:"accountName"`
+	AccountType      string       `json:"accountType"`
+	AmountBasis      string       `json:"amountBasis"`
+	Assets           []EarnAmount `json:"assets"`
+	Details          []EarnDetail `json:"details"`
+	Freshness        Freshness    `json:"freshness"`
+	Granularity      string       `json:"granularity"`
+	IdentityId       UUID         `json:"identityId"`
+	IdentityName     string       `json:"identityName"`
+	Issues           []Issue      `json:"issues"`
+	MaturityAt       *time.Time   `json:"maturityAt,omitempty"`
+	Platform         string       `json:"platform"`
+	PositionKey      string       `json:"positionKey"`
+	ProductName      *string      `json:"productName,omitempty"`
+	ProductRef       *string      `json:"productRef,omitempty"`
+	Rates            []EarnRate   `json:"rates"`
+	ReportObservedAt *time.Time   `json:"reportObservedAt,omitempty"`
+	Rewards          []EarnReward `json:"rewards"`
+	Status           *string      `json:"status,omitempty"`
+	SubscribedAt     *time.Time   `json:"subscribedAt,omitempty"`
+	Type             string       `json:"type"`
 }
 
 // EarnRate defines model for EarnRate.
@@ -1264,10 +1265,10 @@ type FuturesContract struct {
 	BaseAssetSymbol       *string          `json:"baseAssetSymbol,omitempty"`
 	ContractSize          *NullableDecimal `json:"contractSize,omitempty"`
 	ExpiryAt              *time.Time       `json:"expiryAt,omitempty"`
-	FirstSeenAt           time.Time        `json:"firstSeenAt"`
+	FirstObservedAt       time.Time        `json:"firstObservedAt"`
 	Id                    UUID             `json:"id"`
 	Kind                  string           `json:"kind"`
-	LastSeenAt            time.Time        `json:"lastSeenAt"`
+	LastObservedAt        time.Time        `json:"lastObservedAt"`
 	Platform              string           `json:"platform"`
 	QuoteAssetSymbol      *string          `json:"quoteAssetSymbol,omitempty"`
 	SettlementAssetSymbol *string          `json:"settlementAssetSymbol,omitempty"`
@@ -1369,39 +1370,6 @@ type Issue struct {
 	Symbol      *string             `json:"symbol,omitempty"`
 }
 
-// Job defines model for Job.
-type Job struct {
-	AttemptCount int        `json:"attemptCount"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	FinishedAt   *time.Time `json:"finishedAt,omitempty"`
-	Id           UUID       `json:"id"`
-	Kind         JobKind    `json:"kind"`
-
-	// LastDetail Outcome of the last attempt: a short summary on success, the sanitized error otherwise.
-	LastDetail     *string    `json:"lastDetail,omitempty"`
-	LastErrorClass *string    `json:"lastErrorClass,omitempty"`
-	MaxAttempts    int        `json:"maxAttempts"`
-	PortfolioId    UUID       `json:"portfolioId"`
-	StartedAt      *time.Time `json:"startedAt,omitempty"`
-	Status         JobStatus  `json:"status"`
-	Trigger        JobTrigger `json:"trigger"`
-}
-
-// JobTrigger defines model for Job.Trigger.
-type JobTrigger string
-
-// JobKind defines model for JobKind.
-type JobKind string
-
-// JobList defines model for JobList.
-type JobList struct {
-	Items []Job      `json:"items"`
-	Page  CursorPage `json:"page"`
-}
-
-// JobStatus defines model for JobStatus.
-type JobStatus string
-
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Password string `json:"password"`
@@ -1480,6 +1448,7 @@ type PatchCapitalFlowRequest struct {
 	Direction            *PatchCapitalFlowRequestDirection `json:"direction,omitempty"`
 	EffectiveAt          *time.Time                        `json:"effectiveAt,omitempty"`
 	Note                 *string                           `json:"note,omitempty"`
+	PricingPlatform      *string                           `json:"pricingPlatform,omitempty"`
 	Quantity             *Decimal                          `json:"quantity,omitempty"`
 	ValueUsd             *NullableDecimal                  `json:"valueUsd,omitempty"`
 }
@@ -1539,14 +1508,15 @@ type PlatformList struct {
 
 // Portfolio defines model for Portfolio.
 type Portfolio struct {
-	CollectionIntervalSeconds int       `json:"collectionIntervalSeconds"`
-	CreatedAt                 time.Time `json:"createdAt"`
-	Id                        UUID      `json:"id"`
-	Name                      string    `json:"name"`
-	Timezone                  string    `json:"timezone"`
-	Undeletable               bool      `json:"undeletable"`
-	UpdatedAt                 time.Time `json:"updatedAt"`
-	Version                   int       `json:"version"`
+	CollectionIntervalSeconds int        `json:"collectionIntervalSeconds"`
+	CreatedAt                 time.Time  `json:"createdAt"`
+	DeletionRequestedAt       *time.Time `json:"deletionRequestedAt,omitempty"`
+	Id                        UUID       `json:"id"`
+	Name                      string     `json:"name"`
+	Timezone                  string     `json:"timezone"`
+	Undeletable               bool       `json:"undeletable"`
+	UpdatedAt                 time.Time  `json:"updatedAt"`
+	Version                   int        `json:"version"`
 }
 
 // PortfolioList defines model for PortfolioList.
@@ -1568,26 +1538,26 @@ type PositionList struct {
 
 // PositionRow defines model for PositionRow.
 type PositionRow struct {
-	AccountId         UUID                    `json:"accountId"`
-	AccountName       string                  `json:"accountName"`
-	AccountType       string                  `json:"accountType"`
-	BaseAssetSymbol   *string                 `json:"baseAssetSymbol,omitempty"`
-	ContractSize      *NullableDecimal        `json:"contractSize,omitempty"`
-	EntryPrice        *NullableDecimal        `json:"entryPrice,omitempty"`
-	ExpiryAt          *time.Time              `json:"expiryAt,omitempty"`
-	Freshness         Freshness               `json:"freshness"`
-	FuturesContractId UUID                    `json:"futuresContractId"`
-	FuturesSymbol     string                  `json:"futuresSymbol"`
-	IdentityId        UUID                    `json:"identityId"`
-	IdentityName      string                  `json:"identityName"`
-	Issues            []Issue                 `json:"issues"`
-	Kind              string                  `json:"kind"`
-	Leverage          *NullableDecimal        `json:"leverage,omitempty"`
-	LiquidationPrice  *NullableDecimal        `json:"liquidationPrice,omitempty"`
-	Margin            *NullableDecimal        `json:"margin,omitempty"`
-	MarginAssetSymbol *string                 `json:"marginAssetSymbol,omitempty"`
-	MarginBasis       *PositionRowMarginBasis `json:"marginBasis,omitempty"`
-	MarginMode        *PositionRowMarginMode  `json:"marginMode,omitempty"`
+	AccountId         UUID                      `json:"accountId"`
+	AccountName       string                    `json:"accountName"`
+	AccountType       string                    `json:"accountType"`
+	BaseAssetSymbol   *string                   `json:"baseAssetSymbol,omitempty"`
+	ContractSize      *NullableDecimal          `json:"contractSize,omitempty"`
+	EntryPrice        *NullableDecimal          `json:"entryPrice,omitempty"`
+	ExpiryAt          *time.Time                `json:"expiryAt,omitempty"`
+	Freshness         Freshness                 `json:"freshness"`
+	FuturesContractId UUID                      `json:"futuresContractId"`
+	FuturesSymbol     string                    `json:"futuresSymbol"`
+	IdentityId        UUID                      `json:"identityId"`
+	IdentityName      string                    `json:"identityName"`
+	Issues            []Issue                   `json:"issues"`
+	Kind              string                    `json:"kind"`
+	Leverage          *NullableDecimal          `json:"leverage,omitempty"`
+	LiquidationPrice  *NullableDecimal          `json:"liquidationPrice,omitempty"`
+	Margin            *NullableDecimal          `json:"margin,omitempty"`
+	MarginAssetSymbol *string                   `json:"marginAssetSymbol,omitempty"`
+	MarginBasis       *PositionRowMarginBasis   `json:"marginBasis,omitempty"`
+	MarginSetting     *PositionRowMarginSetting `json:"marginSetting,omitempty"`
 
 	// MarginSource Provenance of the displayed settlement Margin; source amounts remain unchanged.
 	MarginSource *PositionRowMarginSource `json:"marginSource,omitempty"`
@@ -1597,11 +1567,9 @@ type PositionRow struct {
 	MarkPrice               *NullableDecimal         `json:"markPrice,omitempty"`
 	NotionalUsd             *NullableDecimal         `json:"notionalUsd,omitempty"`
 	Platform                string                   `json:"platform"`
-	PlatformPositionRef     string                   `json:"platformPositionRef"`
 	PortfolioMargin         *bool                    `json:"portfolioMargin,omitempty"`
+	PositionKey             string                   `json:"positionKey"`
 	PositionMode            *PositionRowPositionMode `json:"positionMode,omitempty"`
-	Quantity                Decimal                  `json:"quantity"`
-	QuantityUnit            PositionRowQuantityUnit  `json:"quantityUnit"`
 	QuoteAssetSymbol        *string                  `json:"quoteAssetSymbol,omitempty"`
 	ReportObservedAt        *time.Time               `json:"reportObservedAt,omitempty"`
 
@@ -1611,16 +1579,20 @@ type PositionRow struct {
 	Side                  PositionRowSide  `json:"side"`
 
 	// Size Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
-	Size          *NullableDecimal `json:"size,omitempty"`
-	SizeSymbol    *string          `json:"sizeSymbol,omitempty"`
-	UnrealizedPnl *NullableDecimal `json:"unrealizedPnl,omitempty"`
+	Size       *NullableDecimal `json:"size,omitempty"`
+	SizeSymbol *string          `json:"sizeSymbol,omitempty"`
+
+	// SourceQuantity Positive source quantity magnitude, retaining the source unit; direction is stored separately.
+	SourceQuantity     Decimal                       `json:"sourceQuantity"`
+	SourceQuantityUnit PositionRowSourceQuantityUnit `json:"sourceQuantityUnit"`
+	UnrealizedPnl      *NullableDecimal              `json:"unrealizedPnl,omitempty"`
 }
 
 // PositionRowMarginBasis defines model for PositionRow.MarginBasis.
 type PositionRowMarginBasis string
 
-// PositionRowMarginMode defines model for PositionRow.MarginMode.
-type PositionRowMarginMode string
+// PositionRowMarginSetting defines model for PositionRow.MarginSetting.
+type PositionRowMarginSetting string
 
 // PositionRowMarginSource Provenance of the displayed settlement Margin; source amounts remain unchanged.
 type PositionRowMarginSource string
@@ -1628,11 +1600,11 @@ type PositionRowMarginSource string
 // PositionRowPositionMode defines model for PositionRow.PositionMode.
 type PositionRowPositionMode string
 
-// PositionRowQuantityUnit defines model for PositionRow.QuantityUnit.
-type PositionRowQuantityUnit string
-
 // PositionRowSide defines model for PositionRow.Side.
 type PositionRowSide string
+
+// PositionRowSourceQuantityUnit defines model for PositionRow.SourceQuantityUnit.
+type PositionRowSourceQuantityUnit string
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -1648,13 +1620,13 @@ type Problem struct {
 
 // PutAssetExclusionRequest defines model for PutAssetExclusionRequest.
 type PutAssetExclusionRequest struct {
-	Ignored bool    `json:"ignored"`
-	Reason  *string `json:"reason,omitempty"`
+	Excluded bool    `json:"excluded"`
+	Reason   *string `json:"reason,omitempty"`
 }
 
 // PutAssetMappingRequest defines model for PutAssetMappingRequest.
 type PutAssetMappingRequest struct {
-	CanonicalSymbol string `json:"canonicalSymbol"`
+	CanonicalAssetSymbol string `json:"canonicalAssetSymbol"`
 }
 
 // PutCredentialsRequest defines model for PutCredentialsRequest.
@@ -1674,22 +1646,24 @@ type PutCredentialsRequest struct {
 
 // ReadContext defines model for ReadContext.
 type ReadContext struct {
+	CycleId     *openapi_types.UUID `json:"cycleId,omitempty"`
 	EvaluatedAt *time.Time          `json:"evaluatedAt,omitempty"`
-	JobId       *openapi_types.UUID `json:"jobId,omitempty"`
-	PointId     *openapi_types.UUID `json:"pointId,omitempty"`
 	PortfolioId UUID                `json:"portfolioId"`
 	Timezone    string              `json:"timezone"`
+
+	// ValuationRevision Identity of the immutable valuation result, equal to its Collection Cycle ID.
+	ValuationRevision *string `json:"valuationRevision,omitempty"`
 }
 
 // Session defines model for Session.
 type Session struct {
 	AbsoluteExpiresAt time.Time `json:"absoluteExpiresAt"`
-	ClientLabel       *string   `json:"clientLabel,omitempty"`
 	CreatedAt         time.Time `json:"createdAt"`
 	Current           bool      `json:"current"`
 	Id                UUID      `json:"id"`
 	IdleExpiresAt     time.Time `json:"idleExpiresAt"`
 	LastSeenAt        time.Time `json:"lastSeenAt"`
+	UserAgent         *string   `json:"userAgent,omitempty"`
 }
 
 // SessionList defines model for SessionList.
@@ -1776,18 +1750,24 @@ type ValuationPointPage struct {
 
 // ValuationPointSummary defines model for ValuationPointSummary.
 type ValuationPointSummary struct {
-	AccountCount            int          `json:"accountCount"`
-	BoundaryContributionUsd Decimal      `json:"boundaryContributionUsd"`
-	BoundaryWithdrawalUsd   Decimal      `json:"boundaryWithdrawalUsd"`
-	Completeness            Completeness `json:"completeness"`
-	EvaluatedAt             time.Time    `json:"evaluatedAt"`
-	Id                      UUID         `json:"id"`
-	IncompleteAccountCount  int          `json:"incompleteAccountCount"`
-	JobId                   UUID         `json:"jobId"`
-	RecalculatedAt          *time.Time   `json:"recalculatedAt,omitempty"`
-	StaleAccountCount       int          `json:"staleAccountCount"`
-	TotalUsd                Decimal      `json:"totalUsd"`
+	AccountCount            int                              `json:"accountCount"`
+	BoundaryContributionUsd Decimal                          `json:"boundaryContributionUsd"`
+	BoundaryWithdrawalUsd   Decimal                          `json:"boundaryWithdrawalUsd"`
+	CalculationVersion      int64                            `json:"calculationVersion"`
+	Completeness            Completeness                     `json:"completeness"`
+	CycleId                 UUID                             `json:"cycleId"`
+	DetailState             ValuationPointSummaryDetailState `json:"detailState"`
+	EvaluatedAt             time.Time                        `json:"evaluatedAt"`
+	IncompleteAccountCount  int                              `json:"incompleteAccountCount"`
+	StaleAccountCount       int                              `json:"staleAccountCount"`
+	TotalUsd                Decimal                          `json:"totalUsd"`
+
+	// ValuationRevision Identity of the immutable valuation result, equal to its Collection Cycle ID.
+	ValuationRevision string `json:"valuationRevision"`
 }
+
+// ValuationPointSummaryDetailState defines model for ValuationPointSummary.DetailState.
+type ValuationPointSummaryDetailState string
 
 // ValueChange defines model for ValueChange.
 type ValueChange struct {
@@ -1838,12 +1818,6 @@ type IdentityID = UUID
 // IfMatch defines model for IfMatch.
 type IfMatch = string
 
-// JobID defines model for JobID.
-type JobID = UUID
-
-// PointID defines model for PointID.
-type PointID = UUID
-
 // PortfolioID defines model for PortfolioID.
 type PortfolioID = UUID
 
@@ -1883,6 +1857,7 @@ type DeleteAuthSessionParams struct {
 
 // CreatePortfolioParams defines parameters for CreatePortfolio.
 type CreatePortfolioParams struct {
+	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
@@ -1901,8 +1876,8 @@ type PatchPortfolioParams struct {
 
 // ListAccountPositionsParams defines parameters for ListAccountPositions.
 type ListAccountPositionsParams struct {
-	// PointId Historical Valuation Point; omitted for the latest point.
-	PointId *UUID `form:"pointId,omitempty" json:"pointId,omitempty"`
+	// CycleId Historical Valuation Point; omitted for the latest point.
+	CycleId *UUID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
 }
 
 // ListAuditEventsParams defines parameters for ListAuditEvents.
@@ -1940,6 +1915,7 @@ type ListCapitalFlowsParams struct {
 
 // CreateCapitalFlowParams defines parameters for CreateCapitalFlow.
 type CreateCapitalFlowParams struct {
+	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
@@ -1958,11 +1934,11 @@ type PatchCapitalFlowParams struct {
 
 // ListAssetsParams defines parameters for ListAssets.
 type ListAssetsParams struct {
-	Platform    *string `form:"platform,omitempty" json:"platform,omitempty"`
-	Q           *string `form:"q,omitempty" json:"q,omitempty"`
-	IgnoredOnly *bool   `form:"ignoredOnly,omitempty" json:"ignoredOnly,omitempty"`
-	Offset      *int    `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit       *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Platform     *string `form:"platform,omitempty" json:"platform,omitempty"`
+	Q            *string `form:"q,omitempty" json:"q,omitempty"`
+	ExcludedOnly *bool   `form:"excludedOnly,omitempty" json:"excludedOnly,omitempty"`
+	Offset       *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit        *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // PutAssetExclusionParams defines parameters for PutAssetExclusion.
@@ -1993,6 +1969,7 @@ type ListCollectionCyclesParams struct {
 
 // CreateCollectionCycleParams defines parameters for CreateCollectionCycle.
 type CreateCollectionCycleParams struct {
+	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
@@ -2031,6 +2008,7 @@ type GetHistoryWindowParamsPreset string
 
 // CreateIdentityParams defines parameters for CreateIdentity.
 type CreateIdentityParams struct {
+	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
 }
@@ -2094,13 +2072,6 @@ type ValidateIdentityConnectionParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListJobsParams defines parameters for ListJobs.
-type ListJobsParams struct {
-	Kind   *JobKind `form:"kind,omitempty" json:"kind,omitempty"`
-	Limit  *int     `form:"limit,omitempty" json:"limit,omitempty"`
-	Cursor *string  `form:"cursor,omitempty" json:"cursor,omitempty"`
-}
-
 // ListPeriodClosesParams defines parameters for ListPeriodCloses.
 type ListPeriodClosesParams struct {
 	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
@@ -2140,6 +2111,12 @@ type ListValuationPointPageParams struct {
 
 // ListValuationPointPageParamsLimit defines parameters for ListValuationPointPage.
 type ListValuationPointPageParamsLimit int
+
+// GetValuationSnapshotParams defines parameters for GetValuationSnapshot.
+type GetValuationSnapshotParams struct {
+	// Day Calendar date in the current Portfolio timezone; may fall back to an earlier day.
+	Day string `form:"day" json:"day"`
+}
 
 // ListValueChangesParams defines parameters for ListValueChanges.
 type ListValueChangesParams struct {
@@ -2281,7 +2258,7 @@ type ServerInterface interface {
 	// PutAssetExclusion Ignore or restore an Asset for future Collection Cycles in one Portfolio
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion)
 	PutAssetExclusion(c *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetExclusionParams)
-	// PutAssetMapping Override the Canonical Asset mapping of an Asset and recalculate affected points
+	// PutAssetMapping Override the Canonical Asset mapping for future Valuation Points
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping)
 	PutAssetMapping(c *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetMappingParams)
 	// ListFuturesContracts List platform futures contracts
@@ -2347,12 +2324,6 @@ type ServerInterface interface {
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
 	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
-	// ListJobs List durable jobs
-	// (GET /api/v1/portfolios/{portfolioId}/jobs)
-	ListJobs(c *gin.Context, portfolioId PortfolioID, params ListJobsParams)
-	// GetJob Get a job
-	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
-	GetJob(c *gin.Context, portfolioId PortfolioID, jobId JobID)
 	// GetOverview Latest valuation point with platform and identity totals
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(c *gin.Context, portfolioId PortfolioID)
@@ -2372,8 +2343,11 @@ type ServerInterface interface {
 	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/page)
 	ListValuationPointPage(c *gin.Context, portfolioId PortfolioID, params ListValuationPointPageParams)
 	// GetValuationPoint One valuation point with its account valuations
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{pointId})
-	GetValuationPoint(c *gin.Context, portfolioId PortfolioID, pointId PointID)
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId})
+	GetValuationPoint(c *gin.Context, portfolioId PortfolioID, cycleId CycleID)
+	// GetValuationSnapshot Get the latest retained snapshot before a local day's end
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-snapshot)
+	GetValuationSnapshot(c *gin.Context, portfolioId PortfolioID, params GetValuationSnapshotParams)
 	// ListValueChanges Value changes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(c *gin.Context, portfolioId PortfolioID, params ListValueChangesParams)
@@ -3026,11 +3000,11 @@ func (siw *ServerInterfaceWrapper) ListAccountPositions(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListAccountPositionsParams
 
-	// ------------- Optional query parameter "pointId" -------------
+	// ------------- Optional query parameter "cycleId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "pointId", c.Request.URL.Query(), &params.PointId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pointId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3556,11 +3530,11 @@ func (siw *ServerInterfaceWrapper) ListAssets(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "ignoredOnly" -------------
+	// ------------- Optional query parameter "excludedOnly" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoredOnly", c.Request.URL.Query(), &params.IgnoredOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "excludedOnly", c.Request.URL.Query(), &params.ExcludedOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ignoredOnly: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter excludedOnly: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5101,92 +5075,6 @@ func (siw *ServerInterfaceWrapper) ValidateIdentityConnection(c *gin.Context) {
 	siw.Handler.ValidateIdentityConnection(c, portfolioId, identityId, params)
 }
 
-// ListJobs operation middleware
-func (siw *ServerInterfaceWrapper) ListJobs(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListJobsParams
-
-	// ------------- Optional query parameter "kind" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", c.Request.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter kind: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", c.Request.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cursor: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListJobs(c, portfolioId, params)
-}
-
-// GetJob operation middleware
-func (siw *ServerInterfaceWrapper) GetJob(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "jobId" -------------
-	var jobId JobID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "jobId", c.Param("jobId"), &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter jobId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetJob(c, portfolioId, jobId)
-}
-
 // GetOverview operation middleware
 func (siw *ServerInterfaceWrapper) GetOverview(c *gin.Context) {
 
@@ -5484,12 +5372,12 @@ func (siw *ServerInterfaceWrapper) GetValuationPoint(c *gin.Context) {
 		return
 	}
 
-	// ------------- Path parameter "pointId" -------------
-	var pointId PointID
+	// ------------- Path parameter "cycleId" -------------
+	var cycleId CycleID
 
-	err = runtime.BindStyledParameterWithOptions("simple", "pointId", c.Param("pointId"), &pointId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "cycleId", c.Param("cycleId"), &cycleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter pointId: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5500,7 +5388,43 @@ func (siw *ServerInterfaceWrapper) GetValuationPoint(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetValuationPoint(c, portfolioId, pointId)
+	siw.Handler.GetValuationPoint(c, portfolioId, cycleId)
+}
+
+// GetValuationSnapshot operation middleware
+func (siw *ServerInterfaceWrapper) GetValuationSnapshot(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetValuationSnapshotParams
+
+	// ------------- Required query parameter "day" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "day", c.Request.URL.Query(), &params.Day, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter day: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetValuationSnapshot(c, portfolioId, params)
 }
 
 // ListValueChanges operation middleware
@@ -5694,7 +5618,8 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/history-window", wrapper.GetHistoryWindow)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/page", wrapper.ListValuationPointPage)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points", wrapper.ListValuationPoints)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/:pointId", wrapper.GetValuationPoint)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-snapshot", wrapper.GetValuationSnapshot)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/:cycleId", wrapper.GetValuationPoint)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/period-closes", wrapper.ListPeriodCloses)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes", wrapper.ListValueChanges)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes/custom", wrapper.GetCustomValueChange)
@@ -5708,8 +5633,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets/:assetId/mapping", wrapper.PutAssetMapping)
 	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets/:assetId/exclusion", wrapper.PutAssetExclusion)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/futures-contracts", wrapper.ListFuturesContracts)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/audit-events", wrapper.ListAuditEvents)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.GetManualBalances)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.CreateManualBalance)
@@ -6199,11 +6122,11 @@ type DeletePortfolioResponseObject interface {
 	VisitDeletePortfolioResponse(w http.ResponseWriter) error
 }
 
-type DeletePortfolio204Response struct {
+type DeletePortfolio202Response struct {
 }
 
-func (response DeletePortfolio204Response) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
+func (response DeletePortfolio202Response) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
+	w.WriteHeader(202)
 	return nil
 }
 
@@ -9320,126 +9243,6 @@ func (response ValidateIdentityConnection503ApplicationProblemPlusJSONResponse) 
 	return err
 }
 
-type ListJobsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListJobsParams
-}
-
-type ListJobsResponseObject interface {
-	VisitListJobsResponse(w http.ResponseWriter) error
-}
-
-type ListJobs200JSONResponse JobList
-
-func (response ListJobs200JSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListJobs400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListJobs400ApplicationProblemPlusJSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListJobs401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListJobs401ApplicationProblemPlusJSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListJobs404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListJobs404ApplicationProblemPlusJSONResponse) VisitListJobsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetJobRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	JobId       JobID       `json:"jobId"`
-}
-
-type GetJobResponseObject interface {
-	VisitGetJobResponse(w http.ResponseWriter) error
-}
-
-type GetJob200JSONResponse Job
-
-func (response GetJob200JSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetJob401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response GetJob401ApplicationProblemPlusJSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetJob404ApplicationProblemPlusJSONResponse Problem
-
-func (response GetJob404ApplicationProblemPlusJSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GetOverviewRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 }
@@ -9814,7 +9617,7 @@ func (response ListValuationPointPage404ApplicationProblemPlusJSONResponse) Visi
 
 type GetValuationPointRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
-	PointId     PointID     `json:"pointId"`
+	CycleId     CycleID     `json:"cycleId"`
 }
 
 type GetValuationPointResponseObject interface {
@@ -9854,6 +9657,73 @@ func (response GetValuationPoint401ApplicationProblemPlusJSONResponse) VisitGetV
 type GetValuationPoint404ApplicationProblemPlusJSONResponse Problem
 
 func (response GetValuationPoint404ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshotRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      GetValuationSnapshotParams
+}
+
+type GetValuationSnapshotResponseObject interface {
+	VisitGetValuationSnapshotResponse(w http.ResponseWriter) error
+}
+
+type GetValuationSnapshot200JSONResponse ValuationPointDetail
+
+func (response GetValuationSnapshot200JSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshot400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetValuationSnapshot400ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshot401ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationSnapshot401ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshot404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationSnapshot404ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -10141,7 +10011,7 @@ type StrictServerInterface interface {
 	// PutAssetExclusion Ignore or restore an Asset for future Collection Cycles in one Portfolio
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion)
 	PutAssetExclusion(ctx context.Context, request PutAssetExclusionRequestObject) (PutAssetExclusionResponseObject, error)
-	// PutAssetMapping Override the Canonical Asset mapping of an Asset and recalculate affected points
+	// PutAssetMapping Override the Canonical Asset mapping for future Valuation Points
 	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping)
 	PutAssetMapping(ctx context.Context, request PutAssetMappingRequestObject) (PutAssetMappingResponseObject, error)
 	// ListFuturesContracts List platform futures contracts
@@ -10207,12 +10077,6 @@ type StrictServerInterface interface {
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
 	ValidateIdentityConnection(ctx context.Context, request ValidateIdentityConnectionRequestObject) (ValidateIdentityConnectionResponseObject, error)
-	// ListJobs List durable jobs
-	// (GET /api/v1/portfolios/{portfolioId}/jobs)
-	ListJobs(ctx context.Context, request ListJobsRequestObject) (ListJobsResponseObject, error)
-	// GetJob Get a job
-	// (GET /api/v1/portfolios/{portfolioId}/jobs/{jobId})
-	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
 	// GetOverview Latest valuation point with platform and identity totals
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(ctx context.Context, request GetOverviewRequestObject) (GetOverviewResponseObject, error)
@@ -10232,8 +10096,11 @@ type StrictServerInterface interface {
 	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/page)
 	ListValuationPointPage(ctx context.Context, request ListValuationPointPageRequestObject) (ListValuationPointPageResponseObject, error)
 	// GetValuationPoint One valuation point with its account valuations
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{pointId})
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId})
 	GetValuationPoint(ctx context.Context, request GetValuationPointRequestObject) (GetValuationPointResponseObject, error)
+	// GetValuationSnapshot Get the latest retained snapshot before a local day's end
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-snapshot)
+	GetValuationSnapshot(ctx context.Context, request GetValuationSnapshotRequestObject) (GetValuationSnapshotResponseObject, error)
 	// ListValueChanges Value changes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(ctx context.Context, request ListValueChangesRequestObject) (ListValueChangesResponseObject, error)
@@ -11741,60 +11608,6 @@ func (sh *strictHandler) ValidateIdentityConnection(ctx *gin.Context, portfolioI
 	}
 }
 
-// ListJobs operation middleware
-func (sh *strictHandler) ListJobs(ctx *gin.Context, portfolioId PortfolioID, params ListJobsParams) {
-	var request ListJobsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListJobs(ctx, request.(ListJobsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListJobs")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListJobsResponseObject); ok {
-		if err := validResponse.VisitListJobsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetJob operation middleware
-func (sh *strictHandler) GetJob(ctx *gin.Context, portfolioId PortfolioID, jobId JobID) {
-	var request GetJobRequestObject
-
-	request.PortfolioId = portfolioId
-	request.JobId = jobId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetJob(ctx, request.(GetJobRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetJob")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetJobResponseObject); ok {
-		if err := validResponse.VisitGetJobResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetOverview operation middleware
 func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) {
 	var request GetOverviewRequestObject
@@ -11956,11 +11769,11 @@ func (sh *strictHandler) ListValuationPointPage(ctx *gin.Context, portfolioId Po
 }
 
 // GetValuationPoint operation middleware
-func (sh *strictHandler) GetValuationPoint(ctx *gin.Context, portfolioId PortfolioID, pointId PointID) {
+func (sh *strictHandler) GetValuationPoint(ctx *gin.Context, portfolioId PortfolioID, cycleId CycleID) {
 	var request GetValuationPointRequestObject
 
 	request.PortfolioId = portfolioId
-	request.PointId = pointId
+	request.CycleId = cycleId
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetValuationPoint(ctx, request.(GetValuationPointRequestObject))
@@ -11975,6 +11788,33 @@ func (sh *strictHandler) GetValuationPoint(ctx *gin.Context, portfolioId Portfol
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(GetValuationPointResponseObject); ok {
 		if err := validResponse.VisitGetValuationPointResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetValuationSnapshot operation middleware
+func (sh *strictHandler) GetValuationSnapshot(ctx *gin.Context, portfolioId PortfolioID, params GetValuationSnapshotParams) {
+	var request GetValuationSnapshotRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetValuationSnapshot(ctx, request.(GetValuationSnapshotRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetValuationSnapshot")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetValuationSnapshotResponseObject); ok {
+		if err := validResponse.VisitGetValuationSnapshotResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -12089,169 +11929,171 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"ZwA=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

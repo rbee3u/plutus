@@ -36,11 +36,11 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 		t.Fatalf("enable: err=%v outcome=%+v ref=%v", err, outcome, enabled.ExternalRef)
 	}
 
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 		t.Fatalf("summary %+v", summary)
 	}
-	accounts := h.accountsByType(jobID, item.ID)
+	accounts := h.accountsByType(cycleID, item.ID)
 	// Spot = 110 USDT + 0.2 ETH at 2000; Earn = 2 USDT + 0.01 ETH.
 	// PM uses actualEquity (979), not accountEquity (950) or Position notionals.
 	assertFixtureAccountValues(t, accounts, map[string]fixtureAccountValue{
@@ -54,7 +54,7 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "1539" {
 		t.Fatalf("Portfolio total = %s, want 1539", summary.Point.TotalUSD)
 	}
-	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{Platform: string(adapters.PlatformBinance), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapters.PlatformBinance), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +84,11 @@ func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 		t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
 	}
 
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 		t.Fatalf("summary %s", summary.String())
 	}
-	accounts := h.accountsByType(jobID, item.ID)
+	accounts := h.accountsByType(cycleID, item.ID)
 	// Cross margin: 0.004995 BTC at 30000 minus 50.00416667 USDT.
 	// Isolated: 0.1 BTC at 30000 + 499.97916667 USDT + 1 ETH at 2000 + 200 USDT.
 	assertFixtureAccountValues(t, accounts, map[string]fixtureAccountValue{
@@ -184,18 +184,18 @@ func assertBinancePMPositions(t *testing.T, h *harness, accountID uuid.UUID) {
 		t.Fatalf("stored positions %+v, want both PM positions", view.Positions)
 	}
 	for _, position := range view.Positions {
-		expected, ok := want[position.PlatformPositionRef]
+		expected, ok := want[position.PositionKey]
 		contractSize := ""
 		if position.ContractSize != nil {
 			contractSize = decimal.Compact(*position.ContractSize)
 		}
-		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.Quantity) != expected.quantity ||
-			position.QuantityUnit != expected.unit || contractSize != expected.contractSize ||
+		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != expected.quantity ||
+			position.SourceQuantityUnit != expected.unit || contractSize != expected.contractSize ||
 			position.MarkPrice == nil || decimal.Compact(*position.MarkPrice) != expected.mark ||
 			position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != expected.notional {
 			t.Fatalf("stored PM position %+v, want %+v", position, expected)
 		}
-		delete(want, position.PlatformPositionRef)
+		delete(want, position.PositionKey)
 	}
 }
 
@@ -218,12 +218,12 @@ func assertSyntheticDualPositions(t *testing.T, h *harness, account valuation.Ac
 		"1002": {"SOL", "0.1", "sell_high"},
 	}
 	for _, position := range view.DualPositions {
-		expected, ok := want[position.PlatformPositionRef]
-		if !ok || position.InvestAssetSymbol != expected.symbol || decimal.Format(decimal.ParseOrZero(position.Principal)) != expected.principal ||
+		expected, ok := want[position.PositionKey]
+		if !ok || position.PrincipalAssetSymbol != expected.symbol || decimal.Format(decimal.ParseOrZero(position.Principal)) != expected.principal ||
 			position.Direction == nil || *position.Direction != expected.direction || len(position.MissingFields()) != 0 {
 			t.Fatalf("stored Dual principal or terms %+v", position)
 		}
-		delete(want, position.PlatformPositionRef)
+		delete(want, position.PositionKey)
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing stored subscriptions %+v", want)
@@ -247,11 +247,11 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 			if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 				t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
 			}
-			summary, jobID := h.runCycle()
+			summary, cycleID := h.runCycle()
 			if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 				t.Fatalf("summary %+v", summary)
 			}
-			accounts := h.accountsByType(jobID, item.ID)
+			accounts := h.accountsByType(cycleID, item.ID)
 			account := accounts[string(binance.TypeUMFutures)]
 			if len(accounts) != 2 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != tc.valueUSD || account.Equity != nil || len(account.Omitted) != 0 {
 				t.Fatalf("Balances must be valued once, independently of adjusted equity: %+v", account)
@@ -287,18 +287,18 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 				t.Fatalf("stored positions %+v", view)
 			}
 			for _, position := range view.Positions {
-				expected, ok := want[position.PlatformPositionRef]
+				expected, ok := want[position.PositionKey]
 				if position.Side == adapters.SideShort && tc.selection != "binance_classic_one_way_isolated" {
 					liquidation = "0.2"
 				}
-				if !ok || position.FuturesSymbol != "DOGEUSDT" || position.Kind != adapters.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.Quantity) != expected.quantity || position.QuantityUnit != adapters.UnitBase ||
+				if !ok || position.FuturesSymbol != "DOGEUSDT" || position.Kind != adapters.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != expected.quantity || position.SourceQuantityUnit != adapters.UnitBase ||
 					position.EntryPrice == nil || decimal.Compact(*position.EntryPrice) != expected.entry ||
 					position.UnrealizedPnl == nil || decimal.Compact(*position.UnrealizedPnl) != expected.pnl ||
 					position.Leverage == nil || decimal.Compact(*position.Leverage) != "5" ||
 					position.LiquidationPrice == nil || decimal.Compact(*position.LiquidationPrice) != liquidation {
 					t.Fatalf("stored position %+v", position)
 				}
-				delete(want, position.PlatformPositionRef)
+				delete(want, position.PositionKey)
 			}
 			if len(want) != 0 {
 				t.Fatalf("missing stored positions %+v", want)
@@ -316,11 +316,11 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
 	}
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.ReportFailed != 0 || summary.Point.Completeness() != valuation.CompletenessComplete {
 		t.Fatalf("summary %+v", summary)
 	}
-	accounts := h.accountsByType(jobID, item.ID)
+	accounts := h.accountsByType(cycleID, item.ID)
 	account := accounts[string(binance.TypeCMFutures)]
 	if len(accounts) != 2 || account.Method != valuation.MethodCalculated || account.ValueUSD == nil || *account.ValueUSD != "22" || account.Equity != nil || account.AdjustedEquity != nil || account.AvailableEquity != nil || len(account.Omitted) != 0 {
 		t.Fatalf("ETH balance must be valued once at synthetic 2000 USD, independently of position notional: %+v", account)
@@ -337,12 +337,12 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 		t.Fatalf("stored positions %+v", view)
 	}
 	for _, position := range view.Positions {
-		expected, ok := want[position.PlatformPositionRef]
+		expected, ok := want[position.PositionKey]
 		expiry := ""
 		if position.ExpiryAt != nil {
 			expiry = position.ExpiryAt.UTC().Format(time.RFC3339)
 		}
-		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.Quantity) != map[string]string{adapters.KindInversePerpetual: "2", adapters.KindInverseDelivery: "1"}[expected.kind] || position.QuantityUnit != adapters.UnitContracts || position.BaseAssetSymbol == nil || *position.BaseAssetSymbol != "ETH" || position.QuoteAssetSymbol == nil || *position.QuoteAssetSymbol != "USD" || position.SettlementAssetSymbol == nil || *position.SettlementAssetSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapters.KindInversePerpetual: "20", adapters.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
+		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != map[string]string{adapters.KindInversePerpetual: "2", adapters.KindInverseDelivery: "1"}[expected.kind] || position.SourceQuantityUnit != adapters.UnitContracts || position.BaseAssetSymbol == nil || *position.BaseAssetSymbol != "ETH" || position.QuoteAssetSymbol == nil || *position.QuoteAssetSymbol != "USD" || position.SettlementAssetSymbol == nil || *position.SettlementAssetSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapters.KindInversePerpetual: "20", adapters.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
 			t.Fatalf("stored inverse contract %+v; expiry %s", position, expiry)
 		}
 		for name, pair := range map[string]struct {
@@ -355,7 +355,7 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 				t.Fatalf("stored %s = %v, want %s", name, pair.got, pair.want)
 			}
 		}
-		delete(want, position.PlatformPositionRef)
+		delete(want, position.PositionKey)
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing stored positions %+v", want)

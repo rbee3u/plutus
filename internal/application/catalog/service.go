@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/ordering"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
@@ -37,38 +36,35 @@ var symbolPattern = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._-]*$`)
 
 // Service reads and writes the Platform catalog.
 type Service struct {
-	jobs *jobs.Service
-	db   *sql.DB
-	q    *sqlcgen.Queries
-	now  func() time.Time
+	db  *sql.DB
+	q   *sqlcgen.Queries
+	now func() time.Time
 }
 
 // NewService constructs a catalog service.
-func NewService(db *sql.DB, jobService *jobs.Service) *Service {
-	return &Service{jobs: jobService, db: db, q: sqlcgen.New(db), now: time.Now}
+func NewService(db *sql.DB) *Service {
+	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
 // Asset is an asset available on a Platform, with its own Symbol and a mapping to a Canonical Asset.
 type Asset struct {
-	ID               uuid.UUID
-	Platform         string
-	Symbol           string
-	CanonicalSymbol  string
-	Name             *string
-	MappingSource    string
-	FirstSeenAt      time.Time
-	LastSeenAt       time.Time
-	Version          uint64
-	UpdatedAt        time.Time
-	Ignored          bool
-	IgnoreReason     *string
-	IgnoredAt        *time.Time
-	ExclusionVersion uint64
+	ID                   uuid.UUID
+	Platform             string
+	Symbol               string
+	CanonicalAssetSymbol string
+	MappingSource        string
+	FirstObservedAt      time.Time
+	LastObservedAt       time.Time
+	MappingVersion       uint64
+	Excluded             bool
+	ExclusionReason      *string
+	ExcludedAt           *time.Time
+	ExclusionVersion     uint64
 }
 
 // ETag returns the asset validator.
 func (asset *Asset) ETag() string {
-	return etag.Format("asset", asset.Version)
+	return etag.Format("asset", asset.MappingVersion)
 }
 
 // ParseAssetETag extracts the version from an asset ETag.
@@ -76,7 +72,7 @@ func ParseAssetETag(value string) (uint64, bool) {
 	return etag.Parse("asset", value)
 }
 
-// FuturesContract is one Platform contract.
+// FuturesContract is one Platform symbol with one immutable set of observed terms.
 type FuturesContract struct {
 	ID                    uuid.UUID
 	Platform              string
@@ -87,8 +83,8 @@ type FuturesContract struct {
 	SettlementAssetSymbol *string
 	ExpiryAt              *time.Time
 	ContractSize          *string
-	FirstSeenAt           time.Time
-	LastSeenAt            time.Time
+	FirstObservedAt       time.Time
+	LastObservedAt        time.Time
 }
 
 // Page is an offset page.
@@ -101,12 +97,12 @@ type Page[T any] struct {
 
 // ListFilter selects catalog rows.
 type ListFilter struct {
-	PortfolioID uuid.UUID
-	Platform    string
-	Query       string
-	IgnoredOnly bool
-	Offset      int
-	Limit       int
+	PortfolioID  uuid.UUID
+	Platform     string
+	Query        string
+	ExcludedOnly bool
+	Offset       int
+	Limit        int
 }
 
 // ListAssets returns an offset page of assets.
@@ -119,7 +115,7 @@ func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], e
 	rows, err := s.q.ListAssets(ctx, sqlcgen.ListAssetsParams{
 		PlatformOrder:  ordering.PlatformsCSV(),
 		PortfolioID:    in.PortfolioID[:],
-		IgnoredOnly:    flag(in.IgnoredOnly),
+		ExcludedOnly:   flag(in.ExcludedOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
@@ -132,7 +128,7 @@ func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], e
 	}
 	total, err := s.q.CountAssets(ctx, sqlcgen.CountAssetsParams{
 		PortfolioID:    in.PortfolioID[:],
-		IgnoredOnly:    flag(in.IgnoredOnly),
+		ExcludedOnly:   flag(in.ExcludedOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
@@ -158,8 +154,8 @@ func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], e
 }
 
 // GetAsset returns one asset.
-func (s *Service) GetAsset(ctx context.Context, id uuid.UUID) (Asset, error) {
-	row, err := s.q.GetAsset(ctx, id[:])
+func (s *Service) GetAsset(ctx context.Context, portfolioID, id uuid.UUID) (Asset, error) {
+	row, err := s.q.GetAsset(ctx, sqlcgen.GetAssetParams{PortfolioID: portfolioID[:], ID: id[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Asset{}, ErrNotFound
 	}
@@ -177,6 +173,7 @@ func (s *Service) ListFuturesContracts(ctx context.Context, in ListFilter) (Page
 	}
 	query := likePattern(in.Query)
 	rows, err := s.q.ListFuturesContracts(ctx, sqlcgen.ListFuturesContractsParams{
+		PortfolioID:    in.PortfolioID[:],
 		PlatformOrder:  ordering.PlatformsCSV(),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
@@ -189,6 +186,7 @@ func (s *Service) ListFuturesContracts(ctx context.Context, in ListFilter) (Page
 		return Page[FuturesContract]{}, err
 	}
 	total, err := s.q.CountFuturesContracts(ctx, sqlcgen.CountFuturesContractsParams{
+		PortfolioID:    in.PortfolioID[:],
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
@@ -214,24 +212,22 @@ func assetFromRow(row *sqlcgen.Asset) (Asset, error) {
 		return Asset{}, err
 	}
 	item := Asset{
-		ID:              id,
-		Platform:        row.Platform,
-		Symbol:          row.Symbol,
-		CanonicalSymbol: row.CanonicalSymbol,
-		MappingSource:   row.MappingSource,
-		FirstSeenAt:     row.FirstSeenAt,
-		LastSeenAt:      row.LastSeenAt,
-		Version:         row.Version,
-		UpdatedAt:       row.UpdatedAt,
+		ID:                   id,
+		Platform:             row.Platform,
+		Symbol:               row.Symbol,
+		CanonicalAssetSymbol: row.CanonicalAssetSymbol,
+		MappingSource:        MappingAuto,
+		FirstObservedAt:      row.FirstObservedAt,
+		LastObservedAt:       row.LastObservedAt,
+		MappingVersion:       row.MappingVersion,
 	}
-	if row.Name.Valid {
-		name := row.Name.String
-		item.Name = &name
+	if row.CanonicalAssetSymbol != CanonicalAssetSymbolFor(row.Symbol) {
+		item.MappingSource = MappingManual
 	}
 	return item, nil
 }
 
-func futuresContractFromRow(row *sqlcgen.FuturesContract) (FuturesContract, error) {
+func futuresContractFromRow(row *sqlcgen.ListFuturesContractsRow) (FuturesContract, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return FuturesContract{}, err
@@ -244,9 +240,9 @@ func futuresContractFromRow(row *sqlcgen.FuturesContract) (FuturesContract, erro
 		BaseAssetSymbol:       nullStringPtr(row.BaseAssetSymbol),
 		QuoteAssetSymbol:      nullStringPtr(row.QuoteAssetSymbol),
 		SettlementAssetSymbol: nullStringPtr(row.SettlementAssetSymbol),
-		ContractSize:          nullStringPtr(row.ContractSize),
-		FirstSeenAt:           row.FirstSeenAt,
-		LastSeenAt:            row.LastSeenAt,
+		ContractSize:          nullDecimalPtr(row.ContractSize),
+		FirstObservedAt:       row.FirstObservedAt,
+		LastObservedAt:        row.LastObservedAt,
 	}
 	if row.ExpiryAt.Valid {
 		t := row.ExpiryAt.Time
@@ -282,6 +278,13 @@ func flag(on bool) int {
 }
 
 func nullStringPtr(value sql.NullString) *string {
+	if !value.Valid {
+		return nil
+	}
+	return new(value.String)
+}
+
+func nullDecimalPtr(value sql.NullString) *string {
 	if !value.Valid {
 		return nil
 	}

@@ -12,8 +12,9 @@ import (
 )
 
 const getAssetExclusion = `-- name: GetAssetExclusion :one
-SELECT ignored, reason, version, updated_at
-FROM portfolio_asset_exclusions WHERE portfolio_id = ? AND asset_id = ?
+SELECT excluded, reason, version, effective_at
+FROM asset_exclusion_versions WHERE portfolio_id = ? AND asset_id = ?
+ORDER BY version DESC LIMIT 1
 `
 
 type GetAssetExclusionParams struct {
@@ -22,91 +23,54 @@ type GetAssetExclusionParams struct {
 }
 
 type GetAssetExclusionRow struct {
-	Ignored   bool
-	Reason    sql.NullString
-	Version   uint64
-	UpdatedAt time.Time
+	Excluded    bool
+	Reason      sql.NullString
+	Version     uint64
+	EffectiveAt time.Time
 }
 
 func (q *Queries) GetAssetExclusion(ctx context.Context, arg GetAssetExclusionParams) (GetAssetExclusionRow, error) {
 	row := q.db.QueryRowContext(ctx, getAssetExclusion, arg.PortfolioID, arg.AssetID)
 	var i GetAssetExclusionRow
 	err := row.Scan(
-		&i.Ignored,
+		&i.Excluded,
 		&i.Reason,
 		&i.Version,
-		&i.UpdatedAt,
+		&i.EffectiveAt,
 	)
 	return i, err
 }
 
-const insertAssetExclusionEvent = `-- name: InsertAssetExclusionEvent :exec
-INSERT INTO portfolio_asset_exclusion_events
-    (portfolio_id, asset_id, version, ignored, reason, actor_user_id, effective_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+const insertAssetExclusionVersion = `-- name: InsertAssetExclusionVersion :exec
+INSERT INTO asset_exclusion_versions
+    (portfolio_id, asset_id, version, excluded, reason, effective_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
-type InsertAssetExclusionEventParams struct {
+type InsertAssetExclusionVersionParams struct {
 	PortfolioID []byte
 	AssetID     []byte
 	Version     uint64
-	Ignored     bool
+	Excluded    bool
 	Reason      sql.NullString
-	ActorUserID []byte
 	EffectiveAt time.Time
 }
 
-func (q *Queries) InsertAssetExclusionEvent(ctx context.Context, arg InsertAssetExclusionEventParams) error {
-	_, err := q.db.ExecContext(ctx, insertAssetExclusionEvent,
+func (q *Queries) InsertAssetExclusionVersion(ctx context.Context, arg InsertAssetExclusionVersionParams) error {
+	_, err := q.db.ExecContext(ctx, insertAssetExclusionVersion,
 		arg.PortfolioID,
 		arg.AssetID,
 		arg.Version,
-		arg.Ignored,
+		arg.Excluded,
 		arg.Reason,
-		arg.ActorUserID,
 		arg.EffectiveAt,
 	)
 	return err
 }
 
-const listAssetExclusionHistory = `-- name: ListAssetExclusionHistory :many
-SELECT asset_id, effective_at, ignored
-FROM portfolio_asset_exclusion_events WHERE portfolio_id = ?
-ORDER BY asset_id, version DESC
-`
-
-type ListAssetExclusionHistoryRow struct {
-	AssetID     []byte
-	EffectiveAt time.Time
-	Ignored     bool
-}
-
-func (q *Queries) ListAssetExclusionHistory(ctx context.Context, portfolioID []byte) ([]ListAssetExclusionHistoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAssetExclusionHistory, portfolioID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListAssetExclusionHistoryRow{}
-	for rows.Next() {
-		var i ListAssetExclusionHistoryRow
-		if err := rows.Scan(&i.AssetID, &i.EffectiveAt, &i.Ignored); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listAssetExclusionsBefore = `-- name: ListAssetExclusionsBefore :many
-SELECT asset_id, ignored
-FROM portfolio_asset_exclusion_events
+SELECT asset_id, excluded
+FROM asset_exclusion_versions
 WHERE portfolio_id = ? AND effective_at < ?
 ORDER BY asset_id, version DESC
 `
@@ -117,8 +81,8 @@ type ListAssetExclusionsBeforeParams struct {
 }
 
 type ListAssetExclusionsBeforeRow struct {
-	AssetID []byte
-	Ignored bool
+	AssetID  []byte
+	Excluded bool
 }
 
 func (q *Queries) ListAssetExclusionsBefore(ctx context.Context, arg ListAssetExclusionsBeforeParams) ([]ListAssetExclusionsBeforeRow, error) {
@@ -130,7 +94,7 @@ func (q *Queries) ListAssetExclusionsBefore(ctx context.Context, arg ListAssetEx
 	items := []ListAssetExclusionsBeforeRow{}
 	for rows.Next() {
 		var i ListAssetExclusionsBeforeRow
-		if err := rows.Scan(&i.AssetID, &i.Ignored); err != nil {
+		if err := rows.Scan(&i.AssetID, &i.Excluded); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -144,38 +108,44 @@ func (q *Queries) ListAssetExclusionsBefore(ctx context.Context, arg ListAssetEx
 	return items, nil
 }
 
-const listCalculatedAssetsAtJobs = `-- name: ListCalculatedAssetsAtJobs :many
-SELECT DISTINCT asset.id, asset.platform, asset.symbol
-FROM account_reports r
-JOIN balances b ON b.report_id = r.source_report_id
-JOIN assets asset ON asset.id = b.asset_id
-WHERE r.portfolio_id = ?
-    AND r.job_id IN (?, ?)
-    AND r.method = 'calculated' AND b.equity <> 0
-ORDER BY asset.platform, asset.symbol
+const listCalculatedAssetsAtCycles = `-- name: ListCalculatedAssetsAtCycles :many
+SELECT DISTINCT a.id, a.platform, a.symbol
+FROM valuation_points p
+JOIN assets a ON a.portfolio_id = p.portfolio_id
+WHERE p.portfolio_id = ? AND p.cycle_id IN (?, ?)
+  AND COALESCE((
+    SELECT prior.treatment <> 'absent' FROM calculated_asset_changes prior
+    WHERE prior.portfolio_id = a.portfolio_id AND prior.asset_id = a.id
+      AND (prior.evaluated_at < p.evaluated_at OR (prior.evaluated_at = p.evaluated_at AND prior.cycle_id <= p.cycle_id))
+    ORDER BY prior.portfolio_id DESC, prior.asset_id DESC, prior.evaluated_at DESC, prior.cycle_id DESC LIMIT 1
+  ), FALSE)
+ORDER BY a.platform, a.symbol
 `
 
-type ListCalculatedAssetsAtJobsParams struct {
-	PortfolioID []byte
-	StartJobID  []byte
-	EndJobID    []byte
+type ListCalculatedAssetsAtCyclesParams struct {
+	PortfolioID  []byte
+	StartCycleID []byte
+	EndCycleID   []byte
 }
 
-type ListCalculatedAssetsAtJobsRow struct {
+type ListCalculatedAssetsAtCyclesRow struct {
 	ID       []byte
 	Platform string
 	Symbol   string
 }
 
-func (q *Queries) ListCalculatedAssetsAtJobs(ctx context.Context, arg ListCalculatedAssetsAtJobsParams) ([]ListCalculatedAssetsAtJobsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCalculatedAssetsAtJobs, arg.PortfolioID, arg.StartJobID, arg.EndJobID)
+// One backward primary-key walk per Asset and endpoint reads only the Asset's
+// changes after that endpoint; see ListLatestCalculatedAssetChanges for the
+// ORDER BY constraint.
+func (q *Queries) ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalculatedAssetsAtCyclesParams) ([]ListCalculatedAssetsAtCyclesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCalculatedAssetsAtCycles, arg.PortfolioID, arg.StartCycleID, arg.EndCycleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListCalculatedAssetsAtJobsRow{}
+	items := []ListCalculatedAssetsAtCyclesRow{}
 	for rows.Next() {
-		var i ListCalculatedAssetsAtJobsRow
+		var i ListCalculatedAssetsAtCyclesRow
 		if err := rows.Scan(&i.ID, &i.Platform, &i.Symbol); err != nil {
 			return nil, err
 		}
@@ -191,16 +161,18 @@ func (q *Queries) ListCalculatedAssetsAtJobs(ctx context.Context, arg ListCalcul
 }
 
 const listCurrentAssetExclusions = `-- name: ListCurrentAssetExclusions :many
-SELECT asset_id, ignored, reason, version, updated_at
-FROM portfolio_asset_exclusions WHERE portfolio_id = ?
+SELECT e.asset_id, e.excluded, e.reason, e.version, e.effective_at
+FROM asset_exclusion_versions e
+WHERE e.portfolio_id = ?
+  AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
 `
 
 type ListCurrentAssetExclusionsRow struct {
-	AssetID   []byte
-	Ignored   bool
-	Reason    sql.NullString
-	Version   uint64
-	UpdatedAt time.Time
+	AssetID     []byte
+	Excluded    bool
+	Reason      sql.NullString
+	Version     uint64
+	EffectiveAt time.Time
 }
 
 func (q *Queries) ListCurrentAssetExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentAssetExclusionsRow, error) {
@@ -214,10 +186,10 @@ func (q *Queries) ListCurrentAssetExclusions(ctx context.Context, portfolioID []
 		var i ListCurrentAssetExclusionsRow
 		if err := rows.Scan(
 			&i.AssetID,
-			&i.Ignored,
+			&i.Excluded,
 			&i.Reason,
 			&i.Version,
-			&i.UpdatedAt,
+			&i.EffectiveAt,
 		); err != nil {
 			return nil, err
 		}
@@ -232,44 +204,13 @@ func (q *Queries) ListCurrentAssetExclusions(ctx context.Context, portfolioID []
 	return items, nil
 }
 
-const lockExclusionPortfolio = `-- name: LockExclusionPortfolio :one
-SELECT id FROM portfolios WHERE id = ? FOR UPDATE
+const lockPortfolio = `-- name: LockPortfolio :one
+SELECT id FROM portfolios WHERE id = ? AND deletion_requested_at IS NULL FOR UPDATE
 `
 
-func (q *Queries) LockExclusionPortfolio(ctx context.Context, id []byte) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, lockExclusionPortfolio, id)
+func (q *Queries) LockPortfolio(ctx context.Context, id []byte) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, lockPortfolio, id)
 	var id_2 []byte
 	err := row.Scan(&id_2)
 	return id_2, err
-}
-
-const upsertAssetExclusion = `-- name: UpsertAssetExclusion :exec
-INSERT INTO portfolio_asset_exclusions
-    (portfolio_id, asset_id, ignored, reason, version, actor_user_id, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE ignored = VALUES(ignored), reason = VALUES(reason),
-    version = VALUES(version), actor_user_id = VALUES(actor_user_id), updated_at = VALUES(updated_at)
-`
-
-type UpsertAssetExclusionParams struct {
-	PortfolioID []byte
-	AssetID     []byte
-	Ignored     bool
-	Reason      sql.NullString
-	Version     uint64
-	ActorUserID []byte
-	UpdatedAt   time.Time
-}
-
-func (q *Queries) UpsertAssetExclusion(ctx context.Context, arg UpsertAssetExclusionParams) error {
-	_, err := q.db.ExecContext(ctx, upsertAssetExclusion,
-		arg.PortfolioID,
-		arg.AssetID,
-		arg.Ignored,
-		arg.Reason,
-		arg.Version,
-		arg.ActorUserID,
-		arg.UpdatedAt,
-	)
-	return err
 }

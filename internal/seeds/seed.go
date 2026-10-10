@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/fake"
 )
 
-// Seed contains source SQL, Connection initialization and rebuild ownership.
+// Seed contains source SQL and the ownership needed to initialize valuations and Connections.
 type Seed struct {
 	SQL        string
 	Live       []LiveIdentity
@@ -29,7 +29,7 @@ func BuildAt(now time.Time) (Seed, error) {
 	b := newBuilder()
 	b.comment("Deterministic offline walkthrough; synthetic values, not recorded market history")
 	b.comment("Scratch login: alice / Alice=123456")
-	b.comment("Valuation Points are rebuilt from normalized Account Reports after insertion.")
+	b.comment("Apply initializes Valuation Points from normalized Account Reports before commit.")
 	created := anchor.AddDate(0, -3, -10)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
 	portfolios := []portfolioSpec{
@@ -79,11 +79,11 @@ func BuildAt(now time.Time) (Seed, error) {
 					return Seed{}, fmt.Errorf("seed %s: %w", d.ID, err)
 				}
 				for _, price := range batch.Prices {
-					b.price(d.Platform, price.CanonicalAssetSymbol, price.Price, price.ObservedAt)
+					b.price(p.ID, d.Platform, price.CanonicalAssetSymbol, price.Price, price.RetrievedAt)
 				}
 				for _, report := range batch.Reports {
-					r := reportSpec{Account: accountID(d.ID, string(report.AccountType)), AccountType: report.AccountType, Platform: d.Platform, MarginMode: batch.MarginMode, Scope: fake.DemoScope(d, anchor, at, report.AccountType)}
-					if report.Status == adapters.StatusOK {
+					r := reportSpec{Account: accountID(d.ID, string(report.AccountType)), AccountType: report.AccountType, Platform: d.Platform, MarginMode: batch.MarginMode}
+					if report.Status == adapters.StatusSucceeded {
 						r.Report = &report
 					} else {
 						r.Class, r.Detail = report.ErrorClass, report.ErrorDetail

@@ -1,4 +1,4 @@
-import type { EarnAmount, EarnBalanceSummary, EarnPositionRow, EarnRate, EarnReward } from "@/api";
+import type { EarnAmount, EarnPositionRow, EarnRate, EarnReward } from "@/api";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatDecimal, formatPercent } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
@@ -8,7 +8,6 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import type { HoldingsFilters } from "../hooks/useHoldingsFilters";
 import { ObservedCell } from "./ObservedCell";
-import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -97,7 +96,7 @@ export function EarnPositionsTable({
         { key: "issues", header: "Issues", nowrap: true },
       ]}
       rows={items.map((item) => {
-        const name = `${item.assets.map(assetLabel).join(" / ")} ${item.platformPositionRef}`;
+        const name = `${item.assets.map(assetLabel).join(" / ")} ${item.positionKey}`;
         const displayedRates = item.rates.filter(
           (rate) => rate.qualifier === "reported" || rate.qualifier === "estimated",
         );
@@ -105,7 +104,7 @@ export function EarnPositionsTable({
           ["cumulative", "pending", "estimated"].includes(reward.kind),
         );
         return {
-          id: `${item.accountId}-${item.platformPositionRef}`,
+          id: `${item.accountId}-${item.positionKey}`,
           platform: platformLabel(platforms.data?.items, item.platform),
           identityName: item.identityName,
           asset: item.assets.map((asset, index) => (
@@ -134,7 +133,7 @@ export function EarnPositionsTable({
                 </div>
                 <div>
                   <dt>Position reference</dt>
-                  <dd>{item.platformPositionRef}</dd>
+                  <dd>{item.positionKey}</dd>
                 </div>
                 <div>
                   <dt>Row represents</dt>
@@ -241,70 +240,5 @@ export function EarnPositionsTable({
         loading ? "Loading Earn positions." : (empty ?? "No Earn positions match this selection.")
       }
     />
-  );
-}
-
-export function EarnBalanceSummaries({
-  items,
-  timezone,
-  showAccount = false,
-}: {
-  items: EarnBalanceSummary[];
-  timezone?: string;
-  showAccount?: boolean;
-}) {
-  const platforms = usePlatforms();
-  if (!items.length) return null;
-  return (
-    <section>
-      <h3 className={styles.accountSectionTitle}>Known balances without product details</h3>
-      <p className={shared.muted}>
-        Product details were not collected in these source reports. These are Balance summaries, not
-        product positions. A successful Collection will supply new details.
-      </p>
-      <DataTable
-        caption="Earn Balance summaries without product details"
-        columns={[
-          ...(showAccount
-            ? [
-                { key: "platform", header: "Platform", nowrap: true },
-                { key: "identityName", header: "Identity", nowrap: true },
-              ]
-            : []),
-          { key: "asset", header: "Asset", nowrap: true },
-          { key: "amount", header: "Amount", numeric: true, nowrap: true },
-          { key: "issues", header: "Issues", nowrap: true },
-        ]}
-        rows={items.map((item) => ({
-          id: item.accountId,
-          platform: platformLabel(platforms.data?.items, item.platform),
-          identityName: item.identityName,
-          asset: item.assets.length
-            ? item.assets.map((asset, index) => (
-                <div key={index} className={shared.cellStack}>
-                  <span>{assetLabel(asset)}</span>
-                  {asset.canonicalAssetSymbol &&
-                  asset.canonicalAssetSymbol !== asset.assetSymbol ? (
-                    <span className={shared.cellMeta}>
-                      Canonical Asset: {asset.canonicalAssetSymbol}
-                    </span>
-                  ) : null}
-                </div>
-              ))
-            : "—",
-          amount: amountLines(item.assets),
-          issues: (
-            <ObservedCell
-              observedAt={item.reportObservedAt}
-              freshness={item.freshness}
-              issues={item.issues}
-              name={`${item.identityName} Earn Balance summary`}
-              timezone={timezone}
-            />
-          ),
-        }))}
-        empty="No Balance summaries."
-      />
-    </section>
   );
 }

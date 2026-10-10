@@ -86,7 +86,7 @@ func (a *API) ListAccountPositions(ctx context.Context, request api.ListAccountP
 	if a.Financial == nil {
 		return nil, ErrNotImplemented
 	}
-	view, err := a.Financial.AccountPositionsAt(ctx, sc.portfolioContext(), request.AccountId, request.Params.PointId)
+	view, err := a.Financial.AccountPositionsAt(ctx, sc.portfolioContext(), request.AccountId, request.Params.CycleId)
 	if err != nil {
 		return nil, err
 	}

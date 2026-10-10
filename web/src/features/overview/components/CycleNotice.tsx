@@ -21,8 +21,8 @@ export function CycleNotice({ cycle, timezone }: { cycle: CollectionCycle; timez
           ? ` Point total ${formatUsd(cycle.point.totalUsd)} (${cycle.point.completeness}).`
           : ""}
       </NumericText>
-      {cycle.lastErrorClass
-        ? ` ${cycle.lastErrorClass}${cycle.lastDetail ? `: ${cycle.lastDetail}` : ""}`
+      {cycle.errorClass
+        ? ` ${cycle.errorClass}${cycle.errorDetail ? `: ${cycle.errorDetail}` : ""}`
         : ""}
     </p>
   );

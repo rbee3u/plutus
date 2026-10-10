@@ -15,7 +15,7 @@ func (a *API) ListAssets(ctx context.Context, request api.ListAssetsRequestObjec
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), IgnoredOnly: boolValue(request.Params.IgnoredOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	page, err := a.Catalog.ListAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), ExcludedOnly: boolValue(request.Params.ExcludedOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
 	if err != nil {
 		return nil, err
 	}
@@ -42,11 +42,11 @@ func (a *API) PutAssetMapping(ctx context.Context, request api.PutAssetMappingRe
 		return nil, validationError("A request body is required.")
 	}
 	item, err := a.Catalog.PutMapping(ctx, request.AssetId, catalog.MappingInput{
-		ActorUserID:     sc.user.ID,
-		PortfolioID:     sc.portfolio.ID,
-		RequestID:       requestTraceID(ctx),
-		CanonicalSymbol: request.Body.CanonicalSymbol,
-		Version:         version,
+		ActorUserID:          sc.user.ID,
+		PortfolioID:          sc.portfolio.ID,
+		RequestID:            requestTraceID(ctx),
+		CanonicalAssetSymbol: request.Body.CanonicalAssetSymbol,
+		MappingVersion:       version,
 	})
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (a *API) PutAssetExclusion(ctx context.Context, request api.PutAssetExclusi
 	}
 	item, err := a.Catalog.PutExclusion(ctx, request.AssetId, &catalog.ExclusionInput{
 		PortfolioID: sc.portfolio.ID, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx),
-		Ignored: request.Body.Ignored, Reason: stringValue(request.Body.Reason), Version: version,
+		Excluded: request.Body.Excluded, Reason: stringValue(request.Body.Reason), Version: version,
 	})
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (a *API) ListFuturesContracts(ctx context.Context, request api.ListFuturesC
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListFuturesContracts(ctx, catalog.ListFilter{Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	page, err := a.Catalog.ListFuturesContracts(ctx, catalog.ListFilter{PortfolioID: request.PortfolioId, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
 	if err != nil {
 		return nil, err
 	}

@@ -2,12 +2,11 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 
+	"github.com/rbee3u/plutus/internal/application/auth"
+
 	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -31,45 +30,20 @@ func (a *API) ListPortfolios(ctx context.Context, _ api.ListPortfoliosRequestObj
 }
 
 func (a *API) CreatePortfolio(ctx context.Context, request api.CreatePortfolioRequestObject) (api.CreatePortfolioResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return nil, errUnauthenticated
-	}
-	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
-		return nil, err
-	}
 	if a.Portfolios == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	raw, err := json.Marshal(request.Body)
-	if err != nil {
-		return nil, err
-	}
-	key := stringValue(request.Params.IdempotencyKey)
-	rec, hash, err := a.lookupIdempotency(ctx, user.ID, key, http.MethodPost, requestPath(ctx), raw)
-	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
-	}
-	if err != nil {
-		return nil, err
-	}
-	if rec != nil {
-		var body api.Portfolio
-		if err := json.Unmarshal(rec.Body, &body); err != nil {
-			return nil, err
+	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Portfolio, string, error) {
+		item, err := a.Portfolios.Create(ctx, user.ID, portfolio.CreateInput{Name: request.Body.Name, Timezone: stringValue(request.Body.Timezone), CollectionIntervalSeconds: request.Body.CollectionIntervalSeconds})
+		if err != nil {
+			return api.Portfolio{}, "", err
 		}
-		etag := rec.Headers["ETag"]
-		return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: &etag}}, nil
-	}
-	in := portfolio.CreateInput{Name: request.Body.Name, Timezone: stringValue(request.Body.Timezone), CollectionIntervalSeconds: request.Body.CollectionIntervalSeconds}
-	item, err := a.Portfolios.Create(ctx, user.ID, in)
+		return toAPIPortfolio(&item), item.ETag(), nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	body := toAPIPortfolio(&item)
-	etag := item.ETag()
-	a.storeIdempotency(ctx, user.ID, &item.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: new(etag)}}, nil
+	return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: &etag}}, nil
 }
 
 func (a *API) GetPortfolio(ctx context.Context, request api.GetPortfolioRequestObject) (api.GetPortfolioResponseObject, error) {
@@ -112,5 +86,5 @@ func (a *API) DeletePortfolio(ctx context.Context, request api.DeletePortfolioRe
 	if err := a.Portfolios.Delete(ctx, sc.user.ID, request.PortfolioId, version); err != nil {
 		return nil, err
 	}
-	return api.DeletePortfolio204Response{}, nil
+	return api.DeletePortfolio202Response{}, nil
 }

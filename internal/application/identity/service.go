@@ -6,12 +6,14 @@ import (
 	"database/sql"
 	"errors"
 	"slices"
-	"strings"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/shared/textkey"
 
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/ordering"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/secret"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -98,13 +100,13 @@ func ParseETag(value string) (uint64, bool) {
 
 // Connection is the credential and scheduling state embedded in an Identity.
 type Connection struct {
-	Status                string
-	CredentialsConfigured bool
-	CredentialsUpdatedAt  *time.Time
-	LastValidatedAt       *time.Time
-	LastCollectedAt       *time.Time
-	LastErrorClass        *string
-	LastErrorDetail       *string
+	Status                    string
+	CredentialsConfigured     bool
+	CredentialsSetAt          *time.Time
+	LastValidationSucceededAt *time.Time
+	LastCollectionFinishedAt  *time.Time
+	LastErrorClass            *string
+	LastErrorDetail           *string
 }
 
 // Account is one collectable Account Type of an Identity.
@@ -114,7 +116,6 @@ type Account struct {
 	AccountType adapters.AccountType
 	DisplayName string
 	Selected    bool
-	Version     uint64
 }
 
 // CreateInput creates an Identity with its Accounts.
@@ -129,9 +130,8 @@ type CreateInput struct {
 
 // AccountPatch changes one Account.
 type AccountPatch struct {
-	ID          uuid.UUID
-	Selected    *bool
-	DisplayName *string
+	ID       uuid.UUID
+	Selected *bool
 }
 
 // PatchInput renames an Identity or toggles its Accounts.
@@ -160,17 +160,17 @@ type ValidationOutcome struct {
 
 // List returns every Identity of a Portfolio with its Accounts.
 func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, error) {
-	rows, err := s.q.ListIdentitiesByPortfolio(ctx, portfolioID[:])
+	rows, err := mysql.Queries(ctx, s.db).ListIdentitiesByPortfolio(ctx, portfolioID[:])
 	if err != nil {
 		return nil, err
 	}
-	accounts, err := s.q.ListAccountsByPortfolio(ctx, portfolioID[:])
+	accounts, err := mysql.Queries(ctx, s.db).ListAccountsByPortfolio(ctx, portfolioID[:])
 	if err != nil {
 		return nil, err
 	}
 	byIdentity := map[uuid.UUID][]Account{}
 	for i := range accounts {
-		account, err := accountFromFields(accounts[i].ID, accounts[i].IdentityID, accounts[i].AccountType, accounts[i].DisplayName, accounts[i].Selected, accounts[i].Version)
+		account, err := accountFromFields(accounts[i].ID, accounts[i].IdentityID, accounts[i].AccountType, accounts[i].Selected)
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +196,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, 
 
 // Get returns one Identity with its Accounts.
 func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity, error) {
-	r, err := s.q.GetIdentity(ctx, sqlcgen.GetIdentityParams{PortfolioID: portfolioID[:], ID: id[:]})
+	r, err := mysql.Queries(ctx, s.db).GetIdentity(ctx, sqlcgen.GetIdentityParams{PortfolioID: portfolioID[:], ID: id[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Identity{}, ErrNotFound
 	}
@@ -207,13 +207,13 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity,
 	if err != nil {
 		return Identity{}, err
 	}
-	accounts, err := s.q.ListAccountsByIdentity(ctx, sqlcgen.ListAccountsByIdentityParams{PortfolioID: portfolioID[:], IdentityID: id[:]})
+	accounts, err := mysql.Queries(ctx, s.db).ListAccountsByIdentity(ctx, sqlcgen.ListAccountsByIdentityParams{PortfolioID: portfolioID[:], IdentityID: id[:]})
 	if err != nil {
 		return Identity{}, err
 	}
 	item.Accounts = make([]Account, 0, len(accounts))
 	for i := range accounts {
-		account, err := accountFromFields(accounts[i].ID, accounts[i].IdentityID, accounts[i].AccountType, accounts[i].DisplayName, accounts[i].Selected, accounts[i].Version)
+		account, err := accountFromFields(accounts[i].ID, accounts[i].IdentityID, accounts[i].AccountType, accounts[i].Selected)
 		if err != nil {
 			return Identity{}, err
 		}
@@ -248,14 +248,14 @@ func auditView(i *Identity) auditIdentity {
 }
 
 func normalizeName(raw string) (string, error) {
-	name := strings.TrimSpace(raw)
-	if name == "" || len(name) > maxNameLength {
+	name, valid := textkey.Name(raw, maxNameLength)
+	if !valid {
 		return "", ErrInvalid
 	}
 	return name, nil
 }
 
-func accountFromFields(id, identityID []byte, accountType, displayName string, selected bool, version uint64) (Account, error) {
+func accountFromFields(id, identityID []byte, accountType string, selected bool) (Account, error) {
 	parsedID, err := uuid.FromBytes(id)
 	if err != nil {
 		return Account{}, err
@@ -264,7 +264,7 @@ func accountFromFields(id, identityID []byte, accountType, displayName string, s
 	if err != nil {
 		return Account{}, err
 	}
-	return Account{ID: parsedID, IdentityID: parsedIdentity, AccountType: adapters.AccountType(accountType), DisplayName: displayName, Selected: selected, Version: version}, nil
+	return Account{ID: parsedID, IdentityID: parsedIdentity, AccountType: adapters.AccountType(accountType), DisplayName: adapters.AccountName(adapters.AccountType(accountType)), Selected: selected}, nil
 }
 
 func fromRow(row *sqlcgen.GetIdentityRow) (Identity, error) {
@@ -282,22 +282,25 @@ func fromRow(row *sqlcgen.GetIdentityRow) (Identity, error) {
 		Platform:         adapters.Platform(row.Platform),
 		DisplayName:      row.DisplayName,
 		AccountStructure: adapters.AccountStructure(row.AccountStructure),
-		MarginMode:       adapters.MarginMode(row.MarginMode.String),
-		ExternalRef:      nullStringPtr(row.ExternalRef),
-		Status:           row.Status,
+		MarginMode:       adapters.MarginMode(row.LastObservedMarginMode.String),
+		ExternalRef:      nullStringPtr(row.PlatformLoginRef),
+		Status:           StatusEnabled,
 		ArchivedAt:       nullTimePtr(row.ArchivedAt),
 		Connection: Connection{
-			Status:                row.ConnectionStatus,
-			CredentialsConfigured: row.CredentialsConfigured,
-			CredentialsUpdatedAt:  nullTimePtr(row.CredentialsUpdatedAt),
-			LastValidatedAt:       nullTimePtr(row.LastValidatedAt),
-			LastCollectedAt:       nullTimePtr(row.LastCollectedAt),
-			LastErrorClass:        nullStringPtr(row.LastErrorClass),
-			LastErrorDetail:       nullStringPtr(row.LastErrorDetail),
+			Status:                    row.ConnectionStatus,
+			CredentialsConfigured:     row.CredentialsConfigured,
+			CredentialsSetAt:          nullTimePtr(row.CredentialsSetAt),
+			LastValidationSucceededAt: nullTimePtr(row.LastValidationSucceededAt),
+			LastCollectionFinishedAt:  nullTimePtr(row.LastCollectionFinishedAt),
+			LastErrorClass:            nullStringPtr(row.LastErrorClass),
+			LastErrorDetail:           nullStringPtr(row.LastErrorDetail),
 		},
 		Version:   row.Version,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
+	}
+	if row.ArchivedAt.Valid {
+		item.Status = StatusArchived
 	}
 	return item, nil
 }

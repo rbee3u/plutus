@@ -11,7 +11,7 @@ import { storePreference } from "@/shared/lib/preferences";
 import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import styles from "@/app/shell/Shell.module.css";
 
-export type PortfolioOption = Pick<Portfolio, "id" | "name">;
+export type PortfolioOption = Pick<Portfolio, "id" | "name" | "deletionRequestedAt">;
 
 export function PortfolioSwitcher({
   portfolioId,
@@ -67,9 +67,11 @@ export function PortfolioSwitcher({
             key={item.id}
             role="menuitemradio"
             checked={item.id === current?.id}
+            disabled={Boolean(item.deletionRequestedAt)}
             onClick={() => selectPortfolio(item.id)}
           >
             {item.name}
+            {item.deletionRequestedAt ? " · Deleting…" : ""}
           </MenuItem>
         ))}
         <MenuSeparator />

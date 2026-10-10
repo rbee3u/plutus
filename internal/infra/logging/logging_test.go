@@ -50,7 +50,7 @@ func TestRoutingLevelContextAndAppend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := WithFields(context.Background(), slog.String("trace_id", "old"), slog.String("job_id", "job"))
+	ctx := WithFields(context.Background(), slog.String("trace_id", "old"), slog.String("cycle_id", "cycle"))
 	ctx = WithFields(ctx, slog.String("trace_id", "trace"))
 	logs.App.Info("filtered")
 	logs.App.With("source", "test").WarnContext(ctx, "application", slog.String("trace_id", "explicit"))
@@ -64,7 +64,7 @@ func TestRoutingLevelContextAndAppend(t *testing.T) {
 	if strings.Contains(app, "filtered") || strings.Contains(app, "request") || strings.Contains(app, "query") {
 		t.Fatalf("wrong app routing: %s", app)
 	}
-	if !strings.Contains(app, "trace_id=explicit") || strings.Count(app, "trace_id=") != 1 || !strings.Contains(app, "job_id=job") {
+	if !strings.Contains(app, "trace_id=explicit") || strings.Count(app, "trace_id=") != 1 || !strings.Contains(app, "cycle_id=cycle") {
 		t.Fatalf("app fields: %s", app)
 	}
 	if strings.Count(app, "\n") != 2 || !strings.Contains(app, `framework\nmultiline`) {

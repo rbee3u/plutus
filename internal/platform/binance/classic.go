@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
-	"math/big"
 	"slices"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -33,21 +32,21 @@ type crossMarginAccount struct {
 }
 
 // crossMargin maps the Cross Margin wallet. Binance's margin level, total asset ÷ total liability
-// where higher is safer, goes to the UniMMR column; Binance reports 999 when nothing is borrowed.
+// where higher is safer, is retained as reported; Binance uses 999 when nothing is borrowed.
 // A margin account that was never created is empty.
 func (a *Adapter) crossMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var account crossMarginAccount
 	if err := c.call(ctx, epCrossMargin, nil, &account); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report := adapters.AccountReport{AccountType: TypeCrossMargin, Status: adapters.StatusOK, ObservedAt: a.now()}
+	report := adapters.AccountReport{AccountType: TypeCrossMargin, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
 	if account.Created != nil && !*account.Created {
 		return report, nil
 	}
 	if _, err := adapters.OptionalDecimal(epCrossMargin.String(), "marginLevel", account.MarginLevel); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report.UnifiedMarginRatio = adapters.Plain(account.MarginLevel)
+	report.ReportedMarginRatio = adapters.Plain(account.MarginLevel)
 	totals := newMarginTotals()
 	for i := range account.UserAssets {
 		if err := totals.add(epCrossMargin, &account.UserAssets[i]); err != nil {
@@ -81,7 +80,7 @@ func (a *Adapter) isolatedMargin(ctx context.Context, c *client) (adapters.Accou
 			}
 		}
 	}
-	return adapters.AccountReport{AccountType: TypeIsolatedMargin, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: totals.balances()}, nil
+	return adapters.AccountReport{AccountType: TypeIsolatedMargin, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: totals.balances()}, nil
 }
 
 // marginTotals sums margin wallet rows by coin. A coin's equity is its netAsset, the free and
@@ -185,7 +184,7 @@ func (a *Adapter) umFutures(ctx context.Context, c *client) (adapters.AccountRep
 	if err := withLeverage(ctx, c, rows); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report := adapters.AccountReport{AccountType: TypeUMFutures, Status: adapters.StatusOK, ObservedAt: a.now()}
+	report := adapters.AccountReport{AccountType: TypeUMFutures, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
 	if *mode.MultiAssets {
 		if err := mapMultiAssets(&account, &report); err != nil {
 			return adapters.AccountReport{}, err
@@ -201,29 +200,22 @@ func (a *Adapter) umFutures(ctx context.Context, c *client) (adapters.AccountRep
 	return report, nil
 }
 
-// mapMultiAssets maps the USD account figures of Multi-Assets Mode: the margin balance, which
-// values collateral after Binance's haircuts, as adjusted equity, the available balance, and the
-// initial and maintenance margin over the margin balance. The last is the Margin Ratio of
-// Binance's futures page.
+// mapMultiAssets retains the USD account measures of Multi-Assets Mode.
+// Ratios are read-model calculations, not Platform-reported observations.
 func mapMultiAssets(account *futuresAccount, report *adapters.AccountReport) error {
 	where := epUMAccount.String()
-	parsed := map[string]*big.Rat{}
 	for name, value := range map[string]string{
 		"totalMarginBalance": account.TotalMarginBalance, "totalInitialMargin": account.TotalInitialMargin,
 		"totalMaintMargin": account.TotalMaintMargin, "availableBalance": account.AvailableBalance,
 	} {
-		rat, err := adapters.Decimal(where, name, value)
-		if err != nil {
+		if _, err := adapters.Decimal(where, name, value); err != nil {
 			return err
 		}
-		parsed[name] = rat
 	}
 	report.AdjustedEquity = adapters.Plain(account.TotalMarginBalance)
 	report.AvailableEquity = adapters.Plain(account.AvailableBalance)
-	if balance := parsed["totalMarginBalance"]; balance.Sign() > 0 {
-		report.InitialMarginRatio = adapters.Ratio(parsed["totalInitialMargin"], balance)
-		report.MaintenanceMarginRatio = adapters.Ratio(parsed["totalMaintMargin"], balance)
-	}
+	report.InitialMarginRequirementUSD = adapters.Plain(account.TotalInitialMargin)
+	report.MaintenanceMarginRequirementUSD = adapters.Plain(account.TotalMaintMargin)
 	return nil
 }
 
@@ -238,7 +230,7 @@ func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapters.AccountRep
 		return adapters.AccountReport{}, err
 	}
 	withCMRequirements(rows, account.Positions)
-	report := adapters.AccountReport{AccountType: TypeCMFutures, Status: adapters.StatusOK, ObservedAt: a.now()}
+	report := adapters.AccountReport{AccountType: TypeCMFutures, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
 	var err error
 	if report.Balances, err = mapFuturesAssets(epCMAccount, account.Assets); err != nil {
 		return adapters.AccountReport{}, err

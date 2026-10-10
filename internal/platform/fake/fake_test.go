@@ -48,7 +48,7 @@ func TestEveryAccountTypeOfEveryStructureReports(t *testing.T) {
 				t.Fatalf("%s: Margin Mode %q does not belong to the structure", structure.ID, batch.MarginMode)
 			}
 			for _, report := range batch.Reports {
-				if report.Status != adapters.StatusOK || len(report.Balances) == 0 {
+				if report.Status != adapters.StatusSucceeded || len(report.Balances) == 0 {
 					t.Fatalf("%s/%s: %+v", structure.ID, report.AccountType, report)
 				}
 			}
@@ -66,7 +66,7 @@ func TestMarginModeFollowsTheKey(t *testing.T) {
 		t.Fatal("a switch- key changes its Margin Mode every minute")
 	}
 	isolated := Scenario("k", at).Report(adapters.MarginBybitIsolated, "unified", at, false)
-	if isolated.Equity != nil || isolated.UnifiedMarginRatio != nil || len(isolated.Balances) == 0 {
+	if isolated.Equity != nil || isolated.ReportedMarginRatio != nil || len(isolated.Balances) == 0 {
 		t.Fatal("Isolated Margin reports no account-wide figures")
 	}
 	pm := Scenario("k", at).Report(adapters.MarginBybitPM, "unified", at, false)

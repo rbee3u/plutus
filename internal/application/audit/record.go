@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -51,17 +52,15 @@ func Record(ctx context.Context, q *sqlcgen.Queries, now time.Time, entry *Entry
 	}
 	params := sqlcgen.InsertAuditEventParams{
 		ID:           id[:],
+		PortfolioID:  entry.PortfolioID[:],
 		Action:       entry.Action,
 		ResourceType: entry.ResourceType,
 		ResourceID:   entry.ResourceID[:],
-		RequestID:    entry.RequestID,
+		RequestID:    sql.NullString{String: entry.RequestID, Valid: entry.RequestID != ""},
 		BeforeJson:   before,
 		AfterJson:    after,
 		MetadataJson: metadata,
 		OccurredAt:   now.UTC(),
-	}
-	if entry.PortfolioID != uuid.Nil {
-		params.PortfolioID = entry.PortfolioID[:]
 	}
 	if entry.ActorUserID != uuid.Nil {
 		params.ActorUserID = entry.ActorUserID[:]

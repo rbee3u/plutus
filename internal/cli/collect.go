@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/jobs"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/worker"
 )
 
@@ -46,35 +46,40 @@ func newCollectCommand() *cobra.Command {
 }
 
 func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UUID, out io.Writer, logger *slog.Logger) error {
-	job, created, err := services.Jobs.EnqueueCycle(ctx, portfolioID, jobs.TriggerManual, nil)
+	cycle, created, err := services.Cycles.Enqueue(ctx, portfolioID, cycles.TriggerUser)
 	if err != nil {
-		if errors.Is(err, jobs.ErrNotFound) {
+		if errors.Is(err, cycles.ErrNotFound) {
 			return fmt.Errorf("portfolio %s not found", portfolioID)
 		}
 		return err
 	}
 	if !created {
-		_, _ = fmt.Fprintf(out, "reusing active cycle %s (%s)\n", job.ID, job.Status)
+		_, _ = fmt.Fprintf(out, "reusing active cycle %s (%s)\n", cycle.ID, cycle.Status)
 	}
-	loop := worker.New(&worker.Options{Jobs: services.Jobs, Collection: services.Collection, Valuation: services.Valuation, Logger: logger, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
+	loop := worker.New(&worker.Options{Cycles: services.Cycles, Collection: services.Collection, Logger: logger, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
 	deadline := time.Now().Add(10 * time.Minute)
 	for time.Now().Before(deadline) {
 		if _, err := loop.ProcessOnce(ctx); err != nil {
 			return err
 		}
-		current, err := services.Jobs.Get(ctx, portfolioID, job.ID)
+		current, err := services.Cycles.Get(ctx, portfolioID, cycle.ID)
 		if err != nil {
 			return err
 		}
 		if !current.Active() {
 			_, _ = fmt.Fprintf(out, "cycle %s %s", current.ID, current.Status)
-			if current.LastDetail != nil {
-				_, _ = fmt.Fprintf(out, ": %s", *current.LastDetail)
-			}
-			_, _ = fmt.Fprintln(out)
-			if current.Status != jobs.StatusSucceeded {
+			if current.Status != cycles.StatusSucceeded {
+				if current.ErrorDetail != nil {
+					_, _ = fmt.Fprintf(out, ": %s", *current.ErrorDetail)
+				}
+				_, _ = fmt.Fprintln(out)
 				return fmt.Errorf("cycle %s ended with status %s", current.ID, current.Status)
 			}
+			point, err := services.Valuation.PointByCycle(ctx, portfolioID, current.ID)
+			if err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(out, ": total %s USD, %d accounts\n", point.TotalUSD, point.AccountCount)
 			return nil
 		}
 		select {

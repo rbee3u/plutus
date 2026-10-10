@@ -64,7 +64,6 @@ export function DirectionBadge({ value }: { value: string }) {
 }
 
 const STATUS_TONES: Record<string, BadgeTone> = {
-  ok: "good",
   enabled: "good",
   succeeded: "good",
   complete: "good",
@@ -80,7 +79,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   running: "info",
   calculated: "info",
   manual: "info",
-  ignored: "warn",
+  excluded: "warn",
 };
 
 /** Badge for a server status word; unknown words render neutrally. */
@@ -93,8 +92,7 @@ export function StatusBadge({
 }) {
   if (
     !value ||
-    (silentWhenHealthy &&
-      (value === "ok" || value === "succeeded" || value === "complete" || value === "fresh"))
+    (silentWhenHealthy && (value === "succeeded" || value === "complete" || value === "fresh"))
   ) {
     return null;
   }

@@ -74,13 +74,14 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	}
 }
 
-// Old report JSON must survive the Go/API terminology change without losing codes.
+// Typed Earn details retain explicit source symbols across the API boundary.
 func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
-	var stored adapters.EarnPosition
-	legacy := []byte(`{"assets":[{"symbol":"XBT","assetSymbol":"BTC","amount":"1"}],"rates":[{"symbol":"XBT","value":"0.02","kind":"apr","qualifier":"estimated","label":"APR"}],"rewards":[{"symbol":"XBT","amount":"0.1","kind":"cumulative"}]}`)
-	if err := json.Unmarshal(legacy, &stored); err != nil {
+	var details adapters.EarnDetails
+	raw := []byte(`{"assets":[{"assetSymbol":"XBT","canonicalAssetSymbol":"BTC","amount":"1"}],"rates":[{"assetSymbol":"XBT","value":"0.02","kind":"apr","qualifier":"estimated","label":"APR"}],"rewards":[{"assetSymbol":"XBT","amount":"0.1","kind":"cumulative"}]}`)
+	if err := json.Unmarshal(raw, &details); err != nil {
 		t.Fatal(err)
 	}
+	stored := adapters.EarnPosition{Assets: details.Assets, Rates: details.Rates, Rewards: details.Rewards}
 	rows := toAPIEarnPositions([]financial.EarnPositionRow{{EarnPosition: stored}})
 	if rows[0].Assets[0].AssetSymbol != "XBT" || rows[0].Assets[0].CanonicalAssetSymbol == nil || *rows[0].Assets[0].CanonicalAssetSymbol != "BTC" || rows[0].Rates[0].AssetSymbol == nil || *rows[0].Rates[0].AssetSymbol != "XBT" || rows[0].Rewards[0].AssetSymbol != "XBT" {
 		t.Fatalf("lost stored symbols: %+v", rows[0])
@@ -89,8 +90,8 @@ func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
 	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || bytes.Count(encoded, []byte(`"assetSymbol":"XBT"`)) != 3 {
 		t.Fatalf("API symbols: %s (%v)", encoded, err)
 	}
-	encoded, err = json.Marshal(stored)
-	if err != nil || bytes.Contains(encoded, []byte(`"canonicalAssetSymbol"`)) || !bytes.Contains(encoded, []byte(`"assetSymbol":"BTC"`)) || bytes.Count(encoded, []byte(`"symbol":"XBT"`)) != 3 {
+	encoded, err = json.Marshal(details)
+	if err != nil || !bytes.Contains(encoded, []byte(`"canonicalAssetSymbol":"BTC"`)) || bytes.Count(encoded, []byte(`"assetSymbol":"XBT"`)) != 3 {
 		t.Fatalf("stored symbols: %s (%v)", encoded, err)
 	}
 }

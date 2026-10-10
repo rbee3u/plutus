@@ -66,7 +66,7 @@ func (b *builder) demoEvents(anchor time.Time) {
 		if f.CanonicalAssetSymbol == "BTC" {
 			price := fake.DemoPrice(adapters.PlatformBinance, "BTC", f.At)
 			f.ValueUSD = decimal.Format(decimal.Mul(decimal.ParseOrZero(price), decimal.ParseOrZero(f.Quantity)))
-			b.price(adapters.PlatformBinance, "BTC", price, f.At)
+			b.price(f.Portfolio, adapters.PlatformBinance, "BTC", price, f.At)
 		}
 		id := accountID("daily-classic", "funding")
 		if f.CanonicalAssetSymbol == "BTC" {
@@ -97,51 +97,43 @@ func (b *builder) demoEvents(anchor time.Time) {
 	reviewed := 0
 	for _, key := range b.assetKeys {
 		row := b.assets[key]
-		if row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
+		if row.portfolio != PortfolioAliceLarge || row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
 			continue
 		}
 		reviewed++
 		row.source = catalog.MappingManual
-		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalSymbol": row.canonicalSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalSymbol": row.canonicalSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
 	}
 	if reviewed != 60 {
 		b.fail(fmt.Errorf("large scenario needs 60 independent Catalog reviews"))
 	}
-	for _, status := range []string{"failed", "cancelled"} {
-		at := anchor.AddDate(0, 0, -1).Add(-time.Hour)
-		id := namedID("job/" + status)
-		b.add("jobs", bin(id), bin(PortfolioAliceEdge), q("valuation_recalc"), q(status), q("manual"), q("recalc"), "NULL", bin(UserAlice), ts(at), "3", "3", q(adapters.ClassTemporary), q("Offline example of a terminal rebuild job."), ts(at), ts(at.Add(time.Minute)), ts(at), ts(at.Add(time.Minute)))
-	}
 }
 
 func (b *builder) demoAssetPolicy(anchor time.Time) {
-	alias := b.assets["binance|DEMO-BTC"]
+	alias := b.assets[PortfolioAliceEdge.String()+"|binance|DEMO-BTC"]
 	if alias == nil {
 		b.fail(fmt.Errorf("demo alias asset is missing"))
 		return
 	}
-	alias.canonicalSymbol, alias.source = "BTC", catalog.MappingManual
-	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "canonicalSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "canonicalSymbol": "BTC", "mappingSource": catalog.MappingManual}})
-	dust := b.assets["binance|DEMO-DUST"]
+	alias.canonicalAssetSymbol, alias.source = "BTC", catalog.MappingManual
+	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "canonicalAssetSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "canonicalAssetSymbol": "BTC", "mappingSource": catalog.MappingManual}})
+	dust := b.assets[PortfolioAliceEdge.String()+"|binance|DEMO-DUST"]
 	if dust == nil {
 		b.fail(fmt.Errorf("demo dust asset is missing"))
 		return
 	}
 	for i, days := range []int{-6, -4, -2} {
-		ignored := i != 1
+		excluded := i != 1
 		reason := ""
-		if ignored {
+		if excluded {
 			reason = "Reviewed synthetic dust; intentionally omitted from calculated value."
 		}
 		at := anchor.AddDate(0, 0, days)
-		b.add("portfolio_asset_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
+		b.add("asset_exclusion_versions", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(excluded), qn(reason), ts(at))
 		action := "catalog.asset.restore"
-		if ignored {
+		if excluded {
 			action = "catalog.asset.exclude"
 		}
-		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "asset", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "ignored": !ignored, "version": i}, After: map[string]any{"symbol": dust.symbol, "ignored": ignored, "reason": reason, "version": i + 1}})
-		if i == 2 {
-			b.add("portfolio_asset_exclusions", bin(PortfolioAliceEdge), bin(dust.id), boolean(ignored), qn(reason), "3", bin(UserAlice), ts(at))
-		}
+		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "asset", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "excluded": !excluded, "version": i}, After: map[string]any{"symbol": dust.symbol, "excluded": excluded, "reason": reason, "version": i + 1}})
 	}
 }

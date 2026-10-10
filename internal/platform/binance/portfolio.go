@@ -55,7 +55,7 @@ func (a *Adapter) portfolioMargin(ctx context.Context, c *client) (adapters.Acco
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report.ObservedAt = a.now()
+	report.CollectedAt = a.now()
 	if report.Balances, err = mapPMBalances(balances); err != nil {
 		return adapters.AccountReport{}, err
 	}
@@ -73,26 +73,23 @@ func mapPMAccount(in *pmAccount) (adapters.AccountReport, error) {
 		"actualEquity": in.ActualEquity, "accountEquity": in.AccountEquity, "totalAvailableBalance": in.TotalAvailable,
 		"accountInitialMargin": in.AccountInitialMargin, "accountMaintMargin": in.AccountMaintMargin, "uniMMR": in.UniMMR,
 	}
-	parsed := map[string]*big.Rat{}
 	for name, value := range fields {
-		rat, err := adapters.Decimal(where, name, value)
+		_, err := adapters.Decimal(where, name, value)
 		if err != nil {
 			return adapters.AccountReport{}, err
 		}
-		parsed[name] = rat
 	}
 	report := adapters.AccountReport{
-		AccountType:        TypePortfolioMargin,
-		Status:             adapters.StatusOK,
-		Equity:             adapters.Plain(in.ActualEquity),
-		AdjustedEquity:     adapters.Plain(in.AccountEquity),
-		AvailableEquity:    adapters.Plain(in.TotalAvailable),
-		UnifiedMarginRatio: adapters.Plain(in.UniMMR),
+		AccountType:         TypePortfolioMargin,
+		Status:              adapters.StatusSucceeded,
+		Equity:              adapters.Plain(in.ActualEquity),
+		AdjustedEquity:      adapters.Plain(in.AccountEquity),
+		AvailableEquity:     adapters.Plain(in.TotalAvailable),
+		ReportedMarginRatio: adapters.Plain(in.UniMMR),
 	}
-	if adjusted := parsed["accountEquity"]; adjusted.Sign() > 0 {
-		report.InitialMarginRatio = adapters.Ratio(parsed["accountInitialMargin"], adjusted)
-		report.MaintenanceMarginRatio = adapters.Ratio(parsed["accountMaintMargin"], adjusted)
-	}
+	report.InitialMarginRequirementUSD = adapters.Plain(in.AccountInitialMargin)
+	report.MaintenanceMarginRequirementUSD = adapters.Plain(in.AccountMaintMargin)
+
 	return report, nil
 }
 
@@ -216,27 +213,27 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futu
 		mode = "one_way"
 	}
 	out := adapters.Position{
-		PlatformPositionRef: fmt.Sprintf("%s:%s:%s", m, row.Symbol, strings.ToUpper(row.PositionSide)),
-		FuturesContract:     *futuresContract,
-		Side:                side,
-		PositionMode:        mode,
-		Quantity:            decimal.Format(decimal.Abs(amount)),
-		QuantityUnit:        unit,
-		EntryPrice:          adapters.Plain(row.EntryPrice),
-		MarkPrice:           adapters.Plain(row.MarkPrice),
-		LiquidationPrice:    adapters.NonZero(row.LiquidationPrice),
-		UnrealizedPnl:       adapters.Plain(row.UnRealizedProfit),
-		Leverage:            adapters.Plain(row.Leverage),
+		PositionKey:        fmt.Sprintf("%s:%s:%s", m, row.Symbol, strings.ToUpper(row.PositionSide)),
+		FuturesContract:    *futuresContract,
+		Side:               side,
+		PositionMode:       mode,
+		SourceQuantity:     decimal.Format(decimal.Abs(amount)),
+		SourceQuantityUnit: unit,
+		EntryPrice:         adapters.Plain(row.EntryPrice),
+		MarkPrice:          adapters.Plain(row.MarkPrice),
+		LiquidationPrice:   adapters.NonZero(row.LiquidationPrice),
+		UnrealizedPnl:      adapters.Plain(row.UnRealizedProfit),
+		Leverage:           adapters.Plain(row.Leverage),
 	}
 	if ep == epUMPositionRisk || ep == epCMPositionRisk {
-		out.MarginMode = strings.ToLower(strings.TrimSpace(row.MarginType))
-		switch out.MarginMode {
+		out.MarginSetting = strings.ToLower(strings.TrimSpace(row.MarginType))
+		switch out.MarginSetting {
 		case "cross":
 			out.Margin, out.MarginBasis = adapters.Plain(row.PositionInitialMargin), "initial"
 		case "isolated":
 			out.Margin, out.MarginBasis = adapters.Plain(row.IsolatedWallet), "allocated"
 		default:
-			out.MarginMode = ""
+			out.MarginSetting = ""
 		}
 		out.MarginAssetSymbol = strings.TrimSpace(row.MarginAsset)
 		if m == marketCM && out.MarginAssetSymbol == "" {
@@ -246,7 +243,7 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futu
 		// Retail Portfolio Margin futures use Cross and retain initial leverage.
 		// These risk responses do not provide a position margin amount; the read
 		// model may derive its initial requirement without allocating collateral.
-		out.MarginMode = "cross"
+		out.MarginSetting = "cross"
 	}
 	return out, nil
 }

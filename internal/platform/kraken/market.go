@@ -77,10 +77,10 @@ func (n assetNames) mainSymbol(where, code string) (string, bool, error) {
 }
 
 // spotPrices holds the last Spot price of each asset per quote.
-type spotPrices map[string]map[string]string
+type spotPrices map[string]map[string]adapters.Quote
 
 // lookup is the adapters.QuoteLookup of the Spot prices.
-func (p spotPrices) lookup(symbol, quote string) (string, bool) {
+func (p spotPrices) lookup(symbol, quote string) (adapters.Quote, bool) {
 	price, ok := p[symbol][quote]
 	return price, ok
 }
@@ -113,14 +113,14 @@ func readSpotPrices(ctx context.Context, c *client, assets assetNames) spotPrice
 			continue
 		}
 		ticker, ok := tickers[name]
-		if !ok || len(ticker.Close) == 0 || out[base][quote] != "" {
+		if !ok || len(ticker.Close) == 0 || out[base][quote].Price != "" {
 			continue
 		}
 		if last, ok := decimal.Parse(string(ticker.Close[0])); ok && decimal.Valid(string(ticker.Close[0])) && last.Sign() > 0 {
 			if out[base] == nil {
-				out[base] = map[string]string{}
+				out[base] = map[string]adapters.Quote{}
 			}
-			out[base][quote] = string(ticker.Close[0])
+			out[base][quote] = adapters.Quote{Price: string(ticker.Close[0]), SourceMarketRef: name}
 		}
 	}
 	return out

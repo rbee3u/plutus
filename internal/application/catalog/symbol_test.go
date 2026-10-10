@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 )
@@ -26,6 +27,15 @@ func TestNormalizeSymbol(t *testing.T) {
 		got, err := NormalizeSymbol(tc.raw)
 		if tc.ok != (err == nil) || got != tc.want {
 			t.Fatalf("NormalizeSymbol(%q) = %q, %v; want %q ok=%v", tc.raw, got, err, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestTextColumnsDoNotCompactNumericLookingSymbols(t *testing.T) {
+	for _, value := range []string{"TOKEN.10", "123.00", "0001"} {
+		got := nullStringPtr(sql.NullString{String: value, Valid: true})
+		if got == nil || *got != value {
+			t.Fatalf("text %q changed to %v", value, got)
 		}
 	}
 }

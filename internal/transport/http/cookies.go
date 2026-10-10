@@ -73,16 +73,12 @@ func clientIP(ctx context.Context) string {
 	return c.ClientIP()
 }
 
-func clientLabel(ctx context.Context) string {
+func userAgent(ctx context.Context) string {
 	c := ginFrom(ctx)
 	if c == nil {
 		return ""
 	}
-	label := c.GetHeader("User-Agent")
-	if len(label) > 255 {
-		return label[:255]
-	}
-	return label
+	return c.GetHeader("User-Agent")
 }
 
 func retryAfter(ctx context.Context, seconds int) {

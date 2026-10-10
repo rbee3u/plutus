@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rbee3u/plutus/internal/shared/textkey"
+
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
@@ -23,7 +25,7 @@ const (
 	// DefaultCollectionInterval is the initial Collection Cycle interval for new Portfolios.
 	DefaultCollectionInterval = 15 * time.Minute
 	maxNameLength             = 120
-	minInterval               = 60
+	minInterval               = 900
 	maxInterval               = 86400
 )
 
@@ -45,6 +47,7 @@ type Portfolio struct {
 	Name                      string
 	Timezone                  string
 	CollectionIntervalSeconds int
+	DeletionRequestedAt       *time.Time
 	Undeletable               bool
 	Version                   uint64
 	CreatedAt                 time.Time
@@ -81,13 +84,13 @@ type PatchInput struct {
 
 // List returns owned portfolios.
 func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]Portfolio, error) {
-	rows, err := s.q.ListPortfoliosByUser(ctx, userID[:])
+	rows, err := mysql.Queries(ctx, s.db).ListPortfoliosByUser(ctx, userID[:])
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Portfolio, 0, len(rows))
 	for i := range rows {
-		item, err := fromRow(&rows[i])
+		item, err := fromRow((*sqlcgen.GetPortfolioByIDRow)(&rows[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -98,26 +101,26 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]Portfolio, erro
 
 // Get returns one owned portfolio.
 func (s *Service) Get(ctx context.Context, userID, portfolioID uuid.UUID) (Portfolio, error) {
-	row, err := s.q.GetPortfolioByUserAndID(ctx, sqlcgen.GetPortfolioByUserAndIDParams{UserID: userID[:], ID: portfolioID[:]})
+	row, err := mysql.Queries(ctx, s.db).GetPortfolioByUserAndID(ctx, sqlcgen.GetPortfolioByUserAndIDParams{UserID: userID[:], ID: portfolioID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return Portfolio{}, ErrNotFound
 	}
 	if err != nil {
 		return Portfolio{}, err
 	}
-	return fromRow(&row)
+	return fromRow((*sqlcgen.GetPortfolioByIDRow)(&row))
 }
 
 // GetByID returns a portfolio regardless of owner (worker and CLI paths).
 func (s *Service) GetByID(ctx context.Context, portfolioID uuid.UUID) (Portfolio, error) {
-	row, err := s.q.GetPortfolioByID(ctx, portfolioID[:])
+	row, err := mysql.Queries(ctx, s.db).GetPortfolioByID(ctx, portfolioID[:])
 	if errors.Is(err, sql.ErrNoRows) {
 		return Portfolio{}, ErrNotFound
 	}
 	if err != nil {
 		return Portfolio{}, err
 	}
-	return fromRow(&row)
+	return fromRow((*sqlcgen.GetPortfolioByIDRow)(&row))
 }
 
 // Create inserts a portfolio.
@@ -142,13 +145,14 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, in CreateInput) 
 		return Portfolio{}, err
 	}
 	now := s.now().UTC()
-	if err := s.q.InsertPortfolio(ctx, sqlcgen.InsertPortfolioParams{
+	if err := mysql.Queries(ctx, s.db).InsertPortfolio(ctx, sqlcgen.InsertPortfolioParams{
 		ID:                        id[:],
 		UserID:                    userID[:],
 		Name:                      name,
+		NameKey:                   textkey.Key(name),
 		Timezone:                  timezone,
-		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 60..86400 seconds.
-		Undeletable:               false,
+		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 900..86400 seconds.
+		IsInitial:                 false,
 		Version:                   1,
 		CreatedAt:                 now,
 		UpdatedAt:                 now,
@@ -191,10 +195,11 @@ func (s *Service) Patch(ctx context.Context, userID, portfolioID uuid.UUID, vers
 			return Portfolio{}, err
 		}
 	}
-	n, err := s.q.UpdatePortfolio(ctx, sqlcgen.UpdatePortfolioParams{
+	n, err := mysql.Queries(ctx, s.db).UpdatePortfolio(ctx, sqlcgen.UpdatePortfolioParams{
 		Name:                      name,
+		NameKey:                   textkey.Key(name),
 		Timezone:                  timezone,
-		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 60..86400 seconds.
+		CollectionIntervalSeconds: uint32(interval), // #nosec G115 -- The stored interval and validateInterval are bounded to 900..86400 seconds.
 		UpdatedAt:                 s.now().UTC(),
 		ID:                        portfolioID[:],
 		UserID:                    userID[:],
@@ -240,17 +245,22 @@ func (s *Service) staleOrMissing(ctx context.Context, userID, portfolioID uuid.U
 	return current, ErrPrecondition
 }
 
-func fromRow(row *sqlcgen.Portfolio) (Portfolio, error) {
+func fromRow(row *sqlcgen.GetPortfolioByIDRow) (Portfolio, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return Portfolio{}, err
 	}
+	var deletionRequestedAt *time.Time
+	if row.DeletionRequestedAt.Valid {
+		deletionRequestedAt = &row.DeletionRequestedAt.Time
+	}
 	return Portfolio{
+		DeletionRequestedAt:       deletionRequestedAt,
 		ID:                        id,
 		Name:                      row.Name,
 		Timezone:                  row.Timezone,
 		CollectionIntervalSeconds: int(row.CollectionIntervalSeconds),
-		Undeletable:               row.Undeletable,
+		Undeletable:               row.IsInitial,
 		Version:                   row.Version,
 		CreatedAt:                 row.CreatedAt,
 		UpdatedAt:                 row.UpdatedAt,
@@ -258,8 +268,8 @@ func fromRow(row *sqlcgen.Portfolio) (Portfolio, error) {
 }
 
 func normalizeName(raw string) (string, error) {
-	name := strings.TrimSpace(raw)
-	if name == "" || len(name) > maxNameLength {
+	name, valid := textkey.Name(raw, maxNameLength)
+	if !valid {
 		return "", ErrInvalidName
 	}
 	return name, nil

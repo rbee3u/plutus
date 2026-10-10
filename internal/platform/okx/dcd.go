@@ -150,7 +150,7 @@ func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
 			return nil, err
 		}
 		state := map[string]string{"initial": "pending", "pending_book": "pending", "live": "active", "pending_settle": "settling", "pending_redeem_booking": "redeeming", "pending_redeem": "redeeming", "redeeming": "redeeming"}[strings.ToLower(strings.TrimSpace(row.State))]
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.OrdID, OrderRef: adapters.OptionalText(row.OrdID), ProductRef: adapters.OptionalText(row.ProductID), BaseAssetSymbol: adapters.OptionalText(row.BaseCcy), QuoteAssetSymbol: adapters.OptionalText(row.QuoteCcy), InvestAssetSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.OptionalText(row.Strike), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: adapters.OptionalText(row.AnnualizedYield), RateKind: adapters.OptionalText("annualized_yield"), Status: state})
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PositionKey: row.OrdID, OrderRef: adapters.OptionalText(row.OrdID), ProductRef: adapters.OptionalText(row.ProductID), BaseAssetSymbol: adapters.OptionalText(row.BaseCcy), QuoteAssetSymbol: adapters.OptionalText(row.QuoteCcy), PrincipalAssetSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.OptionalText(row.Strike), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: adapters.OptionalText(row.AnnualizedYield), RateKind: adapters.OptionalText("annualized_yield"), Status: state})
 		if err != nil {
 			return nil, err
 		}

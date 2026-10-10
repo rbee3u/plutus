@@ -1,4 +1,4 @@
-// Package manual manages current signed balances and immutable cycle inputs.
+// Package manual owns immutable revisions and the inputs each cycle reports.
 package manual
 
 import (
@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,18 +23,15 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
-// Balance is a user-entered quantity, never an editable exchange observation.
-// JSON tags preserve immutable revisions and frozen cycle inputs, including new writes.
-// HTTP and audit projections use the current domain vocabulary.
+// Balance stores only revision facts; labels and pricing mappings are projections.
 type Balance struct {
-	AssetSymbol          string    `json:"platformAssetSymbol"`
-	AssetID              uuid.UUID `json:"platformAssetId"`
-	CanonicalAssetSymbol string    `json:"assetSymbol"`
+	AssetID              uuid.UUID `json:"assetId"`
 	Quantity             string    `json:"quantity"`
-	ModifiedAt           time.Time `json:"modifiedAt"`
+	ModifiedAt           time.Time `json:"changedAt"`
+	AssetSymbol          string    `json:"-"`
+	CanonicalAssetSymbol string    `json:"-"`
 }
 
-// State separates the editable ledger from the last completed valuation.
 type State struct {
 	AccountID      uuid.UUID `json:"accountId"`
 	IdentityID     uuid.UUID `json:"identityId"`
@@ -44,15 +42,9 @@ type State struct {
 	Pending        bool      `json:"pending"`
 }
 
-// ETag guards the entire Identity's manual ledger, including new symbols.
-func (s State) ETag() string { return etag.Format("manual", s.Version) }
+func (s State) ETag() string                { return etag.Format("manual", s.Version) }
+func ParseETag(value string) (uint64, bool) { return etag.Parse("manual", value) }
 
-// ParseETag accepts only the exact validator emitted by this service.
-func ParseETag(value string) (uint64, bool) {
-	return etag.Parse("manual", value)
-}
-
-// Input carries a balance mutation and its authenticated audit actor.
 type Input struct {
 	AssetSymbol string
 	Quantity    string
@@ -61,51 +53,49 @@ type Input struct {
 	RequestID   string
 }
 
-// Service owns manual ledger and revision persistence.
 type Service struct {
 	db      *sql.DB
 	now     func() time.Time
 	catalog *catalog.Service
 }
 
-// NewService constructs a manual ledger service.
 func NewService(db *sql.DB, assets *catalog.Service) *Service {
 	return &Service{db: db, now: time.Now, catalog: assets}
 }
 
-func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uuid.UUID) ([]Balance, error) {
-	rows, err := q.ListManualBalances(ctx, sqlcgen.ListManualBalancesParams{PortfolioID: portfolioID[:], AccountID: accountID[:]})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Balance, 0, len(rows))
-	for _, row := range rows {
-		id, err := uuid.FromBytes(row.AssetID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, Balance{AssetSymbol: row.AssetSymbol, AssetID: id, CanonicalAssetSymbol: row.CanonicalAssetSymbol, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ModifiedAt})
-	}
-	return out, nil
-}
-
-// Quantities encodes only financial inputs, excluding edit timestamps and mapping.
+// Quantities excludes edit times and mappings from the pending-change comparison.
 func Quantities(items []Balance) (sqljson.Column, error) {
 	amounts := map[string]string{}
 	for _, item := range items {
-		amounts[item.AssetSymbol] = decimal.Compact(item.Quantity)
+		amounts[item.AssetID.String()] = decimal.Compact(item.Quantity)
 	}
 	raw, err := json.Marshal(amounts)
 	return sqljson.Column(raw), err
 }
 
 func sameQuantities(a, b []Balance) bool {
-	left, leftErr := Quantities(a)
-	right, rightErr := Quantities(b)
-	return leftErr == nil && rightErr == nil && string(left) == string(right)
+	left, lerr := Quantities(a)
+	right, rerr := Quantities(b)
+	return lerr == nil && rerr == nil && string(left) == string(right)
 }
 
-// Get returns a consistent current ledger and the inputs of its last completed point.
+// Hydrate reads immutable quantities and current Portfolio-local asset labels.
+func Hydrate(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID []byte, revision uint64) ([]Balance, error) {
+	rows, err := q.ListManualRevisionBalances(ctx, sqlcgen.ListManualRevisionBalancesParams{PortfolioID: portfolioID, AccountID: accountID, RevisionNumber: revision})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]Balance, 0, len(rows))
+	for _, row := range rows {
+		id, err := uuid.FromBytes(row.AssetID)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, Balance{AssetID: id, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ChangedAt, AssetSymbol: row.AssetSymbol, CanonicalAssetSymbol: row.CanonicalAssetSymbol})
+	}
+	return items, nil
+}
+
 func (s *Service) Get(ctx context.Context, portfolioID, identityID uuid.UUID) (State, error) {
 	return mysql.WithReadTx(ctx, s.db, func(q *sqlcgen.Queries) (State, error) {
 		account, err := q.GetManualAccount(ctx, sqlcgen.GetManualAccountParams{PortfolioID: portfolioID[:], IdentityID: identityID[:]})
@@ -119,18 +109,23 @@ func (s *Service) Get(ctx context.Context, portfolioID, identityID uuid.UUID) (S
 		if err != nil {
 			return State{}, err
 		}
-		items, err := balances(ctx, q, portfolioID, accountID)
+		revision, err := q.GetCurrentManualRevision(ctx, sqlcgen.GetCurrentManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID})
 		if err != nil {
 			return State{}, err
 		}
-		state := State{AccountID: accountID, IdentityID: identityID, Version: account.Version, Items: items, AppliedItems: []Balance{}}
-		applied, err := q.GetAppliedManualState(ctx, sqlcgen.GetAppliedManualStateParams{PortfolioID: portfolioID[:], AccountID: account.ID})
+		items, err := Hydrate(ctx, q, portfolioID[:], account.ID, revision.RevisionNumber)
+		if err != nil {
+			return State{}, err
+		}
+		state := State{AccountID: accountID, IdentityID: identityID, Version: revision.RevisionNumber, Items: items, AppliedItems: []Balance{}}
+		applied, err := q.GetAppliedManualRevision(ctx, sqlcgen.GetAppliedManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID})
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return State{}, err
 		}
-		if err == nil {
-			state.AppliedVersion = &applied.Version
-			state.AppliedItems, err = decodeBalances(applied.BalancesJson)
+		if err == nil && applied.Valid {
+			version := uint64(applied.Int64) // #nosec G115 -- revision numbers are positive BIGINT UNSIGNED values far below 2^63.
+			state.AppliedVersion = &version
+			state.AppliedItems, err = Hydrate(ctx, q, portfolioID[:], account.ID, version)
 			if err != nil {
 				return State{}, err
 			}
@@ -140,17 +135,14 @@ func (s *Service) Get(ctx context.Context, portfolioID, identityID uuid.UUID) (S
 	})
 }
 
-// Create adds a previously absent symbol without accumulating another quantity.
 func (s *Service) Create(ctx context.Context, portfolioID, identityID uuid.UUID, in Input) (State, error) {
 	return s.mutate(ctx, portfolioID, identityID, in, "create")
 }
 
-// Update sets a current quantity; zero clears the symbol.
 func (s *Service) Update(ctx context.Context, portfolioID, identityID uuid.UUID, in Input) (State, error) {
 	return s.mutate(ctx, portfolioID, identityID, in, "update")
 }
 
-// Delete removes the current symbol while preserving all earlier revisions.
 func (s *Service) Delete(ctx context.Context, portfolioID, identityID uuid.UUID, in Input) (State, error) {
 	in.Quantity = "0"
 	return s.mutate(ctx, portfolioID, identityID, in, "delete")
@@ -161,16 +153,15 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 	if err != nil {
 		return State{}, err
 	}
-	quantity := strings.TrimSpace(in.Quantity)
-	if !decimal.Valid(quantity) {
+	amount, ok := decimal.Parse(in.Quantity)
+	if !ok || !decimal.Valid(in.Quantity) {
 		return State{}, catalog.ErrInvalid
 	}
-	amount, ok := decimal.Parse(quantity)
-	if !ok {
-		return State{}, catalog.ErrInvalid
-	}
-	quantity = decimal.Format(amount)
-	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+	quantity := decimal.Compact(decimal.Format(amount))
+	err = mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		account, err := q.LockManualAccount(ctx, sqlcgen.LockManualAccountParams{PortfolioID: portfolioID[:], IdentityID: identityID[:]})
 		if errors.Is(err, sql.ErrNoRows) {
 			return identity.ErrNotFound
@@ -178,160 +169,94 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		if err != nil {
 			return err
 		}
-		if account.Status == identity.StatusArchived {
+		if account.ArchivedAt.Valid {
 			return identity.ErrArchived
 		}
-		if account.Version != in.Version {
+		revision, err := q.GetCurrentManualRevision(ctx, sqlcgen.GetCurrentManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID})
+		if err != nil {
+			return err
+		}
+		if revision.RevisionNumber != in.Version {
 			return identity.ErrPrecondition
+		}
+		items, err := Hydrate(ctx, q, portfolioID[:], account.ID, revision.RevisionNumber)
+		if err != nil {
+			return err
+		}
+		index := slices.IndexFunc(items, func(item Balance) bool { return item.AssetSymbol == symbol })
+		if action == "create" && index >= 0 {
+			return identity.ErrConflict
+		}
+		if action != "create" && index < 0 {
+			return identity.ErrNotFound
+		}
+		if (index < 0 && amount.Sign() == 0) || (index >= 0 && items[index].Quantity == quantity) {
+			return nil
+		}
+		at := s.now().UTC().Truncate(time.Microsecond)
+		if amount.Sign() == 0 {
+			items = slices.Delete(items, index, index+1)
+		} else if index >= 0 {
+			items[index].Quantity, items[index].ModifiedAt = quantity, at
+		} else {
+			id, _, err := s.catalog.EnsureAsset(ctx, q, portfolioID, adapters.Platform(account.Platform), symbol, at)
+			if err != nil {
+				return err
+			}
+			items = append(items, Balance{AssetID: id, AssetSymbol: symbol, Quantity: quantity, ModifiedAt: at})
+		}
+		slices.SortFunc(items, func(a, b Balance) int { return strings.Compare(a.AssetID.String(), b.AssetID.String()) })
+		if err := q.InsertManualRevision(ctx, sqlcgen.InsertManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID, RevisionNumber: revision.RevisionNumber + 1, ChangedAt: sql.NullTime{Time: at, Valid: true}}); err != nil {
+			return err
+		}
+		for _, item := range items {
+			if err := q.InsertManualRevisionBalance(ctx, sqlcgen.InsertManualRevisionBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, RevisionNumber: revision.RevisionNumber + 1, AssetID: item.AssetID[:], Quantity: item.Quantity, ChangedAt: item.ModifiedAt}); err != nil {
+				return err
+			}
 		}
 		accountID, err := uuid.FromBytes(account.ID)
 		if err != nil {
 			return err
 		}
-		before, err := balances(ctx, q, portfolioID, accountID)
-		if err != nil {
-			return err
-		}
-		var previous *Balance
-		for i := range before {
-			if before[i].AssetSymbol == symbol {
-				previous = &before[i]
-				break
-			}
-		}
-		if action == "create" && previous != nil {
-			return identity.ErrConflict
-		}
-		if action != "create" && previous == nil {
-			return identity.ErrNotFound
-		}
-		unchanged := (previous == nil && amount.Sign() == 0) || (previous != nil && previous.Quantity == quantity)
-		if unchanged {
-			return nil
-		}
-		now := s.now().UTC().Truncate(time.Microsecond)
-		if amount.Sign() == 0 {
-			err = q.DeleteManualBalance(ctx, sqlcgen.DeleteManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, AssetSymbol: symbol})
-		} else {
-			assetID, _, assetErr := s.catalog.EnsureAsset(ctx, q, adapters.Platform(account.Platform), symbol, "", now)
-			if assetErr != nil {
-				return assetErr
-			}
-			err = q.PutManualBalance(ctx, sqlcgen.PutManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, AssetSymbol: symbol, AssetID: assetID[:], Quantity: quantity, ModifiedAt: now})
-		}
-		if err != nil {
-			return err
-		}
-		if err := q.AdvanceManualVersion(ctx, sqlcgen.AdvanceManualVersionParams{PortfolioID: portfolioID[:], AccountID: account.ID, At: now}); err != nil {
-			return err
-		}
-		after, err := balances(ctx, q, portfolioID, accountID)
-		if err != nil {
-			return err
-		}
-		raw, err := json.Marshal(after)
-		if err != nil {
-			return err
-		}
-		if err := q.InsertManualRevision(ctx, sqlcgen.InsertManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID, Version: account.Version + 1, BalancesJson: sqljson.Column(raw), ModifiedAt: now}); err != nil {
-			return err
-		}
-		return audit.Record(ctx, q, now, &audit.Entry{
-			PortfolioID: portfolioID, ActorUserID: in.ActorUserID, RequestID: in.RequestID,
-			Action: "manual.balance." + action, ResourceType: "account", ResourceID: accountID,
-			Before: auditBalances(before), After: auditBalances(after),
-		})
-	}); err != nil {
+		return audit.Record(ctx, q, at, &audit.Entry{PortfolioID: portfolioID, ActorUserID: in.ActorUserID, RequestID: in.RequestID, Action: "manual.balance." + action, ResourceType: "account", ResourceID: accountID, Before: map[string]any{"revisionNumber": revision.RevisionNumber}, After: map[string]any{"revisionNumber": revision.RevisionNumber + 1}})
+	})
+	if err != nil {
 		return State{}, err
 	}
 	return s.Get(ctx, portfolioID, identityID)
 }
 
-// CycleAccount is an immutable input chosen once before a cycle contacts Platforms.
 type CycleAccount struct {
-	AccountID  uuid.UUID
-	IdentityID uuid.UUID
-	Platform   adapters.Platform
-	Version    uint64
-	Items      []Balance
-	ModifiedAt sql.NullTime
+	AccountID      uuid.UUID
+	Platform       adapters.Platform
+	RevisionNumber uint64
+	Items          []Balance
 }
 
-// Freeze persists every enabled Identity's Manual inputs once, including empty ledgers.
-func (s *Service) Freeze(ctx context.Context, portfolioID, jobID uuid.UUID) ([]CycleAccount, error) {
-	return mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) ([]CycleAccount, error) {
-		if _, err := q.LockManualCycleJob(ctx, sqlcgen.LockManualCycleJobParams{PortfolioID: portfolioID[:], JobID: jobID[:]}); err != nil {
-			return nil, err
-		}
-		_, err := q.GetManualCycle(ctx, sqlcgen.GetManualCycleParams{PortfolioID: portfolioID[:], JobID: jobID[:]})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			accounts, err := q.LockManualBoundary(ctx, portfolioID[:])
-			if err != nil {
-				return nil, err
-			}
-			if err := q.InsertManualCycle(ctx, sqlcgen.InsertManualCycleParams{PortfolioID: portfolioID[:], JobID: jobID[:], CapturedAt: s.now().UTC()}); err != nil {
-				return nil, err
-			}
-			for _, account := range accounts {
-				id, err := uuid.FromBytes(account.ID)
-				if err != nil {
-					return nil, err
-				}
-				items, err := balances(ctx, q, portfolioID, id)
-				if err != nil {
-					return nil, err
-				}
-				raw, err := json.Marshal(items)
-				if err != nil {
-					return nil, err
-				}
-				modified, err := q.GetManualModifiedAt(ctx, sqlcgen.GetManualModifiedAtParams{PortfolioID: portfolioID[:], AccountID: account.ID})
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					return nil, err
-				}
-				at := sql.NullTime{Time: modified, Valid: err == nil}
-				if err := q.InsertManualCycleAccount(ctx, sqlcgen.InsertManualCycleAccountParams{PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: account.ID, Version: account.Version, BalancesJson: sqljson.Column(raw), ModifiedAt: at}); err != nil {
-					return nil, err
-				}
-			}
-		}
-		rows, err := q.ListManualCycleAccounts(ctx, sqlcgen.ListManualCycleAccountsParams{PortfolioID: portfolioID[:], JobID: jobID[:]})
+// CycleInputs reads the current revision of every boundary Manual Account.
+// Revisions are immutable, so the caller may price them before reporting.
+func (s *Service) CycleInputs(ctx context.Context, portfolioID uuid.UUID) ([]CycleAccount, error) {
+	return mysql.WithReadTx(ctx, s.db, func(q *sqlcgen.Queries) ([]CycleAccount, error) {
+		accounts, err := q.ListManualBoundary(ctx, portfolioID[:])
 		if err != nil {
 			return nil, err
 		}
-		out := make([]CycleAccount, 0, len(rows))
-		for _, row := range rows {
-			accountID, err := uuid.FromBytes(row.AccountID)
+		out := make([]CycleAccount, 0, len(accounts))
+		for _, account := range accounts {
+			accountID, err := uuid.FromBytes(account.ID)
 			if err != nil {
 				return nil, err
 			}
-			identityID, err := uuid.FromBytes(row.IdentityID)
+			revision, err := q.GetCurrentManualRevision(ctx, sqlcgen.GetCurrentManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID})
 			if err != nil {
 				return nil, err
 			}
-			item := CycleAccount{AccountID: accountID, IdentityID: identityID, Platform: adapters.Platform(row.Platform), Version: row.Version, ModifiedAt: row.ModifiedAt}
-			item.Items, err = decodeBalances(row.BalancesJson)
+			items, err := Hydrate(ctx, q, portfolioID[:], account.ID, revision.RevisionNumber)
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, item)
+			out = append(out, CycleAccount{AccountID: accountID, Platform: adapters.Platform(account.Platform), RevisionNumber: revision.RevisionNumber, Items: items})
 		}
 		return out, nil
 	})
-}
-
-// Audit snapshots use current terms without changing the revision wire format.
-func auditBalances(items []Balance) []map[string]any {
-	rows := make([]map[string]any, 0, len(items))
-	for _, item := range items {
-		rows = append(rows, map[string]any{
-			"assetId": item.AssetID, "assetSymbol": item.AssetSymbol,
-			"canonicalAssetSymbol": item.CanonicalAssetSymbol,
-			"quantity":             item.Quantity, "modifiedAt": item.ModifiedAt,
-		})
-	}
-	return rows
 }

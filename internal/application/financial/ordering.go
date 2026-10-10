@@ -81,7 +81,7 @@ func comparePositions(a, b *PositionRow) int {
 	if c := strings.Compare(a.Side, b.Side); c != 0 {
 		return c
 	}
-	return strings.Compare(a.PlatformPositionRef, b.PlatformPositionRef)
+	return strings.Compare(a.PositionKey, b.PositionKey)
 }
 
 func positionKindRank(kind string) int {
@@ -120,7 +120,7 @@ func sortDualPositions(rows []DualPositionRow, ranks map[uuid.UUID]int) {
 		if c := compareExpiry(a.ExpiryAt, b.ExpiryAt); c != 0 {
 			return c
 		}
-		return strings.Compare(a.PlatformPositionRef, b.PlatformPositionRef)
+		return strings.Compare(a.PositionKey, b.PositionKey)
 	})
 }
 
@@ -150,6 +150,6 @@ func sortEarnPositions(rows []EarnPositionRow, ranks map[uuid.UUID]int) {
 		if c := compareExpiry(a.MaturityAt, b.MaturityAt); c != 0 {
 			return c
 		}
-		return strings.Compare(a.PlatformPositionRef, b.PlatformPositionRef)
+		return strings.Compare(a.PositionKey, b.PositionKey)
 	})
 }

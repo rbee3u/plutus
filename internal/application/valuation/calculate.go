@@ -16,14 +16,16 @@ import (
 // preparedReport contains only the facts needed by the evaluator. All source,
 // exclusion, and price reads have completed before this value is evaluated.
 type preparedReport struct {
-	account  AccountValuation
-	reported *big.Rat
-	balances []preparedBalance
+	account    AccountValuation
+	reported   *big.Rat
+	balances   []preparedBalance
+	adjustment *big.Rat
 }
 
 type preparedBalance struct {
 	assetSymbol, canonicalAssetSymbol, rawEquity string
 	equity, price                                *big.Rat
+	decision                                     BalanceValuation
 }
 
 // evaluateReport is independent of storage, time, and the input loading strategy.
@@ -33,28 +35,37 @@ func evaluateReport(input preparedReport) AccountValuation {
 		item.Method = MethodMissing
 		return item
 	}
+	total := decimal.Add(decimal.Zero(), input.adjustment)
+	item.BalanceValuations = make([]BalanceValuation, 0, len(input.balances))
+	for _, balance := range input.balances {
+		decision := balance.decision
+		if decision.Treatment == "excluded" {
+			item.BalanceValuations = append(item.BalanceValuations, decision)
+			continue
+		}
+		if balance.equity == nil {
+			decision.MissingReason = "invalid_equity"
+		} else if balance.price == nil {
+			decision.MissingReason = "no_price"
+		} else {
+			value := decimal.Mul(balance.equity, balance.price)
+			decision.ValueUSD = decimal.FormatPtr(value)
+			if input.reported == nil {
+				total = decimal.Add(total, value)
+			}
+		}
+		if decision.MissingReason != "" && input.reported == nil {
+			item.Omitted = append(item.Omitted, Omitted{AssetID: decision.AssetID, AssetSymbol: balance.assetSymbol, CanonicalAssetSymbol: mappedCanonicalAssetSymbol(balance.assetSymbol, balance.canonicalAssetSymbol), Equity: decimal.Compact(balance.rawEquity), Reason: decision.MissingReason})
+		}
+		item.BalanceValuations = append(item.BalanceValuations, decision)
+	}
 	if input.reported != nil {
 		item.Method = MethodReported
 		item.valueRat = input.reported
 		item.ValueUSD = decimal.FormatPtr(input.reported)
 		return item
 	}
-	total := decimal.Zero()
-	for _, balance := range input.balances {
-		omission := Omitted{AssetSymbol: balance.assetSymbol, CanonicalAssetSymbol: mappedCanonicalAssetSymbol(balance.assetSymbol, balance.canonicalAssetSymbol), Equity: balance.rawEquity}
-		if balance.equity == nil {
-			omission.Reason = "invalid_equity"
-			item.Omitted = append(item.Omitted, omission)
-			continue
-		}
-		if balance.price == nil {
-			omission.Equity = decimal.Compact(balance.rawEquity)
-			omission.Reason = "no_price"
-			item.Omitted = append(item.Omitted, omission)
-			continue
-		}
-		total = decimal.Add(total, decimal.Mul(balance.equity, balance.price))
-	}
+
 	item.Method = MethodCalculated
 	item.valueRat = total
 	item.ValueUSD = decimal.FormatPtr(total)
@@ -70,26 +81,21 @@ func mappedCanonicalAssetSymbol(assetSymbol, canonicalAssetSymbol string) string
 }
 
 type previousAccount struct {
-	manualState  string
-	scopeVersion uint16
 	accountType  string
 	name         string
 	identityID   uuid.UUID
 	identityName string
 	platform     string
 	method       string
+	complete     bool
 	value        *big.Rat
 }
 
-// buildPoint aggregates Account Valuations into a point with issues and Boundary Events.
-func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []AccountValuation, previous map[uuid.UUID]previousAccount) Point {
-	point := Point{PortfolioID: portfolioID, JobID: jobID, EvaluatedAt: evaluatedAt, AccountCount: len(accounts)}
+// buildPoint aggregates Account Valuations and snapshots Boundary Events.
+func buildPoint(portfolioID, cycleID uuid.UUID, evaluatedAt time.Time, accounts []AccountValuation, previous map[uuid.UUID]previousAccount) Point {
+	point := Point{PortfolioID: portfolioID, CycleID: cycleID, EvaluatedAt: evaluatedAt, AccountCount: len(accounts)}
 	total := decimal.Zero()
 	current := map[uuid.UUID]bool{}
-	transitions := scopeTransitions(accounts, previous)
-	markedTransitions := map[uuid.UUID]bool{}
-	contributions := decimal.Zero()
-	withdrawals := decimal.Zero()
 	for i := range accounts {
 		a := &accounts[i]
 		current[a.AccountID] = true
@@ -102,29 +108,10 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 		if a.Completeness() == CompletenessIncomplete {
 			point.IncompleteAccountCount++
 		}
-		point.Issues = append(point.Issues, AccountIssues(a)...)
-		if a.AccountType == string(adapters.TypeManual) && previous != nil && identityWasPresent(previous, a.IdentityID) {
-			old := previous[a.AccountID].manualState
-			if canonicalManualState([]byte(old)) != canonicalManualState([]byte(a.manualState)) {
-				point.Issues = append(point.Issues, Issue{Code: "manual_balance_changed", AccountID: &a.AccountID, AccountName: a.AccountName, Detail: "Manual quantities changed for " + a.IdentityName + "; value changes across this point include a user adjustment."})
-			}
-		}
-		if transitions[a.IdentityID] && (a.AccountType == "earn" || a.AccountType == "dual_investment") {
-			if !markedTransitions[a.IdentityID] {
-				markedTransitions[a.IdentityID] = true
-				point.Issues = append(point.Issues, Issue{Code: "account_scope_changed", AccountID: &a.AccountID, Detail: "Earn and Dual Investment were separated for " + a.IdentityName + "; value changes across this point use different account scopes."})
-			}
-		}
 		if previous != nil {
-			if _, existed := previous[a.AccountID]; !existed && !(a.AccountType == string(adapters.TypeManual) && identityWasPresent(previous, a.IdentityID)) && (!transitions[a.IdentityID] || a.AccountType != "dual_investment") {
-				event := BoundaryEvent{AccountID: a.AccountID, AccountName: a.AccountName, IdentityID: a.IdentityID, IdentityName: a.IdentityName, Platform: a.Platform, Direction: DirectionContribution, Method: a.Method, ValueUSD: a.ValueUSD, valueRat: a.valueRat}
+			if _, existed := previous[a.AccountID]; !existed && !(a.AccountType == string(adapters.TypeManual) && identityWasPresent(previous, a.IdentityID)) {
+				event := BoundaryEvent{AccountID: a.AccountID, AccountName: a.AccountName, IdentityID: a.IdentityID, IdentityName: a.IdentityName, Platform: a.Platform, Direction: DirectionContribution, Method: a.Method, ValuationComplete: a.Completeness() == CompletenessComplete, ValueUSD: a.ValueUSD, valueRat: a.valueRat}
 				point.BoundaryEvents = append(point.BoundaryEvents, event)
-				if a.valueRat != nil {
-					contributions = decimal.Add(contributions, a.valueRat)
-				} else {
-					id := a.AccountID
-					point.Issues = append(point.Issues, Issue{Code: "boundary_unvalued", AccountID: &id, AccountName: a.AccountName, Detail: "The account entered the boundary without a value; the boundary event is unvalued."})
-				}
 			}
 		}
 	}
@@ -138,25 +125,16 @@ func buildPoint(portfolioID, jobID uuid.UUID, evaluatedAt time.Time, accounts []
 		slices.SortFunc(ids, func(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) })
 		for _, id := range ids {
 			prev := previous[id]
-			if transitions[prev.identityID] && prev.accountType == "earn" {
-				continue
-			}
-			event := BoundaryEvent{AccountID: id, AccountName: prev.name, IdentityID: prev.identityID, IdentityName: prev.identityName, Platform: prev.platform, Direction: DirectionWithdrawal, Method: MethodMissing}
+			event := BoundaryEvent{AccountID: id, AccountName: prev.name, IdentityID: prev.identityID, IdentityName: prev.identityName, Platform: prev.platform, Direction: DirectionWithdrawal, Method: MethodMissing, ValuationComplete: prev.complete}
 			if prev.value != nil {
 				event.Method = prev.method
 				event.ValueUSD = decimal.FormatPtr(prev.value)
 				event.valueRat = prev.value
-				withdrawals = decimal.Add(withdrawals, prev.value)
-			} else {
-				accountID := id
-				point.Issues = append(point.Issues, Issue{Code: "boundary_unvalued", AccountID: &accountID, AccountName: prev.name, Detail: "The account left the boundary without a value; the boundary event is unvalued."})
 			}
 			point.BoundaryEvents = append(point.BoundaryEvents, event)
 		}
 	}
 	point.TotalUSD = decimal.Format(total)
-	point.BoundaryContributionUSD = decimal.Format(contributions)
-	point.BoundaryWithdrawalUSD = decimal.Format(withdrawals)
 	return point
 }
 
@@ -166,9 +144,6 @@ func AccountIssues(a *AccountValuation) []Issue {
 	switch {
 	case a.Method == MethodMissing:
 		detail := "No successful report exists for the current account scope; its value is unknown."
-		if a.ScopeVersion == 2 && a.AccountType == "earn" {
-			detail += " Earlier combined Earn reports include Dual Investment and cannot be reused."
-		}
 		if a.ErrorDetail != nil {
 			detail += " Last error: " + *a.ErrorDetail
 		}
@@ -188,25 +163,7 @@ func AccountIssues(a *AccountValuation) []Issue {
 		if o.CanonicalAssetSymbol != "" {
 			detail = fmt.Sprintf("%s %s (mapped to %s) was excluded from the account value (%s).", o.Equity, o.AssetSymbol, o.CanonicalAssetSymbol, o.Reason)
 		}
-		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, Symbol: o.AssetSymbol, Detail: detail})
-	}
-	return out
-}
-
-// scopeTransitions identifies reclassification of an already observed combined Earn.
-func scopeTransitions(accounts []AccountValuation, previous map[uuid.UUID]previousAccount) map[uuid.UUID]bool {
-	legacy := map[uuid.UUID]bool{}
-	for _, old := range previous {
-		if old.accountType == "earn" && old.scopeVersion == 1 && (old.platform == "binance" || old.platform == "okx" || old.platform == "bybit") {
-			legacy[old.identityID] = true
-		}
-	}
-	out := map[uuid.UUID]bool{}
-	for i := range accounts {
-		a := &accounts[i]
-		if legacy[a.IdentityID] && a.ScopeVersion == 2 && (a.AccountType == "earn" || a.AccountType == "dual_investment") {
-			out[a.IdentityID] = true
-		}
+		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, AssetID: &o.AssetID, Symbol: o.AssetSymbol, Detail: detail})
 	}
 	return out
 }

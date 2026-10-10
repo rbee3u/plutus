@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
@@ -35,17 +35,17 @@ func (a *manualTestAdapter) Collect(_ context.Context, _ adapters.Credentials, _
 	if a.failed {
 		return adapters.Batch{}, adapters.NewError(adapters.ClassTemporary, "Synthetic private failure.")
 	}
-	batch := adapters.Batch{ObservedAt: at, MarginMode: adapters.MarginOKXPM}
+	batch := adapters.Batch{CollectedAt: at, MarginMode: adapters.MarginOKXPM}
 	for _, typ := range types {
 		if typ == adapters.TypeManual {
 			panic("Manual must not reach a private Adapter")
 		}
-		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusOK, ObservedAt: at}
+		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusSucceeded, CollectedAt: at}
 		if a.usd != "0" {
 			report.Balances = []adapters.Balance{{AssetSymbol: "USD", Equity: a.usd}}
 		}
 		if a.positions {
-			report.Positions = []adapters.Position{{PlatformPositionRef: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", Quantity: "1", QuantityUnit: "base"}}
+			report.Positions = []adapters.Position{{PositionKey: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", PositionMode: "one_way", SourceQuantity: "1", SourceQuantityUnit: "base"}}
 		}
 		batch.Reports = append(batch.Reports, report)
 	}
@@ -56,7 +56,9 @@ func (a *manualTestAdapter) CollectPrices(_ context.Context, symbols []string) (
 	if a.onPrices != nil {
 		a.onPrices()
 	}
-	return adapters.SymbolPrices(symbols, []string{"USD"}, func(symbol, _ string) (string, bool) { return a.btc, symbol == "BTC" && a.btc != "" }, time.Now().UTC()), nil
+	return adapters.SymbolPrices(symbols, []string{"USD"}, func(symbol, _ string) (adapters.Quote, bool) {
+		return adapters.Quote{Price: a.btc, SourceMarketRef: "BTCUSD"}, symbol == "BTC" && a.btc != ""
+	}, time.Now().UTC()), nil
 }
 
 func manualEnabled(t *testing.T, h *harness, a *manualTestAdapter) identity.Identity {
@@ -106,7 +108,7 @@ func hasManualAdjustment(point valuation.Point) bool {
 	return false
 }
 
-func TestManualCRUDVersionsAndFrozenInputs(t *testing.T) {
+func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 	h := newHarness(t)
 	item := h.createIdentity("No credentials", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
 	s := h.manual
@@ -141,28 +143,24 @@ func TestManualCRUDVersionsAndFrozenInputs(t *testing.T) {
 			t.Fatalf("accepted %s", qty)
 		}
 	}
-	job, _, err := h.jobs.EnqueueCycle(h.ctx, h.portfolioID, jobs.TriggerManual, nil)
+	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
 	if err != nil {
 		t.Fatal(err)
 	}
-	frozen, err := s.Freeze(h.ctx, h.portfolioID, job.ID)
-	if err != nil || len(frozen) != 1 || frozen[0].Items[0].Quantity != "100" {
-		t.Fatalf("freeze %v %v", frozen, err)
+	inputs, err := s.CycleInputs(h.ctx, h.portfolioID)
+	if err != nil || len(inputs) != 1 || inputs[0].RevisionNumber != 2 || inputs[0].Items[0].Quantity != "100" {
+		t.Fatalf("cycle inputs %v %v", inputs, err)
 	}
 	t.Cleanup(func() {
-		_, _ = h.db.ExecContext(context.Background(), "UPDATE jobs SET status='cancelled', finished_at=UTC_TIMESTAMP(6) WHERE id=?", job.ID[:])
+		_, _ = h.db.ExecContext(context.Background(), "UPDATE collection_cycles SET status='failed', finished_at=UTC_TIMESTAMP(6) WHERE portfolio_id=? AND id=? AND status='queued'", h.portfolioID[:], cycle.ID[:])
 	})
-	changed := manualSave(t, h, item, "USD", "-100")
-	again, err := s.Freeze(h.ctx, h.portfolioID, job.ID)
-	if err != nil || again[0].Version != frozen[0].Version || again[0].Items[0].Quantity != "100" {
-		t.Fatalf("retry %v %v", again, err)
-	}
-	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, job.ID)
+	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, cycle.ID)
 	if err != nil || summary.Point.TotalUSD != "100" || summary.IdentityCount != 0 || summary.ReportFailed != 1 {
 		t.Fatalf("unconfigured %+v %v", summary, err)
 	}
+	changed := manualSave(t, h, item, "USD", "-100")
 	applied, err := s.Get(h.ctx, h.portfolioID, item.ID)
-	if err != nil || !applied.Pending || applied.AppliedItems[0].Quantity != "100" || applied.Items[0].Quantity != "-100" {
+	if err != nil || applied.AppliedVersion == nil || *applied.AppliedVersion != next.Version || !applied.Pending || applied.AppliedItems[0].Quantity != "100" || applied.Items[0].Quantity != "-100" {
 		t.Fatalf("pending %+v %v", applied, err)
 	}
 	in.Version = changed.Version
@@ -181,7 +179,7 @@ func TestManualCRUDVersionsAndFrozenInputs(t *testing.T) {
 	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM audit_events WHERE portfolio_id=? AND action LIKE 'manual.balance.%'", h.portfolioID[:]).Scan(&audits); err != nil {
 		t.Fatal(err)
 	}
-	if revisions != 3 || audits != 3 {
+	if revisions != 4 || audits != 3 {
 		t.Fatalf("revisions=%d audits=%d", revisions, audits)
 	}
 }
@@ -190,13 +188,13 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 	h := newHarness(t)
 	a := &manualTestAdapter{usd: "130"}
 	item := manualEnabled(t, h, a)
-	first, firstJob := h.runCycle()
+	first, firstCycle := h.runCycle()
 	if first.Point.TotalUSD != "130" {
 		t.Fatal(first)
 	}
 	a.usd = "30"
 	manualSave(t, h, item, "USD", "100")
-	second, secondJob := h.runCycle()
+	second, secondCycle := h.runCycle()
 	if second.Point.TotalUSD != "130" || second.Point.BoundaryContributionUSD != "0" || !hasManualAdjustment(second.Point) {
 		t.Fatalf("conservation %+v", second)
 	}
@@ -204,7 +202,7 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 	if err != nil || current.Pending {
 		t.Fatalf("applied %+v %v", current, err)
 	}
-	accounts := h.accountsByType(secondJob, item.ID)
+	accounts := h.accountsByType(secondCycle, item.ID)
 	account := accounts["manual"]
 	if account.Method != valuation.MethodCalculated || account.Equity != nil || account.ManualModifiedAt == nil || account.ReportObservedAt == nil {
 		t.Fatalf("manual provenance %+v", account)
@@ -220,11 +218,11 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 		t.Fatal("edit then undo marked adjustment")
 	}
 	a.failed = true
-	failed, failedJob := h.runCycle()
+	failed, failedCycle := h.runCycle()
 	if failed.IdentityFailed != 1 || failed.ReportFailed != 1 {
 		t.Fatalf("masked private failure %+v", failed)
 	}
-	accounts = h.accountsByType(failedJob, item.ID)
+	accounts = h.accountsByType(failedCycle, item.ID)
 	if accounts["manual"].Freshness != valuation.FreshnessFresh || accounts["trading"].Freshness != valuation.FreshnessStale {
 		t.Fatal(accounts)
 	}
@@ -235,14 +233,11 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 	if settled.Point.TotalUSD != "130" {
 		t.Fatalf("settled %+v", settled)
 	}
-	old, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	old, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || old.TotalUSD != "130" {
 		t.Fatalf("history changed %+v %v", old, err)
 	}
-	if _, err := h.valuation.Rebuild(h.ctx, h.portfolioID); err != nil {
-		t.Fatal(err)
-	}
-	rebuilt, err := h.valuation.PointByJob(h.ctx, h.portfolioID, secondJob)
+	rebuilt, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, secondCycle)
 	if err != nil || rebuilt.TotalUSD != "130" || !hasManualAdjustment(rebuilt) || rebuilt.BoundaryContributionUSD != "0" {
 		t.Fatalf("rebuilt %+v %v", rebuilt, err)
 	}
@@ -263,19 +258,19 @@ func TestManualDebtPricesMissingValuesAndTree(t *testing.T) {
 	}
 	manualSave(t, h, item, "USD", "0")
 	manualSave(t, h, item, "BTC", "2")
-	priced, job := h.runCycle()
+	priced, cycleID := h.runCycle()
 	if priced.Point.TotalUSD != "40100" {
 		t.Fatalf("manual-only price %+v", priced)
 	}
-	before := h.accountsByType(job, item.ID)["manual"].ManualModifiedAt
+	before := h.accountsByType(cycleID, item.ID)["manual"].ManualModifiedAt
 	a.btc = "25000"
-	moved, job := h.runCycle()
-	if moved.Point.TotalUSD != "50100" || hasManualAdjustment(moved.Point) || !h.accountsByType(job, item.ID)["manual"].ManualModifiedAt.Equal(*before) {
+	moved, cycleID := h.runCycle()
+	if moved.Point.TotalUSD != "50100" || hasManualAdjustment(moved.Point) || !h.accountsByType(cycleID, item.ID)["manual"].ManualModifiedAt.Equal(*before) {
 		t.Fatalf("price-only %+v", moved)
 	}
 	manualSave(t, h, item, "UNKNOWN", "-1")
-	missing, job := h.runCycle()
-	unknown := h.accountsByType(job, item.ID)["manual"]
+	missing, cycleID := h.runCycle()
+	unknown := h.accountsByType(cycleID, item.ID)["manual"]
 	if missing.Point.Completeness() != valuation.CompletenessIncomplete || len(unknown.Omitted) != 1 || unknown.Omitted[0].Equity != "-1" {
 		t.Fatalf("negative missing %+v %+v", missing, unknown)
 	}
@@ -308,9 +303,9 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 	}
 	state := manualSave(t, h, first, "BTC", "2")
 	a.onPrices = func() { manualSave(t, h, first, "BTC", "3") }
-	during, job := h.runCycle()
+	during, cycleID := h.runCycle()
 	a.onPrices = nil
-	account := h.accountsByType(job, first.ID)["manual"]
+	account := h.accountsByType(cycleID, first.ID)["manual"]
 	if account.ValueUSD == nil || *account.ValueUSD != "40000" {
 		t.Fatalf("frozen during collection %+v", account)
 	}
@@ -331,7 +326,7 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 		t.Fatalf("signed exit %+v", exited)
 	}
 	retained, err := h.manual.Get(h.ctx, h.portfolioID, archived.ID)
-	if err != nil || len(retained.Items) != 1 {
+	if err != nil || len(retained.Items) != 1 || retained.Pending || retained.AppliedVersion == nil || *retained.AppliedVersion != retained.Version {
 		t.Fatalf("archive storage %+v %v", retained, err)
 	}
 	if _, err := h.manual.Update(h.ctx, h.portfolioID, archived.ID, manual.Input{AssetSymbol: "USD", Quantity: "1", Version: retained.Version}); !errors.Is(err, identity.ErrArchived) {
@@ -350,21 +345,18 @@ func TestManualStrictPlatformPricingAndConcurrentUpdates(t *testing.T) {
 		platform string
 		at       time.Time
 	}{{"binance", now}, {"okx", now.Add(-25 * time.Hour)}, {"okx", now.Add(time.Hour)}} {
-		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), adapters.Platform(row.platform), adapters.Price{CanonicalAssetSymbol: symbol, Price: "20000", QuoteCanonicalAssetSymbol: "USD", ObservedAt: row.at}); err != nil {
+		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), h.portfolioID, adapters.Platform(row.platform), adapters.Price{CanonicalAssetSymbol: symbol, Price: "20000", QuoteCanonicalAssetSymbol: "USD", SourceMarketRef: "BTCUSD", RetrievedAt: row.at}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	unpriced, job := h.runCycle()
-	account := h.accountsByType(job, item.ID)["manual"]
+	unpriced, cycleID := h.runCycle()
+	account := h.accountsByType(cycleID, item.ID)["manual"]
 	if unpriced.Point.TotalUSD != "0" || len(account.Omitted) != 1 || account.Omitted[0].Equity != "-2" {
 		t.Fatalf("fallback violated %+v %+v", unpriced, account)
 	}
-	if _, err := h.valuation.Rebuild(h.ctx, h.portfolioID); err != nil {
-		t.Fatal(err)
-	}
-	rebuilt, err := h.valuation.PointByJob(h.ctx, h.portfolioID, job)
+	rebuilt, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, cycleID)
 	if err != nil || rebuilt.Completeness() != valuation.CompletenessIncomplete {
-		t.Fatalf("rebuild used fallback %+v %v", rebuilt, err)
+		t.Fatalf("retry used fallback %+v %v", rebuilt, err)
 	}
 	results := make(chan error, 2)
 	for _, qty := range []string{"-3", "-4"} {
@@ -394,20 +386,20 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 	a := &manualTestAdapter{usd: "0", btc: "10000"}
 	item := manualEnabled(t, h, a)
 	state := manualSave(t, h, item, "BTC", "1")
-	_, firstJob := h.runCycle()
+	_, firstCycle := h.runCycle()
 	assetID := state.Items[0].AssetID
-	asset, err := h.catalog.GetAsset(h.ctx, assetID)
+	asset, err := h.catalog.GetAsset(h.ctx, h.portfolioID, assetID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.catalog.PutExclusion(h.ctx, assetID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Explicitly excluded synthetic holding.", Version: asset.ExclusionVersion}); err != nil {
+	if _, err := h.catalog.PutExclusion(h.ctx, assetID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: true, Reason: "Explicitly excluded synthetic holding.", Version: asset.ExclusionVersion}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='invalid' WHERE id=?", item.ID[:]); err != nil {
 		t.Fatal(err)
 	}
-	excluded, job := h.runCycle()
-	account := h.accountsByType(job, item.ID)["manual"]
+	excluded, cycleID := h.runCycle()
+	account := h.accountsByType(cycleID, item.ID)["manual"]
 	if excluded.Point.TotalUSD != "0" || account.Freshness != valuation.FreshnessFresh || account.Completeness() != valuation.CompletenessComplete || excluded.IdentityCount != 0 {
 		t.Fatalf("excluded or invalid %+v %+v", excluded, account)
 	}
@@ -426,7 +418,7 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 	if len(tree.Platforms[0].Identities[0].Accounts) != 2 {
 		t.Fatal("excluded nonzero holdings or failed Account was hidden")
 	}
-	old, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	old, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || old.TotalUSD != "10000" {
 		t.Fatalf("exclusion rewrote old total %+v %v", old, err)
 	}
@@ -481,8 +473,39 @@ func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
 	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 1 || *tree.TotalUSD != "0" {
 		t.Fatalf("pending account hidden: %+v %v", tree, err)
 	}
-	old, err := h.valuation.Get(h.ctx, h.portfolioID, first.Point.ID)
+	old, err := h.valuation.Get(h.ctx, h.portfolioID, first.Point.CycleID)
 	if err != nil || old.TotalUSD != "100" {
 		t.Fatalf("history changed: %+v %v", old, err)
+	}
+}
+
+func TestManualMappingAffectsNextPointAndPreservesHistory(t *testing.T) {
+	h := newHarness(t)
+	item := manualEnabled(t, h, &manualTestAdapter{usd: "0", btc: "30000"})
+	state := manualSave(t, h, item, "BTC", "2")
+	before, cycle := h.runCycle()
+	asset, err := h.catalog.GetAsset(h.ctx, h.portfolioID, state.Items[0].AssetID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: h.portfolioID, MappingVersion: asset.MappingVersion, CanonicalAssetSymbol: "ETH"}); err != nil {
+		t.Fatal(err)
+	}
+	after, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, cycle)
+	if err != nil || after.TotalUSD != before.Point.TotalUSD || after.TotalUSD != "60000" {
+		t.Fatalf("historical point changed: %+v %v", after, err)
+	}
+	next, _ := h.runCycle()
+	if next.Point.TotalUSD != "0" || next.Point.IncompleteAccountCount != 1 {
+		t.Fatalf("new mapping not adopted: %+v", next.Point)
+	}
+	found := false
+	for _, issue := range next.Point.Issues {
+		if issue.Code == "asset_mapping_changed" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("missing durable mapping marker")
 	}
 }

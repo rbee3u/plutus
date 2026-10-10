@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreateManualBalanceData, CreateManualBalanceErrors, CreateManualBalanceResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeleteManualBalanceData, DeleteManualBalanceErrors, DeleteManualBalanceResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetJobData, GetJobErrors, GetJobResponses, GetManualBalancesData, GetManualBalancesErrors, GetManualBalancesResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountDualPositionsData, ListAccountDualPositionsErrors, ListAccountDualPositionsResponses, ListAccountEarnPositionsData, ListAccountEarnPositionsErrors, ListAccountEarnPositionsResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetsData, ListAssetsErrors, ListAssetsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListFuturesContractsData, ListFuturesContractsErrors, ListFuturesContractsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListJobsData, ListJobsErrors, ListJobsResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetExclusionData, PutAssetExclusionErrors, PutAssetExclusionResponses, PutAssetMappingData, PutAssetMappingErrors, PutAssetMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, UpdateManualBalanceData, UpdateManualBalanceErrors, UpdateManualBalanceResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
+import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreateManualBalanceData, CreateManualBalanceErrors, CreateManualBalanceResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeleteManualBalanceData, DeleteManualBalanceErrors, DeleteManualBalanceResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetManualBalancesData, GetManualBalancesErrors, GetManualBalancesResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, GetValuationSnapshotData, GetValuationSnapshotErrors, GetValuationSnapshotResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountDualPositionsData, ListAccountDualPositionsErrors, ListAccountDualPositionsResponses, ListAccountEarnPositionsData, ListAccountEarnPositionsErrors, ListAccountEarnPositionsResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetsData, ListAssetsErrors, ListAssetsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListFuturesContractsData, ListFuturesContractsErrors, ListFuturesContractsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetExclusionData, PutAssetExclusionErrors, PutAssetExclusionResponses, PutAssetMappingData, PutAssetMappingErrors, PutAssetMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, UpdateManualBalanceData, UpdateManualBalanceErrors, UpdateManualBalanceResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -566,6 +566,19 @@ export const listValuationPoints = <ThrowOnError extends boolean = false>(option
 });
 
 /**
+ * Get the latest retained snapshot before a local day's end
+ */
+export const getValuationSnapshot = <ThrowOnError extends boolean = false>(options: Options<GetValuationSnapshotData, ThrowOnError>): RequestResult<GetValuationSnapshotResponses, GetValuationSnapshotErrors, ThrowOnError> => (options.client ?? client).get<GetValuationSnapshotResponses, GetValuationSnapshotErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/valuation-snapshot',
+    ...options
+});
+
+/**
  * One valuation point with its account valuations
  */
 export const getValuationPoint = <ThrowOnError extends boolean = false>(options: Options<GetValuationPointData, ThrowOnError>): RequestResult<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError> => (options.client ?? client).get<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError>({
@@ -574,7 +587,7 @@ export const getValuationPoint = <ThrowOnError extends boolean = false>(options:
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{pointId}',
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/{cycleId}',
     ...options
 });
 
@@ -717,7 +730,7 @@ export const listAssets = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Override the Canonical Asset mapping of an Asset and recalculate affected points
+ * Override the Canonical Asset mapping for future Valuation Points
  */
 export const putAssetMapping = <ThrowOnError extends boolean = false>(options: Options<PutAssetMappingData, ThrowOnError>): RequestResult<PutAssetMappingResponses, PutAssetMappingErrors, ThrowOnError> => (options.client ?? client).put<PutAssetMappingResponses, PutAssetMappingErrors, ThrowOnError>({
     security: [{
@@ -760,32 +773,6 @@ export const listFuturesContracts = <ThrowOnError extends boolean = false>(optio
             type: 'apiKey'
         }],
     url: '/api/v1/portfolios/{portfolioId}/catalog/futures-contracts',
-    ...options
-});
-
-/**
- * List durable jobs
- */
-export const listJobs = <ThrowOnError extends boolean = false>(options: Options<ListJobsData, ThrowOnError>): RequestResult<ListJobsResponses, ListJobsErrors, ThrowOnError> => (options.client ?? client).get<ListJobsResponses, ListJobsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/jobs',
-    ...options
-});
-
-/**
- * Get a job
- */
-export const getJob = <ThrowOnError extends boolean = false>(options: Options<GetJobData, ThrowOnError>): RequestResult<GetJobResponses, GetJobErrors, ThrowOnError> => (options.client ?? client).get<GetJobResponses, GetJobErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/jobs/{jobId}',
     ...options
 });
 

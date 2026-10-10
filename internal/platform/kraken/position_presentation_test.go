@@ -20,17 +20,17 @@ func TestIsolatedAllocationExcludesOrdersAndProfit(t *testing.T) {
 		t.Fatalf("positions %v %v", positions, err)
 	}
 	p := positions[0]
-	if p.PositionMode != "one_way" || p.MarginMode != "isolated" || p.MarginBasis != "allocated" || p.MarginAssetSymbol != "USD" || p.Margin == nil || *p.Margin != "100" {
+	if p.PositionMode != "one_way" || p.MarginSetting != "isolated" || p.MarginBasis != "allocated" || p.MarginAssetSymbol != "USD" || p.Margin == nil || *p.Margin != "100" {
 		t.Fatalf("allocation %+v", p)
 	}
 	r.snapshot.Flex.Isolated = map[string]isolatedWallet{}
 	positions, err = r.positions(context.Background(), true)
-	if err != nil || positions[0].MarginMode != "cross" || positions[0].Margin != nil {
+	if err != nil || positions[0].MarginSetting != "cross" || positions[0].Margin != nil {
 		t.Fatalf("cross %v %v", positions, err)
 	}
 	r.snapshot.Flex.Isolated = nil
 	positions, err = r.positions(context.Background(), true)
-	if err != nil || positions[0].MarginMode != "" {
+	if err != nil || positions[0].MarginSetting != "" {
 		t.Fatal("absent isolated map was guessed Cross")
 	}
 }

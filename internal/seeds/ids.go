@@ -15,7 +15,7 @@ const (
 	kindAccount         uint16 = 0x7005
 	kindAsset           uint16 = 0x7007
 	kindFuturesContract uint16 = 0x7008
-	kindJob             uint16 = 0x7010
+	kindCycle           uint16 = 0x7010
 	kindReport          uint16 = 0x7011
 	kindAudit           uint16 = 0x7015
 	kindCapitalFlow     uint16 = 0x7032

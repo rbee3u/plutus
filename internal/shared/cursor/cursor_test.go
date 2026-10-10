@@ -30,14 +30,14 @@ func TestEncodeWireFormatIsStable(t *testing.T) {
 		t.Fatalf("audit cursor = %q, want %q", got, wantAudit)
 	}
 
-	jobCodec := Codec{Version: 2, Key: []byte("plutus-job-cursor-v2")}
-	got, err = jobCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1759600000987654, ID: testOther})
+	otherCodec := Codec{Version: 2, Key: []byte("plutus-other-cursor-v2")}
+	got, err = otherCodec.Encode(Cursor{PortfolioID: testPortfolio, TimeMicro: 1759600000987654, ID: testOther})
 	if err != nil {
 		t.Fatal(err)
 	}
-	const wantJobs = "AgGgvfwfpHpUn6Ek9HIaca8ABkBYzQFyBgGgvfwfpHr0vt9l2Wi5EityCsWscPtTWXtTnwvbj-Nl72jK5CbVWCckEznxUXoing"
-	if got != wantJobs {
-		t.Fatalf("job cursor = %q, want %q", got, wantJobs)
+	const wantOther = "AgGgvfwfpHpUn6Ek9HIaca8ABkBYzQFyBgGgvfwfpHr0vt9l2Wi5EissmbvT0nL9rakT11wY6MdhjXyOEoZew4OjGU5CWE1c_Q"
+	if got != wantOther {
+		t.Fatalf("other cursor = %q, want %q", got, wantOther)
 	}
 }
 

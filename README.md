@@ -19,8 +19,8 @@ Implemented capabilities:
 
 - Authentication, multiple Portfolios, selected Accounts, and encrypted
   read-only Connections.
-- Scheduled and manual collection, USD valuation, compatible stale history, and
-  explicit incomplete totals.
+- Scheduled and on-demand collection, USD valuation, compatible stale history,
+  and explicit incomplete totals.
 - Overview ownership Tree; Balances, Futures, Earn, and Dual Investment tables;
   Manual balances for API-uncovered quantities.
 - Historical points, calendar comparisons, manual Capital Flows, Asset mapping,
@@ -39,8 +39,11 @@ Kraken Dual Investment remains unsupported; Manual can record API-uncovered
 principal. See the
 [contract review and observed omission](./docs/platform/kraken/verification.md#dual-investment-contract-review).
 
-The implementation also has an unresolved
-[same-Platform pricing discrepancy](./docs/architecture.md#known-implementation-discrepancy).
+The prelaunch database baseline separates immutable observations from derived
+valuations. Summaries remain permanent; detailed snapshots keep 30 days and
+daily archives with pinned dependencies; Collection Cycles remain with them. See
+[the schema decision](./docs/adr/0015-prelaunch-schema.md) and
+[reset requirements](./docs/deployment.md#upgrades-and-resets).
 
 ## Product scope
 

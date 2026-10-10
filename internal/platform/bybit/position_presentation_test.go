@@ -13,7 +13,7 @@ func TestModeAndInitialMarginProvenance(t *testing.T) {
 	row := openPosition{Symbol: info.Symbol, PositionIdx: &index, Side: "Sell", PositionIM: "0.002"}
 	for _, mode := range []adapters.MarginMode{adapters.MarginBybitCross, adapters.MarginBybitIsolated, adapters.MarginBybitPM} {
 		position, err := mapPosition(&row, big.NewRat(200, 1), &info, mode)
-		if err != nil || position.PositionMode != "one_way" || position.QuantityUnit != "quote" {
+		if err != nil || position.PositionMode != "one_way" || position.SourceQuantityUnit != "quote" {
 			t.Fatalf("position %+v %v", position, err)
 		}
 		if mode == adapters.MarginBybitPM {

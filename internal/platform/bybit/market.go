@@ -23,9 +23,9 @@ func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapte
 // spotPrices are Bybit spot last prices by pair symbol, such as BTCUSDT.
 type spotPrices map[string]string
 
-func (p spotPrices) lookup(symbol, quote string) (string, bool) {
+func (p spotPrices) lookup(symbol, quote string) (adapters.Quote, bool) {
 	price, ok := p[symbol+quote]
-	return price, ok
+	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
 // usd returns the USD value of one unit of symbol, for the Earn check.

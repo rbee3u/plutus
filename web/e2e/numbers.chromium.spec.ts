@@ -10,8 +10,10 @@ const session = sessionFixture({
   portfolio: { id: portfolioId, name: "Numbers check" },
 });
 const point: ValuationPointSummary = {
-  id: "00000000-0000-7000-8000-000000000003",
-  jobId: "00000000-0000-7000-8000-000000000004",
+  cycleId: "00000000-0000-7000-8000-000000000003",
+  valuationRevision: "00000000-0000-7000-8000-000000000003:1",
+  calculationVersion: 1,
+  detailState: "full" as const,
   evaluatedAt: "2026-10-03T00:00:00Z",
   totalUsd: "0.00000444",
   completeness: "complete",
@@ -22,7 +24,7 @@ const point: ValuationPointSummary = {
   boundaryWithdrawalUsd: "0",
 };
 const overview: Overview = {
-  context: { portfolioId, timezone: "UTC", pointId: point.id },
+  context: { portfolioId, timezone: "UTC", cycleId: point.cycleId },
   point,
   totalUsd: point.totalUsd,
   completeness: "complete",
@@ -54,6 +56,9 @@ const flow: CapitalFlow = {
   id: "00000000-0000-7000-8000-000000000005",
   portfolioId,
   direction: "contribution",
+  pricingMethod: "explicit",
+  pricingAttemptedAt: "2026-10-10T00:00:00Z",
+  calculationVersion: 1,
   canonicalAssetSymbol: "BTC",
   quantity: "0.000000004444567890123456789123",
   valueUsd: "1.005",
@@ -167,7 +172,10 @@ test("Capital Flow editing and submission retain source precision while display 
     flow.quantity,
   );
   await expect(page.getByRole("textbox", { name: "Value (USD, optional)" })).toHaveValue("1.005");
+  const editedQuantity = "0.000000004444567890123456789124";
+  await page.getByRole("textbox", { name: "Quantity", exact: true }).fill(editedQuantity);
+  await page.getByRole("textbox", { name: "Value (USD, optional)" }).fill("1.006");
   await page.getByRole("button", { name: "Save flow", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  expect(submitted()).toMatchObject({ quantity: flow.quantity, valueUsd: "1.005" });
+  expect(submitted()).toMatchObject({ quantity: editedQuantity, valueUsd: "1.006" });
 });

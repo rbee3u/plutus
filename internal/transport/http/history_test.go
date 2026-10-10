@@ -15,6 +15,7 @@ import (
 
 	"github.com/rbee3u/plutus/internal/app"
 	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/application/valuation"
@@ -48,12 +49,12 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	for i := 0; i < 561; i++ {
-		id, job := uuid.New(), uuid.New()
+		cycle := uuid.New()
 		at := start.Add(time.Duration(i) * 15 * time.Minute)
-		if _, err := tx.ExecContext(ctx, "INSERT INTO jobs (id,portfolio_id,kind,status,`trigger`,dedupe_key,available_at,created_at,updated_at) VALUES (?,?,'collection_cycle','succeeded','manual','cycle',?,?,?)", job[:], p.ID[:], at, at, at); err != nil {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES (?,?,'succeeded','user',?,?,?,?)", p.ID[:], cycle[:], at, at, at, at); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO valuation_points (id,portfolio_id,job_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,boundary_json,issues_json,created_at) VALUES (?,?,?,?,?,1,0,?,'[]','[]',?)", id[:], p.ID[:], job[:], at, i+1, i%2, at); err != nil {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO valuation_points (portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version) VALUES (?,?,?,?,1,0,?,1)", p.ID[:], cycle[:], at, i+1, i%2); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -140,9 +141,81 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 	}
 }
 
+func TestCollectionCycleDetailWithoutRetainedHoldings(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	ctx := t.Context()
+	authentication := auth.NewService(db, time.Hour, 24*time.Hour)
+	name := "cycle-" + uuid.NewString()[:8]
+	user, err := authentication.CreateUser(ctx, name, "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	portfolios := portfolio.NewService(db)
+	owned, err := portfolios.List(ctx, user.ID)
+	if err != nil || len(owned) != 1 {
+		t.Fatalf("%v %v", owned, err)
+	}
+	p := owned[0]
+	_, session, err := authentication.Login(ctx, name, "Correct=123456", "127.0.0.1", "cycle test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	running, failed, expired := uuid.New(), uuid.New(), uuid.New()
+	for _, statement := range []struct {
+		query string
+		args  []any
+	}{
+		{"INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,attempt_count,available_at,created_at,started_at,lease_owner,lease_expires_at) VALUES (?,?,'running','user',1,?,?,?,'test',?)", []any{p.ID[:], running[:], at, at, at, at.Add(time.Hour)}},
+		{"INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,attempt_count,available_at,created_at,started_at,finished_at,error_class,error_detail) VALUES (?,?,'failed','schedule',3,?,?,?,?,'temporary','fixture outage')", []any{p.ID[:], failed[:], at, at, at, at}},
+		{"INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,attempt_count,available_at,created_at,started_at,collection_finished_at,finished_at) VALUES (?,?,'succeeded','schedule',1,?,?,?,?,?)", []any{p.ID[:], expired[:], at, at, at, at, at}},
+		{"INSERT INTO valuation_points (portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version,detail_state) VALUES (?,?,?,7,1,0,0,1,'expired')", []any{p.ID[:], expired[:], at}},
+	} {
+		if _, err := db.ExecContext(ctx, statement.query, statement.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	service := valuation.NewService(db)
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{DB: db, Auth: authentication, Portfolios: portfolios, Valuation: service, Cycles: cycles.NewService(db)}})
+	get := func(cycle uuid.UUID) api.CollectionCycleDetail {
+		t.Helper()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/portfolios/"+p.ID.String()+"/collection-cycles/"+cycle.String(), nil)
+		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		response := httptest.NewRecorder()
+		engine.ServeHTTP(response, req)
+		var detail api.CollectionCycleDetail
+		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &detail) != nil {
+			t.Fatalf("cycle %s: %d %s", cycle, response.Code, response.Body.String())
+		}
+		return detail
+	}
+	if detail := get(running); detail.Cycle.Status != api.CollectionCycleStatusRunning || detail.Cycle.Point != nil || len(detail.Accounts) != 0 {
+		t.Fatalf("running cycle: %+v", detail)
+	}
+	if detail := get(failed); detail.Cycle.AttemptCount != 3 || detail.Cycle.ErrorClass == nil || *detail.Cycle.ErrorClass != "temporary" || detail.Cycle.Point != nil {
+		t.Fatalf("failed cycle: %+v", detail)
+	}
+	if detail := get(expired); detail.Cycle.Point == nil || detail.Cycle.Point.DetailState != api.Expired || len(detail.Accounts) != 0 {
+		t.Fatalf("expired cycle: %+v", detail)
+	}
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/portfolios/"+p.ID.String()+"/collection-cycles", nil)
+	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	response := httptest.NewRecorder()
+	engine.ServeHTTP(response, req)
+	var list api.CollectionCycleList
+	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &list) != nil || len(list.Items) != 3 {
+		t.Fatalf("cycle list: %d %s", response.Code, response.Body.String())
+	}
+	for _, item := range list.Items {
+		if (item.Id == expired) != (item.Point != nil) || item.Point != nil && (item.Point.BoundaryContributionUsd != "0" || item.Point.BoundaryWithdrawalUsd != "0") {
+			t.Fatalf("listed cycle point: %+v", item)
+		}
+	}
+}
+
 func TestStoredOmissionUsesExplicitAPIReference(t *testing.T) {
 	var omitted []valuation.Omitted
-	if err := json.Unmarshal([]byte(`[{"symbol":"DEMO-BTC","assetSymbol":"BTC","equity":"2","reason":"missing_price"}]`), &omitted); err != nil {
+	if err := json.Unmarshal([]byte(`[{"assetSymbol":"DEMO-BTC","canonicalAssetSymbol":"BTC","equity":"2","reason":"missing_price"}]`), &omitted); err != nil {
 		t.Fatal(err)
 	}
 	out := toAPIAccountValuation(&valuation.AccountValuation{Omitted: omitted})
@@ -154,7 +227,7 @@ func TestStoredOmissionUsesExplicitAPIReference(t *testing.T) {
 		t.Fatalf("API omission: %s (%v)", encoded, err)
 	}
 	encoded, err = json.Marshal(omitted)
-	if err != nil || !bytes.Contains(encoded, []byte(`"symbol":"DEMO-BTC"`)) {
+	if err != nil || !bytes.Contains(encoded, []byte(`"assetSymbol":"DEMO-BTC"`)) {
 		t.Fatalf("stored omission: %s (%v)", encoded, err)
 	}
 }

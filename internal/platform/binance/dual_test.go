@@ -14,7 +14,7 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
+	if dual.Status != adapters.StatusSucceeded || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
 		t.Fatalf("synthetic dual report: %+v", dual)
 	}
 	page := body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1))
@@ -30,12 +30,12 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, position := range dual.DualPositions {
-		expected, ok := want[position.PlatformPositionRef]
-		if !ok || seen[position.PlatformPositionRef] {
+		expected, ok := want[position.PositionKey]
+		if !ok || seen[position.PositionKey] {
 			t.Fatalf("unexpected or duplicate synthetic position %+v", position)
 		}
-		seen[position.PlatformPositionRef] = true
-		if deref(position.OrderRef) != expected.order || position.InvestAssetSymbol != expected.invest ||
+		seen[position.PositionKey] = true
+		if deref(position.OrderRef) != expected.order || position.PrincipalAssetSymbol != expected.invest ||
 			position.Principal != expected.principal || deref(position.BaseAssetSymbol) != "SOL" || deref(position.QuoteAssetSymbol) != "USDT" ||
 			deref(position.Direction) != expected.direction || deref(position.TargetPrice) != expected.target ||
 			deref(position.AnnualizedRate) != expected.apr || deref(position.RateKind) != "apr" ||
@@ -49,7 +49,7 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 		t.Fatalf("synthetic principal must remain in each invested currency: %+v", dual.Balances)
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 ||
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 ||
 		balanceOf(t, earn, "USDT").Equity != "2" || balanceOf(t, earn, "ETH").Equity != "0.01" {
 		t.Fatalf("Dual principal must not enter ordinary Earn: %+v", earn)
 	}
@@ -90,7 +90,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 				t.Fatalf("dual endpoint calls %d, want %d", r.count(epDualInvest), calls)
 			}
 			for _, report := range batch.Reports {
-				if report.Status != adapters.StatusOK {
+				if report.Status != adapters.StatusSucceeded {
 					t.Fatalf("report: %+v", report)
 				}
 				if report.AccountType == TypeEarn && len(report.Balances) != 0 {
@@ -127,7 +127,7 @@ func TestDualOnlyDependsOnAuxiliarySavings(t *testing.T) {
 	r, a := newReplay(t, dualOnlySamples)
 	r.always(epFlexibleEarn, status(http.StatusOK, `{"total":1,"rows":[{"asset":"USDT","totalAmount":""}]}`))
 	batch := collect(t, a, adapters.StructureBinancePM, TypeDualInvestment, TypeSpot)
-	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
 		t.Fatalf("auxiliary failure: %+v", batch)
 	}
 }
@@ -142,7 +142,7 @@ func TestRepeatedDualSubscriptionCannotChangePrincipal(t *testing.T) {
 			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"22.5","walletName":"Earn"}]`))
 			report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if amount == "0.5" {
-				if report.Status != adapters.StatusOK || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {
+				if report.Status != adapters.StatusSucceeded || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {
 					t.Fatalf("moving subscription counted twice: %+v", report)
 				}
 			} else if report.ErrorClass != adapters.ClassNormalization {

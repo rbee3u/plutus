@@ -222,12 +222,12 @@ few minutes of a collection.
 **Per Margin Mode:**
 
 8. **Portfolio margin and Multi-currency margin**: `AdjEq` equals the adjusted
-   equity and `UniMMR` the margin ratio the app shows, possibly as a percentage.
-   In Portfolio margin, cross positions show no leverage and no liquidation
-   price.
-9. **Spot mode**: with spot borrowing on, `AdjEq` and `UniMMR` match the app.
-   Each borrowed coin shows its borrowing, interest included, and its interest
-   alone. Without borrowing, the margin figures may stay empty.
+   equity and `Margin ratio` the margin ratio the app shows, possibly as a
+   percentage. In Portfolio margin, cross positions show no leverage and no
+   liquidation price.
+9. **Spot mode**: with spot borrowing on, `AdjEq` and `Margin ratio` match the
+   app. Each borrowed coin shows its borrowing, interest included, and its
+   interest alone. Without borrowing, the margin figures may stay empty.
 10. **Futures mode**: account-level margin figures stay empty. Spot margin
     borrowings appear neither as Balances' liabilities nor as positions, but the
     coin equities still add up to the total equity.

@@ -4,7 +4,7 @@ import type { EarnPositionList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
-import { EarnPositionsTable, EarnBalanceSummaries } from "../components/EarnPositionsTable";
+import { EarnPositionsTable } from "../components/EarnPositionsTable";
 import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
@@ -27,14 +27,11 @@ export function EarnPositionsPage() {
       }),
   });
   const data = query.data;
-  const hasBalanceSummaries = Boolean(data?.balanceSummaries.length);
   let empty: string | undefined;
   if (query.isError && !data) {
     empty = "Earn positions could not be loaded. Retry above.";
-  } else if (!data?.context.pointId) {
+  } else if (!data?.context.cycleId) {
     empty = "No Collection Cycle has produced a Valuation Point yet.";
-  } else if (hasBalanceSummaries) {
-    empty = "Product details were not collected. Known balances are shown below.";
   } else if (!data.detailsComplete) {
     empty = "Some Earn Accounts have no compatible successful report. See Issues below.";
   }
@@ -45,19 +42,12 @@ export function EarnPositionsPage() {
         filters={filters}
         fallback="Earn positions could not be loaded."
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
           label="Positions"
           value={!data.detailsComplete ? "Details incomplete" : formatCount(data.page.total)}
-        >
-          {hasBalanceSummaries && data.page.total > 0 ? (
-            <span>
-              {formatCount(data.page.total)} known product positions; additional Balance summaries
-              below
-            </span>
-          ) : null}
-        </HoldingsSummary>
+        ></HoldingsSummary>
       ) : null}
       <EarnPositionsTable
         items={data?.items ?? []}
@@ -67,16 +57,11 @@ export function EarnPositionsPage() {
         filters={filters}
         empty={empty}
       />
-      <EarnBalanceSummaries
-        items={data?.balanceSummaries ?? []}
-        timezone={data?.context.timezone}
-        showAccount
-      />
       <HoldingsFilterFooter
         filters={filters}
         page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
       />
-      {data?.context.pointId ? (
+      {data?.context.cycleId ? (
         <IssuesPanel issues={data.issues} empty="No issues for these Earn positions." />
       ) : null}
     </section>

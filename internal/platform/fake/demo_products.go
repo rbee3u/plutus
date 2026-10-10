@@ -8,7 +8,6 @@ import (
 )
 
 func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
-	r.EarnDetailsCollected = true
 	count := 4
 	if d.Profile == "large" {
 		count = 64
@@ -45,7 +44,7 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		if grain == "position" {
 			p.SubscribedAt = &cohort
 		} else {
-			p.PlatformPositionRef = fmt.Sprintf("earn-%s-%02d", grain, i)
+			p.PositionKey = fmt.Sprintf("earn-%s-%02d", grain, i)
 		}
 		if kind == "fixed" || kind == "timed" && d.Platform != adapters.PlatformKraken {
 			maturity := cohort.AddDate(0, 0, 28)
@@ -102,28 +101,6 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		r.EarnPositions = append(r.EarnPositions, p)
 	}
 	demoAmounts(r)
-	if d.Profile == "scope" && DemoScope(d, anchor, at, "earn") == 1 {
-		dual := adapters.AccountReport{}
-		demoDual(&dual, d, anchor, at)
-		// The old Account really held both groups. Preserve that source quantity.
-		for _, b := range dual.Balances {
-			found := false
-			for i := range r.Balances {
-				if r.Balances[i].AssetSymbol == b.AssetSymbol {
-					r.Balances[i].Equity = demoAdd(r.Balances[i].Equity, b.Equity)
-					found = true
-					break
-				}
-			}
-			if !found {
-				r.Balances = append(r.Balances, b)
-			}
-		}
-		r.EarnDetailsCollected, r.EarnPositions = false, nil
-	}
-	if d.Profile == "legacy" {
-		r.EarnDetailsCollected, r.EarnPositions = false, nil
-	}
 }
 
 func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
@@ -155,7 +132,7 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 			status = "refunding"
 		}
 		ref := fmt.Sprintf("dual-%02d-%d", i, cohort.Unix())
-		p := adapters.DualPosition{PlatformPositionRef: ref, ProductRef: adapters.OptionalText("BTC-USDT-" + target), OrderRef: adapters.OptionalText("offline-" + ref), BaseAssetSymbol: adapters.OptionalText("BTC"), QuoteAssetSymbol: adapters.OptionalText("USDT"), InvestAssetSymbol: invest, Principal: amount, Direction: adapters.OptionalText(direction), TargetPrice: adapters.OptionalText(target), SubscribedAt: &cohort, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.18"), RateKind: adapters.OptionalText("apr"), Status: status}
+		p := adapters.DualPosition{PositionKey: ref, ProductRef: adapters.OptionalText("BTC-USDT-" + target), OrderRef: adapters.OptionalText("offline-" + ref), BaseAssetSymbol: adapters.OptionalText("BTC"), QuoteAssetSymbol: adapters.OptionalText("USDT"), PrincipalAssetSymbol: invest, Principal: amount, Direction: adapters.OptionalText(direction), TargetPrice: adapters.OptionalText(target), SubscribedAt: &cohort, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.18"), RateKind: adapters.OptionalText("apr"), Status: status}
 		if i%3 == 0 {
 			p.RateKind, p.AnnualizedRate = adapters.OptionalText("apy"), adapters.OptionalText("0.12")
 		}
@@ -166,7 +143,7 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	}
 	if d.Portfolio != "edge-cases" && !at.Before(DemoEventTime(anchor, -10)) && at.Before(DemoEventTime(anchor, -3)) {
 		subscribed, expiry := DemoEventTime(anchor, -10), DemoEventTime(anchor, -3)
-		r.DualPositions = append(r.DualPositions, adapters.DualPosition{PlatformPositionRef: "historical-dual-settlement", BaseAssetSymbol: adapters.OptionalText("BTC"), QuoteAssetSymbol: adapters.OptionalText("USDT"), InvestAssetSymbol: "USDT", Principal: "200", Direction: adapters.OptionalText("buy_low"), TargetPrice: adapters.OptionalText("10000"), SubscribedAt: &subscribed, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.02"), RateKind: adapters.OptionalText("apr"), Status: "active"})
+		r.DualPositions = append(r.DualPositions, adapters.DualPosition{PositionKey: "historical-dual-settlement", BaseAssetSymbol: adapters.OptionalText("BTC"), QuoteAssetSymbol: adapters.OptionalText("USDT"), PrincipalAssetSymbol: "USDT", Principal: "200", Direction: adapters.OptionalText("buy_low"), TargetPrice: adapters.OptionalText("10000"), SubscribedAt: &subscribed, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.02"), RateKind: adapters.OptionalText("apr"), Status: "active"})
 	}
 	demoAmounts(r)
 }

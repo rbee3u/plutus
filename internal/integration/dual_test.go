@@ -6,11 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/db/migrations"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
@@ -25,18 +23,21 @@ func (a *dualScenario) Validate(context.Context, adapters.Credentials, adapters.
 
 func (a *dualScenario) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, types []adapters.AccountType) (adapters.Batch, error) {
 	now := time.Now().UTC()
-	batch := adapters.Batch{ObservedAt: now, MarginMode: adapters.MarginOKXPM}
+	batch := adapters.Batch{CollectedAt: now, MarginMode: adapters.MarginOKXPM}
 	for _, kind := range types {
 		if (kind == "earn" && a.failEarn) || (kind == adapters.TypeDualInvestment && a.failDual) {
 			batch.Reports = append(batch.Reports, adapters.FailedReport(kind, adapters.NewError(adapters.ClassTemporary, "test failure")))
 			continue
 		}
-		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusOK, ObservedAt: now}
+		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusSucceeded, CollectedAt: now}
 		if kind == "earn" {
 			r.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: a.earn}}
+			p := adapters.NewEarnPosition("earn", "flexible", "position", "principal")
+			p.Assets = []adapters.EarnAmount{{AssetSymbol: "USDT", Amount: r.Balances[0].Equity}}
+			r.EarnPositions = []adapters.EarnPosition{p}
 		} else if !a.empty {
 			r.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: "40"}}
-			r.DualPositions = []adapters.DualPosition{{PlatformPositionRef: "one", InvestAssetSymbol: "USDT", Principal: "15", Status: "active"}, {PlatformPositionRef: "two", InvestAssetSymbol: "USDT", Principal: "25", Status: "active"}}
+			r.DualPositions = []adapters.DualPosition{{PositionKey: "one", PrincipalAssetSymbol: "USDT", Principal: "15", Status: "active"}, {PositionKey: "two", PrincipalAssetSymbol: "USDT", Principal: "25", Status: "active"}}
 			expiry := now.Add(24 * time.Hour)
 			r.DualPositions[1].ExpiryAt = &expiry
 		}
@@ -45,43 +46,33 @@ func (a *dualScenario) Collect(_ context.Context, _ adapters.Credentials, _ adap
 	return batch, nil
 }
 
-func TestDualCutoverStaleAndRebuild(t *testing.T) {
+func TestDualSeparateAccountsStaleAndRetry(t *testing.T) {
 	for _, firstFail := range []bool{false, true} {
-		t.Run(map[bool]string{false: "successful cutover", true: "first Earn missing"}[firstFail], func(t *testing.T) {
+		t.Run(map[bool]string{false: "fresh Earn", true: "stale Earn"}[firstFail], func(t *testing.T) {
 			h := newHarness(t)
-			adapter := &dualScenario{earn: "100"}
+			adapter := &dualScenario{earn: "60"}
 			h.registry.Register(adapters.PlatformOKX, adapter)
-			item := h.createIdentity("Dual migration", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn")
+			item := h.createIdentity("Dual accounts", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn", "dual_investment")
 			item = h.storeCredentials(item, "test")
 			if _, _, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil {
 				t.Fatal(err)
 			}
-			first, firstJob := h.runCycle()
-			// Simulate a persisted report from the pre-split release.
-			if _, err := h.db.ExecContext(h.ctx, "UPDATE account_reports SET scope_version=1 WHERE job_id=?", firstJob[:]); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := h.db.ExecContext(h.ctx, "UPDATE accounts SET selected=TRUE WHERE identity_id=? AND account_type='dual_investment'", item.ID[:]); err != nil {
-				t.Fatal(err)
-			}
+			first, firstCycle := h.runCycle()
 			adapter.earn = "60"
 			adapter.failEarn = firstFail
-			second, secondJob := h.runCycle()
+			second, secondCycle := h.runCycle()
 			want := "100"
-			if firstFail {
-				want = "40"
-			}
 			if second.Point.TotalUSD != want || second.Point.BoundaryContributionUSD != "0" {
 				t.Fatalf("cutover: %+v", second.Point)
 			}
-			accounts := h.accountsByType(secondJob, item.ID)
+			accounts := h.accountsByType(secondCycle, item.ID)
 			earn, dual := accounts["earn"], accounts["dual_investment"]
-			if firstFail && (earn.Method != valuation.MethodMissing || earn.SourceReportID != nil || earn.ValueUSD != nil) {
-				t.Fatalf("legacy report reused: %+v", earn)
+			if firstFail && (earn.Freshness != valuation.FreshnessStale || earn.SourceReportID == nil || earn.ValueUSD == nil) {
+				t.Fatalf("stale report not reused: %+v", earn)
 			}
 			pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
 			change, err := h.financial.CustomValueChange(h.ctx, pctx, first.Point.EvaluatedAt, second.Point.EvaluatedAt)
-			if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, ","), "account_scope_changed") {
+			if err != nil || change.Completeness != valuation.CompletenessComplete {
 				t.Fatalf("cross-scope change: %+v %v", change, err)
 			}
 			view, err := h.financial.AccountDualPositions(h.ctx, pctx, dual.AccountID)
@@ -90,24 +81,24 @@ func TestDualCutoverStaleAndRebuild(t *testing.T) {
 			}
 
 			for _, row := range view.DualPositions {
-				if len(row.Issues) != 1 || !strings.Contains(row.Issues[0].Detail, "Dual position "+row.PlatformPositionRef+" ") {
+				if len(row.Issues) != 1 || !strings.Contains(row.Issues[0].Detail, "Dual position "+row.PositionKey+" ") {
 					t.Fatalf("same-asset row lost its own issue: %+v", row)
 				}
-				if strings.Contains(row.Issues[0].Detail, "expiry") != (row.PlatformPositionRef == "one") {
+				if strings.Contains(row.Issues[0].Detail, "expiry") != (row.PositionKey == "one") {
 					t.Fatalf("expiry issue crossed same-asset subscriptions: %+v", row)
 				}
 			}
 			flat, err := h.financial.FlatDualPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "USDT", Limit: 1, Offset: 1})
-			if err != nil || flat.Total != 2 || len(flat.Items) != 1 || flat.Items[0].PlatformPositionRef != "one" {
+			if err != nil || flat.Total != 2 || len(flat.Items) != 1 || flat.Items[0].PositionKey != "one" {
 				t.Fatalf("pagination: %+v %v", flat, err)
 			}
 			adapter.failEarn = false
-			third, thirdJob := h.runCycle()
-			thirdAccounts := h.accountsByType(thirdJob, item.ID)
+			third, thirdCycle := h.runCycle()
+			thirdAccounts := h.accountsByType(thirdCycle, item.ID)
 			adapter.failEarn = true
 			adapter.failDual = true
-			fourth, fourthJob := h.runCycle()
-			fourthAccounts := h.accountsByType(fourthJob, item.ID)
+			fourth, fourthCycle := h.runCycle()
+			fourthAccounts := h.accountsByType(fourthCycle, item.ID)
 			change, err = h.financial.CustomValueChange(h.ctx, pctx, third.Point.EvaluatedAt, fourth.Point.EvaluatedAt)
 			if err != nil || change.Completeness != valuation.CompletenessComplete {
 				t.Fatalf("post-cutover comparison remains incomplete: %+v %v", change, err)
@@ -123,91 +114,23 @@ func TestDualCutoverStaleAndRebuild(t *testing.T) {
 			if err != nil || len(stale.DualPositions) != 2 || stale.DualPositions[0].Freshness != valuation.FreshnessStale || *stale.Account.SourceReportID != *balances.Account.SourceReportID {
 				t.Fatalf("stale alignment: %+v %v", stale, err)
 			}
-			if _, err := h.valuation.Rebuild(h.ctx, h.portfolioID); err != nil {
-				t.Fatal(err)
-			}
-			rebuilt, err := h.valuation.PointByJob(h.ctx, h.portfolioID, secondJob)
+			rebuilt, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, secondCycle)
 			if err != nil || rebuilt.TotalUSD != want || rebuilt.BoundaryContributionUSD != "0" {
-				t.Fatalf("rebuild changed cutover: %+v %v", rebuilt, err)
+				t.Fatalf("retry changed cutover: %+v %v", rebuilt, err)
 			}
-			old := h.accountsByType(firstJob, item.ID)["earn"]
-			if old.ScopeVersion != 1 || old.ValueUSD == nil || *old.ValueUSD != "100" {
+			old := h.accountsByType(firstCycle, item.ID)["earn"]
+			if old.ValueUSD == nil || *old.ValueUSD != "60" {
 				t.Fatalf("old scope was reinterpreted: %+v", old)
 			}
 			adapter.failEarn = false
 			adapter.failDual = false
 			adapter.empty = true
-			_, lastJob := h.runCycle()
-			last := h.accountsByType(lastJob, item.ID)["dual_investment"]
+			_, lastCycle := h.runCycle()
+			last := h.accountsByType(lastCycle, item.ID)["dual_investment"]
 			complete, err := h.financial.AccountDualPositions(h.ctx, pctx, last.AccountID)
 			if err != nil || len(complete.DualPositions) != 0 || last.ValueUSD == nil || *last.ValueUSD != "0" {
 				t.Fatalf("successful empty report must clear positions: %+v %v", complete, err)
 			}
 		})
-	}
-}
-
-func TestDualAccountBackfillPreservesSelections(t *testing.T) {
-	h := newHarness(t)
-	selected := h.createIdentity("Selected Earn", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn")
-	unselected := h.createIdentity("Unselected Earn", adapters.PlatformBybit, adapters.StructureBybitUTA2, "funding")
-	kraken := h.createIdentity("Unaffected Kraken", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "earn")
-	for _, item := range []identity.Identity{selected, unselected} {
-		if _, err := h.db.ExecContext(h.ctx, "DELETE FROM accounts WHERE identity_id=? AND account_type='dual_investment'", item.ID[:]); err != nil {
-			t.Fatal(err)
-		}
-	}
-	source, err := migrations.FS.ReadFile("20260929010100_dual_accounts.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	apply := func() {
-		t.Helper()
-		up, _, _ := strings.Cut(string(source), "-- +goose Down")
-		if err := mysql.ExecSQLStatements(h.ctx, h.db, up); err != nil {
-			t.Fatal(err)
-		}
-	}
-	apply()
-	unchanged, err := h.identities.Get(h.ctx, h.portfolioID, kraken.ID)
-	if err != nil || unchanged.Version != kraken.Version || len(unchanged.Accounts) != len(kraken.Accounts) {
-		t.Fatalf("backfill changed Kraken: %+v %v", unchanged, err)
-	}
-	for _, tc := range []struct {
-		item     identity.Identity
-		selected bool
-	}{{selected, true}, {unselected, false}} {
-		current, err := h.identities.Get(h.ctx, h.portfolioID, tc.item.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		found := false
-		for _, a := range current.Accounts {
-			if a.AccountType == adapters.TypeDualInvestment {
-				found = true
-				if a.Selected != tc.selected {
-					t.Fatal("selection not inherited")
-				}
-			}
-		}
-		if !found || current.Version != tc.item.Version+1 {
-			t.Fatalf("backfill: %+v", current)
-		}
-	}
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE accounts SET selected=FALSE WHERE identity_id=? AND account_type='dual_investment'", selected.ID[:]); err != nil {
-		t.Fatal(err)
-	}
-	apply()
-	current, err := h.identities.Get(h.ctx, h.portfolioID, selected.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, a := range current.Accounts {
-		if a.AccountType == adapters.TypeDualInvestment && a.Selected {
-			t.Fatal("rerun overwrote a later selection")
-		}
-	}
-	if current.Version != selected.Version+1 {
-		t.Fatal("rerun incremented configuration version")
 	}
 }

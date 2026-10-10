@@ -39,7 +39,7 @@ const LEGACY_PATHS: readonly { from: string; to: string }[] = [
   { from: "capital/baseline", to: "capital" },
   { from: "capital/flows", to: "capital" },
   { from: "data/observations", to: "data/activity?tab=cycles" },
-  { from: "data/jobs", to: "data/activity?tab=jobs" },
+  { from: "data/jobs", to: "data/activity" },
   { from: "data/audit", to: "data/activity?tab=audit" },
 ];
 

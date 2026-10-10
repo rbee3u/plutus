@@ -10,6 +10,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
@@ -48,7 +49,7 @@ func NewService(db *sql.DB, idle, absolute time.Duration) *Service {
 }
 
 // Login authenticates a username and password.
-func (s *Service) Login(ctx context.Context, username, password, ip, clientLabel string) (User, Session, error) {
+func (s *Service) Login(ctx context.Context, username, password, ip, userAgent string) (User, Session, error) {
 	_, normalized, err := NormalizeUsername(username)
 	if err != nil {
 		return User{}, Session{}, ErrInvalidCredentials
@@ -56,7 +57,7 @@ func (s *Service) Login(ctx context.Context, username, password, ip, clientLabel
 	if !s.limiter.allow("login:user:"+normalized, s.now(), 5.0/60.0, 5) || !s.limiter.allow("login:ip:"+ip, s.now(), 20.0/60.0, 20) {
 		return User{}, Session{}, ErrRateLimited
 	}
-	row, err := s.q.GetUserByNormalizedUsername(ctx, normalized)
+	row, err := s.q.GetUserByUsernameKey(ctx, normalized)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			_, _, _ = VerifyPassword(password, dummyPHC)
@@ -71,21 +72,35 @@ func (s *Service) Login(ctx context.Context, username, password, ip, clientLabel
 	if err != nil || !ok {
 		return User{}, Session{}, ErrInvalidCredentials
 	}
+	var replacement string
 	if rehash {
-		newHash, err := HashPassword(password)
-		if err == nil {
-			_ = s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
-				PasswordHash: newHash,
-				UpdatedAt:    s.now().UTC(),
-				ID:           row.ID,
-			})
-		}
+		replacement, _ = HashPassword(password)
 	}
 	user, err := userFromRow(&row)
 	if err != nil {
 		return User{}, Session{}, err
 	}
-	session, err := s.createSession(ctx, user.ID, clientLabel)
+	session, err := mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (Session, error) {
+		current, err := q.LockUser(ctx, row.ID)
+		if err != nil {
+			return Session{}, err
+		}
+		if current.Status != "active" {
+			return Session{}, ErrUserDisabled
+		}
+		// Password replacement and session creation serialize on the same User.
+		if current.PasswordHash != row.PasswordHash {
+			return Session{}, ErrInvalidCredentials
+		}
+		if replacement != "" {
+			if err := q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+				PasswordHash: replacement, UpdatedAt: s.now().UTC(), ID: row.ID,
+			}); err != nil {
+				return Session{}, err
+			}
+		}
+		return s.createSession(ctx, q, user.ID, userAgent)
+	})
 	if err != nil {
 		return User{}, Session{}, err
 	}

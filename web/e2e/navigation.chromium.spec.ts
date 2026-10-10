@@ -31,12 +31,14 @@ async function mockShell(page: Page, long = false) {
   const data: Overview = long
     ? {
         ...overview,
-        context: { ...overview.context, pointId: portfolioId },
+        context: { ...overview.context, cycleId: portfolioId },
         totalUsd: "40",
         accountCount: 40,
         point: {
-          id: portfolioId,
-          jobId: portfolioId,
+          cycleId: portfolioId,
+          valuationRevision: `${portfolioId}:1`,
+          calculationVersion: 1,
+          detailState: "full" as const,
           evaluatedAt: "2026-01-01T00:00:00Z",
           totalUsd: "40",
           completeness: "complete",

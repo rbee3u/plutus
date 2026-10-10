@@ -70,7 +70,7 @@ function usdEquivalent(currency: string | null | undefined): boolean {
 }
 
 export function positionMarginDescription(item: PositionRow): string {
-  if (item.marginMode === "isolated") {
+  if (item.marginSetting === "isolated") {
     const margin = parseDecimal(item.settleMargin);
     const notional = parseDecimal(item.notionalUsd);
     if (!margin || margin.lte(0) || !notional || !item.settlementAssetSymbol) return "isolated";
@@ -90,7 +90,7 @@ export function positionMarginDescription(item: PositionRow): string {
     return `${formatLeverage(leverage.toString())} isolated`;
   }
   if (item.portfolioMargin) return "portfolio margin";
-  if (item.marginMode === "cross") {
+  if (item.marginSetting === "cross") {
     const leverage = parseDecimal(item.leverage);
     return leverage && leverage.gt(0) ? `${formatLeverage(item.leverage)} cross` : "cross";
   }
@@ -106,7 +106,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       ? `${formatDecimal(item.settleMargin)} ${item.settlementAssetSymbol}`
       : "—";
   return {
-    id: `${item.accountId}-${item.futuresContractId}-${item.platformPositionRef}`,
+    id: `${item.accountId}-${item.futuresContractId}-${item.positionKey}`,
     symbol: (
       <HoverDetails
         label={item.futuresSymbol}

@@ -15,7 +15,6 @@ describe("Collection cache policy", () => {
       keys.overview("alice", "other"),
       keys.portfolio("alice", "main"),
       keys.manualEditor("alice", "main", "identity", "editor"),
-      keys.job("alice", "main", "job"),
       keys.capitalFlow("alice", "main", "flow"),
       keys.portfolios("alice"),
     ];

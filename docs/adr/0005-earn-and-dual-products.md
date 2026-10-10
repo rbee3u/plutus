@@ -12,16 +12,15 @@ product boundary does not imply a separately transferable wallet.
 Read both groups for a shared completeness check when either is selected, but
 emit and value only selected Accounts. This detects omitted products at the cost
 of coupled failure for selected dependents and auxiliary reads for an unselected
-product. Non-atomic settlement reads can still disagree. Scope-compatible
-history prevents stale reuse across different coverage; scope transitions remain
-reclassification rather than new funding.
+product. Non-atomic settlement reads can still disagree. Separate immutable
+Account Types prevent stale reuse across product coverage.
 
 Earn descriptions retain actual source granularity, amount basis, rate
 convention, reward scope, and lifecycle meaning. Aggregates are not invented
 subscriptions, and descriptive amounts never add to valuation. Missing optional
-metadata preserves known funds; missing descriptions produce explicit summaries
-rather than an invented empty set. No evidence-file or current-product backfill
-can supply absent historical facts.
+metadata preserves known funds; successful reports require descriptions
+consistent with their Balances. No evidence-file or current-product backfill can
+supply absent historical facts.
 
 This preserves financial continuity and comparable terms while accepting partial
 product browsing and wider tables.

@@ -6,17 +6,17 @@ import {
   keys,
   problemMessage,
 } from "@/api";
-import type { CollectionCycle, CollectionCycleDetail, JobStatus } from "@/api";
+import type { CollectionCycle, CollectionCycleDetail, CollectionCycleStatus } from "@/api";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { useSessionScope } from "@/shared/lib/session";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
-const TERMINAL: ReadonlySet<JobStatus> = new Set(["succeeded", "failed", "cancelled"]);
+const TERMINAL: ReadonlySet<CollectionCycleStatus> = new Set(["succeeded", "failed"]);
 const FOLLOW_INTERVAL_MS = 2000;
 
-export function isTerminalStatus(status: JobStatus | undefined): boolean {
+export function isTerminalStatus(status: CollectionCycleStatus | undefined): boolean {
   return status !== undefined && TERMINAL.has(status);
 }
 

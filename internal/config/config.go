@@ -30,8 +30,6 @@ const (
 	maxSessionIdle     = 90 * 24 * time.Hour
 	minSessionAbsolute = time.Hour
 	maxSessionAbsolute = 365 * 24 * time.Hour
-	minCompletedRetain = 24 * time.Hour
-	maxCompletedRetain = 365 * 24 * time.Hour
 	minValidateTimeout = time.Second
 	maxValidateTimeout = 2 * time.Minute
 
@@ -42,7 +40,6 @@ const (
 type Config struct {
 	Server     Server
 	Auth       Auth
-	Jobs       Jobs
 	Collection Collection
 	Database   Database
 	Crypto     Crypto
@@ -113,11 +110,6 @@ func (a *Auth) cookieName(base string) string {
 		return base
 	}
 	return base + "_" + a.CookieSuffix
-}
-
-// Jobs holds the retention policy for finished jobs without reports or points.
-type Jobs struct {
-	FinishedRetention time.Duration
 }
 
 // Collection holds Connection validation settings and the adapter selection.

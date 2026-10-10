@@ -7,7 +7,6 @@ import type {
   Issue,
   EarnPositionRow,
   DualPositionRow,
-  EarnBalanceSummary,
 } from "../src/api/generated/types.gen";
 
 test.use({ hasTouch: true });
@@ -24,7 +23,7 @@ const earn: EarnPositionRow = {
   identityId: bn,
   identityName: "bn-main",
   platform: "binance",
-  platformPositionRef: "multi",
+  positionKey: "multi",
   productRef: "pool",
   productName: "Example pool",
   type: "on_chain",
@@ -89,26 +88,10 @@ test("Earn keeps multiasset products and accessible details on mobile", async ({
   expect(state.mutations).toHaveLength(0);
 });
 
-test("Earn remembers its own Asset search and labels old balances separately", async ({ page }) => {
+test("Earn remembers its own Asset search", async ({ page }) => {
   const state = await fixture(page);
   state.earns = [earn];
-  state.earnSummaries = [
-    {
-      accountId: "old",
-      accountName: "Earn",
-      identityName: "bn-main",
-      platform: "binance",
-      assets: [{ assetSymbol: "USDT", amount: "25" }],
-      freshness: "fresh",
-      reportObservedAt: "2026-10-01T00:00:00Z",
-      issues: [{ code: "earn_details_unavailable", detail: "Product details not collected." }],
-    },
-  ];
   await page.goto(`/p/${portfolioId}/holdings/earn?symbol=eth`);
-  await expect(page.getByText("Details incomplete", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Known balances without product details" }),
-  ).toBeVisible();
   await page.getByRole("link", { name: "Futures", exact: true }).click();
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/futures`);
   await page.getByRole("link", { name: "Earn", exact: true }).click();
@@ -129,7 +112,6 @@ async function fixture(page: Page) {
     balanceIssues: [] as Issue[],
     earns: [] as EarnPositionRow[],
     duals: [] as DualPositionRow[],
-    earnSummaries: [] as EarnBalanceSummary[],
   };
   await mockApi(
     page,
@@ -189,7 +171,7 @@ async function fixture(page: Page) {
           json: {
             context: {
               portfolioId,
-              pointId: state.noPoint ? null : portfolioId,
+              cycleId: state.noPoint ? null : portfolioId,
               evaluatedAt: "2026-10-03T00:00:00Z",
               timezone: "Asia/Shanghai",
             },
@@ -200,8 +182,7 @@ async function fixture(page: Page) {
                 : path.endsWith("/dual-positions")
                   ? state.duals
                   : [],
-            balanceSummaries: state.earnSummaries,
-            detailsComplete: state.earnSummaries.length === 0,
+            detailsComplete: true,
             page: { offset: Number(url.searchParams.get("offset") ?? 0), limit: 50, total: 0 },
             totalUsd: "0",
             totalNotionalUsd: "741.37",
@@ -461,14 +442,19 @@ test("each tab restores its filters and page; history and explicit URLs win", as
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/balances`);
 });
 
-test("old and invalid URLs normalize after candidates load; Balances has Identity and no groups", async ({
+test("unsupported parameters are excluded and invalid selections normalize after candidates load", async ({
   page,
 }) => {
   const state = await fixture(page);
   await page.goto(
     `/p/${portfolioId}/holdings/balances?accountId=old&groupBy=asset&platform=okx&identityId=${bn}&offset=50`,
   );
-  await expect(page).toHaveURL(new RegExp(`/holdings/balances\\?identityId=${bn}$`));
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get("identityId") === bn &&
+      !url.searchParams.has("platform") &&
+      !url.searchParams.has("offset"),
+  );
   await expect(page.getByRole("columnheader").nth(1)).toContainText("Identity");
   await expect(page.getByRole("heading", { name: "Groups", exact: true })).toHaveCount(0);
   expect(

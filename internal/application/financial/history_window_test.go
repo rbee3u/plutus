@@ -105,7 +105,7 @@ func TestHistorySamplingDST(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				points = append(points, valuation.Point{ID: uuid.UUID{byte(i + 1)}, EvaluatedAt: at, TotalUSD: strconv.Itoa(i * 17), IncompleteAccountCount: i % 2})
+				points = append(points, valuation.Point{CycleID: uuid.UUID{byte(i + 1)}, EvaluatedAt: at, TotalUSD: strconv.Itoa(i * 17), IncompleteAccountCount: i % 2})
 			}
 			for kind, indices := range map[string][]int{"hour": tc.hour, "day": tc.day} {
 				want := make([]valuation.Point, 0, len(indices))
@@ -134,7 +134,7 @@ func FuzzHistorySamplingKeepsFinalPoints(f *testing.F) {
 		for i, step := range steps {
 			seconds += int64(step)*900 + 1
 			points = append(points, valuation.Point{
-				ID: uuid.UUID{byte(i + 1)}, EvaluatedAt: time.Unix(seconds, 0).UTC(),
+				CycleID: uuid.UUID{byte(i + 1)}, EvaluatedAt: time.Unix(seconds, 0).UTC(),
 				TotalUSD: strconv.Itoa(i*17 - 500), IncompleteAccountCount: i % 2,
 			})
 		}

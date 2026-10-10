@@ -73,7 +73,7 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 	if err := adapters.CheckEarnPositions(positions, balances); err != nil {
 		return adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: r.a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: r.a.now(), Balances: balances, EarnPositions: positions}, nil
 }
 
 // earnStrategies returns the lock type of every strategy, following next_cursor until Kraken

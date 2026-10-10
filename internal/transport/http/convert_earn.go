@@ -38,42 +38,25 @@ func toAPIEarnPositions(in []financial.EarnPositionRow) []api.EarnPositionRow {
 			details = append(details, api.EarnDetail{Label: detail.Label, Value: detail.Value, At: detail.At})
 		}
 		out = append(out, api.EarnPositionRow{
-			AccountId:           r.AccountID,
-			AccountName:         r.AccountName,
-			AccountType:         r.AccountType,
-			IdentityId:          r.IdentityID,
-			IdentityName:        r.IdentityName,
-			Platform:            r.Platform,
-			PlatformPositionRef: r.PlatformPositionRef,
-			ProductRef:          r.ProductRef,
-			ProductName:         r.ProductName,
-			Type:                r.Type,
-			Granularity:         r.Granularity,
-			AmountBasis:         r.AmountBasis,
-			Assets:              toAPIEarnAmounts(r.Assets),
-			Rates:               rates,
-			Rewards:             rewards,
-			Details:             details,
-			SubscribedAt:        r.SubscribedAt,
-			MaturityAt:          r.MaturityAt,
-			Status:              r.Status,
-			Freshness:           api.Freshness(r.Freshness),
-			ReportObservedAt:    r.ReportObservedAt,
-			Issues:              toAPIIssues(r.Issues),
-		})
-	}
-	return out
-}
-
-func toAPIEarnSummaries(in []financial.EarnBalanceSummary) []api.EarnBalanceSummary {
-	out := make([]api.EarnBalanceSummary, 0, len(in))
-	for _, r := range in {
-		out = append(out, api.EarnBalanceSummary{
 			AccountId:        r.AccountID,
 			AccountName:      r.AccountName,
+			AccountType:      r.AccountType,
+			IdentityId:       r.IdentityID,
 			IdentityName:     r.IdentityName,
 			Platform:         r.Platform,
+			PositionKey:      r.PositionKey,
+			ProductRef:       r.ProductRef,
+			ProductName:      r.ProductName,
+			Type:             r.Type,
+			Granularity:      r.Granularity,
+			AmountBasis:      r.AmountBasis,
 			Assets:           toAPIEarnAmounts(r.Assets),
+			Rates:            rates,
+			Rewards:          rewards,
+			Details:          details,
+			SubscribedAt:     r.SubscribedAt,
+			MaturityAt:       r.MaturityAt,
+			Status:           r.Status,
 			Freshness:        api.Freshness(r.Freshness),
 			ReportObservedAt: r.ReportObservedAt,
 			Issues:           toAPIIssues(r.Issues),

@@ -117,8 +117,7 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     defaultPathSuffix: "/data/activity",
     subviews: [
       { label: "Collection Cycles", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[0] },
-      { label: "Jobs", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[1] },
-      { label: "Audit", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[2] },
+      { label: "Audit", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[1] },
     ],
   },
   {

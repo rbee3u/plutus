@@ -39,7 +39,7 @@ async function fixture(page: Page, initialPoint = true) {
     identityName: "Owner",
     platform: "kraken",
     selected: true,
-    status: "ok",
+    status: "succeeded",
     method: "calculated",
     freshness: "fresh",
     completeness: "complete",
@@ -50,14 +50,15 @@ async function fixture(page: Page, initialPoint = true) {
   const context = () => ({
     portfolioId,
     timezone: "UTC",
-    pointId: state.point ? "point" : null,
+    cycleId: state.point ? "point" : null,
     evaluatedAt: state.point ? at : null,
   });
   const point = () =>
     state.point
       ? {
-          id: "point",
-          jobId: "job",
+          cycleId: "point",
+          valuationRevision: "point:1",
+          calculationVersion: 1,
           evaluatedAt: at,
           totalUsd: state.applied[0]?.quantity ?? "0",
           completeness: "complete",
@@ -100,7 +101,6 @@ async function fixture(page: Page, initialPoint = true) {
                     accountType: "manual",
                     displayName: "Manual",
                     selected: true,
-                    version: 1,
                   },
                 ],
               },
@@ -246,9 +246,8 @@ async function fixture(page: Page, initialPoint = true) {
                   id: "cycle",
                   portfolioId,
                   status: "succeeded",
-                  trigger: "manual",
-                  attempts: 1,
-                  maxAttempts: 3,
+                  trigger: "user",
+                  attemptCount: 1,
                   createdAt: at,
                 }
               : {
@@ -256,9 +255,8 @@ async function fixture(page: Page, initialPoint = true) {
                     id: "cycle",
                     portfolioId,
                     status: "succeeded",
-                    trigger: "manual",
-                    attempts: 1,
-                    maxAttempts: 3,
+                    trigger: "user",
+                    attemptCount: 1,
                     createdAt: at,
                   },
                 },

@@ -31,7 +31,7 @@ func (a *Adapter) tickers(ctx context.Context, c *client) (adapters.QuoteLookup,
 	}
 	last := make(map[string]string, len(rows))
 	for _, row := range rows {
-		if decimal.Valid(row.Last) {
+		if value, ok := decimal.Parse(row.Last); decimal.Valid(row.Last) && ok && value.Sign() > 0 {
 			last[row.InstID] = row.Last
 		}
 	}
@@ -40,8 +40,8 @@ func (a *Adapter) tickers(ctx context.Context, c *client) (adapters.QuoteLookup,
 
 // spotLookup prices a coin through its <symbol>-<quote> spot pair.
 func spotLookup(last map[string]string) adapters.QuoteLookup {
-	return func(symbol, quote string) (string, bool) {
+	return func(symbol, quote string) (adapters.Quote, bool) {
 		price, ok := last[symbol+"-"+quote]
-		return price, ok
+		return adapters.Quote{Price: price, SourceMarketRef: symbol + "-" + quote}, ok
 	}
 }

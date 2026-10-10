@@ -311,7 +311,7 @@ func reportsByType(t *testing.T, batch *adapters.Batch) map[adapters.AccountType
 	out := map[adapters.AccountType]adapters.AccountReport{}
 	for i := range batch.Reports {
 		report := batch.Reports[i]
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		out[report.AccountType] = report
@@ -357,23 +357,23 @@ func TestReplayUnifiedWallet(t *testing.T) {
 
 	mainReport := reports[TypeMain]
 	if value(mainReport.Equity) != "1000" || value(mainReport.AdjustedEquity) != "950" || value(mainReport.AvailableEquity) != "800" ||
-		value(mainReport.InitialMarginRatio) != "0.10526316" || value(mainReport.MaintenanceMarginRatio) != "0.01052632" || mainReport.UnifiedMarginRatio != nil {
-		t.Fatalf("Unified Main figures: %s %s %s %s %s", value(mainReport.Equity), value(mainReport.AdjustedEquity), value(mainReport.AvailableEquity), value(mainReport.InitialMarginRatio), value(mainReport.MaintenanceMarginRatio))
+		mainReport.ReportedInitialMarginRatio != nil || mainReport.ReportedMaintenanceMarginRatio != nil || value(mainReport.InitialMarginRequirementUSD) != "100" || value(mainReport.MaintenanceMarginRequirementUSD) != "10" || mainReport.ReportedMarginRatio != nil {
+		t.Fatalf("Unified Main figures: %s %s %s %s %s", value(mainReport.Equity), value(mainReport.AdjustedEquity), value(mainReport.AvailableEquity), value(mainReport.ReportedInitialMarginRatio), value(mainReport.ReportedMaintenanceMarginRatio))
 	}
 	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "500" || got["BTC"] != "0.01" {
 		t.Fatalf("Unified Main balances: %v", got)
 	}
 	for _, balance := range mainReport.Balances {
-		if balance.Name != "" || balance.AvailableToTrade == nil {
-			t.Fatalf("Unified Main balance %s: name %q, available %v", balance.AssetSymbol, balance.Name, balance.AvailableToTrade)
+		if balance.AvailableToTrade == nil {
+			t.Fatalf("Unified Main balance %s: available %v", balance.AssetSymbol, balance.AvailableToTrade)
 		}
 	}
 	if len(mainReport.Positions) != 1 {
 		t.Fatalf("Unified Main positions: %+v", mainReport.Positions)
 	}
 	position := mainReport.Positions[0]
-	if position.PlatformPositionRef != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.Quantity != "1" ||
-		position.QuantityUnit != adapters.UnitContracts || position.FuturesContract.Kind != adapters.KindLinearPerpetual ||
+	if position.PositionKey != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.SourceQuantity != "1" ||
+		position.SourceQuantityUnit != adapters.UnitContracts || position.FuturesContract.Kind != adapters.KindLinearPerpetual ||
 		position.FuturesContract.BaseAssetSymbol != "BTC" || position.FuturesContract.SettlementAssetSymbol != "USD" || value(position.FuturesContract.ContractSize) != "1" ||
 		value(position.EntryPrice) != "570" || value(position.MarkPrice) != "30209.9" || position.UnrealizedPnl != nil {
 		t.Fatalf("Unified Main position: %+v", position)
@@ -393,7 +393,7 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	}
 	for i := range batch.Reports {
 		for _, price := range batch.Prices {
-			if price.ObservedAt.After(batch.Reports[i].ObservedAt) {
+			if price.RetrievedAt.After(batch.Reports[i].CollectedAt) {
 				t.Fatalf("the price of %s is later than the %s report it values", price.CanonicalAssetSymbol, batch.Reports[i].AccountType)
 			}
 		}
@@ -426,15 +426,15 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "25445.21" || got["BTC"] != "1.2435" {
 		t.Fatalf("Separate Main balances: %v", got)
 	}
-	if value(mainReport.Equity) != "62740.1868" || mainReport.AdjustedEquity != nil {
+	if mainReport.Equity != nil || value(mainReport.SpotMarginUnrealizedPnlUSD) != "-10.0232" || mainReport.AdjustedEquity != nil {
 		t.Fatalf("Separate Main equity: %s", value(mainReport.Equity))
 	}
 
 	multi := reports[TypeMultiM]
-	if value(multi.Equity) != "5000" || value(multi.AdjustedEquity) != "5000" || value(multi.InitialMarginRatio) != "0" || balances(&multi)["USD"] != "5000" {
+	if value(multi.Equity) != "5000" || value(multi.AdjustedEquity) != "5000" || multi.ReportedInitialMarginRatio != nil || value(multi.InitialMarginRequirementUSD) != "0" || balances(&multi)["USD"] != "5000" {
 		t.Fatalf("Multi-M: %+v", multi)
 	}
-	if len(multi.Positions) != 1 || multi.Positions[0].PlatformPositionRef != "PF_XBTUSD:long" || multi.Positions[0].FuturesContract.BaseAssetSymbol != "BTC" ||
+	if len(multi.Positions) != 1 || multi.Positions[0].PositionKey != "PF_XBTUSD:long" || multi.Positions[0].FuturesContract.BaseAssetSymbol != "BTC" ||
 		multi.Positions[0].UnrealizedPnl != nil || value(multi.Positions[0].MarkPrice) != "30209.9" {
 		t.Fatalf("Multi-M positions (a BTC-denominated PnL is not the USD settlement): %+v", multi.Positions)
 	}
@@ -445,10 +445,10 @@ func TestReplaySeparateWallets(t *testing.T) {
 	}
 	positions := map[string]adapters.Position{}
 	for _, p := range coin.Positions {
-		positions[p.PlatformPositionRef] = p
+		positions[p.PositionKey] = p
 	}
 	perpetual, delivery := positions["PI_XBTUSD:short"], positions["FI_XBTUSD_220930:long"]
-	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.Quantity != "10000" || perpetual.FuturesContract.Kind != adapters.KindInversePerpetual ||
+	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.SourceQuantity != "10000" || perpetual.FuturesContract.Kind != adapters.KindInversePerpetual ||
 		perpetual.FuturesContract.SettlementAssetSymbol != "BTC" || value(perpetual.FuturesContract.ContractSize) != "1" || perpetual.UnrealizedPnl != nil {
 		t.Fatalf("inverse perpetual: %+v", perpetual)
 	}
@@ -516,7 +516,7 @@ func TestUnsupportedStructureAndAccountType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassUnsupported || batch.Reports[1].Status != adapters.StatusOK {
+	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassUnsupported || batch.Reports[1].Status != adapters.StatusSucceeded {
 		t.Fatalf("Multi-M under Unified Wallet must fail alone: %+v", batch.Reports)
 	}
 }
@@ -568,7 +568,7 @@ func TestEarnIgnoresZeroHistoricalAllocations(t *testing.T) {
 				t.Fatal(err)
 			}
 			report := batch.Reports[0]
-			if report.Status != adapters.StatusOK || len(report.Balances) != 1 || report.Balances[0].AssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
+			if report.Status != adapters.StatusSucceeded || len(report.Balances) != 1 || report.Balances[0].AssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
 				t.Fatalf("historical allocation changed current Earn holdings: %+v", report)
 			}
 			if r.reached(epBalancesSnapshot.String()) {
@@ -587,7 +587,7 @@ func TestSeparateMainRules(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if batch.Reports[1].Status != adapters.StatusOK {
+		if batch.Reports[1].Status != adapters.StatusSucceeded {
 			t.Fatal("a Main failure spread to Earn")
 		}
 		return batch.Reports[0]
@@ -599,11 +599,11 @@ func TestSeparateMainRules(t *testing.T) {
 		t.Fatalf("used credit: %+v", used)
 	}
 	margin := collectMain(t, map[string]string{epBalanceEx.String(): unpriced})
-	if margin.Status != adapters.StatusFailed || margin.ErrorClass != adapters.ClassNormalization {
+	if margin.Status != adapters.StatusSucceeded || margin.Equity != nil || margin.SpotMarginUnrealizedPnlUSD == nil || balances(&margin)["XTZ"] != "3" {
 		t.Fatalf("a margin result with an unpriced coin: %+v", margin)
 	}
 	flat := collectMain(t, map[string]string{epBalanceEx.String(): unpriced, epTradeBalance.String(): `{"error":[],"result":{"n":"0.0000"}}`})
-	if flat.Status != adapters.StatusOK || flat.Equity != nil || balances(&flat)["XTZ"] != "3" {
+	if flat.Status != adapters.StatusSucceeded || flat.Equity != nil || balances(&flat)["XTZ"] != "3" {
 		t.Fatalf("without a margin result the value is calculated from Balances: %+v", flat)
 	}
 }
@@ -630,12 +630,11 @@ func TestKeyChecks(t *testing.T) {
 		t.Fatalf("Main without the Futures key that checks the structure: %v", err)
 	}
 
-	// Kraken documents iiban as nullable; a Futures-only Identity without it is bound to the
-	// accountUid.
+	// A missing canonical customer reference cannot establish a login binding.
 	futuresOnly := adapters.Credentials{Futures: testCreds.Futures}
 	for check, want := range map[string]string{
 		`{"iiban":"aa11 bbbb cccc dddd","accountUid":"u-1"}`: "AA11BBBBCCCCDDDD",
-		`{"iiban":null,"accountUid":"u-1"}`:                  "u-1",
+		`{"iiban":null,"accountUid":"u-1"}`:                  "",
 		`{"iiban":null,"accountUid":null}`:                   "",
 	} {
 		r := newReplay(t, "", map[string]string{epFuturesKey.String(): check})
@@ -655,7 +654,7 @@ func TestOptionPositionFailsTheMultiCollateralWallet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassNormalization || batch.Reports[1].Status != adapters.StatusOK {
+	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassNormalization || batch.Reports[1].Status != adapters.StatusSucceeded {
 		t.Fatalf("an option must fail Main and leave Coin-M: %+v", batch.Reports)
 	}
 }

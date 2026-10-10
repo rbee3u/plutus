@@ -9,177 +9,266 @@ import (
 	"context"
 )
 
-const deletePortfolioAccountReports = `-- name: DeletePortfolioAccountReports :exec
-DELETE FROM account_reports WHERE portfolio_id = ?
+const deletePortfolioAccountReports = `-- name: DeletePortfolioAccountReports :execrows
+DELETE FROM account_reports WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioAccountReports(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioAccountReports, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAccountReports(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAccountReports, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioAccounts = `-- name: DeletePortfolioAccounts :exec
-DELETE FROM accounts WHERE portfolio_id = ?
+const deletePortfolioAccountValuations = `-- name: DeletePortfolioAccountValuations :execrows
+DELETE FROM account_valuations WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioAccounts(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioAccounts, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAccountValuations(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAccountValuations, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioAssetExclusionEvents = `-- name: DeletePortfolioAssetExclusionEvents :exec
-DELETE FROM portfolio_asset_exclusion_events WHERE portfolio_id = ?
+const deletePortfolioAccounts = `-- name: DeletePortfolioAccounts :execrows
+DELETE FROM accounts WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioAssetExclusionEvents(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioAssetExclusionEvents, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAccounts(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAccounts, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioAssetExclusions = `-- name: DeletePortfolioAssetExclusions :exec
-DELETE FROM portfolio_asset_exclusions WHERE portfolio_id = ?
+const deletePortfolioAssetExclusionVersions = `-- name: DeletePortfolioAssetExclusionVersions :execrows
+DELETE FROM asset_exclusion_versions WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioAssetExclusions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioAssetExclusions, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAssetExclusionVersions(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAssetExclusionVersions, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioAuditEvents = `-- name: DeletePortfolioAuditEvents :exec
-DELETE FROM audit_events WHERE portfolio_id = ?
+const deletePortfolioAssets = `-- name: DeletePortfolioAssets :execrows
+DELETE FROM assets WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioAuditEvents(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioAuditEvents, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAssets(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAssets, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioBalances = `-- name: DeletePortfolioBalances :exec
-DELETE FROM balances WHERE portfolio_id = ?
+const deletePortfolioAuditEvents = `-- name: DeletePortfolioAuditEvents :execrows
+DELETE FROM audit_events WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioBalances(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioBalances, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioAuditEvents(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioAuditEvents, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioCapitalFlows = `-- name: DeletePortfolioCapitalFlows :exec
-DELETE FROM capital_flows WHERE portfolio_id = ?
+const deletePortfolioBalanceValuations = `-- name: DeletePortfolioBalanceValuations :execrows
+DELETE FROM balance_valuations WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioCapitalFlows(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioCapitalFlows, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioBalanceValuations(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioBalanceValuations, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioDualPositions = `-- name: DeletePortfolioDualPositions :exec
-DELETE FROM dual_positions WHERE portfolio_id = ?
+const deletePortfolioBalances = `-- name: DeletePortfolioBalances :execrows
+DELETE FROM balances WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioDualPositions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioDualPositions, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioBalances(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioBalances, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioEarnPositions = `-- name: DeletePortfolioEarnPositions :exec
-DELETE FROM earn_positions WHERE portfolio_id = ?
+const deletePortfolioBoundaryEvents = `-- name: DeletePortfolioBoundaryEvents :execrows
+DELETE FROM boundary_events WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioEarnPositions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioEarnPositions, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioBoundaryEvents(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioBoundaryEvents, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioIdempotencyRecords = `-- name: DeletePortfolioIdempotencyRecords :exec
-DELETE FROM idempotency_records WHERE portfolio_id = ?
+const deletePortfolioCalculatedAssetChanges = `-- name: DeletePortfolioCalculatedAssetChanges :execrows
+DELETE FROM calculated_asset_changes WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioIdempotencyRecords(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioIdempotencyRecords, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioCalculatedAssetChanges(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioCalculatedAssetChanges, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioIdentities = `-- name: DeletePortfolioIdentities :exec
-DELETE FROM identities WHERE portfolio_id = ?
+const deletePortfolioCapitalFlows = `-- name: DeletePortfolioCapitalFlows :execrows
+DELETE FROM capital_flows WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioIdentities(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioIdentities, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioCapitalFlows(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioCapitalFlows, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioJobs = `-- name: DeletePortfolioJobs :exec
-DELETE FROM jobs WHERE portfolio_id = ?
+const deletePortfolioCollectionCycles = `-- name: DeletePortfolioCollectionCycles :execrows
+DELETE FROM collection_cycles WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioJobs(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioJobs, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioCollectionCycles(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioCollectionCycles, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioManualBalances = `-- name: DeletePortfolioManualBalances :exec
-DELETE FROM manual_balances WHERE portfolio_id = ?
+const deletePortfolioDualPositions = `-- name: DeletePortfolioDualPositions :execrows
+DELETE FROM dual_positions WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioManualBalances(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioManualBalances, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioDualPositions(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioDualPositions, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioManualCycleAccounts = `-- name: DeletePortfolioManualCycleAccounts :exec
-DELETE FROM manual_cycle_accounts WHERE portfolio_id = ?
+const deletePortfolioEarnPositions = `-- name: DeletePortfolioEarnPositions :execrows
+DELETE FROM earn_positions WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioManualCycleAccounts(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioManualCycleAccounts, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioEarnPositions(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioEarnPositions, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioManualCycles = `-- name: DeletePortfolioManualCycles :exec
-DELETE FROM manual_cycles WHERE portfolio_id = ?
+const deletePortfolioFuturesContracts = `-- name: DeletePortfolioFuturesContracts :execrows
+DELETE FROM futures_contracts WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioManualCycles(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioManualCycles, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioFuturesContracts(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioFuturesContracts, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioManualRevisions = `-- name: DeletePortfolioManualRevisions :exec
-DELETE FROM manual_revisions WHERE portfolio_id = ?
+const deletePortfolioIdentities = `-- name: DeletePortfolioIdentities :execrows
+DELETE FROM identities WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioManualRevisions, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioIdentities(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioIdentities, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioPositions = `-- name: DeletePortfolioPositions :exec
-DELETE FROM positions WHERE portfolio_id = ?
+const deletePortfolioManualAdjustments = `-- name: DeletePortfolioManualAdjustments :execrows
+DELETE FROM manual_adjustments WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioPositions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioPositions, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioManualAdjustments(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioManualAdjustments, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deletePortfolioValuationPoints = `-- name: DeletePortfolioValuationPoints :exec
-DELETE FROM valuation_points WHERE portfolio_id = ?
+const deletePortfolioManualRevisionBalances = `-- name: DeletePortfolioManualRevisionBalances :execrows
+DELETE FROM manual_revision_balances WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioValuationPoints(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioValuationPoints, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioManualRevisionBalances(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioManualRevisionBalances, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const releasePortfolioReportSources = `-- name: ReleasePortfolioReportSources :exec
-UPDATE account_reports
-SET method = 'missing', value_usd = NULL, source_report_id = NULL
-WHERE portfolio_id = ?
+const deletePortfolioManualRevisions = `-- name: DeletePortfolioManualRevisions :execrows
+DELETE FROM manual_revisions WHERE portfolio_id = ? LIMIT 1000
 `
 
-// Release self and stale references only inside the Portfolio deletion transaction.
-// The report CHECK requires the missing method and unknown value together.
-func (q *Queries) ReleasePortfolioReportSources(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, releasePortfolioReportSources, portfolioID)
-	return err
+func (q *Queries) DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioManualRevisions, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deletePortfolioPositions = `-- name: DeletePortfolioPositions :execrows
+DELETE FROM futures_positions WHERE portfolio_id = ? LIMIT 1000
+`
+
+func (q *Queries) DeletePortfolioPositions(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioPositions, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deletePortfolioPriceObservations = `-- name: DeletePortfolioPriceObservations :execrows
+DELETE FROM price_observations WHERE portfolio_id = ? LIMIT 1000
+`
+
+func (q *Queries) DeletePortfolioPriceObservations(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioPriceObservations, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deletePortfolioValuationPoints = `-- name: DeletePortfolioValuationPoints :execrows
+DELETE FROM valuation_points WHERE portfolio_id = ? LIMIT 1000
+`
+
+func (q *Queries) DeletePortfolioValuationPoints(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioValuationPoints, portfolioID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

@@ -1,61 +1,65 @@
--- Release self and stale references only inside the Portfolio deletion transaction.
--- The report CHECK requires the missing method and unknown value together.
--- name: ReleasePortfolioReportSources :exec
-UPDATE account_reports
-SET method = 'missing', value_usd = NULL, source_report_id = NULL
-WHERE portfolio_id = ?;
+-- name: DeletePortfolioAccountValuations :execrows
+DELETE FROM account_valuations WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioBalances :exec
-DELETE FROM balances WHERE portfolio_id = ?;
+-- name: DeletePortfolioBalances :execrows
+DELETE FROM balances WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioPositions :exec
-DELETE FROM positions WHERE portfolio_id = ?;
+-- name: DeletePortfolioPositions :execrows
+DELETE FROM futures_positions WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioEarnPositions :exec
-DELETE FROM earn_positions WHERE portfolio_id = ?;
+-- name: DeletePortfolioEarnPositions :execrows
+DELETE FROM earn_positions WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioDualPositions :exec
-DELETE FROM dual_positions WHERE portfolio_id = ?;
+-- name: DeletePortfolioDualPositions :execrows
+DELETE FROM dual_positions WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioManualCycleAccounts :exec
-DELETE FROM manual_cycle_accounts WHERE portfolio_id = ?;
+-- name: DeletePortfolioManualRevisions :execrows
+DELETE FROM manual_revisions WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioManualBalances :exec
-DELETE FROM manual_balances WHERE portfolio_id = ?;
+-- name: DeletePortfolioCapitalFlows :execrows
+DELETE FROM capital_flows WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioManualRevisions :exec
-DELETE FROM manual_revisions WHERE portfolio_id = ?;
+-- name: DeletePortfolioValuationPoints :execrows
+DELETE FROM valuation_points WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioCapitalFlows :exec
-DELETE FROM capital_flows WHERE portfolio_id = ?;
+-- name: DeletePortfolioAuditEvents :execrows
+DELETE FROM audit_events WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioValuationPoints :exec
-DELETE FROM valuation_points WHERE portfolio_id = ?;
+-- name: DeletePortfolioAssetExclusionVersions :execrows
+DELETE FROM asset_exclusion_versions WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioAuditEvents :exec
-DELETE FROM audit_events WHERE portfolio_id = ?;
+-- name: DeletePortfolioAccountReports :execrows
+DELETE FROM account_reports WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioIdempotencyRecords :exec
-DELETE FROM idempotency_records WHERE portfolio_id = ?;
+-- name: DeletePortfolioAccounts :execrows
+DELETE FROM accounts WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioAssetExclusionEvents :exec
-DELETE FROM portfolio_asset_exclusion_events WHERE portfolio_id = ?;
+-- name: DeletePortfolioCollectionCycles :execrows
+DELETE FROM collection_cycles WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioAssetExclusions :exec
-DELETE FROM portfolio_asset_exclusions WHERE portfolio_id = ?;
+-- name: DeletePortfolioIdentities :execrows
+DELETE FROM identities WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioAccountReports :exec
-DELETE FROM account_reports WHERE portfolio_id = ?;
+-- name: DeletePortfolioBoundaryEvents :execrows
+DELETE FROM boundary_events WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioManualCycles :exec
-DELETE FROM manual_cycles WHERE portfolio_id = ?;
+-- name: DeletePortfolioBalanceValuations :execrows
+DELETE FROM balance_valuations WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioAccounts :exec
-DELETE FROM accounts WHERE portfolio_id = ?;
+-- name: DeletePortfolioManualRevisionBalances :execrows
+DELETE FROM manual_revision_balances WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioJobs :exec
-DELETE FROM jobs WHERE portfolio_id = ?;
+-- name: DeletePortfolioFuturesContracts :execrows
+DELETE FROM futures_contracts WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioIdentities :exec
-DELETE FROM identities WHERE portfolio_id = ?;
+-- name: DeletePortfolioAssets :execrows
+DELETE FROM assets WHERE portfolio_id = ? LIMIT 1000;
 
+-- name: DeletePortfolioPriceObservations :execrows
+DELETE FROM price_observations WHERE portfolio_id = ? LIMIT 1000;
+
+-- name: DeletePortfolioManualAdjustments :execrows
+DELETE FROM manual_adjustments WHERE portfolio_id = ? LIMIT 1000;
+
+-- name: DeletePortfolioCalculatedAssetChanges :execrows
+DELETE FROM calculated_asset_changes WHERE portfolio_id = ? LIMIT 1000;

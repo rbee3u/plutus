@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,9 @@ func (s *Service) PutCredentials(ctx context.Context, portfolioID, id uuid.UUID,
 		return Identity{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	keyVersion := secret.CurrentKeyVersion()
+	if keyVersion == 0 || keyVersion > math.MaxInt16 {
+		return Identity{}, errors.New("credential key version exceeds the SQL driver representation")
+	}
 	ciphertext, nonce, err := s.box.Seal(id, portfolioID, keyVersion, secret.Credentials{APIKey: creds.APIKey, APISecret: creds.APISecret, Passphrase: creds.Passphrase, FuturesAPIKey: creds.FuturesKey(), FuturesAPISecret: creds.FuturesSecret()})
 	if errors.Is(err, secret.ErrInvalidCredentials) {
 		return Identity{}, ErrInvalid
@@ -44,9 +48,12 @@ func (s *Service) PutCredentials(ctx context.Context, portfolioID, id uuid.UUID,
 	}
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		n, err := q.SetIdentityCredentials(ctx, sqlcgen.SetIdentityCredentialsParams{
-			CredentialsCiphertext: ciphertext, CredentialsNonce: nonce, CredentialKeyVersion: keyVersion,
-			CredentialsUpdatedAt: sql.NullTime{Time: now, Valid: true}, UpdatedAt: now,
+			CredentialsCiphertext: ciphertext, CredentialsNonce: nonce, CredentialsKeyVersion: sql.NullInt16{Int16: int16(keyVersion), Valid: true}, // #nosec G115 -- Explicitly bounded to 1..MaxInt16 above.
+			CredentialsSetAt: sql.NullTime{Time: now, Valid: true}, UpdatedAt: now,
 			PortfolioID: portfolioID[:], ID: id[:], Version: version,
 		})
 		if err != nil {
@@ -79,6 +86,9 @@ func (s *Service) ClearCredentials(ctx context.Context, portfolioID, id uuid.UUI
 	}
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		n, err := q.ClearIdentityCredentials(ctx, sqlcgen.ClearIdentityCredentialsParams{UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version})
 		if err != nil {
 			return err
@@ -205,6 +215,9 @@ func (s *Service) probe(ctx context.Context, current *Identity) (ValidationOutco
 	if err != nil {
 		return failed(err), nil
 	}
+	if result.ExternalRef == "" {
+		return failed(adapters.NewError(adapters.ClassNormalization, "The Platform returned no stable login reference.")), nil
+	}
 	if bound := current.ExternalRef; bound != nil && result.ExternalRef != "" && result.ExternalRef != *bound {
 		return failed(adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
 			"This key belongs to %s account %s, but this Identity is account %s; create a new Identity for the other account.",
@@ -223,25 +236,31 @@ func (s *Service) storeOutcome(ctx context.Context, current *Identity, version u
 		ConnectionStatus: status, UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version,
 	}
 	if outcome.ExternalRef != "" {
-		params.ExternalRef = sql.NullString{String: outcome.ExternalRef, Valid: true}
+		params.PlatformLoginRef = sql.NullString{String: outcome.ExternalRef, Valid: true}
 	}
 	metadata := map[string]any{"ok": outcome.OK, "status": status, "errorClass": outcome.ErrorClass}
 	if outcome.OK && outcome.MarginMode != "" {
-		params.MarginMode = sql.NullString{String: string(outcome.MarginMode), Valid: true}
+		params.LastObservedMarginMode = sql.NullString{String: string(outcome.MarginMode), Valid: true}
 		metadata["marginMode"] = string(outcome.MarginMode)
 		if current.MarginMode != outcome.MarginMode {
 			metadata["previousMarginMode"] = nullableMode(current.MarginMode)
 		}
 	}
 	if outcome.OK && !outcome.ValidatedAt.IsZero() {
-		params.LastValidatedAt = sql.NullTime{Time: outcome.ValidatedAt, Valid: true}
+		params.LastValidationSucceededAt = sql.NullTime{Time: outcome.ValidatedAt, Valid: true}
 	}
 	if !outcome.OK {
 		params.LastErrorClass = sql.NullString{String: outcome.ErrorClass, Valid: true}
 		params.LastErrorDetail = sql.NullString{String: outcome.ErrorDetail, Valid: true}
 	}
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, current.PortfolioID[:]); err != nil {
+			return err
+		}
 		n, err := q.SetIdentityConnectionStatus(ctx, params)
+		if mysql.IsDuplicate(err) {
+			return ErrLoginConflict
+		}
 		if err != nil {
 			return err
 		}
@@ -259,24 +278,24 @@ func (s *Service) storeOutcome(ctx context.Context, current *Identity, version u
 }
 
 func (s *Service) credentials(ctx context.Context, portfolioID, id uuid.UUID) (adapters.Credentials, error) {
-	row, err := s.q.GetIdentityCredentials(ctx, sqlcgen.GetIdentityCredentialsParams{PortfolioID: portfolioID[:], ID: id[:]})
+	row, err := mysql.Queries(ctx, s.db).GetIdentityCredentials(ctx, sqlcgen.GetIdentityCredentialsParams{PortfolioID: portfolioID[:], ID: id[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return adapters.Credentials{}, ErrNotFound
 	}
 	if err != nil {
 		return adapters.Credentials{}, err
 	}
-	return s.open(id, portfolioID, row.CredentialKeyVersion, row.CredentialsCiphertext, row.CredentialsNonce)
+	return s.open(id, portfolioID, row.CredentialsKeyVersion, row.CredentialsCiphertext, row.CredentialsNonce)
 }
 
-func (s *Service) open(id, portfolioID uuid.UUID, keyVersion uint16, ciphertext, nonce []byte) (adapters.Credentials, error) {
-	if len(ciphertext) == 0 {
+func (s *Service) open(id, portfolioID uuid.UUID, keyVersion sql.NullInt16, ciphertext, nonce []byte) (adapters.Credentials, error) {
+	if len(ciphertext) == 0 || !keyVersion.Valid || keyVersion.Int16 <= 0 || len(nonce) != 12 {
 		return adapters.Credentials{}, ErrCredentialsMissing
 	}
 	if s.box == nil {
 		return adapters.Credentials{}, ErrMasterKeyRequired
 	}
-	creds, err := s.box.Open(id, portfolioID, keyVersion, ciphertext, nonce)
+	creds, err := s.box.Open(id, portfolioID, uint16(keyVersion.Int16), ciphertext, nonce)
 	if err != nil {
 		return adapters.Credentials{}, err
 	}

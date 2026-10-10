@@ -1,12 +1,15 @@
 package seeds
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/shared/textkey"
 
 	"github.com/google/uuid"
 
@@ -31,45 +34,44 @@ type LiveIdentity struct {
 	Status      string
 }
 
-var tableOrder = []string{
-	"users", "portfolios", "identities", "accounts", "assets", "futures_contracts", "jobs",
-	"account_reports", "balances", "positions", "earn_positions", "dual_positions", "prices", "capital_flows",
-	"portfolio_asset_exclusions", "portfolio_asset_exclusion_events", "audit_events",
-}
+var tableOrder = []string{"users", "portfolios", "identities", "accounts", "assets", "futures_contracts", "collection_cycles", "manual_revisions", "account_reports", "balances", "futures_positions", "earn_positions", "dual_positions", "price_observations", "capital_flows", "asset_exclusion_versions", "audit_events"}
 
 var tableColumns = map[string]string{
-	"users":                            "id, username, username_normalized, status, password_hash, created_at, updated_at",
-	"portfolios":                       "id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at",
-	"identities":                       "id, portfolio_id, platform, display_name, account_structure, margin_mode, external_ref, status, archived_at, connection_status, credential_key_version, credentials_updated_at, last_validated_at, last_collected_at, last_error_class, last_error_detail, version, created_at, updated_at",
-	"accounts":                         "id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at",
-	"assets":                           "id, platform, symbol, canonical_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at",
-	"futures_contracts":                "id, platform, symbol, kind, base_asset_symbol, quote_asset_symbol, settlement_asset_symbol, expiry_at, contract_size, first_seen_at, last_seen_at, created_at, updated_at",
-	"jobs":                             "id, portfolio_id, kind, status, `trigger`, dedupe_key, payload_json, requested_by_user_id, available_at, attempt_count, max_attempts, last_error_class, last_detail, created_at, updated_at, started_at, finished_at",
-	"account_reports":                  "id, portfolio_id, job_id, account_id, scope_version, earn_details_collected, margin_mode, status, observed_at, error_class, error_detail, equity, adjusted_equity, available_equity, initial_margin_ratio, maintenance_margin_ratio, unified_margin_ratio, value_usd, method, source_report_id, omitted_json, created_at",
-	"balances":                         "report_id, portfolio_id, asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl",
-	"positions":                        "report_id, portfolio_id, platform_position_ref, futures_contract_id, side, quantity, quantity_unit, entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin, position_mode, margin_mode, margin_asset_symbol, margin_basis",
-	"earn_positions":                   "report_id, portfolio_id, platform_position_ref, observation_json",
-	"dual_positions":                   "report_id, portfolio_id, platform_position_ref, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, invest_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at",
-	"prices":                           "platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol",
-	"capital_flows":                    "id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note, created_by_user_id, version, created_at, updated_at",
-	"audit_events":                     "id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id, before_json, after_json, metadata_json, occurred_at",
-	"portfolio_asset_exclusions":       "portfolio_id, asset_id, ignored, reason, version, actor_user_id, updated_at",
-	"portfolio_asset_exclusion_events": "portfolio_id, asset_id, version, ignored, reason, actor_user_id, effective_at",
+	"users":                    "id, username, username_key, status, password_hash, created_at, updated_at",
+	"portfolios":               "id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, version, created_at, updated_at",
+	"identities":               "id, portfolio_id, platform, display_name, display_name_key, account_structure, last_observed_margin_mode, platform_login_ref, archived_at, connection_status, credentials_key_version, credentials_set_at, last_validation_succeeded_at, last_collection_finished_at, last_error_class, last_error_detail, version, created_at, updated_at",
+	"accounts":                 "id, portfolio_id, identity_id, account_type, selected",
+	"assets":                   "id, portfolio_id, platform, symbol, canonical_asset_symbol, mapping_version, first_observed_at, last_observed_at",
+	"futures_contracts":        "id, portfolio_id, platform, symbol, terms_hash, kind, base_asset_symbol, quote_asset_symbol, settlement_asset_symbol, expiry_at, contract_size, first_observed_at, last_observed_at",
+	"collection_cycles":        "id, portfolio_id, trigger_kind, status, attempt_count, available_at, created_at, started_at, collection_finished_at, finished_at, manual_reported_at",
+	"account_reports":          "id, portfolio_id, cycle_id, account_id, status, collected_at, source_observed_at, recorded_at, margin_mode, error_class, error_detail, reported_equity_usd, adjusted_equity_usd, available_equity_usd, initial_margin_requirement_usd, maintenance_margin_requirement_usd, reported_initial_margin_ratio, reported_maintenance_margin_ratio, reported_margin_ratio, spot_margin_unrealized_pnl_usd, manual_revision_number",
+	"balances":                 "report_id, portfolio_id, asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl",
+	"futures_positions":        "report_id, portfolio_id, position_key, futures_contract_id, side, source_quantity, source_quantity_unit, entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin, position_mode, margin_setting, margin_asset_symbol, margin_basis",
+	"earn_positions":           "report_id, portfolio_id, position_key, product_ref, product_name, product_type, granularity, amount_basis, status, subscribed_at, maturity_at, details_json",
+	"dual_positions":           "report_id, portfolio_id, position_key, product_ref, order_ref, base_asset_symbol, quote_asset_symbol, principal_asset_symbol, principal, direction, target_price, expiry_at, annualized_rate, rate_kind, status, subscribed_at",
+	"price_observations":       "id, portfolio_id, platform, requested_canonical_asset_symbol, source_market_ref, quote_canonical_asset_symbol, price, retrieved_at",
+	"manual_revisions":         "portfolio_id, account_id, revision_number, changed_at",
+	"capital_flows":            "id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note, version, created_at, updated_at, pricing_method, pricing_attempted_at, calculation_version",
+	"asset_exclusion_versions": "portfolio_id, asset_id, version, excluded, reason, effective_at",
+	"audit_events":             "id, portfolio_id, actor_user_id, action, resource_type, resource_id, request_id, before_json, after_json, metadata_json, occurred_at",
 }
 
 type assetRow struct {
-	id              uuid.UUID
-	platform        adapters.Platform
-	symbol          string
-	canonicalSymbol string
-	name            string
-	source          string
-	first           time.Time
-	last            time.Time
+	portfolio            uuid.UUID
+	id                   uuid.UUID
+	platform             adapters.Platform
+	symbol               string
+	canonicalAssetSymbol string
+	source               string
+	first                time.Time
+	last                 time.Time
 }
 
 type futuresContractRow struct {
+	portfolio       uuid.UUID
 	id              uuid.UUID
+	hash            [32]byte
+	symbol          string
 	platform        adapters.Platform
 	futuresContract adapters.FuturesContract
 	first           time.Time
@@ -91,22 +93,25 @@ type builder struct {
 	portfolios          map[uuid.UUID]bool
 	accountOwners       map[uuid.UUID]uuid.UUID
 	accountTypes        map[uuid.UUID]adapters.AccountType
+	accountIdentities   map[uuid.UUID]uuid.UUID
+	manualAccounts      map[uuid.UUID]uuid.UUID
 	keys                map[string]bool
 	err                 error
 }
 
 func newBuilder() *builder {
 	return &builder{
-		rows:             map[string][][]string{},
-		seq:              map[uint16]uint64{},
-		assets:           map[string]*assetRow{},
-		futuresContracts: map[string]*futuresContractRow{},
-		prices:           map[string]bool{},
-		identities:       map[uuid.UUID]identitySpec{},
-		portfolios:       map[uuid.UUID]bool{},
-		accountOwners:    map[uuid.UUID]uuid.UUID{},
-		accountTypes:     map[uuid.UUID]adapters.AccountType{},
-		keys:             map[string]bool{},
+		rows:              map[string][][]string{},
+		seq:               map[uint16]uint64{},
+		assets:            map[string]*assetRow{},
+		futuresContracts:  map[string]*futuresContractRow{},
+		prices:            map[string]bool{},
+		identities:        map[uuid.UUID]identitySpec{},
+		portfolios:        map[uuid.UUID]bool{},
+		accountOwners:     map[uuid.UUID]uuid.UUID{},
+		accountTypes:      map[uuid.UUID]adapters.AccountType{},
+		accountIdentities: map[uuid.UUID]uuid.UUID{}, manualAccounts: map[uuid.UUID]uuid.UUID{},
+		keys: map[string]bool{},
 	}
 }
 
@@ -131,12 +136,10 @@ func (b *builder) add(table string, row ...string) {
 	}
 	key := table + "|" + row[0]
 	switch table {
-	case "balances", "positions", "earn_positions", "dual_positions":
+	case "balances", "futures_positions", "earn_positions", "dual_positions":
 		key += "|" + row[2]
-	case "prices", "portfolio_asset_exclusion_events":
+	case "asset_exclusion_versions", "manual_revisions":
 		key += "|" + row[1] + "|" + row[2]
-	case "portfolio_asset_exclusions":
-		key += "|" + row[1]
 	}
 	if b.keys[key] {
 		b.fail(fmt.Errorf("seed %s: duplicate primary key", table))
@@ -145,7 +148,7 @@ func (b *builder) add(table string, row ...string) {
 	b.keys[key] = true
 	for i, col := range columns {
 		switch col {
-		case "equity", "adjusted_equity", "available_equity", "initial_margin_ratio", "maintenance_margin_ratio", "unified_margin_ratio", "value_usd", "available_to_withdraw", "available_to_trade", "liability", "interest", "unrealized_pnl", "quantity", "entry_price", "mark_price", "liquidation_price", "leverage", "margin", "principal", "target_price", "annualized_rate", "contract_size", "price":
+		case "equity", "reported_equity_usd", "adjusted_equity_usd", "available_equity_usd", "initial_margin_requirement_usd", "maintenance_margin_requirement_usd", "reported_initial_margin_ratio", "reported_maintenance_margin_ratio", "reported_margin_ratio", "spot_margin_unrealized_pnl_usd", "value_usd", "available_to_withdraw", "available_to_trade", "liability", "interest", "unrealized_pnl", "quantity", "entry_price", "mark_price", "liquidation_price", "leverage", "margin", "principal", "target_price", "annualized_rate", "contract_size", "price":
 			if row[i] == "NULL" {
 				if table == "balances" && col == "equity" {
 					b.fail(fmt.Errorf("seed Balance equity must be known"))
@@ -205,11 +208,12 @@ func (b *builder) flushCatalog() {
 		if asset.source == catalog.MappingManual {
 			version = "2"
 		}
-		b.add("assets", bin(asset.id), q(string(asset.platform)), q(asset.symbol), q(asset.canonicalSymbol), qn(asset.name), q(asset.source), ts(asset.first), ts(asset.last), version, ts(asset.first), ts(asset.last))
+		b.add("assets", bin(asset.id), bin(asset.portfolio), q(string(asset.platform)), q(asset.symbol), q(asset.canonicalAssetSymbol), version, ts(asset.first), ts(asset.last))
 	}
 	for _, key := range b.futuresContractKeys {
 		contract := b.futuresContracts[key]
-		b.add("futures_contracts", bin(contract.id), q(string(contract.platform)), q(contract.futuresContract.Symbol), q(contract.futuresContract.Kind), qn(contract.futuresContract.BaseAssetSymbol), qn(contract.futuresContract.QuoteAssetSymbol), qn(contract.futuresContract.SettlementAssetSymbol), tsp(contract.futuresContract.ExpiryAt), decp(contract.futuresContract.ContractSize), ts(contract.first), ts(contract.last), ts(contract.first), ts(contract.last))
+		terms := contract.futuresContract
+		b.add("futures_contracts", bin(contract.id), bin(contract.portfolio), q(string(contract.platform)), q(contract.symbol), "UNHEX('"+hex.EncodeToString(contract.hash[:])+"')", q(terms.Kind), qn(terms.BaseAssetSymbol), qn(terms.QuoteAssetSymbol), qn(terms.SettlementAssetSymbol), tsp(terms.ExpiryAt), decp(terms.ContractSize), ts(contract.first), ts(contract.last))
 	}
 	b.assetKeys = nil
 	b.futuresContractKeys = nil
@@ -293,7 +297,7 @@ type userSpec struct {
 }
 
 func (b *builder) user(u userSpec) {
-	b.add("users", bin(u.ID), q(u.Username), q(strings.ToLower(u.Username)), q("active"), q(u.Hash), ts(u.CreatedAt), ts(u.CreatedAt))
+	b.add("users", bin(u.ID), q(u.Username), q(textkey.Key(u.Username)), q("active"), q(u.Hash), ts(u.CreatedAt), ts(u.CreatedAt))
 }
 
 type portfolioSpec struct {
@@ -308,7 +312,7 @@ type portfolioSpec struct {
 
 func (b *builder) portfolio(p *portfolioSpec) {
 	b.portfolios[p.ID] = true
-	b.add("portfolios", bin(p.ID), bin(p.User), q(p.Name), q(p.Timezone), strconv.Itoa(p.Interval), boolean(p.Undeletable), "1", ts(p.CreatedAt), ts(p.CreatedAt))
+	b.add("portfolios", bin(p.ID), bin(p.User), q(p.Name), q(textkey.Key(p.Name)), q(p.Timezone), strconv.Itoa(p.Interval), boolean(p.Undeletable), "1", ts(p.CreatedAt), ts(p.CreatedAt))
 }
 
 type identitySpec struct {
@@ -334,10 +338,8 @@ func (b *builder) identity(i *identitySpec) {
 		b.fail(fmt.Errorf("seed Identity references an invalid Portfolio or capability"))
 		return
 	}
-	status := "enabled"
 	var archivedAt *time.Time
 	if i.Archived {
-		status = "archived"
 		at := i.ArchivedAt
 		archivedAt = &at
 	}
@@ -351,8 +353,8 @@ func (b *builder) identity(i *identitySpec) {
 	if i.APIKey != "" {
 		externalRef = fake.ExternalRef(i.APIKey)
 	}
-	b.add("identities", bin(i.ID), bin(i.Portfolio), q(string(i.Platform)), q(i.Name), q(string(i.Structure)), qn(string(i.MarginMode)), qn(externalRef), q(status), tsp(archivedAt),
-		q("unconfigured"), "0", "NULL", "NULL", tsp(collectedAt), qn(i.LastError), qn(i.LastDetail), "1", ts(i.CreatedAt), ts(i.CreatedAt))
+	b.add("identities", bin(i.ID), bin(i.Portfolio), q(string(i.Platform)), q(i.Name), q(textkey.Key(i.Name)), q(string(i.Structure)), qn(string(i.MarginMode)), qn(externalRef), tsp(archivedAt),
+		q("unconfigured"), "NULL", "NULL", "NULL", tsp(collectedAt), qn(i.LastError), qn(i.LastDetail), "1", ts(i.CreatedAt), ts(i.CreatedAt))
 	b.identities[i.ID] = *i
 	if i.APIKey != "" && !i.Archived {
 		creds := adapters.Credentials{APIKey: i.APIKey, APISecret: "seed-secret-" + i.APIKey, Passphrase: "seed-passphrase"}
@@ -377,59 +379,67 @@ func (b *builder) accounts(identityID uuid.UUID, ids map[adapters.AccountType]uu
 			id = b.next(kindAccount)
 		}
 		b.accountOwners[id], b.accountTypes[id] = spec.Portfolio, t.ID
-		b.add("accounts", bin(id), bin(spec.Portfolio), bin(identityID), q(string(t.ID)), q(t.Name), boolean(selected[t.ID] || t.ID == adapters.TypeManual), "1", ts(createdAt), ts(createdAt))
+		b.accountIdentities[id] = identityID
+		if t.ID == adapters.TypeManual {
+			b.manualAccounts[identityID] = id
+			b.add("manual_revisions", bin(spec.Portfolio), bin(id), "1", "NULL")
+		}
+		b.add("accounts", bin(id), bin(spec.Portfolio), bin(identityID), q(string(t.ID)), boolean(selected[t.ID] || t.ID == adapters.TypeManual))
 	}
 }
 
-func (b *builder) asset(platform adapters.Platform, symbol, name string, seenAt time.Time) uuid.UUID {
-	key := string(platform) + "|" + symbol
+func (b *builder) asset(portfolio uuid.UUID, platform adapters.Platform, symbol string, observedAt time.Time) uuid.UUID {
+	key := portfolio.String() + "|" + string(platform) + "|" + symbol
 	row, ok := b.assets[key]
 	if !ok {
 		// Retain the historical ID namespace so terminology changes do not replace seeded Assets.
-		row = &assetRow{id: namedID("listing/" + key), platform: platform, symbol: symbol, canonicalSymbol: catalog.CanonicalAssetSymbolFor(symbol), name: name, source: catalog.MappingAuto, first: seenAt, last: seenAt}
+		row = &assetRow{portfolio: portfolio, id: namedID("asset/" + key), platform: platform, symbol: symbol, canonicalAssetSymbol: catalog.CanonicalAssetSymbolFor(symbol), source: catalog.MappingAuto, first: observedAt, last: observedAt}
 		b.assets[key] = row
 		b.assetKeys = append(b.assetKeys, key)
 	}
-	if seenAt.Before(row.first) {
-		row.first = seenAt
+	if observedAt.Before(row.first) {
+		row.first = observedAt
 	}
-	if seenAt.After(row.last) {
-		row.last = seenAt
-	}
-	if row.name == "" {
-		row.name = name
+	if observedAt.After(row.last) {
+		row.last = observedAt
 	}
 	return row.id
 }
 
-func (b *builder) futuresContract(platform adapters.Platform, in *adapters.FuturesContract, seenAt time.Time) uuid.UUID {
-	key := string(platform) + "|" + in.Symbol
+func (b *builder) futuresContract(portfolio uuid.UUID, platform adapters.Platform, in *adapters.FuturesContract, observedAt time.Time) uuid.UUID {
+	terms, raw, err := catalog.NormalizeFuturesTerms(in)
+	if err != nil {
+		b.fail(err)
+		return uuid.Nil
+	}
+	hash := sha256.Sum256(raw)
+	key := portfolio.String() + "|" + string(platform) + "|" + in.Symbol + "|" + hex.EncodeToString(hash[:])
 	row, ok := b.futuresContracts[key]
 	if !ok {
-		// Preserve the historical namespace of seeded Futures Contract IDs.
-		row = &futuresContractRow{id: namedID("instrument/" + key), platform: platform, futuresContract: *in, first: seenAt, last: seenAt}
+		row = &futuresContractRow{portfolio: portfolio, id: namedID("futures-terms/" + key), hash: hash, symbol: in.Symbol, platform: platform, futuresContract: terms, first: observedAt, last: observedAt}
 		b.futuresContracts[key] = row
 		b.futuresContractKeys = append(b.futuresContractKeys, key)
 	}
-	if seenAt.Before(row.first) {
-		row.first = seenAt
+
+	if observedAt.Before(row.first) {
+		row.first = observedAt
 	}
-	if seenAt.After(row.last) {
-		row.last = seenAt
+	if observedAt.After(row.last) {
+		row.last = observedAt
 	}
 	return row.id
 }
 
-func (b *builder) price(platform adapters.Platform, canonicalAssetSymbol, price string, at time.Time) {
+func (b *builder) price(portfolio uuid.UUID, platform adapters.Platform, canonicalAssetSymbol, price string, at time.Time) {
 	if price == "" {
 		return
 	}
-	key := string(platform) + "|" + canonicalAssetSymbol + "|" + at.UTC().Format(timestampLayout)
+	key := portfolio.String() + "|" + string(platform) + "|" + canonicalAssetSymbol + "|" + at.UTC().Format(timestampLayout)
 	if b.prices[key] {
 		return
 	}
 	b.prices[key] = true
-	b.add("prices", q(string(platform)), q(canonicalAssetSymbol), ts(at), price, q("USDT"))
+	b.add("price_observations", bin(namedID("price/"+key)), bin(portfolio), q(string(platform)), q(canonicalAssetSymbol), q(canonicalAssetSymbol+"USDT"), q("USDT"), price, ts(at))
 }
 
 // reportSpec is one Account's outcome within a cycle.
@@ -441,38 +451,42 @@ type reportSpec struct {
 	Report      *adapters.AccountReport // nil means a failed report
 	Class       string
 	Detail      string
-	Scope       uint16
 }
 
-// cycle inserts one succeeded Collection Cycle job and its Account Reports.
-// Valuation columns are left for valuation.Rebuild, which the seed command runs afterwards.
+// cycle inserts one succeeded Collection Cycle and its Account Reports.
+// Apply initializes its Valuation Point before committing these source facts.
 func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpec) {
-	jobID := namedID("cycle/" + portfolioID.String() + "/" + at.Format(timestampLayout))
+	cycleID := namedID("cycle/" + portfolioID.String() + "/" + at.Format(timestampLayout))
 	started := at.Add(time.Second)
 	finished := at.Add(4 * time.Second)
-	b.add("jobs", bin(jobID), bin(portfolioID), q("collection_cycle"), q("succeeded"), q("schedule"), q("cycle"), "NULL", "NULL", ts(at), "1", "3", "NULL", "NULL", ts(at), ts(finished), ts(started), ts(finished))
+	b.add("collection_cycles", bin(cycleID), bin(portfolioID), q("schedule"), q("succeeded"), "1", ts(at), ts(at), ts(started), ts(finished), ts(finished), ts(started))
+	seen := map[uuid.UUID]bool{}
+	for _, report := range reports {
+		identityID := b.accountIdentities[report.Account]
+		if seen[identityID] {
+			continue
+		}
+		seen[identityID] = true
+		accountID := b.manualAccounts[identityID]
+		reports = append(reports, reportSpec{Account: accountID, AccountType: adapters.TypeManual, Platform: report.Platform, Report: &adapters.AccountReport{AccountType: adapters.TypeManual, Status: adapters.StatusSucceeded, CollectedAt: finished}})
+	}
 	for i := range reports {
 		r := &reports[i]
 		if b.accountOwners[r.Account] != portfolioID || b.accountTypes[r.Account] != r.AccountType {
 			b.fail(fmt.Errorf("seed report references an invalid Account boundary"))
 			continue
 		}
-		reportID := namedID("report/" + jobID.String() + "/" + r.Account.String())
-		scope := r.Scope
-		if scope == 0 {
-			scope = adapters.ReportScope(r.Platform, r.AccountType)
-		}
+		reportID := namedID("report/" + cycleID.String() + "/" + r.Account.String())
 		if r.Report == nil {
 			class := r.Class
 			if class == "" {
 				class = adapters.ClassTemporary
 			}
-			b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(scope)), "FALSE", "NULL", q("failed"), "NULL", q(class), qn(r.Detail),
-				"NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", q("missing"), "NULL", "NULL", ts(finished))
+			b.add("account_reports", bin(reportID), bin(portfolioID), bin(cycleID), bin(r.Account), q("failed"), "NULL", "NULL", ts(finished), "NULL", q(class), qn(r.Detail), "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL")
 			continue
 		}
 		rep := r.Report
-		observed := rep.ObservedAt
+		observed := rep.CollectedAt
 		if observed.IsZero() {
 			observed = at.Add(2 * time.Second)
 		}
@@ -480,25 +494,27 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 			b.fail(fmt.Errorf("seed Account %s at %s: %w", r.Account, at.Format(time.RFC3339), err))
 			continue
 		}
-		b.add("account_reports", bin(reportID), bin(portfolioID), bin(jobID), bin(r.Account), strconv.Itoa(int(scope)), boolean(rep.EarnDetailsCollected), qn(string(r.MarginMode)), q("ok"), ts(observed), "NULL", "NULL",
-			decp(rep.Equity), decp(rep.AdjustedEquity), decp(rep.AvailableEquity), decp(rep.InitialMarginRatio), decp(rep.MaintenanceMarginRatio), decp(rep.UnifiedMarginRatio),
-			"NULL", q("missing"), "NULL", "NULL", ts(finished))
+		manualRevision := "NULL"
+		if r.AccountType == adapters.TypeManual {
+			manualRevision = "1"
+		}
+		b.add("account_reports", bin(reportID), bin(portfolioID), bin(cycleID), bin(r.Account), q(adapters.StatusSucceeded), ts(observed), tsp(rep.SourceObservedAt), ts(finished), qn(string(r.MarginMode)), "NULL", "NULL", decp(rep.Equity), decp(rep.AdjustedEquity), decp(rep.AvailableEquity), decp(rep.InitialMarginRequirementUSD), decp(rep.MaintenanceMarginRequirementUSD), decp(rep.ReportedInitialMarginRatio), decp(rep.ReportedMaintenanceMarginRatio), decp(rep.ReportedMarginRatio), decp(rep.SpotMarginUnrealizedPnlUSD), manualRevision)
 		for j := range rep.Balances {
 			bal := &rep.Balances[j]
-			assetID := b.asset(r.Platform, bal.AssetSymbol, bal.Name, observed)
+			assetID := b.asset(portfolioID, r.Platform, bal.AssetSymbol, observed)
 			b.add("balances", bin(reportID), bin(portfolioID), bin(assetID), dec(bal.Equity), decp(bal.AvailableToWithdraw), decp(bal.AvailableToTrade), decp(bal.Liability), decp(bal.Interest), decp(bal.UnrealizedPnl))
 		}
 		for i := range rep.DualPositions {
 			pos := &rep.DualPositions[i]
-			b.add("dual_positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), qp(pos.ProductRef), qp(pos.OrderRef), qp(pos.BaseAssetSymbol), qp(pos.QuoteAssetSymbol), q(pos.InvestAssetSymbol), pos.Principal, qp(pos.Direction), decp(pos.TargetPrice), tsp(pos.ExpiryAt), decp(pos.AnnualizedRate), qp(pos.RateKind), q(pos.Status), tsp(pos.SubscribedAt))
+			b.add("dual_positions", bin(reportID), bin(portfolioID), q(pos.PositionKey), qp(pos.ProductRef), qp(pos.OrderRef), qp(pos.BaseAssetSymbol), qp(pos.QuoteAssetSymbol), q(pos.PrincipalAssetSymbol), pos.Principal, qp(pos.Direction), decp(pos.TargetPrice), tsp(pos.ExpiryAt), decp(pos.AnnualizedRate), qp(pos.RateKind), q(pos.Status), tsp(pos.SubscribedAt))
 		}
 		for _, pos := range rep.EarnPositions {
-			b.add("earn_positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), b.jsonLiteral(pos))
+			b.add("earn_positions", bin(reportID), bin(portfolioID), q(pos.PositionKey), qp(pos.ProductRef), qp(pos.ProductName), q(pos.Type), q(pos.Granularity), q(pos.AmountBasis), qp(pos.Status), tsp(pos.SubscribedAt), tsp(pos.MaturityAt), b.jsonLiteral(adapters.EarnDetails{Assets: pos.Assets, Rates: pos.Rates, Rewards: pos.Rewards, Details: pos.Details, Issues: pos.Problems}))
 		}
 		for j := range rep.Positions {
 			pos := &rep.Positions[j]
-			futuresContractID := b.futuresContract(r.Platform, &pos.FuturesContract, observed)
-			b.add("positions", bin(reportID), bin(portfolioID), q(pos.PlatformPositionRef), bin(futuresContractID), q(pos.Side), pos.Quantity, q(pos.QuantityUnit), decp(pos.EntryPrice), decp(pos.MarkPrice), decp(pos.LiquidationPrice), decp(pos.UnrealizedPnl), decp(pos.Leverage), decp(pos.Margin), qn(pos.PositionMode), qn(pos.MarginMode), qn(pos.MarginAssetSymbol), qn(pos.MarginBasis))
+			futuresContractID := b.futuresContract(portfolioID, r.Platform, &pos.FuturesContract, observed)
+			b.add("futures_positions", bin(reportID), bin(portfolioID), q(pos.PositionKey), bin(futuresContractID), q(pos.Side), pos.SourceQuantity, q(pos.SourceQuantityUnit), decp(pos.EntryPrice), decp(pos.MarkPrice), decp(pos.LiquidationPrice), decp(pos.UnrealizedPnl), decp(pos.Leverage), decp(pos.Margin), qn(pos.PositionMode), qn(pos.MarginSetting), qn(pos.MarginAssetSymbol), qn(pos.MarginBasis))
 		}
 	}
 }
@@ -517,7 +533,11 @@ type flowSpec struct {
 }
 
 func (b *builder) flow(f *flowSpec) {
-	b.add("capital_flows", bin(f.ID), bin(f.Portfolio), q(f.Direction), q(f.CanonicalAssetSymbol), f.Quantity, dec(f.ValueUSD), ts(f.At), binp(f.Account), qn(f.Note), bin(f.User), "1", ts(f.At), ts(f.At))
+	method := "explicit"
+	if f.ValueUSD == "" {
+		method = "unavailable"
+	}
+	b.add("capital_flows", bin(f.ID), bin(f.Portfolio), q(f.Direction), q(f.CanonicalAssetSymbol), f.Quantity, dec(f.ValueUSD), ts(f.At), binp(f.Account), qn(f.Note), "1", ts(f.At), ts(f.At), q(method), ts(f.At), "1")
 }
 
 type auditSpec struct {

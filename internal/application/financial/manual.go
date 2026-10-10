@@ -4,8 +4,11 @@ import (
 	"context"
 	"slices"
 
+	"github.com/rbee3u/plutus/internal/infra/mysql"
+
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/ordering"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -14,27 +17,36 @@ import (
 
 // Current quantities affect presentation only; report amounts and totals stay frozen.
 func (s *Service) currentManualBalances(ctx context.Context, p PortfolioContext) (map[uuid.UUID][]BalanceRow, error) {
-	records, err := s.q.ListPortfolioManualBalances(ctx, p.ID[:])
+	records, err := mysql.Queries(ctx, s.db).ListPortfolioManualRevisions(ctx, p.ID[:])
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[uuid.UUID][]BalanceRow)
+	rules, err := mysql.Queries(ctx, s.db).ListCurrentAssetExclusions(ctx, p.ID[:])
+	if err != nil {
+		return nil, err
+	}
+	excluded := map[uuid.UUID]bool{}
+	for _, rule := range rules {
+		id, err := uuid.FromBytes(rule.AssetID)
+		if err != nil {
+			return nil, err
+		}
+		excluded[id] = rule.Excluded
+	}
+	out := map[uuid.UUID][]BalanceRow{}
 	for _, record := range records {
 		accountID, err := uuid.FromBytes(record.AccountID)
 		if err != nil {
 			return nil, err
 		}
-		assetID, err := uuid.FromBytes(record.AssetID)
+		items, err := manual.Hydrate(ctx, mysql.Queries(ctx, s.db), p.ID[:], record.AccountID, record.RevisionNumber)
 		if err != nil {
 			return nil, err
 		}
-		quantity := decimal.Compact(record.Quantity)
-		out[accountID] = append(out[accountID], BalanceRow{
-			AccountID: accountID, AssetID: assetID, AssetSymbol: record.AssetSymbol,
-			CanonicalAssetSymbol: record.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity,
-			ManualModifiedAt: &record.ModifiedAt, ManualChange: "added", Excluded: record.Excluded,
-			Freshness: valuation.FreshnessFresh,
-		})
+		for _, item := range items {
+			quantity := decimal.Compact(item.Quantity)
+			out[accountID] = append(out[accountID], BalanceRow{AccountID: accountID, AssetID: item.AssetID, AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: item.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity, ManualModifiedAt: &item.ModifiedAt, ManualChange: "added", Excluded: excluded[item.AssetID], Freshness: valuation.FreshnessFresh})
+		}
 	}
 	return out, nil
 }
@@ -70,7 +82,7 @@ func mergeManualBalances(collected, current []BalanceRow, account *valuation.Acc
 
 // Include Manual Accounts before their first report so current records remain reachable.
 func (s *Service) withManualAccounts(ctx context.Context, p PortfolioContext, accounts []valuation.AccountValuation) ([]valuation.AccountValuation, error) {
-	boundary, err := s.q.ListBoundaryAccounts(ctx, p.ID[:])
+	boundary, err := mysql.Queries(ctx, s.db).ListBoundaryAccounts(ctx, p.ID[:])
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +103,7 @@ func (s *Service) withManualAccounts(ctx context.Context, p PortfolioContext, ac
 			return nil, err
 		}
 		accounts = append(accounts, valuation.AccountValuation{
-			AccountID: id, AccountName: row.DisplayName, AccountType: row.AccountType, Selected: true,
+			AccountID: id, AccountName: adapters.AccountName(adapters.AccountType(row.AccountType)), AccountType: row.AccountType, Selected: true,
 			IdentityID: identityID, IdentityName: row.IdentityName, IdentityStatus: "enabled",
 			ConnectionStatus: row.ConnectionStatus, Platform: row.Platform, AccountStructure: row.AccountStructure,
 			Status: "failed", Method: valuation.MethodMissing, Freshness: valuation.FreshnessStale,

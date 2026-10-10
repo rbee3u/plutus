@@ -52,9 +52,6 @@ type fileConfig struct {
 		SessionAbsoluteLifetime *string `toml:"session_absolute_lifetime"`
 		CookieSuffix            string  `toml:"cookie_suffix"`
 	} `toml:"auth"`
-	Jobs struct {
-		FinishedRetention *string `toml:"finished_retention"`
-	} `toml:"jobs"`
 	Collection struct {
 		ConnectionValidationTimeout *string   `toml:"connection_validation_timeout"`
 		FakeAdapter                 bool      `toml:"fake_adapter"`
@@ -107,9 +104,6 @@ func defaults() Config {
 		Auth: Auth{
 			SessionIdleLifetime:     7 * 24 * time.Hour,
 			SessionAbsoluteLifetime: 30 * 24 * time.Hour,
-		},
-		Jobs: Jobs{
-			FinishedRetention: 90 * 24 * time.Hour,
 		},
 		Collection: Collection{
 			ConnectionValidationTimeout: 15 * time.Second,
@@ -174,9 +168,6 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 		return err
 	}
 	if err := optionalDuration(&cfg.Auth.SessionAbsoluteLifetime, parsed.Auth.SessionAbsoluteLifetime, "auth.session_absolute_lifetime"); err != nil {
-		return err
-	}
-	if err := optionalDuration(&cfg.Jobs.FinishedRetention, parsed.Jobs.FinishedRetention, "jobs.finished_retention"); err != nil {
 		return err
 	}
 	if err := optionalDuration(&cfg.Collection.ConnectionValidationTimeout, parsed.Collection.ConnectionValidationTimeout, "collection.connection_validation_timeout"); err != nil {

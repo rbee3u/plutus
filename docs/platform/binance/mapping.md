@@ -66,8 +66,8 @@ can switch between the two structures inside Binance at any time.
 | `isPortfolioMarginRetailEnabled: false`       | Classic Trading                                                                                                                                   |
 | field missing                                 | `normalization`                                                                                                                                   |
 | a structure other than the Identity's         | `unsupported`, naming both structures, before any Account is read. The User creates a new Identity for the new structure and archives the old one |
-| Classic Trading with `isMarginEnabled: false` | `cross_margin` and `isolated_margin` report ok and empty without calling their endpoints                                                          |
-| Classic Trading with `isFutureEnabled: false` | `um_futures` and `cm_futures` report ok and empty without calling their endpoints                                                                 |
+| Classic Trading with `isMarginEnabled: false` | `cross_margin` and `isolated_margin` succeed with empty reports without calling their endpoints                                                   |
+| Classic Trading with `isFutureEnabled: false` | `um_futures` and `cm_futures` succeed with empty reports without calling their endpoints                                                          |
 
 An absent `isMarginEnabled` or `isFutureEnabled` counts as opened, so the wallet
 is read. A structure the adapter does not know, such as another Platform's,
@@ -77,18 +77,19 @@ UID from `/api/v3/account` in both structures.
 
 ## Account Report
 
-Only `portfolio_margin` reports a USD equity. Every other Account keeps `equity`
-null and is valued from its Balances.
+Only `portfolio_margin` reports a USD equity. Every other Account keeps
+`reported_equity_usd` null and is valued from its Balances.
 
-| Plutus column              | `portfolio_margin`                                                                | `um_futures`, Multi-Assets Mode                                                     | `cross_margin`                                                                                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `equity`                   | `actualEquity` (USD, no collateral haircut)                                       | null                                                                                | null                                                                                                                                                                |
-| `adjusted_equity`          | `accountEquity` (USD, after collateral rates)                                     | `totalMarginBalance`                                                                | null                                                                                                                                                                |
-| `available_equity`         | `totalAvailableBalance`                                                           | `availableBalance`                                                                  | null                                                                                                                                                                |
-| `initial_margin_ratio`     | `accountInitialMargin ÷ accountEquity`, 8 decimals; null when `accountEquity ≤ 0` | `totalInitialMargin ÷ totalMarginBalance`; null when `totalMarginBalance ≤ 0`       | null                                                                                                                                                                |
-| `maintenance_margin_ratio` | `accountMaintMargin ÷ accountEquity`, same rule                                   | `totalMaintMargin ÷ totalMarginBalance`, the Margin Ratio of Binance's futures page | null                                                                                                                                                                |
-| `unified_margin_ratio`     | `uniMMR` as reported                                                              | null                                                                                | `marginLevel` as reported: total asset value ÷ (borrowed + interest), higher is safer. `999` means nothing is borrowed and is kept as reported, as the app shows it |
-| `observed_at`              | local time once the Account's responses arrived                                   | same                                                                                | same                                                                                                                                                                |
+| Stored fact or read projection        | `portfolio_margin`                                                                | `um_futures`, Multi-Assets Mode                                                     | `cross_margin`                                                                                                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reported_equity_usd`                 | `actualEquity` (USD, no collateral haircut)                                       | null                                                                                | null                                                                                                                                                                |
+| `adjusted_equity_usd`                 | `accountEquity` (USD, after collateral rates)                                     | `totalMarginBalance`                                                                | null                                                                                                                                                                |
+| `available_equity_usd`                | `totalAvailableBalance`                                                           | `availableBalance`                                                                  | null                                                                                                                                                                |
+| Initial margin ratio (projection)     | `accountInitialMargin ÷ accountEquity`, 8 decimals; null when `accountEquity ≤ 0` | `totalInitialMargin ÷ totalMarginBalance`; null when `totalMarginBalance ≤ 0`       | null                                                                                                                                                                |
+| Maintenance margin ratio (projection) | `accountMaintMargin ÷ accountEquity`, same rule                                   | `totalMaintMargin ÷ totalMarginBalance`, the Margin Ratio of Binance's futures page | null                                                                                                                                                                |
+| `reported_margin_ratio`               | `uniMMR` as reported                                                              | null                                                                                | `marginLevel` as reported: total asset value ÷ (borrowed + interest), higher is safer. `999` means nothing is borrowed and is kept as reported, as the app shows it |
+| `collected_at`                        | local time once the Account's responses arrived                                   | same                                                                                | same                                                                                                                                                                |
+| `source_observed_at`                  | null                                                                              | null                                                                                | null                                                                                                                                                                |
 
 - `spot`, `funding`, `earn`, `isolated_margin`, and `cm_futures` report no
   account figures. Isolated Margin's `marginLevel` belongs to one pair, not the
@@ -96,12 +97,20 @@ null and is valued from its Balances.
 - In Single-Asset Mode (`multiAssetsMargin: false`) every USDⓈ-M margin asset
   stands alone. `/fapi/v3/account` totals then cover USDT only, so none is
   stored.
-- A Cross Margin account with `created: false` reports ok and empty.
+- A Cross Margin account with `created: false` succeeds with an empty report.
 
 Not stored: PM `totalMarginOpenLoss`, `virtualMaxWithdrawAmount`,
 `accountStatus`, `updateTime`; Cross Margin `totalAssetOfBtc`,
 `totalLiabilityOfBtc`, `totalNetAssetOfBtc`, `tradeEnabled`; USDⓈ-M
 `totalWalletBalance`, `totalUnrealizedProfit`, `maxWithdrawAmount`.
+
+Raw initial and maintenance requirements (`accountInitialMargin` /
+`accountMaintMargin` for Portfolio Margin and `totalInitialMargin` /
+`totalMaintMargin` for USDⓈ-M Multi-Assets Mode) are stored in
+`initial_margin_requirement_usd` and `maintenance_margin_requirement_usd`. The
+read projection derives ratios from these facts and positive
+`adjusted_equity_usd`; derived ratios are not persisted as reported ratios.
+Missing or nonpositive denominators produce null.
 
 ## Balance
 
@@ -214,9 +223,9 @@ in Classic Trading.
 
 | Plutus column                                 | Source                                                                                                                                                                                                   |
 | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_position_ref`                       | `um:<symbol>:<positionSide>` or `cm:<symbol>:<positionSide>`                                                                                                                                             |
+| `position_key`                                | `um:<symbol>:<positionSide>` or `cm:<symbol>:<positionSide>`                                                                                                                                             |
 | `side`                                        | `positionSide` `LONG` / `SHORT`; for one-way mode `BOTH`, the sign of `positionAmt`. Zero positions are omitted                                                                                          |
-| `quantity`, `quantity_unit`                   | `\|positionAmt\|`; USDⓈ-M in `base`, COIN-M in `contracts`                                                                                                                                               |
+| `source_quantity`, `source_quantity_unit`     | `\|positionAmt\|`; USDⓈ-M in `base`, COIN-M in `contracts`                                                                                                                                               |
 | `entry_price`, `mark_price`, `unrealized_pnl` | `entryPrice`, `markPrice`, `unRealizedProfit`                                                                                                                                                            |
 | `leverage`                                    | `leverage`; `/fapi/v3/positionRisk` has none, so Classic USDⓈ-M reads `leverage` from `/fapi/v1/symbolConfig`, once per run and only with an open position. A symbol missing there keeps a null leverage |
 | `liquidation_price`                           | `liquidationPrice`; null when `0`                                                                                                                                                                        |

@@ -1,6 +1,9 @@
 import { NumericText } from "@/shared/ui/NumericText";
 import { useState } from "react";
-import type { ValuationPointDetail } from "@/api";
+import { getValuationSnapshot, keys, type ValuationPointDetail } from "@/api";
+import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { ActionButton } from "@/shared/ui/ActionButton";
 import { formatBoundaryFlows, formatUsd } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
@@ -49,9 +52,7 @@ export function PointDetail({
             <NumericText>{formatUsd(point.totalUsd)}</NumericText>
           </div>
           <span className={styles.pointStatMeta}>
-            {point.recalculatedAt
-              ? `Recalculated ${formatInstant(point.recalculatedAt, timezone)}`
-              : `Evaluated ${formatInstant(point.evaluatedAt, timezone)}`}
+            Evaluated {formatInstant(point.evaluatedAt, timezone)}
           </span>
         </div>
 
@@ -69,42 +70,49 @@ export function PointDetail({
 
         <div className={styles.pointStatCard}>
           <span className={styles.pointStatLabel}>Collection Cycle</span>
-          <div className={styles.pointStatValue} title={point.jobId}>
-            {shortId(point.jobId)}
+          <div className={styles.pointStatValue} title={point.cycleId}>
+            {shortId(point.cycleId)}
           </div>
-          <span className={styles.pointStatMeta}>Job reference</span>
+          <span className={styles.pointStatMeta}>Cycle reference</span>
         </div>
       </div>
 
       <h3>Accounts</h3>
-      <AccountValuationsGrouped
-        accounts={detail.accounts}
-        timezone={timezone}
-        platforms={platforms.data?.items}
-        openKey={openAccount}
-        onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
-        detailId={`historical-positions-${point.id}`}
-        renderDetail={(row) => (
-          <HistoricalPositions
-            accountId={typeof row.id === "string" ? row.id : ""}
-            pointId={point.id}
-          />
-        )}
-        renderAccountAction={(item) => (
-          <button
-            type="button"
-            className={styles.inlineButton}
-            aria-expanded={openAccount === item.accountId}
-            aria-controls={`historical-positions-${point.id}`}
-            onClick={() =>
-              setOpenAccount((current) => (current === item.accountId ? undefined : item.accountId))
-            }
-          >
-            {item.accountName}
-          </button>
-        )}
-        empty="No accounts were inside the boundary at this point."
-      />
+      {point.detailState === "expired" ? (
+        <SnapshotFallback at={point.evaluatedAt} timezone={timezone} />
+      ) : (
+        <AccountValuationsGrouped
+          accounts={detail.accounts}
+          timezone={timezone}
+          platforms={platforms.data?.items}
+          openKey={openAccount}
+          onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
+          detailId={`historical-positions-${point.cycleId}`}
+          renderDetail={(row) => (
+            <HistoricalPositions
+              accountId={typeof row.id === "string" ? row.id : ""}
+              cycleId={point.cycleId}
+              valuationRevision={point.valuationRevision}
+            />
+          )}
+          renderAccountAction={(item) => (
+            <button
+              type="button"
+              className={styles.inlineButton}
+              aria-expanded={openAccount === item.accountId}
+              aria-controls={`historical-positions-${point.cycleId}`}
+              onClick={() =>
+                setOpenAccount((current) =>
+                  current === item.accountId ? undefined : item.accountId,
+                )
+              }
+            >
+              {item.accountName}
+            </button>
+          )}
+          empty="No accounts were inside the boundary at this point."
+        />
+      )}
 
       {detail.boundaryEvents.length > 0 ? (
         <>
@@ -124,6 +132,56 @@ export function PointDetail({
         <>
           <h3>Issues</h3>
           <IssueList issues={detail.issues} />
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function SnapshotFallback({ at, timezone }: { at: string; timezone?: string }) {
+  const [open, setOpen] = useState(false);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone ?? "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(at));
+  const part = (kind: string) => parts.find((p) => p.type === kind)?.value ?? "";
+  const day = `${part("year")}-${part("month")}-${part("day")}`;
+  const snapshot = usePortfolioQuery({
+    key: (userId, portfolioId) => [
+      ...keys.portfolio(userId, portfolioId),
+      "snapshot",
+      day,
+      timezone,
+    ],
+    load: (portfolioId) => getValuationSnapshot({ path: { portfolioId }, query: { day } }),
+    ready: open,
+  });
+  return (
+    <>
+      <p>
+        Detailed holdings for this point have expired. Its total, issues and boundary events remain
+        available.
+      </p>
+      <ActionButton onClick={() => setOpen(true)} disabled={open}>
+        Show retained snapshot for {day}
+      </ActionButton>
+      {open ? (
+        <>
+          <QueryRecovery
+            query={snapshot}
+            fallback="No retained snapshot is available before this day's end."
+          />
+          {snapshot.data ? (
+            <>
+              <p>
+                Retained snapshot: {formatInstant(snapshot.data.point.evaluatedAt, timezone)}. This
+                may be from an earlier day; the values below belong to that snapshot.
+              </p>
+              <PointDetail detail={snapshot.data} timezone={timezone} />
+            </>
+          ) : null}
         </>
       ) : null}
     </>

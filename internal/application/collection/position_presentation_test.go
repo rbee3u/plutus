@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"database/sql"
 	"errors"
 	"math/big"
 	"testing"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/application/valuation"
@@ -15,6 +18,49 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
+
+func TestPositionPersistenceRequiresPositiveMagnitude(t *testing.T) {
+	h := newHarness(t)
+	item := h.createIdentity("Position quantities", adapters.PlatformBinance, adapters.StructureBinanceClassic, "um_futures")
+	var accountID uuid.UUID
+	for _, account := range item.Accounts {
+		if account.AccountType == "um_futures" {
+			accountID = account.ID
+		}
+	}
+	claim := claimRecoveryCycle(h)
+	t.Cleanup(func() {
+		if err := h.cycles.Finish(h.ctx, &claim, cycles.Result{ErrorClass: adapters.ClassNormalization, ErrorDetail: "SourceQuantity validation fixture."}); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, quantity := range []string{"0", "-1", "invalid", "1"} {
+		t.Run(quantity, func(t *testing.T) {
+			tx, err := h.collection.db.BeginTx(h.ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback() }()
+			report := adapters.AccountReport{
+				AccountType: "um_futures", Status: adapters.StatusSucceeded,
+				Positions: []adapters.Position{{
+					PositionKey: "BTCUSDT:short", Side: adapters.SideShort, PositionMode: "one_way",
+					SourceQuantity: quantity, SourceQuantityUnit: adapters.UnitBase,
+					FuturesContract: adapters.FuturesContract{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual},
+				}},
+			}
+			now := time.Now().UTC()
+			err = h.collection.insertSuccessfulReport(h.ctx, h.collection.q.WithTx(tx), h.portfolioID, claim.ID, adapters.PlatformBinance, accountID, &report, "", now, now, sql.NullInt64{})
+			if quantity == "1" {
+				if err != nil {
+					t.Fatalf("positive short quantity rejected: %v", err)
+				}
+			} else if !errors.Is(err, catalog.ErrInvalid) {
+				t.Fatalf("invalid quantity must fail normalization before SQL insertion: %v", err)
+			}
+		})
+	}
+}
 
 func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	h := newHarness(t)
@@ -33,17 +79,17 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	if err != nil || filtered.Total != 1 || *filtered.TotalUSD != *full.TotalUSD {
 		t.Fatalf("row filters changed boundary total: %+v %v", filtered, err)
 	}
-	for _, account := range h.accountsByType(first.Point.JobID, item.ID) {
+	for _, account := range h.accountsByType(first.Point.CycleID, item.ID) {
 		if account.AccountType == string(adapters.TypeManual) {
 			continue
 		}
-		historical, err := h.financial.AccountPositionsAt(h.ctx, pctx, account.AccountID, &first.Point.ID)
+		historical, err := h.financial.AccountPositionsAt(h.ctx, pctx, account.AccountID, &first.Point.CycleID)
 		if err != nil || len(historical.Positions) != 1 || historical.Positions[0].PositionMode == nil || *historical.Positions[0].PositionMode != "one_way" {
 			t.Fatalf("historical %+v %v", historical, err)
 		}
 	}
 	// A missing linear Mark must not hide the known inverse face notional.
-	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE positions p JOIN futures_contracts n ON n.id=p.futures_contract_id JOIN account_reports r ON r.id=p.report_id SET p.mark_price=NULL WHERE r.portfolio_id=? AND n.kind='linear_perpetual'", h.portfolioID[:]); err != nil {
+	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE futures_positions p JOIN futures_contracts n ON n.id=p.futures_contract_id JOIN account_reports r ON r.id=p.report_id SET p.mark_price=NULL WHERE r.portfolio_id=? AND n.kind='linear_perpetual'", h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
 	incomplete, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 1})
@@ -59,20 +105,20 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	if !found {
 		t.Fatal("unknown notional omitted without explanation")
 	}
-	historicalAccount := h.accountsByType(first.Point.JobID, item.ID)["cm_futures"]
-	before, err := h.financial.AccountPositionsAt(h.ctx, pctx, historicalAccount.AccountID, &first.Point.ID)
+	historicalAccount := h.accountsByType(first.Point.CycleID, item.ID)["cm_futures"]
+	before, err := h.financial.AccountPositionsAt(h.ctx, pctx, historicalAccount.AccountID, &first.Point.CycleID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	h.collection.now = func() time.Time { return first.Point.EvaluatedAt.Add(time.Minute) }
 	h.fakes[adapters.PlatformBinance].WithClock(h.collection.now)
 	h.runCycle()
-	after, err := h.financial.AccountPositionsAt(h.ctx, pctx, historicalAccount.AccountID, &first.Point.ID)
+	after, err := h.financial.AccountPositionsAt(h.ctx, pctx, historicalAccount.AccountID, &first.Point.CycleID)
 	if err != nil || *before.Positions[0].MarkPrice != *after.Positions[0].MarkPrice || !before.Positions[0].ReportObservedAt.Equal(*after.Positions[0].ReportObservedAt) {
 		t.Fatal("historical Positions changed after new collection")
 	}
 	foreign := financial.PortfolioContext{ID: uuid.New(), Timezone: "UTC"}
-	if _, err := h.financial.AccountPositionsAt(h.ctx, foreign, historicalAccount.AccountID, &first.Point.ID); !errors.Is(err, valuation.ErrNotFound) {
+	if _, err := h.financial.AccountPositionsAt(h.ctx, foreign, historicalAccount.AccountID, &first.Point.CycleID); !errors.Is(err, valuation.ErrNotFound) {
 		t.Fatalf("foreign point access %v", err)
 	}
 }
@@ -103,7 +149,7 @@ func TestStalePositionsKeepSourceModeAndObservedTime(t *testing.T) {
 	}
 	broken := h.storeCredentials(item, "invalid-position-source")
 	// The Identity's latest setting cannot establish an older Report's regime.
-	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='enabled',margin_mode='okx_futures' WHERE id=?", broken.ID[:]); err != nil {
+	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='enabled',last_observed_margin_mode='okx_futures' WHERE id=?", broken.ID[:]); err != nil {
 		t.Fatal(err)
 	}
 	clock = clock.Add(time.Minute)
@@ -131,19 +177,19 @@ func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
 	}
 	first, _ := h.runCycle()
 	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
-	accountID := h.accountsByType(first.Point.JobID, item.ID)["portfolio_margin"].AccountID
+	accountID := h.accountsByType(first.Point.CycleID, item.ID)["portfolio_margin"].AccountID
 	// Old PM rows retained size/Mark/leverage without margin provenance. Reads
 	// can establish Cross from the immutable supported PM structure.
-	if _, err := h.collection.db.ExecContext(h.ctx, `UPDATE positions p JOIN account_reports r ON r.id=p.report_id
-        SET p.margin_mode=NULL,p.margin_basis=NULL,p.margin_asset_symbol=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
+	if _, err := h.collection.db.ExecContext(h.ctx, `UPDATE futures_positions p JOIN account_reports r ON r.id=p.report_id
+        SET p.margin_setting=NULL,p.margin_basis=NULL,p.margin_asset_symbol=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
-	before, err := h.financial.AccountPositionsAt(h.ctx, pctx, accountID, &first.Point.ID)
+	before, err := h.financial.AccountPositionsAt(h.ctx, pctx, accountID, &first.Point.CycleID)
 	if err != nil || len(before.Positions) != 2 {
 		t.Fatalf("historical %+v %v", before, err)
 	}
 	for _, row := range before.Positions {
-		if row.SettleMargin == nil || row.MarginSource == nil || *row.MarginSource != "calculated" || row.Margin != nil || row.MarginBasis != nil || row.MarginMode == nil || *row.MarginMode != "cross" {
+		if row.SettleMargin == nil || row.MarginSource == nil || *row.MarginSource != "calculated" || row.Margin != nil || row.MarginBasis != nil || row.MarginSetting == nil || *row.MarginSetting != "cross" {
 			t.Fatalf("historical PM margin %+v", row)
 		}
 		want := decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(*row.NotionalUSD), decimal.ParseOrZero(*row.Leverage)))
@@ -172,8 +218,8 @@ func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
 		}
 	}
 	var amountCount, modeCount int
-	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT SUM(p.margin IS NOT NULL),SUM(p.margin_mode IS NOT NULL)
-        FROM positions p JOIN account_reports r ON r.id=p.report_id WHERE r.portfolio_id=?`, h.portfolioID[:]).Scan(&amountCount, &modeCount); err != nil || amountCount != 0 || modeCount != 0 {
+	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT SUM(p.margin IS NOT NULL),SUM(p.margin_setting IS NOT NULL)
+        FROM futures_positions p JOIN account_reports r ON r.id=p.report_id WHERE r.portfolio_id=?`, h.portfolioID[:]).Scan(&amountCount, &modeCount); err != nil || amountCount != 0 || modeCount != 0 {
 		t.Fatalf("source facts rewritten by reads: %d %d %v", amountCount, modeCount, err)
 	}
 }

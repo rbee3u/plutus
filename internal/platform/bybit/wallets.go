@@ -43,7 +43,7 @@ func (a *Adapter) unified(ctx context.Context, c *client, mode adapters.MarginMo
 	if err != nil {
 		return adapters.AccountReport{}, err
 	}
-	report.ObservedAt = a.now()
+	report.CollectedAt = a.now()
 	if report.Balances, err = mapUnifiedBalances(account.Coins); err != nil {
 		return adapters.AccountReport{}, err
 	}
@@ -58,7 +58,7 @@ func (a *Adapter) unified(ctx context.Context, c *client, mode adapters.MarginMo
 // Balances. In Cross and Portfolio Margin an empty field stays unknown rather than becoming zero.
 // totalMarginBalance is not haircut-adjusted equity and is not mapped.
 func mapUnifiedAccount(in *walletAccount, mode adapters.MarginMode) (adapters.AccountReport, error) {
-	report := adapters.AccountReport{AccountType: TypeUnified, Status: adapters.StatusOK}
+	report := adapters.AccountReport{AccountType: TypeUnified, Status: adapters.StatusSucceeded}
 	if mode == adapters.MarginBybitIsolated {
 		return report, nil
 	}
@@ -68,8 +68,8 @@ func mapUnifiedAccount(in *walletAccount, mode adapters.MarginMode) (adapters.Ac
 	}{
 		{"totalEquity", in.TotalEquity, &report.Equity},
 		{"totalAvailableBalance", in.TotalAvailableBalance, &report.AvailableEquity},
-		{"accountIMRate", in.AccountIMRate, &report.InitialMarginRatio},
-		{"accountMMRate", in.AccountMMRate, &report.MaintenanceMarginRatio},
+		{"accountIMRate", in.AccountIMRate, &report.ReportedInitialMarginRatio},
+		{"accountMMRate", in.AccountMMRate, &report.ReportedMaintenanceMarginRatio},
 	} {
 		if _, err := adapters.OptionalDecimal(epWallet.String(), field.name, field.value); err != nil {
 			return adapters.AccountReport{}, err
@@ -171,5 +171,5 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 			AvailableToWithdraw: adapters.Reported(row.TransferBalance, transferable),
 		})
 	}
-	return adapters.AccountReport{AccountType: TypeFunding, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances}, nil
+	return adapters.AccountReport{AccountType: TypeFunding, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances}, nil
 }

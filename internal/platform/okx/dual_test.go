@@ -17,10 +17,10 @@ func TestDocumentedDualPositions(t *testing.T) {
 		t.Fatal(err)
 	}
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
+	if dual.Status != adapters.StatusSucceeded || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
 		t.Fatalf("synthetic dual report: %+v", dual)
 	}
-	if reportOf(t, batch, TypeEarn).Status != adapters.StatusOK || r.count(epDCD) != 1 {
+	if reportOf(t, batch, TypeEarn).Status != adapters.StatusSucceeded || r.count(epDCD) != 1 {
 		t.Fatal("the synthetic Earn and Dual Accounts must share a successful order history read")
 	}
 	orders := rowsIn[dcdOrder](t, r.file(epDCD, ""))
@@ -30,8 +30,8 @@ func TestDocumentedDualPositions(t *testing.T) {
 	wantExpiry := time.UnixMilli(1700600000000).UTC()
 	for i, p := range dual.DualPositions {
 		order := orders[i]
-		if order.ExpTime != "" || order.SettleTime == "" || p.PlatformPositionRef != order.OrdID ||
-			p.InvestAssetSymbol != order.NotionalCcy || rat(t, p.Principal).Cmp(rat(t, order.NotionalSz)) != 0 ||
+		if order.ExpTime != "" || order.SettleTime == "" || p.PositionKey != order.OrdID ||
+			p.PrincipalAssetSymbol != order.NotionalCcy || rat(t, p.Principal).Cmp(rat(t, order.NotionalSz)) != 0 ||
 			p.ExpiryAt == nil || !p.ExpiryAt.Equal(wantExpiry) ||
 			p.TargetPrice == nil || rat(t, *p.TargetPrice).Cmp(rat(t, order.Strike)) != 0 ||
 			p.AnnualizedRate == nil || rat(t, *p.AnnualizedRate).Cmp(rat(t, order.AnnualizedYield)) != 0 ||
@@ -74,7 +74,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			t.Fatal("shared collection must run once, only when selected")
 		}
 		for _, r := range batch.Reports {
-			if r.Status != adapters.StatusOK {
+			if r.Status != adapters.StatusSucceeded {
 				t.Fatalf("report: %+v", r)
 			}
 			if r.AccountType == TypeDualInvestment {
@@ -85,7 +85,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 					if len(p.MissingFields()) != 0 || *p.RateKind != "annualized_yield" {
 						t.Fatalf("missing synthetic terms: %+v", p)
 					}
-					if p.InvestAssetSymbol == "ETH" && (*p.BaseAssetSymbol != "ETH" || *p.TargetPrice != "5000") {
+					if p.PrincipalAssetSymbol == "ETH" && (*p.BaseAssetSymbol != "ETH" || *p.TargetPrice != "5000") {
 						t.Fatal("synthetic ETH terms contradict the product")
 					}
 				}
@@ -109,7 +109,7 @@ func TestDualOnlyFailsWhenAuxiliarySavingsFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatalf("auxiliary failure: %+v", batch)
 	}
 }

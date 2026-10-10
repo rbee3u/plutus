@@ -61,7 +61,7 @@ func (a *API) PostAuthLogin(ctx context.Context, request api.PostAuthLoginReques
 	if a.Auth == nil || request.Body == nil {
 		return api.PostAuthLogin401ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "Authentication is unavailable.")), nil
 	}
-	user, session, err := a.Auth.Login(ctx, request.Body.Username, request.Body.Password, clientIP(ctx), clientLabel(ctx))
+	user, session, err := a.Auth.Login(ctx, request.Body.Username, request.Body.Password, clientIP(ctx), userAgent(ctx))
 	if err != nil {
 		if resp := a.loginError(ctx, err); resp != nil {
 			return resp, nil
@@ -196,7 +196,7 @@ func toAPIUser(user auth.User) api.User {
 func toAPISession(session *auth.Session) api.Session {
 	return api.Session{
 		AbsoluteExpiresAt: session.AbsoluteExpiresAt,
-		ClientLabel:       session.ClientLabel,
+		UserAgent:         session.UserAgent,
 		CreatedAt:         session.CreatedAt,
 		Current:           session.Current,
 		Id:                session.ID,

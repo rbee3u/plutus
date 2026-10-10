@@ -93,7 +93,8 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                                 portfolioId={portfolioId}
                                 account={account}
                                 onManual={setManualTarget}
-                                pointId={tree.context.pointId ?? ""}
+                                cycleId={tree.context.cycleId ?? ""}
+                                valuationRevision={tree.context.valuationRevision ?? null}
                                 timezone={tree.context.timezone}
                               />
                             </div>

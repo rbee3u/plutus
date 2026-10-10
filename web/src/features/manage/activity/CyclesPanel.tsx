@@ -99,12 +99,12 @@ function cycleRow(
         <span>
           <StatusBadge value={item.status} />
         </span>
-        {item.lastErrorClass ? (
+        {item.errorClass ? (
           <span className={shared.cellStack} style={{ marginTop: "2px" }}>
-            <Codes values={[item.lastErrorClass]} />
-            {item.lastDetail ? (
+            <Codes values={[item.errorClass]} />
+            {item.errorDetail ? (
               <span className={shared.cellMeta} style={{ color: "var(--danger)" }}>
-                {item.lastDetail}
+                {item.errorDetail}
               </span>
             ) : null}
           </span>
@@ -210,10 +210,7 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
               <span className={manageStyles.cycleStatValue}>{capitalize(cycle.trigger)}</span>
               <span className={manageStyles.cycleStatMeta}>
                 <StatusBadge value={cycle.status} />
-                <span>·</span>
-                <span>
-                  {formatCount(cycle.attemptCount)}/{formatCount(cycle.maxAttempts)} attempts
-                </span>
+                {cycle.attemptCount > 1 ? ` · attempt ${formatCount(cycle.attemptCount)}` : ""}
               </span>
             </div>
 
@@ -230,10 +227,10 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
             </div>
           </div>
 
-          {cycle.lastErrorClass ? (
+          {cycle.errorClass ? (
             <p className={shared.alert}>
-              <Codes values={[cycle.lastErrorClass]} />
-              {cycle.lastDetail ? ` ${cycle.lastDetail}` : ""}
+              <Codes values={[cycle.errorClass]} />
+              {cycle.errorDetail ? ` ${cycle.errorDetail}` : ""}
             </p>
           ) : null}
           <h3>Accounts</h3>
@@ -244,7 +241,9 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
             empty={
               cycle.status === "queued" || cycle.status === "running"
                 ? "The cycle is still running; account valuations appear when it finishes."
-                : "No account was valued in this cycle. No connection was enabled, or the cycle failed before collecting."
+                : cycle.point?.detailState === "expired"
+                  ? "Detailed account valuations for this cycle have expired. Its total and issues remain available."
+                  : "No account was valued in this cycle. No connection was enabled, or the cycle failed before collecting."
             }
           />
           {detail && detail.issues.length > 0 ? (

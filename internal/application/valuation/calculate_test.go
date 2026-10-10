@@ -16,6 +16,23 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
+func TestMarginRatioRequiresPositiveDerivedDenominator(t *testing.T) {
+	requirement := sql.NullString{String: "10", Valid: true}
+	for _, equity := range []string{"0", "-100"} {
+		if got := MarginRatio(sql.NullString{}, requirement, sql.NullString{String: equity, Valid: true}); got != nil {
+			t.Fatalf("derived ratio with equity %s: %s", equity, *got)
+		}
+	}
+	got := MarginRatio(sql.NullString{}, requirement, sql.NullString{String: "100", Valid: true})
+	if got == nil || *got != "0.1" {
+		t.Fatalf("positive equity ratio: %v", got)
+	}
+	got = MarginRatio(sql.NullString{String: "0.25", Valid: true}, requirement, sql.NullString{})
+	if got == nil || *got != "0.25" {
+		t.Fatalf("reported ratio lost: %v", got)
+	}
+}
+
 func TestEvaluationPreservesExactAmountsAndOmissions(t *testing.T) {
 	source := uuid.New()
 	price := big.NewRat(1, 3)
@@ -98,6 +115,11 @@ func FuzzCalculatedValueConservation(f *testing.F) {
 
 type rejectingPrices struct{ calls int }
 
+func (p *rejectingPrices) Resolve(context.Context, string, string, time.Time) (PriceSelection, error) {
+	p.calls++
+	return PriceSelection{}, errors.New("price lookup unavailable")
+}
+
 func (p *rejectingPrices) Lookup(context.Context, string, string, time.Time) (*big.Rat, bool, error) {
 	p.calls++
 	return nil, false, errors.New("price lookup unavailable")
@@ -110,12 +132,12 @@ func (p *rejectingPrices) LookupPlatform(ctx context.Context, platform, symbol s
 func TestPreparationDoesNotIntroduceUnusedPriceReads(t *testing.T) {
 	report, account, identity := uuid.New(), uuid.New(), uuid.New()
 	excluded, zero, invalid := uuid.New(), uuid.New(), uuid.New()
-	row := sqlcgen.ListReportsByJobRow{ID: report[:], AccountID: account[:], IdentityID: identity[:], Status: "ok", ObservedAt: sql.NullTime{Time: time.Now(), Valid: true}}
+	row := sqlcgen.ListReportsByCycleRow{ID: report[:], AccountID: account[:], IdentityID: identity[:], Status: "succeeded", CollectedAt: sql.NullTime{Time: time.Now(), Valid: true}}
 	book := &rejectingPrices{}
 	// With no database, any accidental SQL dependency also fails this test.
 	service := &Service{}
-	row.Equity = sql.NullString{String: "12.345", Valid: true}
-	input, err := service.prepareReport(context.Background(), book, &row, nil, nil)
+	row.ReportedEquityUsd = sql.NullString{String: "12.345", Valid: true}
+	input, err := service.prepareReport(context.Background(), book, &row, nil, &reportInputs{balances: map[uuid.UUID][]sqlcgen.ListBalancesByReportRow{report: nil}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +145,7 @@ func TestPreparationDoesNotIntroduceUnusedPriceReads(t *testing.T) {
 	if got.Method != MethodReported || got.ValueUSD == nil || *got.ValueUSD != "12.345" {
 		t.Fatalf("reported: %+v", got)
 	}
-	row.Equity = sql.NullString{}
+	row.ReportedEquityUsd = sql.NullString{}
 	preload := &reportInputs{balances: map[uuid.UUID][]sqlcgen.ListBalancesByReportRow{report: {
 		{AssetID: excluded[:], Equity: "10", AssetSymbol: "EXCLUDED"},
 		{AssetID: zero[:], Equity: "0", AssetSymbol: "ZERO"},
@@ -151,53 +173,54 @@ func TestPreparationDoesNotIntroduceUnusedPriceReads(t *testing.T) {
 	}
 }
 
-func TestWriteAndRebuildUseEquivalentPreparedInputs(t *testing.T) {
-	f := newRebuildFixture(t)
+func TestWriteRetryPreservesPreparedInputs(t *testing.T) {
+	f := newPointFixture(t)
 	accounts := f.accounts("spot", "funding", "earn")
-	firstJob := f.job(f.at, "succeeded")
-	source := f.report(firstJob, accounts["spot"], f.at, "ok", 2, nil)
-	f.report(firstJob, accounts["funding"], f.at, "ok", 2, "2.25")
-	f.report(firstJob, accounts["earn"], f.at, "failed", 2, nil)
+	firstCycle := f.cycle(f.at, "succeeded")
+	source := f.report(firstCycle, accounts["spot"], f.at, "succeeded", 2, nil)
+	f.report(firstCycle, accounts["funding"], f.at, "succeeded", 2, "2.25")
+	f.report(firstCycle, accounts["earn"], f.at, "failed", 2, nil)
 	symbol := "PREPARED-" + uuid.NewString()[:8]
 	asset, missing := uuid.New(), uuid.New()
 	for _, item := range []struct {
 		id     uuid.UUID
 		symbol string
 	}{{asset, symbol}, {missing, symbol + "-MISSING"}} {
-		f.exec("INSERT INTO assets (id,platform,symbol,canonical_symbol,first_seen_at,last_seen_at,created_at,updated_at) VALUES (?,'binance',?,?,?,?,?,?)", item.id[:], item.symbol, item.symbol, f.at, f.at, f.at, f.at)
+		f.exec("INSERT INTO assets (id,portfolio_id,platform,symbol,canonical_asset_symbol,first_observed_at,last_observed_at,mapping_version) VALUES (?,?,'binance',?,?,?,?,1)", item.id[:], f.portfolio[:], item.symbol, item.symbol, f.at, f.at)
 	}
 	f.exec("INSERT INTO balances (report_id,portfolio_id,asset_id,equity) VALUES (?,?,?,-3),(?,?,?,7)", source[:], f.portfolio[:], asset[:], source[:], f.portfolio[:], missing[:])
-	f.exec("INSERT INTO prices (platform,canonical_asset_symbol,observed_at,price,quote_canonical_asset_symbol) VALUES ('binance',?,?,0.125,'USD')", symbol, f.at)
-	secondJob := f.job(f.at.Add(time.Minute), "succeeded")
-	f.report(secondJob, accounts["spot"], f.at.Add(time.Minute), "failed", 2, nil)
-	f.report(secondJob, accounts["funding"], f.at.Add(time.Minute), "ok", 2, "2.25")
-	f.report(secondJob, accounts["earn"], f.at.Add(time.Minute), "failed", 2, nil)
+	f.exec("INSERT INTO price_observations (id,portfolio_id,source_market_ref,platform,requested_canonical_asset_symbol,retrieved_at,price,quote_canonical_asset_symbol) VALUES (UUID_TO_BIN(UUID()),?,'fixture','binance',?,?,0.125,'USD')", f.portfolio[:], symbol, f.at)
+	secondCycle := f.cycle(f.at.Add(time.Minute), "succeeded")
+	f.report(secondCycle, accounts["spot"], f.at.Add(time.Minute), "failed", 2, nil)
+	f.report(secondCycle, accounts["funding"], f.at.Add(time.Minute), "succeeded", 2, "2.25")
+	f.report(secondCycle, accounts["earn"], f.at.Add(time.Minute), "failed", 2, nil)
 	before := map[uuid.UUID][]AccountValuation{}
-	for i, job := range []uuid.UUID{firstJob, secondJob} {
-		point, err := f.service.WritePoint(f.ctx, f.portfolio, job, f.at.Add(time.Duration(i)*time.Minute))
+	for i, cycleID := range []uuid.UUID{firstCycle, secondCycle} {
+		point, err := f.service.WritePoint(f.ctx, f.portfolio, cycleID, f.at.Add(time.Duration(i)*time.Minute))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if point.TotalUSD != "1.875" || point.IncompleteAccountCount != 2 {
 			t.Fatalf("ordinary point: %+v", point)
 		}
-		before[job], err = f.service.Accounts(f.ctx, f.portfolio, job)
+		before[cycleID], err = f.service.Accounts(f.ctx, f.portfolio, cycleID)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	if count, err := f.service.Rebuild(f.ctx, f.portfolio); err != nil || count != 2 {
-		t.Fatalf("rebuild: %d %v", count, err)
-	}
-	for _, job := range []uuid.UUID{firstJob, secondJob} {
-		after, err := f.service.Accounts(f.ctx, f.portfolio, job)
+
+	for _, cycleID := range []uuid.UUID{firstCycle, secondCycle} {
+		if _, err := f.service.WritePoint(f.ctx, f.portfolio, cycleID, f.at.Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		after, err := f.service.Accounts(f.ctx, f.portfolio, cycleID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(before[job], after) {
-			t.Fatalf("rebuilt Accounts differ for %s:\nbefore: %+v\nafter: %+v", job, before[job], after)
+		if !reflect.DeepEqual(before[cycleID], after) {
+			t.Fatalf("rebuilt Accounts differ for %s:\nbefore: %+v\nafter: %+v", cycleID, before[cycleID], after)
 		}
-		point, err := f.service.PointByJob(f.ctx, f.portfolio, job)
+		point, err := f.service.PointByCycle(f.ctx, f.portfolio, cycleID)
 		if err != nil || decimal.ParseOrZero(point.TotalUSD).Cmp(big.NewRat(15, 8)) != 0 || point.IncompleteAccountCount != 2 {
 			t.Fatalf("rebuilt point: %+v %v", point, err)
 		}

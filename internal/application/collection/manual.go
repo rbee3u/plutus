@@ -2,23 +2,27 @@ package collection
 
 import (
 	"context"
-	"errors"
+	"database/sql"
+	"slices"
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUID, accounts []manual.CycleAccount, reported map[uuid.UUID]bool) error {
+// collectManual writes every boundary Manual Account's report and the cycle's
+// marker in one transaction, so a retry never captures Manual Accounts added
+// after the reports committed.
+func (s *Service) collectManual(ctx context.Context, portfolioID, cycleID uuid.UUID, reported map[uuid.UUID]bool, recorded recordedPrices) error {
+	accounts, err := s.manual.CycleInputs(ctx, portfolioID)
+	if err != nil {
+		return err
+	}
 	canonicalAssetSymbols := map[adapters.Platform][]string{}
 	for _, account := range accounts {
-		if reported[account.AccountID] {
-			continue
-		}
 		for _, balance := range account.Items {
 			if !adapters.USDEquivalent(balance.CanonicalAssetSymbol) {
 				canonicalAssetSymbols[account.Platform] = append(canonicalAssetSymbols[account.Platform], balance.CanonicalAssetSymbol)
@@ -48,39 +52,83 @@ func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUI
 		}
 	}
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
+		marked, err := q.LockCycleManualReportedAt(ctx, sqlcgen.LockCycleManualReportedAtParams{PortfolioID: portfolioID[:], ID: cycleID[:]})
+		if err != nil || marked.Valid {
+			return err
+		}
 		for _, platform := range adapters.OfferedPlatforms() {
-			for _, price := range prices[platform] {
-				if err := s.catalog.RecordPrice(ctx, q, platform, price); err != nil && !errors.Is(err, catalog.ErrInvalid) {
-					return err
-				}
+			if err := s.recordPrices(ctx, q, portfolioID, platform, prices[platform], recorded); err != nil {
+				return err
 			}
 		}
 		for _, account := range accounts {
-			if reported[account.AccountID] {
-				continue
-			}
 			at := s.now().UTC()
-			report := adapters.AccountReport{AccountType: adapters.TypeManual, Status: adapters.StatusOK, ObservedAt: at}
+			report := adapters.AccountReport{AccountType: adapters.TypeManual, Status: adapters.StatusSucceeded, CollectedAt: at}
 			for _, balance := range account.Items {
 				report.Balances = append(report.Balances, adapters.Balance{AssetSymbol: balance.AssetSymbol, Equity: balance.Quantity})
 			}
-			if err := s.insertSuccessfulReport(ctx, q, portfolioID, jobID, account.Platform, account.AccountID, &report, "", at, at); err != nil {
-				return err
-			}
-			state, err := manual.Quantities(account.Items)
-			if err != nil {
-				return err
-			}
-			if err := q.SetManualReportMetadata(ctx, sqlcgen.SetManualReportMetadataParams{PortfolioID: portfolioID[:], JobID: jobID[:], AccountID: account.AccountID[:], StateJson: state, ModifiedAt: account.ModifiedAt}); err != nil {
+			revision := sql.NullInt64{Int64: int64(account.RevisionNumber), Valid: true} // #nosec G115 -- revision numbers are positive BIGINT UNSIGNED values far below 2^63.
+			if err := s.insertSuccessfulReport(ctx, q, portfolioID, cycleID, account.Platform, account.AccountID, &report, "", at, at, revision); err != nil {
 				return err
 			}
 		}
-		return nil
+		return q.MarkCycleManualReported(ctx, sqlcgen.MarkCycleManualReportedParams{PortfolioID: portfolioID[:], ID: cycleID[:], At: sql.NullTime{Time: s.now().UTC(), Valid: true}})
 	}); err != nil {
 		return err
 	}
 	for _, account := range accounts {
 		reported[account.AccountID] = true
+	}
+	return nil
+}
+
+// supplementPrices fetches mapped canonical prices before the report cutoff.
+// The private report retains its original observation time and financial facts.
+func (s *Service) supplementPrices(ctx context.Context, portfolioID uuid.UUID, item *identity.Collectable, batch *adapters.Batch) error {
+	symbols := []string{}
+	for _, report := range batch.Reports {
+		if report.Status != adapters.StatusSucceeded {
+			continue
+		}
+		for _, balance := range report.Balances {
+			symbols = append(symbols, balance.AssetSymbol)
+		}
+	}
+	if len(symbols) == 0 {
+		return nil
+	}
+	rows, err := s.q.ListMappingsForSymbols(ctx, sqlcgen.ListMappingsForSymbolsParams{PortfolioID: portfolioID[:], Platform: string(item.Identity.Platform), Symbols: symbols})
+	if err != nil {
+		return err
+	}
+	requested := map[string]bool{}
+	for _, row := range rows {
+		if row.CanonicalAssetSymbol != row.Symbol && !adapters.USDEquivalent(row.CanonicalAssetSymbol) {
+			requested[row.CanonicalAssetSymbol] = true
+		}
+	}
+	symbols = symbols[:0]
+	for symbol := range requested {
+		symbols = append(symbols, symbol)
+	}
+	slices.Sort(symbols)
+	adapter, ok := s.adapters.Lookup(item.Identity.Platform)
+	if !ok || len(symbols) == 0 {
+		return nil
+	}
+	market, ok := adapter.(adapters.MarketData)
+	if !ok {
+		return nil
+	}
+	prices, err := market.CollectPrices(ctx, symbols)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if err == nil {
+		batch.Prices = append(batch.Prices, prices...)
 	}
 	return nil
 }

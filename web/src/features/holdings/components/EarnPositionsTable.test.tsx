@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { EarnPositionRow } from "@/api";
-import { EarnPositionsTable, EarnBalanceSummaries } from "./EarnPositionsTable";
+import { EarnPositionsTable } from "./EarnPositionsTable";
 import { DualPositionsTable } from "./DualPositionsTable";
 
 const item: EarnPositionRow = {
@@ -13,7 +13,7 @@ const item: EarnPositionRow = {
   identityId: "identity",
   identityName: "Owner",
   platform: "okx",
-  platformPositionRef: "onchain:one",
+  positionKey: "onchain:one",
   type: "on_chain",
   granularity: "position",
   amountBasis: "principal",
@@ -106,26 +106,6 @@ describe("Earn presentation", () => {
     expect(issues).toContain("Stale");
     expect(issues).toContain("1 issue");
   });
-  it("labels legacy Balance summaries separately", () => {
-    const html = render(
-      <EarnBalanceSummaries
-        items={[
-          {
-            accountId: "old",
-            accountName: "Earn",
-            identityName: "Owner",
-            platform: "okx",
-            assets: [{ assetSymbol: "USDT", amount: "12" }],
-            freshness: "fresh",
-            issues: [{ code: "earn_details_unavailable", detail: "Not collected." }],
-          },
-        ]}
-      />,
-    );
-    expect(html).toContain("Balance summaries, not product positions");
-    expect(html).toContain("12 USDT");
-    expect(html).not.toContain(">Type</th>");
-  });
   it("labels Dual APR accurately and retains product status independently", () => {
     const html = render(
       <DualPositionsTable
@@ -138,8 +118,8 @@ describe("Earn presentation", () => {
             identityId: "identity",
             identityName: "Owner",
             platform: "binance",
-            platformPositionRef: "one",
-            investAssetSymbol: "USDT",
+            positionKey: "one",
+            principalAssetSymbol: "USDT",
             principal: "10",
             annualizedRate: "0.18",
             rateKind: "apr",

@@ -90,15 +90,16 @@ fails with `normalization`.
 In the tables below, "yes" marks the fields OKX documents for that mode. A field
 OKX leaves empty stays null in any mode.
 
-| Plutus column              | Source                                                                       | Spot mode | Futures mode | Multi-currency, Portfolio margin |
-| -------------------------- | ---------------------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
-| `equity`                   | `totalEq` (USD)                                                              | yes       | yes          | yes                              |
-| `adjusted_equity`          | `adjEq` (USD, after collateral discounts)                                    | yes       | null         | yes                              |
-| `available_equity`         | `availEq`                                                                    | null      | null         | yes                              |
-| `initial_margin_ratio`     | derived: `imr ÷ adjEq`, 8 decimals. Null when `adjEq ≤ 0` or `imr` is empty. | yes       | null         | yes                              |
-| `maintenance_margin_ratio` | derived: `mmr ÷ adjEq`, same rules                                           | yes       | null         | yes                              |
-| `unified_margin_ratio`     | `mgnRatio` as reported (`adjEq ÷ mmr`, a multiple where higher is safer)     | yes       | null         | yes                              |
-| `observed_at`              | local time when the response arrived                                         | yes       | yes          | yes                              |
+| Stored fact or read projection        | Source                                                                       | Spot mode | Futures mode | Multi-currency, Portfolio margin |
+| ------------------------------------- | ---------------------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
+| `reported_equity_usd`                 | `totalEq` (USD)                                                              | yes       | yes          | yes                              |
+| `adjusted_equity_usd`                 | `adjEq` (USD, after collateral discounts)                                    | yes       | null         | yes                              |
+| `available_equity_usd`                | `availEq`                                                                    | null      | null         | yes                              |
+| Initial margin ratio (projection)     | derived: `imr ÷ adjEq`, 8 decimals. Null when `adjEq ≤ 0` or `imr` is empty. | yes       | null         | yes                              |
+| Maintenance margin ratio (projection) | derived: `mmr ÷ adjEq`, same rules                                           | yes       | null         | yes                              |
+| `reported_margin_ratio`               | `mgnRatio` as reported (`adjEq ÷ mmr`, a multiple where higher is safer)     | yes       | null         | yes                              |
+| `collected_at`                        | local time when the response arrived                                         | yes       | yes          | yes                              |
+| `source_observed_at`                  | null                                                                         | null      | null         | null                             |
 
 In Futures mode the account level carries only `totalEq` and `isoEq`. OKX
 assesses margin per coin (`details[].mgnRatio`, `imr`, `mmr`, `notionalLever`),
@@ -111,6 +112,12 @@ This is an accepted display gap: the equity is still complete.
 Not stored: `upl`, `isoEq`, `ordFroz`, `borrowFroz`, `notionalUsd` and its
 per-business variants, `delta`, `deltaLever`, `deltaNeutralStatus`, `uTime`, and
 portfolio margin's `account/risk-state`.
+
+Raw initial and maintenance requirements (`imr` / `mmr`) are stored in
+`initial_margin_requirement_usd` and `maintenance_margin_requirement_usd`. The
+read projection derives ratios from these facts and positive
+`adjusted_equity_usd`; derived ratios are not persisted as reported ratios.
+Missing or nonpositive denominators produce null.
 
 ## Balance
 
@@ -276,16 +283,16 @@ the Balances are priced in.
 
 `account/positions`, every futures contract type in one call.
 
-| Plutus column               | Source                                                                                             |
-| --------------------------- | -------------------------------------------------------------------------------------------------- |
-| `platform_position_ref`     | `<instId>:<posSide>`, such as `DOGE-USDT-SWAP:net`                                                 |
-| `side`                      | `posSide` `long` / `short` in long/short mode. In net mode (`posSide = net`), the sign of `pos`.   |
-| `quantity`, `quantity_unit` | `abs(pos)` in contracts                                                                            |
-| `entry_price`, `mark_price` | `avgPx`, `markPx`                                                                                  |
-| `unrealized_pnl`            | `upl`, in the settlement coin                                                                      |
-| `liquidation_price`         | `liqPx`. Null when empty or `0` (portfolio margin cross positions report none).                    |
-| `leverage`                  | `lever`. Null when empty or `0` (portfolio margin reports no leverage and fills `0`).              |
-| `margin`                    | Isolated `margin`; non-Portfolio Cross source `imr`, with verified currency; see provenance below. |
+| Plutus column                             | Source                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `position_key`                            | `<instId>:<posSide>`, such as `DOGE-USDT-SWAP:net`                                                 |
+| `side`                                    | `posSide` `long` / `short` in long/short mode. In net mode (`posSide = net`), the sign of `pos`.   |
+| `source_quantity`, `source_quantity_unit` | `abs(pos)` in contracts                                                                            |
+| `entry_price`, `mark_price`               | `avgPx`, `markPx`                                                                                  |
+| `unrealized_pnl`                          | `upl`, in the settlement coin                                                                      |
+| `liquidation_price`                       | `liqPx`. Null when empty or `0` (portfolio margin cross positions report none).                    |
+| `leverage`                                | `lever`. Null when empty or `0` (portfolio margin reports no leverage and fills `0`).              |
+| `margin`                                  | Isolated `margin`; non-Portfolio Cross source `imr`, with verified currency; see provenance below. |
 
 - **Zero rows.** Rows with `pos = 0` are dropped: OKX leaves them behind after
   an isolated-margin transfer.

@@ -16,13 +16,13 @@ collaborators. Normalized Adapter contracts isolate Platform parsing; raw
 runtime payloads do not reach storage or logs. Exact arithmetic and
 string-encoded financial values preserve financial meaning.
 
-Financial owns presentation reads; Valuation owns calculation, writes, rebuilds,
-and narrow stored Point/Account reads. Shared decoding and scoped pricing do not
-expose writer arithmetic. Query and rebuild loaders feed the same evaluator with
-prepared inputs, without SQL, clocks, or query callbacks. Catalog owns mapping
-and rebuild enqueueing; mapping commits first, so enqueue failure does not undo
-it. Portfolio deletion uses explicit ordered queries in one transaction with
-foreign keys enabled; foreign ownership causes rollback.
+Financial owns presentation reads; Valuation owns calculation, writes, and
+narrow stored Point/Account reads. Shared decoding and scoped pricing do not
+expose writer arithmetic. Collection loaders feed the same evaluator with
+prepared inputs, without SQL, clocks, or query callbacks. Catalog owns atomic
+mapping and audit writes. Portfolio deletion uses a durable root marker and
+bounded ordered transactions with foreign keys enabled; foreign ownership causes
+rollback.
 
 One ordered Platform catalog defines capabilities and finite credential
 metadata; runtime registration determines availability. Coarse lint boundaries
@@ -33,9 +33,9 @@ separate from runtime code.
 A monolith and direct SQL fit a personal tool without substitution layers.
 Explicit collaborators prevent divergent assembly; narrower financial boundaries
 let presentation evolve independently. Costs include shared database ownership,
-manual deletion-order maintenance, a deliberate non-atomic mapping/enqueue seam,
-and single-instance operation. Persistent jobs do not promise exactly-once
-collection or multi-instance coordination.
+manual deletion-order maintenance and single-instance operation. Leased
+Collection Cycles do not promise exactly-once collection or multi-instance
+coordination.
 
 [Architecture](../architecture.md) owns dependency direction, mechanisms, and
 limits; OpenAPI and migrations own wire and schema details.

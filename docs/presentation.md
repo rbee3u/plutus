@@ -39,10 +39,10 @@ retains Balances and Futures with Asset and Symbol columns.
 
 Catalog, Balances, and Earn display Asset Symbol first. When its Canonical Asset
 Symbol differs, show a secondary `Canonical Asset: ...` hint; omit redundant
-hints. Earn amount units use Asset Symbol, including Balance summaries without
-product details. Catalog and mapping dialogs omit full names. Mapping dialogs
-label the source Asset and the target Canonical Asset. Capital Flow inputs and
-columns use Canonical Asset because flows identify cross-Platform value.
+hints. Earn amount units use Asset Symbol. Catalog and mapping dialogs omit full
+names. Mapping dialogs label the source Asset and the target Canonical Asset.
+Capital Flow inputs and columns use Canonical Asset because flows identify
+cross-Platform value.
 
 ### Ordering
 
@@ -103,10 +103,13 @@ multiple digits. There is no eight-place ceiling. A rounding carry can remove
 shorthand: USD `0.000099999` becomes `0.0001`.
 
 Fractional rates displayed as percentages scale by 100 before precision is
-selected. IMR, MMR, and UniMMR remain unscaled ratios; leverage retains `x`.
-Source Asset amounts use quantity precision even for USD-equivalent Assets;
-derived USD valuations use USD precision. Price precision is independent of the
-quoting Asset.
+selected. IMR, MMR, and the reported Account margin ratio remain unscaled;
+leverage retains `x`. The reported ratio is labeled Margin level for Binance
+Classic Cross Margin, UniMMR for Binance Portfolio Margin, and Margin ratio for
+OKX. Labels follow immutable Account scope, including historical and stale
+reports; these source ratios do not share one denominator. Source Asset amounts
+use quantity precision even for USD-equivalent Assets; derived USD valuations
+use USD precision. Price precision is independent of the quoting Asset.
 
 USD valuations, flows, and differences in summaries, Tree nodes, signed badges,
 and tooltips use `$`, `+$`, or `-$`. Tables put currency in headers such as
@@ -295,9 +298,9 @@ Issues column. Status contains product phases only.
 Earn Type uses Flexible, Fixed, Bonded, Timed, On-chain, with names and lock or
 redemption rules in details. Count Positions, not subscriptions: rows can be
 individual Positions or product/strategy aggregates. Multi-Asset products stay
-in one row with separate amounts and qualified rewards. Missing descriptions
-make the count explicitly partial; show known Balance summaries separately with
-their original Observed time rather than fabricating product rows.
+in one row with separate amounts and qualified rewards. Failed collection
+carries forward compatible successful descriptions with their original Observed
+time; it never fabricates product rows from Balance sums.
 
 Amount, Rewards, Rate, and Maturity follow the
 [Earn semantic rules](./domain-rules.md#dual-investment-and-earn-completeness).
@@ -335,7 +338,11 @@ collection is independent.
 URL-backed filters and pagination survive reload. Unsaved inputs, Tree
 expansion, and unshown view memory follow ordinary full reload behavior, without
 draft storage or refresh interception. An open page can lag scheduled
-collection; its displayed point time remains the reference.
+collection; its displayed point time remains the reference. When separate reads
+refer to different cycles, hide mismatched details and refresh related reads
+before showing them together. Committed points themselves do not change.
+Portfolio deletion progress polls its small status list until the marked
+Portfolio disappears; its switcher entry is disabled while deleting.
 
 Page title and navigation stay visible during scrolling. Navigation drawers and
 dialogs isolate background scrolling and restore its position after the last
@@ -347,8 +354,8 @@ Android browser-chrome coverage.
 
 ## History windows and tables
 
-Both History views default to the rolling last seven days. They expose 1d, 3d,
-1w, 2w, 1Month, 1Year shortcuts and populated From / To controls in the
+Both History views default to the rolling last three days. They expose 1D, 3D,
+1W, 2W, 1M, 3M, and 6M shortcuts and populated From / To controls in the
 Portfolio timezone. Days and weeks are fixed elapsed durations; months and years
 preserve local calendar time and clamp to the target month's last day. Reject
 ambiguous or nonexistent manually entered wall times explicitly.
@@ -364,11 +371,14 @@ for longer ranges. Hour and Day use the final actual point in each existing
 timezone bucket; they never average or synthesize value. Raw points remain
 individually accessible in a separate paginated table. Curves ascend in time;
 History tables use newest first. Sampling is display-only, not retention or
-stored preaggregation.
+stored preaggregation. Old raw summaries remain expandable after detail expiry;
+show an explicit expiry message and a separate retained-snapshot action. Label
+the selected snapshot with its actual timestamp and total, including cross-day
+fallback. Never present another point's holdings under the original total.
 
 Valuation Points shows filters, the full-window chart, Period closes, then raw
 points. Period closes shares the window. Both calendar views initially use Day
-for day/week shortcuts, Week for 1Month, and Month for 1Year. Users can override
+for day/week shortcuts, Week for 1M, and Month for 3M or 6M. Users can override
 the period; applying a custom window retains it. Calendar reads calculate whole
 intersecting periods, not clipped intervals. Value Changes also offers an
 independent Custom range comparison.

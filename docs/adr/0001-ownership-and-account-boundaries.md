@@ -5,9 +5,11 @@ status: accepted
 # Ownership and Account boundaries
 
 Each User owns independent Portfolios, and each Identity belongs to one Platform
-and Portfolio. Main and sub-account logins are separate Identities with their
-own Connections. Selected Accounts under enabled Identities define the Portfolio
-Boundary; the fixed Manual Account also belongs to it.
+and Portfolio. Catalogs and prices are local to that Portfolio; duplicate market
+facts buy independent correction and deletion. Main and sub-account logins are
+separate Identities with their own Connections. Selected Accounts under enabled
+Identities define the Portfolio Boundary; the fixed Manual Account also belongs
+to it.
 
 Account Structure is declared and immutable; Margin Mode is observed and can
 change report interpretation. Credentials bind to one external login rather than

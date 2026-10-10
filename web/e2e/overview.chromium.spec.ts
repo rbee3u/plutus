@@ -36,7 +36,7 @@ async function fixture(page: Page) {
   const context = () => ({
     portfolioId,
     timezone: "UTC",
-    pointId: state.point,
+    cycleId: state.point,
     evaluatedAt: observed,
   });
   const account = (dual = false): AccountValuation => ({
@@ -48,7 +48,7 @@ async function fixture(page: Page) {
     identityName: state.ownerName,
     platform: "binance",
     selected: true,
-    status: state.stale || (state.unknown && !dual) ? "failed" : "ok",
+    status: state.stale || (state.unknown && !dual) ? "failed" : "succeeded",
     method: state.unknown && !dual ? "missing" : "reported",
     freshness: state.stale ? "stale" : "fresh",
     completeness: state.unknown && !dual ? "incomplete" : "complete",
@@ -61,8 +61,10 @@ async function fixture(page: Page) {
     context: context(),
     point: state.point
       ? {
-          id: state.point,
-          jobId: "job",
+          cycleId: state.point,
+          valuationRevision: `${state.point}:1`,
+          calculationVersion: 1,
+          detailState: "full" as const,
           evaluatedAt: observed,
           totalUsd: state.value,
           completeness: "complete",
@@ -84,7 +86,7 @@ async function fixture(page: Page) {
     sparkline: [],
   });
   const tree = (): HoldingsTree => ({
-    context: { ...context(), pointId: state.treePoint ?? state.point },
+    context: { ...context(), cycleId: state.treePoint ?? state.point },
     totalUsd: state.point ? state.value : null,
     completeness: state.point ? "complete" : "incomplete",
     issues: [
@@ -168,8 +170,6 @@ async function fixture(page: Page) {
               context: context(),
               account: a,
               items: state.earns,
-              balanceSummaries: [],
-              detailsCollected: true,
               issues: [],
             },
           });
@@ -210,10 +210,10 @@ async function fixture(page: Page) {
       const cycle = {
         id: "cycle",
         portfolioId,
-        trigger: "manual",
+        trigger: "user",
         createdAt: observed,
         startedAt: observed,
-        attempts: 1,
+        attemptCount: 1,
       };
       if (path.endsWith("/collection-cycles") && request.method() === "POST")
         return route.fulfill({ status: 202, json: { ...cycle, status: "queued" } });
@@ -249,10 +249,7 @@ async function fixture(page: Page) {
           } satisfies ManualBalanceState,
         });
       }
-      if (
-        request.method() === "GET" &&
-        (path.endsWith("/collection-cycles") || path.endsWith("/jobs"))
-      )
+      if (request.method() === "GET" && path.endsWith("/collection-cycles"))
         return route.fulfill({
           json: {
             items: [],
@@ -397,7 +394,7 @@ test("empty, loading, failed and newer Account Reports are not treated as empty 
   await page.getByRole("button", { name: "Collapse balances and positions for Spot" }).click();
   state.detailReport = "newer-report";
   await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
-  await expect(page.getByRole("alert").first()).toContainText("Reload the page");
+  await expect(page.getByRole("alert").first()).toContainText("Refreshing the Portfolio");
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("100");
   await expect(page.getByRole("alert").first()).toContainText("Showing the last successful result");
 });
@@ -421,20 +418,18 @@ for (const noPoint of [false, true]) {
   });
 }
 
-for (const tab of ["cycles", "jobs"]) {
-  test(`Activity ${tab} list does not poll`, async ({ page }) => {
-    const state = await fixture(page);
-    await page.clock.install();
-    await page.goto(`/p/${portfolioId}/data/activity?tab=${tab}`);
-    await expect(page.getByRole("table")).toBeVisible();
-    const path = tab === "cycles" ? "/collection-cycles" : "/jobs";
-    await expect
-      .poll(() => state.requests.filter((request) => request.endsWith(path)).length)
-      .toBe(1);
-    await page.clock.runFor(16000);
-    expect(state.requests.filter((request) => request.endsWith(path))).toHaveLength(1);
-  });
-}
+test("Activity cycles list does not poll", async ({ page }) => {
+  const state = await fixture(page);
+  await page.clock.install();
+  await page.goto(`/p/${portfolioId}/data/activity?tab=cycles`);
+  await expect(page.getByRole("table")).toBeVisible();
+  const path = "/collection-cycles";
+  await expect
+    .poll(() => state.requests.filter((request) => request.endsWith(path)).length)
+    .toBe(1);
+  await page.clock.runFor(16000);
+  expect(state.requests.filter((request) => request.endsWith(path))).toHaveLength(1);
+});
 
 test("stale Futures and Dual Investment remain visible and a failed initial Balance read stays unknown", async ({
   page,
@@ -449,13 +444,13 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
       identityId: "owner",
       identityName: state.ownerName,
       platform: "binance",
-      platformPositionRef: "btc",
+      positionKey: "btc",
       futuresContractId: "btc",
       futuresSymbol: "BTCUSDT",
       kind: "linear_perpetual",
       side: "long",
-      quantity: "1",
-      quantityUnit: "base",
+      sourceQuantity: "1",
+      sourceQuantityUnit: "base",
       baseAssetSymbol: "BTC",
       quoteAssetSymbol: "USDT",
       size: "1",
@@ -473,10 +468,10 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
       identityId: "owner",
       identityName: state.ownerName,
       platform: "binance",
-      platformPositionRef: "subscription",
+      positionKey: "subscription",
       baseAssetSymbol: "BTC",
       quoteAssetSymbol: "USDT",
-      investAssetSymbol: "USDT",
+      principalAssetSymbol: "USDT",
       principal: "100",
       direction: "buy_low",
       status: "running",
@@ -499,7 +494,7 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
   await page.reload();
   state.detailReport = "newer-report";
   await openSpot(page);
-  await expect(page.getByRole("alert").first()).toContainText("Reload the page");
+  await expect(page.getByRole("alert").first()).toContainText("Refreshing the Portfolio");
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText(
     "Balances could not be loaded. Retry above.",
   );
@@ -632,7 +627,7 @@ test("Overview shares Earn columns without ownership and rejects mismatched repo
       identityId: "owner",
       identityName: "Owner",
       platform: "binance",
-      platformPositionRef: "flex:ETH",
+      positionKey: "flex:ETH",
       type: "flexible",
       granularity: "product",
       amountBasis: "total",
@@ -682,7 +677,7 @@ test("Overview shares Earn columns without ownership and rejects mismatched repo
   await expect(
     page
       .getByText(
-        "This Account changed since the displayed Valuation Point. Reload the page to read its latest Account Report.",
+        "This Account changed since the displayed Valuation Point. Refreshing the Portfolio to read a consistent Account Report.",
       )
       .first(),
   ).toBeVisible();

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/catalog"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/valuation"
@@ -114,16 +115,36 @@ func plural(n int, one, many string) string {
 	return fmt.Sprintf("%d %s", n, many)
 }
 
-// RunCycle collects every enabled Identity of the Portfolio for jobID and writes the Valuation Point.
-func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (Summary, error) {
-	point, err := s.valuation.PointByJob(ctx, portfolioID, jobID)
+// RunCycle collects every enabled Identity of the Portfolio for cycleID and writes the Valuation Point.
+func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, claim ...*cycles.Claim) (Summary, error) {
+	point, err := s.valuation.PointByCycle(ctx, portfolioID, cycleID)
 	if err == nil {
-		return s.cycleSummary(ctx, point)
+		summary, err := s.cycleSummary(ctx, point)
+		if err != nil {
+			return Summary{}, err
+		}
+		if len(claim) > 0 && claim[0] != nil {
+			if err := cycles.NewService(s.db).Finish(ctx, claim[0], cycles.Result{OK: true}); err != nil {
+				return Summary{}, err
+			}
+		}
+		return summary, nil
 	}
 	if !errors.Is(err, valuation.ErrNotFound) {
 		return Summary{}, err
 	}
-	reports, err := s.q.ListReportsByJob(ctx, sqlcgen.ListReportsByJobParams{PortfolioID: portfolioID[:], JobID: jobID[:]})
+	completed, err := s.q.GetCollectionCycle(ctx, sqlcgen.GetCollectionCycleParams{PortfolioID: portfolioID[:], ID: cycleID[:]})
+	if err != nil {
+		return Summary{}, err
+	}
+	if completed.CollectionFinishedAt.Valid {
+		point, err := s.valuation.WritePoint(ctx, portfolioID, cycleID, completed.CollectionFinishedAt.Time, claim...)
+		if err != nil {
+			return Summary{}, err
+		}
+		return s.cycleSummary(ctx, point)
+	}
+	reports, err := s.q.ListReportsByCycle(ctx, sqlcgen.ListReportsByCycleParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
 	if err != nil {
 		return Summary{}, err
 	}
@@ -135,12 +156,11 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 		}
 		reported[id] = true
 	}
-	manualInputs, err := s.manual.Freeze(ctx, portfolioID, jobID)
-	if err != nil {
-		return Summary{}, err
-	}
-	if err := s.collectManual(ctx, portfolioID, jobID, manualInputs, reported); err != nil {
-		return Summary{}, err
+	prices := recordedPrices{}
+	if !completed.ManualReportedAt.Valid {
+		if err := s.collectManual(ctx, portfolioID, cycleID, reported, prices); err != nil {
+			return Summary{}, err
+		}
 	}
 	boundary, err := s.identities.ListBoundary(ctx, portfolioID)
 	if err != nil {
@@ -167,7 +187,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 				return Summary{}, err
 			}
 		}
-		written, err := s.collectIdentity(ctx, portfolioID, jobID, &item)
+		written, err := s.collectIdentity(ctx, portfolioID, cycleID, &item, prices)
 		if err != nil {
 			return Summary{}, err
 		}
@@ -176,18 +196,33 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 		}
 		collected = true
 	}
-	now := s.now().UTC()
-	for i := range boundary {
-		account := &boundary[i]
-		if reported[account.ID] || account.AccountType == adapters.TypeManual {
-			continue
+	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
 		}
-		detail := "The identity's connection is " + account.ConnectionStatus + "; the account was not collected this cycle."
-		if err := insertFailedReport(ctx, s.q, portfolioID, jobID, account.ID, ClassSkipped, detail, now); err != nil {
-			return Summary{}, err
+		now := s.now().UTC()
+		for i := range boundary {
+			account := &boundary[i]
+			if reported[account.ID] || account.AccountType == adapters.TypeManual {
+				continue
+			}
+			detail := "The identity's connection is " + account.ConnectionStatus + "; the account was not collected this cycle."
+			if err := insertFailedReport(ctx, q, portfolioID, cycleID, account.ID, ClassSkipped, detail, now); err != nil {
+				return err
+			}
 		}
+		if err := q.MarkCollectionCycleCollected(ctx, sqlcgen.MarkCollectionCycleCollectedParams{PortfolioID: portfolioID[:], ID: cycleID[:], At: sql.NullTime{Time: s.now().UTC(), Valid: true}}); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return Summary{}, err
 	}
-	point, err = s.valuation.WritePoint(ctx, portfolioID, jobID, s.now())
+	cycle, err := s.q.GetCollectionCycle(ctx, sqlcgen.GetCollectionCycleParams{PortfolioID: portfolioID[:], ID: cycleID[:]})
+	if err != nil {
+		return Summary{}, err
+	}
+	point, err = s.valuation.WritePoint(ctx, portfolioID, cycleID, cycle.CollectionFinishedAt.Time, claim...)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -197,7 +232,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 	}
 	if point.IncompleteAccountCount > 0 || summary.Invalidated > 0 {
 		s.logger.WarnContext(ctx, "valuation point written with issues",
-			slog.String("portfolio_id", portfolioID.String()), slog.String("job_id", jobID.String()),
+			slog.String("portfolio_id", portfolioID.String()), slog.String("cycle_id", cycleID.String()),
 			slog.Int("incomplete_accounts", point.IncompleteAccountCount), slog.Int("stale_accounts", point.StaleAccountCount),
 			slog.Int("connections_invalidated", summary.Invalidated))
 	}
@@ -205,7 +240,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, jobID uuid.UUID) (S
 }
 
 // collectIdentity calls the adapter with bounded retries and writes one report per selected Account.
-func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.UUID, item *identity.Collectable) (map[uuid.UUID]bool, error) {
+func (s *Service) collectIdentity(ctx context.Context, portfolioID, cycleID uuid.UUID, item *identity.Collectable, prices recordedPrices) (map[uuid.UUID]bool, error) {
 	written := map[uuid.UUID]bool{}
 	if len(item.Accounts) == 0 {
 		return written, nil
@@ -220,28 +255,36 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 	if class == "" && !adapters.ValidMarginMode(item.Identity.AccountStructure, batch.MarginMode) {
 		class, detail = adapters.Classify(adapters.UnknownMarginMode(item.Identity.Platform, string(batch.MarginMode)))
 	}
+	if class == "" {
+		if err := s.supplementPrices(ctx, portfolioID, item, &batch); err != nil {
+			return nil, err
+		}
+	}
 	now := s.now().UTC()
 	invalidate := false
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		if class != "" {
 			invalidate = adapters.StopsScheduling(class)
 			for _, a := range item.Accounts {
-				if err := insertFailedReport(ctx, q, portfolioID, jobID, a.ID, class, detail, now); err != nil {
+				if err := insertFailedReport(ctx, q, portfolioID, cycleID, a.ID, class, detail, now); err != nil {
 					return err
 				}
 				written[a.ID] = true
 			}
 		} else {
-			if err := s.identities.RecordMarginMode(ctx, q, portfolioID, item.Identity.ID, batch.MarginMode); err != nil {
+			if err := s.identities.RecordMarginMode(ctx, q, portfolioID, item.Identity.ID, item.Identity.Version, batch.MarginMode); err != nil {
 				return err
 			}
 			failed := 0
-			if err := s.storeBatch(ctx, q, portfolioID, jobID, item, &batch, byType, written, &failed, now); err != nil {
+			if err := s.storeBatch(ctx, q, portfolioID, cycleID, item, &batch, byType, written, &failed, prices, now); err != nil {
 				return err
 			}
 			for _, a := range item.Accounts {
 				if !written[a.ID] {
-					if err := insertFailedReport(ctx, q, portfolioID, jobID, a.ID, adapters.ClassNormalization, "The adapter returned no report for this account.", now); err != nil {
+					if err := insertFailedReport(ctx, q, portfolioID, cycleID, a.ID, adapters.ClassNormalization, "The adapter returned no report for this account.", now); err != nil {
 						return err
 					}
 					written[a.ID] = true
@@ -252,7 +295,7 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, jobID uuid.U
 				class, detail = adapters.ClassNormalization, "Every collected account failed this cycle."
 			}
 		}
-		return s.identities.RecordCollection(ctx, q, portfolioID, item.Identity.ID, now, class, detail, invalidate)
+		return s.identities.RecordCollection(ctx, q, portfolioID, item.Identity.ID, item.Identity.Version, now, class, detail, invalidate)
 	}); err != nil {
 		return nil, err
 	}
@@ -290,10 +333,11 @@ func (s *Service) collectWithRetry(ctx context.Context, item *identity.Collectab
 }
 
 func truncate(value string, limit int) string {
-	if len(value) <= limit {
+	runes := []rune(value)
+	if len(runes) <= limit {
 		return value
 	}
-	return value[:limit]
+	return string(runes[:limit])
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) error {

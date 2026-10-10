@@ -13,7 +13,7 @@ Application records also go to stderr; access and SQL normally go only to files.
 SQL logging is enabled by default with substituted parameter values and
 transaction boundaries, without redaction. Result rows, connection
 configuration, CLI passwords, master keys, and runtime Platform payloads are not
-inputs. Requests and jobs correlate through context; panic diagnostics include
+inputs. Requests and cycles correlate through context; panic diagnostics include
 exception and stack information without request dumps.
 
 Writes are synchronous with size-based rotation and one process per directory.

@@ -1,3 +1,4 @@
+import { useValuationRevision } from "@/shared/lib/useValuationRevision";
 import type { EChartsCoreOption } from "echarts/core";
 import { useEffect, useMemo } from "react";
 import {
@@ -45,7 +46,7 @@ export function ValuationPointsPage() {
   const to = window?.to;
   const granularity = from && to ? historyGranularity(from, to) : "hour";
   const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, history.defaultPeriod);
-  const pointId = params.get("point") ?? "";
+  const cycleId = params.get("point") ?? "";
   const pointPager = useHistoryPager("points");
 
   const points = usePortfolioQuery<ValuationPointList>({
@@ -70,10 +71,14 @@ export function ValuationPointsPage() {
       pointPager.onChange(Math.max(0, Math.ceil(total / pointPager.limit) - 1) * pointPager.limit);
     }
   }, [records.data, pointPager]);
+  const selectedRevision = records.data?.items.find(
+    (item) => item.cycleId === cycleId,
+  )?.valuationRevision;
   const detail = usePortfolioQuery<ValuationPointDetail>({
-    key: (userId, portfolioId) => keys.valuationPoint(userId, portfolioId, pointId),
-    ready: Boolean(pointId),
-    load: (portfolioId) => getValuationPoint({ path: { portfolioId, pointId } }),
+    key: (userId, portfolioId) =>
+      keys.valuationPoint(userId, portfolioId, cycleId, selectedRevision),
+    ready: Boolean(cycleId && selectedRevision),
+    load: (portfolioId) => getValuationPoint({ path: { portfolioId, cycleId } }),
   });
   const closes = usePortfolioQuery<PeriodCloseList>({
     key: (userId, portfolioId) => keys.periodCloses(userId, portfolioId, periodKind, from, to),
@@ -81,6 +86,10 @@ export function ValuationPointsPage() {
     load: (portfolioId) =>
       listPeriodCloses({ path: { portfolioId }, query: { periodKind, from, to } }),
   });
+  const detailMatches = useValuationRevision(
+    selectedRevision,
+    detail.data?.point.valuationRevision,
+  );
   const series = points.data;
   const timezone = window?.context.timezone;
   const closeItems = [...(closes.data?.items ?? [])].reverse();
@@ -187,21 +196,23 @@ export function ValuationPointsPage() {
         <DataTable
           caption="Raw Valuation Points"
           empty={records.isPending ? "Loading raw Valuation Points." : NO_POINT}
-          rowClassName={(row) => (row.id === pointId ? shared.openRow : undefined)}
-          openKey={pointId}
-          onRowClick={(key) => update({ point: key === pointId ? "" : key })}
+          rowClassName={(row) => (row.id === cycleId ? shared.openRow : undefined)}
+          openKey={cycleId}
+          onRowClick={(key) => update({ point: key === cycleId ? "" : key })}
           detailId={POINT_DETAIL_ID}
           renderDetail={() => (
             <>
               <QueryRecovery query={detail} fallback="The Valuation Point could not be loaded." />
-              {detail.data ? <PointDetail detail={detail.data} timezone={timezone} /> : null}
+              {detailMatches && detail.data ? (
+                <PointDetail detail={detail.data} timezone={timezone} />
+              ) : null}
               {detail.isPending ? <p className={shared.muted}>Loading the point.</p> : null}
             </>
           )}
           columns={RAW_POINT_COLUMNS}
           rows={(records.data?.items ?? []).map((item, index, items) => {
             const prevItem = items[index + 1];
-            return rawPointRow(item, prevItem, timezone, pointId, update);
+            return rawPointRow(item, prevItem, timezone, cycleId, update);
           })}
         />
         <HistoryPager

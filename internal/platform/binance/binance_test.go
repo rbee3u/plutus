@@ -572,17 +572,17 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 		t.Fatalf("Binance has no Margin Mode, got %q", batch.MarginMode)
 	}
 	report := reportOf(t, batch, TypePortfolioMargin)
-	if report.Status != adapters.StatusOK || report.ObservedAt.IsZero() {
+	if report.Status != adapters.StatusSucceeded || report.CollectedAt.IsZero() {
 		t.Fatalf("report %+v", report)
 	}
 	account := body[pmAccount](t, r, epPMAccount, nil)
 	checks := map[string][2]string{
-		"equity":             {deref(report.Equity), decimal.Compact(account.ActualEquity)},
-		"adjustedEquity":     {deref(report.AdjustedEquity), decimal.Compact(account.AccountEquity)},
-		"availableEquity":    {deref(report.AvailableEquity), decimal.Compact(account.TotalAvailable)},
-		"unifiedMarginRatio": {deref(report.UnifiedMarginRatio), decimal.Compact(account.UniMMR)},
-		"initialMarginRatio": {deref(report.InitialMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.AccountInitialMargin), rat(t, account.AccountEquity)).FloatString(8))},
-		"maintMarginRatio":   {deref(report.MaintenanceMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.AccountMaintMargin), rat(t, account.AccountEquity)).FloatString(8))},
+		"equity":                       {deref(report.Equity), decimal.Compact(account.ActualEquity)},
+		"adjustedEquity":               {deref(report.AdjustedEquity), decimal.Compact(account.AccountEquity)},
+		"availableEquity":              {deref(report.AvailableEquity), decimal.Compact(account.TotalAvailable)},
+		"marginRatio":                  {deref(report.ReportedMarginRatio), decimal.Compact(account.UniMMR)},
+		"initialMarginRequirement":     {deref(report.InitialMarginRequirementUSD), decimal.Compact(account.AccountInitialMargin)},
+		"maintenanceMarginRequirement": {deref(report.MaintenanceMarginRequirementUSD), decimal.Compact(account.AccountMaintMargin)},
 	}
 	for name, pair := range checks {
 		if pair[0] != pair[1] {
@@ -613,7 +613,7 @@ func TestCollectPMBorrowingAndInterest(t *testing.T) {
 	// Exercise debt and interest without subtracting negativeBalance twice.
 	r.always(epPMBalance, status(http.StatusOK, `[{"asset":"USDT","totalWalletBalance":"-5","umUnrealizedPNL":"2","cmUnrealizedPNL":"-3","crossMarginBorrowed":"10","crossMarginInterest":"0.5","negativeBalance":"-5"}]`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin), TypePortfolioMargin)
-	if report.Status != adapters.StatusOK || len(report.Balances) != 1 {
+	if report.Status != adapters.StatusSucceeded || len(report.Balances) != 1 {
 		t.Fatalf("synthetic borrowing report %+v", report)
 	}
 	b := balanceOf(t, report, "USDT")
@@ -636,32 +636,32 @@ func TestCollectMapsPortfolioMarginPositionsAndFuturesContracts(t *testing.T) {
 		"um:BTCUSDT:BOTH":     {"BTCUSDT", adapters.SideLong, "0.01", adapters.UnitBase, adapters.KindLinearPerpetual, "USDT", "USDT", "", "29000", "30000", "10", "5"},
 		"cm:BTCUSD_PERP:BOTH": {"BTCUSD_PERP", adapters.SideShort, "2", adapters.UnitContracts, adapters.KindInversePerpetual, "USD", "BTC", "100", "20000", "25000", "-0.002", "3"},
 	}
-	if report.Status != adapters.StatusOK || len(report.Positions) != len(want) {
+	if report.Status != adapters.StatusSucceeded || len(report.Positions) != len(want) {
 		t.Fatalf("PM positions: %+v", report)
 	}
 	for _, got := range report.Positions {
-		expected, ok := want[got.PlatformPositionRef]
+		expected, ok := want[got.PositionKey]
 		if !ok {
 			t.Fatalf("unexpected or duplicate position: %+v", got)
 		}
-		if got.Side != expected.side || got.Quantity != expected.quantity || got.QuantityUnit != expected.unit {
-			t.Errorf("%s holding = %+v, want %+v", got.PlatformPositionRef, got, expected)
+		if got.Side != expected.side || got.SourceQuantity != expected.quantity || got.SourceQuantityUnit != expected.unit {
+			t.Errorf("%s holding = %+v, want %+v", got.PositionKey, got, expected)
 		}
 		futuresContract := got.FuturesContract
 		if futuresContract.Symbol != expected.symbol || futuresContract.Kind != expected.kind || futuresContract.BaseAssetSymbol != "BTC" || futuresContract.QuoteAssetSymbol != expected.quote || futuresContract.SettlementAssetSymbol != expected.settlement || (expected.contractSize != "" && deref(futuresContract.ContractSize) != expected.contractSize) || (futuresContract.ContractSize == nil) != (expected.contractSize == "") {
-			t.Errorf("%s futures contract = %+v, want %+v", got.PlatformPositionRef, futuresContract, expected)
+			t.Errorf("%s futures contract = %+v, want %+v", got.PositionKey, futuresContract, expected)
 		}
 		if got.Margin != nil || got.LiquidationPrice != nil || deref(got.EntryPrice) != expected.entry || deref(got.MarkPrice) != expected.mark || deref(got.UnrealizedPnl) != expected.pnl || deref(got.Leverage) != expected.leverage {
-			t.Errorf("%s measures = %+v, want %+v", got.PlatformPositionRef, got, expected)
+			t.Errorf("%s measures = %+v, want %+v", got.PositionKey, got, expected)
 		}
-		delete(want, got.PlatformPositionRef)
+		delete(want, got.PositionKey)
 	}
 	if r.count(epUMExchangeInfo) != 1 || r.count(epCMExchangeInfo) != 1 {
 		t.Fatalf("exchangeInfo fetched UM %d / CM %d times", r.count(epUMExchangeInfo), r.count(epCMExchangeInfo))
 	}
 	collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
-	if r.count(epUMExchangeInfo) != 1 || r.count(epCMExchangeInfo) != 1 {
-		t.Fatal("exchangeInfo must be served from the in-process cache within its TTL")
+	if r.count(epUMExchangeInfo) != 2 || r.count(epCMExchangeInfo) != 2 {
+		t.Fatal("contract observations must be refreshed for each collection run")
 	}
 }
 
@@ -719,7 +719,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		{TypeFunding, map[string]struct{ equity, available string }{"USDT": {"16", "10"}}},
 	} {
 		report := reportOf(t, batch, tc.accountType)
-		if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || report.UnifiedMarginRatio != nil || len(report.Balances) != len(tc.balances) {
+		if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != len(tc.balances) {
 			t.Fatalf("%s wallet report: %+v", tc.accountType, report)
 		}
 		for _, got := range report.Balances {
@@ -752,7 +752,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		t.Fatal("synthetic api/v3/account response must retain its LDUSDT receipt")
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusOK {
+	if earn.Status != adapters.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	want := map[string]string{"USDT": "2", "ETH": "0.01"}
@@ -799,13 +799,13 @@ func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	earn := reportOf(t, batch, TypeEarn)
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusOK || len(dual.DualPositions) != 3 {
+	if dual.Status != adapters.StatusSucceeded || len(dual.DualPositions) != 3 {
 		t.Fatalf("dual report %+v", dual)
 	}
 	if balanceOf(t, earn, "USDT").Equity != "11.5" || balanceOf(t, dual, "USDT").Equity != "100" {
 		t.Fatal("principal must be separated from savings")
 	}
-	if earn.Status != adapters.StatusOK {
+	if earn.Status != adapters.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	got := map[string]string{}
@@ -866,7 +866,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 			r.alwaysAt(epDualInvest, dualInvestmentQuery(state, 1), dualInvestmentAnswer(state))
 			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"522","walletName":"Earn"}]`))
 			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
-			if earn.Status != adapters.StatusOK || balanceOf(t, earn, "ETH").Equity != "0.25" {
+			if earn.Status != adapters.StatusSucceeded || balanceOf(t, earn, "ETH").Equity != "0.25" {
 				t.Fatalf("earn report %+v", earn)
 			}
 		})
@@ -889,7 +889,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 			if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, state) {
 				t.Fatalf("earn report %+v", earn)
 			}
-			if reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
+			if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
 				t.Fatal("spot must not fail with Earn")
 			}
 		})
@@ -901,7 +901,7 @@ func TestDualInvestmentCountsPrincipal(t *testing.T) {
 
 	_, a := newReplay(t, dualOnlySamples)
 	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || balanceOf(t, earn, "USDT").Equity != "10" || balanceOf(t, earn, "SOL").Equity != "0.1" {
+	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 || balanceOf(t, earn, "USDT").Equity != "10" || balanceOf(t, earn, "SOL").Equity != "0.1" {
 		t.Fatalf("earn report %+v: both synthetic principal balances must be counted", earn)
 	}
 }
@@ -919,7 +919,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 			!strings.Contains(earn.ErrorDetail, "5000.00") || !strings.Contains(earn.ErrorDetail, "12.00") {
 			t.Fatalf("earn report %+v", earn)
 		}
-		if reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
+		if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
 			t.Fatal("spot must not fail with Earn")
 		}
 	})
@@ -927,7 +927,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		t.Parallel()
 		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"12.99","walletName":"Earn"}]`))
-		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusOK {
+		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusSucceeded {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
@@ -946,7 +946,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK,
 			`{"total":1,"list":[{"id":"7","investCoin":"BNB","subscriptionAmount":"3","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"5000","walletName":"Earn"}]`))
-		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusOK {
+		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusSucceeded {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
@@ -957,12 +957,12 @@ func TestClassicCrossMargin(t *testing.T) {
 
 	r, a := newReplay(t, classicSamples)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
-	if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || report.InitialMarginRatio != nil {
+	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedInitialMarginRatio != nil {
 		t.Fatalf("report %+v: a Classic wallet is valued from its Balances", report)
 	}
 	account := body[crossMarginAccount](t, r, epCrossMargin, nil)
-	if deref(report.UnifiedMarginRatio) != decimal.Compact(account.MarginLevel) {
-		t.Fatalf("margin level %s, want %s", deref(report.UnifiedMarginRatio), account.MarginLevel)
+	if deref(report.ReportedMarginRatio) != decimal.Compact(account.MarginLevel) {
+		t.Fatalf("margin level %s, want %s", deref(report.ReportedMarginRatio), account.MarginLevel)
 	}
 	if len(report.Balances) != 2 {
 		t.Fatalf("balances %+v: the all-zero ETH row is omitted", report.Balances)
@@ -982,7 +982,7 @@ func TestClassicCrossMarginNotCreatedIsEmpty(t *testing.T) {
 	r, a := newReplay(t, classicSamples)
 	r.always(epCrossMargin, status(http.StatusOK, `{"created":false,"marginLevel":"999","userAssets":[]}`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
-	if report.Status != adapters.StatusOK || len(report.Balances) != 0 || report.UnifiedMarginRatio != nil {
+	if report.Status != adapters.StatusSucceeded || len(report.Balances) != 0 || report.ReportedMarginRatio != nil {
 		t.Fatalf("report %+v", report)
 	}
 }
@@ -992,7 +992,7 @@ func TestClassicIsolatedMarginSumsCoinsAcrossPairs(t *testing.T) {
 
 	_, a := newReplay(t, classicSamples)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeIsolatedMargin), TypeIsolatedMargin)
-	if report.Status != adapters.StatusOK || report.Equity != nil || report.UnifiedMarginRatio != nil || len(report.Balances) != 3 {
+	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != 3 {
 		t.Fatalf("report %+v", report)
 	}
 	usdt := balanceOf(t, report, "USDT")
@@ -1011,15 +1011,15 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 	// Preserve the synthetic Multi-Assets position's illustrative configuration.
 	r.always(epUMSymbolConfig, status(http.StatusOK, `[{"symbol":"BTCUSDT","marginType":"CROSSED","isAutoAddMargin":false,"leverage":21,"maxNotionalValue":"1000000"}]`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusOK || report.Equity != nil || report.UnifiedMarginRatio != nil {
+	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
 		t.Fatalf("report %+v", report)
 	}
 	account := body[futuresAccount](t, r, epUMAccount, nil)
 	checks := map[string][2]string{
-		"adjustedEquity":     {deref(report.AdjustedEquity), decimal.Compact(account.TotalMarginBalance)},
-		"availableEquity":    {deref(report.AvailableEquity), decimal.Compact(account.AvailableBalance)},
-		"initialMarginRatio": {deref(report.InitialMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.TotalInitialMargin), rat(t, account.TotalMarginBalance)).FloatString(8))},
-		"maintMarginRatio":   {deref(report.MaintenanceMarginRatio), decimal.Compact(new(big.Rat).Quo(rat(t, account.TotalMaintMargin), rat(t, account.TotalMarginBalance)).FloatString(8))},
+		"adjustedEquity":               {deref(report.AdjustedEquity), decimal.Compact(account.TotalMarginBalance)},
+		"availableEquity":              {deref(report.AvailableEquity), decimal.Compact(account.AvailableBalance)},
+		"initialMarginRequirement":     {deref(report.InitialMarginRequirementUSD), decimal.Compact(account.TotalInitialMargin)},
+		"maintenanceMarginRequirement": {deref(report.MaintenanceMarginRequirementUSD), decimal.Compact(account.TotalMaintMargin)},
 	}
 	for name, pair := range checks {
 		if pair[0] != pair[1] || pair[0] == "0" {
@@ -1040,7 +1040,7 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 		t.Fatalf("positions %+v", report.Positions)
 	}
 	p := report.Positions[0]
-	if p.PlatformPositionRef != "um:BTCUSDT:BOTH" || p.QuantityUnit != adapters.UnitBase || p.Quantity != "0.01" || p.Side != adapters.SideLong ||
+	if p.PositionKey != "um:BTCUSDT:BOTH" || p.SourceQuantityUnit != adapters.UnitBase || p.SourceQuantity != "0.01" || p.Side != adapters.SideLong ||
 		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.FuturesContract.Kind != adapters.KindLinearPerpetual {
 		t.Fatalf("position %+v", p)
 	}
@@ -1054,8 +1054,8 @@ func TestClassicUSDMFuturesInSingleAssetModeHasNoAccountFigures(t *testing.T) {
 
 	_, a := newReplay(t, classicSingleAsset)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusOK || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
-		report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || len(report.Balances) != 1 {
+	if report.Status != adapters.StatusSucceeded || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
+		report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || len(report.Balances) != 1 {
 		t.Fatalf("report %+v: Single-Asset totals cover USDT only and are not stored", report)
 	}
 }
@@ -1066,7 +1066,7 @@ func TestClassicUSDMWithoutPositionSkipsSymbolConfig(t *testing.T) {
 	r, a := newReplay(t, classicSamples)
 	r.always(epUMPositionRisk, status(http.StatusOK, `[]`))
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusOK || len(report.Positions) != 0 || r.count(epUMSymbolConfig) != 0 {
+	if report.Status != adapters.StatusSucceeded || len(report.Positions) != 0 || r.count(epUMSymbolConfig) != 0 {
 		t.Fatalf("report %+v, symbol configuration read %d times", report, r.count(epUMSymbolConfig))
 	}
 }
@@ -1075,7 +1075,7 @@ func TestClassicCOINMFuturesOmitsZeroRows(t *testing.T) {
 	t.Parallel()
 	_, a := newReplay(t, classicCoinM)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCMFutures), TypeCMFutures)
-	if report.Status != adapters.StatusOK || report.Equity != nil || report.AdjustedEquity != nil || len(report.Balances) != 1 {
+	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || len(report.Balances) != 1 {
 		t.Fatalf("report %+v", report)
 	}
 	if eth := balanceOf(t, report, "ETH"); eth.Equity != "0.011" || deref(eth.AvailableToWithdraw) != "0.007" {
@@ -1093,7 +1093,7 @@ func TestClassicWalletsBinanceSaysAreNotOpenedReportEmpty(t *testing.T) {
 	r.always(epAccountInfo, status(http.StatusOK, `{"vipLevel":0,"isMarginEnabled":false,"isFutureEnabled":false,"isOptionsEnabled":false,"isPortfolioMarginRetailEnabled":false}`))
 	batch := collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin, TypeIsolatedMargin, TypeUMFutures, TypeCMFutures)
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK || len(report.Balances) != 0 || len(report.Positions) != 0 || report.ObservedAt.IsZero() {
+		if report.Status != adapters.StatusSucceeded || len(report.Balances) != 0 || len(report.Positions) != 0 || report.CollectedAt.IsZero() {
 			t.Fatalf("%s report %+v", report.AccountType, report)
 		}
 	}
@@ -1119,7 +1119,7 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 		priced[p.CanonicalAssetSymbol] = true
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
@@ -1143,7 +1143,7 @@ func TestAccountTypeOfTheOtherStructureFailsOnlyItself(t *testing.T) {
 	if um := reportOf(t, batch, TypeUMFutures); um.Status != adapters.StatusFailed || um.ErrorClass != adapters.ClassUnsupported {
 		t.Fatalf("um_futures under Portfolio Margin %+v", um)
 	}
-	if reportOf(t, batch, TypeSpot).Status != adapters.StatusOK || r.count(epUMAccount) != 0 {
+	if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded || r.count(epUMAccount) != 0 {
 		t.Fatal("spot must still be collected and no Classic endpoint read")
 	}
 }
@@ -1161,11 +1161,11 @@ func TestCollectPrices(t *testing.T) {
 		if p.QuoteCanonicalAssetSymbol != "USDT" && p.QuoteCanonicalAssetSymbol != "USDC" {
 			t.Errorf("%s quoted in %s", p.CanonicalAssetSymbol, p.QuoteCanonicalAssetSymbol)
 		}
-		if p.ObservedAt.IsZero() {
+		if p.RetrievedAt.IsZero() {
 			t.Errorf("%s has no observation time", p.CanonicalAssetSymbol)
 		}
 		for _, report := range batch.Reports {
-			if p.ObservedAt.After(report.ObservedAt) {
+			if p.RetrievedAt.After(report.CollectedAt) {
 				t.Errorf("price %s observed after the %s report; valuation would not pick it", p.CanonicalAssetSymbol, report.AccountType)
 			}
 		}
@@ -1176,7 +1176,7 @@ func TestCollectPrices(t *testing.T) {
 		}
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
@@ -1229,7 +1229,7 @@ func TestTickerFailureKeepsReports(t *testing.T) {
 		t.Fatalf("prices %+v after a ticker failure", batch.Prices)
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusOK {
+		if report.Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed with the ticker: %+v", report.AccountType, report)
 		}
 	}
@@ -1277,7 +1277,7 @@ func TestStaleTimestampResyncsAndRetries(t *testing.T) {
 	r, a := newReplay(t, "")
 	r.then(epAccountInfo, serve(r.failure("stale_timestamp")))
 	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
-	if reportOf(t, batch, TypePortfolioMargin).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypePortfolioMargin).Status != adapters.StatusSucceeded {
 		t.Fatal("the retried call must succeed")
 	}
 	if r.count(epServerTime) != 2 || r.count(epAccountInfo) != 2 {
@@ -1321,7 +1321,7 @@ func TestOneFailingAccountLeavesSiblingsOK(t *testing.T) {
 		t.Fatalf("earn report %+v", earn)
 	}
 	for _, sibling := range []adapters.AccountType{TypePortfolioMargin, TypeSpot, TypeFunding} {
-		if reportOf(t, batch, sibling).Status != adapters.StatusOK {
+		if reportOf(t, batch, sibling).Status != adapters.StatusSucceeded {
 			t.Fatalf("%s failed with earn", sibling)
 		}
 	}
@@ -1350,7 +1350,7 @@ func TestUnknownFuturesContractFailsTheAccount(t *testing.T) {
 	if pm.Status != adapters.StatusFailed || pm.ErrorClass != adapters.ClassNormalization || !strings.Contains(pm.ErrorDetail, "NOPEUSD_PERP") {
 		t.Fatalf("pm report %+v", pm)
 	}
-	if reportOf(t, batch, TypeSpot).Status != adapters.StatusOK {
+	if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
 		t.Fatal("spot must not fail with an unknown contract")
 	}
 }
@@ -1384,7 +1384,7 @@ func TestZeroEquityLeavesMarginRatiosNull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.InitialMarginRatio != nil || report.MaintenanceMarginRatio != nil || deref(report.Equity) != "0" {
+	if report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || deref(report.Equity) != "0" {
 		t.Fatalf("report %+v", report)
 	}
 }
@@ -1398,7 +1398,7 @@ func TestShortPositionAndZeroLiquidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Side != adapters.SideShort || p.Quantity != "0.5" || p.LiquidationPrice != nil || p.PlatformPositionRef != "um:BTCUSDT:BOTH" {
+	if p.Side != adapters.SideShort || p.SourceQuantity != "0.5" || p.LiquidationPrice != nil || p.PositionKey != "um:BTCUSDT:BOTH" {
 		t.Fatalf("position %+v", p)
 	}
 	hedged := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "0.5", PositionSide: "SHORT", EntryPrice: "1", MarkPrice: "1", LiquidationPrice: "1", UnRealizedProfit: "0", Leverage: "1"}

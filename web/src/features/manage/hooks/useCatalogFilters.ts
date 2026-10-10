@@ -9,7 +9,7 @@ export type CatalogFilterKey = "platform" | "q" | "treatment" | "status";
 export interface CatalogFilterValues {
   platform: string;
   q: string;
-  ignoredOnly: boolean;
+  excludedOnly: boolean;
 }
 
 export function useCatalogFilters() {
@@ -21,7 +21,7 @@ export function useCatalogFilters() {
   const values: CatalogFilterValues = {
     platform: params.get("platform") ?? "",
     q: params.get("q") ?? "",
-    ignoredOnly: params.get("ignoredOnly") === "true",
+    excludedOnly: params.get("excludedOnly") === "true",
   };
 
   const [open, setOpen] = useState<CatalogFilterKey | null>(null);
@@ -84,7 +84,7 @@ export function useCatalogFilters() {
     }
   }
 
-  function change(next: { platform?: string; q?: string; ignoredOnly?: boolean }) {
+  function change(next: { platform?: string; q?: string; excludedOnly?: boolean }) {
     cancelTimer();
     const q = pending.current;
     pending.current = null;
@@ -98,8 +98,8 @@ export function useCatalogFilters() {
       updates.q = next.q.trim();
       setDraft({ source: next.q, value: next.q });
     }
-    if (next.ignoredOnly !== undefined) {
-      updates.ignoredOnly = next.ignoredOnly ? "true" : "";
+    if (next.excludedOnly !== undefined) {
+      updates.excludedOnly = next.excludedOnly ? "true" : "";
     }
     update(updates);
     setOpen(null);
@@ -122,7 +122,7 @@ export function useCatalogFilters() {
 
   const statusOptions = [
     { value: "", label: "All" },
-    { value: "true", label: "Ignored only" },
+    { value: "true", label: "Excluded only" },
   ];
 
   const treatmentOptions = statusOptions;
@@ -151,10 +151,10 @@ export function useCatalogFilters() {
       pending.current = null;
       composing.current = false;
       setDraft({ source: "", value: "" });
-      update({ platform: "", q: "", ignoredOnly: "", offset: "" });
+      update({ platform: "", q: "", excludedOnly: "", offset: "" });
       setOpen(null);
     },
-    hasFilters: Boolean(values.platform || values.q || values.ignoredOnly || qDraft),
+    hasFilters: Boolean(values.platform || values.q || values.excludedOnly || qDraft),
     offset: readOffset(params),
     page: (offset: number) => {
       cancelTimer();
@@ -169,9 +169,9 @@ export function useCatalogFilters() {
     platformOptions,
     platformName: platformLabel(platforms.data?.items, values.platform),
     statusOptions,
-    statusName: values.ignoredOnly ? "Ignored" : "All",
+    statusName: values.excludedOnly ? "Excluded" : "All",
     treatmentOptions,
-    treatmentName: values.ignoredOnly ? "Ignored" : "All",
+    treatmentName: values.excludedOnly ? "Excluded" : "All",
   };
 }
 

@@ -13,7 +13,7 @@ import (
 
 const getSessionByID = `-- name: GetSessionByID :one
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-       idle_expires_at, absolute_expires_at, revoked_at, client_label
+       idle_expires_at, absolute_expires_at, revoked_at, user_agent
 FROM sessions
 WHERE id = ?
 `
@@ -31,14 +31,14 @@ func (q *Queries) GetSessionByID(ctx context.Context, id []byte) (Session, error
 		&i.IdleExpiresAt,
 		&i.AbsoluteExpiresAt,
 		&i.RevokedAt,
-		&i.ClientLabel,
+		&i.UserAgent,
 	)
 	return i, err
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-       idle_expires_at, absolute_expires_at, revoked_at, client_label
+       idle_expires_at, absolute_expires_at, revoked_at, user_agent
 FROM sessions
 WHERE token_hash = ?
 `
@@ -56,7 +56,7 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (
 		&i.IdleExpiresAt,
 		&i.AbsoluteExpiresAt,
 		&i.RevokedAt,
-		&i.ClientLabel,
+		&i.UserAgent,
 	)
 	return i, err
 }
@@ -64,7 +64,7 @@ func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (
 const insertSession = `-- name: InsertSession :exec
 INSERT INTO sessions (
     id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-    idle_expires_at, absolute_expires_at, revoked_at, client_label
+    idle_expires_at, absolute_expires_at, revoked_at, user_agent
 ) VALUES (
     ?, ?, ?, ?,
     ?, ?, ?,
@@ -82,7 +82,7 @@ type InsertSessionParams struct {
 	IdleExpiresAt     time.Time
 	AbsoluteExpiresAt time.Time
 	RevokedAt         sql.NullTime
-	ClientLabel       sql.NullString
+	UserAgent         sql.NullString
 }
 
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) error {
@@ -96,14 +96,14 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 		arg.IdleExpiresAt,
 		arg.AbsoluteExpiresAt,
 		arg.RevokedAt,
-		arg.ClientLabel,
+		arg.UserAgent,
 	)
 	return err
 }
 
 const listSessionsByUser = `-- name: ListSessionsByUser :many
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-       idle_expires_at, absolute_expires_at, revoked_at, client_label
+       idle_expires_at, absolute_expires_at, revoked_at, user_agent
 FROM sessions
 WHERE user_id = ?
 ORDER BY created_at DESC, id DESC
@@ -128,7 +128,7 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID []byte) ([]Sess
 			&i.IdleExpiresAt,
 			&i.AbsoluteExpiresAt,
 			&i.RevokedAt,
-			&i.ClientLabel,
+			&i.UserAgent,
 		); err != nil {
 			return nil, err
 		}
@@ -143,21 +143,22 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID []byte) ([]Sess
 	return items, nil
 }
 
-const revokeOtherUserSessions = `-- name: RevokeOtherUserSessions :exec
-UPDATE sessions
-SET revoked_at = ?
-WHERE user_id = ? AND id <> ? AND revoked_at IS NULL
+const pruneExpiredSessions = `-- name: PruneExpiredSessions :execrows
+DELETE FROM sessions
+WHERE revoked_at IS NOT NULL OR idle_expires_at <= ? OR absolute_expires_at <= ?
+LIMIT 1000
 `
 
-type RevokeOtherUserSessionsParams struct {
-	RevokedAt sql.NullTime
-	UserID    []byte
-	KeepID    []byte
+type PruneExpiredSessionsParams struct {
+	Now time.Time
 }
 
-func (q *Queries) RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) error {
-	_, err := q.db.ExecContext(ctx, revokeOtherUserSessions, arg.RevokedAt, arg.UserID, arg.KeepID)
-	return err
+func (q *Queries) PruneExpiredSessions(ctx context.Context, arg PruneExpiredSessionsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, pruneExpiredSessions, arg.Now, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const revokeSession = `-- name: RevokeSession :exec

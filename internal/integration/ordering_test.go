@@ -69,8 +69,8 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 			t.Fatal("Boundary order differs from management order")
 		}
 	}
-	_, jobID := h.runCycle()
-	accounts, err := h.valuation.Accounts(h.ctx, h.portfolioID, jobID)
+	_, cycleID := h.runCycle()
+	accounts, err := h.valuation.Accounts(h.ctx, h.portfolioID, cycleID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	for offset, row := range positions.Items {
 		positionAccounts = append(positionAccounts, row.AccountID)
 		page, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Offset: offset, Limit: 1})
-		if err != nil || len(page.Items) != 1 || page.Items[0].AccountID != row.AccountID || page.Items[0].PlatformPositionRef != row.PlatformPositionRef || page.TotalUSD == nil || *page.TotalUSD != *positions.TotalUSD {
+		if err != nil || len(page.Items) != 1 || page.Items[0].AccountID != row.AccountID || page.Items[0].PositionKey != row.PositionKey || page.TotalUSD == nil || *page.TotalUSD != *positions.TotalUSD {
 			t.Fatalf("Position pagination changed order or total at %d: %+v %v", offset, page, err)
 		}
 	}
@@ -148,11 +148,11 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 		var flatRefs, detailRefs []string
 		for _, row := range positions.Items {
 			if row.AccountID == account.AccountID {
-				flatRefs = append(flatRefs, row.PlatformPositionRef)
+				flatRefs = append(flatRefs, row.PositionKey)
 			}
 		}
 		for _, row := range view.Positions {
-			detailRefs = append(detailRefs, row.PlatformPositionRef)
+			detailRefs = append(detailRefs, row.PositionKey)
 		}
 		if !slices.Equal(flatRefs, detailRefs) {
 			t.Fatalf("Account-detail and flat Position order disagree: %v / %v", detailRefs, flatRefs)
@@ -174,14 +174,14 @@ func TestCatalogBusinessOrderBeforePagination(t *testing.T) {
 	q := sqlcgen.New(h.db)
 	symbol := "ORDER" + uuid.NewString()[:8]
 	for _, platform := range []adapters.Platform{adapters.PlatformKraken, adapters.PlatformBybit, adapters.PlatformOKX, adapters.PlatformBinance} {
-		if _, _, err := h.catalog.EnsureAsset(h.ctx, q, platform, symbol, "", time.Now()); err != nil {
+		if _, _, err := h.catalog.EnsureAsset(h.ctx, q, h.portfolioID, platform, symbol, time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC"}, time.Now()); err != nil {
+		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, h.portfolioID, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC"}, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	filter := catalog.ListFilter{Query: symbol, Offset: 1, Limit: 2}
+	filter := catalog.ListFilter{PortfolioID: h.portfolioID, Query: symbol, Offset: 1, Limit: 2}
 	assets, err := h.catalog.ListAssets(h.ctx, filter)
 	if err != nil || len(assets.Items) != 2 || assets.Items[0].Platform != "okx" || assets.Items[1].Platform != "bybit" || assets.Total != 4 {
 		t.Fatalf("Asset page = %+v, %v", assets, err)

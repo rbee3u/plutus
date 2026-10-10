@@ -20,7 +20,7 @@ import (
 func newServeCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
-		Short: "Run the HTTP API, the embedded web app, the scheduler, and the job worker",
+		Short: "Run the HTTP API, the embedded web app, the scheduler, and the collection worker",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runServe(cmd)
@@ -67,12 +67,14 @@ func runServe(cmd *cobra.Command) error {
 		}
 		options.Services = services
 		loop := worker.New(&worker.Options{
-			Jobs:       services.Jobs,
-			Collection: services.Collection,
-			Valuation:  services.Valuation,
-			Logger:     logger,
-			Scheduler:  true,
-			Retention:  cfg.Jobs.FinishedRetention,
+			Cycles:      services.Cycles,
+			Auth:        services.Auth,
+			Idempotency: services.Idempotency,
+			Collection:  services.Collection,
+			Portfolios:  services.Portfolios,
+			Maintenance: services.Retention,
+			Logger:      logger,
+			Scheduler:   true,
 		})
 		workerCtx, stopWorker := context.WithCancel(ctx)
 		workerDone := make(chan struct{})

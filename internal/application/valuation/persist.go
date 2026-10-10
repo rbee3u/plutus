@@ -3,121 +3,154 @@ package valuation
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/cycles"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
-const reportWriteBatch = 256
+// persistPoint commits account valuations and their aggregate atomically.
+func (s *Service) persistPoint(ctx context.Context, point Point, accounts []AccountValuation, claims ...*cycles.Claim) error {
+	_, err := mysql.WithWriteContext(ctx, s.db, func(ctx context.Context) (struct{}, error) {
+		return struct{}{}, s.persistPointRows(ctx, point, accounts, claims...)
+	})
+	return err
+}
 
-// updateReportValuations changes only derived fields. All batches belong to the
-// point's transaction, so a failure cannot leave a partially valued point.
-func updateReportValuations(ctx context.Context, tx *sql.Tx, portfolioID uuid.UUID, accounts []AccountValuation) error {
-	for start := 0; start < len(accounts); start += reportWriteBatch {
-		batch := accounts[start:min(start+reportWriteBatch, len(accounts))]
-		values := make([][4]any, len(batch))
-		for i := range batch {
-			a := &batch[i]
-			values[i][1] = a.Method
-			if a.ValueUSD != nil {
-				values[i][0] = *a.ValueUSD
-			}
-			if a.SourceReportID != nil {
-				values[i][2] = a.SourceReportID[:]
-			}
-			if len(a.Omitted) > 0 {
-				raw, err := json.Marshal(a.Omitted)
-				if err != nil {
-					return err
-				}
-				values[i][3] = string(raw)
-			}
+func (s *Service) persistPointRows(ctx context.Context, point Point, accounts []AccountValuation, claims ...*cycles.Claim) error {
+	q := mysql.Queries(ctx, s.db)
+
+	if _, err := q.LockPortfolio(ctx, point.PortfolioID[:]); err != nil {
+		return err
+	}
+	var claim *cycles.Claim
+	if len(claims) > 0 {
+		claim = claims[0]
+	}
+	now := s.now().UTC()
+	if claim != nil {
+		if claim.PortfolioID != point.PortfolioID || claim.ID != point.CycleID {
+			return cycles.ErrLostLease
 		}
-		var query strings.Builder
-		query.WriteString("UPDATE account_reports SET ")
-		args := make([]any, 0, 9*len(batch)+1)
-		for column, name := range []string{"value_usd", "method", "source_report_id", "omitted_json"} {
-			if column > 0 {
-				query.WriteString(", ")
-			}
-			query.WriteString(name + " = CASE id")
-			for i := range batch {
-				if column == 3 {
-					query.WriteString(" WHEN ? THEN CAST(? AS JSON)")
-				} else {
-					query.WriteString(" WHEN ? THEN ?")
-				}
-				args = append(args, batch[i].ReportID[:], values[i][column])
-			}
-			query.WriteString(" END")
-		}
-		query.WriteString(" WHERE portfolio_id = ? AND id IN (" + strings.TrimSuffix(strings.Repeat("?,", len(batch)), ",") + ")")
-		args = append(args, portfolioID[:])
-		for i := range batch {
-			args = append(args, batch[i].ReportID[:])
-		}
-		if _, err := tx.ExecContext(ctx, query.String(), args...); err != nil {
+		if err := cycles.LockLease(ctx, q, claim, now); err != nil {
 			return err
 		}
+	}
+	if err := q.InsertValuationPoint(ctx, sqlcgen.InsertValuationPointParams{
+		PortfolioID:            point.PortfolioID[:],
+		CycleID:                point.CycleID[:],
+		EvaluatedAt:            point.EvaluatedAt,
+		TotalUsd:               point.TotalUSD,
+		AccountCount:           uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
+		StaleAccountCount:      uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
+		IncompleteAccountCount: uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory Account slice.
+		CalculationVersion:     CalculationVersion,
+	}); err != nil {
+		return err
+	}
+	prices := map[uuid.UUID]sqlcgen.PriceObservation{}
+	priceIDs := [][]byte{}
+	seen := map[uuid.UUID]bool{}
+	for _, account := range accounts {
+		for _, line := range account.BalanceValuations {
+			if line.PriceObservationID != nil {
+				id := *line.PriceObservationID
+				if !seen[id] {
+					seen[id] = true
+					priceIDs = append(priceIDs, id[:])
+				}
+			}
+		}
+	}
+	for start := 0; start < len(priceIDs); start += 256 {
+		rows, err := q.ListPriceObservationsByIDs(ctx, sqlcgen.ListPriceObservationsByIDsParams{PortfolioID: point.PortfolioID[:], Ids: priceIDs[start:min(start+256, len(priceIDs))]})
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			id, err := uuid.FromBytes(row.ID)
+			if err != nil {
+				return err
+			}
+			prices[id] = row
+		}
+	}
+	balanceRows := [][]any{}
+	for _, account := range accounts {
+		lines := account.BalanceValuations
+		if lines == nil {
+			lines = []BalanceValuation{}
+		}
+		if err := validateBalanceValuations(lines); err != nil {
+			return err
+		}
+		if err := validateEvidence(ctx, q, point.PortfolioID, &account, prices); err != nil {
+			return err
+		}
+		var source []byte
+		if account.SourceReportID != nil {
+			source = account.SourceReportID[:]
+		}
+		var value sql.NullString
+		if account.ValueUSD != nil {
+			value = sql.NullString{String: *account.ValueUSD, Valid: true}
+		}
+		if err := q.InsertAccountValuation(ctx, sqlcgen.InsertAccountValuationParams{PortfolioID: point.PortfolioID[:], CycleID: point.CycleID[:], AccountID: account.AccountID[:], SourceReportID: source, ValuationMethod: account.Method, ValueUsd: value}); err != nil {
+			return err
+		}
+		for _, line := range lines {
+			var price []byte
+			if line.PriceObservationID != nil {
+				price = line.PriceObservationID[:]
+			}
+			var value sql.NullString
+			if line.ValueUSD != nil {
+				value = sql.NullString{String: *line.ValueUSD, Valid: true}
+			}
+			balanceRows = append(balanceRows, []any{point.PortfolioID[:], point.CycleID[:], account.AccountID[:], source, line.AssetID[:], line.CanonicalAssetSymbol, line.PricingMethod, price, value})
+			if len(balanceRows) == 256 {
+				if err := s.insertBalanceRows(ctx, balanceRows); err != nil {
+					return err
+				}
+				balanceRows = balanceRows[:0]
+			}
+
+		}
+
+	}
+	if err := s.insertBalanceRows(ctx, balanceRows); err != nil {
+		return err
+	}
+	for _, event := range point.BoundaryEvents {
+		var value sql.NullString
+		if event.ValueUSD != nil {
+			value = sql.NullString{String: *event.ValueUSD, Valid: true}
+		}
+		if err := q.InsertBoundaryEvent(ctx, sqlcgen.InsertBoundaryEventParams{PortfolioID: point.PortfolioID[:], CycleID: point.CycleID[:], AccountID: event.AccountID[:], Direction: event.Direction, ValuationMethod: event.Method, ValueUsd: value, ValuationComplete: event.ValuationComplete}); err != nil {
+			return err
+		}
+	}
+	if err := s.persistComparisonEvidence(ctx, q, &point); err != nil {
+		return err
+	}
+	if claim != nil {
+		return cycles.MarkSucceeded(ctx, q, claim, now)
 	}
 	return nil
 }
 
-// persistPoint commits report values and their aggregate atomically.
-func (s *Service) persistPoint(ctx context.Context, point Point, accounts []AccountValuation) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+func (s *Service) insertBalanceRows(ctx context.Context, rows [][]any) error {
+	if len(rows) == 0 {
+		return nil
 	}
-	defer func() { _ = tx.Rollback() }()
-	q := s.q.WithTx(tx)
-	if err := updateReportValuations(ctx, tx, point.PortfolioID, accounts); err != nil {
-		return err
+	args := make([]any, 0, len(rows)*9)
+	for _, row := range rows {
+		args = append(args, row...)
 	}
-	id, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-	boundaryJSON, err := marshalSlice(point.BoundaryEvents)
-	if err != nil {
-		return err
-	}
-	issuesJSON, err := marshalSlice(point.Issues)
-	if err != nil {
-		return err
-	}
-	if err := q.UpsertValuationPoint(ctx, sqlcgen.UpsertValuationPointParams{
-		ID:                      id[:],
-		PortfolioID:             point.PortfolioID[:],
-		JobID:                   point.JobID[:],
-		EvaluatedAt:             point.EvaluatedAt,
-		TotalUsd:                point.TotalUSD,
-		AccountCount:            uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
-		StaleAccountCount:       uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
-		IncompleteAccountCount:  uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory Account slice.
-		BoundaryContributionUsd: point.BoundaryContributionUSD,
-		BoundaryWithdrawalUsd:   point.BoundaryWithdrawalUSD,
-		BoundaryJson:            boundaryJSON,
-		IssuesJson:              issuesJSON,
-		CreatedAt:               s.now().UTC(),
-	}); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-// marshalSlice stores empty collections as SQL NULL.
-func marshalSlice[T any](items []T) (sqljson.Column, error) {
-	if len(items) == 0 {
-		return nil, nil
-	}
-	raw, err := json.Marshal(items)
-	if err != nil {
-		return nil, err
-	}
-	return sqljson.Column(raw), nil
+	statement := "INSERT INTO balance_valuations (portfolio_id,cycle_id,account_id,source_report_id,asset_id,canonical_asset_symbol,pricing_method,price_observation_id,value_usd) VALUES " + strings.TrimSuffix(strings.Repeat("(?,?,?,?,?,?,?,?,?),", len(rows)), ",")
+	_, err := mysql.Executor(ctx, s.db).ExecContext(ctx, statement, args...)
+	return err
 }

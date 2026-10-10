@@ -13,7 +13,6 @@ import (
 	"github.com/rbee3u/plutus/internal/application/capital"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -23,14 +22,10 @@ import (
 // Keep this inventory independent of the implementation. A new scoped table
 // needs an explicit lifecycle decision and a populated deletion scenario.
 var portfolioTables = []string{
-	"account_reports", "accounts", "audit_events", "balances", "capital_flows",
-	"dual_positions", "earn_positions", "idempotency_records", "identities", "jobs",
-	"manual_balances", "manual_cycle_accounts", "manual_cycles", "manual_revisions",
-	"portfolio_asset_exclusion_events", "portfolio_asset_exclusions", "positions", "valuation_points",
+	"account_reports", "account_valuations", "accounts", "asset_exclusion_versions", "assets", "audit_events", "balance_valuations", "balances", "boundary_events", "calculated_asset_changes", "capital_flows", "collection_cycles", "dual_positions", "earn_positions", "futures_contracts", "futures_positions", "identities", "manual_adjustments", "manual_revision_balances", "manual_revisions", "price_observations", "valuation_points",
 }
 
-// These scenarios deliberately mutate shared Assets and FuturesContracts. Give
-// them their own migrated database so other fixture contracts stay independent.
+// Exercise the complete owned graph in a dedicated temporary database.
 func architectureHarness(t *testing.T) *harness {
 	t.Helper()
 	database, err := mysqltest.CreateTestDatabase(t.Context(), mysqltest.GotestDSN(t))
@@ -61,7 +56,10 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 		t.Fatal(err)
 	}
 	manualSave(t, h, item, "USD", "12")
-	_, firstJob := h.runCycle()
+	_, firstCycle := h.runCycle()
+	manualSave(t, h, item, "USD", "13")
+	newcomer := h.createIdentity(name+" manual", adapters.PlatformBinance, adapters.StructureBinancePM)
+	manualSave(t, h, newcomer, "USD", "1")
 	// Replacing credentials disables private collection; previous reports carry
 	// forward while the Manual Account continues to produce fresh reports.
 	h.storeCredentials(item, name)
@@ -73,7 +71,7 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	if err != nil || len(assets.Items) != 1 {
 		t.Fatalf("BTC asset: %+v %v", assets, err)
 	}
-	_, err = h.catalog.PutExclusion(h.ctx, assets.Items[0].ID, &catalog.ExclusionInput{PortfolioID: p.ID, ActorUserID: h.userID, Ignored: true, Reason: "Lifecycle fixture"})
+	_, err = h.catalog.PutExclusion(h.ctx, assets.Items[0].ID, &catalog.ExclusionInput{PortfolioID: p.ID, ActorUserID: h.userID, Excluded: true, Reason: "Lifecycle fixture"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,10 +80,12 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	if _, err := h.services.Capital.Create(h.ctx, p.ID, &capital.Input{ActorUserID: h.userID, Direction: &direction, CanonicalAssetSymbol: &symbol, Quantity: &quantity, EffectiveAt: &at}); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.services.Idempotency.Put(h.ctx, h.userID, &p.ID, "POST", "/lifecycle", name, idempotency.Hash(nil), idempotency.Record{Status: 201}); err != nil {
+	if _, err := h.services.Idempotency.Run(h.ctx, h.userID, "POST", "/lifecycle", name, nil, func(context.Context) (idempotency.Record, error) {
+		return idempotency.Record{Status: 201, Body: []byte(`{}`)}, nil
+	}); err != nil {
 		t.Fatal(err)
 	}
-	return h, p, firstJob
+	return h, p, firstCycle
 }
 
 func scopedCounts(t *testing.T, h *harness, id uuid.UUID) map[string]int {
@@ -131,17 +131,15 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 			t.Fatalf("fixture did not populate %s", table)
 		}
 	}
-	// NULL-scoped records belong to the User, not to the deleted Portfolio.
-	if err := h.services.Idempotency.Put(h.ctx, h.userID, nil, "POST", "/lifecycle", "global", idempotency.Hash(nil), idempotency.Record{Status: 201}); err != nil {
-		t.Fatal(err)
-	}
-	resource := uuid.New()
-	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO audit_events (id, actor_user_id, action, resource_type, resource_id, request_id, occurred_at) VALUES (?, ?, 'test', 'user', ?, 'test', UTC_TIMESTAMP(6))", resource[:], h.userID[:], h.userID[:]); err != nil {
+	// Idempotency records belong to the User and retain their retry lifetime.
+	if _, err := h.services.Idempotency.Run(h.ctx, h.userID, "POST", "/lifecycle", "global", nil, func(context.Context) (idempotency.Record, error) {
+		return idempotency.Record{Status: 201, Body: []byte(`{}`)}, nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	sharedCounts := func() map[string]int {
 		counts := map[string]int{}
-		for _, table := range []string{"users", "sessions", "assets", "futures_contracts", "prices"} {
+		for _, table := range []string{"users", "sessions", "idempotency_records"} {
 			var n int
 			if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table).Scan(&n); err != nil {
 				t.Fatal(err)
@@ -160,6 +158,7 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 	if err := target.services.Portfolios.Delete(h.ctx, h.userID, p.ID, p.Version); err != nil {
 		t.Fatal(err)
 	}
+	drainPortfolioDeletion(t, h, p.ID)
 	for table, count := range scopedCounts(t, h, p.ID) {
 		if count != 0 {
 			t.Fatalf("%s retained %d scoped rows", table, count)
@@ -174,70 +173,29 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 	if !reflect.DeepEqual(beforeShared, sharedCounts()) {
 		t.Fatal("shared data changed")
 	}
-	record, _, err := h.services.Idempotency.Get(h.ctx, h.userID, "POST", "/lifecycle", "global")
-	if err != nil || record == nil {
+	_, err = h.services.Idempotency.Run(h.ctx, h.userID, "POST", "/lifecycle", "global", nil, func(context.Context) (idempotency.Record, error) {
+		t.Fatal("replay invoked creation")
+		return idempotency.Record{}, nil
+	})
+	if err != nil {
 		t.Fatalf("global idempotency record lost: %v", err)
 	}
-	var auditCount int
-	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM audit_events WHERE id = ? AND portfolio_id IS NULL", resource[:]).Scan(&auditCount); err != nil || auditCount != 1 {
-		t.Fatalf("global audit: count=%d err=%v", auditCount, err)
-	}
 }
 
-func TestPortfolioDeletionRollsBackOnForeignOwnership(t *testing.T) {
+func TestSchemaRejectsCrossPortfolioPointEvidence(t *testing.T) {
 	h := architectureHarness(t)
-	target, p, jobID := populatedPortfolio(t, h, "rollback-target")
-	survivor, other, _ := populatedPortfolio(t, h, "rollback-survivor")
+	_, _, cycleID := populatedPortfolio(t, h, "constraint-target")
+	_, other, _ := populatedPortfolio(t, h, "constraint-other")
 	var accountID []byte
-	if err := h.db.QueryRowContext(h.ctx, "SELECT id FROM accounts WHERE portfolio_id = ? AND account_type = 'manual'", other.ID[:]).Scan(&accountID); err != nil {
+	if err := h.db.QueryRowContext(h.ctx, "SELECT id FROM accounts WHERE portfolio_id=? AND account_type='manual'", other.ID[:]).Scan(&accountID); err != nil {
 		t.Fatal(err)
 	}
-	// The current schema permits this mismatched ownership. Deletion must refuse
-	// it with the FK still enabled instead of leaving another Portfolio orphaned.
-	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO manual_cycle_accounts (portfolio_id, job_id, account_id, version, balances_json) VALUES (?, ?, ?, 0, '[]')", other.ID[:], jobID[:], accountID); err != nil {
-		t.Fatal(err)
-	}
-	before := scopedCounts(t, h, p.ID)
-	beforeOther := scopedCounts(t, h, other.ID)
-	reports := func() []string {
-		rows, err := h.db.QueryContext(h.ctx, "SELECT CONCAT(HEX(id), ':', method, ':', COALESCE(value_usd, 'NULL'), ':', COALESCE(HEX(source_report_id), 'NULL')) FROM account_reports WHERE portfolio_id = ? ORDER BY id", p.ID[:])
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = rows.Close() }()
-		var values []string
-		for rows.Next() {
-			var value string
-			if err := rows.Scan(&value); err != nil {
-				t.Fatal(err)
-			}
-			values = append(values, value)
-		}
-		if err := rows.Err(); err != nil {
-			t.Fatal(err)
-		}
-		return values
-	}
-	beforeReports := reports()
-	if err := target.services.Portfolios.Delete(h.ctx, h.userID, p.ID, p.Version); err == nil {
-		t.Fatal("foreign ownership must block deletion")
-	}
-	if !reflect.DeepEqual(before, scopedCounts(t, h, p.ID)) || !reflect.DeepEqual(beforeReports, reports()) {
-		t.Fatal("failed deletion did not restore rows and report values/sources")
-	}
-	if !reflect.DeepEqual(beforeOther, scopedCounts(t, survivor, other.ID)) {
-		t.Fatal("failed deletion changed another Portfolio")
-	}
-	if _, err := h.services.Portfolios.Get(h.ctx, h.userID, p.ID); err != nil {
-		t.Fatal(err)
-	}
-	var checks int
-	if err := h.db.QueryRowContext(h.ctx, "SELECT @@FOREIGN_KEY_CHECKS").Scan(&checks); err != nil || checks != 1 {
-		t.Fatalf("foreign key enforcement: %d %v", checks, err)
+	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO manual_adjustments (portfolio_id,cycle_id,account_id) VALUES (?,?,?)", other.ID[:], cycleID[:], accountID); err == nil {
+		t.Fatal("cross-Portfolio point reference accepted")
 	}
 }
 
-func TestCatalogMappingSchedulesRebuildsWithoutHTTP(t *testing.T) {
+func TestCatalogMappingRemainsPortfolioScoped(t *testing.T) {
 	h := architectureHarness(t)
 	_, a, _ := populatedPortfolio(t, h, "mapping-a")
 	_, b, _ := populatedPortfolio(t, h, "mapping-b")
@@ -246,26 +204,27 @@ func TestCatalogMappingSchedulesRebuildsWithoutHTTP(t *testing.T) {
 		t.Fatalf("asset: %v", err)
 	}
 	asset := assets.Items[0]
-	updated, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, CanonicalSymbol: "XBT", Version: asset.Version})
-	if err != nil || updated.CanonicalSymbol != "XBT" || !updated.Ignored {
+	updated, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, CanonicalAssetSymbol: "XBT", MappingVersion: asset.MappingVersion})
+	if err != nil || updated.CanonicalAssetSymbol != "XBT" || !updated.Excluded {
 		t.Fatalf("mapping and exclusion view: %+v %v", updated, err)
 	}
-	var jobIDs []uuid.UUID
-	for _, id := range []uuid.UUID{a.ID, b.ID} {
-		page, err := h.jobs.List(h.ctx, id, jobs.KindValuationRecalc, 50, "")
-		if err != nil || len(page.Items) != 1 {
-			t.Fatalf("rebuilds for %s: %+v %v", id, page, err)
+
+	otherAssets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: b.ID, Platform: "binance", Query: "BTC", Limit: 50})
+	if err != nil || len(otherAssets.Items) != 1 || otherAssets.Items[0].ID == asset.ID || otherAssets.Items[0].CanonicalAssetSymbol != "BTC" {
+		t.Fatalf("cross-Portfolio mapping: %+v %v", otherAssets, err)
+	}
+}
+
+func drainPortfolioDeletion(t *testing.T, h *harness, id uuid.UUID) {
+	t.Helper()
+	for range 150 {
+		if _, err := h.services.Portfolios.Get(h.ctx, h.userID, id); errors.Is(err, portfolio.ErrNotFound) {
+			return
 		}
-		jobIDs = append(jobIDs, page.Items[0].ID)
-	}
-	// Another update keeps the queue's existing active-job deduplication.
-	if _, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, CanonicalSymbol: "BTC", Version: updated.Version}); err != nil {
-		t.Fatal(err)
-	}
-	for i, id := range []uuid.UUID{a.ID, b.ID} {
-		page, err := h.jobs.List(h.ctx, id, jobs.KindValuationRecalc, 50, "")
-		if err != nil || len(page.Items) != 1 || page.Items[0].ID != jobIDs[i] {
-			t.Fatalf("deduplication: %+v %v", page, err)
+		worked, err := h.services.Portfolios.DeleteBatch(h.ctx)
+		if err != nil || !worked {
+			t.Fatalf("deletion batch: %v %v", worked, err)
 		}
 	}
+	t.Fatal("deletion did not finish within bounded batches")
 }

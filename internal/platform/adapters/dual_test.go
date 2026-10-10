@@ -7,14 +7,14 @@ import (
 
 func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 	t.Parallel()
-	minimal := DualPosition{PlatformPositionRef: "subscription-1", InvestAssetSymbol: "USDT", Principal: "500", Status: "active"}
+	minimal := DualPosition{PositionKey: "subscription-1", PrincipalAssetSymbol: "USDT", Principal: "500", Status: "active"}
 	p, err := NormalizeDualPosition("test", &minimal)
 	if err != nil || p.Principal != "500" || len(p.MissingFields()) != 6 {
 		t.Fatalf("missing terms must retain principal: %+v %v", p, err)
 	}
 	for name, mutate := range map[string]func(*DualPosition){
-		"no id":              func(p *DualPosition) { p.PlatformPositionRef = "" },
-		"no currency":        func(p *DualPosition) { p.InvestAssetSymbol = "" },
+		"no id":              func(p *DualPosition) { p.PositionKey = "" },
+		"no currency":        func(p *DualPosition) { p.PrincipalAssetSymbol = "" },
 		"no principal":       func(p *DualPosition) { p.Principal = "" },
 		"negative principal": func(p *DualPosition) { p.Principal = "-1" },
 		"zero principal":     func(p *DualPosition) { p.Principal = "0" },
@@ -54,20 +54,5 @@ func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 	p, err = NormalizeDualPosition("test", &p)
 	if err != nil || *p.Direction != "buy_low" || len(p.MissingFields()) != 0 {
 		t.Fatalf("complete terms: %+v %v", p, err)
-	}
-}
-
-func TestDualScopeIsLimitedToTheThreePlatforms(t *testing.T) {
-	t.Parallel()
-	for _, platform := range []Platform{PlatformBinance, PlatformOKX, PlatformBybit, PlatformKraken} {
-		for _, kind := range []AccountType{"earn", TypeDualInvestment, "funding", "trading", "main"} {
-			want := uint16(1)
-			if platform != PlatformKraken && (kind == "earn" || kind == TypeDualInvestment) {
-				want = 2
-			}
-			if got := ReportScope(platform, kind); got != want {
-				t.Fatalf("%s/%s scope %d, want %d", platform, kind, got, want)
-			}
-		}
 	}
 }

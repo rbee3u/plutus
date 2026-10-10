@@ -50,8 +50,6 @@ func DemoIdentities() []DemoIdentity {
 		{"edge-boundary", "edge-cases", "Binance wallet boundary", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "boundary", "enabled"},
 		{"edge-policy", "edge-cases", "Binance reviewed asset policy", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "policy", "enabled"},
 		{"edge-metadata", "edge-cases", "OKX optional metadata unavailable", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "metadata", "enabled"},
-		{"edge-legacy", "edge-cases", "Kraken legacy Earn summary", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "legacy", "disabled"},
-		{"edge-scope", "edge-cases", "OKX Earn scope transition", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "scope", "enabled"},
 		{"edge-mode", "edge-cases", "Bybit observed mode change", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitPM, "mode", "enabled"},
 		{"edge-empty", "edge-cases", "Binance successful empty wallets", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "empty", "enabled"},
 		{"edge-unsupported", "edge-cases", "OKX unsupported product report", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "unsupported", "enabled"},
@@ -74,7 +72,7 @@ func ValidateDemoIdentity(d DemoIdentity) error {
 		return fmt.Errorf("invalid demo identity %q: connection", d.ID)
 	}
 	switch d.Profile {
-	case "daily", "large", "unpriced", "stale", "stale_incomplete", "missing", "invalid", "disabled", "unconfigured", "archived", "boundary", "policy", "metadata", "legacy", "scope", "mode", "empty", "unsupported", "normalization":
+	case "daily", "large", "unpriced", "stale", "stale_incomplete", "missing", "invalid", "disabled", "unconfigured", "archived", "boundary", "policy", "metadata", "mode", "empty", "unsupported", "normalization":
 	default:
 		return fmt.Errorf("invalid demo identity %q: profile", d.ID)
 	}
@@ -131,19 +129,12 @@ func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
 			return []adapters.AccountType{"spot", "funding"}
 		}
 		return []adapters.AccountType{"funding"}
-	case "scope":
-		if at.Before(DemoEventTime(anchor, -4)) {
-			return []adapters.AccountType{"earn"}
-		}
-		return []adapters.AccountType{"earn", adapters.TypeDualInvestment}
 	case "stale":
 		return []adapters.AccountType{"cm_futures"}
 	case "missing", "mode":
 		return []adapters.AccountType{"unified"}
 	case "invalid", "unsupported", "metadata":
 		return []adapters.AccountType{"trading", "earn", adapters.TypeDualInvestment}
-	case "legacy":
-		return []adapters.AccountType{"earn"}
 	case "disabled":
 		return []adapters.AccountType{"main"}
 	case "unconfigured":
@@ -153,14 +144,6 @@ func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
 	default:
 		return []adapters.AccountType{"spot"}
 	}
-}
-
-// DemoScope preserves deliberately old combined Earn reports, never backfills them.
-func DemoScope(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType) uint16 {
-	if d.Profile == "scope" && at.Before(DemoEventTime(anchor, -4)) && kind == "earn" {
-		return 1
-	}
-	return adapters.ReportScope(d.Platform, kind)
 }
 
 func demoMode(d DemoIdentity, anchor, at time.Time) adapters.MarginMode {
@@ -176,7 +159,7 @@ func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.Account
 	if err := ValidateDemoIdentity(d); err != nil {
 		return adapters.Batch{}, err
 	}
-	batch := adapters.Batch{ObservedAt: at, MarginMode: demoMode(d, anchor, at)}
+	batch := adapters.Batch{CollectedAt: at, MarginMode: demoMode(d, anchor, at)}
 	for _, kind := range accounts {
 		if !adapters.ValidAccountType(d.Structure, kind) {
 			return adapters.Batch{}, adapters.UnknownAccountType(d.Platform, d.Structure, kind)
@@ -202,7 +185,7 @@ func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.Account
 		if !needed[asset.Symbol] {
 			continue
 		}
-		batch.Prices = append(batch.Prices, adapters.Price{CanonicalAssetSymbol: asset.Symbol, Price: DemoPrice(d.Platform, asset.Symbol, at), QuoteCanonicalAssetSymbol: "USDT", ObservedAt: at})
+		batch.Prices = append(batch.Prices, adapters.Price{CanonicalAssetSymbol: asset.Symbol, Price: DemoPrice(d.Platform, asset.Symbol, at), SourceMarketRef: asset.Symbol + "USDT", QuoteCanonicalAssetSymbol: "USDT", RetrievedAt: at})
 	}
 	return batch, nil
 }

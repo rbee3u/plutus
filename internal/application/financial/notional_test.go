@@ -62,10 +62,10 @@ func TestPositionNotionalPerContractKind(t *testing.T) {
 				QuoteAssetSymbol:      nullString(tc.quote),
 				SettlementAssetSymbol: nullString("BASE"),
 				ContractSize:          nullString(tc.contractSize),
-				PlatformPositionRef:   "ref",
+				PositionKey:           "ref",
 				Side:                  adapters.SideLong,
-				Quantity:              tc.quantity,
-				QuantityUnit:          tc.unit,
+				SourceQuantity:        tc.quantity,
+				SourceQuantityUnit:    tc.unit,
 				MarkPrice:             nullString(tc.mark),
 			})
 			if err != nil {

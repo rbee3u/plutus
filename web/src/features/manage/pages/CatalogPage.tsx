@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useParams } from "react-router";
 import { catalogTabFromSearch } from "@/features/manage/lib/tabs";
 import { FuturesTab } from "../components/FuturesTab";
@@ -10,14 +9,8 @@ import shared from "@/shared/styles/page.module.css";
 
 export function CatalogPage() {
   const { portfolioId = "" } = useParams();
-  const { params, update } = useSearchState();
+  const { params } = useSearchState();
   const tab = catalogTabFromSearch(params.toString());
-  useEffect(() => {
-    const legacyTab = params.get("tab");
-    if (legacyTab === "listings" || legacyTab === "instruments") {
-      update({ tab, offset: params.get("offset") ?? "" });
-    }
-  }, [params, tab, update]);
   const portfolio = usePortfolio(portfolioId);
   const timezone = portfolio.data?.timezone;
   const filters = useCatalogFilters();

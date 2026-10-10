@@ -180,10 +180,10 @@ export function rawPointRow(
   selectedId: string,
   update: (next: Record<string, string>) => void,
 ): DataRow {
-  const open = selectedId === item.id;
+  const open = selectedId === item.cycleId;
   const evaluatedAt = formatInstant(item.evaluatedAt, timezone);
   return {
-    id: item.id,
+    id: item.cycleId,
     evaluatedAt,
     totalUsd: <NumericText>{formatAmount(item.totalUsd)}</NumericText>,
     change: deltaChangeCell(item.totalUsd, previousItem?.totalUsd),
@@ -194,7 +194,7 @@ export function rawPointRow(
           label={`${open ? "Collapse" : "Expand"} the Valuation Point at ${evaluatedAt}`}
           aria-expanded={open}
           aria-controls={open ? POINT_DETAIL_ID : undefined}
-          onClick={() => update({ point: open ? "" : item.id })}
+          onClick={() => update({ point: open ? "" : item.cycleId })}
         >
           <ChevronRight
             size={iconSize.sm}

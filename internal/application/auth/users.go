@@ -41,13 +41,13 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 	}
 	return mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (User, error) {
 		if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
-			ID:                 userID[:],
-			Username:           display,
-			UsernameNormalized: normalized,
-			Status:             "active",
-			PasswordHash:       hash,
-			CreatedAt:          now,
-			UpdatedAt:          now,
+			ID:           userID[:],
+			Username:     display,
+			UsernameKey:  normalized,
+			Status:       "active",
+			PasswordHash: hash,
+			CreatedAt:    now,
+			UpdatedAt:    now,
 		}); err != nil {
 			if mysql.IsDuplicate(err) {
 				return User{}, ErrUserExists
@@ -58,9 +58,10 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (Us
 			ID:                        portfolioID[:],
 			UserID:                    userID[:],
 			Name:                      portfolio.DefaultName,
+			NameKey:                   portfolio.DefaultName,
 			Timezone:                  portfolio.DefaultTimezone,
 			CollectionIntervalSeconds: uint32(portfolio.DefaultCollectionInterval / time.Second),
-			Undeletable:               true,
+			IsInitial:                 true,
 			Version:                   1,
 			CreatedAt:                 now,
 			UpdatedAt:                 now,
@@ -92,17 +93,23 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 	if err != nil {
 		return err
 	}
-	now := s.now().UTC()
-	if err := s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
-		PasswordHash: hash,
-		UpdatedAt:    now,
-		ID:           userID[:],
-	}); err != nil {
-		return err
-	}
-	return s.q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
-		RevokedAt: sql.NullTime{Time: now, Valid: true},
-		UserID:    userID[:],
+	return mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		locked, err := q.LockUser(ctx, userID[:])
+		if err != nil {
+			return err
+		}
+		if locked.Status != "active" || locked.PasswordHash != row.PasswordHash {
+			return ErrInvalidCredentials
+		}
+		now := s.now().UTC()
+		if err := q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+			PasswordHash: hash, UpdatedAt: now, ID: userID[:],
+		}); err != nil {
+			return err
+		}
+		return q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
+			RevokedAt: sql.NullTime{Time: now, Valid: true}, UserID: userID[:],
+		})
 	})
 }
 
@@ -112,20 +119,22 @@ func (s *Service) DisableUser(ctx context.Context, username string) error {
 	if err != nil {
 		return err
 	}
-	row, err := s.q.GetUserByNormalizedUsername(ctx, normalized)
+	row, err := s.q.GetUserByUsernameKey(ctx, normalized)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrUserNotFound
 		}
 		return err
 	}
-	now := s.now().UTC()
-	if err := s.q.SetUserStatus(ctx, sqlcgen.SetUserStatusParams{Status: "disabled", UpdatedAt: now, ID: row.ID}); err != nil {
-		return err
-	}
-	return s.q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
-		RevokedAt: sql.NullTime{Time: now, Valid: true},
-		UserID:    row.ID,
+	return mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		now := s.now().UTC()
+		if err := q.SetUserStatus(ctx, sqlcgen.SetUserStatusParams{Status: "disabled", UpdatedAt: now, ID: row.ID}); err != nil {
+			return err
+		}
+		return q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
+			RevokedAt: sql.NullTime{Time: now, Valid: true},
+			UserID:    row.ID,
+		})
 	})
 }
 
@@ -135,7 +144,7 @@ func (s *Service) ResetPassword(ctx context.Context, username, password string) 
 	if err != nil {
 		return err
 	}
-	row, err := s.q.GetUserByNormalizedUsername(ctx, normalized)
+	row, err := s.q.GetUserByUsernameKey(ctx, normalized)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrUserNotFound
@@ -146,17 +155,19 @@ func (s *Service) ResetPassword(ctx context.Context, username, password string) 
 	if err != nil {
 		return err
 	}
-	now := s.now().UTC()
-	if err := s.q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
-		PasswordHash: hash,
-		UpdatedAt:    now,
-		ID:           row.ID,
-	}); err != nil {
-		return err
-	}
-	return s.q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
-		RevokedAt: sql.NullTime{Time: now, Valid: true},
-		UserID:    row.ID,
+	return mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		now := s.now().UTC()
+		if err := q.UpdateUserPasswordHash(ctx, sqlcgen.UpdateUserPasswordHashParams{
+			PasswordHash: hash,
+			UpdatedAt:    now,
+			ID:           row.ID,
+		}); err != nil {
+			return err
+		}
+		return q.RevokeUserSessions(ctx, sqlcgen.RevokeUserSessionsParams{
+			RevokedAt: sql.NullTime{Time: now, Valid: true},
+			UserID:    row.ID,
+		})
 	})
 }
 

@@ -12,9 +12,9 @@ func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapte
 		return nil, err
 	}
 	at := a.now().UTC()
-	lookup := func(symbol, _ string) (string, bool) {
+	lookup := func(symbol, quote string) (adapters.Quote, bool) {
 		price := DemoPrice(a.platform, symbol, at)
-		return price, price != ""
+		return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, price != ""
 	}
 	return adapters.SymbolPrices(symbols, []string{"USD"}, lookup, at), nil
 }

@@ -7,76 +7,133 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
+	"strings"
 	"time"
 )
 
-const getNearestPriceAt = `-- name: GetNearestPriceAt :one
-SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
-FROM prices
-WHERE canonical_asset_symbol = ?
-  AND (? = 0 OR platform = ?)
-  AND observed_at <= ?
-ORDER BY observed_at DESC
-LIMIT 1
+const getPriceObservation = `-- name: GetPriceObservation :one
+SELECT portfolio_id, id, platform, requested_canonical_asset_symbol, source_market_ref, quote_canonical_asset_symbol, price, retrieved_at, source_observed_at, daily_anchor, price_at FROM price_observations WHERE portfolio_id = ? AND id = ?
 `
 
-type GetNearestPriceAtParams struct {
-	CanonicalAssetSymbol string
-	FilterPlatform       interface{}
-	Platform             string
-	At                   time.Time
+type GetPriceObservationParams struct {
+	PortfolioID []byte
+	ID          []byte
 }
 
-func (q *Queries) GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtParams) (Price, error) {
-	row := q.db.QueryRowContext(ctx, getNearestPriceAt,
-		arg.CanonicalAssetSymbol,
-		arg.FilterPlatform,
-		arg.Platform,
-		arg.At,
-	)
-	var i Price
+func (q *Queries) GetPriceObservation(ctx context.Context, arg GetPriceObservationParams) (PriceObservation, error) {
+	row := q.db.QueryRowContext(ctx, getPriceObservation, arg.PortfolioID, arg.ID)
+	var i PriceObservation
 	err := row.Scan(
+		&i.PortfolioID,
+		&i.ID,
 		&i.Platform,
-		&i.CanonicalAssetSymbol,
-		&i.ObservedAt,
-		&i.Price,
+		&i.RequestedCanonicalAssetSymbol,
+		&i.SourceMarketRef,
 		&i.QuoteCanonicalAssetSymbol,
+		&i.Price,
+		&i.RetrievedAt,
+		&i.SourceObservedAt,
+		&i.DailyAnchor,
+		&i.PriceAt,
 	)
 	return i, err
 }
 
+const insertPriceObservation = `-- name: InsertPriceObservation :exec
+INSERT INTO price_observations (portfolio_id, id, platform, requested_canonical_asset_symbol, source_market_ref, quote_canonical_asset_symbol, price, retrieved_at, source_observed_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertPriceObservationParams struct {
+	PortfolioID                   []byte
+	ID                            []byte
+	Platform                      string
+	RequestedCanonicalAssetSymbol string
+	SourceMarketRef               string
+	QuoteCanonicalAssetSymbol     string
+	Price                         string
+	RetrievedAt                   time.Time
+	SourceObservedAt              sql.NullTime
+}
+
+func (q *Queries) InsertPriceObservation(ctx context.Context, arg InsertPriceObservationParams) error {
+	_, err := q.db.ExecContext(ctx, insertPriceObservation,
+		arg.PortfolioID,
+		arg.ID,
+		arg.Platform,
+		arg.RequestedCanonicalAssetSymbol,
+		arg.SourceMarketRef,
+		arg.QuoteCanonicalAssetSymbol,
+		arg.Price,
+		arg.RetrievedAt,
+		arg.SourceObservedAt,
+	)
+	return err
+}
+
 const listLatestPricesByPlatformAt = `-- name: ListLatestPricesByPlatformAt :many
-SELECT p.platform, p.canonical_asset_symbol, p.observed_at, p.price, p.quote_canonical_asset_symbol
-FROM prices p
-INNER JOIN (
-    SELECT x.canonical_asset_symbol, MAX(x.observed_at) AS observed_at
-    FROM prices x
-    WHERE x.platform = ? AND x.observed_at <= ?
-    GROUP BY x.canonical_asset_symbol
-) latest ON latest.canonical_asset_symbol = p.canonical_asset_symbol AND latest.observed_at = p.observed_at
-WHERE p.platform = ?
+SELECT p.portfolio_id, p.id, p.platform, p.requested_canonical_asset_symbol, p.source_market_ref, p.quote_canonical_asset_symbol, p.price, p.retrieved_at, p.source_observed_at, p.daily_anchor, p.price_at FROM (
+    SELECT ranked.portfolio_id, ranked.id FROM (
+        SELECT o.portfolio_id, o.id, ROW_NUMBER() OVER (PARTITION BY o.requested_canonical_asset_symbol ORDER BY o.price_at DESC, o.retrieved_at DESC, o.id DESC) AS rn
+        FROM price_observations o FORCE INDEX (idx_price_observations_selection)
+        WHERE o.portfolio_id = ? AND o.platform = ?
+          AND o.requested_canonical_asset_symbol IN (/*SLICE:symbols*/?)
+          AND o.price_at >= DATE_SUB(?, INTERVAL 24 HOUR)
+          AND o.price_at <= ? AND o.retrieved_at <= ?
+    ) ranked WHERE ranked.rn = 1
+) winners
+JOIN price_observations p ON p.portfolio_id = winners.portfolio_id AND p.id = winners.id
 `
 
 type ListLatestPricesByPlatformAtParams struct {
-	Platform string
-	At       time.Time
+	PortfolioID []byte
+	Platform    string
+	Symbols     []string
+	At          time.Time
+	PriceCutoff sql.NullTime
 }
 
-func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]Price, error) {
-	rows, err := q.db.QueryContext(ctx, listLatestPricesByPlatformAt, arg.Platform, arg.At, arg.Platform)
+// Rank only the 24-hour window inside the covering selection index, then read
+// the winners; a correlated per-row lookup rescans each symbol's history.
+// Bulk imports can leave stale statistics favoring a Portfolio-only scan, so
+// the window scan forces the selection index.
+func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]PriceObservation, error) {
+	query := listLatestPricesByPlatformAt
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	queryParams = append(queryParams, arg.Platform)
+	if len(arg.Symbols) > 0 {
+		for _, v := range arg.Symbols {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:symbols*/?", strings.Repeat(",?", len(arg.Symbols))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:symbols*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.At)
+	queryParams = append(queryParams, arg.PriceCutoff)
+	queryParams = append(queryParams, arg.At)
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Price{}
+	items := []PriceObservation{}
 	for rows.Next() {
-		var i Price
+		var i PriceObservation
 		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.ID,
 			&i.Platform,
-			&i.CanonicalAssetSymbol,
-			&i.ObservedAt,
-			&i.Price,
+			&i.RequestedCanonicalAssetSymbol,
+			&i.SourceMarketRef,
 			&i.QuoteCanonicalAssetSymbol,
+			&i.Price,
+			&i.RetrievedAt,
+			&i.SourceObservedAt,
+			&i.DailyAnchor,
+			&i.PriceAt,
 		); err != nil {
 			return nil, err
 		}
@@ -91,34 +148,47 @@ func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLate
 	return items, nil
 }
 
-const listPricesForCanonicalAssetBetween = `-- name: ListPricesForCanonicalAssetBetween :many
-SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
-FROM prices
-WHERE canonical_asset_symbol = ? AND observed_at >= ? AND observed_at <= ?
-ORDER BY observed_at ASC
+const listPriceObservationsByIDs = `-- name: ListPriceObservationsByIDs :many
+SELECT portfolio_id, id, platform, requested_canonical_asset_symbol, source_market_ref, quote_canonical_asset_symbol, price, retrieved_at, source_observed_at, daily_anchor, price_at FROM price_observations WHERE portfolio_id = ? AND id IN (/*SLICE:ids*/?)
 `
 
-type ListPricesForCanonicalAssetBetweenParams struct {
-	CanonicalAssetSymbol string
-	FromAt               time.Time
-	ToAt                 time.Time
+type ListPriceObservationsByIDsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
 }
 
-func (q *Queries) ListPricesForCanonicalAssetBetween(ctx context.Context, arg ListPricesForCanonicalAssetBetweenParams) ([]Price, error) {
-	rows, err := q.db.QueryContext(ctx, listPricesForCanonicalAssetBetween, arg.CanonicalAssetSymbol, arg.FromAt, arg.ToAt)
+func (q *Queries) ListPriceObservationsByIDs(ctx context.Context, arg ListPriceObservationsByIDsParams) ([]PriceObservation, error) {
+	query := listPriceObservationsByIDs
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Price{}
+	items := []PriceObservation{}
 	for rows.Next() {
-		var i Price
+		var i PriceObservation
 		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.ID,
 			&i.Platform,
-			&i.CanonicalAssetSymbol,
-			&i.ObservedAt,
-			&i.Price,
+			&i.RequestedCanonicalAssetSymbol,
+			&i.SourceMarketRef,
 			&i.QuoteCanonicalAssetSymbol,
+			&i.Price,
+			&i.RetrievedAt,
+			&i.SourceObservedAt,
+			&i.DailyAnchor,
+			&i.PriceAt,
 		); err != nil {
 			return nil, err
 		}
@@ -131,29 +201,4 @@ func (q *Queries) ListPricesForCanonicalAssetBetween(ctx context.Context, arg Li
 		return nil, err
 	}
 	return items, nil
-}
-
-const upsertPrice = `-- name: UpsertPrice :exec
-INSERT INTO prices (platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol)
-VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE price = VALUES(price), quote_canonical_asset_symbol = VALUES(quote_canonical_asset_symbol)
-`
-
-type UpsertPriceParams struct {
-	Platform                  string
-	CanonicalAssetSymbol      string
-	ObservedAt                time.Time
-	Price                     string
-	QuoteCanonicalAssetSymbol string
-}
-
-func (q *Queries) UpsertPrice(ctx context.Context, arg UpsertPriceParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPrice,
-		arg.Platform,
-		arg.CanonicalAssetSymbol,
-		arg.ObservedAt,
-		arg.Price,
-		arg.QuoteCanonicalAssetSymbol,
-	)
-	return err
 }

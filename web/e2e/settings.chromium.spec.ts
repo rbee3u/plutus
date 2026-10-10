@@ -64,13 +64,13 @@ test("Security preserves revoke refresh, password rejection and successful sign-
         lastSeenAt: "2026-10-08T00:00:00Z",
         idleExpiresAt: "2026-10-09T00:00:00Z",
         absoluteExpiresAt: "2026-10-10T00:00:00Z",
-        clientLabel: "Current browser",
+        userAgent: "Current browser",
       };
       return route.fulfill({
         json: {
           items: revoked
             ? [current]
-            : [current, { ...current, id: "other", current: false, clientLabel: "Other browser" }],
+            : [current, { ...current, id: "other", current: false, userAgent: "Other browser" }],
         },
       });
     }

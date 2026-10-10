@@ -115,6 +115,29 @@ migrations, and seed SQL. This is the accepted inspection policy. Disable it
 with `sql_enabled = false` in the TOML `[logging]` section when it is not
 needed. Log levels control application output independently of access/SQL.
 
+## MySQL capacity
+
+The [planning scale](./architecture.md#persistence-and-retention) measured about
+9 GB of data and indexes after ten years; the target host has four cores, 8 GB
+RAM, and about 30 GB of disk. MySQL defaults, not table growth, are the main
+disk risk. When MySQL and Plutus share a dedicated host, set at least:
+
+```ini
+[mysqld]
+innodb_buffer_pool_size = 4G
+binlog_expire_logs_seconds = 259200
+binlog_transaction_compression = ON
+binlog_row_image = MINIMAL
+```
+
+The default 30-day binary log retention holds several gigabytes of collection
+writes. Keep about three days for point-in-time recovery, or start MySQL with
+`disable_log_bin` when neither replication nor point-in-time recovery is used;
+backups are then the only restore points. InnoDB reuses pages freed by retention
+but never returns them to the file system, so monitor free disk and
+`information_schema.TABLES` sizes instead of expecting pruning to shrink files.
+`OPTIMIZE TABLE` reclaims a table's space but needs room for a full copy.
+
 ## Upgrades and resets
 
 Check migration prerequisites below and apply any
@@ -134,72 +157,21 @@ cd /opt/plutus-test
 ./plutus --config test.toml --env-file test.env db reset
 ```
 
-### Catalog terminology upgrade
+### Prelaunch baseline
 
-Back up the database and stop all services before applying pending migrations
-with `plutus migrate up`, including
-[20261010010000_asset_canonical_terminology.sql](../db/migrations/20261010010000_asset_canonical_terminology.sql).
-Use this command, not direct Goose or SQL execution: its existing preflight
-rejects historical spot instruments before pending DDL. MySQL DDL is not
-transactional; inspect or restore a failed partial migration before retrying.
+The initial schema is
+[20261010160000_schema.sql](../db/migrations/20261010160000_schema.sql). Earlier
+development schemas are disposable; reset those environments before starting
+this build. There is no populated-database upgrade path from the retired
+development baselines and no compatibility reader for their JSON. Deploy the
+server and embedded SPA together, then check Catalog, Manual editing, Capital
+Flows, collection, and history. Agent verification uses only the isolated
+[agent instance](./development.md#agent-setup).
 
-The upgrade renames Assets, references, indexes, and constraints while retaining
-IDs, versions, amounts, timestamps, and history. See
-[persisted references](./architecture.md#persisted-asset-references). Internal
-persisted JSON keeps its established keys for both reads and new writes,
-independently of Go field names and HTTP conversion:
-
-| Stored document                          | Asset reference                          | Canonical Asset reference |
-| ---------------------------------------- | ---------------------------------------- | ------------------------- |
-| Manual revisions and frozen cycle inputs | `platformAssetId`, `platformAssetSymbol` | `assetSymbol`             |
-| Earn metadata and omitted Balances       | `symbol`                                 | `assetSymbol`             |
-| Recalculation job payload                | `platformAssetId`                        | None                      |
-
-Manual readers also accept historical `listingId` and `symbol` aliases and
-reject conflicting aliases. Historical audit documents remain unchanged. New
-audit documents use current names; Asset filters include `asset`,
-`platform_asset`, and `asset_listing` resource types and their corresponding
-action generations.
-
-Deploy the server and embedded SPA together. API paths, reference fields, and
-Catalog ETags change together without old HTTP aliases. Refresh existing browser
-sessions. Old Catalog tab links retain their filters and resolve to the current
-tabs. Check readiness, Catalog mapping/exclusion, Manual editing, Holdings,
-Capital Flows, and history after startup. For a full rollback, restore the
-pre-upgrade backup with the previous binary.
-
-### Dual Investment split upgrade
-
-Before applying
-[20260929010000_dual_positions.sql](../db/migrations/20260929010000_dual_positions.sql)
-and
-[20260929010100_dual_accounts.sql](../db/migrations/20260929010100_dual_accounts.sql),
-drain running or partially collected cycles with the previous release, then stop
-all workers. Migration refuses unfinished cycles. Missing Dual Accounts inherit
-Earn selections; existing Dual selections and history remain. No reset is
-needed. See [report scope rules](./domain-rules.md#report-scope-compatibility).
-
-### Position presentation upgrade
-
-Stop the service and apply
-[20261003010000_position_presentation.sql](../db/migrations/20261003010000_position_presentation.sql)
-with `migrate up` before running the new binary. This adds nullable provenance
-fields on populated databases and preserves original quantities and amounts.
-Exact canonical Position references restore one-way/hedged mode; noncanonical
-references, contradictory directions, and unrecorded historical Report Margin
-Modes remain unknown. New successful collection supplies the new provenance;
-stale fallback keeps the old Report's known fields and observation time.
-
-### Earn presentation upgrade
-
-Stop the service and apply
-[20261005010000_earn_positions.sql](../db/migrations/20261005010000_earn_positions.sql)
-with `migrate up` before running the new binary. Existing populated reports
-retain their financial values and original observation times. The new collection
-flag starts false for history: the UI shows separate Balance summaries until a
-new successful Earn report supplies normalized descriptions. No scope
-reclassification, historical product reconstruction, or database reset is
-required. See [ADR 0005](./adr/0005-earn-and-dual-products.md).
+This reset decision applies only before the first production migration. Once
+production receives the baseline, future changes require appended migrations,
+backups, and populated-database verification. MySQL DDL is not transactional;
+inspect or restore a failed partial migration before retrying.
 
 ## Platform connectivity
 

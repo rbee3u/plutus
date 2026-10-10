@@ -18,7 +18,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
 		t.Fatalf("enable: %+v %v", result, err)
 	}
-	_, job := h.runCycle()
+	_, cycleID := h.runCycle()
 	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
 	full, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 50})
 	if err != nil || full.Total != 2 {
@@ -54,7 +54,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	if err != nil || duals.Total == 0 || len(duals.Items) != 1 {
 		t.Fatalf("Dual quote substring: %+v %v", duals, err)
 	}
-	for _, account := range h.accountsByType(job, item.ID) {
+	for _, account := range h.accountsByType(cycleID, item.ID) {
 		if _, err := h.financial.AccountBalances(h.ctx, pctx, account.AccountID); err != nil {
 			t.Fatal(err)
 		}

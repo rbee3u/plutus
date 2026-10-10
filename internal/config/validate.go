@@ -36,9 +36,6 @@ func Validate(cfg *Config, opts *Options) error {
 	if err := validateCookieSuffix(cfg.Auth.CookieSuffix); err != nil {
 		return err
 	}
-	if err := durationInRange("jobs.finished_retention", cfg.Jobs.FinishedRetention, minCompletedRetain, maxCompletedRetain); err != nil {
-		return err
-	}
 	if err := durationInRange("collection.connection_validation_timeout", cfg.Collection.ConnectionValidationTimeout, minValidateTimeout, maxValidateTimeout); err != nil {
 		return err
 	}

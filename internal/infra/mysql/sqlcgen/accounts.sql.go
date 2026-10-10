@@ -7,12 +7,11 @@ package sqlcgen
 
 import (
 	"context"
-	"time"
+	"database/sql"
 )
 
 const getAccount = `-- name: GetAccount :one
-SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type,  a.selected, i.platform, i.display_name AS identity_name, i.account_structure, i.archived_at AS identity_archived_at
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ? AND a.id = ?
@@ -24,19 +23,15 @@ type GetAccountParams struct {
 }
 
 type GetAccountRow struct {
-	ID               []byte
-	PortfolioID      []byte
-	IdentityID       []byte
-	AccountType      string
-	DisplayName      string
-	Selected         bool
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Platform         string
-	IdentityName     string
-	AccountStructure string
-	IdentityStatus   string
+	ID                 []byte
+	PortfolioID        []byte
+	IdentityID         []byte
+	AccountType        string
+	Selected           bool
+	Platform           string
+	IdentityName       string
+	AccountStructure   string
+	IdentityArchivedAt sql.NullTime
 }
 
 func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error) {
@@ -47,25 +42,21 @@ func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAcco
 		&i.PortfolioID,
 		&i.IdentityID,
 		&i.AccountType,
-		&i.DisplayName,
 		&i.Selected,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.Platform,
 		&i.IdentityName,
 		&i.AccountStructure,
-		&i.IdentityStatus,
+		&i.IdentityArchivedAt,
 	)
 	return i, err
 }
 
 const insertAccount = `-- name: InsertAccount :exec
 INSERT INTO accounts (
-    id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at
+    id, portfolio_id, identity_id, account_type, selected
 ) VALUES (
     ?, ?, ?, ?,
-    ?, ?, ?, ?, ?
+    ?
 )
 `
 
@@ -74,11 +65,7 @@ type InsertAccountParams struct {
 	PortfolioID []byte
 	IdentityID  []byte
 	AccountType string
-	DisplayName string
 	Selected    bool
-	Version     uint64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
 }
 
 func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) error {
@@ -87,17 +74,13 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) er
 		arg.PortfolioID,
 		arg.IdentityID,
 		arg.AccountType,
-		arg.DisplayName,
 		arg.Selected,
-		arg.Version,
-		arg.CreatedAt,
-		arg.UpdatedAt,
 	)
 	return err
 }
 
 const listAccountsByIdentity = `-- name: ListAccountsByIdentity :many
-SELECT id, portfolio_id, identity_id, account_type, display_name, selected, version, created_at, updated_at
+SELECT portfolio_id, id, identity_id, account_type, selected
 FROM accounts
 WHERE portfolio_id = ? AND identity_id = ?
 ORDER BY id
@@ -118,15 +101,11 @@ func (q *Queries) ListAccountsByIdentity(ctx context.Context, arg ListAccountsBy
 	for rows.Next() {
 		var i Account
 		if err := rows.Scan(
-			&i.ID,
 			&i.PortfolioID,
+			&i.ID,
 			&i.IdentityID,
 			&i.AccountType,
-			&i.DisplayName,
 			&i.Selected,
-			&i.Version,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -142,8 +121,7 @@ func (q *Queries) ListAccountsByIdentity(ctx context.Context, arg ListAccountsBy
 }
 
 const listAccountsByPortfolio = `-- name: ListAccountsByPortfolio :many
-SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, a.selected, a.version,
-       a.created_at, a.updated_at, i.platform, i.display_name AS identity_name, i.account_structure, i.status AS identity_status
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type,  a.selected, i.platform, i.display_name AS identity_name, i.account_structure, i.archived_at AS identity_archived_at
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ?
@@ -151,19 +129,15 @@ ORDER BY a.id
 `
 
 type ListAccountsByPortfolioRow struct {
-	ID               []byte
-	PortfolioID      []byte
-	IdentityID       []byte
-	AccountType      string
-	DisplayName      string
-	Selected         bool
-	Version          uint64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Platform         string
-	IdentityName     string
-	AccountStructure string
-	IdentityStatus   string
+	ID                 []byte
+	PortfolioID        []byte
+	IdentityID         []byte
+	AccountType        string
+	Selected           bool
+	Platform           string
+	IdentityName       string
+	AccountStructure   string
+	IdentityArchivedAt sql.NullTime
 }
 
 func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error) {
@@ -180,15 +154,11 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byt
 			&i.PortfolioID,
 			&i.IdentityID,
 			&i.AccountType,
-			&i.DisplayName,
 			&i.Selected,
-			&i.Version,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.Platform,
 			&i.IdentityName,
 			&i.AccountStructure,
-			&i.IdentityStatus,
+			&i.IdentityArchivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -204,11 +174,11 @@ func (q *Queries) ListAccountsByPortfolio(ctx context.Context, portfolioID []byt
 }
 
 const listBoundaryAccounts = `-- name: ListBoundaryAccounts :many
-SELECT a.id, a.portfolio_id, a.identity_id, a.account_type, a.display_name, i.platform, i.display_name AS identity_name,
+SELECT a.id, a.portfolio_id, a.identity_id, a.account_type,  i.platform, i.display_name AS identity_name,
        i.connection_status, i.account_structure
 FROM accounts a
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE a.portfolio_id = ? AND a.selected = TRUE AND i.status = 'enabled'
+WHERE a.portfolio_id = ? AND a.selected = TRUE AND i.archived_at IS NULL
 ORDER BY a.id
 `
 
@@ -217,7 +187,6 @@ type ListBoundaryAccountsRow struct {
 	PortfolioID      []byte
 	IdentityID       []byte
 	AccountType      string
-	DisplayName      string
 	Platform         string
 	IdentityName     string
 	ConnectionStatus string
@@ -238,7 +207,6 @@ func (q *Queries) ListBoundaryAccounts(ctx context.Context, portfolioID []byte) 
 			&i.PortfolioID,
 			&i.IdentityID,
 			&i.AccountType,
-			&i.DisplayName,
 			&i.Platform,
 			&i.IdentityName,
 			&i.ConnectionStatus,
@@ -259,29 +227,18 @@ func (q *Queries) ListBoundaryAccounts(ctx context.Context, portfolioID []byte) 
 
 const updateAccount = `-- name: UpdateAccount :execrows
 UPDATE accounts
-SET display_name = ?,
-    selected = ?,
-    version = version + 1,
-    updated_at = ?
+SET selected = ?
 WHERE portfolio_id = ? AND id = ?
 `
 
 type UpdateAccountParams struct {
-	DisplayName string
 	Selected    bool
-	UpdatedAt   time.Time
 	PortfolioID []byte
 	ID          []byte
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateAccount,
-		arg.DisplayName,
-		arg.Selected,
-		arg.UpdatedAt,
-		arg.PortfolioID,
-		arg.ID,
-	)
+	result, err := q.db.ExecContext(ctx, updateAccount, arg.Selected, arg.PortfolioID, arg.ID)
 	if err != nil {
 		return 0, err
 	}

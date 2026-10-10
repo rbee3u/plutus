@@ -58,7 +58,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -67,7 +67,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich
 	if err := checkEarn(ctx, c, combined, prices); err != nil {
 		return adapters.AccountReport{}, adapters.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: balances, EarnDetailsCollected: true, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusOK, ObservedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // savings adds the principal of one savings category to totals. `amount` is the principal,
@@ -156,14 +156,14 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 		if row.Status == "Redeeming" {
 			state = "redeeming"
 		}
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PlatformPositionRef: row.PositionID, ProductRef: adapters.OptionalText(row.ProductID), OrderRef: adapters.OptionalText(row.OrderID), BaseAssetSymbol: adapters.OptionalText(row.BaseCoin), QuoteAssetSymbol: adapters.OptionalText(row.QuoteCoin), InvestAssetSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.OptionalText(row.TargetPrice), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: rate, RateKind: adapters.OptionalText("apy"), Status: state})
+		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PositionKey: row.PositionID, ProductRef: adapters.OptionalText(row.ProductID), OrderRef: adapters.OptionalText(row.OrderID), BaseAssetSymbol: adapters.OptionalText(row.BaseCoin), QuoteAssetSymbol: adapters.OptionalText(row.QuoteCoin), PrincipalAssetSymbol: row.InvestCoin, Principal: row.Amount, Direction: direction, TargetPrice: adapters.OptionalText(row.TargetPrice), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: rate, RateKind: adapters.OptionalText("apy"), Status: state})
 		if err != nil {
 			return nil, err
 		}
-		if seen[p.PlatformPositionRef] {
+		if seen[p.PositionKey] {
 			return nil, adapters.Malformed(where, "duplicate dual position id")
 		}
-		seen[p.PlatformPositionRef] = true
+		seen[p.PositionKey] = true
 		out = append(out, p)
 	}
 	return out, nil

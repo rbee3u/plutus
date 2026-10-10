@@ -102,10 +102,10 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 			if err != nil {
 				return nil, err
 			}
-			if seen[position.PlatformPositionRef] {
-				return nil, adapters.Malformed(epPositions.String(), "a unique position "+position.PlatformPositionRef)
+			if seen[position.PositionKey] {
+				return nil, adapters.Malformed(epPositions.String(), "a unique position "+position.PositionKey)
 			}
-			seen[position.PlatformPositionRef] = true
+			seen[position.PositionKey] = true
 			out = append(out, position)
 		}
 	}
@@ -157,7 +157,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode 
 		unit = adapters.UnitQuote
 	}
 	position := adapters.Position{
-		PlatformPositionRef: fmt.Sprintf("%s:%d", row.Symbol, *row.PositionIdx),
+		PositionKey: fmt.Sprintf("%s:%d", row.Symbol, *row.PositionIdx),
 		FuturesContract: adapters.FuturesContract{
 			Symbol:                info.Symbol,
 			Kind:                  kind,
@@ -165,13 +165,13 @@ func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode 
 			QuoteAssetSymbol:      info.QuoteCoin,
 			SettlementAssetSymbol: info.SettleCoin,
 		},
-		Side:          side,
-		PositionMode:  "one_way",
-		Quantity:      decimal.Format(decimal.Abs(size)),
-		QuantityUnit:  unit,
-		EntryPrice:    adapters.Plain(row.AvgPrice),
-		MarkPrice:     adapters.Plain(row.MarkPrice),
-		UnrealizedPnl: adapters.Plain(row.UnrealisedPnl),
+		Side:               side,
+		PositionMode:       "one_way",
+		SourceQuantity:     decimal.Format(decimal.Abs(size)),
+		SourceQuantityUnit: unit,
+		EntryPrice:         adapters.Plain(row.AvgPrice),
+		MarkPrice:          adapters.Plain(row.MarkPrice),
+		UnrealizedPnl:      adapters.Plain(row.UnrealisedPnl),
 	}
 	if *row.PositionIdx != 0 {
 		if (*row.PositionIdx != 1 || side != adapters.SideLong) && (*row.PositionIdx != 2 || side != adapters.SideShort) {
@@ -191,9 +191,9 @@ func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode 
 		position.Leverage = adapters.NonZero(row.Leverage)
 		position.Margin = adapters.Plain(row.PositionIM)
 		position.MarginAssetSymbol, position.MarginBasis = info.SettleCoin, "initial"
-		position.MarginMode = "cross"
+		position.MarginSetting = "cross"
 		if mode == adapters.MarginBybitIsolated {
-			position.MarginMode = "isolated"
+			position.MarginSetting = "isolated"
 		}
 	}
 	return position, nil

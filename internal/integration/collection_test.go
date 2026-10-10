@@ -54,7 +54,7 @@ func TestEnableRequiresSuccessfulValidation(t *testing.T) {
 
 func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	h := newHarness(t)
-	at := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	at := time.Now().UTC().Truncate(time.Minute).Add(-2 * time.Minute)
 	for _, adapter := range h.fakes {
 		adapter.WithClock(func() time.Time { return at })
 	}
@@ -77,7 +77,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	// Move the fake clock to a fresh minute so the cycle's first Collect call fails once and is retried.
 	at = at.Add(time.Minute)
 
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.IdentityCount != 2 || summary.ReportFailed != 0 || summary.Invalidated != 0 {
 		t.Fatalf("first cycle summary: %+v", summary)
 	}
@@ -86,7 +86,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	}
 
 	// The spot Account has no reported equity: it is calculated from USDC (1 USD, no price row) and SOL (priced).
-	accounts := h.accountsByType(jobID, good.ID)
+	accounts := h.accountsByType(cycleID, good.ID)
 	spot := accounts["spot"]
 	if spot.Method != valuation.MethodCalculated || spot.Freshness != valuation.FreshnessFresh || len(spot.Omitted) != 0 || spot.ValueUSD == nil {
 		t.Fatalf("spot valuation: %+v", spot)
@@ -115,7 +115,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("portfolio margin should be valued by reported equity: %+v", pm)
 	}
 	total := decimal.Zero()
-	all, err := h.valuation.Accounts(h.ctx, h.portfolioID, jobID)
+	all, err := h.valuation.Accounts(h.ctx, h.portfolioID, cycleID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,15 +129,15 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 
 	// USDT on a second Platform maps to the same Canonical Asset Symbol automatically
 	// (ADR 0003).
-	assets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{Query: "USDT", Limit: 50})
+	assets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Query: "USDT", Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
 	platforms := map[string]bool{}
 	for _, l := range assets.Items {
 		if l.Symbol == "USDT" {
-			if l.CanonicalSymbol != "USDT" || l.MappingSource != catalog.MappingAuto {
-				t.Fatalf("USDT asset on %s maps to %s (%s)", l.Platform, l.CanonicalSymbol, l.MappingSource)
+			if l.CanonicalAssetSymbol != "USDT" || l.MappingSource != catalog.MappingAuto {
+				t.Fatalf("USDT asset on %s maps to %s (%s)", l.Platform, l.CanonicalAssetSymbol, l.MappingSource)
 			}
 			platforms[l.Platform] = true
 		}
@@ -149,10 +149,10 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	// Break the good key in place: the next cycle must fail with authentication, set the Connection
 	// invalid, and carry the Accounts forward as stale.
 	broken := h.storeCredentials(enabled, "invalid-rotated-key")
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled' WHERE id = ?", broken.ID[:]); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled', platform_login_ref = 'rate-limited-login' WHERE id = ?", broken.ID[:]); err != nil {
 		t.Fatal(err)
 	}
-	summary, jobID = h.runCycle()
+	summary, cycleID = h.runCycle()
 	if summary.Invalidated != 1 || summary.ReportFailed != 2 {
 		t.Fatalf("second cycle summary: %+v", summary)
 	}
@@ -163,7 +163,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 	if after.Connection.Status != identity.ConnectionInvalid || after.Connection.LastErrorClass == nil || *after.Connection.LastErrorClass != adapters.ClassAuthentication {
 		t.Fatalf("connection after auth failure: %+v", after.Connection)
 	}
-	accounts = h.accountsByType(jobID, good.ID)
+	accounts = h.accountsByType(cycleID, good.ID)
 	for _, kind := range []string{"portfolio_margin", "spot"} {
 		a := accounts[kind]
 		if a.Freshness != valuation.FreshnessStale || a.ValueUSD == nil || a.Method == valuation.MethodMissing {
@@ -188,8 +188,8 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 			t.Fatal("an invalid connection must not be collectable")
 		}
 	}
-	summary, jobID = h.runCycle()
-	accounts = h.accountsByType(jobID, good.ID)
+	summary, cycleID = h.runCycle()
+	accounts = h.accountsByType(cycleID, good.ID)
 	if got := accounts["spot"]; got.Status != "failed" || got.ErrorClass == nil || *got.ErrorClass != collection.ClassSkipped || got.Freshness != valuation.FreshnessStale {
 		t.Fatalf("skipped account should carry a skipped failed report: %+v", got)
 	}
@@ -206,8 +206,8 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err != nil || !outcome.OK {
 		t.Fatalf("enable: %v %+v", err, outcome)
 	}
-	first, firstJob := h.runCycle()
-	firstAccounts := h.accountsByType(firstJob, assetIdentity.ID)
+	first, firstCycle := h.runCycle()
+	firstAccounts := h.accountsByType(firstCycle, assetIdentity.ID)
 	if first.Point.Completeness() != valuation.CompletenessIncomplete || firstAccounts["spot"].Method != valuation.MethodCalculated || len(firstAccounts["spot"].Omitted) != 1 {
 		t.Fatalf("expected TOKENX omission in calculated spot: %+v %+v", first.Point, firstAccounts["spot"])
 	}
@@ -220,21 +220,21 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatalf("TOKENX asset: %+v %v", assets, err)
 	}
 	token := assets.Items[0]
-	input := catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, RequestID: "test", Ignored: true, Reason: "Reviewed dust balance", Version: 0}
-	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true}); !errors.Is(err, catalog.ErrInvalid) {
+	input := catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, RequestID: "test", Excluded: true, Reason: "Reviewed dust balance", Version: 0}
+	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: true}); !errors.Is(err, catalog.ErrInvalid) {
 		t.Fatalf("missing review reason: %v", err)
 	}
-	ignored, err := h.catalog.PutExclusion(h.ctx, token.ID, &input)
-	if err != nil || !ignored.Ignored || ignored.ExclusionVersion != 1 {
-		t.Fatalf("ignore TOKENX: %+v %v", ignored, err)
+	excluded, err := h.catalog.PutExclusion(h.ctx, token.ID, &input)
+	if err != nil || !excluded.Excluded || excluded.ExclusionVersion != 1 {
+		t.Fatalf("exclude TOKENX: %+v %v", excluded, err)
 	}
 	var auditCount int
 	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.asset.exclude' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatalf("review audit event count = %d: %v", auditCount, err)
 	}
-	ignoredPage, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, IgnoredOnly: true, Limit: 50})
-	if err != nil || ignoredPage.Total != 1 || ignoredPage.Items[0].ID != token.ID {
-		t.Fatalf("ignored-only catalog filter: %+v %v", ignoredPage, err)
+	excludedPage, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, ExcludedOnly: true, Limit: 50})
+	if err != nil || excludedPage.Total != 1 || excludedPage.Items[0].ID != token.ID {
+		t.Fatalf("excluded-only catalog filter: %+v %v", excludedPage, err)
 	}
 	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &input); !errors.Is(err, catalog.ErrPrecondition) {
 		t.Fatalf("stale exclusion version: %v", err)
@@ -244,16 +244,16 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	otherAssets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: other.ID, Query: "TOKENX", Limit: 50})
-	if err != nil || len(otherAssets.Items) != 1 || otherAssets.Items[0].Ignored {
+	if err != nil || len(otherAssets.Items) != 0 {
 		t.Fatalf("exclusion leaked to another Portfolio: %+v %v", otherAssets, err)
 	}
-	oldPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	oldPoint, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
 		t.Fatalf("existing point changed before another cycle: %+v %v", oldPoint, err)
 	}
 
-	second, secondJob := h.runCycle()
-	spot := h.accountsByType(secondJob, assetIdentity.ID)["spot"]
+	second, secondCycle := h.runCycle()
+	spot := h.accountsByType(secondCycle, assetIdentity.ID)["spot"]
 	if second.Point.Completeness() != valuation.CompletenessComplete || len(spot.Omitted) != 0 {
 		t.Fatalf("reviewed TOKENX must not cause an omission: %+v %+v", second.Point, spot)
 	}
@@ -264,7 +264,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	for _, row := range flat.Items {
 		if row.AssetSymbol == "TOKENX" {
-			t.Fatal("ignored TOKENX appeared in ordinary Balances")
+			t.Fatal("excluded TOKENX appeared in ordinary Balances")
 		}
 	}
 	view, err := h.financial.AccountBalances(h.ctx, pctx, spot.AccountID)
@@ -273,35 +273,32 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	for _, row := range view.Balances {
 		if row.AssetSymbol == "TOKENX" {
-			t.Fatal("ignored TOKENX appeared in Account Balances")
+			t.Fatal("excluded TOKENX appeared in Account Balances")
 		}
 	}
-	if _, err := h.valuation.Rebuild(h.ctx, h.portfolioID); err != nil {
-		t.Fatal(err)
-	}
-	oldPoint, err = h.valuation.PointByJob(h.ctx, h.portfolioID, firstJob)
+	oldPoint, err = h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
-		t.Fatalf("historical rule lost during rebuild: %+v %v", oldPoint, err)
+		t.Fatalf("historical rule lost during retry: %+v %v", oldPoint, err)
 	}
-	secondPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, secondJob)
+	secondPoint, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, secondCycle)
 	if err != nil || secondPoint.Completeness() != valuation.CompletenessComplete {
-		t.Fatalf("ignored cycle lost during rebuild: %+v %v", secondPoint, err)
+		t.Fatalf("excluded cycle lost during retry: %+v %v", secondPoint, err)
 	}
 
 	priced, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "USDC", Limit: 50})
 	if err != nil || len(priced.Items) != 1 {
 		t.Fatalf("USDC asset: %+v %v", priced, err)
 	}
-	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Reviewed priced balance", Version: 0})
+	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: true, Reason: "Reviewed priced balance", Version: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, thirdJob := h.runCycle()
-	thirdSpot := h.accountsByType(thirdJob, assetIdentity.ID)["spot"]
+	_, thirdCycle := h.runCycle()
+	thirdSpot := h.accountsByType(thirdCycle, assetIdentity.ID)["spot"]
 	if thirdSpot.ValueUSD == nil || spot.ValueUSD == nil || *thirdSpot.ValueUSD == *spot.ValueUSD {
 		t.Fatalf("priced exclusion did not change calculated account: before=%+v after=%+v", spot, thirdSpot)
 	}
-	thirdPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, thirdJob)
+	thirdPoint, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, thirdCycle)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,12 +306,12 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "asset_exclusion_changed") {
 		t.Fatalf("treatment change must limit Value Change: %+v %v", change, err)
 	}
-	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: false, Version: 1})
+	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: false, Version: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, restoredPricedJob := h.runCycle()
-	restoredPricedPoint, err := h.valuation.PointByJob(h.ctx, h.portfolioID, restoredPricedJob)
+	_, restoredPricedCycle := h.runCycle()
+	restoredPricedPoint, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, restoredPricedCycle)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,12 +324,12 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err != nil || len(btc.Items) != 1 {
 		t.Fatalf("BTC asset: %+v %v", btc, err)
 	}
-	_, err = h.catalog.PutExclusion(h.ctx, btc.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Test reported equity", Version: 0})
+	_, err = h.catalog.PutExclusion(h.ctx, btc.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: true, Reason: "Test reported equity", Version: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, fourthJob := h.runCycle()
-	margin := h.accountsByType(fourthJob, assetIdentity.ID)["portfolio_margin"]
+	_, fourthCycle := h.runCycle()
+	margin := h.accountsByType(fourthCycle, assetIdentity.ID)["portfolio_margin"]
 	if margin.Method != valuation.MethodReported || margin.Equity == nil || margin.ValueUSD == nil || *margin.Equity != *margin.ValueUSD {
 		t.Fatalf("reported equity changed by exclusion: %+v", margin)
 	}
@@ -348,15 +345,15 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal("reported-equity Account hid BTC")
 	}
 
-	_, err = h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: false, Version: ignored.ExclusionVersion})
+	_, err = h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: false, Version: excluded.ExclusionVersion})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.asset.restore' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatalf("restore audit event count = %d: %v", auditCount, err)
 	}
-	last, lastJob := h.runCycle()
-	if last.Point.Completeness() != valuation.CompletenessIncomplete || len(h.accountsByType(lastJob, assetIdentity.ID)["spot"].Omitted) != 1 {
+	last, lastCycle := h.runCycle()
+	if last.Point.Completeness() != valuation.CompletenessIncomplete || len(h.accountsByType(lastCycle, assetIdentity.ID)["spot"].Omitted) != 1 {
 		t.Fatalf("restored TOKENX did not restore no_price: %+v", last.Point)
 	}
 }
@@ -365,10 +362,10 @@ func TestRateLimitPreservesConnectionAndMissingAccounts(t *testing.T) {
 	h := newHarness(t)
 	item := h.createIdentity("OKX rate limited", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading", "funding")
 	item = h.storeCredentials(item, "ratelimit-key")
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled' WHERE id = ?", item.ID[:]); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled', platform_login_ref = 'rate-limited-login' WHERE id = ?", item.ID[:]); err != nil {
 		t.Fatal(err)
 	}
-	summary, jobID := h.runCycle()
+	summary, cycleID := h.runCycle()
 	if summary.ReportFailed != 2 || summary.Invalidated != 0 || summary.IdentityFailed != 1 {
 		t.Fatalf("rate-limited cycle summary: %+v", summary)
 	}
@@ -379,7 +376,7 @@ func TestRateLimitPreservesConnectionAndMissingAccounts(t *testing.T) {
 	if after.Connection.Status != identity.ConnectionEnabled || after.Connection.LastErrorClass == nil || *after.Connection.LastErrorClass != adapters.ClassRateLimited {
 		t.Fatalf("connection after rate limit: %+v", after.Connection)
 	}
-	accounts := h.accountsByType(jobID, item.ID)
+	accounts := h.accountsByType(cycleID, item.ID)
 	for kind, a := range accounts {
 		if kind == string(adapters.TypeManual) {
 			if a.Method != valuation.MethodCalculated || a.ValueUSD == nil || *a.ValueUSD != "0" {
@@ -494,9 +491,9 @@ func (foreignModeAdapter) Validate(context.Context, adapters.Credentials, adapte
 }
 
 func (a foreignModeAdapter) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
-	batch := adapters.Batch{ObservedAt: time.Now().UTC(), MarginMode: a.mode}
+	batch := adapters.Batch{CollectedAt: time.Now().UTC(), MarginMode: a.mode}
 	for _, accountType := range accounts {
-		batch.Reports = append(batch.Reports, adapters.AccountReport{AccountType: accountType, Status: adapters.StatusOK, ObservedAt: batch.ObservedAt})
+		batch.Reports = append(batch.Reports, adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: batch.CollectedAt})
 	}
 	return batch, nil
 }
@@ -511,11 +508,11 @@ func TestAForeignOrMissingMarginModeFailsTheRun(t *testing.T) {
 			if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 				t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
 			}
-			summary, jobID := h.runCycle()
+			summary, cycleID := h.runCycle()
 			if summary.ReportFailed != 1 || summary.Invalidated != 0 {
 				t.Fatalf("summary %+v", summary)
 			}
-			if got := h.accountsByType(jobID, item.ID)["trading"]; got.ErrorClass == nil || *got.ErrorClass != adapters.ClassUnsupported {
+			if got := h.accountsByType(cycleID, item.ID)["trading"]; got.ErrorClass == nil || *got.ErrorClass != adapters.ClassUnsupported {
 				t.Fatalf("trading report: %+v", got)
 			}
 			after, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)

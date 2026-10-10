@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 
 	"github.com/google/uuid"
 
@@ -14,44 +17,37 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// prepareReport resolves a compatible source and only the prices its method needs.
-// A nil preload selects ordinary SQL reads; rebuild supplies its bounded batch.
-func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sqlcgen.ListReportsByJobRow, ignored map[uuid.UUID]bool, inputs *reportInputs) (preparedReport, error) {
-	item, err := accountFromRow(row)
+type reportInputs struct {
+	sources  map[uuid.UUID]*sqlcgen.AccountReport
+	balances map[uuid.UUID][]sqlcgen.ListBalancesByReportRow
+}
+
+// prepareReport freezes every balance decision, even descriptive reported totals.
+func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sqlcgen.ListReportsByCycleRow, excluded map[uuid.UUID]bool, inputs *reportInputs) (preparedReport, error) {
+	item, err := reportFromRow(row)
 	if err != nil {
 		return preparedReport{}, err
 	}
-	item.Omitted = nil
-	item.ValueUSD = nil
-	item.valueRat = nil
-	item.SourceReportID = nil
-	var sourceID uuid.UUID
-	var observedAt time.Time
-	equity := row.Equity
-	if row.Status == "ok" {
-		sourceID = item.ReportID
-		observedAt = row.ObservedAt.Time
+	item.Omitted, item.ValueUSD, item.valueRat, item.SourceReportID = nil, nil, nil, nil
+	sourceID := item.ReportID
+	observedAt, cutoff := effectiveObservedAt(row.CollectedAt, row.SourceObservedAt), row.RecordedAt
+	equity, adjustment := row.ReportedEquityUsd, row.SpotMarginUnrealizedPnlUsd
+	if row.Status == adapters.StatusSucceeded {
 		item.Freshness = FreshnessFresh
-		item.SourceMarginMode = nullStringPtr(row.MarginMode)
 	} else {
-		var src sqlcgen.GetLatestOkReportForAccountRow
+		var src sqlcgen.AccountReport
 		if inputs == nil {
-			src, err = s.q.GetLatestOkReportForAccount(ctx, sqlcgen.GetLatestOkReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, ScopeVersion: row.ScopeVersion, Before: row.CreatedAt})
+			src, err = mysql.Queries(ctx, s.db).GetLatestSucceededReportForAccount(ctx, sqlcgen.GetLatestSucceededReportForAccountParams{PortfolioID: row.PortfolioID, AccountID: row.AccountID, Before: row.RecordedAt})
 		} else if previous := inputs.sources[item.ReportID]; previous != nil {
 			src = *previous
 		} else {
 			err = sql.ErrNoRows
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			item.Method = MethodMissing
-			item.Freshness = FreshnessStale
-			item.Equity = nil
-			item.AdjustedEquity = nil
-			item.AvailableEquity = nil
-			item.InitialMarginRatio = nil
-			item.MaintenanceMarginRatio = nil
-			item.UnifiedMarginRatio = nil
-			item.ReportObservedAt = nil
+			item.Method, item.Freshness = MethodMissing, FreshnessStale
+			item.Equity, item.AdjustedEquity, item.AvailableEquity = nil, nil, nil
+			item.InitialMarginRatio, item.MaintenanceMarginRatio, item.MarginRatio = nil, nil, nil
+			item.ReportObservedAt, item.SourceMarginMode = nil, nil
 			return preparedReport{account: item}, nil
 		}
 		if err != nil {
@@ -61,27 +57,26 @@ func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sq
 		if err != nil {
 			return preparedReport{}, err
 		}
-		observedAt = src.ObservedAt.Time
+		observedAt, cutoff = effectiveObservedAt(src.CollectedAt, src.SourceObservedAt), src.RecordedAt
+		equity, adjustment = src.ReportedEquityUsd, src.SpotMarginUnrealizedPnlUsd
 		item.SourceMarginMode = nullStringPtr(src.MarginMode)
-		equity = src.Equity
-		item.Equity = nullDecimal(src.Equity)
-		item.AdjustedEquity = nullDecimal(src.AdjustedEquity)
-		item.AvailableEquity = nullDecimal(src.AvailableEquity)
-		item.InitialMarginRatio = nullDecimal(src.InitialMarginRatio)
-		item.MaintenanceMarginRatio = nullDecimal(src.MaintenanceMarginRatio)
-		item.UnifiedMarginRatio = nullDecimal(src.UnifiedMarginRatio)
+		item.Equity, item.AdjustedEquity, item.AvailableEquity = nullDecimal(src.ReportedEquityUsd), nullDecimal(src.AdjustedEquityUsd), nullDecimal(src.AvailableEquityUsd)
+		item.InitialMarginRatio = MarginRatio(src.ReportedInitialMarginRatio, src.InitialMarginRequirementUsd, src.AdjustedEquityUsd)
+		item.MaintenanceMarginRatio = MarginRatio(src.ReportedMaintenanceMarginRatio, src.MaintenanceMarginRequirementUsd, src.AdjustedEquityUsd)
+		item.MarginRatio = nullDecimal(src.ReportedMarginRatio)
 		item.Freshness = FreshnessStale
 	}
-	item.SourceReportID = &sourceID
-	item.ReportObservedAt = &observedAt
+	item.SourceReportID, item.ReportObservedAt = &sourceID, &observedAt
+	input := preparedReport{account: item}
 	if equity.Valid {
-		if value, ok := decimal.Parse(equity.String); ok {
-			return preparedReport{account: item, reported: value}, nil
-		}
+		input.reported, _ = decimal.Parse(equity.String)
+	}
+	if adjustment.Valid {
+		input.adjustment, _ = decimal.Parse(adjustment.String)
 	}
 	var balances []sqlcgen.ListBalancesByReportRow
 	if inputs == nil {
-		balances, err = s.q.ListBalancesByReport(ctx, sourceID[:])
+		balances, err = mysql.Queries(ctx, s.db).ListBalancesByReport(ctx, sqlcgen.ListBalancesByReportParams{PortfolioID: row.PortfolioID, ReportID: sourceID[:]})
 		if err != nil {
 			return preparedReport{}, err
 		}
@@ -92,79 +87,79 @@ func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sq
 			return preparedReport{}, fmt.Errorf("balances were not loaded for source report %s", sourceID)
 		}
 	}
-	input := preparedReport{account: item, balances: make([]preparedBalance, 0, len(balances))}
-	for i := range balances {
-		balance := &balances[i]
-		assetID, err := uuid.FromBytes(balance.AssetID)
+	if live, ok := book.(*PriceBook); ok {
+		symbols := make([]string, 0, len(balances))
+		for _, balance := range balances {
+			symbols = append(symbols, balance.CanonicalAssetSymbol)
+		}
+		if err := live.Preload(ctx, item.Platform, symbols, cutoff); err != nil {
+			return preparedReport{}, err
+		}
+	}
+	for _, balance := range balances {
+		id, err := uuid.FromBytes(balance.AssetID)
 		if err != nil {
 			return preparedReport{}, err
 		}
-		if ignored[assetID] {
-			continue
+		canonical := balance.CanonicalAssetSymbol
+		decision := BalanceValuation{AssetID: id, CanonicalAssetSymbol: canonical, Treatment: "included", PricingMethod: "unavailable"}
+		if input.reported != nil {
+			decision.Treatment = "descriptive"
 		}
-		row := preparedBalance{assetSymbol: balance.AssetSymbol, canonicalAssetSymbol: balance.CanonicalAssetSymbol, rawEquity: balance.Equity}
-		equity, ok := decimal.Parse(balance.Equity)
-		if !ok {
-			input.balances = append(input.balances, row)
-			continue
+		if excluded[id] && input.reported == nil {
+			decision.Treatment, decision.PricingMethod = "excluded", "excluded"
 		}
-		if equity.Sign() == 0 {
-			continue
+		prepared := preparedBalance{assetSymbol: balance.AssetSymbol, canonicalAssetSymbol: canonical, rawEquity: balance.Equity, decision: decision}
+		prepared.equity, _ = decimal.Parse(balance.Equity)
+		if prepared.decision.Treatment != "excluded" && prepared.equity != nil {
+			if prepared.equity.Sign() == 0 {
+				prepared.price = big.NewRat(0, 1)
+				prepared.decision.PricingMethod = "zero_equity"
+			} else {
+				price, err := book.Resolve(ctx, balance.Platform, canonical, cutoff)
+				if err != nil {
+					return preparedReport{}, err
+				}
+				prepared.price = price.Value
+				prepared.decision.PricingMethod, prepared.decision.PriceObservationID = price.Method, price.ObservationID
+			}
 		}
-		row.equity = equity
-		lookup := book.Lookup
-		if item.AccountType == string(adapters.TypeManual) {
-			lookup = book.LookupPlatform
-		}
-		price, found, err := lookup(ctx, balance.Platform, balance.CanonicalAssetSymbol, observedAt)
-		if err != nil {
-			return preparedReport{}, err
-		}
-		if found {
-			row.price = price
-		}
-		input.balances = append(input.balances, row)
+		input.balances = append(input.balances, prepared)
 	}
 	return input, nil
 }
 
 // previousAccounts returns the Account values of the point immediately before evaluatedAt.
-func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, evaluatedAt time.Time, jobID uuid.UUID) (map[uuid.UUID]previousAccount, error) {
-	prev, err := s.q.GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: evaluatedAt})
+func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, evaluatedAt time.Time, cycleID uuid.UUID) (map[uuid.UUID]previousAccount, error) {
+	prev, err := mysql.Queries(ctx, s.db).GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: evaluatedAt, CycleID: cycleID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil //nolint:nilnil // a nil map means "no previous point", which disables Boundary Event derivation.
 	}
 	if err != nil {
 		return nil, err
 	}
-	prevJob, err := uuid.FromBytes(prev.JobID)
+	prevCycle, err := uuid.FromBytes(prev.CycleID)
 	if err != nil {
 		return nil, err
 	}
-	if prevJob == jobID {
-		return nil, nil //nolint:nilnil // rebuilding the first point: nothing precedes it.
+	if prevCycle == cycleID {
+		return nil, nil //nolint:nilnil // the first point has no predecessor.
 	}
-	rows, err := s.q.ListReportsByJob(ctx, sqlcgen.ListReportsByJobParams{PortfolioID: portfolioID[:], JobID: prev.JobID})
+	rows, err := s.accountsByCycles(ctx, portfolioID, [][]byte{prev.CycleID})
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[uuid.UUID]previousAccount, len(rows))
-	for i := range rows {
-		accountID, err := uuid.FromBytes(rows[i].AccountID)
-		if err != nil {
-			return nil, err
+	return previousFromAccounts(rows[prevCycle]), nil
+}
+
+func previousFromAccounts(accounts []AccountValuation) map[uuid.UUID]previousAccount {
+	previous := make(map[uuid.UUID]previousAccount, len(accounts))
+	for _, a := range accounts {
+		entry := previousAccount{accountType: a.AccountType, name: a.AccountName, identityID: a.IdentityID, identityName: a.IdentityName, platform: a.Platform, method: a.Method, complete: a.Completeness() == CompletenessComplete}
+		if a.ValueUSD != nil {
+			entry.value, _ = decimal.Parse(*a.ValueUSD)
 		}
-		identityID, err := uuid.FromBytes(rows[i].IdentityID)
-		if err != nil {
-			return nil, err
-		}
-		entry := previousAccount{manualState: canonicalManualState(rows[i].ManualStateJson), scopeVersion: rows[i].ScopeVersion, accountType: rows[i].AccountType, name: rows[i].AccountName, identityID: identityID, identityName: rows[i].IdentityName, platform: rows[i].Platform, method: rows[i].Method}
-		if rows[i].ValueUsd.Valid {
-			if value, ok := decimal.Parse(rows[i].ValueUsd.String); ok {
-				entry.value = value
-			}
-		}
-		out[accountID] = entry
+		previous[a.AccountID] = entry
 	}
-	return out, nil
+	return previous
 }

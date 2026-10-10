@@ -7,32 +7,31 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// ActiveForJob returns the Assets ignored at the start of a Collection Cycle.
+// ActiveForCycle returns the Assets excluded at the start of a Collection Cycle.
 // A rule saved while a cycle is running first applies to the following cycle.
-func ActiveForJob(ctx context.Context, db *sql.DB, portfolioID, jobID uuid.UUID) (map[uuid.UUID]bool, error) {
-	q := sqlcgen.New(db)
-	job, err := q.GetJob(ctx, sqlcgen.GetJobParams{PortfolioID: portfolioID[:], ID: jobID[:]})
+func ActiveForCycle(ctx context.Context, db *sql.DB, portfolioID, cycleID uuid.UUID) (map[uuid.UUID]bool, error) {
+	q := mysql.Queries(ctx, db)
+	cycle, err := q.GetCollectionCycle(ctx, sqlcgen.GetCollectionCycleParams{PortfolioID: portfolioID[:], ID: cycleID[:]})
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.ListAssetExclusionsBefore(ctx, sqlcgen.ListAssetExclusionsBeforeParams{PortfolioID: portfolioID[:], EffectiveAt: job.CreatedAt})
+	rows, err := q.ListAssetExclusionsBefore(ctx, sqlcgen.ListAssetExclusionsBeforeParams{PortfolioID: portfolioID[:], EffectiveAt: cycle.CreatedAt})
 	if err != nil {
 		return nil, err
 	}
-	active := map[uuid.UUID]bool{}
-	seen := map[uuid.UUID]bool{}
+	excluded := map[uuid.UUID]bool{}
 	for _, row := range rows {
 		id, err := uuid.FromBytes(row.AssetID)
 		if err != nil {
 			return nil, err
 		}
-		if !seen[id] {
-			seen[id] = true
-			active[id] = row.Ignored
+		if _, decided := excluded[id]; !decided {
+			excluded[id] = row.Excluded
 		}
 	}
-	return active, nil
+	return excluded, nil
 }

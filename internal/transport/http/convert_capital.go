@@ -8,6 +8,11 @@ import (
 func toAPIFlow(f *capital.Flow) api.CapitalFlow {
 	return api.CapitalFlow{
 		Id:                   f.ID,
+		PricingMethod:        api.CapitalFlowPricingMethod(f.PricingMethod),
+		PricingPlatform:      f.PricingPlatform,
+		PriceObservationId:   f.PriceObservationID,
+		PricingAttemptedAt:   f.PricingAttemptedAt,
+		CalculationVersion:   int(f.CalculationVersion), // #nosec G115 -- A compile-time policy version, currently 1; never user-supplied.
 		PortfolioId:          f.PortfolioID,
 		Direction:            api.CapitalFlowDirection(f.Direction),
 		CanonicalAssetSymbol: f.CanonicalAssetSymbol,

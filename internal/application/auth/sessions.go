@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,11 +24,11 @@ type Session struct {
 	LastSeenAt        time.Time
 	IdleExpiresAt     time.Time
 	AbsoluteExpiresAt time.Time
-	ClientLabel       *string
+	UserAgent         *string
 	Current           bool
 }
 
-func (s *Service) createSession(ctx context.Context, userID uuid.UUID, clientLabel string) (Session, error) {
+func (s *Service) createSession(ctx context.Context, q *sqlcgen.Queries, userID uuid.UUID, userAgent string) (Session, error) {
 	now := s.now().UTC()
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -41,11 +42,13 @@ func (s *Service) createSession(ctx context.Context, userID uuid.UUID, clientLab
 	if err != nil {
 		return Session{}, err
 	}
+	labelRunes := []rune(strings.ToValidUTF8(userAgent, ""))
+	userAgent = string(labelRunes[:min(len(labelRunes), 255)])
 	label := sql.NullString{}
-	if clientLabel != "" {
-		label = sql.NullString{String: clientLabel, Valid: true}
+	if userAgent != "" {
+		label = sql.NullString{String: userAgent, Valid: true}
 	}
-	if err := s.q.InsertSession(ctx, sqlcgen.InsertSessionParams{
+	if err := q.InsertSession(ctx, sqlcgen.InsertSessionParams{
 		ID:                id[:],
 		UserID:            userID[:],
 		TokenHash:         tokenHash[:],
@@ -54,7 +57,7 @@ func (s *Service) createSession(ctx context.Context, userID uuid.UUID, clientLab
 		LastSeenAt:        now,
 		IdleExpiresAt:     now.Add(s.idle),
 		AbsoluteExpiresAt: now.Add(s.absolute),
-		ClientLabel:       label,
+		UserAgent:         label,
 	}); err != nil {
 		return Session{}, err
 	}
@@ -72,7 +75,7 @@ func (s *Service) createSession(ctx context.Context, userID uuid.UUID, clientLab
 		LastSeenAt:        now,
 		IdleExpiresAt:     now.Add(s.idle),
 		AbsoluteExpiresAt: now.Add(s.absolute),
-		ClientLabel:       labelPtr,
+		UserAgent:         labelPtr,
 		Current:           true,
 	}, nil
 }
@@ -186,8 +189,8 @@ func sessionFromRow(row *sqlcgen.Session, token string, current bool) (Session, 
 	}
 	csrf := base64.RawURLEncoding.EncodeToString(row.CsrfSecret)
 	var label *string
-	if row.ClientLabel.Valid {
-		v := row.ClientLabel.String
+	if row.UserAgent.Valid {
+		v := row.UserAgent.String
 		label = &v
 	}
 	return Session{
@@ -199,7 +202,7 @@ func sessionFromRow(row *sqlcgen.Session, token string, current bool) (Session, 
 		LastSeenAt:        row.LastSeenAt,
 		IdleExpiresAt:     row.IdleExpiresAt,
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
-		ClientLabel:       label,
+		UserAgent:         label,
 		Current:           current,
 	}, nil
 }
@@ -207,4 +210,10 @@ func sessionFromRow(row *sqlcgen.Session, token string, current bool) (Session, 
 func bytesEqualUUID(raw []byte, id uuid.UUID) bool {
 	parsed, err := uuid.FromBytes(raw)
 	return err == nil && parsed == id
+}
+
+// PruneExpired removes only unusable sessions in bounded batches.
+func (s *Service) PruneExpired(ctx context.Context) error {
+	_, err := s.q.PruneExpiredSessions(ctx, sqlcgen.PruneExpiredSessionsParams{Now: s.now().UTC()})
+	return err
 }

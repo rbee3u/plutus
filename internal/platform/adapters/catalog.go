@@ -252,3 +252,20 @@ func PlatformName(platform Platform) string {
 	}
 	return string(platform)
 }
+
+// AccountName is the catalog label shared by configuration and financial views.
+func AccountName(accountType AccountType) string {
+	if accountType == TypeManual {
+		return "Manual"
+	}
+	for _, platform := range platformCatalog {
+		for _, structure := range platform.structures {
+			for _, account := range structure.AccountTypes {
+				if account.ID == accountType {
+					return account.Name
+				}
+			}
+		}
+	}
+	return string(accountType)
+}

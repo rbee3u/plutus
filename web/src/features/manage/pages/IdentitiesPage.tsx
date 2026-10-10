@@ -97,8 +97,8 @@ export function IdentitiesPage() {
           { key: "platform", header: "Platform", nowrap: true },
           { key: "connection", header: "Connection" },
           { key: "accounts", header: "Accounts", nowrap: true },
-          { key: "lastValidatedAt", header: "Last validated", nowrap: true },
-          { key: "lastCollectedAt", header: "Last collected", nowrap: true },
+          { key: "lastValidationSucceededAt", header: "Last validated", nowrap: true },
+          { key: "lastCollectionFinishedAt", header: "Last collected", nowrap: true },
           { key: "actions", header: "" },
         ]}
         rowClassName={(row) => (row.archived ? styles.archivedRow : undefined)}
@@ -188,8 +188,11 @@ export function IdentitiesPage() {
                 )}
               </button>
             ),
-            lastValidatedAt: formatInstant(connection.lastValidatedAt, timezone),
-            lastCollectedAt: formatInstant(connection.lastCollectedAt, timezone),
+            lastValidationSucceededAt: formatInstant(
+              connection.lastValidationSucceededAt,
+              timezone,
+            ),
+            lastCollectionFinishedAt: formatInstant(connection.lastCollectionFinishedAt, timezone),
             actions: archived ? (
               <span className={shared.cellMeta}>archived</span>
             ) : (

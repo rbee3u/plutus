@@ -36,7 +36,7 @@ func TestCollectRetryPolicy(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			wantBatch := adapters.Batch{Reports: []adapters.AccountReport{{AccountType: "spot", Status: adapters.StatusOK}}}
+			wantBatch := adapters.Batch{Reports: []adapters.AccountReport{{AccountType: "spot", Status: adapters.StatusSucceeded}}}
 			adapter := &testAdapter{}
 			adapter.collect = func([]adapters.AccountType) (adapters.Batch, error) {
 				attempt := len(adapter.calls) - 1

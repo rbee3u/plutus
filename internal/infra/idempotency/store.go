@@ -1,6 +1,8 @@
+// Package idempotency commits successful responses with their business writes.
 package idempotency
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -11,115 +13,104 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 )
 
-// ErrConflict is returned when the same key is reused with a different body.
-var ErrConflict = apperr.Conflict("idempotency key conflict")
+var (
+	ErrConflict   = apperr.Conflict("idempotency key conflict")
+	ErrInvalidKey = apperr.Invalid("Idempotency-Key must contain at most 255 visible ASCII characters.")
+)
 
-// Record is a stored idempotent response.
 type Record struct {
 	Status  int
 	Headers map[string]string
 	Body    json.RawMessage
 }
-
-// Store persists idempotency records.
 type Store struct {
 	db  *sql.DB
 	now func() time.Time
 	ttl time.Duration
 }
 
-// NewStore constructs an idempotency store.
-func NewStore(db *sql.DB) *Store {
-	return &Store{db: db, now: time.Now, ttl: 24 * time.Hour}
-}
+func NewStore(db *sql.DB) *Store { return &Store{db: db, now: time.Now, ttl: 24 * time.Hour} }
 
-// Hash returns the SHA-256 digest of the request body.
-func Hash(body []byte) []byte {
-	sum := sha256.Sum256(body)
-	return sum[:]
-}
+func Hash(body []byte) []byte { hash := sha256.Sum256(body); return hash[:] }
 
-// Get returns a non-expired record for the key, if any.
-func (s *Store) Get(ctx context.Context, userID uuid.UUID, method, path, key string) (*Record, []byte, error) {
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return nil, nil, err
+// Run serializes creation per User. The lock covers missing and expired keys,
+// so a failed attempt leaves neither business rows nor a durable pending record.
+// Authorization and CSRF precede this call; resource lookup belongs in create.
+func (s *Store) Run(ctx context.Context, userID uuid.UUID, method, path, key string, body []byte, create func(context.Context) (Record, error)) (Record, error) {
+	if len(key) > 255 {
+		return Record{}, ErrInvalidKey
 	}
-	var hash []byte
-	var status uint16
-	var headers, body sqljson.Column
-	var expires time.Time
-	err = s.db.QueryRowContext(ctx, `
-SELECT request_hash, response_status, response_headers_json, response_body_json, expires_at
-FROM idempotency_records
-WHERE user_id = ? AND method = ? AND path = ? AND `+"`key`"+` = ?`,
-		userBytes, method, path, key,
-	).Scan(&hash, &status, &headers, &body, &expires)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, nil
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	if !expires.After(s.now().UTC()) {
-		return nil, nil, nil
-	}
-	headerMap := map[string]string{}
-	if len(headers) > 0 {
-		if err := json.Unmarshal(headers, &headerMap); err != nil {
-			return nil, nil, err
+	for _, ch := range key {
+		if ch < '!' || ch > '~' {
+			return Record{}, ErrInvalidKey
 		}
 	}
-	return &Record{Status: int(status), Headers: headerMap, Body: json.RawMessage(body)}, hash, nil
-}
-
-// Put stores a response. A duplicate key with the same hash is ignored.
-func (s *Store) Put(ctx context.Context, userID uuid.UUID, portfolioID *uuid.UUID, method, path, key string, requestHash []byte, rec Record) error {
-	id, err := uuid.NewV7()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return Record{}, err
 	}
-	idBytes, err := id.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	userBytes, err := userID.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	var portfolioBytes []byte
-	if portfolioID != nil {
-		portfolioBytes, err = portfolioID.MarshalBinary()
-		if err != nil {
-			return err
-		}
-	}
-	headers, err := json.Marshal(rec.Headers)
-	if err != nil {
-		return err
+	defer func() { _ = tx.Rollback() }()
+	ctx = mysql.TransactionContext(ctx, s.db, tx)
+	q := sqlcgen.New(tx)
+	if _, err := q.LockUser(ctx, userID[:]); err != nil {
+		return Record{}, err
 	}
 	now := s.now().UTC()
-	_, err = s.db.ExecContext(ctx, `
-INSERT INTO idempotency_records (
-    id, user_id, portfolio_id, `+"`key`"+`, method, path, request_hash, response_status,
-    response_headers_json, response_body_json, created_at, expires_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		idBytes, userBytes, nullableBytes(portfolioBytes), key, method, path, requestHash,
-		rec.Status, headers, rec.Body, now, now.Add(s.ttl),
-	)
-	if mysql.IsDuplicate(err) {
-		return nil
+	hash := Hash(body)
+	if key != "" {
+		stored, err := q.LockIdempotencyRecord(ctx, sqlcgen.LockIdempotencyRecordParams{UserID: userID[:], Method: method, Path: path, IdempotencyKey: key})
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return Record{}, err
+		}
+		if err == nil && stored.ExpiresAt.After(now) {
+			if !bytes.Equal(hash, stored.RequestHash) {
+				return Record{}, ErrConflict
+			}
+			record := Record{Status: int(stored.ResponseStatus), Body: json.RawMessage(stored.ResponseBodyJson), Headers: map[string]string{}}
+			if len(stored.ResponseHeadersJson) > 0 {
+				if err := json.Unmarshal(stored.ResponseHeadersJson, &record.Headers); err != nil {
+					return Record{}, err
+				}
+			}
+			return record, tx.Commit()
+		}
+		if err == nil {
+			if err := q.DeleteIdempotencyRecord(ctx, sqlcgen.DeleteIdempotencyRecordParams{UserID: userID[:], Method: method, Path: path, IdempotencyKey: key}); err != nil {
+				return Record{}, err
+			}
+		}
 	}
-	return err
+	record, err := create(ctx)
+	if err != nil {
+		return Record{}, err
+	}
+	if record.Status < 200 || record.Status >= 300 || !json.Valid(record.Body) {
+		return Record{}, errors.New("idempotency requires a successful JSON response")
+	}
+	if key != "" {
+		headers, err := json.Marshal(record.Headers)
+		if err != nil {
+			return Record{}, err
+		}
+		if err := q.InsertIdempotencyRecord(ctx, sqlcgen.InsertIdempotencyRecordParams{
+			UserID: userID[:], Method: method, Path: path, IdempotencyKey: key, RequestHash: hash,
+			ResponseStatus: uint16(record.Status), ResponseHeadersJson: sqljson.Column(headers), ResponseBodyJson: sqljson.Column(record.Body),
+			ExpiresAt: now.Add(s.ttl),
+		}); err != nil {
+			return Record{}, err
+		}
+	}
+	return record, tx.Commit()
 }
 
-func nullableBytes(value []byte) any {
-	if len(value) == 0 {
-		return nil
-	}
-	return value
+// PruneExpired retains successful responses for their full retry window,
+// independently of the lifetime of any Portfolio referenced by the response.
+func (s *Store) PruneExpired(ctx context.Context) error {
+	_, err := sqlcgen.New(s.db).DeleteExpiredIdempotencyRecords(ctx, s.now().UTC())
+	return err
 }

@@ -17,14 +17,15 @@ Browser
 plutus serve
   +-- HTTP transport and embedded React SPA
   +-- application services --------------------> MySQL
-  +-- scheduler and job worker ----------------> MySQL
+  +-- scheduler and collection worker ---------> MySQL
   +-- typed Platform Adapters -----------------> Platforms or fake data
 ```
 
 One application process serves the API and SPA, schedules collection, and runs
-jobs. Only one process may be active for a database. Job leases support restart
-recovery; they do not provide multi-instance coordination or exactly-once
-collection. Plutus does not manage MySQL installation, backups, or upgrades.
+Collection Cycles. Only one process may be active for a database. Cycle leases
+support restart recovery; they do not provide multi-instance coordination or
+exactly-once collection. Plutus does not manage MySQL installation, backups, or
+upgrades.
 
 The backend uses Gin, `database/sql`, sqlc, and Goose. The frontend uses React,
 TypeScript, React Router, TanStack Query, ECharts, CSS Modules, and semantic CSS
@@ -54,9 +55,9 @@ Financial, and HTTP cannot import SQL APIs. Runtime code cannot import
 | `internal/application/portfolio`, `internal/application/identity`     | Ownership, Portfolio settings, Identity configuration, and Connections |
 | `internal/application/catalog`, `internal/application/assetexclusion` | Assets, Futures Contracts, prices, and exclusion policy                |
 | `internal/application/collection`                                     | Adapter orchestration and normalized report persistence                |
-| `internal/application/valuation`, `internal/application/capital`      | Derived value writes/rebuilds and manual Capital Flows                 |
+| `internal/application/valuation`, `internal/application/capital`      | Immutable value writes and manual Capital Flows                        |
 | `internal/application/financial`                                      | Overview, Holdings, history, periods, and financial presentation       |
-| `internal/application/jobs`, `internal/worker`                        | Persistent jobs, scheduling, leases, and dispatch                      |
+| `internal/application/cycles`, `internal/worker`                      | Cycle queue, scheduling, leases, and Portfolio deletion dispatch       |
 | `internal/application/audit`                                          | User and system action records                                         |
 | `internal/platform`                                                   | Typed Platform contract, live implementations, and deterministic fake  |
 | `internal/infra`, `internal/shared/decimal`, `internal/infra/secret`  | SQL infrastructure, exact arithmetic, and credential encryption        |
@@ -68,49 +69,38 @@ metadata is excluded from JSON. Product filters, totals, and completeness stay
 separate. `application/ordering` uses the offered Platform catalog; `shared` has
 no business dependencies.
 
-Collection and rebuild loaders feed one valuation evaluator with prepared
-inputs, without SQL, clocks, or query callbacks. App injects shared Catalog,
-Manual, and Adapter registry instances into their consumers.
+Collection loaders feed one valuation evaluator with prepared inputs, without
+SQL, clocks, or query callbacks. App injects shared Catalog, Manual, and Adapter
+registry instances into their consumers.
 
-Catalog's mapping operation includes exclusion presentation and rebuild
-enqueueing through Jobs. Mapping commits before enqueueing; an enqueue failure
-can leave a committed mapping without its rebuild job.
+Catalog commits each mapping and its audit event in one transaction. The next
+valuation adopts it. No mapping write enqueues historical work.
 
-Portfolio deletion uses explicit sqlc queries in dependency order with foreign
-keys enabled. Account Report self/stale references are released only within the
-same transaction that deletes those reports; all changes roll back on failure.
-New owned tables require an explicit deletion decision. Shared catalogs and
-User-scoped rows remain outside the deletion scope; unexpected foreign ownership
-causes rollback.
+Portfolio deletion sets `portfolios.deletion_requested_at`; that state is the
+only deletion record. All business writers lock the active root, including
+in-flight collection persistence. Scheduling excludes marked roots. When no
+cycle is claimable, the worker locks the oldest marked root with `SKIP LOCKED`
+and removes at most 1,000 rows from one dependency table per transaction, with
+foreign keys enabled; the last transaction removes the root. A failed batch is
+retried on the next tick, and restarts resume from the remaining rows.
+User-scoped replay records retain their independent lifetime.
 
 See [test ownership](./testing.md#test-ownership) for cross-module workflows.
 
 ### Persisted Asset references
 
-Catalog objects keep their own `symbol`: `assets.symbol` identifies an Asset and
-`futures_contracts.symbol` identifies a Futures Contract. Asset objects use
-`Symbol` and `CanonicalSymbol` (`symbol` and `canonicalSymbol` in HTTP).
-External references use `AssetSymbol` and `CanonicalAssetSymbol`. References
-outside Catalog objects state their namespace explicitly:
+Catalog objects own `symbol`; references name their business role. Contract
+terms live in `futures_contracts`, Positions in `futures_positions`, and Dual
+principal currency in `principal_asset_symbol`. Reported currencies remain
+source codes, distinct from Canonical Asset pricing mappings. Only record IDs
+have Catalog foreign keys; a quote or settlement currency need not be held.
 
-| Table               | Asset reference columns                                              | Meaning                                                        |
-| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `manual_balances`   | `asset_symbol`, `asset_id`                                           | Entered Platform code and its Catalog record                   |
-| `dual_positions`    | `base_asset_symbol`, `quote_asset_symbol`, `invest_asset_symbol`     | Reported product currencies before Canonical Asset mapping     |
-| `futures_contracts` | `base_asset_symbol`, `quote_asset_symbol`, `settlement_asset_symbol` | Reported contract currencies before Canonical Asset mapping    |
-| `positions`         | `margin_asset_symbol`                                                | Source margin amount's currency before presentation conversion |
-| `assets`            | `canonical_symbol`                                                   | Current Canonical Asset mapping                                |
-| `prices`            | `canonical_asset_symbol`, `quote_canonical_asset_symbol`             | Canonical Asset lookup and denomination                        |
-| `capital_flows`     | `canonical_asset_symbol`                                             | Canonical Asset chosen for the flow                            |
-
-Role prefixes do not imply canonicalization: a retained `XBT` code can map to
-`BTC` for valuation without rewriting contract or Dual terms. These codes do not
-require corresponding Catalog rows; a reported Quote or margin currency can
-exist without a held Balance. Only record IDs have Catalog foreign keys. The
-API's role fields (`baseAssetSymbol`, `quoteAssetSymbol`,
-`settlementAssetSymbol`, `investAssetSymbol`, and `marginAssetSymbol`) retain
-those source meanings. Stored JSON compatibility is described in the
-[upgrade guide](./deployment.md#catalog-terminology-upgrade).
+Symbols use trimmed NFC uppercase text, at most 64 UTF-8 bytes. Opaque Platform
+references retain their exact bytes, with a 255-byte limit and no truncation.
+Usernames and display names retain NFC spelling while dedicated NFC case-folded
+keys enforce uniqueness. Binary collation preserves accents and trailing
+characters outside that explicit normalization. Account labels come from the
+capability catalog; Accounts have no independently editable display name.
 
 ## Frontend structure
 
@@ -139,31 +129,33 @@ while Holdings owns view-memory policy. Charts explicitly import common ECharts
 registration. See [presentation](./presentation.md) for interaction rules and
 [test ownership](./testing.md#test-ownership) for browser fixtures.
 
-## Collection and job lifecycle
+## Collection Cycle lifecycle
 
-Scheduled and manual collection use the same persistent job and Portfolio
-deduplication rule. The worker polls an idle queue every second, claims jobs
-transactionally, renews its two-minute leases, and can reclaim expired jobs.
-Infrastructure failures have bounded retries with backoff. Recovery retains
-every committed Account Report for the job, including failures, and collects
-only selected Accounts still missing reports. An existing Valuation Point is
-reused without collection or rewriting its evaluation time and values; the
-worker then completes the job status. Report uniqueness remains enforced.
-Duplicate persistence errors fail the job without repeating the same conflict.
-Lease-renewal failures cancel the handler, and completion checks lease
-ownership. This remains a single-process design without exactly-once Platform
-reads.
+One durable `collection_cycles` row is both the financial history record and its
+queue entry: trigger, status, attempt count, availability, lease, and the last
+attempt's error. The stored `active_portfolio_id` column is non-null only while
+queued or running, and its unique key allows one active cycle per Portfolio;
+Enqueue locks the Portfolio and returns that cycle instead of adding another.
+The worker polls each second, claims one available queued cycle or expired
+running lease with `SKIP LOCKED`, and renews two-minute leases. Interrupted
+attempts requeue with backoff; a fourth claim fails the cycle. Recovery keeps
+committed reports, including failures, and collects missing Accounts. Financial
+completion commits the point, Account Valuations, and cycle success in one
+transaction after checking the running lease; success clears the error fields.
+Lease loss cancels unfinished work. This remains a single-process design;
+Platform calls are not exactly once.
 
 A cycle establishes its selected Accounts, then collects each usable Connection
 with a fixed three-second delay between Identities. Adapters perform the
 applicable structure and Margin Mode checks. Successful normalized reports,
 holdings, and prices are persisted; failed or omitted Accounts receive failure
-reports. Each Identity commits its reports, missing-report failures, Margin Mode
-audit, and collection outcome in one transaction after its Platform reads.
-Recovery keeps committed observations and scopes; uncommitted work uses the
-current boundary and Connections. Valuation then selects compatible source
-reports, calculates Account values and Boundary Events, and writes one Valuation
-Point for the cycle.
+reports. Each attempt stores at most one price per Platform and Canonical Asset;
+later Identities on that Platform reuse it. Each Identity commits its reports,
+missing-report failures, Margin Mode audit, and collection outcome in one
+transaction after its Platform reads. Recovery keeps committed observations;
+uncommitted work uses the current boundary and Connections. Valuation then
+selects compatible source reports, calculates Account values and Boundary
+Events, and writes one Valuation Point for the cycle.
 
 Temporary and rate-limit Adapter failures have bounded retries within the cycle.
 `unsupported` failures, including detected structure mismatches, are not retried
@@ -171,31 +163,38 @@ within that run. Enabled Connections remain scheduled for later cycles.
 Authentication and authorization failures invalidate the Connection. Platform
 failures can still produce a point with stale or missing values. Database or
 other infrastructure failures can interrupt collection before a point exists.
-The full stale, scope, completeness, and value rules are in
+The full stale, completeness, and value rules are in
 [domain rules](./domain-rules.md#collection-and-account-reports).
 
 ## Manual persistence and collection
 
-`internal/application/manual` owns the signed ledger, immutable revisions, and
-version-guarded audited mutations. Before Platform reads, the runner locks the
-job and Manual boundary Accounts and atomically freezes inputs, including empty
-ledgers, in `manual_cycles` and `manual_cycle_accounts`. Retries reload them;
-ledger edits serialize on Account version. Reports and metadata commit together,
-and job cleanup retains jobs referenced by frozen inputs.
+`manual_revisions` is the only editable-ledger history: mutations append a
+revision while locking its Account and checking the revision number. Initial
+revision 1 is empty. Identity versions guard Account selection changes.
+`manual_revision_balances` retains signed nonzero quantities by Asset ID.
+
+Before Platform reads, the runner reads the current revision of every boundary
+Manual Account and fetches public prices outside any lock; revisions are
+immutable, so pricing cannot diverge from the stored reference. One transaction
+then locks the Portfolio and the cycle's `manual_reported_at`, records prices,
+inserts each Manual report with its `manual_revision_number`, and sets the
+marker, even when the boundary contains no Manual Accounts. A set marker skips
+this step, so retries cannot capture later additions. Mappings are not frozen.
 
 The separate `MarketData` capability fetches public prices without credentials
 or private preflight, grouped by Platform and required Canonical Asset Symbols.
 Failure leaves quantities and eligible cached prices available. Manual reports
 bypass Adapter Collect and private Identity success counters. Live valuation,
-reads, and rebuilds all use the own-Platform lookup.
+reads all use the own-Platform lookup.
 
-Writer and rebuild share quantity-signature adjustment detection; signatures
-exclude timestamps and mapping. The ledger API exposes current/last-applied
-quantities, versions, and pending state. Financial reads merge current Manual
-records with the selected report before filtering, sorting, and pagination.
-Added, updated, and deleted row metadata is derived from quantities, never
-persisted; report values and historical totals are unchanged. Manual writes
-invalidate balance and Overview reads without starting collection.
+Point commit compares the revision quantities adopted by consecutive points and
+stores changed Manual Accounts in `manual_adjustments`; revision numbers,
+timestamps, and mappings do not establish an adjustment. The ledger API exposes
+current/last-applied quantities, versions, and pending state. Financial reads
+merge current Manual records with the selected report before filtering, sorting,
+and pagination. Added, updated, and deleted row metadata is derived from
+quantities, never persisted; report values and historical totals are unchanged.
+Manual writes invalidate balance and Overview reads without starting collection.
 [Manual rules](./domain-rules.md#manual-balances) own continuity and
 empty-Account semantics; [deployment](./deployment.md#upgrades-and-resets) owns
 existing-data upgrades.
@@ -235,48 +234,145 @@ writes sanitized responses under `/tmp/plutus/`; see the
 
 Seed history and ongoing fake collection share a pure scenario generator.
 Reserved `plutus-demo-v1` credentials carry a scenario ID and UTC anchor;
-validation binds a stable external reference. Prices keyed by Platform,
-Canonical Asset, and time are independent of login identity to avoid
-shared-price collisions.
+validation binds a stable external reference. Prices keyed by Portfolio,
+Platform, Canonical Asset Symbol, and time remain independent of login identity
+within that Portfolio.
 
-Seeds insert source facts in one transaction, initialize Connections through
-real services, then use the normal rebuild to derive values. Historical Plutus
-events stop at the anchor; continued fake holdings cannot mutate flows,
-selection, archival, or Catalog policy. No persistent simulator or background
-application hook is needed. [Seeds](./seeds.md) owns scenarios, coverage, and
-performance evidence.
+Seeds insert source facts and initialize their points through the ordinary
+valuation writer in one transaction, then initialize Connections through real
+services. Historical Plutus events stop at the anchor; continued fake holdings
+cannot mutate flows, selection, archival, or Catalog policy. No persistent
+simulator or background application hook is needed. [Seeds](./seeds.md) owns
+scenarios, coverage, and performance evidence.
 
-## Persistence and rebuilds
+## Persistence and retention
 
-MySQL stores configuration, normalized source facts, derived values, jobs, and
-audits. Observations have no editing API. Rebuilds recalculate succeeded cycles
-in order using retained report scopes, source times, and cycle-time exclusion
-policy; evaluation times remain fixed. Financial history has no downsampling or
-retention limit; job cleanup excludes referenced jobs.
+The [baseline](../db/migrations/20261010160000_schema.sql) is the authoritative
+field, key, and constraint definition for 26 tables:
 
-Collection and rebuild share valuation and atomic Point/report writes. Rebuild
-preloads bounded chunks, including compatible stale sources outside each chunk;
-its price lookup preserves ordinary SQL selection and ambiguity behavior.
-Sequential predecessor values use stored decimal precision. Each Point commits
-independently: failure retains earlier commits and retries can recompute them
-safely. Batch sizes and loading details live in
-[the rebuild implementation](../internal/application/valuation/rebuild.go).
+| Responsibility                   | Tables                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| Access and request replay        | `users`, `sessions`, `idempotency_records`                                             |
+| Ownership and configuration      | `portfolios`, `identities`, `accounts`                                                 |
+| Portfolio market catalog         | `assets`, `futures_contracts`, `price_observations`                                    |
+| Collection and execution         | `collection_cycles`                                                                    |
+| Immutable Account facts          | `account_reports`, `balances`, `futures_positions`, `earn_positions`, `dual_positions` |
+| Derived financial results        | `valuation_points`, `account_valuations`, `balance_valuations`, `boundary_events`      |
+| Durable comparison evidence      | `manual_adjustments`, `calculated_asset_changes`                                       |
+| Manual and policy versions       | `manual_revisions`, `manual_revision_balances`, `asset_exclusion_versions`             |
+| User financial records and audit | `capital_flows`, `audit_events`                                                        |
 
-Reports preserve scope on success and failure: combined Earn uses scope 1;
-separate Earn/Dual on Binance, OKX, and Bybit use scope 2. Stale selection
-requires equality; [domain rules](./domain-rules.md#report-scope-compatibility)
-own reclassification semantics.
+Every Portfolio-owned primary key starts with `portfolio_id`: surrogate-key
+tables use `(portfolio_id, id)` and child tables extend their parent's key.
+Scoped composite foreign keys prevent references across Portfolios and Accounts,
+and key prefixes cover them without separate indexes. Every lookup and join
+therefore names the Portfolio; omitting it turns a key seek into a scan.
 
-`earn_positions` stores normalized typed JSON, never raw Platform responses.
-`earn_details_collected` distinguishes missing descriptions from a successful
-empty read. Reads follow the valuation's source report, including stale history,
-and return missing-detail Balance summaries separately. Platform-specific
-metadata reads belong in [mappings](../README.md#documentation).
+Portfolio deletion locks its root and removes its entire owned graph in
+dependency order, including Catalogs, prices, and audit. Idempotency responses
+belong to Users and remain replayable for 24 hours even after a created
+Portfolio is deleted. Collection Cycles remain with their permanent Points.
+Hourly maintenance removes expired/revoked sessions and expired idempotency
+responses in bounded batches.
+
+Reports and holdings contain source facts only. `collected_at` is local report
+completion; nullable `source_observed_at` is an actual source timestamp, never a
+local substitute. `recorded_at` is the persistence/knowledge cutoff. Failed
+reports have neither collection nor source observation time or financial
+measures. Display freshness uses source time when known, otherwise collection
+time; source clock skew is not rejected by a local-time ordering constraint.
+Only Platform-supplied margin ratios are stored as reported ratios; the read
+model derives missing ratios from retained requirements and adjusted equity.
+Points, Account Valuations, Balance Valuations, Boundary Events, Manual
+adjustments, and sparse calculated Asset changes commit atomically with cycle
+success. Financial reads share a repeatable-read transaction. The Portfolio root
+serializes first commit, policy edits, retention, and deletion. A retry reads an
+existing point; there is no result update, revision counter, recalculation time,
+or rebuild. First commits cannot insert a point before already committed
+history; exceptional manual reconciliation belongs to the operator. Boundary
+Events freeze completeness along with method and amount, referencing the
+permanent source point and Account rather than an expiring valuation row. Points
+store no boundary totals; reads sum their Boundary Events.
+
+`valuation_points.cycle_id` is its primary key and only public identifier.
+`valuationRevision` is an opaque consistency token equal to that cycle ID.
+Summary, Cycle Point, and Read Context expose it. Browser parent/child reads
+refresh their read family when cycle tokens disagree. `calculation_version`
+identifies the algorithm adopted at first commit.
+
+`detail_state` distinguishes full, daily, pruning, and expired detail. API
+readers expose pruning as expired before any holdings are removed. A reader's
+repeatable-read snapshot either sees all earlier rows or the unavailable state.
+Permanent daily Point states and the `price_anchors_before` cursor prevent
+timezone changes from replacing existing anchors. Detail cleanup, report/price
+sweeps, and Manual revision cleanup are resumable bounded work while no cycle is
+claimable. Price and report sweeps traverse bounded time/ID pages; they preserve
+adopted references and last-good source price windows. Superseded Manual
+revisions go once no retained report references them. All Futures Contracts and
+exclusion history remain; exclusion history is required for arbitrary old
+endpoint comparisons.
+
+InnoDB reuses freed pages but never shrinks its files;
+[deployment](./deployment.md#mysql-capacity) owns disk and binlog settings. The
+planning scale is 20 Identities, each with about 50 Balances, 20 Positions, and
+its Manual Account, collected every 15 minutes for ten years: 350,400 permanent
+cycles and Points. Thirty full days plus daily anchors keep about 6,530 detailed
+Points, so about 6.5 million `balances` and `balance_valuations` rows, 2.6
+million Position rows, and 0.78 million Account Reports and Account Valuations
+remain before dependency pins. Per-cycle price deduplication keeps about 1.6
+million observations. A scaled MySQL 8.4 load measured 3.0 GB for the rolling
+30-day window and about 8.9 GB of data and indexes after ten years: about 3.6 GB
+after the first year, then about 0.6 GB per year. The window is charged at
+reserved pages, which later inserts reuse; each pruned daily anchor leaves used
+pages costing 1.0 to 2.3 dense Points. `balance_valuations` (3.1 GB), `balances`
+(2.2 GB), and Position rows (1.9 GB) dominate. This bounds table growth only;
+binary logs and free space belong to deployment. The
+[capacity load](./platform/schema-provenance-delivery.md#capacity-load) records
+the load shape and query plans.
+
+`collection_finished_at` freezes all cycle reports before valuation. A retry
+with that marker skips Platform reads, Account selection, and Manual reports; it
+retries only the point transaction.
+
+JSON is limited to bounded, typed documents that are read with their owner:
+
+- Earn `details_json` contains `assets`, `rates`, `rewards`, `details`, and
+  `issues`. Scalar identity, lifecycle, and product fields stay in columns.
+- Audit owns before/after/metadata documents. Idempotency owns typed success
+  response JSON and response headers.
+
+`manual_adjustments` freezes Manual markers at first commit, comparing adopted
+quantity sets before details can expire. `calculated_asset_changes` appends only
+changes of a nonzero calculated Asset's treatment: `included` with its adopted
+Canonical Asset, `excluded`, or `absent`. Endpoint comparison uses the latest
+change in `(evaluated_at, cycle_id)` order; an included change whose previous
+change adopted another Canonical Asset is a mapping change. Only a mapping
+update changes an Asset's Canonical Asset, and it advances the mapping version,
+so mapping-change reads consider only remapped Assets. Reads derive
+calculation-version markers from consecutive points and Account issues and named
+omissions from retained Account Valuations, so expired points keep only counts.
+Value Change consumes these small durable facts and Boundary Events without
+reading historical holdings. Summary-only charts do not hydrate detail. Price
+selection batches requested symbols at each source cutoff; adopted-price reads
+batch IDs and cache them within the read operation. Source Earn diagnostics
+remain typed stored data.
+
+Core financial references use relational children. `balance_valuations` owns the
+adopted mapping, pricing method, and optional price/value; the `excluded` method
+marks an Asset excluded by policy. Quantities remain in source Balances.
+Treatment and missing-price reason are derived. `boundary_events` snapshots
+direction, method, and signed value; Account labels come from current
+identities. Scoped foreign keys enforce ownership, while the point transaction
+validates successful source reports, complete balance coverage, price
+eligibility, policy interpretation, and values.
+
+There are no raw Platform payloads, generic queue payloads, JSON alias readers,
+legacy scope versions, or duplicate current Manual/exclusion tables. See
+[ADR 0015](./adr/0015-prelaunch-schema.md) for the trade-offs.
 
 [Migrations](../db/migrations) own schema; [SQL queries](../db/queries) and
-[sqlc.yaml](../sqlc.yaml) generate access. The frozen baseline's
-`technical-design.md` reference is obsolete; use the migration itself. `serve`
-never migrates or seeds automatically. Follow
+[sqlc.yaml](../sqlc.yaml) generate access. `serve` never migrates or seeds
+automatically. Follow
 [populated-database upgrade safeguards](./deployment.md#upgrades-and-resets).
 
 ## API, numbers, and time
@@ -288,11 +384,17 @@ Details, version ETags, idempotency keys, and pagination as specified there.
 `shared/etag` strictly parses validators; `shared/cursor` signs opaque cursors.
 Reads and mutations remain scoped to the authenticated User and Portfolio.
 
+The four idempotent creation routes authenticate and check CSRF before replay. A
+User row lock serializes request lookup, business writes, audit, and successful
+response insertion in one transaction. Different bodies conflict; failures roll
+back the business mutation and key. Resource lookup happens only for a fresh
+request, allowing an authorized replay after resource deletion.
+
 Browser writes construct the canonical resource ETag from the JSON version
 paired with the edited data or deletion confirmation. Response ETag headers are
 not a source of write preconditions: intermediaries can weaken them when
 compressing representations. Each resource owns its formatter, including the
-separate exclusion version and zero-version ledgers. Backend parsing remains
+separate exclusion version and Manual revision number. Backend parsing remains
 strict, and conditional SQL updates compare the expected version and increment
 it atomically. See [editing behavior](./presentation.md#editing-and-conflicts).
 
@@ -304,12 +406,12 @@ keyboard input while dismissing on external scroll.
 [Presentation](./presentation.md#filters) owns matching, filter recovery, and
 view-memory rules.
 
-Overview publishes summary and Tree together only when Point ID, total, and
-completeness agree. Without a Point, both IDs must be absent. Account queries
-are keyed by Point and Report and validate both against the visible Account;
-latest-only races offer recovery rather than mixing reports. Explicit mutations
-invalidate dependent queries; running Collection details poll until completion
-and then refresh Overview and open details.
+Overview publishes summary and Tree together only when Cycle ID, valuation
+revision, total, and completeness agree. Without a Point, both cycle references
+must be absent. Account queries include the cycle, report, and revision in their
+keys; mismatches refresh the related reads before publishing details. Explicit
+mutations invalidate dependent queries; running Collection details poll until
+completion and then refresh Overview and open details.
 [Browser refresh](./presentation.md#browser-refresh-and-scrolling) owns other
 display-read behavior.
 
@@ -334,12 +436,12 @@ reported/calculated margin provenance and unavailable reasons without changing
 source amounts. [Domain rules](./domain-rules.md#contract-quantities-and-margin)
 own common semantics; Platform mappings own source interpretation and formulas.
 
-Historical Position reads resolve an optional `pointId` within the same
+Historical Position reads resolve an optional `cycleId` within the same
 Portfolio and Account, then load its source Report. Shared React cells keep
 global, Account, and historical views consistent. Disclosures render outside
 table scroll containers. [Presentation](./presentation.md#futures) owns columns
-and interactions; [deployment](./deployment.md#position-presentation-upgrade)
-owns historical provenance restoration.
+and interactions. Each Position references its immutable observed contract
+version.
 
 ## Mobile browser scrolling
 
@@ -402,7 +504,7 @@ before the database and closes them after producers stop. HTTP access logging
 surrounds recovery and early rejection for one completion record per request.
 MySQL driver wrappers preserve conversion/lifecycle interfaces without changing
 services or generated sqlc code; prepared fallbacks avoid duplicate records.
-Context propagates request/job correlation. See
+Context propagates request/cycle correlation. See
 [logging configuration](./development.md#logging),
 [sink operation](./deployment.md#logs), and
 [logging trade-offs](./adr/0012-process-logging.md).
@@ -410,14 +512,15 @@ Context propagates request/job correlation. See
 Readiness checks database access, schema version, encryption-key availability,
 and worker heartbeat. Liveness only indicates that the HTTP process responds.
 
-The current worker updates its heartbeat between jobs. A normal job longer than
-the three-second health threshold can temporarily make readiness report
-`worker_unavailable` while work continues. This remains an unresolved health
-check limitation; increasing configuration timeouts does not repair it.
+The current worker updates its heartbeat between work units. A normal cycle
+attempt longer than the three-second health threshold can temporarily make
+readiness report `worker_unavailable` while work continues. This remains an
+unresolved health check limitation; increasing configuration timeouts does not
+repair it.
 
 Shutdown cancels the worker context, waits for its loop, and gives HTTP a
 bounded shutdown window before closing the database. It does not promise that an
-in-flight cycle finishes; an interrupted job may remain leased until expiry.
+in-flight cycle finishes; an interrupted cycle may remain leased until expiry.
 Drain-before-upgrade requirements are documented in
 [deployment](./deployment.md).
 
@@ -425,17 +528,3 @@ High availability, distributed workers, a managed database lifecycle, and full
 tracing or metrics infrastructure are outside the current architecture.
 Implemented capabilities and integration gaps belong in
 [README status](../README.md#current-status).
-
-## Known implementation discrepancy
-
-The [pricing decision](./adr/0003-valuation-and-asset-policy.md) requires
-same-Platform prices. Exchange Account valuation currently prefers that Platform
-but falls back to the latest eligible price across Platforms. Manual Account
-valuation enforces own-Platform prices without fallback. Capital Flow valuation
-queries prices across Platforms directly. Both enforce at-or-before time and the
-24-hour age limit. See
-[Account price lookup](../internal/application/valuation/prices.go) and
-[Capital Flow valuation](../internal/application/capital/service.go).
-
-This is an unresolved implementation gap, not an accepted change to the pricing
-decision.

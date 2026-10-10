@@ -9,9 +9,13 @@ defines terms, [product scope](./product-scope.md) defines offered Accounts,
 ## Ownership and the Portfolio Boundary
 
 Each User owns independent, unshared Portfolios. Each Identity belongs to one
-Platform and Portfolio. Main and sub-account logins use separate Connections; a
-main-account key does not collect sub-accounts. Identities cannot move between
-Portfolios after Observations exist.
+Platform and Portfolio. Assets, mappings, contract terms, prices, policies,
+financial history, and audit records are Portfolio-owned. Equal symbols or login
+references in different Portfolios establish no shared resource. User sessions
+and the User-scoped idempotency retry window are the only shared lifetimes. Main
+and sub-account logins use separate Connections; a main-account key does not
+collect sub-accounts. Identities cannot move between Portfolios after
+Observations exist.
 
 User creation creates a Portfolio named `default` that remains undeletable after
 renaming. Other Portfolios can be deleted with their scoped data.
@@ -39,7 +43,11 @@ A Connection's first successful validation binds its Identity to an external
 login reference. Replacing credentials preserves the Identity and Accounts;
 credentials for another login are refused. Authentication and authorization
 failures invalidate the Connection; Account-level product failures do not
-automatically invalidate it.
+automatically invalidate it. Within one Portfolio and Platform, active
+Identities cannot bind the same login. Disablement and credential clearing
+retain the binding; archival releases the active unique key. Reusing a login in
+another Portfolio is allowed. An enabled Connection requires credentials and a
+nonempty stable login reference.
 
 ## Collection and Account Reports
 
@@ -55,8 +63,9 @@ Platform responses and derived results.
 
 Only a successful Account Report establishes a Complete Set. Absent holdings are
 no longer held; failure cannot clear them. A failed Account uses its latest
-earlier successful report with equal scope, retaining its observation time and
-age. Without compatible history it is missing and its value is unknown.
+earlier successful report for the same Account, retaining its observation time
+and age. Account Structure and product Account Types are immutable scope.
+Without compatible history it is missing and its value is unknown.
 
 Freshness and completeness are independent: stale value can be known, while a
 fresh report can lack prices. Platform reads are not atomic snapshots; Accounts
@@ -107,19 +116,23 @@ bank assets are outside scope. It remains selected with disabled, invalid, or
 unconfigured Connections. Identity archive removes it from the boundary while
 retaining its history and current records.
 
+Each new Manual Account starts with empty revision 1 and no modification time.
 One normalized Asset code has one current signed quantity. Duplicate addition
 requires editing; zero clears it. Negative quantities represent liabilities or
 offsets. Revisions are immutable. Changing an Asset code requires deleting and
-creating a record. Saving takes effect at the next Collection Cycle, whose
-chosen inputs remain fixed across retries. Manual complete-set reports are
-distinct from exchange Observations; collection time is separate from the last
-User modification time. A successful Manual report does not count as successful
-private Identity collection.
+creating a record. Saving takes effect at the next Collection Cycle that reads
+Manual inputs afterward; its recorded reports remain fixed across retries.
+Manual complete-set reports are distinct from exchange Observations; collection
+time is separate from the last User modification time. A successful Manual
+report does not count as successful private Identity collection.
 
 Manual uses calculated valuation and eligible own-Platform public prices,
-including Assets held only in Manual. Mapping and Asset Exclusions apply;
-excluded current records remain editable. Missing prices retain signed
-quantities, name omissions, and make totals incomplete.
+including Assets held only in Manual. Each Manual report references the
+immutable revision it reported. A new point uses current Portfolio mappings for
+both Manual and Platform reports; committed points never change or admit future
+prices. Asset Exclusions apply; excluded current records remain editable.
+Missing prices retain signed quantities, name omissions, and make totals
+incomplete.
 
 Effective quantity changes mark comparisons crossing their Valuation Point
 incomplete while retaining the calculated difference. They do not create Capital
@@ -140,11 +153,11 @@ or Account counts.
 
 ## Assets and valuation
 
-Assets are identified by Platform and normalized Asset Symbol. Each maps to a
-Canonical Asset, automatically by normalized symbol unless the User overrides
-it. Equal Canonical Asset Symbols do not merge Asset records, holdings, or
-exclusions. Different Canonical Asset Symbols remain distinct even when
-economically related; USD and USDT share valuation, not identity. Futures
+Assets are identified by Portfolio, Platform, and normalized Asset Symbol. Each
+maps to a Canonical Asset, automatically by normalized symbol unless the User
+overrides it. Equal Canonical Asset Symbols do not merge Asset records,
+holdings, or exclusions. Different Canonical Asset Symbols remain distinct even
+when economically related; USD and USDT share valuation, not identity. Futures
 Contracts are discovered from Positions; perpetual and delivery contracts remain
 distinct from each other and from Assets.
 
@@ -153,18 +166,29 @@ Plutus does not detect stablecoin de-pegs. Other Canonical Assets, including
 other stablecoins, require prices. Source quantities and prices remain
 available.
 
-Eligible prices use USD, USDT, or USDC quotes at or before the report's
-observation time, no more than 24 hours old. The accepted policy requires the
-Account's own Platform. The
-[known implementation discrepancy](./architecture.md#known-implementation-discrepancy)
-does not change that policy.
+Eligible prices belong to the Account's Portfolio and own Platform. Only USD,
+USDT, or USDC quotes are stored; other quotes leave the Asset unpriced. A cycle
+attempt stores at most one price per Platform and Canonical Asset, shared by
+that Platform's Identities; later cycles store new observations. Both retrieval
+time and source price time must be at or before the source report's recording
+time; source price time must be no more than 24 hours old at that cutoff.
+Without a source timestamp, retrieval time is price time. Eligibility is
+filtered before selecting the latest price, breaking ties by retrieval time and
+observation ID. Stale valuation retains the source report's cutoff.
+Cross-Platform fallback is not permitted.
 
-| Report source                                    | Valuation method       | Result                                            |
-| ------------------------------------------------ | ---------------------- | ------------------------------------------------- |
-| Successful report with equity                    | Reported               | Use the Platform's Account equity                 |
-| Successful report without equity                 | Calculated             | Sum Balance equity times price                    |
-| Failed report with compatible successful history | Source report's method | Value the compatible report as stale              |
-| Failed report without compatible history         | Missing                | Unknown Account value; incomplete Portfolio total |
+Each Position references the Futures Contract whose terms it observed, including
+currencies, kind, expiry, and contract size. Changed terms under a symbol record
+another Futures Contract; repeated identical terms reuse it, including A → B →
+A. Observation bounds do not claim exchange-effective dates, and newer terms do
+not rewrite older Positions.
+
+| Report source                                    | Valuation method       | Result                                             |
+| ------------------------------------------------ | ---------------------- | -------------------------------------------------- |
+| Successful report with equity                    | Reported               | Use the Platform's Account equity                  |
+| Successful report without equity                 | Calculated             | Sum Balance values and explicit source adjustments |
+| Failed report with compatible successful history | Source report's method | Value the compatible report as stale               |
+| Failed report without compatible history         | Missing                | Unknown Account value; incomplete Portfolio total  |
 
 Balance breakdowns, Positions, Earn Positions, and Dual Positions describe value
 already represented in reported equity and never add it again. Calculated and
@@ -180,16 +204,21 @@ Balance reads without inventing a zero price. Observations remain stored;
 reported equity, Positions, and Capital Flows are unaffected. The Catalog and
 audit trail expose the rule and reason.
 
-Exclusions do not rewrite existing points. Rebuilding uses the policy effective
-at each cycle's creation. Value Change is incomplete when a relevant Asset's
-treatment differs between endpoint cycles; exclusion and restoration between
-endpoints with matching treatment do not alone make it incomplete. Policy
-changes are neither Capital Flows nor Boundary Events.
+Exclusions do not rewrite existing points. Valuation uses the policy effective
+at each cycle's creation: the highest policy version whose effective time is
+strictly earlier than cycle creation wins. Value Change is incomplete when a
+relevant Asset's treatment differs between endpoint cycles; exclusion and
+restoration between endpoints with matching treatment do not alone make it
+incomplete. Policy changes are neither Capital Flows nor Boundary Events.
 
-Mapping corrections rebuild affected Portfolios. Evaluation times and observed
-facts remain; derived Account values, Boundary Events, and totals can change.
-Rebuild mechanisms belong in
-[architecture](./architecture.md#persistence-and-rebuilds).
+Mapping changes affect subsequent points in their owning Portfolio. An actual
+adopted mapping change for a nonzero calculated Asset marks comparisons crossing
+that point incomplete, retaining the calculated amount. A change of calculation
+version has the same effect. No-op mappings, unadopted changes reverted before
+collection, and descriptive mappings on reported Accounts create no marker.
+Adopted A-to-B-to-A changes remain two events. These are changes of valuation
+policy, not Capital Flows. Exceptional historical corrections require deliberate
+operator reconciliation; there is no automatic rebuild or repair workflow.
 
 ## Dual Investment and Earn completeness
 
@@ -208,10 +237,10 @@ Subscription, maturity, delivery, and redemption-stage times are distinct. A
 missing date is never calculated from a duration. Product Status describes
 reported lifecycle phases only. Optional invalid metadata retains known amounts
 with a display issue; normal source unavailability is not a core-data alarm.
-Reports without collected Earn details expose known Balance summaries and
-explicit missing detail, never an invented empty product set. Description
-availability changes neither scope nor financial completeness. Current product
-data or evidence files cannot backfill missing historical descriptions.
+Successful Earn reports include normalized product descriptions consistent with
+their Balances. Only a successful empty report establishes an empty product set.
+Optional descriptive omissions do not invalidate known Account equity. Current
+product data or evidence files cannot invent source facts.
 
 Binance, OKX, and Bybit expose Dual Investment as an Account selected separately
 from ordinary Earn. This product boundary does not imply a separate transferable
@@ -240,19 +269,6 @@ skip the comparison; selected unpriced Balances retain normal omissions.
 Binance's dedicated Dual aggregate is optional diagnostics, not reported equity
 or a runtime dependency.
 
-### Report scope compatibility
-
-Reports preserve product scope, including failures. Stale fallback requires
-equal scope; combined Earn reports cannot supply ordinary Earn value.
-
-A transition from combined Earn to separate ordinary Earn and Dual is
-reclassification, not an additional contribution. An unknown ordinary-Earn
-portion does not produce a guessed withdrawal when only Dual remains. If the
-entire combined slice leaves, its known withdrawal is retained. Value Changes
-spanning a scope transition are incomplete even when endpoint holdings are fully
-valued; rebuilding preserves this rule. Scope versions belong in
-[architecture](./architecture.md#persistence-and-rebuilds).
-
 ## Capital Flows, Boundary Events, and Value Change
 
 Users record contributions and withdrawals across the Portfolio Boundary.
@@ -271,10 +287,14 @@ Value Change = end value - start value - contributions + withdrawals
 Flows enter the calculation during `(start.evaluatedAt, end.evaluatedAt]`. The
 User can supply an explicit nonnegative USD value. Otherwise USD-equivalent
 quantities value at 1 USD; other Canonical Assets require a price at or before
-the flow's effective time, no more than 24 hours old. Automatic values are
-stored when the flow is created or updated. Later prices do not automatically
-repair an unvalued flow; missing values make affected Value Changes incomplete
-and name the flow.
+the flow's effective time, no more than 24 hours old. Use the selected Account's
+Platform, or an explicitly selected pricing Platform for Portfolio-level flows.
+Without one, non-USD value remains unknown. Store the pricing method, adopted
+price, latest pricing attempt time, and calculation version. Changes to
+automatically priced inputs revalue the flow; an explicit USD amount remains
+until explicitly replaced or cleared. Note-only edits preserve value and
+provenance. Later prices do not automatically repair an unvalued flow; missing
+values make affected Value Changes incomplete and name the flow.
 
 ## Calendar periods
 
@@ -287,6 +307,37 @@ Calendar Value Change selects the latest point strictly before each period
 boundary. Custom ranges select the latest point at or before each requested
 endpoint. Calculations use observed points, never invented endpoint values.
 Missing endpoints, incomplete source values, unvalued flows or boundaries, and
-relevant policy or scope changes remain explicit. Calendar results also report
-missing days for periods larger than a day; custom comparisons do not apply that
-rule. Changing timezone changes query boundaries without rebuilding points.
+relevant policy changes remain explicit. Calendar results also report missing
+days for periods larger than a day; custom comparisons do not apply that rule.
+Changing timezone changes query boundaries without changing committed points.
+
+## Historical detail retention
+
+Every committed Valuation Point's summary, completeness counts, Manual
+adjustment markers, adopted policy-change markers, and Boundary Events remain
+indefinitely. Named omissions and Account issues follow detail retention. Commit
+is atomic and final. Retrying the same cycle reads its existing result, even
+after mappings or calculation code change.
+
+Keep all detailed snapshots for at least 30 days. For older complete local days,
+keep the final whole point, including incomplete or stale points. Use the
+Portfolio timezone at cleanup to choose anchors, and never replace an archived
+anchor after a timezone edit. Cleanup does not alter totals or completeness.
+
+A historical snapshot request selects the latest retained full point before the
+requested day's end in the current timezone, falling back across days if needed.
+Return its actual cycle, evaluation time, total, and holdings together. Charts,
+period closes, and Value Change continue to use all summaries. They do not
+substitute daily anchors for their endpoints.
+
+Retained snapshots preserve their source reports, holdings, contract terms, and
+adopted prices. Last-good sources remain available even for unselected Accounts.
+Current Manual revisions and revisions referenced by retained reports remain.
+Capital Flow price references never expire. Unreferenced old prices retain one
+eligible daily quote per Portfolio, Platform, and Canonical Asset; ordinary
+same-Platform, nonfuture, 24-hour eligibility still applies. A retained daily
+quote does not guarantee a price for every arbitrary historical instant.
+
+Old source details outside these dependencies can be removed. Retention trades
+intraday investigation and historical recalculation for a practical storage
+budget. Missing detail is distinct from a missing point or an unknown value.

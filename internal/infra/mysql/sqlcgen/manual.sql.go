@@ -9,67 +9,57 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
-	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
 
-const advanceManualVersion = `-- name: AdvanceManualVersion :exec
-UPDATE accounts SET version = version + 1, updated_at = ?
-WHERE portfolio_id = ? AND id = ? AND account_type = 'manual'
+const getAppliedManualRevision = `-- name: GetAppliedManualRevision :one
+SELECT r.manual_revision_number
+FROM account_reports r FORCE INDEX (idx_account_reports_fallback)
+JOIN valuation_points p ON p.portfolio_id = r.portfolio_id AND p.cycle_id = r.cycle_id
+WHERE r.portfolio_id = ? AND r.account_id = ? AND r.status = 'succeeded' AND r.manual_revision_number IS NOT NULL
+ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1
 `
 
-type AdvanceManualVersionParams struct {
-	At          time.Time
+type GetAppliedManualRevisionParams struct {
 	PortfolioID []byte
 	AccountID   []byte
 }
 
-func (q *Queries) AdvanceManualVersion(ctx context.Context, arg AdvanceManualVersionParams) error {
-	_, err := q.db.ExecContext(ctx, advanceManualVersion, arg.At, arg.PortfolioID, arg.AccountID)
-	return err
+// The applied revision is the latest one whose own cycle committed a point.
+// Serialized cycles make report time follow point order. The Account's
+// fallback range stops at its latest committed report; the optimizer can
+// prefer a Portfolio-wide time scan that walks every newer report of other
+// Accounts, so the fallback index is forced.
+func (q *Queries) GetAppliedManualRevision(ctx context.Context, arg GetAppliedManualRevisionParams) (sql.NullInt64, error) {
+	row := q.db.QueryRowContext(ctx, getAppliedManualRevision, arg.PortfolioID, arg.AccountID)
+	var manual_revision_number sql.NullInt64
+	err := row.Scan(&manual_revision_number)
+	return manual_revision_number, err
 }
 
-const deleteManualBalance = `-- name: DeleteManualBalance :exec
-DELETE FROM manual_balances WHERE portfolio_id = ? AND account_id = ? AND asset_symbol = ?
+const getCurrentManualRevision = `-- name: GetCurrentManualRevision :one
+SELECT portfolio_id, account_id, revision_number, changed_at FROM manual_revisions
+WHERE portfolio_id = ? AND account_id = ? ORDER BY revision_number DESC LIMIT 1
 `
 
-type DeleteManualBalanceParams struct {
-	PortfolioID []byte
-	AccountID   []byte
-	AssetSymbol string
-}
-
-func (q *Queries) DeleteManualBalance(ctx context.Context, arg DeleteManualBalanceParams) error {
-	_, err := q.db.ExecContext(ctx, deleteManualBalance, arg.PortfolioID, arg.AccountID, arg.AssetSymbol)
-	return err
-}
-
-const getAppliedManualState = `-- name: GetAppliedManualState :one
-SELECT m.version, m.balances_json
-FROM valuation_points p JOIN manual_cycle_accounts m ON m.portfolio_id = p.portfolio_id AND m.job_id = p.job_id
-WHERE p.portfolio_id = ? AND m.account_id = ?
-ORDER BY p.evaluated_at DESC, p.id DESC LIMIT 1
-`
-
-type GetAppliedManualStateParams struct {
+type GetCurrentManualRevisionParams struct {
 	PortfolioID []byte
 	AccountID   []byte
 }
 
-type GetAppliedManualStateRow struct {
-	Version      uint64
-	BalancesJson sqljson.Column
-}
-
-func (q *Queries) GetAppliedManualState(ctx context.Context, arg GetAppliedManualStateParams) (GetAppliedManualStateRow, error) {
-	row := q.db.QueryRowContext(ctx, getAppliedManualState, arg.PortfolioID, arg.AccountID)
-	var i GetAppliedManualStateRow
-	err := row.Scan(&i.Version, &i.BalancesJson)
+func (q *Queries) GetCurrentManualRevision(ctx context.Context, arg GetCurrentManualRevisionParams) (ManualRevision, error) {
+	row := q.db.QueryRowContext(ctx, getCurrentManualRevision, arg.PortfolioID, arg.AccountID)
+	var i ManualRevision
+	err := row.Scan(
+		&i.PortfolioID,
+		&i.AccountID,
+		&i.RevisionNumber,
+		&i.ChangedAt,
+	)
 	return i, err
 }
 
 const getManualAccount = `-- name: GetManualAccount :one
-SELECT a.id, a.version, i.platform, i.status
+SELECT a.id, i.platform, i.archived_at
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ? AND a.identity_id = ? AND a.account_type = 'manual'
 `
@@ -80,158 +70,135 @@ type GetManualAccountParams struct {
 }
 
 type GetManualAccountRow struct {
-	ID       []byte
-	Version  uint64
-	Platform string
-	Status   string
+	ID         []byte
+	Platform   string
+	ArchivedAt sql.NullTime
 }
 
 func (q *Queries) GetManualAccount(ctx context.Context, arg GetManualAccountParams) (GetManualAccountRow, error) {
 	row := q.db.QueryRowContext(ctx, getManualAccount, arg.PortfolioID, arg.IdentityID)
 	var i GetManualAccountRow
-	err := row.Scan(
-		&i.ID,
-		&i.Version,
-		&i.Platform,
-		&i.Status,
-	)
+	err := row.Scan(&i.ID, &i.Platform, &i.ArchivedAt)
 	return i, err
 }
 
-const getManualCycle = `-- name: GetManualCycle :one
-SELECT job_id FROM manual_cycles WHERE portfolio_id = ? AND job_id = ?
-`
-
-type GetManualCycleParams struct {
-	PortfolioID []byte
-	JobID       []byte
-}
-
-func (q *Queries) GetManualCycle(ctx context.Context, arg GetManualCycleParams) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getManualCycle, arg.PortfolioID, arg.JobID)
-	var job_id []byte
-	err := row.Scan(&job_id)
-	return job_id, err
-}
-
-const getManualModifiedAt = `-- name: GetManualModifiedAt :one
-SELECT modified_at FROM manual_revisions
-WHERE portfolio_id = ? AND account_id = ?
-ORDER BY version DESC LIMIT 1
-`
-
-type GetManualModifiedAtParams struct {
-	PortfolioID []byte
-	AccountID   []byte
-}
-
-func (q *Queries) GetManualModifiedAt(ctx context.Context, arg GetManualModifiedAtParams) (time.Time, error) {
-	row := q.db.QueryRowContext(ctx, getManualModifiedAt, arg.PortfolioID, arg.AccountID)
-	var modified_at time.Time
-	err := row.Scan(&modified_at)
-	return modified_at, err
-}
-
-const insertManualCycle = `-- name: InsertManualCycle :exec
-INSERT INTO manual_cycles (portfolio_id, job_id, captured_at)
-VALUES (?, ?, ?)
-`
-
-type InsertManualCycleParams struct {
-	PortfolioID []byte
-	JobID       []byte
-	CapturedAt  time.Time
-}
-
-func (q *Queries) InsertManualCycle(ctx context.Context, arg InsertManualCycleParams) error {
-	_, err := q.db.ExecContext(ctx, insertManualCycle, arg.PortfolioID, arg.JobID, arg.CapturedAt)
-	return err
-}
-
-const insertManualCycleAccount = `-- name: InsertManualCycleAccount :exec
-INSERT INTO manual_cycle_accounts (portfolio_id, job_id, account_id, version, balances_json, modified_at)
-VALUES (?, ?, ?, ?, ?, ?)
-`
-
-type InsertManualCycleAccountParams struct {
-	PortfolioID  []byte
-	JobID        []byte
-	AccountID    []byte
-	Version      uint64
-	BalancesJson sqljson.Column
-	ModifiedAt   sql.NullTime
-}
-
-func (q *Queries) InsertManualCycleAccount(ctx context.Context, arg InsertManualCycleAccountParams) error {
-	_, err := q.db.ExecContext(ctx, insertManualCycleAccount,
-		arg.PortfolioID,
-		arg.JobID,
-		arg.AccountID,
-		arg.Version,
-		arg.BalancesJson,
-		arg.ModifiedAt,
-	)
-	return err
-}
-
 const insertManualRevision = `-- name: InsertManualRevision :exec
-INSERT INTO manual_revisions (portfolio_id, account_id, version, balances_json, modified_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO manual_revisions (portfolio_id, account_id, revision_number, changed_at)
+VALUES (?, ?, ?, ?)
 `
 
 type InsertManualRevisionParams struct {
-	PortfolioID  []byte
-	AccountID    []byte
-	Version      uint64
-	BalancesJson sqljson.Column
-	ModifiedAt   time.Time
+	PortfolioID    []byte
+	AccountID      []byte
+	RevisionNumber uint64
+	ChangedAt      sql.NullTime
 }
 
 func (q *Queries) InsertManualRevision(ctx context.Context, arg InsertManualRevisionParams) error {
 	_, err := q.db.ExecContext(ctx, insertManualRevision,
 		arg.PortfolioID,
 		arg.AccountID,
-		arg.Version,
-		arg.BalancesJson,
-		arg.ModifiedAt,
+		arg.RevisionNumber,
+		arg.ChangedAt,
 	)
 	return err
 }
 
-const listManualBalances = `-- name: ListManualBalances :many
-SELECT b.asset_symbol, b.asset_id, b.quantity, b.modified_at, asset.canonical_symbol AS canonical_asset_symbol
-FROM manual_balances b JOIN assets asset ON asset.id = b.asset_id
-WHERE b.portfolio_id = ? AND b.account_id = ?
-ORDER BY b.asset_symbol
+const insertManualRevisionBalance = `-- name: InsertManualRevisionBalance :exec
+INSERT INTO manual_revision_balances (portfolio_id, account_id, revision_number, asset_id, quantity, changed_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
-type ListManualBalancesParams struct {
-	PortfolioID []byte
-	AccountID   []byte
+type InsertManualRevisionBalanceParams struct {
+	PortfolioID    []byte
+	AccountID      []byte
+	RevisionNumber uint64
+	AssetID        []byte
+	Quantity       string
+	ChangedAt      time.Time
 }
 
-type ListManualBalancesRow struct {
-	AssetSymbol          string
-	AssetID              []byte
-	Quantity             string
-	ModifiedAt           time.Time
-	CanonicalAssetSymbol string
+func (q *Queries) InsertManualRevisionBalance(ctx context.Context, arg InsertManualRevisionBalanceParams) error {
+	_, err := q.db.ExecContext(ctx, insertManualRevisionBalance,
+		arg.PortfolioID,
+		arg.AccountID,
+		arg.RevisionNumber,
+		arg.AssetID,
+		arg.Quantity,
+		arg.ChangedAt,
+	)
+	return err
 }
 
-func (q *Queries) ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listManualBalances, arg.PortfolioID, arg.AccountID)
+const listManualBoundary = `-- name: ListManualBoundary :many
+SELECT a.id, i.platform
+FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE a.portfolio_id = ? AND a.account_type = 'manual' AND i.archived_at IS NULL
+ORDER BY a.id
+`
+
+type ListManualBoundaryRow struct {
+	ID       []byte
+	Platform string
+}
+
+func (q *Queries) ListManualBoundary(ctx context.Context, portfolioID []byte) ([]ListManualBoundaryRow, error) {
+	rows, err := q.db.QueryContext(ctx, listManualBoundary, portfolioID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListManualBalancesRow{}
+	items := []ListManualBoundaryRow{}
 	for rows.Next() {
-		var i ListManualBalancesRow
+		var i ListManualBoundaryRow
+		if err := rows.Scan(&i.ID, &i.Platform); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listManualRevisionBalances = `-- name: ListManualRevisionBalances :many
+SELECT b.asset_id, b.quantity, b.changed_at, a.symbol AS asset_symbol, a.canonical_asset_symbol
+FROM manual_revision_balances b JOIN assets a ON a.portfolio_id = b.portfolio_id AND a.id = b.asset_id
+WHERE b.portfolio_id = ? AND b.account_id = ? AND b.revision_number = ? ORDER BY a.symbol, b.asset_id
+`
+
+type ListManualRevisionBalancesParams struct {
+	PortfolioID    []byte
+	AccountID      []byte
+	RevisionNumber uint64
+}
+
+type ListManualRevisionBalancesRow struct {
+	AssetID              []byte
+	Quantity             string
+	ChangedAt            time.Time
+	AssetSymbol          string
+	CanonicalAssetSymbol string
+}
+
+func (q *Queries) ListManualRevisionBalances(ctx context.Context, arg ListManualRevisionBalancesParams) ([]ListManualRevisionBalancesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listManualRevisionBalances, arg.PortfolioID, arg.AccountID, arg.RevisionNumber)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListManualRevisionBalancesRow{}
+	for rows.Next() {
+		var i ListManualRevisionBalancesRow
 		if err := rows.Scan(
-			&i.AssetSymbol,
 			&i.AssetID,
 			&i.Quantity,
-			&i.ModifiedAt,
+			&i.ChangedAt,
+			&i.AssetSymbol,
 			&i.CanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
@@ -247,112 +214,62 @@ func (q *Queries) ListManualBalances(ctx context.Context, arg ListManualBalances
 	return items, nil
 }
 
-const listManualCycleAccounts = `-- name: ListManualCycleAccounts :many
-SELECT m.account_id, m.version, m.balances_json, m.modified_at, a.identity_id, i.platform
-FROM manual_cycle_accounts m
-JOIN accounts a ON a.portfolio_id = m.portfolio_id AND a.id = m.account_id
-JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE m.portfolio_id = ? AND m.job_id = ?
-ORDER BY m.account_id
+const listPortfolioManualRevisions = `-- name: ListPortfolioManualRevisions :many
+SELECT r.account_id, r.revision_number, r.changed_at
+FROM manual_revisions r
+WHERE r.portfolio_id = ?
+AND r.revision_number = (SELECT MAX(v.revision_number) FROM manual_revisions v WHERE v.portfolio_id = r.portfolio_id AND v.account_id = r.account_id)
+ORDER BY r.account_id
 `
 
-type ListManualCycleAccountsParams struct {
+type ListPortfolioManualRevisionsRow struct {
+	AccountID      []byte
+	RevisionNumber uint64
+	ChangedAt      sql.NullTime
+}
+
+func (q *Queries) ListPortfolioManualRevisions(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualRevisionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfolioManualRevisions, portfolioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPortfolioManualRevisionsRow{}
+	for rows.Next() {
+		var i ListPortfolioManualRevisionsRow
+		if err := rows.Scan(&i.AccountID, &i.RevisionNumber, &i.ChangedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockCycleManualReportedAt = `-- name: LockCycleManualReportedAt :one
+SELECT manual_reported_at FROM collection_cycles
+WHERE portfolio_id = ? AND id = ? FOR UPDATE
+`
+
+type LockCycleManualReportedAtParams struct {
 	PortfolioID []byte
-	JobID       []byte
+	ID          []byte
 }
 
-type ListManualCycleAccountsRow struct {
-	AccountID    []byte
-	Version      uint64
-	BalancesJson sqljson.Column
-	ModifiedAt   sql.NullTime
-	IdentityID   []byte
-	Platform     string
-}
-
-func (q *Queries) ListManualCycleAccounts(ctx context.Context, arg ListManualCycleAccountsParams) ([]ListManualCycleAccountsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listManualCycleAccounts, arg.PortfolioID, arg.JobID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListManualCycleAccountsRow{}
-	for rows.Next() {
-		var i ListManualCycleAccountsRow
-		if err := rows.Scan(
-			&i.AccountID,
-			&i.Version,
-			&i.BalancesJson,
-			&i.ModifiedAt,
-			&i.IdentityID,
-			&i.Platform,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPortfolioManualBalances = `-- name: ListPortfolioManualBalances :many
-SELECT b.account_id, b.asset_symbol, b.asset_id, b.quantity, b.modified_at,
-       asset.canonical_symbol AS canonical_asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
-FROM manual_balances b
-JOIN assets asset ON asset.id = b.asset_id
-LEFT JOIN portfolio_asset_exclusions e ON e.portfolio_id = b.portfolio_id AND e.asset_id = b.asset_id
-WHERE b.portfolio_id = ?
-ORDER BY b.account_id, b.asset_symbol
-`
-
-type ListPortfolioManualBalancesRow struct {
-	AccountID            []byte
-	AssetSymbol          string
-	AssetID              []byte
-	Quantity             string
-	ModifiedAt           time.Time
-	CanonicalAssetSymbol string
-	Excluded             bool
-}
-
-func (q *Queries) ListPortfolioManualBalances(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualBalancesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPortfolioManualBalances, portfolioID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListPortfolioManualBalancesRow{}
-	for rows.Next() {
-		var i ListPortfolioManualBalancesRow
-		if err := rows.Scan(
-			&i.AccountID,
-			&i.AssetSymbol,
-			&i.AssetID,
-			&i.Quantity,
-			&i.ModifiedAt,
-			&i.CanonicalAssetSymbol,
-			&i.Excluded,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) LockCycleManualReportedAt(ctx context.Context, arg LockCycleManualReportedAtParams) (sql.NullTime, error) {
+	row := q.db.QueryRowContext(ctx, lockCycleManualReportedAt, arg.PortfolioID, arg.ID)
+	var manual_reported_at sql.NullTime
+	err := row.Scan(&manual_reported_at)
+	return manual_reported_at, err
 }
 
 const lockManualAccount = `-- name: LockManualAccount :one
-SELECT a.id, a.version, i.platform, i.status
+SELECT a.id, i.platform, i.archived_at
 FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE a.portfolio_id = ? AND a.identity_id = ? AND a.account_type = 'manual'
 FOR UPDATE
@@ -364,154 +281,60 @@ type LockManualAccountParams struct {
 }
 
 type LockManualAccountRow struct {
-	ID       []byte
-	Version  uint64
-	Platform string
-	Status   string
+	ID         []byte
+	Platform   string
+	ArchivedAt sql.NullTime
 }
 
 func (q *Queries) LockManualAccount(ctx context.Context, arg LockManualAccountParams) (LockManualAccountRow, error) {
 	row := q.db.QueryRowContext(ctx, lockManualAccount, arg.PortfolioID, arg.IdentityID)
 	var i LockManualAccountRow
-	err := row.Scan(
-		&i.ID,
-		&i.Version,
-		&i.Platform,
-		&i.Status,
-	)
+	err := row.Scan(&i.ID, &i.Platform, &i.ArchivedAt)
 	return i, err
 }
 
-const lockManualBoundary = `-- name: LockManualBoundary :many
-SELECT a.id, a.identity_id, a.version, i.platform
-FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
-WHERE a.portfolio_id = ? AND a.account_type = 'manual' AND i.status = 'enabled'
-ORDER BY a.id FOR UPDATE
+const markCycleManualReported = `-- name: MarkCycleManualReported :exec
+UPDATE collection_cycles SET manual_reported_at = ?
+WHERE portfolio_id = ? AND id = ?
 `
 
-type LockManualBoundaryRow struct {
-	ID         []byte
-	IdentityID []byte
-	Version    uint64
-	Platform   string
-}
-
-func (q *Queries) LockManualBoundary(ctx context.Context, portfolioID []byte) ([]LockManualBoundaryRow, error) {
-	rows, err := q.db.QueryContext(ctx, lockManualBoundary, portfolioID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []LockManualBoundaryRow{}
-	for rows.Next() {
-		var i LockManualBoundaryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.IdentityID,
-			&i.Version,
-			&i.Platform,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const lockManualCycleJob = `-- name: LockManualCycleJob :one
-SELECT id FROM jobs WHERE portfolio_id = ? AND id = ? FOR UPDATE
-`
-
-type LockManualCycleJobParams struct {
+type MarkCycleManualReportedParams struct {
+	At          sql.NullTime
 	PortfolioID []byte
-	JobID       []byte
+	ID          []byte
 }
 
-func (q *Queries) LockManualCycleJob(ctx context.Context, arg LockManualCycleJobParams) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, lockManualCycleJob, arg.PortfolioID, arg.JobID)
-	var id []byte
-	err := row.Scan(&id)
-	return id, err
-}
-
-const putManualBalance = `-- name: PutManualBalance :exec
-INSERT INTO manual_balances (portfolio_id, account_id, asset_symbol, asset_id, quantity, modified_at)
-VALUES (?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), modified_at = VALUES(modified_at)
-`
-
-type PutManualBalanceParams struct {
-	PortfolioID []byte
-	AccountID   []byte
-	AssetSymbol string
-	AssetID     []byte
-	Quantity    string
-	ModifiedAt  time.Time
-}
-
-func (q *Queries) PutManualBalance(ctx context.Context, arg PutManualBalanceParams) error {
-	_, err := q.db.ExecContext(ctx, putManualBalance,
-		arg.PortfolioID,
-		arg.AccountID,
-		arg.AssetSymbol,
-		arg.AssetID,
-		arg.Quantity,
-		arg.ModifiedAt,
-	)
+func (q *Queries) MarkCycleManualReported(ctx context.Context, arg MarkCycleManualReportedParams) error {
+	_, err := q.db.ExecContext(ctx, markCycleManualReported, arg.At, arg.PortfolioID, arg.ID)
 	return err
 }
 
 const reportHasHoldings = `-- name: ReportHasHoldings :one
 SELECT (
-    EXISTS(SELECT 1 FROM balances b WHERE b.report_id = ? AND (b.equity IS NULL OR b.equity <> 0 OR COALESCE(b.liability, 0) <> 0 OR COALESCE(b.interest, 0) <> 0 OR COALESCE(b.unrealized_pnl, 0) <> 0 OR COALESCE(b.available_to_trade, 0) <> 0 OR COALESCE(b.available_to_withdraw, 0) <> 0))
-    OR EXISTS(SELECT 1 FROM positions p WHERE p.report_id = ?)
-    OR EXISTS(SELECT 1 FROM earn_positions e WHERE e.report_id = ?)
-    OR EXISTS(SELECT 1 FROM dual_positions d WHERE d.report_id = ?)
+    EXISTS(SELECT 1 FROM balances b WHERE b.portfolio_id = ? AND b.report_id = ? AND (b.equity IS NULL OR b.equity <> 0 OR COALESCE(b.liability, 0) <> 0 OR COALESCE(b.interest, 0) <> 0 OR COALESCE(b.unrealized_pnl, 0) <> 0 OR COALESCE(b.available_to_trade, 0) <> 0 OR COALESCE(b.available_to_withdraw, 0) <> 0))
+    OR EXISTS(SELECT 1 FROM futures_positions p WHERE p.portfolio_id = ? AND p.report_id = ?)
+    OR EXISTS(SELECT 1 FROM earn_positions e WHERE e.portfolio_id = ? AND e.report_id = ?)
+    OR EXISTS(SELECT 1 FROM dual_positions d WHERE d.portfolio_id = ? AND d.report_id = ?)
 ) AS has_holdings
 `
 
 type ReportHasHoldingsParams struct {
-	SourceID []byte
+	PortfolioID []byte
+	SourceID    []byte
 }
 
 func (q *Queries) ReportHasHoldings(ctx context.Context, arg ReportHasHoldingsParams) (sql.NullBool, error) {
 	row := q.db.QueryRowContext(ctx, reportHasHoldings,
+		arg.PortfolioID,
 		arg.SourceID,
+		arg.PortfolioID,
 		arg.SourceID,
+		arg.PortfolioID,
 		arg.SourceID,
+		arg.PortfolioID,
 		arg.SourceID,
 	)
 	var has_holdings sql.NullBool
 	err := row.Scan(&has_holdings)
 	return has_holdings, err
-}
-
-const setManualReportMetadata = `-- name: SetManualReportMetadata :exec
-UPDATE account_reports SET manual_state_json = ?, manual_modified_at = ?
-WHERE portfolio_id = ? AND job_id = ? AND account_id = ?
-`
-
-type SetManualReportMetadataParams struct {
-	StateJson   sqljson.Column
-	ModifiedAt  sql.NullTime
-	PortfolioID []byte
-	JobID       []byte
-	AccountID   []byte
-}
-
-func (q *Queries) SetManualReportMetadata(ctx context.Context, arg SetManualReportMetadataParams) error {
-	_, err := q.db.ExecContext(ctx, setManualReportMetadata,
-		arg.StateJson,
-		arg.ModifiedAt,
-		arg.PortfolioID,
-		arg.JobID,
-		arg.AccountID,
-	)
-	return err
 }

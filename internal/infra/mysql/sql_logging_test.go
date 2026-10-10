@@ -143,7 +143,7 @@ func TestTransactionLoggingSnapshotsCorrelation(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer func() { _ = logs.Close() }()
-			ctx := &reusableContext{Context: logging.WithFields(context.Background(), slog.String("trace_id", "original-request"), slog.String("job_id", "original-job"))}
+			ctx := &reusableContext{Context: logging.WithFields(context.Background(), slog.String("trace_id", "original-request"), slog.String("cycle_id", "original-cycle"))}
 			conn := &loggingConn{Conn: &testConn{}, logger: logs.SQL}
 			tx, err := conn.BeginTx(ctx, driver.TxOptions{})
 			if err != nil {
@@ -163,7 +163,7 @@ func TestTransactionLoggingSnapshotsCorrelation(t *testing.T) {
 				t.Fatal(err)
 			}
 			text := string(raw)
-			if strings.Count(text, "trace_id=original-request") != 2 || strings.Count(text, "job_id=original-job") != 2 || strings.Contains(text, "next-request") {
+			if strings.Count(text, "trace_id=original-request") != 2 || strings.Count(text, "cycle_id=original-cycle") != 2 || strings.Contains(text, "next-request") {
 				t.Fatalf("transaction correlation changed after context reuse: %s", text)
 			}
 		})

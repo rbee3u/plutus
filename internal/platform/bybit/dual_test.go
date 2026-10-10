@@ -27,7 +27,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			t.Fatal("shared collection must run once, only when selected")
 		}
 		for _, r := range batch.Reports {
-			if r.Status != adapters.StatusOK {
+			if r.Status != adapters.StatusSucceeded {
 				t.Fatalf("report: %+v", r)
 			}
 			if r.AccountType == TypeDualInvestment {
@@ -35,7 +35,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 					t.Fatalf("positions: %+v", r)
 				}
 				p := r.DualPositions[0]
-				if p.PlatformPositionRef != "19035" || *p.ProductRef != "36320" || *p.BaseAssetSymbol != "ETH" || *p.Direction != "buy_low" || *p.TargetPrice != "2325" || *p.AnnualizedRate != "9.027" || *p.RateKind != "apy" {
+				if p.PositionKey != "19035" || *p.ProductRef != "36320" || *p.BaseAssetSymbol != "ETH" || *p.Direction != "buy_low" || *p.TargetPrice != "2325" || *p.AnnualizedRate != "9.027" || *p.RateKind != "apy" {
 					t.Fatalf("synthetic terms: %+v", p)
 				}
 			}
@@ -62,14 +62,14 @@ func TestDocumentedDualPosition(t *testing.T) {
 	}
 	earn := reportOf(t, &batch, TypeEarn)
 	dual := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || dual.Status != adapters.StatusOK || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
+	if earn.Status != adapters.StatusSucceeded || dual.Status != adapters.StatusSucceeded || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
 		t.Fatalf("synthetic Earn and Dual reports: %+v", batch.Reports)
 	}
 	row := synthetic.List[0]
 	p := dual.DualPositions[0]
-	if p.PlatformPositionRef != row.PositionID || p.ProductRef == nil || *p.ProductRef != row.ProductID || p.OrderRef == nil || *p.OrderRef != row.OrderID ||
+	if p.PositionKey != row.PositionID || p.ProductRef == nil || *p.ProductRef != row.ProductID || p.OrderRef == nil || *p.OrderRef != row.OrderID ||
 		p.BaseAssetSymbol == nil || *p.BaseAssetSymbol != row.BaseCoin || p.QuoteAssetSymbol == nil || *p.QuoteAssetSymbol != row.QuoteCoin ||
-		p.InvestAssetSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "sell_high" ||
+		p.PrincipalAssetSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "sell_high" ||
 		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1700600000000 ||
 		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1700000000000 ||
 		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
@@ -89,7 +89,7 @@ func TestDualOnlyDependsOnAuxiliarySavings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusOK {
+	if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
 		t.Fatalf("auxiliary failure: %+v", batch)
 	}
 }

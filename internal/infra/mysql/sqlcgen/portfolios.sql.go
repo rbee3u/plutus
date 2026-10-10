@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -29,31 +30,61 @@ func (q *Queries) DeletePortfolio(ctx context.Context, arg DeletePortfolioParams
 	return result.RowsAffected()
 }
 
+const getNextDeletingPortfolioID = `-- name: GetNextDeletingPortfolioID :one
+SELECT id FROM portfolios WHERE deletion_requested_at IS NOT NULL
+ORDER BY deletion_requested_at ASC, id ASC LIMIT 1
+`
+
+// A consistent read avoids locking every scanned Portfolio row; the caller
+// then locks the chosen row by primary key.
+func (q *Queries) GetNextDeletingPortfolioID(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getNextDeletingPortfolioID)
+	var id []byte
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getPortfolioByID = `-- name: GetPortfolioByID :one
-SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, version, created_at, updated_at, deletion_requested_at
 FROM portfolios
 WHERE id = ?
 `
 
-func (q *Queries) GetPortfolioByID(ctx context.Context, id []byte) (Portfolio, error) {
+type GetPortfolioByIDRow struct {
+	ID                        []byte
+	UserID                    []byte
+	Name                      string
+	NameKey                   string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	IsInitial                 bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	DeletionRequestedAt       sql.NullTime
+}
+
+func (q *Queries) GetPortfolioByID(ctx context.Context, id []byte) (GetPortfolioByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getPortfolioByID, id)
-	var i Portfolio
+	var i GetPortfolioByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.NameKey,
 		&i.Timezone,
 		&i.CollectionIntervalSeconds,
-		&i.Undeletable,
+		&i.IsInitial,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const getPortfolioByUserAndID = `-- name: GetPortfolioByUserAndID :one
-SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, version, created_at, updated_at, deletion_requested_at
 FROM portfolios
 WHERE user_id = ? AND id = ?
 `
@@ -63,28 +94,44 @@ type GetPortfolioByUserAndIDParams struct {
 	ID     []byte
 }
 
-func (q *Queries) GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (Portfolio, error) {
+type GetPortfolioByUserAndIDRow struct {
+	ID                        []byte
+	UserID                    []byte
+	Name                      string
+	NameKey                   string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	IsInitial                 bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	DeletionRequestedAt       sql.NullTime
+}
+
+func (q *Queries) GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (GetPortfolioByUserAndIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getPortfolioByUserAndID, arg.UserID, arg.ID)
-	var i Portfolio
+	var i GetPortfolioByUserAndIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.NameKey,
 		&i.Timezone,
 		&i.CollectionIntervalSeconds,
-		&i.Undeletable,
+		&i.IsInitial,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const insertPortfolio = `-- name: InsertPortfolio :exec
 INSERT INTO portfolios (
-    id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+    id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, version, created_at, updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?
 )
 `
@@ -93,9 +140,10 @@ type InsertPortfolioParams struct {
 	ID                        []byte
 	UserID                    []byte
 	Name                      string
+	NameKey                   string
 	Timezone                  string
 	CollectionIntervalSeconds uint32
-	Undeletable               bool
+	IsInitial                 bool
 	Version                   uint64
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
@@ -106,9 +154,10 @@ func (q *Queries) InsertPortfolio(ctx context.Context, arg InsertPortfolioParams
 		arg.ID,
 		arg.UserID,
 		arg.Name,
+		arg.NameKey,
 		arg.Timezone,
 		arg.CollectionIntervalSeconds,
-		arg.Undeletable,
+		arg.IsInitial,
 		arg.Version,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -117,31 +166,47 @@ func (q *Queries) InsertPortfolio(ctx context.Context, arg InsertPortfolioParams
 }
 
 const listPortfoliosByUser = `-- name: ListPortfoliosByUser :many
-SELECT id, user_id, name, timezone, collection_interval_seconds, undeletable, version, created_at, updated_at
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, version, created_at, updated_at, deletion_requested_at
 FROM portfolios
 WHERE user_id = ?
 ORDER BY created_at ASC, id ASC
 `
 
-func (q *Queries) ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error) {
+type ListPortfoliosByUserRow struct {
+	ID                        []byte
+	UserID                    []byte
+	Name                      string
+	NameKey                   string
+	Timezone                  string
+	CollectionIntervalSeconds uint32
+	IsInitial                 bool
+	Version                   uint64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	DeletionRequestedAt       sql.NullTime
+}
+
+func (q *Queries) ListPortfoliosByUser(ctx context.Context, userID []byte) ([]ListPortfoliosByUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPortfoliosByUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Portfolio{}
+	items := []ListPortfoliosByUserRow{}
 	for rows.Next() {
-		var i Portfolio
+		var i ListPortfoliosByUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
+			&i.NameKey,
 			&i.Timezone,
 			&i.CollectionIntervalSeconds,
-			&i.Undeletable,
+			&i.IsInitial,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletionRequestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -158,11 +223,11 @@ func (q *Queries) ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Po
 
 const listPortfoliosForScheduling = `-- name: ListPortfoliosForScheduling :many
 SELECT p.id, p.collection_interval_seconds,
-       (SELECT MAX(j.created_at) FROM jobs j WHERE j.portfolio_id = p.id AND j.kind = 'collection_cycle') AS last_cycle_at
+       (SELECT MAX(j.created_at) FROM collection_cycles j WHERE j.portfolio_id = p.id) AS last_cycle_at
 FROM portfolios p
-WHERE EXISTS (
+WHERE p.deletion_requested_at IS NULL AND EXISTS (
     SELECT 1 FROM identities i
-    WHERE i.portfolio_id = p.id AND i.status = 'enabled' AND i.connection_status = 'enabled'
+    WHERE i.portfolio_id = p.id AND i.archived_at IS NULL AND i.connection_status = 'enabled'
 )
 ORDER BY p.created_at ASC, p.id ASC
 `
@@ -196,18 +261,98 @@ func (q *Queries) ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfo
 	return items, nil
 }
 
+const lockDeletingPortfolio = `-- name: LockDeletingPortfolio :one
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NOT NULL FOR UPDATE SKIP LOCKED
+`
+
+func (q *Queries) LockDeletingPortfolio(ctx context.Context, id []byte) (Portfolio, error) {
+	row := q.db.QueryRowContext(ctx, lockDeletingPortfolio, id)
+	var i Portfolio
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.NameKey,
+		&i.Timezone,
+		&i.CollectionIntervalSeconds,
+		&i.IsInitial,
+		&i.DeletionRequestedAt,
+		&i.PriceAnchorsBefore,
+		&i.InitialUserID,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const lockRetentionPortfolio = `-- name: LockRetentionPortfolio :one
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) LockRetentionPortfolio(ctx context.Context, id []byte) (Portfolio, error) {
+	row := q.db.QueryRowContext(ctx, lockRetentionPortfolio, id)
+	var i Portfolio
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.NameKey,
+		&i.Timezone,
+		&i.CollectionIntervalSeconds,
+		&i.IsInitial,
+		&i.DeletionRequestedAt,
+		&i.PriceAnchorsBefore,
+		&i.InitialUserID,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const requestPortfolioDeletion = `-- name: RequestPortfolioDeletion :execrows
+UPDATE portfolios SET deletion_requested_at = ?, version = version + 1, updated_at = ?
+WHERE id = ? AND user_id = ? AND version = ?
+  AND NOT is_initial AND deletion_requested_at IS NULL
+`
+
+type RequestPortfolioDeletionParams struct {
+	RequestedAt sql.NullTime
+	At          time.Time
+	ID          []byte
+	UserID      []byte
+	Version     uint64
+}
+
+func (q *Queries) RequestPortfolioDeletion(ctx context.Context, arg RequestPortfolioDeletionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, requestPortfolioDeletion,
+		arg.RequestedAt,
+		arg.At,
+		arg.ID,
+		arg.UserID,
+		arg.Version,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updatePortfolio = `-- name: UpdatePortfolio :execrows
 UPDATE portfolios
 SET name = ?,
+    name_key = ?,
     timezone = ?,
     collection_interval_seconds = ?,
     version = version + 1,
     updated_at = ?
-WHERE id = ? AND user_id = ? AND version = ?
+WHERE id = ? AND user_id = ? AND version = ? AND deletion_requested_at IS NULL
 `
 
 type UpdatePortfolioParams struct {
 	Name                      string
+	NameKey                   string
 	Timezone                  string
 	CollectionIntervalSeconds uint32
 	UpdatedAt                 time.Time
@@ -219,6 +364,7 @@ type UpdatePortfolioParams struct {
 func (q *Queries) UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updatePortfolio,
 		arg.Name,
+		arg.NameKey,
 		arg.Timezone,
 		arg.CollectionIntervalSeconds,
 		arg.UpdatedAt,

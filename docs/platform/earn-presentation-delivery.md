@@ -27,7 +27,11 @@ isolation, and unchanged valuation/rebuild results. UI tests cover columns,
 qualified values, Observed health, legacy summaries, and accessible product
 disclosures.
 
-## Validation
+## Historical validation
+
+This 2026-10-05 record covers the previous baseline. Legacy summary and
+populated-migration cases were retired by the
+[prelaunch schema redesign](../adr/0015-prelaunch-schema.md).
 
 Verified on 2026-10-05:
 
@@ -58,10 +62,10 @@ fake and embedded SPA, not real Platform calls or exchange-app reconciliation.
 Native mobile-browser refresh and real product transitions remain separate
 validation gaps.
 
-## Upgrade
+## Current baseline
 
-Apply the appended `20261005010000_earn_positions.sql` migration before starting
-the new binary. Existing report values and scope versions remain unchanged; the
-new false detail flag identifies reports without collected descriptions. A new
-successful Earn Collection supplies details. Do not reconstruct historical
-subscriptions from Balance sums, current product terms, or evidence files.
+Fresh installations use the consolidated baseline. The previous incremental Earn
+migration and missing-description compatibility flag have been removed. Follow
+the [prelaunch reset procedure](../deployment.md#upgrades-and-resets); current
+validation is recorded in the
+[schema delivery report](./schema-provenance-delivery.md).

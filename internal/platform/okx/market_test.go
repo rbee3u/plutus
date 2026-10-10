@@ -14,3 +14,14 @@ func TestPublicManualPricesWithoutCredentials(t *testing.T) {
 		}
 	}
 }
+
+func TestNonzeroTradingBalanceRequiresCurrency(t *testing.T) {
+	for _, row := range []tradingBalance{{Eq: "1"}, {Eq: "0", Liab: "1"}, {Eq: "0", AvailBal: "1"}, {Ccy: " ", Eq: "-1"}} {
+		if _, err := mapTradingBalances([]tradingBalance{row}); err == nil {
+			t.Fatalf("nonzero balance silently omitted: %+v", row)
+		}
+	}
+	if rows, err := mapTradingBalances([]tradingBalance{{Eq: "0"}}); err != nil || len(rows) != 0 {
+		t.Fatalf("empty zero row: %+v %v", rows, err)
+	}
+}

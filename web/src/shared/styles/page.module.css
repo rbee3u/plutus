@@ -346,8 +346,13 @@
 
 .rowActions button {
   min-height: var(--control-sm);
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-sm);
   font-size: var(--text-xs);
+}
+
+.rowActions button:not(:has(> svg:only-child)) {
+  min-width: 4.5rem;
+  justify-content: center;
 }
 
 .clickRow,

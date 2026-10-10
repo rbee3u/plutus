@@ -33,8 +33,9 @@ func (s *Service) latestContext(ctx context.Context, p PortfolioContext) (Contex
 	if err != nil {
 		return c, nil, nil, err
 	}
-	c.PointID, c.JobID, c.EvaluatedAt = &point.ID, &point.JobID, &point.EvaluatedAt
-	accounts, err := s.valuation.Accounts(ctx, p.ID, point.JobID)
+	c.CycleID, c.EvaluatedAt = &point.CycleID, &point.EvaluatedAt
+	c.ValuationRevision = new(point.Revision())
+	accounts, err := s.valuation.Accounts(ctx, p.ID, point.CycleID)
 	if err != nil {
 		return c, nil, nil, err
 	}

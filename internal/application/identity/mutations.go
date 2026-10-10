@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
+
+	"github.com/rbee3u/plutus/internal/shared/textkey"
 
 	"github.com/google/uuid"
 
@@ -36,13 +37,16 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 	}
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		if err := q.InsertIdentity(ctx, sqlcgen.InsertIdentityParams{
 			ID:               id[:],
 			PortfolioID:      portfolioID[:],
 			Platform:         string(in.Platform),
 			DisplayName:      name,
+			DisplayNameKey:   textkey.Key(name),
 			AccountStructure: string(in.AccountStructure),
-			Status:           StatusEnabled,
 			Version:          1,
 			CreatedAt:        now,
 			UpdatedAt:        now,
@@ -64,13 +68,14 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 				PortfolioID: portfolioID[:],
 				IdentityID:  id[:],
 				AccountType: string(info.ID),
-				DisplayName: info.Name,
 				Selected:    selected[info.ID],
-				Version:     1,
-				CreatedAt:   now,
-				UpdatedAt:   now,
 			}); err != nil {
 				return err
+			}
+			if info.ID == adapters.TypeManual {
+				if err := q.InsertManualRevision(ctx, sqlcgen.InsertManualRevisionParams{PortfolioID: portfolioID[:], AccountID: accountID[:], RevisionNumber: 1}); err != nil {
+					return err
+				}
 			}
 		}
 		created := Identity{ID: id, PortfolioID: portfolioID, Platform: in.Platform, DisplayName: name, AccountStructure: in.AccountStructure, Status: StatusEnabled, Version: 1}
@@ -114,11 +119,6 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 		if _, ok := known[patch.ID]; !ok {
 			return Identity{}, ErrNotFound
 		}
-		if patch.DisplayName != nil {
-			if _, err := normalizeName(*patch.DisplayName); err != nil {
-				return Identity{}, err
-			}
-		}
 	}
 	if current.Platform == adapters.PlatformKraken && current.Connection.Status == ConnectionEnabled {
 		accounts := append([]Account(nil), current.Accounts...)
@@ -139,8 +139,11 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 	}
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		n, err := q.UpdateIdentity(ctx, sqlcgen.UpdateIdentityParams{
-			DisplayName: name, UpdatedAt: now,
+			DisplayName: name, DisplayNameKey: textkey.Key(name), UpdatedAt: now,
 			PortfolioID: portfolioID[:], ID: id[:], Version: version,
 		})
 		if err != nil {
@@ -157,11 +160,8 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 			if patch.Selected != nil {
 				account.Selected = *patch.Selected
 			}
-			if patch.DisplayName != nil {
-				account.DisplayName = strings.TrimSpace(*patch.DisplayName)
-			}
 			if _, err := q.UpdateAccount(ctx, sqlcgen.UpdateAccountParams{
-				DisplayName: account.DisplayName, Selected: account.Selected, UpdatedAt: now,
+				Selected:    account.Selected,
 				PortfolioID: portfolioID[:], ID: account.ID[:],
 			}); err != nil {
 				return err
@@ -202,6 +202,9 @@ func (s *Service) Archive(ctx context.Context, portfolioID, id uuid.UUID, versio
 	}
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
+		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+			return err
+		}
 		n, err := q.ArchiveIdentity(ctx, sqlcgen.ArchiveIdentityParams{
 			ArchivedAt: sql.NullTime{Time: now, Valid: true}, UpdatedAt: now,
 			PortfolioID: portfolioID[:], ID: id[:], Version: version,

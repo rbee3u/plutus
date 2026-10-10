@@ -36,19 +36,37 @@ const registry = {
     "earn-positions",
     true,
   ),
-  accountBalances: family<[accountId?: string, pointId?: string | null, reportId?: string | null]>(
-    "account-balances",
-    true,
-  ),
-  accountPositions: family<[accountId?: string, pointId?: string | null, reportId?: string | null]>(
-    "account-positions",
-    true,
-  ),
+  accountBalances: family<
+    [
+      accountId?: string,
+      cycleId?: string | null,
+      reportId?: string | null,
+      valuationRevision?: string | null,
+    ]
+  >("account-balances", true),
+  accountPositions: family<
+    [
+      accountId?: string,
+      cycleId?: string | null,
+      reportId?: string | null,
+      valuationRevision?: string | null,
+    ]
+  >("account-positions", true),
   accountDualPositions: family<
-    [accountId?: string, pointId?: string | null, reportId?: string | null]
+    [
+      accountId?: string,
+      cycleId?: string | null,
+      reportId?: string | null,
+      valuationRevision?: string | null,
+    ]
   >("account-dual-positions", true),
   accountEarnPositions: family<
-    [accountId?: string, pointId?: string | null, reportId?: string | null]
+    [
+      accountId?: string,
+      cycleId?: string | null,
+      reportId?: string | null,
+      valuationRevision?: string | null,
+    ]
   >("account-earn-positions", true),
   manualEditor: family<[identityId?: string, editorId?: string]>("manual-editor", false),
   historyWindow: family<
@@ -62,21 +80,22 @@ const registry = {
     "valuation-point-page",
     true,
   ),
-  valuationPoint: family<[pointId?: string]>("valuation-point", true),
+  valuationPoint: family<[cycleId?: string, valuationRevision?: string | null]>(
+    "valuation-point",
+    true,
+  ),
   periodCloses: family<[kind?: string, from?: string, to?: string]>("period-closes", true),
   valueChanges: family<[kind?: string, from?: string, to?: string]>("value-changes", true),
   customValueChange: family<[from?: string, to?: string]>("custom-value-change", true),
   boundaryEvents: family<[from?: string, to?: string]>("boundary-events", true),
   collectionCycles: family<[cursor?: string]>("collection-cycles", true),
   collectionCycle: family<[cycleId?: string | null]>("collection-cycle", true),
-  jobs: family<[kind?: string, cursor?: string]>("jobs", true),
-  job: family<[jobId?: string]>("job", false),
   auditEvents: family<[action?: string, resourceType?: string, cursor?: string]>(
     "audit-events",
     true,
   ),
   catalogAssets: family<
-    [platform?: string, search?: string, ignoredOnly?: boolean, offset?: number]
+    [platform?: string, search?: string, excludedOnly?: boolean, offset?: number]
   >("catalog-assets", true),
   catalogFuturesContracts: family<[platform?: string, search?: string, offset?: number]>(
     "catalog-futures-contracts",

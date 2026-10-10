@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/seeds"
@@ -30,7 +29,7 @@ func newDatabaseCommand() *cobra.Command {
 func newDBSeedCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "seed",
-		Short: "Insert development data into an empty database and rebuild its Valuation Points",
+		Short: "Insert development data and initialize its Valuation Points",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			db, cfg, err := openConfiguredDB(cmd)
@@ -91,7 +90,7 @@ func newDBResetCommand() *cobra.Command {
 	return cmd
 }
 
-// seedDatabase runs the seed SQL, activates live Identities, and rebuilds every Valuation Point.
+// seedDatabase initializes source facts and Valuation Points, then activates live Identities.
 func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Writer) error {
 	if err := validateSeedConfig(cfg); err != nil {
 		return err
@@ -106,21 +105,12 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 	if err := seeds.Apply(ctx, db, seed); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "inserted source facts in %s\n", time.Since(stage).Round(time.Millisecond))
+	_, _ = fmt.Fprintf(out, "initialized source facts and valuation points in %s\n", time.Since(stage).Round(time.Millisecond))
 	stage = time.Now()
 	if err := activateSeedIdentities(ctx, db, cfg, seed.Live, out); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "initialized connections in %s\n", time.Since(stage).Round(time.Millisecond))
-	svc := valuation.NewService(db)
-	for _, portfolioID := range seed.Portfolios {
-		stage = time.Now()
-		count, err := svc.Rebuild(ctx, portfolioID)
-		if err != nil {
-			return fmt.Errorf("rebuild valuation points for %s: %w", portfolioID, err)
-		}
-		_, _ = fmt.Fprintf(out, "portfolio %s: %d valuation points in %s\n", portfolioID, count, time.Since(stage).Round(time.Millisecond))
-	}
 	_, _ = fmt.Fprintf(out, "loaded development seed in %s\n", time.Since(started).Round(time.Millisecond))
 	_, _ = fmt.Fprintln(out, "scratch login: alice / Alice=123456")
 	return nil

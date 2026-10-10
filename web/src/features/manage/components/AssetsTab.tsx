@@ -35,7 +35,7 @@ import manageStyles from "../styles.module.css";
 export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const { userId } = useSessionScope();
   const queryClient = useQueryClient();
-  const { platform, q, ignoredOnly } = filters.values;
+  const { platform, q, excludedOnly } = filters.values;
   const offset = filters.offset;
   const platforms = filters.platforms;
   const nonce = useRef(0);
@@ -44,14 +44,14 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const query = usePortfolioQuery<AssetList>({
     key: (userId, portfolioId) =>
-      keys.catalogAssets(userId, portfolioId, platform, q, ignoredOnly, offset),
+      keys.catalogAssets(userId, portfolioId, platform, q, excludedOnly, offset),
     load: (portfolioId) =>
       listAssets({
         path: { portfolioId },
         query: {
           platform: platform || undefined,
           q: q || undefined,
-          ignoredOnly: ignoredOnly || undefined,
+          excludedOnly: excludedOnly || undefined,
           offset,
           limit: PAGE_SIZE,
         },
@@ -106,7 +106,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                 open={filters.open === "q"}
                 type="search"
                 searchDraft={filters.qDraft}
-                searchPlaceholder="Filter symbol or name"
+                searchPlaceholder="Filter asset or canonical symbol"
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}
@@ -124,23 +124,23 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
               <TableFilterHeader
                 label="Status"
                 display={filters.statusName}
-                active={ignoredOnly}
+                active={excludedOnly}
                 open={filters.open === "status"}
                 type="select"
                 options={filters.statusOptions}
-                selectedValue={ignoredOnly ? "true" : ""}
+                selectedValue={excludedOnly ? "true" : ""}
                 onToggle={() => filters.toggle("status")}
                 onClose={filters.close}
-                onClear={() => filters.change({ ignoredOnly: false })}
-                onSelect={(val) => filters.change({ ignoredOnly: val === "true" })}
+                onClear={() => filters.change({ excludedOnly: false })}
+                onSelect={(val) => filters.change({ excludedOnly: val === "true" })}
               />
             ),
           },
-          { key: "lastSeenAt", header: "Last seen", nowrap: true },
+          { key: "lastObservedAt", header: "Last observed", nowrap: true },
           { key: "actions", header: "Actions", nowrap: true, numeric: true },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
-          const isMapped = item.symbol !== item.canonicalSymbol;
+          const isMapped = item.symbol !== item.canonicalAssetSymbol;
 
           return {
             id: item.id,
@@ -154,23 +154,35 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                   {isMapped ? <Badge tone="info">mapped</Badge> : null}
                 </span>
                 {isMapped ? (
-                  <span className={shared.cellMeta}>Canonical Asset: {item.canonicalSymbol}</span>
+                  <span className={shared.cellMeta}>
+                    Canonical Asset: {item.canonicalAssetSymbol}
+                  </span>
                 ) : null}
               </span>
             ),
-            status: item.ignored ? (
-              <span className={shared.cellStack}>
-                <StatusBadge value="ignored" />
-                <span className={shared.cellMeta}>
-                  {item.ignoreReason ? `${item.ignoreReason} · ` : ""}
-                  {item.ignoredAt ? formatInstant(item.ignoredAt, timezone) : "Reviewed"}
-                </span>
+            status: item.excluded ? (
+              <span
+                className={manageStyles.statusExcluded}
+                title={
+                  item.exclusionReason
+                    ? `${item.exclusionReason}${item.excludedAt ? ` (${formatInstant(item.excludedAt, timezone)})` : ""}`
+                    : item.excludedAt
+                      ? `Excluded at ${formatInstant(item.excludedAt, timezone)}`
+                      : "Excluded"
+                }
+              >
+                <StatusBadge value="excluded" />
+                {item.exclusionReason ? (
+                  <span className={manageStyles.exclusionReason}>{item.exclusionReason}</span>
+                ) : null}
               </span>
             ) : (
               <span className={shared.cellMeta}>Active</span>
             ),
-            lastSeenAt: (
-              <span className={shared.tabularDate}>{formatInstant(item.lastSeenAt, timezone)}</span>
+            lastObservedAt: (
+              <span className={shared.tabularDate}>
+                {formatInstant(item.lastObservedAt, timezone)}
+              </span>
             ),
             actions: (
               <span className={shared.rowActions}>
@@ -194,7 +206,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                     setExclusionRequest({ nonce: nonce.current, item });
                   }}
                 >
-                  {item.ignored ? "Restore" : "Ignore"}
+                  {item.excluded ? "Restore" : "Ignore"}
                 </ActionButton>
               </span>
             ),
@@ -205,7 +217,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             <div className={shared.emptyState}>
               <p className={shared.emptyStateTitle}>Loading assets...</p>
             </div>
-          ) : q || platform || ignoredOnly ? (
+          ) : q || platform || excludedOnly ? (
             <div className={shared.emptyState}>
               <p className={shared.emptyStateTitle}>No assets match these filters</p>
               <p className={shared.emptyStateHelp}>
@@ -255,7 +267,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
         open={exclusionRequest !== null}
         title={
           exclusionRequest
-            ? `${exclusionRequest.item.ignored ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
+            ? `${exclusionRequest.item.excluded ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
             : "Asset status"
         }
         onClose={() => setExclusionRequest(null)}
@@ -303,7 +315,7 @@ function ExclusionForm({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const ignoring = !item.ignored;
+  const ignoring = !item.excluded;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -318,7 +330,7 @@ function ExclusionForm({
         putAssetExclusion({
           path: { portfolioId, assetId: item.id },
           headers: { "If-Match": exclusionEtag(item) },
-          body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
+          body: { excluded: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
         }),
       );
       if (result.response?.status === 412) {
@@ -332,7 +344,7 @@ function ExclusionForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
+        `${platform} ${result.data.symbol} ${ignoring ? "will be excluded" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The asset status could not be saved."));
@@ -348,10 +360,10 @@ function ExclusionForm({
           ? `Exclude ${platform} · ${item.symbol} from portfolio balances and valuations starting from the next cycle.`
           : `Include ${platform} · ${item.symbol} in portfolio balances and valuations starting from the next cycle.`}
       </p>
-      {item.ignored && item.ignoreReason ? (
+      {item.excluded && item.exclusionReason ? (
         <div className={manageStyles.reasonCallout}>
           <span className={manageStyles.reasonCalloutLabel}>Current exclusion reason</span>
-          <span className={manageStyles.reasonCalloutText}>“{item.ignoreReason}”</span>
+          <span className={manageStyles.reasonCalloutText}>“{item.exclusionReason}”</span>
         </div>
       ) : null}
       {error ? (
@@ -391,7 +403,7 @@ function ExclusionForm({
       ) : null}
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
-          {ignoring ? "Ignore asset" : "Restore asset"}
+          {ignoring ? "Exclude asset" : "Restore asset"}
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
@@ -415,18 +427,25 @@ function MappingForm({
   const write = useAuthenticatedWrite();
   const platforms = usePlatforms();
   const platform = platformLabel(platforms.data?.items, item.platform);
-  const [canonicalSymbol, setCanonicalSymbol] = useState(item.canonicalSymbol);
+  const [canonicalAssetSymbol, setCanonicalAssetSymbol] = useState(item.canonicalAssetSymbol);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const trimmedSymbol = canonicalSymbol.trim().toUpperCase();
-  const isUnchanged = trimmedSymbol === item.canonicalSymbol;
-  const isCustomMapped = item.symbol !== item.canonicalSymbol;
+  const trimmedSymbol = canonicalAssetSymbol.trim().toUpperCase();
+  const isUnchanged = trimmedSymbol === item.canonicalAssetSymbol;
+  const isCustomMapped = item.symbol !== item.canonicalAssetSymbol;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!trimmedSymbol) {
       setError("Enter the Canonical Asset symbol this Asset maps to.");
+      return;
+    }
+    if (
+      new TextEncoder().encode(trimmedSymbol).length > 64 ||
+      !/^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(trimmedSymbol)
+    ) {
+      setError("Use letters, numbers, dots, underscores or hyphens, up to 64 UTF-8 bytes.");
       return;
     }
     setBusy(true);
@@ -436,7 +455,7 @@ function MappingForm({
         putAssetMapping({
           path: { portfolioId, assetId: item.id },
           headers: { "If-Match": assetEtag(item) },
-          body: { canonicalSymbol: trimmedSymbol },
+          body: { canonicalAssetSymbol: trimmedSymbol },
         }),
       );
       if (result.response?.status === 412) {
@@ -448,7 +467,7 @@ function MappingForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} now maps to ${result.data.canonicalSymbol}. Valuations use it from the next Collection Cycle.`,
+        `${platform} ${result.data.symbol} now maps to ${result.data.canonicalAssetSymbol}. Valuations use it from the next Collection Cycle.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The mapping could not be saved."));
@@ -491,9 +510,9 @@ function MappingForm({
       <label className={shared.field}>
         <span>Canonical Asset</span>
         <TextInput
-          value={canonicalSymbol}
-          onChange={(event) => setCanonicalSymbol(event.target.value.toUpperCase())}
-          maxLength={32}
+          value={canonicalAssetSymbol}
+          onChange={(event) => setCanonicalAssetSymbol(event.target.value.toUpperCase())}
+          maxLength={64}
           autoFocus
           autoCapitalize="characters"
           autoCorrect="off"
@@ -509,7 +528,11 @@ function MappingForm({
       {isCustomMapped && trimmedSymbol !== item.symbol ? (
         <p className={shared.cellMeta}>
           Mapped from native {item.symbol}.{" "}
-          <ActionButton type="button" tone="ghost" onClick={() => setCanonicalSymbol(item.symbol)}>
+          <ActionButton
+            type="button"
+            tone="ghost"
+            onClick={() => setCanonicalAssetSymbol(item.symbol)}
+          >
             Reset to native ({item.symbol})
           </ActionButton>
         </p>

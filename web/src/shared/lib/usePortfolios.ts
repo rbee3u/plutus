@@ -7,6 +7,8 @@ export function portfoliosOptions(userId: string | undefined, redirect: () => vo
     queryKey: keys.portfolios(userId),
     enabled: Boolean(userId),
     queryFn: async () => unwrapOrRedirect(await listPortfolios(), redirect),
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) => item.deletionRequestedAt) ? 2000 : false,
   });
 }
 

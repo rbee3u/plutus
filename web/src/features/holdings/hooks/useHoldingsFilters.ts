@@ -59,17 +59,14 @@ export function useHoldingsFilters(portfolioId: string) {
     : values;
   const needsCorrection =
     normalized.platform !== values.platform || normalized.identityId !== values.identityId;
-  const legacy = params.has("accountId") || params.has("groupBy");
   useEffect(() => {
-    if (legacy || needsCorrection) {
+    if (needsCorrection) {
       update({
         platform: normalized.platform,
         identityId: normalized.identityId,
-        accountId: "",
-        groupBy: "",
       });
     }
-  }, [legacy, needsCorrection, normalized.platform, normalized.identityId, update]);
+  }, [needsCorrection, normalized.platform, normalized.identityId, update]);
 
   const [open, setOpen] = useState<HoldingsFilterKey | null>(null);
   const [draft, setDraft] = useState({ source: values.symbol, value: values.symbol });
@@ -166,9 +163,7 @@ export function useHoldingsFilters(portfolioId: string) {
     reset: () => change({ platform: "", identityId: "", symbol: "" }),
     hasFilters: Boolean(values.platform || values.identityId || values.symbol || symbolDraft),
     ready:
-      !legacy &&
-      !needsCorrection &&
-      ((!values.platform && !values.identityId) || Boolean(identities.data)),
+      !needsCorrection && ((!values.platform && !values.identityId) || Boolean(identities.data)),
     offset: readOffset(params),
     page: (offset: number) => {
       cancelTimer();

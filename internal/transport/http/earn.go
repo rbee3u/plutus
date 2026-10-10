@@ -20,12 +20,10 @@ func (a *API) ListAccountEarnPositions(ctx context.Context, request api.ListAcco
 		return nil, err
 	}
 	return api.ListAccountEarnPositions200JSONResponse{
-		Context:          toAPIContext(&view.Context),
-		Account:          toAPIAccountValuation(&view.Account),
-		Items:            toAPIEarnPositions(view.EarnPositions),
-		BalanceSummaries: toAPIEarnSummaries(view.EarnBalanceSummaries),
-		DetailsCollected: view.EarnDetailsCollected,
-		Issues:           toAPIIssues(view.Issues),
+		Context: toAPIContext(&view.Context),
+		Account: toAPIAccountValuation(&view.Account),
+		Items:   toAPIEarnPositions(view.EarnPositions),
+		Issues:  toAPIIssues(view.Issues),
 	}, nil
 }
 
@@ -49,12 +47,11 @@ func (a *API) ListEarnPositions(ctx context.Context, request api.ListEarnPositio
 		return nil, err
 	}
 	return api.ListEarnPositions200JSONResponse{
-		Context:          toAPIContext(&list.Context),
-		Items:            toAPIEarnPositions(list.Items),
-		BalanceSummaries: toAPIEarnSummaries(list.BalanceSummaries),
-		DetailsComplete:  list.DetailsComplete,
-		Page:             toOffsetPage(list.Offset, list.Limit, list.Total),
-		Completeness:     api.Completeness(list.Completeness),
-		Issues:           toAPIIssues(list.Issues),
+		Context:         toAPIContext(&list.Context),
+		Items:           toAPIEarnPositions(list.Items),
+		DetailsComplete: list.DetailsComplete,
+		Page:            toOffsetPage(list.Offset, list.Limit, list.Total),
+		Completeness:    api.Completeness(list.Completeness),
+		Issues:          toAPIIssues(list.Issues),
 	}, nil
 }

@@ -2,13 +2,12 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
+	"github.com/rbee3u/plutus/internal/application/auth"
+
 	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -39,54 +38,27 @@ func (a *API) ListCapitalFlows(ctx context.Context, request api.ListCapitalFlows
 }
 
 func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFlowRequestObject) (api.CreateCapitalFlowResponseObject, error) {
-	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
-	if err != nil {
-		return nil, err
-	}
 	if a.Capital == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	raw, err := json.Marshal(request.Body)
-	if err != nil {
-		return nil, err
-	}
-	key := stringValue(request.Params.IdempotencyKey)
-	rec, hash, err := a.lookupIdempotency(ctx, sc.user.ID, key, http.MethodPost, requestPath(ctx), raw)
-	if errors.Is(err, idempotency.ErrConflict) {
-		return nil, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
-	}
-	if err != nil {
-		return nil, err
-	}
-	if rec != nil {
-		var body api.CapitalFlow
-		if err := json.Unmarshal(rec.Body, &body); err != nil {
-			return nil, err
+	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.CapitalFlow, string, error) {
+		sc, err := a.scoped(ctx, request.PortfolioId)
+		if err != nil {
+			return api.CapitalFlow{}, "", err
 		}
-		etag := rec.Headers["ETag"]
-		return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: &etag}}, nil
-	}
-	direction := string(request.Body.Direction)
-	effectiveAt := request.Body.EffectiveAt.UTC()
-	in := capital.Input{
-		ActorUserID:          sc.user.ID,
-		RequestID:            requestTraceID(ctx),
-		Direction:            &direction,
-		CanonicalAssetSymbol: &request.Body.CanonicalAssetSymbol,
-		Quantity:             &request.Body.Quantity,
-		ValueUSD:             request.Body.ValueUsd,
-		EffectiveAt:          &effectiveAt,
-		AccountID:            request.Body.AccountId,
-		Note:                 request.Body.Note,
-	}
-	item, err := a.Capital.Create(ctx, sc.portfolio.ID, &in)
+		direction := string(request.Body.Direction)
+		at := request.Body.EffectiveAt.UTC()
+		input := capital.Input{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Direction: &direction, CanonicalAssetSymbol: &request.Body.CanonicalAssetSymbol, Quantity: &request.Body.Quantity, ValueUSD: request.Body.ValueUsd, EffectiveAt: &at, AccountID: request.Body.AccountId, Note: request.Body.Note, PricingPlatform: request.Body.PricingPlatform}
+		item, err := a.Capital.Create(ctx, sc.portfolio.ID, &input)
+		if err != nil {
+			return api.CapitalFlow{}, "", err
+		}
+		return toAPIFlow(&item), item.ETag(), nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	body := toAPIFlow(&item)
-	etag := item.ETag()
-	a.storeIdempotency(ctx, sc.user.ID, &sc.portfolio.ID, key, http.MethodPost, requestPath(ctx), hash, http.StatusCreated, map[string]string{"ETag": etag}, body)
-	return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: new(etag)}}, nil
+	return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: &etag}}, nil
 }
 
 func (a *API) GetCapitalFlow(ctx context.Context, request api.GetCapitalFlowRequestObject) (api.GetCapitalFlowResponseObject, error) {
@@ -129,7 +101,10 @@ func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlow
 		AccountID:            request.Body.AccountId,
 		Note:                 request.Body.Note,
 		ClearAccount:         nulls["accountId"],
+		PricingPlatform:      request.Body.PricingPlatform,
 		ClearValue:           nulls["valueUsd"],
+		ClearPricingPlatform: nulls["pricingPlatform"],
+		ClearNote:            nulls["note"],
 	}
 	if request.Body.Direction != nil {
 		direction := string(*request.Body.Direction)

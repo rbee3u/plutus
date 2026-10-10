@@ -46,7 +46,7 @@ export function DualPositionsTable({
         { key: "issues", header: "Issues", nowrap: true },
       ]}
       rows={items.map((item) => ({
-        id: `${item.accountId}-${item.platformPositionRef}`,
+        id: `${item.accountId}-${item.positionKey}`,
         platform: platformLabel(platforms.data?.items, item.platform),
         identityName: item.identityName,
         pair: `${item.baseAssetSymbol ?? "—"} / ${item.quoteAssetSymbol ?? "—"}`,
@@ -68,7 +68,7 @@ export function DualPositionsTable({
               : `${formatPercent(item.annualizedRate)}${item.rateKind === "apr" ? " APR" : item.rateKind === "apy" ? " APY" : item.rateKind === "annualized_yield" ? " annualized" : ""}`}
           </NumericText>
         ),
-        principal: `${formatDecimal(item.principal)} ${item.investAssetSymbol}`,
+        principal: `${formatDecimal(item.principal)} ${item.principalAssetSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
         status: capitalize(item.status),
         issues: (
@@ -76,7 +76,7 @@ export function DualPositionsTable({
             observedAt={item.reportObservedAt}
             freshness={item.freshness}
             issues={item.issues}
-            name={`Dual ${item.platformPositionRef}`}
+            name={`Dual ${item.positionKey}`}
             timezone={timezone}
           />
         ),

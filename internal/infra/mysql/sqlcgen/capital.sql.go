@@ -31,9 +31,7 @@ func (q *Queries) DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowPa
 }
 
 const getCapitalFlow = `-- name: GetCapitalFlow :one
-SELECT id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
-       created_by_user_id, version, created_at, updated_at
-FROM capital_flows
+SELECT portfolio_id, id, account_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, note, version, created_at, updated_at FROM capital_flows
 WHERE portfolio_id = ? AND id = ?
 `
 
@@ -46,16 +44,20 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 	row := q.db.QueryRowContext(ctx, getCapitalFlow, arg.PortfolioID, arg.ID)
 	var i CapitalFlow
 	err := row.Scan(
-		&i.ID,
 		&i.PortfolioID,
+		&i.ID,
+		&i.AccountID,
 		&i.Direction,
 		&i.CanonicalAssetSymbol,
 		&i.Quantity,
 		&i.ValueUsd,
+		&i.PricingMethod,
+		&i.PricingPlatform,
+		&i.PriceObservationID,
+		&i.PricingAttemptedAt,
+		&i.CalculationVersion,
 		&i.EffectiveAt,
-		&i.AccountID,
 		&i.Note,
-		&i.CreatedByUserID,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -65,12 +67,12 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 
 const insertCapitalFlow = `-- name: InsertCapitalFlow :exec
 INSERT INTO capital_flows (
-    id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
-    created_by_user_id, version, created_at, updated_at
+    id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, account_id, note,
+    version, created_at, updated_at
 ) VALUES (
     ?, ?, ?, ?, ?,
-    ?, ?, ?, ?,
-    ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?
 )
 `
 
@@ -81,10 +83,14 @@ type InsertCapitalFlowParams struct {
 	CanonicalAssetSymbol string
 	Quantity             string
 	ValueUsd             sql.NullString
+	PricingMethod        string
+	PricingPlatform      sql.NullString
+	PriceObservationID   []byte
+	PricingAttemptedAt   time.Time
+	CalculationVersion   uint64
 	EffectiveAt          time.Time
 	AccountID            []byte
 	Note                 sql.NullString
-	CreatedByUserID      []byte
 	Version              uint64
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
@@ -98,10 +104,14 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 		arg.CanonicalAssetSymbol,
 		arg.Quantity,
 		arg.ValueUsd,
+		arg.PricingMethod,
+		arg.PricingPlatform,
+		arg.PriceObservationID,
+		arg.PricingAttemptedAt,
+		arg.CalculationVersion,
 		arg.EffectiveAt,
 		arg.AccountID,
 		arg.Note,
-		arg.CreatedByUserID,
 		arg.Version,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -110,9 +120,7 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 }
 
 const listCapitalFlows = `-- name: ListCapitalFlows :many
-SELECT id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
-       created_by_user_id, version, created_at, updated_at
-FROM capital_flows
+SELECT portfolio_id, id, account_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, note, version, created_at, updated_at FROM capital_flows
 WHERE portfolio_id = ?
   AND effective_at >= ? AND effective_at < ?
 ORDER BY effective_at DESC, id DESC
@@ -134,16 +142,20 @@ func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsPara
 	for rows.Next() {
 		var i CapitalFlow
 		if err := rows.Scan(
-			&i.ID,
 			&i.PortfolioID,
+			&i.ID,
+			&i.AccountID,
 			&i.Direction,
 			&i.CanonicalAssetSymbol,
 			&i.Quantity,
 			&i.ValueUsd,
+			&i.PricingMethod,
+			&i.PricingPlatform,
+			&i.PriceObservationID,
+			&i.PricingAttemptedAt,
+			&i.CalculationVersion,
 			&i.EffectiveAt,
-			&i.AccountID,
 			&i.Note,
-			&i.CreatedByUserID,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -167,6 +179,11 @@ SET direction = ?,
     canonical_asset_symbol = ?,
     quantity = ?,
     value_usd = ?,
+    pricing_method = ?,
+    pricing_platform = ?,
+    price_observation_id = ?,
+    pricing_attempted_at = ?,
+    calculation_version = ?,
     effective_at = ?,
     account_id = ?,
     note = ?,
@@ -180,6 +197,11 @@ type UpdateCapitalFlowParams struct {
 	CanonicalAssetSymbol string
 	Quantity             string
 	ValueUsd             sql.NullString
+	PricingMethod        string
+	PricingPlatform      sql.NullString
+	PriceObservationID   []byte
+	PricingAttemptedAt   time.Time
+	CalculationVersion   uint64
 	EffectiveAt          time.Time
 	AccountID            []byte
 	Note                 sql.NullString
@@ -195,6 +217,11 @@ func (q *Queries) UpdateCapitalFlow(ctx context.Context, arg UpdateCapitalFlowPa
 		arg.CanonicalAssetSymbol,
 		arg.Quantity,
 		arg.ValueUsd,
+		arg.PricingMethod,
+		arg.PricingPlatform,
+		arg.PriceObservationID,
+		arg.PricingAttemptedAt,
+		arg.CalculationVersion,
 		arg.EffectiveAt,
 		arg.AccountID,
 		arg.Note,

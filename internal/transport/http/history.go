@@ -83,7 +83,7 @@ func (a *API) GetValuationPoint(ctx context.Context, request api.GetValuationPoi
 	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
-	detail, err := a.Financial.Detail(ctx, sc.portfolioContext(), request.PointId)
+	detail, err := a.Financial.Detail(ctx, sc.portfolioContext(), request.CycleId)
 	if err != nil {
 		return nil, err
 	}
@@ -244,4 +244,19 @@ func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuat
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 	return api.ListValuationPointPage200JSONResponse{Context: toAPIContext(&c), From: from, To: to, Items: toAPIPoints(page.Items), Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+}
+
+func (a *API) GetValuationSnapshot(ctx context.Context, request api.GetValuationSnapshotRequestObject) (api.GetValuationSnapshotResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Financial == nil {
+		return nil, ErrNotImplemented
+	}
+	detail, err := a.Financial.Snapshot(ctx, sc.portfolioContext(), request.Params.Day)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetValuationSnapshot200JSONResponse{Point: toAPIPoint(&detail.Point), Accounts: toAPIAccountValuations(detail.Accounts), Issues: toAPIIssues(detail.Point.Issues), BoundaryEvents: toAPIBoundaryEvents(detail.Point.BoundaryEvents)}, nil
 }

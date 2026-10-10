@@ -1,9 +1,12 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
-	"strings"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +17,7 @@ import (
 )
 
 // EnsureAsset upserts an asset inside q and returns its ID and current Canonical Asset Symbol.
-func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, symbol, name string, seenAt time.Time) (uuid.UUID, string, error) {
+func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, symbol string, observedAt time.Time) (uuid.UUID, string, error) {
 	normalized, err := NormalizeSymbol(symbol)
 	if err != nil {
 		return uuid.Nil, "", err
@@ -23,21 +26,17 @@ func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, platform 
 	if err != nil {
 		return uuid.Nil, "", err
 	}
-	var nullName sql.NullString
-	if trimmed := strings.TrimSpace(name); trimmed != "" {
-		nullName = sql.NullString{String: trimmed, Valid: true}
-	}
 	if err := q.UpsertAsset(ctx, sqlcgen.UpsertAssetParams{
-		ID:              id[:],
-		Platform:        string(platform),
-		Symbol:          normalized,
-		CanonicalSymbol: CanonicalAssetSymbolFor(normalized),
-		Name:            nullName,
-		SeenAt:          seenAt.UTC(),
+		PortfolioID:          portfolioID[:],
+		ID:                   id[:],
+		Platform:             string(platform),
+		Symbol:               normalized,
+		CanonicalAssetSymbol: CanonicalAssetSymbolFor(normalized),
+		ObservedAt:           observedAt.UTC(),
 	}); err != nil {
 		return uuid.Nil, "", err
 	}
-	row, err := q.GetAssetByPlatformSymbol(ctx, sqlcgen.GetAssetByPlatformSymbolParams{Platform: string(platform), Symbol: normalized})
+	row, err := q.GetAssetByPlatformSymbol(ctx, sqlcgen.GetAssetByPlatformSymbolParams{PortfolioID: portfolioID[:], Platform: string(platform), Symbol: normalized})
 	if err != nil {
 		return uuid.Nil, "", err
 	}
@@ -45,76 +44,128 @@ func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, platform 
 	if err != nil {
 		return uuid.Nil, "", err
 	}
-	return stored, row.CanonicalSymbol, nil
+	return stored, row.CanonicalAssetSymbol, nil
 }
 
-// EnsureFuturesContract upserts a futures contract inside q and returns its ID.
-func (s *Service) EnsureFuturesContract(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, in *adapters.FuturesContract, seenAt time.Time) (uuid.UUID, error) {
+// EnsureFuturesContract returns the Futures Contract whose terms this position
+// observed. A -> B -> A reuses A; observation bounds are metadata, not
+// effective dates.
+func (s *Service) EnsureFuturesContract(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, in *adapters.FuturesContract, observedAt time.Time) (uuid.UUID, error) {
 	symbol, err := NormalizeSymbol(in.Symbol)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if in.Kind != adapters.KindLinearPerpetual && in.Kind != adapters.KindInversePerpetual &&
-		in.Kind != adapters.KindLinearDelivery && in.Kind != adapters.KindInverseDelivery {
-		return uuid.Nil, ErrInvalid
+	terms, raw, err := NormalizeFuturesTerms(in)
+	if err != nil {
+		return uuid.Nil, err
 	}
+	hash := sha256.Sum256(raw)
 	id, err := uuid.NewV7()
 	if err != nil {
 		return uuid.Nil, err
 	}
-	params := sqlcgen.UpsertFuturesContractParams{
-		ID:                    id[:],
-		Platform:              string(platform),
-		Symbol:                symbol,
-		Kind:                  in.Kind,
-		BaseAssetSymbol:       optionalSymbolColumn(in.BaseAssetSymbol),
-		QuoteAssetSymbol:      optionalSymbolColumn(in.QuoteAssetSymbol),
-		SettlementAssetSymbol: optionalSymbolColumn(in.SettlementAssetSymbol),
-		SeenAt:                seenAt.UTC(),
+	params := sqlcgen.UpsertFuturesContractParams{PortfolioID: portfolioID[:], ID: id[:], Platform: string(platform), Symbol: symbol, TermsHash: hash[:], Kind: terms.Kind, BaseAssetSymbol: optionalSymbolColumn(terms.BaseAssetSymbol), QuoteAssetSymbol: optionalSymbolColumn(terms.QuoteAssetSymbol), SettlementAssetSymbol: optionalSymbolColumn(terms.SettlementAssetSymbol), ObservedAt: observedAt.UTC()}
+	if terms.ExpiryAt != nil {
+		params.ExpiryAt = sql.NullTime{Time: *terms.ExpiryAt, Valid: true}
 	}
-	if in.ExpiryAt != nil {
-		params.ExpiryAt = sql.NullTime{Time: in.ExpiryAt.UTC(), Valid: true}
-	}
-	if in.ContractSize != nil && decimal.Valid(*in.ContractSize) {
-		params.ContractSize = sql.NullString{String: *in.ContractSize, Valid: true}
+	if terms.ContractSize != nil {
+		params.ContractSize = sql.NullString{String: *terms.ContractSize, Valid: true}
 	}
 	if err := q.UpsertFuturesContract(ctx, params); err != nil {
 		return uuid.Nil, err
 	}
-	row, err := q.GetFuturesContractByPlatformSymbol(ctx, sqlcgen.GetFuturesContractByPlatformSymbolParams{Platform: string(platform), Symbol: symbol})
+	row, err := q.GetFuturesContractByTerms(ctx, sqlcgen.GetFuturesContractByTermsParams{PortfolioID: portfolioID[:], Platform: string(platform), Symbol: symbol, TermsHash: hash[:]})
 	if err != nil {
 		return uuid.Nil, err
+	}
+	stored := adapters.FuturesContract{Kind: row.Kind, BaseAssetSymbol: row.BaseAssetSymbol.String, QuoteAssetSymbol: row.QuoteAssetSymbol.String, SettlementAssetSymbol: row.SettlementAssetSymbol.String}
+	if row.ExpiryAt.Valid {
+		stored.ExpiryAt = &row.ExpiryAt.Time
+	}
+	if row.ContractSize.Valid {
+		value, _ := decimal.Parse(row.ContractSize.String)
+		stored.ContractSize = decimal.FormatPtr(value)
+	}
+	storedRaw, err := json.Marshal(stored)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !bytes.Equal(raw, storedRaw) {
+		return uuid.Nil, fmt.Errorf("contract terms hash does not match stored content")
 	}
 	return uuid.FromBytes(row.ID)
 }
 
-// RecordPrice upserts one Platform price inside q. Prices are stored in their
-// Quote Canonical Asset Symbol; valuation treats USD, USDT, and USDC as USD (ADR 0003).
-func (s *Service) RecordPrice(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, price adapters.Price) error {
-	canonicalAssetSymbol, err := NormalizeSymbol(price.CanonicalAssetSymbol)
+// RecordPrice retains a USD-equivalent retrieval and its source market.
+// Other quotes cannot value anything and return ErrInvalid.
+func (s *Service) RecordPrice(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, price adapters.Price) error {
+	symbol, err := NormalizeSymbol(price.CanonicalAssetSymbol)
 	if err != nil {
 		return err
 	}
-	quoteCanonicalAssetSymbol, err := NormalizeSymbol(price.QuoteCanonicalAssetSymbol)
+	quote, err := NormalizeSymbol(price.QuoteCanonicalAssetSymbol)
 	if err != nil {
 		return err
 	}
-	if !decimal.Valid(price.Price) {
+	value, ok := decimal.Parse(price.Price)
+	if !adapters.USDEquivalent(quote) || !decimal.Valid(price.Price) || !ok || value.Sign() <= 0 || price.RetrievedAt.IsZero() || price.SourceMarketRef == "" || len(price.SourceMarketRef) > 255 {
 		return ErrInvalid
 	}
-	return q.UpsertPrice(ctx, sqlcgen.UpsertPriceParams{
-		Platform:                  string(platform),
-		CanonicalAssetSymbol:      canonicalAssetSymbol,
-		ObservedAt:                price.ObservedAt.UTC(),
-		Price:                     price.Price,
-		QuoteCanonicalAssetSymbol: quoteCanonicalAssetSymbol,
-	})
+	id, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
+	params := sqlcgen.InsertPriceObservationParams{PortfolioID: portfolioID[:], ID: id[:], Platform: string(platform), RequestedCanonicalAssetSymbol: symbol, SourceMarketRef: price.SourceMarketRef, QuoteCanonicalAssetSymbol: quote, Price: price.Price, RetrievedAt: price.RetrievedAt.UTC()}
+	if price.SourceObservedAt != nil {
+		params.SourceObservedAt = sql.NullTime{Time: price.SourceObservedAt.UTC(), Valid: true}
+	}
+	return q.InsertPriceObservation(ctx, params)
 }
 
 func optionalSymbolColumn(value string) sql.NullString {
-	trimmed := strings.ToUpper(strings.TrimSpace(value))
-	if trimmed == "" {
-		return sql.NullString{}
+	return sql.NullString{String: value, Valid: value != ""}
+}
+
+// NormalizeFuturesTerms defines canonical bytes used for immutable term identity.
+func NormalizeFuturesTerms(in *adapters.FuturesContract) (adapters.FuturesContract, []byte, error) {
+	var err error
+	terms := *in
+	terms.Symbol = ""
+	switch terms.Kind {
+	case adapters.KindLinearPerpetual, adapters.KindInversePerpetual:
+		if terms.ExpiryAt != nil {
+			return adapters.FuturesContract{}, nil, ErrInvalid
+		}
+	case adapters.KindLinearDelivery, adapters.KindInverseDelivery:
+		if terms.ExpiryAt == nil {
+			return adapters.FuturesContract{}, nil, ErrInvalid
+		}
+	default:
+		return adapters.FuturesContract{}, nil, ErrInvalid
 	}
-	return sql.NullString{String: trimmed, Valid: true}
+	for _, value := range []*string{&terms.BaseAssetSymbol, &terms.QuoteAssetSymbol, &terms.SettlementAssetSymbol} {
+		if *value == "" {
+			continue
+		}
+		*value, err = NormalizeSymbol(*value)
+		if err != nil {
+			return adapters.FuturesContract{}, nil, err
+		}
+	}
+	if terms.ContractSize != nil {
+		size, ok := decimal.Parse(*terms.ContractSize)
+		if !decimal.Valid(*terms.ContractSize) || !ok || size.Sign() <= 0 {
+			return adapters.FuturesContract{}, nil, ErrInvalid
+		}
+		terms.ContractSize = decimal.FormatPtr(size)
+	}
+	if terms.ExpiryAt != nil {
+		at := terms.ExpiryAt.UTC().Truncate(time.Microsecond)
+		terms.ExpiryAt = &at
+	}
+	raw, err := json.Marshal(terms)
+	if err != nil {
+		return adapters.FuturesContract{}, nil, err
+	}
+	return terms, raw, nil
 }

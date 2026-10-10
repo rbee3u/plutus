@@ -11,8 +11,8 @@ import (
 	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/collection"
+	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/jobs"
 	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/application/valuation"
@@ -31,8 +31,8 @@ func (a *leaseAdapter) Validate(context.Context, adapters.Credentials, adapters.
 
 func (a *leaseAdapter) Collect(ctx context.Context, _ adapters.Credentials, _ adapters.AccountStructure, _ []adapters.AccountType) (adapters.Batch, error) {
 	if a.duplicate {
-		return adapters.Batch{ObservedAt: time.Now().UTC(), Reports: []adapters.AccountReport{{
-			AccountType: "spot", Status: adapters.StatusOK,
+		return adapters.Batch{CollectedAt: time.Now().UTC(), Reports: []adapters.AccountReport{{
+			AccountType: "spot", Status: adapters.StatusSucceeded,
 			Balances: []adapters.Balance{{AssetSymbol: "USDT", Equity: "1"}, {AssetSymbol: "USDT", Equity: "2"}},
 		}}}, nil
 	}
@@ -78,21 +78,21 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 			if _, outcome, err := identities.Enable(ctx, portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: user.ID}); err != nil || !outcome.OK {
 				t.Fatalf("enable: %+v %v", outcome, err)
 			}
-			jobService := jobs.NewService(db)
-			job, _, err := jobService.EnqueueCycle(ctx, portfolioID, jobs.TriggerManual, nil)
+			cycleService := cycles.NewService(db)
+			cycle, _, err := cycleService.Enqueue(ctx, portfolioID, cycles.TriggerUser)
 			if err != nil {
 				t.Fatal(err)
 			}
 			value := valuation.NewService(db)
-			assets := catalog.NewService(db, jobs.NewService(db))
+			assets := catalog.NewService(db)
 			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: value, RetryDelays: []time.Duration{}})
-			w := New(&Options{Jobs: jobService, Collection: collect, Valuation: value, Lease: 3 * time.Second})
+			w := New(&Options{Cycles: cycleService, Collection: collect, Lease: 3 * time.Second})
 			if duplicate {
 				if ok, err := w.ProcessOnce(ctx); err != nil || !ok {
 					t.Fatalf("process: %v %v", ok, err)
 				}
-				current, err := jobService.Get(ctx, portfolioID, job.ID)
-				if err != nil || current.Status != jobs.StatusFailed || current.AttemptCount != 1 || current.LastErrorClass == nil || *current.LastErrorClass != "persistence" {
+				current, err := cycleService.Get(ctx, portfolioID, cycle.ID)
+				if err != nil || current.Status != cycles.StatusFailed || current.AttemptCount != 1 || current.ErrorClass == nil || *current.ErrorClass != "persistence" {
 					t.Fatalf("duplicate was retried: %+v %v", current, err)
 				}
 				return
@@ -104,19 +104,19 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 			case <-ctx.Done():
 				t.Fatal("collection did not start")
 			}
-			if _, err := db.ExecContext(ctx, "UPDATE jobs SET lease_owner='replacement' WHERE id=?", job.ID[:]); err != nil {
+			if _, err := db.ExecContext(ctx, "UPDATE collection_cycles SET lease_owner='replacement' WHERE portfolio_id=? AND id=?", portfolioID[:], cycle.ID[:]); err != nil {
 				t.Fatal(err)
 			}
 			select {
 			case err := <-done:
-				if !errors.Is(err, jobs.ErrLostLease) {
+				if !errors.Is(err, cycles.ErrLostLease) {
 					t.Fatalf("lost lease was ignored: %v", err)
 				}
 			case <-ctx.Done():
 				t.Fatal("lease renewal failure did not cancel collection")
 			}
 			var count int
-			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports r JOIN accounts a ON a.id=r.account_id WHERE r.job_id=? AND a.account_type <> 'manual'", job.ID[:]).Scan(&count); err != nil || count != 0 {
+			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_reports r JOIN accounts a ON a.id=r.account_id WHERE r.cycle_id=? AND a.account_type <> 'manual'", cycle.ID[:]).Scan(&count); err != nil || count != 0 {
 				t.Fatalf("lost owner wrote reports: %d %v", count, err)
 			}
 		})

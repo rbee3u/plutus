@@ -34,7 +34,7 @@ qualifies rates, amounts, rewards, and lifecycle stages. Options is not offered.
 ## History presentation
 
 History shows Valuation Points, grouped curves, Period Closes, and Value Changes
-in a selected time window, defaulting to seven days. Tables paginate
+in a selected time window, defaulting to three days. Tables paginate
 independently; Value Changes also offers a custom comparison. Window and
 pagination choices are recorded in
 [History presentation](./presentation.md#history-windows-and-tables).

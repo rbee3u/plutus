@@ -1,30 +1,26 @@
--- name: UpsertPrice :exec
-INSERT INTO prices (platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol)
-VALUES (sqlc.arg(platform), sqlc.arg(canonical_asset_symbol), sqlc.arg(observed_at), sqlc.arg(price), sqlc.arg(quote_canonical_asset_symbol))
-ON DUPLICATE KEY UPDATE price = VALUES(price), quote_canonical_asset_symbol = VALUES(quote_canonical_asset_symbol);
+-- name: InsertPriceObservation :exec
+INSERT INTO price_observations (portfolio_id, id, platform, requested_canonical_asset_symbol, source_market_ref, quote_canonical_asset_symbol, price, retrieved_at, source_observed_at)
+VALUES (sqlc.arg(portfolio_id), sqlc.arg(id), sqlc.arg(platform), sqlc.arg(requested_canonical_asset_symbol), sqlc.arg(source_market_ref), sqlc.arg(quote_canonical_asset_symbol), sqlc.arg(price), sqlc.arg(retrieved_at), sqlc.narg(source_observed_at));
 
+-- Rank only the 24-hour window inside the covering selection index, then read
+-- the winners; a correlated per-row lookup rescans each symbol's history.
+-- Bulk imports can leave stale statistics favoring a Portfolio-only scan, so
+-- the window scan forces the selection index.
 -- name: ListLatestPricesByPlatformAt :many
-SELECT p.platform, p.canonical_asset_symbol, p.observed_at, p.price, p.quote_canonical_asset_symbol
-FROM prices p
-INNER JOIN (
-    SELECT x.canonical_asset_symbol, MAX(x.observed_at) AS observed_at
-    FROM prices x
-    WHERE x.platform = sqlc.arg(platform) AND x.observed_at <= sqlc.arg(at)
-    GROUP BY x.canonical_asset_symbol
-) latest ON latest.canonical_asset_symbol = p.canonical_asset_symbol AND latest.observed_at = p.observed_at
-WHERE p.platform = sqlc.arg(platform);
+SELECT p.* FROM (
+    SELECT ranked.portfolio_id, ranked.id FROM (
+        SELECT o.portfolio_id, o.id, ROW_NUMBER() OVER (PARTITION BY o.requested_canonical_asset_symbol ORDER BY o.price_at DESC, o.retrieved_at DESC, o.id DESC) AS rn
+        FROM price_observations o FORCE INDEX (idx_price_observations_selection)
+        WHERE o.portfolio_id = sqlc.arg(portfolio_id) AND o.platform = sqlc.arg(platform)
+          AND o.requested_canonical_asset_symbol IN (sqlc.slice('symbols'))
+          AND o.price_at >= DATE_SUB(sqlc.arg(at), INTERVAL 24 HOUR)
+          AND o.price_at <= sqlc.arg(price_cutoff) AND o.retrieved_at <= sqlc.arg(at)
+    ) ranked WHERE ranked.rn = 1
+) winners
+JOIN price_observations p ON p.portfolio_id = winners.portfolio_id AND p.id = winners.id;
 
--- name: GetNearestPriceAt :one
-SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
-FROM prices
-WHERE canonical_asset_symbol = sqlc.arg(canonical_asset_symbol)
-  AND (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
-  AND observed_at <= sqlc.arg(at)
-ORDER BY observed_at DESC
-LIMIT 1;
+-- name: GetPriceObservation :one
+SELECT * FROM price_observations WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
--- name: ListPricesForCanonicalAssetBetween :many
-SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
-FROM prices
-WHERE canonical_asset_symbol = sqlc.arg(canonical_asset_symbol) AND observed_at >= sqlc.arg(from_at) AND observed_at <= sqlc.arg(to_at)
-ORDER BY observed_at ASC;
+-- name: ListPriceObservationsByIDs :many
+SELECT * FROM price_observations WHERE portfolio_id = ? AND id IN (sqlc.slice('ids'));
