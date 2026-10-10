@@ -805,7 +805,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of the native platform asset or mapped Asset Symbol.
+          description: Case-insensitive literal substring of the Asset Symbol or Canonical Asset Symbol.
           schema:
             type: string
         - name: offset
@@ -899,7 +899,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of the invested, Base, or Quote Symbol.
+          description: Case-insensitive literal substring of the invested, Base, or Quote Asset Symbol.
           schema:
             type: string
         - name: offset
@@ -946,7 +946,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of any invested native or mapped Asset Symbol.
+          description: Case-insensitive literal substring of any invested Asset Symbol or Canonical Asset Symbol.
           schema:
             type: string
         - name: offset
@@ -1318,11 +1318,11 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/catalog/platform-assets:
+  /api/v1/portfolios/{portfolioId}/catalog/assets:
     get:
-      operationId: listPlatformAssets
+      operationId: listAssets
       tags: [catalog]
-      summary: List platform assets and their asset mapping
+      summary: List Assets and their Canonical Asset mappings
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -1353,25 +1353,25 @@ paths:
             default: 50
       responses:
         "200":
-          description: Platform assets.
+          description: Assets and their Canonical Asset mappings.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlatformAssetList"
+                $ref: "#/components/schemas/AssetList"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/mapping:
+  /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping:
     put:
-      operationId: putPlatformAssetMapping
+      operationId: putAssetMapping
       tags: [catalog]
-      summary: Override the asset symbol of a platform asset and recalculate affected points
+      summary: Override the Canonical Asset mapping of an Asset and recalculate affected points
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/PlatformAssetID"
+        - $ref: "#/components/parameters/AssetID"
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
@@ -1379,10 +1379,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PutPlatformAssetMappingRequest"
+              $ref: "#/components/schemas/PutAssetMappingRequest"
       responses:
         "200":
-          description: Updated platform asset.
+          description: Updated asset.
           headers:
             ETag:
               schema:
@@ -1390,7 +1390,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlatformAsset"
+                $ref: "#/components/schemas/Asset"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
@@ -1399,14 +1399,14 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/exclusion:
+  /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion:
     put:
-      operationId: putPlatformAssetExclusion
+      operationId: putAssetExclusion
       tags: [catalog]
-      summary: Ignore or restore a platform asset for future Collection Cycles in one Portfolio
+      summary: Ignore or restore an Asset for future Collection Cycles in one Portfolio
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/PlatformAssetID"
+        - $ref: "#/components/parameters/AssetID"
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
@@ -1414,10 +1414,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PutPlatformAssetExclusionRequest"
+              $ref: "#/components/schemas/PutAssetExclusionRequest"
       responses:
         "200":
-          description: Updated Portfolio platform asset rule.
+          description: Updated Portfolio asset rule.
           headers:
             ETag:
               schema:
@@ -1425,7 +1425,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlatformAsset"
+                $ref: "#/components/schemas/Asset"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
@@ -1637,7 +1637,7 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol}:
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}:
     patch:
       operationId: updateManualBalance
       tags: [holdings]
@@ -1645,7 +1645,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - name: platformAssetSymbol
+        - name: assetSymbol
           in: path
           required: true
           schema:
@@ -1688,7 +1688,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - name: platformAssetSymbol
+        - name: assetSymbol
           in: path
           required: true
           schema:
@@ -1792,8 +1792,8 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UUID"
-    PlatformAssetID:
-      name: platformAssetId
+    AssetID:
+      name: assetId
       in: path
       required: true
       schema:
@@ -2384,13 +2384,13 @@ components:
     OmittedBalance:
       type: object
       additionalProperties: false
-      required: [platformAssetSymbol, equity, reason]
+      required: [assetSymbol, equity, reason]
       properties:
-        platformAssetSymbol:
-          type: string
         assetSymbol:
           type: string
-          description: The Asset symbol the Platform Asset is mapped to, present only when it differs from platformAssetSymbol.
+        canonicalAssetSymbol:
+          type: string
+          description: The Canonical Asset Symbol the Asset is mapped to, present only when it differs from assetSymbol.
         equity:
           $ref: "#/components/schemas/Decimal"
         reason:
@@ -2606,13 +2606,13 @@ components:
     ManualBalance:
       type: object
       additionalProperties: false
-      required: [platformAssetSymbol, platformAssetId, assetSymbol, quantity, modifiedAt]
+      required: [assetSymbol, assetId, canonicalAssetSymbol, quantity, modifiedAt]
       properties:
-        platformAssetSymbol:
-          type: string
-        platformAssetId:
-          $ref: "#/components/schemas/UUID"
         assetSymbol:
+          type: string
+        assetId:
+          $ref: "#/components/schemas/UUID"
+        canonicalAssetSymbol:
           type: string
         quantity:
           $ref: "#/components/schemas/Decimal"
@@ -2650,9 +2650,9 @@ components:
     CreateManualBalance:
       type: object
       additionalProperties: false
-      required: [platformAssetSymbol, quantity]
+      required: [assetSymbol, quantity]
       properties:
-        platformAssetSymbol:
+        assetSymbol:
           type: string
           minLength: 1
           maxLength: 64
@@ -2668,7 +2668,7 @@ components:
     BalanceRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformAssetId, platformAssetSymbol, assetSymbol, equity, noPrice, freshness]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, assetId, assetSymbol, canonicalAssetSymbol, equity, noPrice, freshness]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2682,11 +2682,11 @@ components:
           type: string
         platform:
           type: string
-        platformAssetId:
+        assetId:
           $ref: "#/components/schemas/UUID"
-        platformAssetSymbol:
-          type: string
         assetSymbol:
+          type: string
+        canonicalAssetSymbol:
           type: string
         equity:
           $ref: "#/components/schemas/Decimal"
@@ -2751,11 +2751,11 @@ components:
           type: string
         kind:
           type: string
-        baseSymbol:
+        baseAssetSymbol:
           type: [string, "null"]
-        quoteSymbol:
+        quoteAssetSymbol:
           type: [string, "null"]
-        settlementSymbol:
+        settlementAssetSymbol:
           type: [string, "null"]
         expiryAt:
           type: [string, "null"]
@@ -2771,7 +2771,7 @@ components:
         marginMode:
           type: [string, "null"]
           enum: [cross, isolated, null]
-        marginCurrency:
+        marginAssetSymbol:
           type: [string, "null"]
         marginBasis:
           type: [string, "null"]
@@ -2824,7 +2824,7 @@ components:
     DualPositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, investSymbol, principal, status, freshness]
+      required: [accountId, accountName, accountType, identityId, identityName, platform, platformPositionRef, investAssetSymbol, principal, status, freshness]
       properties:
         issues:
           type: array
@@ -2848,11 +2848,11 @@ components:
           type: [string, "null"]
         orderRef:
           type: [string, "null"]
-        baseSymbol:
+        baseAssetSymbol:
           type: [string, "null"]
-        quoteSymbol:
+        quoteAssetSymbol:
           type: [string, "null"]
-        investSymbol:
+        investAssetSymbol:
           type: string
         principal:
           $ref: "#/components/schemas/Decimal"
@@ -2880,11 +2880,11 @@ components:
     EarnAmount:
       type: object
       additionalProperties: false
-      required: [platformAssetSymbol, amount]
+      required: [assetSymbol, amount]
       properties:
-        assetSymbol:
+        canonicalAssetSymbol:
           type: [string, "null"]
-        platformAssetSymbol:
+        assetSymbol:
           type: string
         amount:
           $ref: "#/components/schemas/Decimal"
@@ -2903,14 +2903,14 @@ components:
           type: string
         label:
           type: string
-        platformAssetSymbol:
+        assetSymbol:
           type: [string, "null"]
     EarnReward:
       type: object
       additionalProperties: false
-      required: [platformAssetSymbol, amount, kind]
+      required: [assetSymbol, amount, kind]
       properties:
-        platformAssetSymbol:
+        assetSymbol:
           type: string
         amount:
           $ref: "#/components/schemas/Decimal"
@@ -3383,7 +3383,7 @@ components:
     CapitalFlow:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, direction, assetSymbol, quantity, effectiveAt, version, createdAt, updatedAt]
+      required: [id, portfolioId, direction, canonicalAssetSymbol, quantity, effectiveAt, version, createdAt, updatedAt]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3392,7 +3392,7 @@ components:
         direction:
           type: string
           enum: [contribution, withdrawal]
-        assetSymbol:
+        canonicalAssetSymbol:
           type: string
         quantity:
           $ref: "#/components/schemas/Decimal"
@@ -3428,12 +3428,12 @@ components:
     CreateCapitalFlowRequest:
       type: object
       additionalProperties: false
-      required: [direction, assetSymbol, quantity, effectiveAt]
+      required: [direction, canonicalAssetSymbol, quantity, effectiveAt]
       properties:
         direction:
           type: string
           enum: [contribution, withdrawal]
-        assetSymbol:
+        canonicalAssetSymbol:
           type: string
         quantity:
           $ref: "#/components/schemas/Decimal"
@@ -3454,7 +3454,7 @@ components:
         direction:
           type: string
           enum: [contribution, withdrawal]
-        assetSymbol:
+        canonicalAssetSymbol:
           type: string
         quantity:
           $ref: "#/components/schemas/Decimal"
@@ -3468,10 +3468,10 @@ components:
           format: uuid
         note:
           type: [string, "null"]
-    PlatformAsset:
+    Asset:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, assetSymbol, mappingSource, firstSeenAt, lastSeenAt, version, ignored, exclusionVersion]
+      required: [id, platform, symbol, canonicalSymbol, mappingSource, firstSeenAt, lastSeenAt, version, ignored, exclusionVersion]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3479,7 +3479,7 @@ components:
           type: string
         symbol:
           type: string
-        assetSymbol:
+        canonicalSymbol:
           type: string
         name:
           type: [string, "null"]
@@ -3503,7 +3503,7 @@ components:
           format: date-time
         exclusionVersion:
           type: integer
-    PlatformAssetList:
+    AssetList:
       type: object
       additionalProperties: false
       required: [items, page]
@@ -3511,19 +3511,19 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PlatformAsset"
+            $ref: "#/components/schemas/Asset"
         page:
           $ref: "#/components/schemas/OffsetPage"
-    PutPlatformAssetMappingRequest:
+    PutAssetMappingRequest:
       type: object
       additionalProperties: false
-      required: [assetSymbol]
+      required: [canonicalSymbol]
       properties:
-        assetSymbol:
+        canonicalSymbol:
           type: string
           minLength: 1
           maxLength: 64
-    PutPlatformAssetExclusionRequest:
+    PutAssetExclusionRequest:
       type: object
       additionalProperties: false
       required: [ignored]
@@ -3546,11 +3546,11 @@ components:
           type: string
         kind:
           type: string
-        baseSymbol:
+        baseAssetSymbol:
           type: [string, "null"]
-        quoteSymbol:
+        quoteAssetSymbol:
           type: [string, "null"]
-        settlementSymbol:
+        settlementAssetSymbol:
           type: [string, "null"]
         expiryAt:
           type: [string, "null"]

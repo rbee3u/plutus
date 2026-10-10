@@ -38,7 +38,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	}
 	sum := decimal.Zero()
 	for _, row := range balances.Items {
-		if row.PlatformAssetSymbol != "USDT" || row.EquityUSD == nil {
+		if row.AssetSymbol != "USDT" || row.EquityUSD == nil {
 			t.Fatalf("unexpected filtered balance: %+v", row)
 		}
 		sum = decimal.Add(sum, decimal.ParseOrZero(*row.EquityUSD))

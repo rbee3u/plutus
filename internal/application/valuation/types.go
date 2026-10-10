@@ -37,13 +37,13 @@ type Issue struct {
 }
 
 // Omitted names one Balance excluded from an Account Valuation.
-// Its symbol JSON tag preserves stored valuations; HTTP uses platformAssetSymbol.
+// Its symbol JSON tag preserves stored valuations; HTTP uses assetSymbol.
 type Omitted struct {
-	PlatformAssetSymbol string `json:"symbol"`
-	// AssetSymbol is set only when the platform asset is mapped to a different Asset symbol.
-	AssetSymbol string `json:"assetSymbol,omitempty"`
-	Equity      string `json:"equity"`
-	Reason      string `json:"reason"`
+	AssetSymbol string `json:"symbol"`
+	// CanonicalAssetSymbol is set only when it differs from AssetSymbol.
+	CanonicalAssetSymbol string `json:"assetSymbol,omitempty"`
+	Equity               string `json:"equity"`
+	Reason               string `json:"reason"`
 }
 
 // BoundaryEvent is an Account entering or leaving the Portfolio Boundary.

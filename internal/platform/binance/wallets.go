@@ -55,7 +55,7 @@ func mapWallet(ep endpoint, rows []walletAsset) ([]adapters.Balance, error) {
 			return nil, err
 		}
 		out = append(out, adapters.Balance{
-			PlatformAssetSymbol: symbol,
+			AssetSymbol:         symbol,
 			Equity:              decimal.Format(total),
 			AvailableToWithdraw: decimal.FormatPtr(parsed["free"]),
 			AvailableToTrade:    decimal.FormatPtr(parsed["free"]),
@@ -147,7 +147,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.InvestAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -244,10 +244,10 @@ func dualInvestment(ctx context.Context, c *client) ([]adapters.DualPosition, er
 
 // Running states may overlap while reads are in progress, but subscription terms must agree.
 func sameDualTerms(a, b *adapters.DualPosition) bool {
-	if a.InvestSymbol != b.InvestSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) || (a.SubscribedAt != nil && b.SubscribedAt != nil && !a.SubscribedAt.Equal(*b.SubscribedAt)) {
+	if a.InvestAssetSymbol != b.InvestAssetSymbol || a.Principal != b.Principal || (a.ExpiryAt != nil && b.ExpiryAt != nil && !a.ExpiryAt.Equal(*b.ExpiryAt)) || (a.SubscribedAt != nil && b.SubscribedAt != nil && !a.SubscribedAt.Equal(*b.SubscribedAt)) {
 		return false
 	}
-	for _, pair := range [][2]*string{{a.ProductRef, b.ProductRef}, {a.OrderRef, b.OrderRef}, {a.BaseSymbol, b.BaseSymbol}, {a.QuoteSymbol, b.QuoteSymbol}, {a.Direction, b.Direction}, {a.TargetPrice, b.TargetPrice}, {a.AnnualizedRate, b.AnnualizedRate}, {a.RateKind, b.RateKind}} {
+	for _, pair := range [][2]*string{{a.ProductRef, b.ProductRef}, {a.OrderRef, b.OrderRef}, {a.BaseAssetSymbol, b.BaseAssetSymbol}, {a.QuoteAssetSymbol, b.QuoteAssetSymbol}, {a.Direction, b.Direction}, {a.TargetPrice, b.TargetPrice}, {a.AnnualizedRate, b.AnnualizedRate}, {a.RateKind, b.RateKind}} {
 		if pair[0] != nil && pair[1] != nil && *pair[0] != *pair[1] {
 			return false
 		}
@@ -276,16 +276,16 @@ func mapDualPosition(row *dualInvestmentPosition) (adapters.DualPosition, error)
 	if err != nil {
 		return adapters.DualPosition{}, err
 	}
-	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.OptionalText(dualID(row.OrderID)), InvestSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.OptionalText(row.StrikePrice), AnnualizedRate: adapters.OptionalText(row.APR), RateKind: adapters.OptionalText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
+	p := adapters.DualPosition{PlatformPositionRef: dualID(row.ID), OrderRef: adapters.OptionalText(dualID(row.OrderID)), InvestAssetSymbol: row.InvestCoin, Principal: row.SubscriptionAmount, TargetPrice: adapters.OptionalText(row.StrikePrice), AnnualizedRate: adapters.OptionalText(row.APR), RateKind: adapters.OptionalText("apr"), ExpiryAt: expiry, SubscribedAt: subscribed}
 	switch row.OptionType {
 	case "PUT":
 		p.Direction = adapters.OptionalText("buy_low")
-		p.BaseSymbol = adapters.OptionalText(row.ExercisedCoin)
-		p.QuoteSymbol = adapters.OptionalText(row.InvestCoin)
+		p.BaseAssetSymbol = adapters.OptionalText(row.ExercisedCoin)
+		p.QuoteAssetSymbol = adapters.OptionalText(row.InvestCoin)
 	case "CALL":
 		p.Direction = adapters.OptionalText("sell_high")
-		p.BaseSymbol = adapters.OptionalText(row.InvestCoin)
-		p.QuoteSymbol = adapters.OptionalText(row.ExercisedCoin)
+		p.BaseAssetSymbol = adapters.OptionalText(row.InvestCoin)
+		p.QuoteAssetSymbol = adapters.OptionalText(row.ExercisedCoin)
 	case "":
 	default:
 		return p, adapters.Malformed(where, "optionType")

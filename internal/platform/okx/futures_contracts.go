@@ -124,12 +124,12 @@ func mapFuturesContract(m market, row *nativeInstrumentRow) (adapters.FuturesCon
 	// instrument family carries OKX's settlement suffixes such as "BTC-USD_UM".
 	base, quote, _ := strings.Cut(strings.TrimSpace(row.Uly), "-")
 	futuresContract := adapters.FuturesContract{
-		Symbol:           instID,
-		Kind:             kind,
-		BaseSymbol:       base,
-		QuoteSymbol:      quote,
-		SettlementSymbol: strings.TrimSpace(row.SettleCcy),
-		ContractSize:     contractSize(row.CtVal, row.CtMult),
+		Symbol:                instID,
+		Kind:                  kind,
+		BaseAssetSymbol:       base,
+		QuoteAssetSymbol:      quote,
+		SettlementAssetSymbol: strings.TrimSpace(row.SettleCcy),
+		ContractSize:          contractSize(row.CtVal, row.CtMult),
 	}
 	if delivery {
 		millis, err := strconv.ParseInt(strings.TrimSpace(row.ExpTime), 10, 64)

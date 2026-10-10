@@ -35,7 +35,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 					t.Fatalf("positions: %+v", r)
 				}
 				p := r.DualPositions[0]
-				if p.PlatformPositionRef != "19035" || *p.ProductRef != "36320" || *p.BaseSymbol != "ETH" || *p.Direction != "buy_low" || *p.TargetPrice != "2325" || *p.AnnualizedRate != "9.027" || *p.RateKind != "apy" {
+				if p.PlatformPositionRef != "19035" || *p.ProductRef != "36320" || *p.BaseAssetSymbol != "ETH" || *p.Direction != "buy_low" || *p.TargetPrice != "2325" || *p.AnnualizedRate != "9.027" || *p.RateKind != "apy" {
 					t.Fatalf("synthetic terms: %+v", p)
 				}
 			}
@@ -68,17 +68,17 @@ func TestDocumentedDualPosition(t *testing.T) {
 	row := synthetic.List[0]
 	p := dual.DualPositions[0]
 	if p.PlatformPositionRef != row.PositionID || p.ProductRef == nil || *p.ProductRef != row.ProductID || p.OrderRef == nil || *p.OrderRef != row.OrderID ||
-		p.BaseSymbol == nil || *p.BaseSymbol != row.BaseCoin || p.QuoteSymbol == nil || *p.QuoteSymbol != row.QuoteCoin ||
-		p.InvestSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "sell_high" ||
+		p.BaseAssetSymbol == nil || *p.BaseAssetSymbol != row.BaseCoin || p.QuoteAssetSymbol == nil || *p.QuoteAssetSymbol != row.QuoteCoin ||
+		p.InvestAssetSymbol != row.InvestCoin || p.Principal != row.Amount || p.Direction == nil || *p.Direction != "sell_high" ||
 		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1700600000000 ||
 		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1700000000000 ||
 		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
 		t.Fatalf("synthetic Dual Asset terms: %+v", p)
 	}
-	if dual.Balances[0].PlatformAssetSymbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
+	if dual.Balances[0].AssetSymbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
 		t.Fatalf("synthetic Dual Asset principal: %+v", dual.Balances)
 	}
-	if len(earn.Balances) != 1 || earn.Balances[0].PlatformAssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
+	if len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("ordinary Earn must exclude Dual Asset principal: %+v", earn.Balances)
 	}
 }

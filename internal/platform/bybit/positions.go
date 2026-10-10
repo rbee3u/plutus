@@ -159,11 +159,11 @@ func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode 
 	position := adapters.Position{
 		PlatformPositionRef: fmt.Sprintf("%s:%d", row.Symbol, *row.PositionIdx),
 		FuturesContract: adapters.FuturesContract{
-			Symbol:           info.Symbol,
-			Kind:             kind,
-			BaseSymbol:       info.BaseCoin,
-			QuoteSymbol:      info.QuoteCoin,
-			SettlementSymbol: info.SettleCoin,
+			Symbol:                info.Symbol,
+			Kind:                  kind,
+			BaseAssetSymbol:       info.BaseCoin,
+			QuoteAssetSymbol:      info.QuoteCoin,
+			SettlementAssetSymbol: info.SettleCoin,
 		},
 		Side:          side,
 		PositionMode:  "one_way",
@@ -190,7 +190,7 @@ func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode 
 		position.LiquidationPrice = adapters.NonZero(row.LiqPrice)
 		position.Leverage = adapters.NonZero(row.Leverage)
 		position.Margin = adapters.Plain(row.PositionIM)
-		position.MarginCurrency, position.MarginBasis = info.SettleCoin, "initial"
+		position.MarginAssetSymbol, position.MarginBasis = info.SettleCoin, "initial"
 		position.MarginMode = "cross"
 		if mode == adapters.MarginBybitIsolated {
 			position.MarginMode = "isolated"

@@ -35,8 +35,8 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 			t.Fatalf("unexpected or duplicate synthetic position %+v", position)
 		}
 		seen[position.PlatformPositionRef] = true
-		if deref(position.OrderRef) != expected.order || position.InvestSymbol != expected.invest ||
-			position.Principal != expected.principal || deref(position.BaseSymbol) != "SOL" || deref(position.QuoteSymbol) != "USDT" ||
+		if deref(position.OrderRef) != expected.order || position.InvestAssetSymbol != expected.invest ||
+			position.Principal != expected.principal || deref(position.BaseAssetSymbol) != "SOL" || deref(position.QuoteAssetSymbol) != "USDT" ||
 			deref(position.Direction) != expected.direction || deref(position.TargetPrice) != expected.target ||
 			deref(position.AnnualizedRate) != expected.apr || deref(position.RateKind) != "apr" ||
 			position.ExpiryAt == nil || !position.ExpiryAt.Equal(time.UnixMilli(1700600000000).UTC()) ||
@@ -104,7 +104,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 						t.Fatalf("synthetic principal mapping: %+v", report)
 					}
 					for _, p := range report.DualPositions {
-						if len(p.MissingFields()) != 0 || deref(p.BaseSymbol) != "SOL" || deref(p.QuoteSymbol) != "USDT" {
+						if len(p.MissingFields()) != 0 || deref(p.BaseAssetSymbol) != "SOL" || deref(p.QuoteAssetSymbol) != "USDT" {
 							t.Fatalf("synthetic product terms: %+v", p)
 						}
 					}

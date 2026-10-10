@@ -1,12 +1,6 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { type FormEvent, useRef, useState } from "react";
-import {
-  createCapitalFlow,
-  getCapitalFlow,
-  patchCapitalFlow,
-  problemMessage,
-  readEtag,
-} from "@/api";
+import { createCapitalFlow, getCapitalFlow, patchCapitalFlow, problemMessage } from "@/api";
 import type { CapitalFlow } from "@/api";
 import type { AccountOption } from "@/shared/lib/useIdentities";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
@@ -25,12 +19,11 @@ export function flowEtag(item: CapitalFlow): string {
 }
 
 export type FlowDialogRequest =
-  | { nonce: number; mode: "create" }
-  | { nonce: number; mode: "edit"; item: CapitalFlow; etag: string };
+  { nonce: number; mode: "create" } | { nonce: number; mode: "edit"; item: CapitalFlow };
 
 interface FlowFields {
   direction: "contribution" | "withdrawal";
-  assetSymbol: string;
+  canonicalAssetSymbol: string;
   quantity: string;
   valueUsd: string;
   effectiveAt: string;
@@ -40,7 +33,7 @@ interface FlowFields {
 
 const emptyForm: FlowFields = {
   direction: "contribution",
-  assetSymbol: "",
+  canonicalAssetSymbol: "",
   quantity: "",
   valueUsd: "",
   effectiveAt: "",
@@ -51,7 +44,7 @@ const emptyForm: FlowFields = {
 function formFromFlow(item: CapitalFlow): FlowFields {
   return {
     direction: item.direction,
-    assetSymbol: item.assetSymbol,
+    canonicalAssetSymbol: item.canonicalAssetSymbol,
     quantity: item.quantity,
     valueUsd: item.valueUsd ?? "",
     effectiveAt: toDatetimeLocalValue(item.effectiveAt),
@@ -112,7 +105,8 @@ function FlowForm({
   const [form, setForm] = useState<FlowFields>(() =>
     request.mode === "edit" ? formFromFlow(request.item) : emptyForm,
   );
-  const [etag, setEtag] = useState(request.mode === "edit" ? request.etag : "");
+  const [baseline, setBaseline] = useState(request.mode === "edit" ? request.item : null);
+  const [needsReload, setNeedsReload] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const editingId = request.mode === "edit" ? request.item.id : null;
@@ -122,26 +116,39 @@ function FlowForm({
     setForm((current) => ({ ...current, ...patch }));
   }
 
-  async function reloadLatest(flowId: string, message: string) {
-    const result = await getCapitalFlow({ path: { portfolioId, flowId } });
-    if (result.response?.status === 401) {
-      redirect();
-      return;
-    }
-    if (result.data) {
+  async function reloadLatest() {
+    if (!baseline) return;
+    setBusy(true);
+    try {
+      const result = await getCapitalFlow({ path: { portfolioId, flowId: baseline.id } });
+      if (result.response?.status === 401) {
+        redirect();
+        return;
+      }
+      if (result.error || !result.data) {
+        throw new Error(
+          problemMessage(result.error, "The latest Capital Flow could not be loaded."),
+        );
+      }
       setForm(formFromFlow(result.data));
-      setEtag(readEtag(result.response, flowEtag(result.data)));
+      setBaseline(result.data);
+      setNeedsReload(false);
+      setError(null);
+    } catch (cause) {
+      setError(problemMessage(cause, "The latest Capital Flow could not be loaded."));
+    } finally {
+      setBusy(false);
     }
-    setError(message);
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (busy || needsReload) return;
     setBusy(true);
     setError(null);
     try {
       const effectiveAt = fromDatetimeLocalValue(form.effectiveAt);
-      const assetSymbol = form.assetSymbol.trim();
+      const canonicalAssetSymbol = form.canonicalAssetSymbol.trim();
       const quantity = form.quantity.trim();
       const valueUsd = form.valueUsd.trim();
       const note = form.note.trim();
@@ -156,14 +163,14 @@ function FlowForm({
         setError("Value (USD) must be zero or more, or left empty when unknown.");
         return;
       }
-      if (editingId) {
+      if (baseline) {
         const result = await write(() =>
           patchCapitalFlow({
-            path: { portfolioId, flowId: editingId },
-            headers: { "If-Match": etag },
+            path: { portfolioId, flowId: baseline.id },
+            headers: { "If-Match": flowEtag(baseline) },
             body: {
               direction: form.direction,
-              assetSymbol,
+              canonicalAssetSymbol,
               quantity,
               valueUsd: valueUsd ? valueUsd : null,
               effectiveAt,
@@ -173,9 +180,9 @@ function FlowForm({
           }),
         );
         if (result.response?.status === 412) {
-          await reloadLatest(
-            editingId,
-            "The flow changed in another session. The form now shows the latest values; review and save again.",
+          setNeedsReload(true);
+          setError(
+            "The flow changed in another session. Reload the latest flow to review before saving again.",
           );
           return;
         }
@@ -191,7 +198,7 @@ function FlowForm({
             headers: { "Idempotency-Key": createKey.current },
             body: {
               direction: form.direction,
-              assetSymbol,
+              canonicalAssetSymbol,
               quantity,
               effectiveAt,
               ...(valueUsd ? { valueUsd } : {}),
@@ -221,6 +228,11 @@ function FlowForm({
           {error}
         </p>
       ) : null}
+      {needsReload ? (
+        <ActionButton type="button" disabled={busy} onClick={() => void reloadLatest()}>
+          Reload latest flow
+        </ActionButton>
+      ) : null}
       <div className={shared.field}>
         <span>Direction</span>
         <SegmentedControl<"contribution" | "withdrawal">
@@ -228,24 +240,26 @@ function FlowForm({
           onChange={(direction) => set({ direction })}
           label="Direction"
           options={[
-            { value: "contribution", label: "+ Contribution" },
-            { value: "withdrawal", label: "- Withdrawal" },
+            { value: "contribution", label: "+ Contribution", disabled: busy },
+            { value: "withdrawal", label: "- Withdrawal", disabled: busy },
           ]}
         />
       </div>
       <div className={styles.formRow2}>
         <label className={shared.field}>
-          <span>Asset symbol</span>
+          <span>Canonical Asset</span>
           <TextInput
-            value={form.assetSymbol}
+            disabled={busy}
+            value={form.canonicalAssetSymbol}
             placeholder="USDT"
-            onChange={(event) => set({ assetSymbol: event.target.value })}
+            onChange={(event) => set({ canonicalAssetSymbol: event.target.value })}
             required
           />
         </label>
         <label className={shared.field}>
           <span>Quantity</span>
           <TextInput
+            disabled={busy}
             value={form.quantity}
             inputMode="decimal"
             placeholder="0.00"
@@ -258,6 +272,7 @@ function FlowForm({
         <label className={shared.field}>
           <span>Effective at</span>
           <TextInput
+            disabled={busy}
             type="datetime-local"
             value={form.effectiveAt}
             onChange={(event) => set({ effectiveAt: event.target.value })}
@@ -267,6 +282,7 @@ function FlowForm({
         <label className={shared.field}>
           <span>Value (USD, optional)</span>
           <TextInput
+            disabled={busy}
             value={form.valueUsd}
             inputMode="decimal"
             placeholder="Leave empty when unknown"
@@ -276,7 +292,11 @@ function FlowForm({
       </div>
       <label className={shared.field}>
         <span>Account (optional)</span>
-        <Select value={form.accountId} onChange={(event) => set({ accountId: event.target.value })}>
+        <Select
+          disabled={busy}
+          value={form.accountId}
+          onChange={(event) => set({ accountId: event.target.value })}
+        >
           <option value="">Portfolio level</option>
           {!knownAccount ? <option value={form.accountId}>Current account</option> : null}
           {accounts.map((account) => (
@@ -289,6 +309,7 @@ function FlowForm({
       <label className={shared.field}>
         <span>Note</span>
         <TextArea
+          disabled={busy}
           value={form.note}
           rows={2}
           placeholder="Optional notes"
@@ -296,7 +317,7 @@ function FlowForm({
         />
       </label>
       <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
+        <ActionButton type="submit" tone="primary" disabled={busy || needsReload}>
           {editingId ? "Save flow" : "Record flow"}
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>

@@ -19,7 +19,7 @@ export function CatalogPage() {
     }
   }, [params, tab, update]);
   const portfolio = usePortfolio(portfolioId);
-  const timezone = portfolio.data?.item.timezone;
+  const timezone = portfolio.data?.timezone;
   const filters = useCatalogFilters();
 
   return (

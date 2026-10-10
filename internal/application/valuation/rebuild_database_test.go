@@ -99,13 +99,13 @@ func TestRebuildPreservesScopeSourceTimeAndInterruptedReports(t *testing.T) {
 	ids := []uuid.UUID{first, second}
 	slices.SortFunc(ids, func(a, b uuid.UUID) int { return strings.Compare(a.String(), b.String()) })
 	chosen := ids[1]
-	platformAsset := uuid.New()
+	asset := uuid.New()
 	symbol := "REBUILD-" + uuid.NewString()[:8]
-	f.exec("INSERT INTO platform_assets (id,platform,symbol,asset_symbol,first_seen_at,last_seen_at,created_at,updated_at) VALUES (?,'binance',?,?,?,?,?,?)", platformAsset[:], symbol, symbol, sourceAt, sourceAt, sourceAt, sourceAt)
+	f.exec("INSERT INTO assets (id,platform,symbol,canonical_symbol,first_seen_at,last_seen_at,created_at,updated_at) VALUES (?,'binance',?,?,?,?,?,?)", asset[:], symbol, symbol, sourceAt, sourceAt, sourceAt, sourceAt)
 	for _, id := range ids {
-		f.exec("INSERT INTO balances (report_id,portfolio_id,platform_asset_id,equity) VALUES (?,?,?,7)", id[:], f.portfolio[:], platformAsset[:])
+		f.exec("INSERT INTO balances (report_id,portfolio_id,asset_id,equity) VALUES (?,?,?,7)", id[:], f.portfolio[:], asset[:])
 	}
-	f.exec("INSERT INTO prices (platform,asset_symbol,observed_at,price,quote_asset_symbol) VALUES ('binance',?,?,3,'USD'),('binance',?,?,9,'USD')", symbol, sourceAt, symbol, f.at)
+	f.exec("INSERT INTO prices (platform,canonical_asset_symbol,observed_at,price,quote_canonical_asset_symbol) VALUES ('binance',?,?,3,'USD'),('binance',?,?,9,'USD')", symbol, sourceAt, symbol, f.at)
 	// A newer incompatible scope and an equal-time source must both be ignored.
 	f.report(f.job(f.at.Add(-time.Minute), "failed"), account, f.at.Add(-time.Minute), "ok", 1, "99")
 	f.report(f.job(f.at, "failed"), account, f.at, "ok", 2, "999")
@@ -258,9 +258,9 @@ func TestHistoricalPriceFallbackTiesMatchOrdinaryLookup(t *testing.T) {
 	f := newRebuildFixture(t)
 	symbol := "PRICE-" + uuid.NewString()[:8]
 	for i, platform := range []string{"binance", "okx"} {
-		f.exec("INSERT INTO prices (platform,asset_symbol,observed_at,price,quote_asset_symbol) VALUES (?,?,?,?, 'USD')", platform, symbol, f.at, i+10)
+		f.exec("INSERT INTO prices (platform,canonical_asset_symbol,observed_at,price,quote_canonical_asset_symbol) VALUES (?,?,?,?, 'USD')", platform, symbol, f.at, i+10)
 	}
-	rows, err := f.service.q.ListRebuildPrices(f.ctx, sqlcgen.ListRebuildPricesParams{AssetSymbols: []string{symbol}, FromAt: f.at.Add(-maxPriceAge), ToAt: f.at})
+	rows, err := f.service.q.ListRebuildPrices(f.ctx, sqlcgen.ListRebuildPricesParams{CanonicalAssetSymbols: []string{symbol}, FromAt: f.at.Add(-maxPriceAge), ToAt: f.at})
 	if err != nil {
 		t.Fatal(err)
 	}

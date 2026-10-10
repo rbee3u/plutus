@@ -96,7 +96,7 @@ func (r *earnHolding) position(field, amount string) (adapters.EarnPosition, err
 			p.AddDetail("Auto subscribe", "Disabled")
 		}
 	}
-	p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: r.Asset, Amount: amount})
+	p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: r.Asset, Amount: amount})
 	err := adapters.NormalizeEarnPosition(&p)
 	return p, err
 }

@@ -107,18 +107,18 @@ bank assets are outside scope. It remains selected with disabled, invalid, or
 unconfigured Connections. Identity archive removes it from the boundary while
 retaining its history and current records.
 
-One normalized Platform Asset code has one current signed quantity. Duplicate
-addition requires editing; zero clears it. Negative quantities represent
-liabilities or offsets. Revisions are immutable. Changing a Platform Asset code
-requires deleting and creating a record. Saving takes effect at the next
-Collection Cycle, whose chosen inputs remain fixed across retries. Manual
-complete-set reports are distinct from exchange Observations; collection time is
-separate from the last User modification time. A successful Manual report does
-not count as successful private Identity collection.
+One normalized Asset code has one current signed quantity. Duplicate addition
+requires editing; zero clears it. Negative quantities represent liabilities or
+offsets. Revisions are immutable. Changing an Asset code requires deleting and
+creating a record. Saving takes effect at the next Collection Cycle, whose
+chosen inputs remain fixed across retries. Manual complete-set reports are
+distinct from exchange Observations; collection time is separate from the last
+User modification time. A successful Manual report does not count as successful
+private Identity collection.
 
 Manual uses calculated valuation and eligible own-Platform public prices,
-including Assets held only in Manual. Mapping and Platform Asset Exclusions
-apply; excluded current records remain editable. Missing prices retain signed
+including Assets held only in Manual. Mapping and Asset Exclusions apply;
+excluded current records remain editable. Missing prices retain signed
 quantities, name omissions, and make totals incomplete.
 
 Effective quantity changes mark comparisons crossing their Valuation Point
@@ -140,15 +140,18 @@ or Account counts.
 
 ## Assets and valuation
 
-Assets are identified by normalized symbol across Platforms. Different symbols
-remain distinct even when economically related; USD and USDT share valuation,
-not identity. Platform Assets map automatically by normalized symbol unless the
-User overrides them. Futures Contracts are discovered from Positions; perpetual
-and delivery contracts remain distinct from each other and from Assets.
+Assets are identified by Platform and normalized Asset Symbol. Each maps to a
+Canonical Asset, automatically by normalized symbol unless the User overrides
+it. Equal Canonical Asset Symbols do not merge Asset records, holdings, or
+exclusions. Different Canonical Asset Symbols remain distinct even when
+economically related; USD and USDT share valuation, not identity. Futures
+Contracts are discovered from Positions; perpetual and delivery contracts remain
+distinct from each other and from Assets.
 
 USD is the only Valuation Asset. USD, USDT, and USDC count as exactly 1 USD;
-Plutus does not detect stablecoin de-pegs. Other Assets, including other
-stablecoins, require prices. Source quantities and prices remain available.
+Plutus does not detect stablecoin de-pegs. Other Canonical Assets, including
+other stablecoins, require prices. Source quantities and prices remain
+available.
 
 Eligible prices use USD, USDT, or USDC quotes at or before the report's
 observation time, no more than 24 hours old. The accepted policy requires the
@@ -169,19 +172,19 @@ Portfolio totals sum known value and name omissions, including missing Accounts
 and Balances without equity or prices. A missing Account's own value is unknown.
 Unknown is never zero or silently omitted.
 
-### Platform Asset Exclusions and mapping changes
+### Asset Exclusions and mapping changes
 
-A Platform Asset Exclusion requires an auditable reason and applies to cycles
-created after the change. It removes the platform asset from calculated values
-and ordinary Balance reads without inventing a zero price. Observations remain
-stored; reported equity, Positions, and Capital Flows are unaffected. The
-Catalog and audit trail expose the rule and reason.
+An Asset Exclusion requires an auditable reason and applies to cycles created
+after the change. It removes the asset from calculated values and ordinary
+Balance reads without inventing a zero price. Observations remain stored;
+reported equity, Positions, and Capital Flows are unaffected. The Catalog and
+audit trail expose the rule and reason.
 
 Exclusions do not rewrite existing points. Rebuilding uses the policy effective
-at each cycle's creation. Value Change is incomplete when a relevant platform
-asset's treatment differs between endpoint cycles; exclusion and restoration
-between endpoints with matching treatment do not alone make it incomplete.
-Policy changes are neither Capital Flows nor Boundary Events.
+at each cycle's creation. Value Change is incomplete when a relevant Asset's
+treatment differs between endpoint cycles; exclusion and restoration between
+endpoints with matching treatment do not alone make it incomplete. Policy
+changes are neither Capital Flows nor Boundary Events.
 
 Mapping corrections rebuild affected Portfolios. Evaluation times and observed
 facts remain; derived Account values, Boundary Events, and totals can change.
@@ -231,7 +234,7 @@ aggregate gaps fail both selected dependents; unrelated Accounts retain failure
 isolation.
 
 The check compares combined principal with the Platform's Earn aggregate before
-Platform Asset Exclusions. A shortfall greater than
+Asset Exclusions. A shortfall greater than
 `max(1% of the absolute Platform total, 1 USD)` fails explicitly. Missing prices
 skip the comparison; selected unpriced Balances retain normal omissions.
 Binance's dedicated Dual aggregate is optional diagnostics, not reported equity
@@ -267,10 +270,11 @@ Value Change = end value - start value - contributions + withdrawals
 
 Flows enter the calculation during `(start.evaluatedAt, end.evaluatedAt]`. The
 User can supply an explicit nonnegative USD value. Otherwise USD-equivalent
-quantities value at 1 USD; other Assets require a price at or before the flow's
-effective time, no more than 24 hours old. Automatic values are stored when the
-flow is created or updated. Later prices do not automatically repair an unvalued
-flow; missing values make affected Value Changes incomplete and name the flow.
+quantities value at 1 USD; other Canonical Assets require a price at or before
+the flow's effective time, no more than 24 hours old. Automatic values are
+stored when the flow is created or updated. Later prices do not automatically
+repair an unvalued flow; missing values make affected Value Changes incomplete
+and name the flow.
 
 ## Calendar periods
 

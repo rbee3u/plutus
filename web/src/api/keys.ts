@@ -75,9 +75,9 @@ const registry = {
     "audit-events",
     true,
   ),
-  catalogPlatformAssets: family<
+  catalogAssets: family<
     [platform?: string, search?: string, ignoredOnly?: boolean, offset?: number]
-  >("catalog-platform-assets", true),
+  >("catalog-assets", true),
   catalogFuturesContracts: family<[platform?: string, search?: string, offset?: number]>(
     "catalog-futures-contracts",
     true,

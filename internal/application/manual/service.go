@@ -23,12 +23,14 @@ import (
 )
 
 // Balance is a user-entered quantity, never an editable exchange observation.
+// JSON tags preserve immutable revisions and frozen cycle inputs, including new writes.
+// HTTP and audit projections use the current domain vocabulary.
 type Balance struct {
-	PlatformAssetSymbol string    `json:"platformAssetSymbol"`
-	PlatformAssetID     uuid.UUID `json:"platformAssetId"`
-	AssetSymbol         string    `json:"assetSymbol"`
-	Quantity            string    `json:"quantity"`
-	ModifiedAt          time.Time `json:"modifiedAt"`
+	AssetSymbol          string    `json:"platformAssetSymbol"`
+	AssetID              uuid.UUID `json:"platformAssetId"`
+	CanonicalAssetSymbol string    `json:"assetSymbol"`
+	Quantity             string    `json:"quantity"`
+	ModifiedAt           time.Time `json:"modifiedAt"`
 }
 
 // State separates the editable ledger from the last completed valuation.
@@ -52,11 +54,11 @@ func ParseETag(value string) (uint64, bool) {
 
 // Input carries a balance mutation and its authenticated audit actor.
 type Input struct {
-	PlatformAssetSymbol string
-	Quantity            string
-	Version             uint64
-	ActorUserID         uuid.UUID
-	RequestID           string
+	AssetSymbol string
+	Quantity    string
+	Version     uint64
+	ActorUserID uuid.UUID
+	RequestID   string
 }
 
 // Service owns manual ledger and revision persistence.
@@ -67,8 +69,8 @@ type Service struct {
 }
 
 // NewService constructs a manual ledger service.
-func NewService(db *sql.DB, platformAssets *catalog.Service) *Service {
-	return &Service{db: db, now: time.Now, catalog: platformAssets}
+func NewService(db *sql.DB, assets *catalog.Service) *Service {
+	return &Service{db: db, now: time.Now, catalog: assets}
 }
 
 func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uuid.UUID) ([]Balance, error) {
@@ -78,11 +80,11 @@ func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uu
 	}
 	out := make([]Balance, 0, len(rows))
 	for _, row := range rows {
-		id, err := uuid.FromBytes(row.PlatformAssetID)
+		id, err := uuid.FromBytes(row.AssetID)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Balance{PlatformAssetSymbol: row.PlatformAssetSymbol, PlatformAssetID: id, AssetSymbol: row.AssetSymbol, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ModifiedAt})
+		out = append(out, Balance{AssetSymbol: row.AssetSymbol, AssetID: id, CanonicalAssetSymbol: row.CanonicalAssetSymbol, Quantity: decimal.Compact(row.Quantity), ModifiedAt: row.ModifiedAt})
 	}
 	return out, nil
 }
@@ -91,7 +93,7 @@ func balances(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID uu
 func Quantities(items []Balance) (sqljson.Column, error) {
 	amounts := map[string]string{}
 	for _, item := range items {
-		amounts[item.PlatformAssetSymbol] = decimal.Compact(item.Quantity)
+		amounts[item.AssetSymbol] = decimal.Compact(item.Quantity)
 	}
 	raw, err := json.Marshal(amounts)
 	return sqljson.Column(raw), err
@@ -155,7 +157,7 @@ func (s *Service) Delete(ctx context.Context, portfolioID, identityID uuid.UUID,
 }
 
 func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID, in Input, action string) (State, error) {
-	symbol, err := catalog.NormalizeSymbol(in.PlatformAssetSymbol)
+	symbol, err := catalog.NormalizeSymbol(in.AssetSymbol)
 	if err != nil {
 		return State{}, err
 	}
@@ -192,7 +194,7 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		}
 		var previous *Balance
 		for i := range before {
-			if before[i].PlatformAssetSymbol == symbol {
+			if before[i].AssetSymbol == symbol {
 				previous = &before[i]
 				break
 			}
@@ -209,13 +211,13 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		}
 		now := s.now().UTC().Truncate(time.Microsecond)
 		if amount.Sign() == 0 {
-			err = q.DeleteManualBalance(ctx, sqlcgen.DeleteManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, PlatformAssetSymbol: symbol})
+			err = q.DeleteManualBalance(ctx, sqlcgen.DeleteManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, AssetSymbol: symbol})
 		} else {
-			platformAssetID, _, platformAssetErr := s.catalog.EnsurePlatformAsset(ctx, q, adapters.Platform(account.Platform), symbol, "", now)
-			if platformAssetErr != nil {
-				return platformAssetErr
+			assetID, _, assetErr := s.catalog.EnsureAsset(ctx, q, adapters.Platform(account.Platform), symbol, "", now)
+			if assetErr != nil {
+				return assetErr
 			}
-			err = q.PutManualBalance(ctx, sqlcgen.PutManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, PlatformAssetSymbol: symbol, PlatformAssetID: platformAssetID[:], Quantity: quantity, ModifiedAt: now})
+			err = q.PutManualBalance(ctx, sqlcgen.PutManualBalanceParams{PortfolioID: portfolioID[:], AccountID: account.ID, AssetSymbol: symbol, AssetID: assetID[:], Quantity: quantity, ModifiedAt: now})
 		}
 		if err != nil {
 			return err
@@ -237,7 +239,7 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		return audit.Record(ctx, q, now, &audit.Entry{
 			PortfolioID: portfolioID, ActorUserID: in.ActorUserID, RequestID: in.RequestID,
 			Action: "manual.balance." + action, ResourceType: "account", ResourceID: accountID,
-			Before: before, After: after,
+			Before: auditBalances(before), After: auditBalances(after),
 		})
 	}); err != nil {
 		return State{}, err
@@ -319,4 +321,17 @@ func (s *Service) Freeze(ctx context.Context, portfolioID, jobID uuid.UUID) ([]C
 		}
 		return out, nil
 	})
+}
+
+// Audit snapshots use current terms without changing the revision wire format.
+func auditBalances(items []Balance) []map[string]any {
+	rows := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		rows = append(rows, map[string]any{
+			"assetId": item.AssetID, "assetSymbol": item.AssetSymbol,
+			"canonicalAssetSymbol": item.CanonicalAssetSymbol,
+			"quantity":             item.Quantity, "modifiedAt": item.ModifiedAt,
+		})
+	}
+	return rows
 }

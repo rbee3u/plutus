@@ -1,19 +1,19 @@
-import type { PlatformAsset } from "@/api";
+import type { Asset } from "@/api";
 import type { CatalogFilters } from "../hooks/useCatalogFilters";
 
 export const PAGE_SIZE = 50;
 
-export function platformAssetEtag(item: PlatformAsset): string {
-  return `"platform-asset:${String(item.version)}"`;
+export function assetEtag(item: Asset): string {
+  return `"asset:${String(item.version)}"`;
 }
 
-export function exclusionEtag(item: PlatformAsset): string {
-  return `"platform-asset-exclusion:${String(item.exclusionVersion)}"`;
+export function exclusionEtag(item: Asset): string {
+  return `"asset-exclusion:${String(item.exclusionVersion)}"`;
 }
 
 export interface MappingRequest {
   nonce: number;
-  item: PlatformAsset;
+  item: Asset;
 }
 
 export interface TabProps {

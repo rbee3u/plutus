@@ -34,14 +34,15 @@ is its canonical Cross Margin mode.
 ### Catalog labels
 
 Catalog uses Assets and Futures tabs, with Asset and Symbol as their main column
-labels. Assets is the compact UI label for Platform Assets; Futures contains
-perpetual and delivery Futures Contracts. Holdings retains Balances and Futures
-with Asset and Symbol columns.
+labels. Futures contains perpetual and delivery Futures Contracts. Holdings
+retains Balances and Futures with Asset and Symbol columns.
 
-Catalog Assets and mapping dialogs omit full names. The Asset column displays
-the mapped Asset Symbol, with `Listed as: ...` only when the Platform Asset
-Symbol differs. Holdings Balances retains the Platform Asset Symbol first and
-shows a secondary mapping hint when needed.
+Catalog, Balances, and Earn display Asset Symbol first. When its Canonical Asset
+Symbol differs, show a secondary `Canonical Asset: ...` hint; omit redundant
+hints. Earn amount units use Asset Symbol, including Balance summaries without
+product details. Catalog and mapping dialogs omit full names. Mapping dialogs
+label the source Asset and the target Canonical Asset. Capital Flow inputs and
+columns use Canonical Asset because flows identify cross-Platform value.
 
 ### Ordering
 
@@ -54,16 +55,15 @@ with fewer dimensions use the corresponding part of that hierarchy.
   immutable ID. The [Platform catalog](../internal/platform/adapters/catalog.go)
   owns type order; Manual is last. Account names and Margin Mode do not affect
   order.
-- Balances within an Account: Asset Symbol, native platform asset Symbol,
-  platform asset ID.
-- Futures within an Account: Base Symbol; linear before inverse; perpetual
+- Balances within an Account: Asset Symbol, Canonical Asset Symbol, Asset ID.
+- Futures within an Account: Base Asset Symbol; linear before inverse; perpetual
   before delivery within each family; delivery expiry nearest first, unknown
   last; native Symbol; long before short; Platform Position reference. Missing
   Base follows known Bases and uses native Symbol, side, and reference. Do not
   infer Base from Symbol or merge SHIB with 1000SHIB.
-- Earn within an Account: sorted invested Asset sequence, with native platform
-  asset breaking Asset ties; Flexible, Fixed, Bonded, Timed, On-chain; maturity
-  with unknown last; stable source reference. Multi-Asset products stay
+- Earn within an Account: sorted invested Asset Symbol sequence, with Canonical
+  Asset Symbol breaking Asset ties; Flexible, Fixed, Bonded, Timed, On-chain;
+  maturity with unknown last; stable source reference. Multi-Asset products stay
   together.
 - Dual within an Account: expiry with unknown last, then Position reference.
 
@@ -196,9 +196,9 @@ all three. Filter changes restart pagination.
 
 Symbol search is a case-insensitive literal substring with surrounding
 whitespace ignored, applied before pagination without ranking or spelling
-correction. Futures searches native contract Symbol; Balances searches native
-and mapped Asset Symbols; Dual searches invested, Base, and Quote Symbols. Earn
-searches native and mapped invested Asset Symbols, retaining a matching
+correction. Futures searches native contract Symbol; Balances searches Asset and
+Canonical Asset Symbols; Dual searches invested, Base, and Quote Asset Symbols.
+Earn searches invested Asset and Canonical Asset Symbols, retaining a matching
 multi-Asset Position as one whole row. Balance flat lists have no grouping
 option.
 
@@ -305,6 +305,22 @@ Show their reported basis and qualifiers; minimum lending preferences, rewards
 with unverified scope, and delivery/redemption details belong in disclosures.
 Source-unavailable fields remain quiet; metadata faults and stale reports stay
 discoverable. Platform mappings own source-field interpretation.
+
+## Editing and conflicts
+
+An open editor keeps its draft and the version of the data it presented
+together. Background reads cannot replace the draft or advance its write
+precondition. Deletion uses the version shown in the confirmation, without
+fetching a newer version just before deleting. Successful saves accept the
+returned data as the new baseline.
+
+Portfolio settings, Capital Flow editing, and Manual editing require explicit
+reload after a version conflict before another save. Reload replaces editable
+values with current data; Manual additions retain their proposed new record as
+defined [above](#manual-editing). Failed reloads retain the draft and blocked
+save. Identity and Catalog conflicts close the editor and require reopening the
+updated item. Capital Flow deletion conflicts close the confirmation and require
+reviewing the updated list before a new confirmation.
 
 ## Browser refresh and scrolling
 

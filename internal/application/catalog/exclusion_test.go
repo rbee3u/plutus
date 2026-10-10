@@ -6,7 +6,7 @@ func TestExclusionETagRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	for _, version := range []uint64{0, 1, 2, 42} {
-		l := PlatformAsset{ExclusionVersion: version}
+		l := Asset{ExclusionVersion: version}
 		val := l.ExclusionETag()
 		got, ok := ParseExclusionETag(val)
 		if !ok || got != version {
@@ -20,11 +20,11 @@ func TestParseExclusionETagRejectsMalformed(t *testing.T) {
 
 	for _, value := range []string{
 		"",
-		`"platform-asset-exclusion:"`,
-		`"platform-asset-exclusion:01"`,
-		`"platform-asset-exclusion:0"x`,
-		`W/"platform-asset-exclusion:0"`,
-		`"platform-asset:0"`,
+		`"asset-exclusion:"`,
+		`"asset-exclusion:01"`,
+		`"asset-exclusion:0"x`,
+		`W/"asset-exclusion:0"`,
+		`"asset:0"`,
 	} {
 		if version, ok := ParseExclusionETag(value); ok {
 			t.Fatalf("ParseExclusionETag(%q) = %d, true; want rejected", value, version)

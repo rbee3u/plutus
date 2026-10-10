@@ -35,9 +35,9 @@ func dualPositionRow(account *valuation.AccountValuation, p *sqlcgen.DualPositio
 			PlatformPositionRef: p.PlatformPositionRef,
 			ProductRef:          nullStringPtr(p.ProductRef),
 			OrderRef:            nullStringPtr(p.OrderRef),
-			BaseSymbol:          nullStringPtr(p.BasePlatformAssetSymbol),
-			QuoteSymbol:         nullStringPtr(p.QuotePlatformAssetSymbol),
-			InvestSymbol:        p.InvestPlatformAssetSymbol,
+			BaseAssetSymbol:     nullStringPtr(p.BaseAssetSymbol),
+			QuoteAssetSymbol:    nullStringPtr(p.QuoteAssetSymbol),
+			InvestAssetSymbol:   p.InvestAssetSymbol,
 			Principal:           p.Principal,
 			Direction:           nullStringPtr(p.Direction),
 			TargetPrice:         nullDecimal(p.TargetPrice),
@@ -66,7 +66,7 @@ func dualIssues(row *DualPositionRow) []valuation.Issue {
 	if len(missing) == 0 {
 		return nil
 	}
-	return []valuation.Issue{{Code: "dual_terms_missing", AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.InvestSymbol, Detail: "Dual position " + row.PlatformPositionRef + " has no " + strings.Join(missing, ", ") + ". Its known principal is retained."}}
+	return []valuation.Issue{{Code: "dual_terms_missing", AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.InvestAssetSymbol, Detail: "Dual position " + row.PlatformPositionRef + " has no " + strings.Join(missing, ", ") + ". Its known principal is retained."}}
 }
 
 // AccountDualPositions uses the same source report as AccountBalances, including stale reads.
@@ -125,7 +125,7 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 			continue
 		}
 		row := dualPositionRow(account, &r.DualPosition)
-		if !matchesSymbol(f.Symbol, row.InvestSymbol, optionalSymbol(row.BaseSymbol), optionalSymbol(row.QuoteSymbol)) {
+		if !matchesSymbol(f.Symbol, row.InvestAssetSymbol, optionalSymbol(row.BaseAssetSymbol), optionalSymbol(row.QuoteAssetSymbol)) {
 			continue
 		}
 		all = append(all, row)

@@ -33,19 +33,19 @@ WHERE failed.portfolio_id = sqlc.arg(portfolio_id)
   AND failed.id IN (sqlc.slice('failed_ids'));
 
 -- name: ListRebuildBalances :many
-SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol
 FROM balances b
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id IN (sqlc.slice('report_ids'))
-ORDER BY b.report_id, l.asset_symbol ASC, l.symbol ASC;
+ORDER BY b.report_id, asset.symbol ASC, asset.canonical_symbol ASC;
 
 -- name: ListRebuildPrices :many
-SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
+SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
 FROM prices
-WHERE asset_symbol IN (sqlc.slice('asset_symbols'))
+WHERE canonical_asset_symbol IN (sqlc.slice('canonical_asset_symbols'))
   AND observed_at >= sqlc.arg(from_at) AND observed_at <= sqlc.arg(to_at)
-ORDER BY platform, asset_symbol, observed_at;
+ORDER BY platform, canonical_asset_symbol, observed_at;
 
 -- name: ListRebuildPointTimes :many
 SELECT job_id, evaluated_at FROM valuation_points

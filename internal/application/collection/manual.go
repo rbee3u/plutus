@@ -14,20 +14,20 @@ import (
 )
 
 func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUID, accounts []manual.CycleAccount, reported map[uuid.UUID]bool) error {
-	symbols := map[adapters.Platform][]string{}
+	canonicalAssetSymbols := map[adapters.Platform][]string{}
 	for _, account := range accounts {
 		if reported[account.AccountID] {
 			continue
 		}
 		for _, balance := range account.Items {
-			if !adapters.USDEquivalent(balance.AssetSymbol) {
-				symbols[account.Platform] = append(symbols[account.Platform], balance.AssetSymbol)
+			if !adapters.USDEquivalent(balance.CanonicalAssetSymbol) {
+				canonicalAssetSymbols[account.Platform] = append(canonicalAssetSymbols[account.Platform], balance.CanonicalAssetSymbol)
 			}
 		}
 	}
 	prices := map[adapters.Platform][]adapters.Price{}
 	for _, platform := range adapters.OfferedPlatforms() {
-		if len(symbols[platform]) == 0 {
+		if len(canonicalAssetSymbols[platform]) == 0 {
 			continue
 		}
 		adapter, ok := s.adapters.Lookup(platform)
@@ -38,7 +38,7 @@ func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUI
 		if !ok {
 			continue
 		}
-		batch, err := market.CollectPrices(ctx, symbols[platform])
+		batch, err := market.CollectPrices(ctx, canonicalAssetSymbols[platform])
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -62,7 +62,7 @@ func (s *Service) collectManual(ctx context.Context, portfolioID, jobID uuid.UUI
 			at := s.now().UTC()
 			report := adapters.AccountReport{AccountType: adapters.TypeManual, Status: adapters.StatusOK, ObservedAt: at}
 			for _, balance := range account.Items {
-				report.Balances = append(report.Balances, adapters.Balance{PlatformAssetSymbol: balance.PlatformAssetSymbol, Equity: balance.Quantity})
+				report.Balances = append(report.Balances, adapters.Balance{AssetSymbol: balance.AssetSymbol, Equity: balance.Quantity})
 			}
 			if err := s.insertSuccessfulReport(ctx, q, portfolioID, jobID, account.Platform, account.AccountID, &report, "", at, at); err != nil {
 				return err

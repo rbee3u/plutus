@@ -31,7 +31,7 @@ func (q *Queries) DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowPa
 }
 
 const getCapitalFlow = `-- name: GetCapitalFlow :one
-SELECT id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+SELECT id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
        created_by_user_id, version, created_at, updated_at
 FROM capital_flows
 WHERE portfolio_id = ? AND id = ?
@@ -49,7 +49,7 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 		&i.ID,
 		&i.PortfolioID,
 		&i.Direction,
-		&i.AssetSymbol,
+		&i.CanonicalAssetSymbol,
 		&i.Quantity,
 		&i.ValueUsd,
 		&i.EffectiveAt,
@@ -65,7 +65,7 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 
 const insertCapitalFlow = `-- name: InsertCapitalFlow :exec
 INSERT INTO capital_flows (
-    id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+    id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
     created_by_user_id, version, created_at, updated_at
 ) VALUES (
     ?, ?, ?, ?, ?,
@@ -75,19 +75,19 @@ INSERT INTO capital_flows (
 `
 
 type InsertCapitalFlowParams struct {
-	ID              []byte
-	PortfolioID     []byte
-	Direction       string
-	AssetSymbol     string
-	Quantity        string
-	ValueUsd        sql.NullString
-	EffectiveAt     time.Time
-	AccountID       []byte
-	Note            sql.NullString
-	CreatedByUserID []byte
-	Version         uint64
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                   []byte
+	PortfolioID          []byte
+	Direction            string
+	CanonicalAssetSymbol string
+	Quantity             string
+	ValueUsd             sql.NullString
+	EffectiveAt          time.Time
+	AccountID            []byte
+	Note                 sql.NullString
+	CreatedByUserID      []byte
+	Version              uint64
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error {
@@ -95,7 +95,7 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 		arg.ID,
 		arg.PortfolioID,
 		arg.Direction,
-		arg.AssetSymbol,
+		arg.CanonicalAssetSymbol,
 		arg.Quantity,
 		arg.ValueUsd,
 		arg.EffectiveAt,
@@ -110,7 +110,7 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 }
 
 const listCapitalFlows = `-- name: ListCapitalFlows :many
-SELECT id, portfolio_id, direction, asset_symbol, quantity, value_usd, effective_at, account_id, note,
+SELECT id, portfolio_id, direction, canonical_asset_symbol, quantity, value_usd, effective_at, account_id, note,
        created_by_user_id, version, created_at, updated_at
 FROM capital_flows
 WHERE portfolio_id = ?
@@ -137,7 +137,7 @@ func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsPara
 			&i.ID,
 			&i.PortfolioID,
 			&i.Direction,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.Quantity,
 			&i.ValueUsd,
 			&i.EffectiveAt,
@@ -164,7 +164,7 @@ func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsPara
 const updateCapitalFlow = `-- name: UpdateCapitalFlow :execrows
 UPDATE capital_flows
 SET direction = ?,
-    asset_symbol = ?,
+    canonical_asset_symbol = ?,
     quantity = ?,
     value_usd = ?,
     effective_at = ?,
@@ -176,23 +176,23 @@ WHERE portfolio_id = ? AND id = ? AND version = ?
 `
 
 type UpdateCapitalFlowParams struct {
-	Direction   string
-	AssetSymbol string
-	Quantity    string
-	ValueUsd    sql.NullString
-	EffectiveAt time.Time
-	AccountID   []byte
-	Note        sql.NullString
-	UpdatedAt   time.Time
-	PortfolioID []byte
-	ID          []byte
-	Version     uint64
+	Direction            string
+	CanonicalAssetSymbol string
+	Quantity             string
+	ValueUsd             sql.NullString
+	EffectiveAt          time.Time
+	AccountID            []byte
+	Note                 sql.NullString
+	UpdatedAt            time.Time
+	PortfolioID          []byte
+	ID                   []byte
+	Version              uint64
 }
 
 func (q *Queries) UpdateCapitalFlow(ctx context.Context, arg UpdateCapitalFlowParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateCapitalFlow,
 		arg.Direction,
-		arg.AssetSymbol,
+		arg.CanonicalAssetSymbol,
 		arg.Quantity,
 		arg.ValueUsd,
 		arg.EffectiveAt,

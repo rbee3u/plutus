@@ -9,7 +9,7 @@ const REASON_TEXT: Record<string, string> = {
   no_end_point: "no point at end",
   no_point_in_period: "no point in period",
   point_incomplete: "point incomplete",
-  platform_asset_exclusion_changed: "platform asset treatment changed",
+  asset_exclusion_changed: "asset treatment changed",
   no_point: "no point",
 };
 

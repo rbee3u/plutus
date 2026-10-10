@@ -54,19 +54,19 @@ func TestPositionNotionalPerContractKind(t *testing.T) {
 			t.Parallel()
 			account := &valuation.AccountValuation{AccountID: uuid.Must(uuid.NewV7()), Freshness: valuation.FreshnessFresh}
 			row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
-				FuturesContractID:             futuresContractID[:],
-				Platform:                      string(adapters.PlatformBinance),
-				FuturesSymbol:                 "SYMBOL",
-				Kind:                          tc.kind,
-				BasePlatformAssetSymbol:       nullString("BASE"),
-				QuotePlatformAssetSymbol:      nullString(tc.quote),
-				SettlementPlatformAssetSymbol: nullString("BASE"),
-				ContractSize:                  nullString(tc.contractSize),
-				PlatformPositionRef:           "ref",
-				Side:                          adapters.SideLong,
-				Quantity:                      tc.quantity,
-				QuantityUnit:                  tc.unit,
-				MarkPrice:                     nullString(tc.mark),
+				FuturesContractID:     futuresContractID[:],
+				Platform:              string(adapters.PlatformBinance),
+				FuturesSymbol:         "SYMBOL",
+				Kind:                  tc.kind,
+				BaseAssetSymbol:       nullString("BASE"),
+				QuoteAssetSymbol:      nullString(tc.quote),
+				SettlementAssetSymbol: nullString("BASE"),
+				ContractSize:          nullString(tc.contractSize),
+				PlatformPositionRef:   "ref",
+				Side:                  adapters.SideLong,
+				Quantity:              tc.quantity,
+				QuantityUnit:          tc.unit,
+				MarkPrice:             nullString(tc.mark),
 			})
 			if err != nil {
 				t.Fatalf("positionRow: %v", err)

@@ -101,11 +101,11 @@ func fetchFuturesContracts(ctx context.Context, c *client, m market) (*futuresCo
 			continue
 		}
 		futuresContract := adapters.FuturesContract{
-			Symbol:           s.Symbol,
-			Kind:             kind,
-			BaseSymbol:       s.BaseAsset,
-			QuoteSymbol:      s.QuoteAsset,
-			SettlementSymbol: s.MarginAsset,
+			Symbol:                s.Symbol,
+			Kind:                  kind,
+			BaseAssetSymbol:       s.BaseAsset,
+			QuoteAssetSymbol:      s.QuoteAsset,
+			SettlementAssetSymbol: s.MarginAsset,
 		}
 		if delivery && s.DeliveryDate > 0 {
 			expiry := time.UnixMilli(s.DeliveryDate).UTC()

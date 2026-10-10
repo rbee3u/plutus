@@ -26,7 +26,7 @@ export function useHistoryWindow() {
   const to = params.get("to") ?? "";
   const custom = Boolean(from || to);
   const preset = normalizePreset(params.get("range")) ?? "3D";
-  const timezone = portfolio.data?.item.timezone;
+  const timezone = portfolio.data?.timezone;
   const mountId = useId();
   const [anchor, setAnchor] = useState(0);
   const [applyError, setApplyError] = useState<Error | null>(null);

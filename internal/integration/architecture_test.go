@@ -26,10 +26,10 @@ var portfolioTables = []string{
 	"account_reports", "accounts", "audit_events", "balances", "capital_flows",
 	"dual_positions", "earn_positions", "idempotency_records", "identities", "jobs",
 	"manual_balances", "manual_cycle_accounts", "manual_cycles", "manual_revisions",
-	"portfolio_platform_asset_exclusion_events", "portfolio_platform_asset_exclusions", "positions", "valuation_points",
+	"portfolio_asset_exclusion_events", "portfolio_asset_exclusions", "positions", "valuation_points",
 }
 
-// These scenarios deliberately mutate shared PlatformAssets and FuturesContracts. Give
+// These scenarios deliberately mutate shared Assets and FuturesContracts. Give
 // them their own migrated database so other fixture contracts stay independent.
 func architectureHarness(t *testing.T) *harness {
 	t.Helper()
@@ -69,17 +69,17 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	if summary.Point.StaleAccountCount == 0 {
 		t.Fatal("fixture needs stale source references")
 	}
-	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: p.ID, Platform: "binance", Query: "BTC", Limit: 50})
-	if err != nil || len(platformAssets.Items) != 1 {
-		t.Fatalf("BTC platform asset: %+v %v", platformAssets, err)
+	assets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: p.ID, Platform: "binance", Query: "BTC", Limit: 50})
+	if err != nil || len(assets.Items) != 1 {
+		t.Fatalf("BTC asset: %+v %v", assets, err)
 	}
-	_, err = h.catalog.PutExclusion(h.ctx, platformAssets.Items[0].ID, &catalog.ExclusionInput{PortfolioID: p.ID, ActorUserID: h.userID, Ignored: true, Reason: "Lifecycle fixture"})
+	_, err = h.catalog.PutExclusion(h.ctx, assets.Items[0].ID, &catalog.ExclusionInput{PortfolioID: p.ID, ActorUserID: h.userID, Ignored: true, Reason: "Lifecycle fixture"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	direction, symbol, quantity := capital.DirectionContribution, "USD", "10"
 	at := time.Now().UTC()
-	if _, err := h.services.Capital.Create(h.ctx, p.ID, &capital.Input{ActorUserID: h.userID, Direction: &direction, AssetSymbol: &symbol, Quantity: &quantity, EffectiveAt: &at}); err != nil {
+	if _, err := h.services.Capital.Create(h.ctx, p.ID, &capital.Input{ActorUserID: h.userID, Direction: &direction, CanonicalAssetSymbol: &symbol, Quantity: &quantity, EffectiveAt: &at}); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.services.Idempotency.Put(h.ctx, h.userID, &p.ID, "POST", "/lifecycle", name, idempotency.Hash(nil), idempotency.Record{Status: 201}); err != nil {
@@ -141,7 +141,7 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 	}
 	sharedCounts := func() map[string]int {
 		counts := map[string]int{}
-		for _, table := range []string{"users", "sessions", "platform_assets", "futures_contracts", "prices"} {
+		for _, table := range []string{"users", "sessions", "assets", "futures_contracts", "prices"} {
 			var n int
 			if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table).Scan(&n); err != nil {
 				t.Fatal(err)
@@ -241,13 +241,13 @@ func TestCatalogMappingSchedulesRebuildsWithoutHTTP(t *testing.T) {
 	h := architectureHarness(t)
 	_, a, _ := populatedPortfolio(t, h, "mapping-a")
 	_, b, _ := populatedPortfolio(t, h, "mapping-b")
-	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, catalog.ListFilter{PortfolioID: a.ID, Platform: "binance", Query: "BTC", Limit: 50})
-	if err != nil || len(platformAssets.Items) != 1 {
-		t.Fatalf("platform asset: %v", err)
+	assets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: a.ID, Platform: "binance", Query: "BTC", Limit: 50})
+	if err != nil || len(assets.Items) != 1 {
+		t.Fatalf("asset: %v", err)
 	}
-	platformAsset := platformAssets.Items[0]
-	updated, err := h.catalog.PutMapping(h.ctx, platformAsset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, AssetSymbol: "XBT", Version: platformAsset.Version})
-	if err != nil || updated.AssetSymbol != "XBT" || !updated.Ignored {
+	asset := assets.Items[0]
+	updated, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, CanonicalSymbol: "XBT", Version: asset.Version})
+	if err != nil || updated.CanonicalSymbol != "XBT" || !updated.Ignored {
 		t.Fatalf("mapping and exclusion view: %+v %v", updated, err)
 	}
 	var jobIDs []uuid.UUID
@@ -259,7 +259,7 @@ func TestCatalogMappingSchedulesRebuildsWithoutHTTP(t *testing.T) {
 		jobIDs = append(jobIDs, page.Items[0].ID)
 	}
 	// Another update keeps the queue's existing active-job deduplication.
-	if _, err := h.catalog.PutMapping(h.ctx, platformAsset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, AssetSymbol: "BTC", Version: updated.Version}); err != nil {
+	if _, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: a.ID, CanonicalSymbol: "BTC", Version: updated.Version}); err != nil {
 		t.Fatal(err)
 	}
 	for i, id := range []uuid.UUID{a.ID, b.ID} {

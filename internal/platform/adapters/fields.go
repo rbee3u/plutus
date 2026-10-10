@@ -120,7 +120,7 @@ func (t Totals) Balances() []Balance {
 		if t[symbol].Sign() == 0 {
 			continue
 		}
-		out = append(out, Balance{PlatformAssetSymbol: symbol, Equity: decimal.Format(t[symbol])})
+		out = append(out, Balance{AssetSymbol: symbol, Equity: decimal.Format(t[symbol])})
 	}
 	return out
 }
@@ -145,13 +145,14 @@ func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, a
 	var symbols []string
 	for _, report := range reports {
 		for _, balance := range report.Balances {
-			symbols = append(symbols, balance.PlatformAssetSymbol)
+			symbols = append(symbols, balance.AssetSymbol)
 		}
 	}
 	return SymbolPrices(symbols, quotes, lookup, at)
 }
 
-// SymbolPrices chooses public prices for explicit assets, including manually held assets.
+// SymbolPrices chooses public prices for supplied symbols, including Manual Canonical Asset Symbols.
+// Adapter normalization is retained; this function does not resolve Catalog mappings.
 func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time.Time) []Price {
 	if lookup == nil {
 		return nil
@@ -166,12 +167,12 @@ func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time
 		seen[symbol] = true
 		for _, quote := range quotes {
 			if price, ok := lookup(symbol, quote); ok {
-				out = append(out, Price{AssetSymbol: symbol, Price: price, QuoteSymbol: quote, ObservedAt: at})
+				out = append(out, Price{CanonicalAssetSymbol: symbol, Price: price, QuoteCanonicalAssetSymbol: quote, ObservedAt: at})
 				break
 			}
 		}
 	}
-	slices.SortFunc(out, func(a, b Price) int { return strings.Compare(a.AssetSymbol, b.AssetSymbol) })
+	slices.SortFunc(out, func(a, b Price) int { return strings.Compare(a.CanonicalAssetSymbol, b.CanonicalAssetSymbol) })
 	return out
 }
 

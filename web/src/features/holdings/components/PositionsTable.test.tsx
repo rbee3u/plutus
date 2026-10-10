@@ -21,16 +21,16 @@ const position: PositionRow = {
   quantityUnit: "contracts",
   size: "-200",
   sizeSymbol: "USD",
-  baseSymbol: "BTC",
-  quoteSymbol: "USD",
-  settlementSymbol: "BTC",
+  baseAssetSymbol: "BTC",
+  quoteAssetSymbol: "USD",
+  settlementAssetSymbol: "BTC",
   markPrice: "50000",
   unrealizedPnl: "0.000123456789",
   marginMode: "cross",
   portfolioMargin: false,
   settleMargin: "0.002",
   margin: "100",
-  marginCurrency: "USD",
+  marginAssetSymbol: "USD",
   marginBasis: "initial",
   marginSource: "reported",
   leverage: "3",
@@ -141,7 +141,7 @@ describe("Margin mode and leverage", () => {
       ...position,
       marginMode: "isolated",
       marginBasis: "allocated",
-      settlementSymbol: "USDT",
+      settlementAssetSymbol: "USDT",
       settleMargin: "1000",
       notionalUsd: "1880",
       leverage: "10",
@@ -155,10 +155,10 @@ describe("Margin mode and leverage", () => {
       }),
     ).toBe("1.88x isolated");
     expect(positionMarginDescription({ ...isolated, notionalUsd: "0" })).toBe("0x isolated");
-    for (const settlementSymbol of ["USD", "USDT", "USDC"]) {
-      expect(positionMarginDescription({ ...isolated, settlementSymbol, markPrice: null })).toBe(
-        "1.88x isolated",
-      );
+    for (const settlementAssetSymbol of ["USD", "USDT", "USDC"]) {
+      expect(
+        positionMarginDescription({ ...isolated, settlementAssetSymbol, markPrice: null }),
+      ).toBe("1.88x isolated");
     }
   });
 
@@ -179,10 +179,10 @@ describe("Margin mode and leverage", () => {
       { settleMargin: "NaN" },
       { notionalUsd: null },
       { notionalUsd: "Infinity" },
-      { settlementSymbol: null },
-      { settlementSymbol: "EUR" },
-      { quoteSymbol: "EUR" },
-      { baseSymbol: null },
+      { settlementAssetSymbol: null },
+      { settlementAssetSymbol: "EUR" },
+      { quoteAssetSymbol: "EUR" },
+      { baseAssetSymbol: null },
       { markPrice: null },
       { markPrice: "0" },
       { markPrice: "-1" },

@@ -219,7 +219,7 @@ func assertSyntheticDualPositions(t *testing.T, h *harness, account valuation.Ac
 	}
 	for _, position := range view.DualPositions {
 		expected, ok := want[position.PlatformPositionRef]
-		if !ok || position.InvestSymbol != expected.symbol || decimal.Format(decimal.ParseOrZero(position.Principal)) != expected.principal ||
+		if !ok || position.InvestAssetSymbol != expected.symbol || decimal.Format(decimal.ParseOrZero(position.Principal)) != expected.principal ||
 			position.Direction == nil || *position.Direction != expected.direction || len(position.MissingFields()) != 0 {
 			t.Fatalf("stored Dual principal or terms %+v", position)
 		}
@@ -342,7 +342,7 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 		if position.ExpiryAt != nil {
 			expiry = position.ExpiryAt.UTC().Format(time.RFC3339)
 		}
-		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.Quantity) != map[string]string{adapters.KindInversePerpetual: "2", adapters.KindInverseDelivery: "1"}[expected.kind] || position.QuantityUnit != adapters.UnitContracts || position.BaseSymbol == nil || *position.BaseSymbol != "ETH" || position.QuoteSymbol == nil || *position.QuoteSymbol != "USD" || position.SettlementSymbol == nil || *position.SettlementSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapters.KindInversePerpetual: "20", adapters.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
+		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.Quantity) != map[string]string{adapters.KindInversePerpetual: "2", adapters.KindInverseDelivery: "1"}[expected.kind] || position.QuantityUnit != adapters.UnitContracts || position.BaseAssetSymbol == nil || *position.BaseAssetSymbol != "ETH" || position.QuoteAssetSymbol == nil || *position.QuoteAssetSymbol != "USD" || position.SettlementAssetSymbol == nil || *position.SettlementAssetSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapters.KindInversePerpetual: "20", adapters.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
 			t.Fatalf("stored inverse contract %+v; expiry %s", position, expiry)
 		}
 		for name, pair := range map[string]struct {

@@ -7,27 +7,33 @@ import (
 
 func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 	t.Parallel()
-	minimal := DualPosition{PlatformPositionRef: "subscription-1", InvestSymbol: "USDT", Principal: "500", Status: "active"}
+	minimal := DualPosition{PlatformPositionRef: "subscription-1", InvestAssetSymbol: "USDT", Principal: "500", Status: "active"}
 	p, err := NormalizeDualPosition("test", &minimal)
 	if err != nil || p.Principal != "500" || len(p.MissingFields()) != 6 {
 		t.Fatalf("missing terms must retain principal: %+v %v", p, err)
 	}
 	for name, mutate := range map[string]func(*DualPosition){
 		"no id":              func(p *DualPosition) { p.PlatformPositionRef = "" },
-		"no currency":        func(p *DualPosition) { p.InvestSymbol = "" },
+		"no currency":        func(p *DualPosition) { p.InvestAssetSymbol = "" },
 		"no principal":       func(p *DualPosition) { p.Principal = "" },
 		"negative principal": func(p *DualPosition) { p.Principal = "-1" },
 		"zero principal":     func(p *DualPosition) { p.Principal = "0" },
 		"contradictory direction": func(p *DualPosition) {
-			p.BaseSymbol = OptionalText("BTC")
-			p.QuoteSymbol = OptionalText("USDT")
+			p.BaseAssetSymbol = OptionalText("BTC")
+			p.QuoteAssetSymbol = OptionalText("USDT")
 			p.Direction = OptionalText("sell_high")
 		},
-		"unrelated currency":   func(p *DualPosition) { p.BaseSymbol = OptionalText("ETH"); p.QuoteSymbol = OptionalText("BTC") },
-		"identical currencies": func(p *DualPosition) { p.BaseSymbol = OptionalText("USDT"); p.QuoteSymbol = OptionalText("USDT") },
-		"invalid target":       func(p *DualPosition) { p.TargetPrice = OptionalText("n/a") },
-		"negative rate":        func(p *DualPosition) { p.AnnualizedRate = OptionalText("-0.1"); p.RateKind = OptionalText("apr") },
-		"unknown state":        func(p *DualPosition) { p.Status = "unknown" },
+		"unrelated currency": func(p *DualPosition) {
+			p.BaseAssetSymbol = OptionalText("ETH")
+			p.QuoteAssetSymbol = OptionalText("BTC")
+		},
+		"identical currencies": func(p *DualPosition) {
+			p.BaseAssetSymbol = OptionalText("USDT")
+			p.QuoteAssetSymbol = OptionalText("USDT")
+		},
+		"invalid target": func(p *DualPosition) { p.TargetPrice = OptionalText("n/a") },
+		"negative rate":  func(p *DualPosition) { p.AnnualizedRate = OptionalText("-0.1"); p.RateKind = OptionalText("apr") },
+		"unknown state":  func(p *DualPosition) { p.Status = "unknown" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := minimal
@@ -39,8 +45,8 @@ func TestDualTermsPreservePrincipalAndRejectContradictions(t *testing.T) {
 	}
 	expiry := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
 	p = minimal
-	p.BaseSymbol = OptionalText("btc")
-	p.QuoteSymbol = OptionalText("usdt")
+	p.BaseAssetSymbol = OptionalText("btc")
+	p.QuoteAssetSymbol = OptionalText("usdt")
 	p.TargetPrice = OptionalText("62000")
 	p.ExpiryAt = &expiry
 	p.AnnualizedRate = OptionalText("0.18")

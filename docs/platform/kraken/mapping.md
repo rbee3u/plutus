@@ -118,7 +118,7 @@ Earn is the same Account in both structures.
 
 | Plutus column         | multi-collateral wallet (`flex_futures.currencies`) | `coin_m` (snapshot `futures`)      | `derivatives_holding` (snapshot `holding`) | `main` in Separate wallets (`BalanceEx`) | `earn` (`Earn/Allocations`)                                                                     |
 | --------------------- | --------------------------------------------------- | ---------------------------------- | ------------------------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `PlatformAssetSymbol` | currency code                                       | the wallet's `unit`                | currency code                              | asset code                               | `native_asset`                                                                                  |
+| `AssetSymbol`         | currency code                                       | the wallet's `unit`                | currency code                              | asset code                               | `native_asset`                                                                                  |
 | `equity` (coin units) | `quantity`                                          | `portfolio_value`, summed per unit | the amount, summed per symbol              | `balance`, summed with its `.F` row      | `amount_allocated.total.native` of `instant`, `bonded`, and `timed` strategies, summed per coin |
 | `available_to_trade`  | `available`                                         | null                               | null                                       | null                                     | null                                                                                            |
 | other columns         | null                                                | null                               | null                                       | null                                     | null                                                                                            |
@@ -187,14 +187,14 @@ routing uses the futures contract type, not its symbol prefix or expiry.
 - A position whose contract is missing from the futures contract list, or has an
   undocumented type, fails its report with `normalization`; it is never dropped.
 
-| Futures Contract column                                     | Source (`instruments`)                                                                                                                                        |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                                                    | `symbol`                                                                                                                                                      |
-| `kind`                                                      | `flexible_futures` and `futures_vanilla` → `linear_perpetual`, `futures_inverse` → `inverse_perpetual`; with a `lastTradingTime`, the `*_delivery` equivalent |
-| `base_platform_asset_symbol`, `quote_platform_asset_symbol` | `base` and `quote`, else the two halves of `pair` (`XBT:USD`), normalized as Balance symbols                                                                  |
-| `settlement_platform_asset_symbol`                          | USD for flexible futures, the base coin for inverse futures, the quote for vanilla futures                                                                    |
-| `expiry_at`                                                 | `lastTradingTime`; a contract without one whose ticker `tag` is not `perpetual` fails with `normalization`                                                    |
-| `contract_size`                                             | `contractSize`, required: base coins per contract for linear contracts, USD per contract for inverse ones                                                     |
+| Futures Contract column                   | Source (`instruments`)                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                  | `symbol`                                                                                                                                                      |
+| `kind`                                    | `flexible_futures` and `futures_vanilla` → `linear_perpetual`, `futures_inverse` → `inverse_perpetual`; with a `lastTradingTime`, the `*_delivery` equivalent |
+| `base_asset_symbol`, `quote_asset_symbol` | `base` and `quote`, else the two halves of `pair` (`XBT:USD`), normalized as Balance symbols                                                                  |
+| `settlement_asset_symbol`                 | USD for flexible futures, the base coin for inverse futures, the quote for vanilla futures                                                                    |
+| `expiry_at`                               | `lastTradingTime`; a contract without one whose ticker `tag` is not `perpetual` fails with `normalization`                                                    |
+| `contract_size`                           | `contractSize`, required: base coins per contract for linear contracts, USD per contract for inverse ones                                                     |
 
 ## Prices
 

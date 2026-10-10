@@ -61,6 +61,24 @@ func (e AccountValuationStatus) Valid() bool {
 	}
 }
 
+// Defines values for AssetMappingSource.
+const (
+	AssetMappingSourceAuto   AssetMappingSource = "auto"
+	AssetMappingSourceManual AssetMappingSource = "manual"
+)
+
+// Valid indicates whether the value is a known member of the AssetMappingSource enum.
+func (e AssetMappingSource) Valid() bool {
+	switch e {
+	case AssetMappingSourceAuto:
+		return true
+	case AssetMappingSourceManual:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BalanceRowManualChange.
 const (
 	Added   BalanceRowManualChange = "added"
@@ -481,24 +499,6 @@ func (e PeriodKind) Valid() bool {
 	}
 }
 
-// Defines values for PlatformAssetMappingSource.
-const (
-	PlatformAssetMappingSourceAuto   PlatformAssetMappingSource = "auto"
-	PlatformAssetMappingSourceManual PlatformAssetMappingSource = "manual"
-)
-
-// Valid indicates whether the value is a known member of the PlatformAssetMappingSource enum.
-func (e PlatformAssetMappingSource) Valid() bool {
-	switch e {
-	case PlatformAssetMappingSourceAuto:
-		return true
-	case PlatformAssetMappingSourceManual:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PositionRowMarginBasis.
 const (
 	PositionRowMarginBasisAllocated   PositionRowMarginBasis = "allocated"
@@ -838,6 +838,32 @@ type AccountValuationMethod string
 // AccountValuationStatus defines model for AccountValuation.Status.
 type AccountValuationStatus string
 
+// Asset defines model for Asset.
+type Asset struct {
+	CanonicalSymbol  string             `json:"canonicalSymbol"`
+	ExclusionVersion int                `json:"exclusionVersion"`
+	FirstSeenAt      time.Time          `json:"firstSeenAt"`
+	Id               UUID               `json:"id"`
+	IgnoreReason     *string            `json:"ignoreReason,omitempty"`
+	Ignored          bool               `json:"ignored"`
+	IgnoredAt        *time.Time         `json:"ignoredAt,omitempty"`
+	LastSeenAt       time.Time          `json:"lastSeenAt"`
+	MappingSource    AssetMappingSource `json:"mappingSource"`
+	Name             *string            `json:"name,omitempty"`
+	Platform         string             `json:"platform"`
+	Symbol           string             `json:"symbol"`
+	Version          int                `json:"version"`
+}
+
+// AssetMappingSource defines model for Asset.MappingSource.
+type AssetMappingSource string
+
+// AssetList defines model for AssetList.
+type AssetList struct {
+	Items []Asset    `json:"items"`
+	Page  OffsetPage `json:"page"`
+}
+
 // AuditEvent defines model for AuditEvent.
 type AuditEvent struct {
 	Action       string                  `json:"action"`
@@ -876,14 +902,16 @@ type BalanceList struct {
 
 // BalanceRow defines model for BalanceRow.
 type BalanceRow struct {
-	AccountId           UUID             `json:"accountId"`
-	AccountName         string           `json:"accountName"`
-	AccountType         string           `json:"accountType"`
-	AssetSymbol         string           `json:"assetSymbol"`
-	AvailableToTrade    *NullableDecimal `json:"availableToTrade,omitempty"`
-	AvailableToWithdraw *NullableDecimal `json:"availableToWithdraw,omitempty"`
-	Equity              Decimal          `json:"equity"`
-	EquityUsd           *NullableDecimal `json:"equityUsd,omitempty"`
+	AccountId            UUID             `json:"accountId"`
+	AccountName          string           `json:"accountName"`
+	AccountType          string           `json:"accountType"`
+	AssetId              UUID             `json:"assetId"`
+	AssetSymbol          string           `json:"assetSymbol"`
+	AvailableToTrade     *NullableDecimal `json:"availableToTrade,omitempty"`
+	AvailableToWithdraw  *NullableDecimal `json:"availableToWithdraw,omitempty"`
+	CanonicalAssetSymbol string           `json:"canonicalAssetSymbol"`
+	Equity               Decimal          `json:"equity"`
+	EquityUsd            *NullableDecimal `json:"equityUsd,omitempty"`
 
 	// Excluded Manual balance retained for editing but excluded from the displayed valuation.
 	Excluded     *bool            `json:"excluded,omitempty"`
@@ -897,15 +925,13 @@ type BalanceRow struct {
 	ManualChange *BalanceRowManualChange `json:"manualChange,omitempty"`
 
 	// ManualModifiedAt Last user quantity adjustment, distinct from report observation time.
-	ManualModifiedAt    *time.Time       `json:"manualModifiedAt,omitempty"`
-	ManualQuantity      *Decimal         `json:"manualQuantity,omitempty"`
-	NoPrice             bool             `json:"noPrice"`
-	Platform            string           `json:"platform"`
-	PlatformAssetId     UUID             `json:"platformAssetId"`
-	PlatformAssetSymbol string           `json:"platformAssetSymbol"`
-	PriceUsd            *NullableDecimal `json:"priceUsd,omitempty"`
-	ReportObservedAt    *time.Time       `json:"reportObservedAt,omitempty"`
-	UnrealizedPnl       *NullableDecimal `json:"unrealizedPnl,omitempty"`
+	ManualModifiedAt *time.Time       `json:"manualModifiedAt,omitempty"`
+	ManualQuantity   *Decimal         `json:"manualQuantity,omitempty"`
+	NoPrice          bool             `json:"noPrice"`
+	Platform         string           `json:"platform"`
+	PriceUsd         *NullableDecimal `json:"priceUsd,omitempty"`
+	ReportObservedAt *time.Time       `json:"reportObservedAt,omitempty"`
+	UnrealizedPnl    *NullableDecimal `json:"unrealizedPnl,omitempty"`
 }
 
 // BalanceRowManualChange Current manual changes relative to this displayed report; never changes its valuation.
@@ -935,19 +961,19 @@ type BoundaryEventList struct {
 
 // CapitalFlow defines model for CapitalFlow.
 type CapitalFlow struct {
-	AccountId   *openapi_types.UUID  `json:"accountId,omitempty"`
-	AccountName *string              `json:"accountName,omitempty"`
-	AssetSymbol string               `json:"assetSymbol"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	Direction   CapitalFlowDirection `json:"direction"`
-	EffectiveAt time.Time            `json:"effectiveAt"`
-	Id          UUID                 `json:"id"`
-	Note        *string              `json:"note,omitempty"`
-	PortfolioId UUID                 `json:"portfolioId"`
-	Quantity    Decimal              `json:"quantity"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
-	ValueUsd    *NullableDecimal     `json:"valueUsd,omitempty"`
-	Version     int                  `json:"version"`
+	AccountId            *openapi_types.UUID  `json:"accountId,omitempty"`
+	AccountName          *string              `json:"accountName,omitempty"`
+	CanonicalAssetSymbol string               `json:"canonicalAssetSymbol"`
+	CreatedAt            time.Time            `json:"createdAt"`
+	Direction            CapitalFlowDirection `json:"direction"`
+	EffectiveAt          time.Time            `json:"effectiveAt"`
+	Id                   UUID                 `json:"id"`
+	Note                 *string              `json:"note,omitempty"`
+	PortfolioId          UUID                 `json:"portfolioId"`
+	Quantity             Decimal              `json:"quantity"`
+	UpdatedAt            time.Time            `json:"updatedAt"`
+	ValueUsd             *NullableDecimal     `json:"valueUsd,omitempty"`
+	Version              int                  `json:"version"`
 }
 
 // CapitalFlowDirection defines model for CapitalFlow.Direction.
@@ -1017,13 +1043,13 @@ type ConnectionStatus string
 
 // CreateCapitalFlowRequest defines model for CreateCapitalFlowRequest.
 type CreateCapitalFlowRequest struct {
-	AccountId   *UUID                             `json:"accountId,omitempty"`
-	AssetSymbol string                            `json:"assetSymbol"`
-	Direction   CreateCapitalFlowRequestDirection `json:"direction"`
-	EffectiveAt time.Time                         `json:"effectiveAt"`
-	Note        *string                           `json:"note,omitempty"`
-	Quantity    Decimal                           `json:"quantity"`
-	ValueUsd    *Decimal                          `json:"valueUsd,omitempty"`
+	AccountId            *UUID                             `json:"accountId,omitempty"`
+	CanonicalAssetSymbol string                            `json:"canonicalAssetSymbol"`
+	Direction            CreateCapitalFlowRequestDirection `json:"direction"`
+	EffectiveAt          time.Time                         `json:"effectiveAt"`
+	Note                 *string                           `json:"note,omitempty"`
+	Quantity             Decimal                           `json:"quantity"`
+	ValueUsd             *Decimal                          `json:"valueUsd,omitempty"`
 }
 
 // CreateCapitalFlowRequestDirection defines model for CreateCapitalFlowRequest.Direction.
@@ -1039,8 +1065,8 @@ type CreateIdentityRequest struct {
 
 // CreateManualBalance defines model for CreateManualBalance.
 type CreateManualBalance struct {
-	PlatformAssetSymbol string  `json:"platformAssetSymbol"`
-	Quantity            Decimal `json:"quantity"`
+	AssetSymbol string  `json:"assetSymbol"`
+	Quantity    Decimal `json:"quantity"`
 }
 
 // CreatePortfolioRequest defines model for CreatePortfolioRequest.
@@ -1122,20 +1148,20 @@ type DualPositionRow struct {
 	AccountName         string           `json:"accountName"`
 	AccountType         string           `json:"accountType"`
 	AnnualizedRate      *NullableDecimal `json:"annualizedRate,omitempty"`
-	BaseSymbol          *string          `json:"baseSymbol,omitempty"`
+	BaseAssetSymbol     *string          `json:"baseAssetSymbol,omitempty"`
 	Direction           *string          `json:"direction,omitempty"`
 	ExpiryAt            *time.Time       `json:"expiryAt,omitempty"`
 	Freshness           Freshness        `json:"freshness"`
 	IdentityId          UUID             `json:"identityId"`
 	IdentityName        string           `json:"identityName"`
-	InvestSymbol        string           `json:"investSymbol"`
+	InvestAssetSymbol   string           `json:"investAssetSymbol"`
 	Issues              *[]Issue         `json:"issues,omitempty"`
 	OrderRef            *string          `json:"orderRef,omitempty"`
 	Platform            string           `json:"platform"`
 	PlatformPositionRef string           `json:"platformPositionRef"`
 	Principal           Decimal          `json:"principal"`
 	ProductRef          *string          `json:"productRef,omitempty"`
-	QuoteSymbol         *string          `json:"quoteSymbol,omitempty"`
+	QuoteAssetSymbol    *string          `json:"quoteAssetSymbol,omitempty"`
 	RateKind            *string          `json:"rateKind,omitempty"`
 	ReportObservedAt    *time.Time       `json:"reportObservedAt,omitempty"`
 	Status              string           `json:"status"`
@@ -1145,9 +1171,9 @@ type DualPositionRow struct {
 
 // EarnAmount defines model for EarnAmount.
 type EarnAmount struct {
-	Amount              Decimal `json:"amount"`
-	AssetSymbol         *string `json:"assetSymbol,omitempty"`
-	PlatformAssetSymbol string  `json:"platformAssetSymbol"`
+	Amount               Decimal `json:"amount"`
+	AssetSymbol          string  `json:"assetSymbol"`
+	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
 }
 
 // EarnBalanceSummary defines model for EarnBalanceSummary.
@@ -1208,19 +1234,19 @@ type EarnPositionRow struct {
 
 // EarnRate defines model for EarnRate.
 type EarnRate struct {
-	Kind                string           `json:"kind"`
-	Label               string           `json:"label"`
-	PlatformAssetSymbol *string          `json:"platformAssetSymbol,omitempty"`
-	Qualifier           string           `json:"qualifier"`
-	Upper               *NullableDecimal `json:"upper,omitempty"`
-	Value               Decimal          `json:"value"`
+	AssetSymbol *string          `json:"assetSymbol,omitempty"`
+	Kind        string           `json:"kind"`
+	Label       string           `json:"label"`
+	Qualifier   string           `json:"qualifier"`
+	Upper       *NullableDecimal `json:"upper,omitempty"`
+	Value       Decimal          `json:"value"`
 }
 
 // EarnReward defines model for EarnReward.
 type EarnReward struct {
-	Amount              Decimal `json:"amount"`
-	Kind                string  `json:"kind"`
-	PlatformAssetSymbol string  `json:"platformAssetSymbol"`
+	Amount      Decimal `json:"amount"`
+	AssetSymbol string  `json:"assetSymbol"`
+	Kind        string  `json:"kind"`
 }
 
 // FieldError defines model for FieldError.
@@ -1235,17 +1261,17 @@ type Freshness string
 
 // FuturesContract defines model for FuturesContract.
 type FuturesContract struct {
-	BaseSymbol       *string          `json:"baseSymbol,omitempty"`
-	ContractSize     *NullableDecimal `json:"contractSize,omitempty"`
-	ExpiryAt         *time.Time       `json:"expiryAt,omitempty"`
-	FirstSeenAt      time.Time        `json:"firstSeenAt"`
-	Id               UUID             `json:"id"`
-	Kind             string           `json:"kind"`
-	LastSeenAt       time.Time        `json:"lastSeenAt"`
-	Platform         string           `json:"platform"`
-	QuoteSymbol      *string          `json:"quoteSymbol,omitempty"`
-	SettlementSymbol *string          `json:"settlementSymbol,omitempty"`
-	Symbol           string           `json:"symbol"`
+	BaseAssetSymbol       *string          `json:"baseAssetSymbol,omitempty"`
+	ContractSize          *NullableDecimal `json:"contractSize,omitempty"`
+	ExpiryAt              *time.Time       `json:"expiryAt,omitempty"`
+	FirstSeenAt           time.Time        `json:"firstSeenAt"`
+	Id                    UUID             `json:"id"`
+	Kind                  string           `json:"kind"`
+	LastSeenAt            time.Time        `json:"lastSeenAt"`
+	Platform              string           `json:"platform"`
+	QuoteAssetSymbol      *string          `json:"quoteAssetSymbol,omitempty"`
+	SettlementAssetSymbol *string          `json:"settlementAssetSymbol,omitempty"`
+	Symbol                string           `json:"symbol"`
 }
 
 // FuturesContractList defines model for FuturesContractList.
@@ -1384,11 +1410,11 @@ type LoginRequest struct {
 
 // ManualBalance defines model for ManualBalance.
 type ManualBalance struct {
-	AssetSymbol         string    `json:"assetSymbol"`
-	ModifiedAt          time.Time `json:"modifiedAt"`
-	PlatformAssetId     UUID      `json:"platformAssetId"`
-	PlatformAssetSymbol string    `json:"platformAssetSymbol"`
-	Quantity            Decimal   `json:"quantity"`
+	AssetId              UUID      `json:"assetId"`
+	AssetSymbol          string    `json:"assetSymbol"`
+	CanonicalAssetSymbol string    `json:"canonicalAssetSymbol"`
+	ModifiedAt           time.Time `json:"modifiedAt"`
+	Quantity             Decimal   `json:"quantity"`
 }
 
 // ManualBalanceState defines model for ManualBalanceState.
@@ -1424,11 +1450,12 @@ type OffsetPageKind string
 
 // OmittedBalance defines model for OmittedBalance.
 type OmittedBalance struct {
-	// AssetSymbol The Asset symbol the Platform Asset is mapped to, present only when it differs from platformAssetSymbol.
-	AssetSymbol         *string `json:"assetSymbol,omitempty"`
-	Equity              Decimal `json:"equity"`
-	PlatformAssetSymbol string  `json:"platformAssetSymbol"`
-	Reason              string  `json:"reason"`
+	AssetSymbol string `json:"assetSymbol"`
+
+	// CanonicalAssetSymbol The Canonical Asset Symbol the Asset is mapped to, present only when it differs from assetSymbol.
+	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
+	Equity               Decimal `json:"equity"`
+	Reason               string  `json:"reason"`
 }
 
 // Overview defines model for Overview.
@@ -1448,13 +1475,13 @@ type Overview struct {
 
 // PatchCapitalFlowRequest defines model for PatchCapitalFlowRequest.
 type PatchCapitalFlowRequest struct {
-	AccountId   *openapi_types.UUID               `json:"accountId,omitempty"`
-	AssetSymbol *string                           `json:"assetSymbol,omitempty"`
-	Direction   *PatchCapitalFlowRequestDirection `json:"direction,omitempty"`
-	EffectiveAt *time.Time                        `json:"effectiveAt,omitempty"`
-	Note        *string                           `json:"note,omitempty"`
-	Quantity    *Decimal                          `json:"quantity,omitempty"`
-	ValueUsd    *NullableDecimal                  `json:"valueUsd,omitempty"`
+	AccountId            *openapi_types.UUID               `json:"accountId,omitempty"`
+	CanonicalAssetSymbol *string                           `json:"canonicalAssetSymbol,omitempty"`
+	Direction            *PatchCapitalFlowRequestDirection `json:"direction,omitempty"`
+	EffectiveAt          *time.Time                        `json:"effectiveAt,omitempty"`
+	Note                 *string                           `json:"note,omitempty"`
+	Quantity             *Decimal                          `json:"quantity,omitempty"`
+	ValueUsd             *NullableDecimal                  `json:"valueUsd,omitempty"`
 }
 
 // PatchCapitalFlowRequestDirection defines model for PatchCapitalFlowRequest.Direction.
@@ -1505,32 +1532,6 @@ type Platform struct {
 	Name           string         `json:"name"`
 }
 
-// PlatformAsset defines model for PlatformAsset.
-type PlatformAsset struct {
-	AssetSymbol      string                     `json:"assetSymbol"`
-	ExclusionVersion int                        `json:"exclusionVersion"`
-	FirstSeenAt      time.Time                  `json:"firstSeenAt"`
-	Id               UUID                       `json:"id"`
-	IgnoreReason     *string                    `json:"ignoreReason,omitempty"`
-	Ignored          bool                       `json:"ignored"`
-	IgnoredAt        *time.Time                 `json:"ignoredAt,omitempty"`
-	LastSeenAt       time.Time                  `json:"lastSeenAt"`
-	MappingSource    PlatformAssetMappingSource `json:"mappingSource"`
-	Name             *string                    `json:"name,omitempty"`
-	Platform         string                     `json:"platform"`
-	Symbol           string                     `json:"symbol"`
-	Version          int                        `json:"version"`
-}
-
-// PlatformAssetMappingSource defines model for PlatformAsset.MappingSource.
-type PlatformAssetMappingSource string
-
-// PlatformAssetList defines model for PlatformAssetList.
-type PlatformAssetList struct {
-	Items []PlatformAsset `json:"items"`
-	Page  OffsetPage      `json:"page"`
-}
-
 // PlatformList defines model for PlatformList.
 type PlatformList struct {
 	Items []Platform `json:"items"`
@@ -1570,7 +1571,7 @@ type PositionRow struct {
 	AccountId         UUID                    `json:"accountId"`
 	AccountName       string                  `json:"accountName"`
 	AccountType       string                  `json:"accountType"`
-	BaseSymbol        *string                 `json:"baseSymbol,omitempty"`
+	BaseAssetSymbol   *string                 `json:"baseAssetSymbol,omitempty"`
 	ContractSize      *NullableDecimal        `json:"contractSize,omitempty"`
 	EntryPrice        *NullableDecimal        `json:"entryPrice,omitempty"`
 	ExpiryAt          *time.Time              `json:"expiryAt,omitempty"`
@@ -1584,8 +1585,8 @@ type PositionRow struct {
 	Leverage          *NullableDecimal        `json:"leverage,omitempty"`
 	LiquidationPrice  *NullableDecimal        `json:"liquidationPrice,omitempty"`
 	Margin            *NullableDecimal        `json:"margin,omitempty"`
+	MarginAssetSymbol *string                 `json:"marginAssetSymbol,omitempty"`
 	MarginBasis       *PositionRowMarginBasis `json:"marginBasis,omitempty"`
-	MarginCurrency    *string                 `json:"marginCurrency,omitempty"`
 	MarginMode        *PositionRowMarginMode  `json:"marginMode,omitempty"`
 
 	// MarginSource Provenance of the displayed settlement Margin; source amounts remain unchanged.
@@ -1601,13 +1602,13 @@ type PositionRow struct {
 	PositionMode            *PositionRowPositionMode `json:"positionMode,omitempty"`
 	Quantity                Decimal                  `json:"quantity"`
 	QuantityUnit            PositionRowQuantityUnit  `json:"quantityUnit"`
-	QuoteSymbol             *string                  `json:"quoteSymbol,omitempty"`
+	QuoteAssetSymbol        *string                  `json:"quoteAssetSymbol,omitempty"`
 	ReportObservedAt        *time.Time               `json:"reportObservedAt,omitempty"`
 
 	// SettleMargin Margin in settlement currency, using the position's cross or isolated display basis.
-	SettleMargin     *NullableDecimal `json:"settleMargin,omitempty"`
-	SettlementSymbol *string          `json:"settlementSymbol,omitempty"`
-	Side             PositionRowSide  `json:"side"`
+	SettleMargin          *NullableDecimal `json:"settleMargin,omitempty"`
+	SettlementAssetSymbol *string          `json:"settlementAssetSymbol,omitempty"`
+	Side                  PositionRowSide  `json:"side"`
 
 	// Size Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
 	Size          *NullableDecimal `json:"size,omitempty"`
@@ -1645,6 +1646,17 @@ type Problem struct {
 	Type        string        `json:"type"`
 }
 
+// PutAssetExclusionRequest defines model for PutAssetExclusionRequest.
+type PutAssetExclusionRequest struct {
+	Ignored bool    `json:"ignored"`
+	Reason  *string `json:"reason,omitempty"`
+}
+
+// PutAssetMappingRequest defines model for PutAssetMappingRequest.
+type PutAssetMappingRequest struct {
+	CanonicalSymbol string `json:"canonicalSymbol"`
+}
+
 // PutCredentialsRequest defines model for PutCredentialsRequest.
 type PutCredentialsRequest struct {
 	ApiKey string `json:"apiKey"`
@@ -1658,17 +1670,6 @@ type PutCredentialsRequest struct {
 	// FuturesApiSecret Kraken Futures API secret, replaced together with the Spot credentials.
 	FuturesApiSecret *string `json:"futuresApiSecret,omitempty"`
 	Passphrase       *string `json:"passphrase,omitempty"`
-}
-
-// PutPlatformAssetExclusionRequest defines model for PutPlatformAssetExclusionRequest.
-type PutPlatformAssetExclusionRequest struct {
-	Ignored bool    `json:"ignored"`
-	Reason  *string `json:"reason,omitempty"`
-}
-
-// PutPlatformAssetMappingRequest defines model for PutPlatformAssetMappingRequest.
-type PutPlatformAssetMappingRequest struct {
-	AssetSymbol string `json:"assetSymbol"`
 }
 
 // ReadContext defines model for ReadContext.
@@ -1816,6 +1817,9 @@ type ValueChangeList struct {
 // AccountID defines model for AccountID.
 type AccountID = UUID
 
+// AssetID defines model for AssetID.
+type AssetID = UUID
+
 // CSRFToken defines model for CSRFToken.
 type CSRFToken = string
 
@@ -1836,9 +1840,6 @@ type IfMatch = string
 
 // JobID defines model for JobID.
 type JobID = UUID
-
-// PlatformAssetID defines model for PlatformAssetID.
-type PlatformAssetID = UUID
 
 // PointID defines model for PointID.
 type PointID = UUID
@@ -1917,7 +1918,7 @@ type ListBalancesParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of the native platform asset or mapped Asset Symbol.
+	// Symbol Case-insensitive literal substring of the Asset Symbol or Canonical Asset Symbol.
 	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1955,16 +1956,8 @@ type PatchCapitalFlowParams struct {
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListFuturesContractsParams defines parameters for ListFuturesContracts.
-type ListFuturesContractsParams struct {
-	Platform *string `form:"platform,omitempty" json:"platform,omitempty"`
-	Q        *string `form:"q,omitempty" json:"q,omitempty"`
-	Offset   *int    `form:"offset,omitempty" json:"offset,omitempty"`
-	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// ListPlatformAssetsParams defines parameters for ListPlatformAssets.
-type ListPlatformAssetsParams struct {
+// ListAssetsParams defines parameters for ListAssets.
+type ListAssetsParams struct {
 	Platform    *string `form:"platform,omitempty" json:"platform,omitempty"`
 	Q           *string `form:"q,omitempty" json:"q,omitempty"`
 	IgnoredOnly *bool   `form:"ignoredOnly,omitempty" json:"ignoredOnly,omitempty"`
@@ -1972,16 +1965,24 @@ type ListPlatformAssetsParams struct {
 	Limit       *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// PutPlatformAssetExclusionParams defines parameters for PutPlatformAssetExclusion.
-type PutPlatformAssetExclusionParams struct {
+// PutAssetExclusionParams defines parameters for PutAssetExclusion.
+type PutAssetExclusionParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// PutPlatformAssetMappingParams defines parameters for PutPlatformAssetMapping.
-type PutPlatformAssetMappingParams struct {
+// PutAssetMappingParams defines parameters for PutAssetMapping.
+type PutAssetMappingParams struct {
 	IfMatch    IfMatch    `json:"If-Match"`
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// ListFuturesContractsParams defines parameters for ListFuturesContracts.
+type ListFuturesContractsParams struct {
+	Platform *string `form:"platform,omitempty" json:"platform,omitempty"`
+	Q        *string `form:"q,omitempty" json:"q,omitempty"`
+	Offset   *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // ListCollectionCyclesParams defines parameters for ListCollectionCycles.
@@ -2001,7 +2002,7 @@ type ListDualPositionsParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of the invested, Base, or Quote Symbol.
+	// Symbol Case-insensitive literal substring of the invested, Base, or Quote Asset Symbol.
 	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
@@ -2012,7 +2013,7 @@ type ListEarnPositionsParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of any invested native or mapped Asset Symbol.
+	// Symbol Case-insensitive literal substring of any invested Asset Symbol or Canonical Asset Symbol.
 	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
@@ -2173,11 +2174,11 @@ type CreateCapitalFlowJSONRequestBody = CreateCapitalFlowRequest
 // PatchCapitalFlowJSONRequestBody defines body for PatchCapitalFlow for application/json ContentType.
 type PatchCapitalFlowJSONRequestBody = PatchCapitalFlowRequest
 
-// PutPlatformAssetExclusionJSONRequestBody defines body for PutPlatformAssetExclusion for application/json ContentType.
-type PutPlatformAssetExclusionJSONRequestBody = PutPlatformAssetExclusionRequest
+// PutAssetExclusionJSONRequestBody defines body for PutAssetExclusion for application/json ContentType.
+type PutAssetExclusionJSONRequestBody = PutAssetExclusionRequest
 
-// PutPlatformAssetMappingJSONRequestBody defines body for PutPlatformAssetMapping for application/json ContentType.
-type PutPlatformAssetMappingJSONRequestBody = PutPlatformAssetMappingRequest
+// PutAssetMappingJSONRequestBody defines body for PutAssetMapping for application/json ContentType.
+type PutAssetMappingJSONRequestBody = PutAssetMappingRequest
 
 // CreateIdentityJSONRequestBody defines body for CreateIdentity for application/json ContentType.
 type CreateIdentityJSONRequestBody = CreateIdentityRequest
@@ -2274,18 +2275,18 @@ type ServerInterface interface {
 	// PatchCapitalFlow Edit a capital flow
 	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	PatchCapitalFlow(c *gin.Context, portfolioId PortfolioID, flowId FlowID, params PatchCapitalFlowParams)
+	// ListAssets List Assets and their Canonical Asset mappings
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
+	ListAssets(c *gin.Context, portfolioId PortfolioID, params ListAssetsParams)
+	// PutAssetExclusion Ignore or restore an Asset for future Collection Cycles in one Portfolio
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion)
+	PutAssetExclusion(c *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetExclusionParams)
+	// PutAssetMapping Override the Canonical Asset mapping of an Asset and recalculate affected points
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping)
+	PutAssetMapping(c *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetMappingParams)
 	// ListFuturesContracts List platform futures contracts
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/futures-contracts)
 	ListFuturesContracts(c *gin.Context, portfolioId PortfolioID, params ListFuturesContractsParams)
-	// ListPlatformAssets List platform assets and their asset mapping
-	// (GET /api/v1/portfolios/{portfolioId}/catalog/platform-assets)
-	ListPlatformAssets(c *gin.Context, portfolioId PortfolioID, params ListPlatformAssetsParams)
-	// PutPlatformAssetExclusion Ignore or restore a platform asset for future Collection Cycles in one Portfolio
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/exclusion)
-	PutPlatformAssetExclusion(c *gin.Context, portfolioId PortfolioID, platformAssetId PlatformAssetID, params PutPlatformAssetExclusionParams)
-	// PutPlatformAssetMapping Override the asset symbol of a platform asset and recalculate affected points
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/mapping)
-	PutPlatformAssetMapping(c *gin.Context, portfolioId PortfolioID, platformAssetId PlatformAssetID, params PutPlatformAssetMappingParams)
 	// ListCollectionCycles List collection cycles with their valuation points
 	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles)
 	ListCollectionCycles(c *gin.Context, portfolioId PortfolioID, params ListCollectionCyclesParams)
@@ -2338,11 +2339,11 @@ type ServerInterface interface {
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
 	CreateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params CreateManualBalanceParams)
 	// DeleteManualBalance Remove a current manual balance without rewriting history
-	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol})
-	DeleteManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, platformAssetSymbol string, params DeleteManualBalanceParams)
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
+	DeleteManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, assetSymbol string, params DeleteManualBalanceParams)
 	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
-	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol})
-	UpdateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, platformAssetSymbol string, params UpdateManualBalanceParams)
+	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
+	UpdateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, assetSymbol string, params UpdateManualBalanceParams)
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
 	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
@@ -3521,6 +3522,234 @@ func (siw *ServerInterfaceWrapper) PatchCapitalFlow(c *gin.Context) {
 	siw.Handler.PatchCapitalFlow(c, portfolioId, flowId, params)
 }
 
+// ListAssets operation middleware
+func (siw *ServerInterfaceWrapper) ListAssets(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAssetsParams
+
+	// ------------- Optional query parameter "platform" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "ignoredOnly" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoredOnly", c.Request.URL.Query(), &params.IgnoredOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ignoredOnly: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListAssets(c, portfolioId, params)
+}
+
+// PutAssetExclusion operation middleware
+func (siw *ServerInterfaceWrapper) PutAssetExclusion(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "assetId" -------------
+	var assetId AssetID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "assetId", c.Param("assetId"), &assetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutAssetExclusionParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutAssetExclusion(c, portfolioId, assetId, params)
+}
+
+// PutAssetMapping operation middleware
+func (siw *ServerInterfaceWrapper) PutAssetMapping(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "assetId" -------------
+	var assetId AssetID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "assetId", c.Param("assetId"), &assetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutAssetMappingParams
+
+	headers := c.Request.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.PutAssetMapping(c, portfolioId, assetId, params)
+}
+
 // ListFuturesContracts operation middleware
 func (siw *ServerInterfaceWrapper) ListFuturesContracts(c *gin.Context) {
 
@@ -3579,234 +3808,6 @@ func (siw *ServerInterfaceWrapper) ListFuturesContracts(c *gin.Context) {
 	}
 
 	siw.Handler.ListFuturesContracts(c, portfolioId, params)
-}
-
-// ListPlatformAssets operation middleware
-func (siw *ServerInterfaceWrapper) ListPlatformAssets(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListPlatformAssetsParams
-
-	// ------------- Optional query parameter "platform" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "platform", c.Request.URL.Query(), &params.Platform, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platform: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "q" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "ignoredOnly" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "ignoredOnly", c.Request.URL.Query(), &params.IgnoredOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ignoredOnly: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListPlatformAssets(c, portfolioId, params)
-}
-
-// PutPlatformAssetExclusion operation middleware
-func (siw *ServerInterfaceWrapper) PutPlatformAssetExclusion(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "platformAssetId" -------------
-	var platformAssetId PlatformAssetID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "platformAssetId", c.Param("platformAssetId"), &platformAssetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformAssetId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PutPlatformAssetExclusionParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PutPlatformAssetExclusion(c, portfolioId, platformAssetId, params)
-}
-
-// PutPlatformAssetMapping operation middleware
-func (siw *ServerInterfaceWrapper) PutPlatformAssetMapping(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "platformAssetId" -------------
-	var platformAssetId PlatformAssetID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "platformAssetId", c.Param("platformAssetId"), &platformAssetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformAssetId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PutPlatformAssetMappingParams
-
-	headers := c.Request.Header
-
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.IfMatch = IfMatch
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.PutPlatformAssetMapping(c, portfolioId, platformAssetId, params)
 }
 
 // ListCollectionCycles operation middleware
@@ -4888,12 +4889,12 @@ func (siw *ServerInterfaceWrapper) DeleteManualBalance(c *gin.Context) {
 		return
 	}
 
-	// ------------- Path parameter "platformAssetSymbol" -------------
-	var platformAssetSymbol string
+	// ------------- Path parameter "assetSymbol" -------------
+	var assetSymbol string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "platformAssetSymbol", c.Param("platformAssetSymbol"), &platformAssetSymbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "assetSymbol", c.Param("assetSymbol"), &assetSymbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformAssetSymbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetSymbol: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4950,7 +4951,7 @@ func (siw *ServerInterfaceWrapper) DeleteManualBalance(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.DeleteManualBalance(c, portfolioId, identityId, platformAssetSymbol, params)
+	siw.Handler.DeleteManualBalance(c, portfolioId, identityId, assetSymbol, params)
 }
 
 // UpdateManualBalance operation middleware
@@ -4977,12 +4978,12 @@ func (siw *ServerInterfaceWrapper) UpdateManualBalance(c *gin.Context) {
 		return
 	}
 
-	// ------------- Path parameter "platformAssetSymbol" -------------
-	var platformAssetSymbol string
+	// ------------- Path parameter "assetSymbol" -------------
+	var assetSymbol string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "platformAssetSymbol", c.Param("platformAssetSymbol"), &platformAssetSymbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "assetSymbol", c.Param("assetSymbol"), &assetSymbol, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter platformAssetSymbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter assetSymbol: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5039,7 +5040,7 @@ func (siw *ServerInterfaceWrapper) UpdateManualBalance(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UpdateManualBalance(c, portfolioId, identityId, platformAssetSymbol, params)
+	siw.Handler.UpdateManualBalance(c, portfolioId, identityId, assetSymbol, params)
 }
 
 // ValidateIdentityConnection operation middleware
@@ -5703,17 +5704,17 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.GetCapitalFlow)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.PatchCapitalFlow)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/boundary-events", wrapper.ListBoundaryEvents)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/platform-assets", wrapper.ListPlatformAssets)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/platform-assets/:platformAssetId/mapping", wrapper.PutPlatformAssetMapping)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/platform-assets/:platformAssetId/exclusion", wrapper.PutPlatformAssetExclusion)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets", wrapper.ListAssets)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets/:assetId/mapping", wrapper.PutAssetMapping)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/assets/:assetId/exclusion", wrapper.PutAssetExclusion)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/catalog/futures-contracts", wrapper.ListFuturesContracts)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs", wrapper.ListJobs)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/jobs/:jobId", wrapper.GetJob)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/audit-events", wrapper.ListAuditEvents)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.GetManualBalances)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.CreateManualBalance)
-	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:platformAssetSymbol", wrapper.DeleteManualBalance)
-	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:platformAssetSymbol", wrapper.UpdateManualBalance)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:assetSymbol", wrapper.DeleteManualBalance)
+	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:assetSymbol", wrapper.UpdateManualBalance)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -7209,6 +7210,259 @@ func (response PatchCapitalFlow412ApplicationProblemPlusJSONResponse) VisitPatch
 	return err
 }
 
+type ListAssetsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListAssetsParams
+}
+
+type ListAssetsResponseObject interface {
+	VisitListAssetsResponse(w http.ResponseWriter) error
+}
+
+type ListAssets200JSONResponse AssetList
+
+func (response ListAssets200JSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAssets400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListAssets400ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAssets401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAssets401ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAssets404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAssets404ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusionRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	AssetId     AssetID     `json:"assetId"`
+	Params      PutAssetExclusionParams
+	Body        *PutAssetExclusionJSONRequestBody
+}
+
+type PutAssetExclusionResponseObject interface {
+	VisitPutAssetExclusionResponse(w http.ResponseWriter) error
+}
+
+type PutAssetExclusion200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutAssetExclusion200JSONResponse struct {
+	Body    Asset
+	Headers PutAssetExclusion200ResponseHeaders
+}
+
+func (response PutAssetExclusion200JSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusion400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutAssetExclusion400ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusion401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetExclusion401ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusion404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetExclusion404ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusion412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetExclusion412ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMappingRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	AssetId     AssetID     `json:"assetId"`
+	Params      PutAssetMappingParams
+	Body        *PutAssetMappingJSONRequestBody
+}
+
+type PutAssetMappingResponseObject interface {
+	VisitPutAssetMappingResponse(w http.ResponseWriter) error
+}
+
+type PutAssetMapping200ResponseHeaders struct {
+	ETag *string
+}
+
+type PutAssetMapping200JSONResponse struct {
+	Body    Asset
+	Headers PutAssetMapping200ResponseHeaders
+}
+
+func (response PutAssetMapping200JSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.ETag != nil {
+		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMapping400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response PutAssetMapping400ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMapping401ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetMapping401ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMapping404ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetMapping404ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMapping412ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetMapping412ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListFuturesContractsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      ListFuturesContractsParams
@@ -7272,259 +7526,6 @@ func (response ListFuturesContracts404ApplicationProblemPlusJSONResponse) VisitL
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListPlatformAssetsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListPlatformAssetsParams
-}
-
-type ListPlatformAssetsResponseObject interface {
-	VisitListPlatformAssetsResponse(w http.ResponseWriter) error
-}
-
-type ListPlatformAssets200JSONResponse PlatformAssetList
-
-func (response ListPlatformAssets200JSONResponse) VisitListPlatformAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListPlatformAssets400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListPlatformAssets400ApplicationProblemPlusJSONResponse) VisitListPlatformAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListPlatformAssets401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListPlatformAssets401ApplicationProblemPlusJSONResponse) VisitListPlatformAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListPlatformAssets404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListPlatformAssets404ApplicationProblemPlusJSONResponse) VisitListPlatformAssetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetExclusionRequestObject struct {
-	PortfolioId     PortfolioID     `json:"portfolioId"`
-	PlatformAssetId PlatformAssetID `json:"platformAssetId"`
-	Params          PutPlatformAssetExclusionParams
-	Body            *PutPlatformAssetExclusionJSONRequestBody
-}
-
-type PutPlatformAssetExclusionResponseObject interface {
-	VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error
-}
-
-type PutPlatformAssetExclusion200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutPlatformAssetExclusion200JSONResponse struct {
-	Body    PlatformAsset
-	Headers PutPlatformAssetExclusion200ResponseHeaders
-}
-
-func (response PutPlatformAssetExclusion200JSONResponse) VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetExclusion400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response PutPlatformAssetExclusion400ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetExclusion401ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetExclusion401ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetExclusion404ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetExclusion404ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetExclusion412ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetExclusion412ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetExclusionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetMappingRequestObject struct {
-	PortfolioId     PortfolioID     `json:"portfolioId"`
-	PlatformAssetId PlatformAssetID `json:"platformAssetId"`
-	Params          PutPlatformAssetMappingParams
-	Body            *PutPlatformAssetMappingJSONRequestBody
-}
-
-type PutPlatformAssetMappingResponseObject interface {
-	VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error
-}
-
-type PutPlatformAssetMapping200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutPlatformAssetMapping200JSONResponse struct {
-	Body    PlatformAsset
-	Headers PutPlatformAssetMapping200ResponseHeaders
-}
-
-func (response PutPlatformAssetMapping200JSONResponse) VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetMapping400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response PutPlatformAssetMapping400ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetMapping401ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetMapping401ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetMapping404ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetMapping404ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PutPlatformAssetMapping412ApplicationProblemPlusJSONResponse Problem
-
-func (response PutPlatformAssetMapping412ApplicationProblemPlusJSONResponse) VisitPutPlatformAssetMappingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(412)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8985,10 +8986,10 @@ func (response CreateManualBalance412ApplicationProblemPlusJSONResponse) VisitCr
 }
 
 type DeleteManualBalanceRequestObject struct {
-	PortfolioId         PortfolioID `json:"portfolioId"`
-	IdentityId          IdentityID  `json:"identityId"`
-	PlatformAssetSymbol string      `json:"platformAssetSymbol"`
-	Params              DeleteManualBalanceParams
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	AssetSymbol string      `json:"assetSymbol"`
+	Params      DeleteManualBalanceParams
 }
 
 type DeleteManualBalanceResponseObject interface {
@@ -9106,11 +9107,11 @@ func (response DeleteManualBalance412ApplicationProblemPlusJSONResponse) VisitDe
 }
 
 type UpdateManualBalanceRequestObject struct {
-	PortfolioId         PortfolioID `json:"portfolioId"`
-	IdentityId          IdentityID  `json:"identityId"`
-	PlatformAssetSymbol string      `json:"platformAssetSymbol"`
-	Params              UpdateManualBalanceParams
-	Body                *UpdateManualBalanceJSONRequestBody
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	AssetSymbol string      `json:"assetSymbol"`
+	Params      UpdateManualBalanceParams
+	Body        *UpdateManualBalanceJSONRequestBody
 }
 
 type UpdateManualBalanceResponseObject interface {
@@ -10134,18 +10135,18 @@ type StrictServerInterface interface {
 	// PatchCapitalFlow Edit a capital flow
 	// (PATCH /api/v1/portfolios/{portfolioId}/capital-flows/{flowId})
 	PatchCapitalFlow(ctx context.Context, request PatchCapitalFlowRequestObject) (PatchCapitalFlowResponseObject, error)
+	// ListAssets List Assets and their Canonical Asset mappings
+	// (GET /api/v1/portfolios/{portfolioId}/catalog/assets)
+	ListAssets(ctx context.Context, request ListAssetsRequestObject) (ListAssetsResponseObject, error)
+	// PutAssetExclusion Ignore or restore an Asset for future Collection Cycles in one Portfolio
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion)
+	PutAssetExclusion(ctx context.Context, request PutAssetExclusionRequestObject) (PutAssetExclusionResponseObject, error)
+	// PutAssetMapping Override the Canonical Asset mapping of an Asset and recalculate affected points
+	// (PUT /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping)
+	PutAssetMapping(ctx context.Context, request PutAssetMappingRequestObject) (PutAssetMappingResponseObject, error)
 	// ListFuturesContracts List platform futures contracts
 	// (GET /api/v1/portfolios/{portfolioId}/catalog/futures-contracts)
 	ListFuturesContracts(ctx context.Context, request ListFuturesContractsRequestObject) (ListFuturesContractsResponseObject, error)
-	// ListPlatformAssets List platform assets and their asset mapping
-	// (GET /api/v1/portfolios/{portfolioId}/catalog/platform-assets)
-	ListPlatformAssets(ctx context.Context, request ListPlatformAssetsRequestObject) (ListPlatformAssetsResponseObject, error)
-	// PutPlatformAssetExclusion Ignore or restore a platform asset for future Collection Cycles in one Portfolio
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/exclusion)
-	PutPlatformAssetExclusion(ctx context.Context, request PutPlatformAssetExclusionRequestObject) (PutPlatformAssetExclusionResponseObject, error)
-	// PutPlatformAssetMapping Override the asset symbol of a platform asset and recalculate affected points
-	// (PUT /api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/mapping)
-	PutPlatformAssetMapping(ctx context.Context, request PutPlatformAssetMappingRequestObject) (PutPlatformAssetMappingResponseObject, error)
 	// ListCollectionCycles List collection cycles with their valuation points
 	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles)
 	ListCollectionCycles(ctx context.Context, request ListCollectionCyclesRequestObject) (ListCollectionCyclesResponseObject, error)
@@ -10198,10 +10199,10 @@ type StrictServerInterface interface {
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
 	CreateManualBalance(ctx context.Context, request CreateManualBalanceRequestObject) (CreateManualBalanceResponseObject, error)
 	// DeleteManualBalance Remove a current manual balance without rewriting history
-	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol})
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
 	DeleteManualBalance(ctx context.Context, request DeleteManualBalanceRequestObject) (DeleteManualBalanceResponseObject, error)
 	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
-	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol})
+	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
 	UpdateManualBalance(ctx context.Context, request UpdateManualBalanceRequestObject) (UpdateManualBalanceResponseObject, error)
 	// ValidateIdentityConnection Run one read-only validation call and store the outcome
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
@@ -11030,6 +11031,103 @@ func (sh *strictHandler) PatchCapitalFlow(ctx *gin.Context, portfolioId Portfoli
 	}
 }
 
+// ListAssets operation middleware
+func (sh *strictHandler) ListAssets(ctx *gin.Context, portfolioId PortfolioID, params ListAssetsParams) {
+	var request ListAssetsRequestObject
+
+	request.PortfolioId = portfolioId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAssets(ctx, request.(ListAssetsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAssets")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ListAssetsResponseObject); ok {
+		if err := validResponse.VisitListAssetsResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutAssetExclusion operation middleware
+func (sh *strictHandler) PutAssetExclusion(ctx *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetExclusionParams) {
+	var request PutAssetExclusionRequestObject
+
+	request.PortfolioId = portfolioId
+	request.AssetId = assetId
+	request.Params = params
+
+	var body PutAssetExclusionJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutAssetExclusion(ctx, request.(PutAssetExclusionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutAssetExclusion")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutAssetExclusionResponseObject); ok {
+		if err := validResponse.VisitPutAssetExclusionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PutAssetMapping operation middleware
+func (sh *strictHandler) PutAssetMapping(ctx *gin.Context, portfolioId PortfolioID, assetId AssetID, params PutAssetMappingParams) {
+	var request PutAssetMappingRequestObject
+
+	request.PortfolioId = portfolioId
+	request.AssetId = assetId
+	request.Params = params
+
+	var body PutAssetMappingJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutAssetMapping(ctx, request.(PutAssetMappingRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutAssetMapping")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(PutAssetMappingResponseObject); ok {
+		if err := validResponse.VisitPutAssetMappingResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListFuturesContracts operation middleware
 func (sh *strictHandler) ListFuturesContracts(ctx *gin.Context, portfolioId PortfolioID, params ListFuturesContractsParams) {
 	var request ListFuturesContractsRequestObject
@@ -11050,103 +11148,6 @@ func (sh *strictHandler) ListFuturesContracts(ctx *gin.Context, portfolioId Port
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ListFuturesContractsResponseObject); ok {
 		if err := validResponse.VisitListFuturesContractsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListPlatformAssets operation middleware
-func (sh *strictHandler) ListPlatformAssets(ctx *gin.Context, portfolioId PortfolioID, params ListPlatformAssetsParams) {
-	var request ListPlatformAssetsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListPlatformAssets(ctx, request.(ListPlatformAssetsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListPlatformAssets")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListPlatformAssetsResponseObject); ok {
-		if err := validResponse.VisitListPlatformAssetsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PutPlatformAssetExclusion operation middleware
-func (sh *strictHandler) PutPlatformAssetExclusion(ctx *gin.Context, portfolioId PortfolioID, platformAssetId PlatformAssetID, params PutPlatformAssetExclusionParams) {
-	var request PutPlatformAssetExclusionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.PlatformAssetId = platformAssetId
-	request.Params = params
-
-	var body PutPlatformAssetExclusionJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutPlatformAssetExclusion(ctx, request.(PutPlatformAssetExclusionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutPlatformAssetExclusion")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PutPlatformAssetExclusionResponseObject); ok {
-		if err := validResponse.VisitPutPlatformAssetExclusionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PutPlatformAssetMapping operation middleware
-func (sh *strictHandler) PutPlatformAssetMapping(ctx *gin.Context, portfolioId PortfolioID, platformAssetId PlatformAssetID, params PutPlatformAssetMappingParams) {
-	var request PutPlatformAssetMappingRequestObject
-
-	request.PortfolioId = portfolioId
-	request.PlatformAssetId = platformAssetId
-	request.Params = params
-
-	var body PutPlatformAssetMappingJSONRequestBody
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(ctx, err)
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PutPlatformAssetMapping(ctx, request.(PutPlatformAssetMappingRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PutPlatformAssetMapping")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(PutPlatformAssetMappingResponseObject); ok {
-		if err := validResponse.VisitPutPlatformAssetMappingResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11648,12 +11649,12 @@ func (sh *strictHandler) CreateManualBalance(ctx *gin.Context, portfolioId Portf
 }
 
 // DeleteManualBalance operation middleware
-func (sh *strictHandler) DeleteManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, platformAssetSymbol string, params DeleteManualBalanceParams) {
+func (sh *strictHandler) DeleteManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, assetSymbol string, params DeleteManualBalanceParams) {
 	var request DeleteManualBalanceRequestObject
 
 	request.PortfolioId = portfolioId
 	request.IdentityId = identityId
-	request.PlatformAssetSymbol = platformAssetSymbol
+	request.AssetSymbol = assetSymbol
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
@@ -11677,12 +11678,12 @@ func (sh *strictHandler) DeleteManualBalance(ctx *gin.Context, portfolioId Portf
 }
 
 // UpdateManualBalance operation middleware
-func (sh *strictHandler) UpdateManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, platformAssetSymbol string, params UpdateManualBalanceParams) {
+func (sh *strictHandler) UpdateManualBalance(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, assetSymbol string, params UpdateManualBalanceParams) {
 	var request UpdateManualBalanceRequestObject
 
 	request.PortfolioId = portfolioId
 	request.IdentityId = identityId
-	request.PlatformAssetSymbol = platformAssetSymbol
+	request.AssetSymbol = assetSymbol
 	request.Params = params
 
 	var body UpdateManualBalanceJSONRequestBody
@@ -12088,169 +12089,169 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"T6Oj6Pb97f8MAA==",
+	"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",
+	"ZwA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -97,7 +97,7 @@ export function BalancesPage() {
                 {item.manualChange !== "deleted" ? (
                   <ManualActions
                     identityId={item.identityId}
-                    symbol={item.platformAssetSymbol}
+                    symbol={item.assetSymbol}
                     onOpen={setManualTarget}
                   />
                 ) : null}

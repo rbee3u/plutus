@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
+	"github.com/rbee3u/plutus/internal/application/assetexclusion"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -23,7 +23,7 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 
 	ignored := map[uuid.UUID]bool{}
 	if view.Account.Method == valuation.MethodCalculated && view.Context.JobID != nil {
-		ignored, err = platformassetexclusion.ActiveForJob(ctx, s.db, p.ID, *view.Context.JobID)
+		ignored, err = assetexclusion.ActiveForJob(ctx, s.db, p.ID, *view.Context.JobID)
 		if err != nil {
 			return AccountView{}, err
 		}
@@ -41,18 +41,18 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 		at = *view.Account.ReportObservedAt
 	}
 	for i := range rows {
-		platformAssetID, err := uuid.FromBytes(rows[i].PlatformAssetID)
+		assetID, err := uuid.FromBytes(rows[i].AssetID)
 		if err != nil {
 			return AccountView{}, err
 		}
-		if ignored[platformAssetID] && view.Account.AccountType != string(adapters.TypeManual) {
+		if ignored[assetID] && view.Account.AccountType != string(adapters.TypeManual) {
 			continue
 		}
 		row, err := balanceRow(ctx, book, &view.Account, at, &rows[i])
 		if err != nil {
 			return AccountView{}, err
 		}
-		if ignored[platformAssetID] {
+		if ignored[assetID] {
 			excludeManualBalance(&row)
 		}
 		view.Balances = append(view.Balances, row)
@@ -69,29 +69,29 @@ func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accou
 }
 
 func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuation.AccountValuation, at time.Time, source *sqlcgen.ListBalancesByReportRow) (BalanceRow, error) {
-	id, err := uuid.FromBytes(source.PlatformAssetID)
+	id, err := uuid.FromBytes(source.AssetID)
 	if err != nil {
 		return BalanceRow{}, err
 	}
 	row := BalanceRow{
-		AccountID:           account.AccountID,
-		AccountName:         account.AccountName,
-		AccountType:         account.AccountType,
-		IdentityID:          account.IdentityID,
-		IdentityName:        account.IdentityName,
-		Platform:            source.Platform,
-		PlatformAssetID:     id,
-		PlatformAssetSymbol: source.PlatformAssetSymbol,
-		AssetSymbol:         source.AssetSymbol,
-		Equity:              decimal.Compact(source.Equity),
-		AvailableToWithdraw: nullDecimal(source.AvailableToWithdraw),
-		AvailableToTrade:    nullDecimal(source.AvailableToTrade),
-		Liability:           nullDecimal(source.Liability),
-		Interest:            nullDecimal(source.Interest),
-		UnrealizedPnl:       nullDecimal(source.UnrealizedPnl),
-		Freshness:           account.Freshness,
-		ReportObservedAt:    account.ReportObservedAt,
-		ManualModifiedAt:    account.ManualModifiedAt,
+		AccountID:            account.AccountID,
+		AccountName:          account.AccountName,
+		AccountType:          account.AccountType,
+		IdentityID:           account.IdentityID,
+		IdentityName:         account.IdentityName,
+		Platform:             source.Platform,
+		AssetID:              id,
+		AssetSymbol:          source.AssetSymbol,
+		CanonicalAssetSymbol: source.CanonicalAssetSymbol,
+		Equity:               decimal.Compact(source.Equity),
+		AvailableToWithdraw:  nullDecimal(source.AvailableToWithdraw),
+		AvailableToTrade:     nullDecimal(source.AvailableToTrade),
+		Liability:            nullDecimal(source.Liability),
+		Interest:             nullDecimal(source.Interest),
+		UnrealizedPnl:        nullDecimal(source.UnrealizedPnl),
+		Freshness:            account.Freshness,
+		ReportObservedAt:     account.ReportObservedAt,
+		ManualModifiedAt:     account.ManualModifiedAt,
 	}
 	quantity, ok := decimal.Parse(source.Equity)
 	if !ok {
@@ -102,7 +102,7 @@ func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuati
 	if account.AccountType == string(adapters.TypeManual) {
 		lookup = book.LookupPlatform
 	}
-	price, found, err := lookup(ctx, source.Platform, source.AssetSymbol, at)
+	price, found, err := lookup(ctx, source.Platform, source.CanonicalAssetSymbol, at)
 	if err != nil {
 		return BalanceRow{}, err
 	}
@@ -140,7 +140,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	ignored := map[uuid.UUID]bool{}
 	var rows []sqlcgen.ListBalancesByJobRow
 	if point != nil {
-		ignored, err = platformassetexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
+		ignored, err = assetexclusion.ActiveForJob(ctx, s.db, p.ID, point.JobID)
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
@@ -163,11 +163,11 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		if !ok {
 			continue
 		}
-		platformAssetID, err := uuid.FromBytes(rows[i].PlatformAssetID)
+		assetID, err := uuid.FromBytes(rows[i].AssetID)
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
-		if account.Method == valuation.MethodCalculated && ignored[platformAssetID] && account.AccountType != string(adapters.TypeManual) {
+		if account.Method == valuation.MethodCalculated && ignored[assetID] && account.AccountType != string(adapters.TypeManual) {
 			continue
 		}
 		at := time.Time{}
@@ -175,22 +175,22 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 			at = *account.ReportObservedAt
 		}
 		row, err := balanceRow(ctx, book, account, at, &sqlcgen.ListBalancesByReportRow{
-			PlatformAssetID:     rows[i].PlatformAssetID,
-			Platform:            rows[i].Platform,
-			PlatformAssetSymbol: rows[i].PlatformAssetSymbol,
-			AssetSymbol:         rows[i].AssetSymbol,
-			Equity:              rows[i].Equity,
-			AvailableToWithdraw: rows[i].AvailableToWithdraw,
-			AvailableToTrade:    rows[i].AvailableToTrade,
-			Liability:           rows[i].Liability,
-			Interest:            rows[i].Interest,
-			UnrealizedPnl:       rows[i].UnrealizedPnl,
+			AssetID:              rows[i].AssetID,
+			Platform:             rows[i].Platform,
+			AssetSymbol:          rows[i].AssetSymbol,
+			CanonicalAssetSymbol: rows[i].CanonicalAssetSymbol,
+			Equity:               rows[i].Equity,
+			AvailableToWithdraw:  rows[i].AvailableToWithdraw,
+			AvailableToTrade:     rows[i].AvailableToTrade,
+			Liability:            rows[i].Liability,
+			Interest:             rows[i].Interest,
+			UnrealizedPnl:        rows[i].UnrealizedPnl,
 		})
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
 		if account.AccountType == string(adapters.TypeManual) {
-			if ignored[platformAssetID] {
+			if ignored[assetID] {
 				excludeManualBalance(&row)
 			}
 			manualRows[accountID] = append(manualRows[accountID], row)
@@ -211,7 +211,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 	filtered := all[:0]
 	total := decimal.Zero()
 	for _, row := range all {
-		if !matchesAccount(f, byAccount[row.AccountID]) || !matchesSymbol(f.Symbol, row.AssetSymbol, row.PlatformAssetSymbol) {
+		if !matchesAccount(f, byAccount[row.AccountID]) || !matchesSymbol(f.Symbol, row.CanonicalAssetSymbol, row.AssetSymbol) {
 			continue
 		}
 		filtered = append(filtered, row)

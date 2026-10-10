@@ -74,7 +74,7 @@ func TestDefinitionFailures(t *testing.T) {
 	if b.err == nil {
 		t.Fatal("unknown Identity accepted")
 	}
-	r := adapters.AccountReport{Status: adapters.StatusOK, ObservedAt: time.Now(), Balances: []adapters.Balance{{PlatformAssetSymbol: "BTC", Equity: ""}}}
+	r := adapters.AccountReport{Status: adapters.StatusOK, ObservedAt: time.Now(), Balances: []adapters.Balance{{AssetSymbol: "BTC", Equity: ""}}}
 	if validateReport(&r) == nil {
 		t.Fatal("unknown Balance equity accepted")
 	}
@@ -159,8 +159,8 @@ func TestSeedsApplyRebuildAndCollect(t *testing.T) {
 	assertRebuildEquivalent(ctx, t, db, v)
 	assertWalkthroughReads(ctx, t, db, anchor)
 	queue := jobs.NewService(db)
-	platformAssets := catalog.NewService(db, jobs.NewService(db))
-	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: platformAssets, Manual: manual.NewService(db, platformAssets), Valuation: v, RetryDelays: []time.Duration{}})
+	assets := catalog.NewService(db, jobs.NewService(db))
+	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, RetryDelays: []time.Duration{}})
 	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge, PortfolioAliceLarge} {
 		job, _, err := queue.EnqueueCycle(ctx, p, jobs.TriggerManual, nil)
 		if err != nil {
@@ -279,7 +279,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 		t.Fatal("unvalued flow comparison must be incomplete")
 	}
 	reasons := strings.Join(change.Reasons, "\n")
-	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "account_scope_changed:", "platform_asset_exclusion_changed:"} {
+	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "account_scope_changed:", "asset_exclusion_changed:"} {
 		if !strings.Contains(reasons, reason) {
 			t.Fatalf("missing comparison reason %s: %v", reason, change.Reasons)
 		}
@@ -341,7 +341,7 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 			t.Fatal(err)
 		}
 		c := catalog.NewService(db, jobs.NewService(db))
-		l, err := c.ListPlatformAssets(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
+		l, err := c.ListAssets(ctx, catalog.ListFilter{PortfolioID: p.ID, Limit: 50, Offset: offset})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -353,7 +353,7 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 		lengths := []int{len(b.Items), len(s.Items), len(e.Items), len(d.Items), len(l.Items), len(i.Items)}
 		keys := make([][]string, 6)
 		for _, r := range b.Items {
-			keys[0] = append(keys[0], r.AccountID.String()+"/"+r.PlatformAssetID.String())
+			keys[0] = append(keys[0], r.AccountID.String()+"/"+r.AssetID.String())
 		}
 		for _, r := range s.Items {
 			keys[1] = append(keys[1], r.AccountID.String()+"/"+r.PlatformPositionRef)

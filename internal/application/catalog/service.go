@@ -1,4 +1,4 @@
-// Package catalog owns Platform Assets, Futures Contracts, and Platform prices.
+// Package catalog owns Assets, Futures Contracts, and Platform prices.
 package catalog
 
 import (
@@ -25,9 +25,9 @@ const (
 	defaultLimit = 50
 	maxSymbol    = 64
 
-	// MappingAuto means the Asset symbol equals the normalized platform asset symbol.
+	// MappingAuto means the Canonical Asset Symbol equals the normalized Asset Symbol.
 	MappingAuto = "auto"
-	// MappingManual means a User overrode the Asset symbol.
+	// MappingManual means a User overrode the Canonical Asset Symbol.
 	MappingManual = "manual"
 )
 
@@ -48,12 +48,12 @@ func NewService(db *sql.DB, jobService *jobs.Service) *Service {
 	return &Service{jobs: jobService, db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
-// PlatformAsset is an asset available on a Platform, with its own Symbol and a mapping to an Asset.
-type PlatformAsset struct {
+// Asset is an asset available on a Platform, with its own Symbol and a mapping to a Canonical Asset.
+type Asset struct {
 	ID               uuid.UUID
 	Platform         string
 	Symbol           string
-	AssetSymbol      string
+	CanonicalSymbol  string
 	Name             *string
 	MappingSource    string
 	FirstSeenAt      time.Time
@@ -66,29 +66,29 @@ type PlatformAsset struct {
 	ExclusionVersion uint64
 }
 
-// ETag returns the platform asset validator.
-func (l *PlatformAsset) ETag() string {
-	return etag.Format("platform-asset", l.Version)
+// ETag returns the asset validator.
+func (asset *Asset) ETag() string {
+	return etag.Format("asset", asset.Version)
 }
 
-// ParsePlatformAssetETag extracts the version from a platform asset ETag.
-func ParsePlatformAssetETag(value string) (uint64, bool) {
-	return etag.Parse("platform-asset", value)
+// ParseAssetETag extracts the version from an asset ETag.
+func ParseAssetETag(value string) (uint64, bool) {
+	return etag.Parse("asset", value)
 }
 
 // FuturesContract is one Platform contract.
 type FuturesContract struct {
-	ID               uuid.UUID
-	Platform         string
-	Symbol           string
-	Kind             string
-	BaseSymbol       *string
-	QuoteSymbol      *string
-	SettlementSymbol *string
-	ExpiryAt         *time.Time
-	ContractSize     *string
-	FirstSeenAt      time.Time
-	LastSeenAt       time.Time
+	ID                    uuid.UUID
+	Platform              string
+	Symbol                string
+	Kind                  string
+	BaseAssetSymbol       *string
+	QuoteAssetSymbol      *string
+	SettlementAssetSymbol *string
+	ExpiryAt              *time.Time
+	ContractSize          *string
+	FirstSeenAt           time.Time
+	LastSeenAt            time.Time
 }
 
 // Page is an offset page.
@@ -109,14 +109,14 @@ type ListFilter struct {
 	Limit       int
 }
 
-// ListPlatformAssets returns an offset page of platform assets.
-func (s *Service) ListPlatformAssets(ctx context.Context, in ListFilter) (Page[PlatformAsset], error) {
+// ListAssets returns an offset page of assets.
+func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], error) {
 	limit, offset, err := normalizePage(in.Limit, in.Offset)
 	if err != nil {
-		return Page[PlatformAsset]{}, err
+		return Page[Asset]{}, err
 	}
 	query := likePattern(in.Query)
-	rows, err := s.q.ListPlatformAssets(ctx, sqlcgen.ListPlatformAssetsParams{
+	rows, err := s.q.ListAssets(ctx, sqlcgen.ListAssetsParams{
 		PlatformOrder:  ordering.PlatformsCSV(),
 		PortfolioID:    in.PortfolioID[:],
 		IgnoredOnly:    flag(in.IgnoredOnly),
@@ -128,9 +128,9 @@ func (s *Service) ListPlatformAssets(ctx context.Context, in ListFilter) (Page[P
 		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
 	if err != nil {
-		return Page[PlatformAsset]{}, err
+		return Page[Asset]{}, err
 	}
-	total, err := s.q.CountPlatformAssets(ctx, sqlcgen.CountPlatformAssetsParams{
+	total, err := s.q.CountAssets(ctx, sqlcgen.CountAssetsParams{
 		PortfolioID:    in.PortfolioID[:],
 		IgnoredOnly:    flag(in.IgnoredOnly),
 		FilterPlatform: flag(in.Platform != ""),
@@ -139,34 +139,34 @@ func (s *Service) ListPlatformAssets(ctx context.Context, in ListFilter) (Page[P
 		Query:          query,
 	})
 	if err != nil {
-		return Page[PlatformAsset]{}, err
+		return Page[Asset]{}, err
 	}
-	items := make([]PlatformAsset, 0, len(rows))
+	items := make([]Asset, 0, len(rows))
 	states, err := s.currentExclusions(ctx, in.PortfolioID)
 	if err != nil {
-		return Page[PlatformAsset]{}, err
+		return Page[Asset]{}, err
 	}
 	for i := range rows {
-		item, err := platformAssetFromRow(&rows[i])
+		item, err := assetFromRow(&rows[i])
 		if err != nil {
-			return Page[PlatformAsset]{}, err
+			return Page[Asset]{}, err
 		}
 		applyExclusion(&item, states[item.ID])
 		items = append(items, item)
 	}
-	return Page[PlatformAsset]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
+	return Page[Asset]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
 }
 
-// GetPlatformAsset returns one platform asset.
-func (s *Service) GetPlatformAsset(ctx context.Context, id uuid.UUID) (PlatformAsset, error) {
-	row, err := s.q.GetPlatformAsset(ctx, id[:])
+// GetAsset returns one asset.
+func (s *Service) GetAsset(ctx context.Context, id uuid.UUID) (Asset, error) {
+	row, err := s.q.GetAsset(ctx, id[:])
 	if errors.Is(err, sql.ErrNoRows) {
-		return PlatformAsset{}, ErrNotFound
+		return Asset{}, ErrNotFound
 	}
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
-	return platformAssetFromRow(&row)
+	return assetFromRow(&row)
 }
 
 // ListFuturesContracts returns an offset page of futures contracts.
@@ -208,21 +208,21 @@ func (s *Service) ListFuturesContracts(ctx context.Context, in ListFilter) (Page
 	return Page[FuturesContract]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil
 }
 
-func platformAssetFromRow(row *sqlcgen.PlatformAsset) (PlatformAsset, error) {
+func assetFromRow(row *sqlcgen.Asset) (Asset, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
-	item := PlatformAsset{
-		ID:            id,
-		Platform:      row.Platform,
-		Symbol:        row.Symbol,
-		AssetSymbol:   row.AssetSymbol,
-		MappingSource: row.MappingSource,
-		FirstSeenAt:   row.FirstSeenAt,
-		LastSeenAt:    row.LastSeenAt,
-		Version:       row.Version,
-		UpdatedAt:     row.UpdatedAt,
+	item := Asset{
+		ID:              id,
+		Platform:        row.Platform,
+		Symbol:          row.Symbol,
+		CanonicalSymbol: row.CanonicalSymbol,
+		MappingSource:   row.MappingSource,
+		FirstSeenAt:     row.FirstSeenAt,
+		LastSeenAt:      row.LastSeenAt,
+		Version:         row.Version,
+		UpdatedAt:       row.UpdatedAt,
 	}
 	if row.Name.Valid {
 		name := row.Name.String
@@ -237,16 +237,16 @@ func futuresContractFromRow(row *sqlcgen.FuturesContract) (FuturesContract, erro
 		return FuturesContract{}, err
 	}
 	item := FuturesContract{
-		ID:               id,
-		Platform:         row.Platform,
-		Symbol:           row.Symbol,
-		Kind:             row.Kind,
-		BaseSymbol:       nullStringPtr(row.BasePlatformAssetSymbol),
-		QuoteSymbol:      nullStringPtr(row.QuotePlatformAssetSymbol),
-		SettlementSymbol: nullStringPtr(row.SettlementPlatformAssetSymbol),
-		ContractSize:     nullStringPtr(row.ContractSize),
-		FirstSeenAt:      row.FirstSeenAt,
-		LastSeenAt:       row.LastSeenAt,
+		ID:                    id,
+		Platform:              row.Platform,
+		Symbol:                row.Symbol,
+		Kind:                  row.Kind,
+		BaseAssetSymbol:       nullStringPtr(row.BaseAssetSymbol),
+		QuoteAssetSymbol:      nullStringPtr(row.QuoteAssetSymbol),
+		SettlementAssetSymbol: nullStringPtr(row.SettlementAssetSymbol),
+		ContractSize:          nullStringPtr(row.ContractSize),
+		FirstSeenAt:           row.FirstSeenAt,
+		LastSeenAt:            row.LastSeenAt,
 	}
 	if row.ExpiryAt.Valid {
 		t := row.ExpiryAt.Time

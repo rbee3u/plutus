@@ -12,7 +12,7 @@ export function ActivityPage() {
   const { params, update } = useSearchState();
   const tab = activityTabFromSearch(params.toString());
   const portfolio = usePortfolio(portfolioId);
-  const timezone = portfolio.data?.item.timezone;
+  const timezone = portfolio.data?.timezone;
 
   return (
     <section className={shared.wide}>

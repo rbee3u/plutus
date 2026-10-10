@@ -75,31 +75,31 @@ type Tree struct {
 
 // BalanceRow is one Balance with its USD value.
 type BalanceRow struct {
-	ManualChange        string
-	ManualQuantity      *string
-	Excluded            bool
-	AccountID           uuid.UUID
-	AccountName         string
-	AccountType         string
-	IdentityID          uuid.UUID
-	IdentityName        string
-	Platform            string
-	PlatformAssetID     uuid.UUID
-	PlatformAssetSymbol string
-	AssetSymbol         string
-	Equity              string
-	AvailableToWithdraw *string
-	AvailableToTrade    *string
-	Liability           *string
-	Interest            *string
-	UnrealizedPnl       *string
-	PriceUSD            *string
-	EquityUSD           *string
-	NoPrice             bool
-	Freshness           string
-	ReportObservedAt    *time.Time
-	ManualModifiedAt    *time.Time
-	equityUSDRat        *big.Rat
+	ManualChange         string
+	ManualQuantity       *string
+	Excluded             bool
+	AccountID            uuid.UUID
+	AccountName          string
+	AccountType          string
+	IdentityID           uuid.UUID
+	IdentityName         string
+	Platform             string
+	AssetID              uuid.UUID
+	AssetSymbol          string
+	CanonicalAssetSymbol string
+	Equity               string
+	AvailableToWithdraw  *string
+	AvailableToTrade     *string
+	Liability            *string
+	Interest             *string
+	UnrealizedPnl        *string
+	PriceUSD             *string
+	EquityUSD            *string
+	NoPrice              bool
+	Freshness            string
+	ReportObservedAt     *time.Time
+	ManualModifiedAt     *time.Time
+	equityUSDRat         *big.Rat
 }
 
 // PositionRow is one Position with its USD notional.
@@ -114,15 +114,15 @@ type PositionRow struct {
 	FuturesContractID       uuid.UUID
 	FuturesSymbol           string
 	Kind                    string
-	BaseSymbol              *string
-	QuoteSymbol             *string
-	SettlementSymbol        *string
+	BaseAssetSymbol         *string
+	QuoteAssetSymbol        *string
+	SettlementAssetSymbol   *string
 	ExpiryAt                *time.Time
 	ContractSize            *string
 	Side                    string
 	PositionMode            *string
 	MarginMode              *string
-	MarginCurrency          *string
+	MarginAssetSymbol       *string
 	MarginBasis             *string
 	PortfolioMargin         *bool
 	Size                    *string

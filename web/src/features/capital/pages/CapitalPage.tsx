@@ -9,7 +9,6 @@ import {
   listBoundaryEvents,
   listCapitalFlows,
   problemMessage,
-  readEtag,
   unwrapOrRedirect,
 } from "@/api";
 import type { BoundaryEventList, CapitalFlow, CapitalFlowList } from "@/api";
@@ -45,7 +44,7 @@ export function CapitalPage() {
   const eventsFrom = params.get("eventsFrom") ?? "";
   const eventsTo = params.get("eventsTo") ?? "";
   const portfolio = usePortfolio(portfolioId);
-  const timezone = portfolio.data?.item.timezone;
+  const timezone = portfolio.data?.timezone;
   const platforms = usePlatforms();
   const identities = useIdentities(portfolioId);
   const accounts = accountOptions(identities.data?.items);
@@ -96,7 +95,6 @@ export function CapitalPage() {
         nonce: nonce.current,
         mode: "edit",
         item: latest,
-        etag: readEtag(result.response, flowEtag(latest)),
       });
     } catch (cause) {
       setError(problemMessage(cause, "The Capital Flow could not be loaded."));
@@ -114,16 +112,17 @@ export function CapitalPage() {
     setError(null);
     setNotice(null);
     try {
-      const current = await getCapitalFlow({ path: { portfolioId, flowId } });
-      const latest = unwrapOrRedirect(current, redirect);
       const result = await write(() =>
         deleteCapitalFlow({
           path: { portfolioId, flowId },
-          headers: { "If-Match": readEtag(current.response, flowEtag(latest)) },
+          headers: { "If-Match": flowEtag(deleteTarget) },
         }),
       );
       if (result.response?.status === 412) {
-        setError("The flow changed in another session. Reload the list and retry.");
+        setDeleteTarget(null);
+        setError(
+          "The flow changed in another session. Review the updated list before deleting it.",
+        );
         await invalidate();
         return;
       }
@@ -196,7 +195,7 @@ export function CapitalPage() {
           columns={[
             { key: "effectiveAt", header: "Effective at", nowrap: true },
             { key: "direction", header: "Direction" },
-            { key: "assetSymbol", header: "Asset" },
+            { key: "canonicalAssetSymbol", header: "Canonical Asset" },
             { key: "quantity", header: "Quantity", numeric: true },
             { key: "valueUsd", header: "Value (USD)", numeric: true },
             { key: "account", header: "Account" },
@@ -210,7 +209,7 @@ export function CapitalPage() {
               id: item.id,
               effectiveAt: formatInstant(item.effectiveAt, timezone),
               direction: <DirectionBadge value={item.direction} />,
-              assetSymbol: item.assetSymbol,
+              canonicalAssetSymbol: item.canonicalAssetSymbol,
               quantity: formatDecimal(item.quantity),
               valueUsd: dec ? (
                 <span className={isContribution ? shared.pnlPositive : shared.pnlNegative}>
@@ -325,7 +324,7 @@ export function CapitalPage() {
         <p className={shared.lead}>
           <NumericText>
             {deleteTarget
-              ? `Delete the ${deleteTarget.direction} of ${formatDecimal(deleteTarget.quantity)} ${deleteTarget.assetSymbol} effective ${formatInstant(deleteTarget.effectiveAt, timezone)}? Value Changes over that period will no longer account for it.`
+              ? `Delete the ${deleteTarget.direction} of ${formatDecimal(deleteTarget.quantity)} ${deleteTarget.canonicalAssetSymbol} effective ${formatInstant(deleteTarget.effectiveAt, timezone)}? Value Changes over that period will no longer account for it.`
               : ""}
           </NumericText>
         </p>

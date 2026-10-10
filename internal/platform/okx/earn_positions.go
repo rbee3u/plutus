@@ -14,7 +14,7 @@ type savingsBalance struct {
 func (r *savingsBalance) position(amount string) adapters.EarnPosition {
 	p := adapters.NewEarnPosition("savings:"+r.Ccy, "flexible", "product", "total")
 	p.ProductName = adapters.OptionalText("Simple Earn Flexible")
-	p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: r.Ccy, Amount: amount})
+	p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: r.Ccy, Amount: amount})
 	p.AddRate(r.Rate, "apr", "minimum", "Minimum lending APR configured by the user", nil)
 	p.AddReward(r.Ccy, r.Earnings, "reported")
 	for _, d := range []struct{ label, value string }{{"Lending amount", r.Loan}, {"Pending amount", r.Pending}} {

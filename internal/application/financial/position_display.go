@@ -17,7 +17,7 @@ type positionMetadata struct {
 // change the original quantity, direction, or margin amount.
 func completePosition(row *PositionRow, account *valuation.AccountValuation, metadata positionMetadata) {
 	row.PositionMode, row.MarginMode = nullStringPtr(metadata.mode), nullStringPtr(metadata.marginMode)
-	row.MarginCurrency, row.MarginBasis = nullStringPtr(metadata.currency), nullStringPtr(metadata.basis)
+	row.MarginAssetSymbol, row.MarginBasis = nullStringPtr(metadata.currency), nullStringPtr(metadata.basis)
 	row.PortfolioMargin = portfolioMargin(account)
 	if row.Platform == string(adapters.PlatformBinance) && row.AccountType == "portfolio_margin" && row.PortfolioMargin != nil && *row.PortfolioMargin && row.MarginMode == nil {
 		// The supported retail PM structure only has Cross futures. This also
@@ -39,7 +39,7 @@ func completePosition(row *PositionRow, account *valuation.AccountValuation, met
 		row.Issues = append(row.Issues, rowIssue(row, "position_notional_unknown", "USD notional cannot be determined: a required currency, Contract Size, or positive Mark Price is unavailable."))
 	}
 	if row.Platform == string(adapters.PlatformOKX) && row.MarginMode != nil && *row.MarginMode == "cross" && row.PortfolioMargin != nil && !*row.PortfolioMargin {
-		row.MarginCurrency = verifiedOKXMarginCurrency(row)
+		row.MarginAssetSymbol = verifiedOKXMarginAssetSymbol(row)
 	}
 	row.SettleMargin = settlePositionMargin(row)
 }
@@ -49,9 +49,9 @@ func normalizedPositionSize(row *PositionRow) (*string, *string) {
 	if !ok {
 		return nil, nil
 	}
-	targetUnit, symbol := adapters.UnitBase, row.BaseSymbol
+	targetUnit, symbol := adapters.UnitBase, row.BaseAssetSymbol
 	if inverseKind(row.Kind) {
-		targetUnit, symbol = adapters.UnitQuote, row.QuoteSymbol
+		targetUnit, symbol = adapters.UnitQuote, row.QuoteAssetSymbol
 	}
 	if symbol == nil || *symbol == "" {
 		return nil, symbol
@@ -94,12 +94,12 @@ func settlePositionMargin(row *PositionRow) *string {
 	} else if row.MarginBasis == nil || *row.MarginBasis != "allocated" {
 		return unavailablePositionMargin(row, "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.")
 	}
-	if row.Margin != nil && row.MarginCurrency != nil && row.MarginBasis != nil && (*row.MarginMode != "cross" || *row.MarginBasis == "initial") {
+	if row.Margin != nil && row.MarginAssetSymbol != nil && row.MarginBasis != nil && (*row.MarginMode != "cross" || *row.MarginBasis == "initial") {
 		amount, ok := decimal.Parse(*row.Margin)
 		if !ok || amount.Sign() < 0 {
 			return unavailablePositionMargin(row, "The reported position margin amount is invalid.")
 		}
-		if value := convertPositionMargin(row, amount, *row.MarginCurrency); value != nil {
+		if value := convertPositionMargin(row, amount, *row.MarginAssetSymbol); value != nil {
 			row.MarginSource = new("reported")
 			return value
 		}
@@ -113,21 +113,21 @@ func settlePositionMargin(row *PositionRow) *string {
 	if row.MarginBasis == nil || *row.MarginMode == "cross" && *row.MarginBasis != "initial" {
 		return unavailablePositionMargin(row, "A position initial requirement excluding orders was not recorded.")
 	}
-	if row.MarginCurrency == nil || row.SettlementSymbol == nil {
+	if row.MarginAssetSymbol == nil || row.SettlementAssetSymbol == nil {
 		return unavailablePositionMargin(row, "The source margin currency or Settle currency cannot be verified.")
 	}
 	return unavailablePositionMargin(row, "The reported amount cannot be converted to Settle: compatible currencies and any required positive Mark Price are unavailable.")
 }
 
 func convertPositionMargin(row *PositionRow, amount *big.Rat, from string) *string {
-	if row.SettlementSymbol == nil {
+	if row.SettlementAssetSymbol == nil {
 		return nil
 	}
-	to := *row.SettlementSymbol
+	to := *row.SettlementAssetSymbol
 	switch {
 	case from == to, valuation.USDQuote(from) && valuation.USDQuote(to):
 		return decimal.FormatPtr(amount)
-	case valuation.USDQuote(from) && row.BaseSymbol != nil && to == *row.BaseSymbol && row.QuoteSymbol != nil && valuation.USDQuote(*row.QuoteSymbol) && row.MarkPrice != nil:
+	case valuation.USDQuote(from) && row.BaseAssetSymbol != nil && to == *row.BaseAssetSymbol && row.QuoteAssetSymbol != nil && valuation.USDQuote(*row.QuoteAssetSymbol) && row.MarkPrice != nil:
 		price, valid := decimal.Parse(*row.MarkPrice)
 		if valid && price.Sign() > 0 {
 			return decimal.FormatPtr(new(big.Rat).Quo(amount, price))
@@ -157,7 +157,7 @@ func calculatedBinanceMargin(row *PositionRow) *string {
 		return unavailablePositionMargin(row, "Initial margin calculation requires a supported contract kind.")
 	}
 	size, _ := normalizedPositionSize(row)
-	if size == nil || row.QuoteSymbol == nil || !valuation.USDQuote(*row.QuoteSymbol) {
+	if size == nil || row.QuoteAssetSymbol == nil || !valuation.USDQuote(*row.QuoteAssetSymbol) {
 		return unavailablePositionMargin(row, "Initial margin calculation requires a known Size and USD-equivalent Quote.")
 	}
 	mark, markOK := positivePositionNumber(row.MarkPrice)
@@ -167,14 +167,14 @@ func calculatedBinanceMargin(row *PositionRow) *string {
 	}
 	notional := decimal.Abs(decimal.ParseOrZero(*size))
 	if inverseKind(row.Kind) {
-		if row.BaseSymbol == nil || row.SettlementSymbol == nil || *row.BaseSymbol != *row.SettlementSymbol {
+		if row.BaseAssetSymbol == nil || row.SettlementAssetSymbol == nil || *row.BaseAssetSymbol != *row.SettlementAssetSymbol {
 			return unavailablePositionMargin(row, "Inverse initial margin calculation requires Base to be the Settle currency.")
 		}
 	} else {
 		notional.Mul(notional, mark)
 	}
 	initial := new(big.Rat).Quo(notional, leverage)
-	value := convertPositionMargin(row, initial, *row.QuoteSymbol)
+	value := convertPositionMargin(row, initial, *row.QuoteAssetSymbol)
 	if value == nil {
 		return unavailablePositionMargin(row, "Calculated initial margin cannot be converted to Settle without compatible contract currencies.")
 	}
@@ -186,20 +186,20 @@ func calculatedBinanceMargin(row *PositionRow) *string {
 // match native settlement IM exactly. Verify both documented candidates rather
 // than dividing a native amount by Mark again. Applies to old Reports too;
 // stored amounts, units and Report modes are not rewritten.
-func verifiedOKXMarginCurrency(row *PositionRow) *string {
-	if row.MarginCurrency == nil || row.MarginBasis == nil || *row.MarginBasis != "initial" || row.SettlementSymbol == nil {
+func verifiedOKXMarginAssetSymbol(row *PositionRow) *string {
+	if row.MarginAssetSymbol == nil || row.MarginBasis == nil || *row.MarginBasis != "initial" || row.SettlementAssetSymbol == nil {
 		return nil
 	}
-	from, settle := *row.MarginCurrency, *row.SettlementSymbol
+	from, settle := *row.MarginAssetSymbol, *row.SettlementAssetSymbol
 	if valuation.USDQuote(from) && valuation.USDQuote(settle) {
-		return row.MarginCurrency
+		return row.MarginAssetSymbol
 	}
-	if !inverseKind(row.Kind) || row.BaseSymbol == nil || *row.BaseSymbol != settle || row.QuoteSymbol == nil || !valuation.USDQuote(*row.QuoteSymbol) || from != settle && !valuation.USDQuote(from) {
+	if !inverseKind(row.Kind) || row.BaseAssetSymbol == nil || *row.BaseAssetSymbol != settle || row.QuoteAssetSymbol == nil || !valuation.USDQuote(*row.QuoteAssetSymbol) || from != settle && !valuation.USDQuote(from) {
 		return nil
 	}
 	actual, actualOK := positivePositionNumber(row.Margin)
 	if row.Margin != nil && decimal.ParseOrZero(*row.Margin).Sign() == 0 && decimal.Valid(*row.Margin) {
-		return row.SettlementSymbol
+		return row.SettlementAssetSymbol
 	}
 	size, _ := normalizedPositionSize(row)
 	mark, markOK := positivePositionNumber(row.MarkPrice)
@@ -211,7 +211,7 @@ func verifiedOKXMarginCurrency(row *PositionRow) *string {
 	native := new(big.Rat).Quo(usd, mark)
 	nativeMatch, usdMatch := marginMatches(actual, native), marginMatches(actual, usd)
 	if nativeMatch && !usdMatch {
-		return row.SettlementSymbol
+		return row.SettlementAssetSymbol
 	}
 	if usdMatch && !nativeMatch {
 		return new("USD")

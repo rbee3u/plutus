@@ -19,13 +19,13 @@ const item: EarnPositionRow = {
   amountBasis: "principal",
   productName: "Pool",
   assets: [
-    { platformAssetSymbol: "ETH", amount: "1" },
-    { platformAssetSymbol: "USDT", amount: "2" },
+    { assetSymbol: "ZETH", canonicalAssetSymbol: "ETH", amount: "1" },
+    { assetSymbol: "USDT", amount: "2" },
   ],
   rates: [{ value: "0.04", kind: "apy", qualifier: "estimated", label: "Estimated APY" }],
   rewards: [
-    { platformAssetSymbol: "USDT", amount: "0.2", kind: "cumulative" },
-    { platformAssetSymbol: "COMP", amount: "0.1", kind: "estimated" },
+    { assetSymbol: "USDT", amount: "0.2", kind: "cumulative" },
+    { assetSymbol: "COMP", amount: "0.1", kind: "estimated" },
   ],
   details: [],
   freshness: "fresh",
@@ -59,7 +59,10 @@ describe("Earn presentation", () => {
       "Issues",
     ]);
     expect(html.match(/<tr>/g)).toHaveLength(2);
-    expect(html).toContain("1 ETH");
+    expect(html).toContain("1 ZETH");
+    expect(html).toContain("Canonical Asset: ETH");
+    expect(html).not.toContain("1 ETH");
+    expect(html).not.toContain("Canonical Asset: USDT");
     expect(html).toContain("2 USDT");
     expect(html).toContain("Est. 4% APY");
     expect(html).toContain("Cumulative");
@@ -112,7 +115,7 @@ describe("Earn presentation", () => {
             accountName: "Earn",
             identityName: "Owner",
             platform: "okx",
-            assets: [{ platformAssetSymbol: "USDT", amount: "12" }],
+            assets: [{ assetSymbol: "USDT", amount: "12" }],
             freshness: "fresh",
             issues: [{ code: "earn_details_unavailable", detail: "Not collected." }],
           },
@@ -136,7 +139,7 @@ describe("Earn presentation", () => {
             identityName: "Owner",
             platform: "binance",
             platformPositionRef: "one",
-            investSymbol: "USDT",
+            investAssetSymbol: "USDT",
             principal: "10",
             annualizedRate: "0.18",
             rateKind: "apr",

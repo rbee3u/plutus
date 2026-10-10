@@ -16,7 +16,7 @@ import shared from "@/shared/styles/page.module.css";
 
 function formatContractSize(item: FuturesContract): string {
   const isInverse = item.kind.includes("inverse");
-  const unit = isInverse ? item.quoteSymbol : item.baseSymbol;
+  const unit = isInverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
   const size = formatDecimal(item.contractSize);
   return size !== "—" && unit ? `${size} ${unit}` : size;
 }
@@ -110,8 +110,8 @@ export function FuturesTab({ filters, timezone }: TabProps) {
         ]}
         rows={(query.data?.items ?? []).map((item) => {
           const pair =
-            item.baseSymbol || item.quoteSymbol
-              ? `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`
+            item.baseAssetSymbol || item.quoteAssetSymbol
+              ? `${item.baseAssetSymbol ?? "—"} / ${item.quoteAssetSymbol ?? "—"}`
               : "—";
 
           return {
@@ -131,8 +131,8 @@ export function FuturesTab({ filters, timezone }: TabProps) {
             underlying: (
               <span className={shared.cellStack}>
                 <span>{pair}</span>
-                {item.settlementSymbol ? (
-                  <span className={shared.cellMeta}>Settle: {item.settlementSymbol}</span>
+                {item.settlementAssetSymbol ? (
+                  <span className={shared.cellMeta}>Settle: {item.settlementAssetSymbol}</span>
                 ) : null}
               </span>
             ),

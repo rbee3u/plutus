@@ -60,7 +60,7 @@ with its Platform observation time. _Avoid_: raw response, derived value.
 equity and account measures when available, Balances, Positions, Earn Positions,
 and Dual Positions. _Avoid_: equity, snapshot.
 
-**Balance**: A Platform Asset's equity in an Account Report, accompanied by
+**Balance**: An Asset's equity in an Account Report, accompanied by
 availability, liability, and unrealized-profit measures where known. _Avoid_:
 quantity, holding as synonyms for its equity measure.
 
@@ -100,29 +100,32 @@ principal and available product terms. _Avoid_: Balance, futures Position.
 
 ### Assets and valuation
 
-**Asset**: A unit of financial value identified by normalized symbol across
-Platforms, such as BTC or USDT. _Avoid_: Platform Asset, Futures Contract.
+**Asset**: A unit of financial value recognized within one Platform under its
+own symbol and mapped to a Canonical Asset. Assets on different Platforms remain
+distinct even when their symbols match. _Avoid_: Platform Asset, Asset Listing,
+Listing.
 
-**Platform Asset**: An Asset recognized on one Platform under a
-Platform-specific symbol and mapped to a cross-Platform Asset. _Avoid_: Asset
-Listing, Listing.
+**Canonical Asset**: A cross-Platform financial identity identified by a
+normalized symbol, such as BTC or USDT. _Avoid_: Asset as a synonym.
 
 **Futures Contract**: A Platform-specific perpetual or delivery contract, with
 its symbol, settlement Asset, and expiry where applicable. _Avoid_: Instrument,
 Asset, trading pair.
 
-**Asset Symbol**: The normalized code identifying an Asset across Platforms.
+**Asset Symbol**: An Asset's code within its Platform, which may differ from its
+Canonical Asset Symbol.
 
-**Platform Asset Symbol**: A Platform Asset's code within its Platform, which
-may differ from the Asset Symbol it maps to.
+**Canonical Asset Symbol**: The normalized code identifying a Canonical Asset
+across Platforms.
 
 **Futures Symbol**: A Futures Contract's code within its Platform. It identifies
 the contract, not an open Position or a Base/Quote pair.
 
-**Valuation Asset**: USD, the unit of all derived financial values in Plutus.
+**Valuation Asset**: USD, the Canonical Asset used as the unit of all derived
+financial values in Plutus.
 
-**Price Observation**: An Asset's market price on a Platform at an observation
-time, quoted in a stated Asset.
+**Price Observation**: A Canonical Asset's market price on a Platform at an
+observation time, quoted in a stated Canonical Asset.
 
 **Account Valuation**: One Account's USD value at a Valuation Point, qualified
 by valuation method, freshness, and completeness. _Avoid_: unqualified equity,
@@ -135,14 +138,15 @@ Collection Cycle. _Avoid_: snapshot, projection, generation.
 or another required input cannot be determined. _Avoid_: zero, stale as synonyms
 for completeness.
 
-**Platform Asset Exclusion**: A reviewed, reversible Portfolio rule excluding a
-Platform Asset's Balances from future calculated Account Valuations.
+**Asset Exclusion**: A reviewed, reversible Portfolio rule excluding an Asset's
+Balances from future calculated Account Valuations.
 
 ### Flows and periods
 
 **Capital Flow**: A User-recorded contribution or withdrawal crossing the
-Portfolio Boundary, expressed as Asset quantity at an effective time, with an
-optional Account. _Avoid_: internal transfer, balance change, Manual adjustment.
+Portfolio Boundary, expressed as Canonical Asset quantity at an effective time,
+with an optional Account. _Avoid_: internal transfer, balance change, Manual
+adjustment.
 
 **Boundary Event**: An Account entering or leaving the Portfolio Boundary
 through selection, deselection, or Identity archive.

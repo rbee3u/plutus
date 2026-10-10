@@ -283,7 +283,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		}
 		for _, balance := range report.Balances {
 			if balance.Name != "" {
-				t.Fatalf("%s %s: Bybit reports no full name", report.AccountType, balance.PlatformAssetSymbol)
+				t.Fatalf("%s %s: Bybit reports no full name", report.AccountType, balance.AssetSymbol)
 			}
 		}
 		for _, price := range batch.Prices {
@@ -300,19 +300,19 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		t.Fatalf("Portfolio Margin account figures = %+v", unified)
 	}
 	wantBalances := map[string]adapters.Balance{
-		"BTC":  {PlatformAssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
-		"USDT": {PlatformAssetSymbol: "USDT", Equity: "0", Liability: new("5")},
-		"ETH":  {PlatformAssetSymbol: "ETH", Equity: "0", Interest: new("0.02")},
+		"BTC":  {AssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
+		"USDT": {AssetSymbol: "USDT", Equity: "0", Liability: new("5")},
+		"ETH":  {AssetSymbol: "ETH", Equity: "0", Interest: new("0.02")},
 	}
 	if len(unified.Balances) != len(wantBalances) {
 		t.Fatalf("PM Balances = %+v", unified.Balances)
 	}
 	for _, got := range unified.Balances {
-		want, exists := wantBalances[got.PlatformAssetSymbol]
+		want, exists := wantBalances[got.AssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
 			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
-		delete(wantBalances, got.PlatformAssetSymbol)
+		delete(wantBalances, got.AssetSymbol)
 	}
 	if len(unified.Positions) == 0 {
 		t.Fatal("the synthetic linear position is missing")
@@ -330,12 +330,12 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	}
 
 	funding := reportOf(t, &batch, TypeFunding)
-	wantFunding := []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
+	wantFunding := []adapters.Balance{{AssetSymbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
 	if funding.Equity != nil || !reflect.DeepEqual(funding.Balances, wantFunding) {
 		t.Fatalf("Funding = %+v, want calculated Balances %+v", funding, wantFunding)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	wantEarn := []adapters.Balance{{PlatformAssetSymbol: "USDT", Equity: "20"}}
+	wantEarn := []adapters.Balance{{AssetSymbol: "USDT", Equity: "20"}}
 	if !reflect.DeepEqual(earn.Balances, wantEarn) {
 		t.Fatalf("Earn = %+v, want principal %+v without claimable yield", earn.Balances, wantEarn)
 	}
@@ -359,7 +359,7 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 	if unified.Equity != nil || unified.AvailableEquity != nil || unified.InitialMarginRatio != nil || unified.MaintenanceMarginRatio != nil {
 		t.Fatal("Bybit documents the account-wide figures as not applicable to Isolated Margin")
 	}
-	if len(unified.Balances) != 1 || unified.Balances[0].PlatformAssetSymbol != "BTC" || unified.Balances[0].Equity != "0.00990587" ||
+	if len(unified.Balances) != 1 || unified.Balances[0].AssetSymbol != "BTC" || unified.Balances[0].Equity != "0.00990587" ||
 		text(unified.Balances[0].UnrealizedPnl) != "-0.00029413" || text(unified.Balances[0].Liability) != "0" {
 		t.Fatalf("balances = %+v", unified.Balances)
 	}
@@ -369,7 +369,7 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 	position := unified.Positions[0]
 	if position.PlatformPositionRef != "BTCUSD:0" || position.Side != adapters.SideShort || position.Quantity != "300" ||
 		position.QuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInversePerpetual ||
-		position.FuturesContract.SettlementSymbol != "BTC" || text(position.EntryPrice) != "27464.50441675" || text(position.MarkPrice) != "28224.5" ||
+		position.FuturesContract.SettlementAssetSymbol != "BTC" || text(position.EntryPrice) != "27464.50441675" || text(position.MarkPrice) != "28224.5" ||
 		text(position.LiquidationPrice) != "30191.5" || text(position.Leverage) != "10" || text(position.Margin) != "0.00010923" ||
 		text(position.UnrealizedPnl) != "-0.00029413" {
 		t.Fatalf("isolated position = %+v", position)
@@ -468,7 +468,7 @@ func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].PlatformAssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
+	if earn.Status != adapters.StatusOK || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("Earn = %+v: only the synthetic 20 USDT Dual Asset principal", earn)
 	}
 }
@@ -491,8 +491,8 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || earn.Balances[0].PlatformAssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
-		earn.Balances[1].PlatformAssetSymbol != "USDT" || earn.Balances[1].Equity != "100" {
+	if earn.Status != adapters.StatusOK || len(earn.Balances) != 2 || earn.Balances[0].AssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
+		earn.Balances[1].AssetSymbol != "USDT" || earn.Balances[1].Equity != "100" {
 		t.Fatalf("Earn = %+v: both pages, Active and Redeeming", earn)
 	}
 

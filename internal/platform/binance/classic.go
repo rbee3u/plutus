@@ -124,10 +124,10 @@ func (t *marginTotals) balances() []adapters.Balance {
 			continue
 		}
 		out = append(out, adapters.Balance{
-			PlatformAssetSymbol: symbol,
-			Equity:              decimal.Format(t.net[symbol]),
-			Liability:           decimal.FormatPtr(t.borrowed[symbol]),
-			Interest:            decimal.FormatPtr(t.interest[symbol]),
+			AssetSymbol: symbol,
+			Equity:      decimal.Format(t.net[symbol]),
+			Liability:   decimal.FormatPtr(t.borrowed[symbol]),
+			Interest:    decimal.FormatPtr(t.interest[symbol]),
 		})
 	}
 	return out
@@ -278,7 +278,7 @@ func mapFuturesAssets(ep endpoint, rows []futuresAsset) ([]adapters.Balance, err
 			return nil, err
 		}
 		out = append(out, adapters.Balance{
-			PlatformAssetSymbol: symbol,
+			AssetSymbol:         symbol,
 			Equity:              decimal.Format(equity),
 			UnrealizedPnl:       decimal.FormatPtr(parsed["unrealizedProfit"]),
 			AvailableToTrade:    adapters.Plain(row.AvailableBalance),

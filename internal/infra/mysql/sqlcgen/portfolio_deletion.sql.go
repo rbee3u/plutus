@@ -27,6 +27,24 @@ func (q *Queries) DeletePortfolioAccounts(ctx context.Context, portfolioID []byt
 	return err
 }
 
+const deletePortfolioAssetExclusionEvents = `-- name: DeletePortfolioAssetExclusionEvents :exec
+DELETE FROM portfolio_asset_exclusion_events WHERE portfolio_id = ?
+`
+
+func (q *Queries) DeletePortfolioAssetExclusionEvents(ctx context.Context, portfolioID []byte) error {
+	_, err := q.db.ExecContext(ctx, deletePortfolioAssetExclusionEvents, portfolioID)
+	return err
+}
+
+const deletePortfolioAssetExclusions = `-- name: DeletePortfolioAssetExclusions :exec
+DELETE FROM portfolio_asset_exclusions WHERE portfolio_id = ?
+`
+
+func (q *Queries) DeletePortfolioAssetExclusions(ctx context.Context, portfolioID []byte) error {
+	_, err := q.db.ExecContext(ctx, deletePortfolioAssetExclusions, portfolioID)
+	return err
+}
+
 const deletePortfolioAuditEvents = `-- name: DeletePortfolioAuditEvents :exec
 DELETE FROM audit_events WHERE portfolio_id = ?
 `
@@ -132,24 +150,6 @@ DELETE FROM manual_revisions WHERE portfolio_id = ?
 
 func (q *Queries) DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) error {
 	_, err := q.db.ExecContext(ctx, deletePortfolioManualRevisions, portfolioID)
-	return err
-}
-
-const deletePortfolioPlatformAssetExclusionEvents = `-- name: DeletePortfolioPlatformAssetExclusionEvents :exec
-DELETE FROM portfolio_platform_asset_exclusion_events WHERE portfolio_id = ?
-`
-
-func (q *Queries) DeletePortfolioPlatformAssetExclusionEvents(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioPlatformAssetExclusionEvents, portfolioID)
-	return err
-}
-
-const deletePortfolioPlatformAssetExclusions = `-- name: DeletePortfolioPlatformAssetExclusions :exec
-DELETE FROM portfolio_platform_asset_exclusions WHERE portfolio_id = ?
-`
-
-func (q *Queries) DeletePortfolioPlatformAssetExclusions(ctx context.Context, portfolioID []byte) error {
-	_, err := q.db.ExecContext(ctx, deletePortfolioPlatformAssetExclusions, portfolioID)
 	return err
 }
 

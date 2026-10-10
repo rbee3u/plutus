@@ -13,8 +13,8 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// EnsurePlatformAsset upserts a platform asset inside q and returns its ID and current Asset symbol.
-func (s *Service) EnsurePlatformAsset(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, symbol, name string, seenAt time.Time) (uuid.UUID, string, error) {
+// EnsureAsset upserts an asset inside q and returns its ID and current Canonical Asset Symbol.
+func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, symbol, name string, seenAt time.Time) (uuid.UUID, string, error) {
 	normalized, err := NormalizeSymbol(symbol)
 	if err != nil {
 		return uuid.Nil, "", err
@@ -27,17 +27,17 @@ func (s *Service) EnsurePlatformAsset(ctx context.Context, q *sqlcgen.Queries, p
 	if trimmed := strings.TrimSpace(name); trimmed != "" {
 		nullName = sql.NullString{String: trimmed, Valid: true}
 	}
-	if err := q.UpsertPlatformAsset(ctx, sqlcgen.UpsertPlatformAssetParams{
-		ID:          id[:],
-		Platform:    string(platform),
-		Symbol:      normalized,
-		AssetSymbol: AssetSymbolFor(normalized),
-		Name:        nullName,
-		SeenAt:      seenAt.UTC(),
+	if err := q.UpsertAsset(ctx, sqlcgen.UpsertAssetParams{
+		ID:              id[:],
+		Platform:        string(platform),
+		Symbol:          normalized,
+		CanonicalSymbol: CanonicalAssetSymbolFor(normalized),
+		Name:            nullName,
+		SeenAt:          seenAt.UTC(),
 	}); err != nil {
 		return uuid.Nil, "", err
 	}
-	row, err := q.GetPlatformAssetByPlatformSymbol(ctx, sqlcgen.GetPlatformAssetByPlatformSymbolParams{Platform: string(platform), Symbol: normalized})
+	row, err := q.GetAssetByPlatformSymbol(ctx, sqlcgen.GetAssetByPlatformSymbolParams{Platform: string(platform), Symbol: normalized})
 	if err != nil {
 		return uuid.Nil, "", err
 	}
@@ -45,7 +45,7 @@ func (s *Service) EnsurePlatformAsset(ctx context.Context, q *sqlcgen.Queries, p
 	if err != nil {
 		return uuid.Nil, "", err
 	}
-	return stored, row.AssetSymbol, nil
+	return stored, row.CanonicalSymbol, nil
 }
 
 // EnsureFuturesContract upserts a futures contract inside q and returns its ID.
@@ -63,14 +63,14 @@ func (s *Service) EnsureFuturesContract(ctx context.Context, q *sqlcgen.Queries,
 		return uuid.Nil, err
 	}
 	params := sqlcgen.UpsertFuturesContractParams{
-		ID:                            id[:],
-		Platform:                      string(platform),
-		Symbol:                        symbol,
-		Kind:                          in.Kind,
-		BasePlatformAssetSymbol:       optionalSymbolColumn(in.BaseSymbol),
-		QuotePlatformAssetSymbol:      optionalSymbolColumn(in.QuoteSymbol),
-		SettlementPlatformAssetSymbol: optionalSymbolColumn(in.SettlementSymbol),
-		SeenAt:                        seenAt.UTC(),
+		ID:                    id[:],
+		Platform:              string(platform),
+		Symbol:                symbol,
+		Kind:                  in.Kind,
+		BaseAssetSymbol:       optionalSymbolColumn(in.BaseAssetSymbol),
+		QuoteAssetSymbol:      optionalSymbolColumn(in.QuoteAssetSymbol),
+		SettlementAssetSymbol: optionalSymbolColumn(in.SettlementAssetSymbol),
+		SeenAt:                seenAt.UTC(),
 	}
 	if in.ExpiryAt != nil {
 		params.ExpiryAt = sql.NullTime{Time: in.ExpiryAt.UTC(), Valid: true}
@@ -89,13 +89,13 @@ func (s *Service) EnsureFuturesContract(ctx context.Context, q *sqlcgen.Queries,
 }
 
 // RecordPrice upserts one Platform price inside q. Prices are stored in their
-// quote symbol; valuation treats USDT, USDC, and USD quotes as USD (ADR 0003).
+// Quote Canonical Asset Symbol; valuation treats USD, USDT, and USDC as USD (ADR 0003).
 func (s *Service) RecordPrice(ctx context.Context, q *sqlcgen.Queries, platform adapters.Platform, price adapters.Price) error {
-	asset, err := NormalizeSymbol(price.AssetSymbol)
+	canonicalAssetSymbol, err := NormalizeSymbol(price.CanonicalAssetSymbol)
 	if err != nil {
 		return err
 	}
-	quote, err := NormalizeSymbol(price.QuoteSymbol)
+	quoteCanonicalAssetSymbol, err := NormalizeSymbol(price.QuoteCanonicalAssetSymbol)
 	if err != nil {
 		return err
 	}
@@ -103,11 +103,11 @@ func (s *Service) RecordPrice(ctx context.Context, q *sqlcgen.Queries, platform 
 		return ErrInvalid
 	}
 	return q.UpsertPrice(ctx, sqlcgen.UpsertPriceParams{
-		Platform:         string(platform),
-		AssetSymbol:      asset,
-		ObservedAt:       price.ObservedAt.UTC(),
-		Price:            price.Price,
-		QuoteAssetSymbol: quote,
+		Platform:                  string(platform),
+		CanonicalAssetSymbol:      canonicalAssetSymbol,
+		ObservedAt:                price.ObservedAt.UTC(),
+		Price:                     price.Price,
+		QuoteCanonicalAssetSymbol: quoteCanonicalAssetSymbol,
 	})
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
+	"github.com/rbee3u/plutus/internal/application/assetexclusion"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
@@ -237,7 +237,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	for i := range flows {
 		if !flows[i].ValueUsd.Valid {
 			change.Completeness = valuation.CompletenessIncomplete
-			change.Reasons = append(change.Reasons, "unvalued_flow: "+flows[i].AssetSymbol+" "+decimal.Compact(flows[i].Quantity)+" at "+flows[i].EffectiveAt.UTC().Format(time.RFC3339))
+			change.Reasons = append(change.Reasons, "unvalued_flow: "+flows[i].CanonicalAssetSymbol+" "+decimal.Compact(flows[i].Quantity)+" at "+flows[i].EffectiveAt.UTC().Format(time.RFC3339))
 			continue
 		}
 		value, ok := decimal.Parse(flows[i].ValueUsd.String)
@@ -289,26 +289,26 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 }
 
 func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startJobID, endJobID uuid.UUID) ([]string, error) {
-	startIgnored, err := platformassetexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
+	startIgnored, err := assetexclusion.ActiveForJob(ctx, s.db, portfolioID, startJobID)
 	if err != nil {
 		return nil, err
 	}
-	endIgnored, err := platformassetexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
+	endIgnored, err := assetexclusion.ActiveForJob(ctx, s.db, portfolioID, endJobID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.ListCalculatedPlatformAssetsAtJobs(ctx, sqlcgen.ListCalculatedPlatformAssetsAtJobsParams{PortfolioID: portfolioID[:], StartJobID: startJobID[:], EndJobID: endJobID[:]})
+	rows, err := s.q.ListCalculatedAssetsAtJobs(ctx, sqlcgen.ListCalculatedAssetsAtJobsParams{PortfolioID: portfolioID[:], StartJobID: startJobID[:], EndJobID: endJobID[:]})
 	if err != nil {
 		return nil, err
 	}
 	reasons := []string{}
 	for _, row := range rows {
-		platformAssetID, err := uuid.FromBytes(row.ID)
+		assetID, err := uuid.FromBytes(row.ID)
 		if err != nil {
 			return nil, err
 		}
-		if startIgnored[platformAssetID] != endIgnored[platformAssetID] {
-			reasons = append(reasons, "platform_asset_exclusion_changed: "+row.Platform+" "+row.Symbol)
+		if startIgnored[assetID] != endIgnored[assetID] {
+			reasons = append(reasons, "asset_exclusion_changed: "+row.Platform+" "+row.Symbol)
 		}
 	}
 	return reasons, nil

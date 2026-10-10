@@ -3,8 +3,8 @@ SELECT id, portfolio_id, actor_user_id, action, resource_type, resource_id, requ
        before_json, after_json, metadata_json, occurred_at
 FROM audit_events
 WHERE portfolio_id = sqlc.arg(portfolio_id)
-  AND (sqlc.arg(filter_action) = 0 OR action IN (sqlc.arg(action), sqlc.arg(legacy_action)))
-  AND (sqlc.arg(filter_resource_type) = 0 OR resource_type IN (sqlc.arg(resource_type), sqlc.arg(legacy_resource_type)))
+  AND (sqlc.arg(filter_action) = 0 OR action IN (sqlc.arg(action), sqlc.arg(legacy_action), sqlc.arg(platform_asset_action)))
+  AND (sqlc.arg(filter_resource_type) = 0 OR resource_type IN (sqlc.arg(resource_type), sqlc.arg(legacy_resource_type), sqlc.arg(platform_asset_resource_type)))
   AND (
       sqlc.arg(has_cursor) = 0
       OR occurred_at < sqlc.arg(cursor_occurred_at)

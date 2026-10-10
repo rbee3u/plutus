@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/platformassetexclusion"
+	"github.com/rbee3u/plutus/internal/application/assetexclusion"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
@@ -45,7 +45,7 @@ func (s *Service) Rebuild(ctx context.Context, portfolioID uuid.UUID) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	policy, err := platformassetexclusion.LoadHistory(ctx, s.db, portfolioID)
+	policy, err := assetexclusion.LoadHistory(ctx, s.db, portfolioID)
 	if err != nil {
 		return 0, err
 	}
@@ -208,7 +208,7 @@ func (s *Service) loadRebuildBatch(ctx context.Context, portfolioID uuid.UUID, j
 			to = at
 		}
 	}
-	symbols := map[string]bool{}
+	canonicalSymbols := map[string]bool{}
 	for start := 0; start < len(reports); start += rebuildReadBatch {
 		balances, err := s.q.ListRebuildBalances(ctx, sqlcgen.ListRebuildBalancesParams{PortfolioID: portfolioID[:], ReportIds: reports[start:min(start+rebuildReadBatch, len(reports))]})
 		if err != nil {
@@ -220,20 +220,20 @@ func (s *Service) loadRebuildBatch(ctx context.Context, portfolioID uuid.UUID, j
 				return b, err
 			}
 			b.inputs.balances[id] = append(b.inputs.balances[id], sqlcgen.ListBalancesByReportRow(row))
-			switch row.AssetSymbol {
+			switch row.CanonicalAssetSymbol {
 			case "USD", "USDT", "USDC":
 			default:
-				symbols[row.AssetSymbol] = true
+				canonicalSymbols[row.CanonicalAssetSymbol] = true
 			}
 		}
 	}
-	assets := make([]string, 0, len(symbols))
-	for symbol := range symbols {
-		assets = append(assets, symbol)
+	canonicalAssetSymbols := make([]string, 0, len(canonicalSymbols))
+	for canonicalAssetSymbol := range canonicalSymbols {
+		canonicalAssetSymbols = append(canonicalAssetSymbols, canonicalAssetSymbol)
 	}
 	prices := []sqlcgen.Price{}
-	if len(assets) > 0 {
-		prices, err = s.q.ListRebuildPrices(ctx, sqlcgen.ListRebuildPricesParams{AssetSymbols: assets, FromAt: from.Add(-maxPriceAge), ToAt: to})
+	if len(canonicalAssetSymbols) > 0 {
+		prices, err = s.q.ListRebuildPrices(ctx, sqlcgen.ListRebuildPricesParams{CanonicalAssetSymbols: canonicalAssetSymbols, FromAt: from.Add(-maxPriceAge), ToAt: to})
 		if err != nil {
 			return b, err
 		}

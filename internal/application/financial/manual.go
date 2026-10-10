@@ -24,14 +24,14 @@ func (s *Service) currentManualBalances(ctx context.Context, p PortfolioContext)
 		if err != nil {
 			return nil, err
 		}
-		platformAssetID, err := uuid.FromBytes(record.PlatformAssetID)
+		assetID, err := uuid.FromBytes(record.AssetID)
 		if err != nil {
 			return nil, err
 		}
 		quantity := decimal.Compact(record.Quantity)
 		out[accountID] = append(out[accountID], BalanceRow{
-			AccountID: accountID, PlatformAssetID: platformAssetID, PlatformAssetSymbol: record.PlatformAssetSymbol,
-			AssetSymbol: record.AssetSymbol, Equity: quantity, ManualQuantity: &quantity,
+			AccountID: accountID, AssetID: assetID, AssetSymbol: record.AssetSymbol,
+			CanonicalAssetSymbol: record.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity,
 			ManualModifiedAt: &record.ModifiedAt, ManualChange: "added", Excluded: record.Excluded,
 			Freshness: valuation.FreshnessFresh,
 		})
@@ -42,23 +42,23 @@ func (s *Service) currentManualBalances(ctx context.Context, p PortfolioContext)
 func mergeManualBalances(collected, current []BalanceRow, account *valuation.AccountValuation) []BalanceRow {
 	bySymbol := make(map[string]BalanceRow, len(current))
 	for _, row := range current {
-		bySymbol[row.PlatformAssetSymbol] = row
+		bySymbol[row.AssetSymbol] = row
 	}
 	for i := range collected {
 		row := &collected[i]
-		record, exists := bySymbol[row.PlatformAssetSymbol]
+		record, exists := bySymbol[row.AssetSymbol]
 		if !exists {
 			row.ManualChange = "deleted"
 			continue
 		}
-		delete(bySymbol, row.PlatformAssetSymbol)
+		delete(bySymbol, row.AssetSymbol)
 		row.ManualQuantity = record.ManualQuantity
 		if decimal.Compact(row.Equity) != record.Equity {
 			row.ManualChange = "updated"
 		}
 	}
 	for _, row := range current {
-		if _, exists := bySymbol[row.PlatformAssetSymbol]; !exists {
+		if _, exists := bySymbol[row.AssetSymbol]; !exists {
 			continue
 		}
 		row.AccountName, row.AccountType = account.AccountName, account.AccountType

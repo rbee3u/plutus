@@ -42,10 +42,10 @@ func (a *manualTestAdapter) Collect(_ context.Context, _ adapters.Credentials, _
 		}
 		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusOK, ObservedAt: at}
 		if a.usd != "0" {
-			report.Balances = []adapters.Balance{{PlatformAssetSymbol: "USD", Equity: a.usd}}
+			report.Balances = []adapters.Balance{{AssetSymbol: "USD", Equity: a.usd}}
 		}
 		if a.positions {
-			report.Positions = []adapters.Position{{PlatformPositionRef: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseSymbol: "BTC", QuoteSymbol: "USD", SettlementSymbol: "USD"}, Side: "long", Quantity: "1", QuantityUnit: "base"}}
+			report.Positions = []adapters.Position{{PlatformPositionRef: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", Quantity: "1", QuantityUnit: "base"}}
 		}
 		batch.Reports = append(batch.Reports, report)
 	}
@@ -78,10 +78,10 @@ func manualSave(t *testing.T, h *harness, item identity.Identity, symbol, quanti
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := manual.Input{PlatformAssetSymbol: symbol, Quantity: quantity, Version: current.Version, ActorUserID: h.userID}
+	in := manual.Input{AssetSymbol: symbol, Quantity: quantity, Version: current.Version, ActorUserID: h.userID}
 	exists := false
 	for _, balance := range current.Items {
-		if balance.PlatformAssetSymbol == symbol {
+		if balance.AssetSymbol == symbol {
 			exists = true
 		}
 	}
@@ -114,11 +114,11 @@ func TestManualCRUDVersionsAndFrozenInputs(t *testing.T) {
 	if err != nil || initial.Pending || len(initial.Items) != 0 {
 		t.Fatalf("initial %+v %v", initial, err)
 	}
-	next, err := s.Create(h.ctx, h.portfolioID, item.ID, manual.Input{PlatformAssetSymbol: " usd ", Quantity: "100.000", Version: initial.Version, ActorUserID: h.userID})
+	next, err := s.Create(h.ctx, h.portfolioID, item.ID, manual.Input{AssetSymbol: " usd ", Quantity: "100.000", Version: initial.Version, ActorUserID: h.userID})
 	if err != nil || !next.Pending || next.Items[0].Quantity != "100" {
 		t.Fatalf("create %+v %v", next, err)
 	}
-	in := manual.Input{PlatformAssetSymbol: "USD", Quantity: "5", Version: next.Version, ActorUserID: h.userID}
+	in := manual.Input{AssetSymbol: "USD", Quantity: "5", Version: next.Version, ActorUserID: h.userID}
 	if _, err := s.Create(h.ctx, h.portfolioID, item.ID, in); !errors.Is(err, identity.ErrConflict) {
 		t.Fatalf("duplicate %v", err)
 	}
@@ -171,7 +171,7 @@ func TestManualCRUDVersionsAndFrozenInputs(t *testing.T) {
 	if err != nil || len(cleared.Items) != 0 || !cleared.Pending {
 		t.Fatalf("zero %+v %v", cleared, err)
 	}
-	if _, err := s.Delete(h.ctx, h.portfolioID, item.ID, manual.Input{PlatformAssetSymbol: "USD", Version: cleared.Version}); !errors.Is(err, identity.ErrNotFound) {
+	if _, err := s.Delete(h.ctx, h.portfolioID, item.ID, manual.Input{AssetSymbol: "USD", Version: cleared.Version}); !errors.Is(err, identity.ErrNotFound) {
 		t.Fatalf("delete missing %v", err)
 	}
 	var revisions, audits int
@@ -334,7 +334,7 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 	if err != nil || len(retained.Items) != 1 {
 		t.Fatalf("archive storage %+v %v", retained, err)
 	}
-	if _, err := h.manual.Update(h.ctx, h.portfolioID, archived.ID, manual.Input{PlatformAssetSymbol: "USD", Quantity: "1", Version: retained.Version}); !errors.Is(err, identity.ErrArchived) {
+	if _, err := h.manual.Update(h.ctx, h.portfolioID, archived.ID, manual.Input{AssetSymbol: "USD", Quantity: "1", Version: retained.Version}); !errors.Is(err, identity.ErrArchived) {
 		t.Fatalf("archived write %v", err)
 	}
 }
@@ -350,7 +350,7 @@ func TestManualStrictPlatformPricingAndConcurrentUpdates(t *testing.T) {
 		platform string
 		at       time.Time
 	}{{"binance", now}, {"okx", now.Add(-25 * time.Hour)}, {"okx", now.Add(time.Hour)}} {
-		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), adapters.Platform(row.platform), adapters.Price{AssetSymbol: symbol, Price: "20000", QuoteSymbol: "USD", ObservedAt: row.at}); err != nil {
+		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), adapters.Platform(row.platform), adapters.Price{CanonicalAssetSymbol: symbol, Price: "20000", QuoteCanonicalAssetSymbol: "USD", ObservedAt: row.at}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -369,7 +369,7 @@ func TestManualStrictPlatformPricingAndConcurrentUpdates(t *testing.T) {
 	results := make(chan error, 2)
 	for _, qty := range []string{"-3", "-4"} {
 		go func() {
-			_, err := h.manual.Update(h.ctx, h.portfolioID, item.ID, manual.Input{PlatformAssetSymbol: symbol, Quantity: qty, Version: state.Version, ActorUserID: h.userID})
+			_, err := h.manual.Update(h.ctx, h.portfolioID, item.ID, manual.Input{AssetSymbol: symbol, Quantity: qty, Version: state.Version, ActorUserID: h.userID})
 			results <- err
 		}()
 	}
@@ -395,12 +395,12 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 	item := manualEnabled(t, h, a)
 	state := manualSave(t, h, item, "BTC", "1")
 	_, firstJob := h.runCycle()
-	platformAssetID := state.Items[0].PlatformAssetID
-	platformAsset, err := h.catalog.GetPlatformAsset(h.ctx, platformAssetID)
+	assetID := state.Items[0].AssetID
+	asset, err := h.catalog.GetAsset(h.ctx, assetID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.catalog.PutExclusion(h.ctx, platformAssetID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Explicitly excluded synthetic holding.", Version: platformAsset.ExclusionVersion}); err != nil {
+	if _, err := h.catalog.PutExclusion(h.ctx, assetID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Ignored: true, Reason: "Explicitly excluded synthetic holding.", Version: asset.ExclusionVersion}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='invalid' WHERE id=?", item.ID[:]); err != nil {
@@ -453,11 +453,11 @@ func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
 	manualSave(t, h, item, "USD", "150")
 	manualSave(t, h, item, "BTC", "-0.000000000000000000000000000001")
 	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 1, Offset: 1})
-	if err != nil || list.Total != 2 || len(list.Items) != 1 || list.Items[0].PlatformAssetSymbol != "USD" || list.Items[0].Equity != "100" || list.Items[0].ManualChange != "updated" || *list.Items[0].ManualQuantity != "150" || *list.TotalUSD != "100" {
+	if err != nil || list.Total != 2 || len(list.Items) != 1 || list.Items[0].AssetSymbol != "USD" || list.Items[0].Equity != "100" || list.Items[0].ManualChange != "updated" || *list.Items[0].ManualQuantity != "150" || *list.TotalUSD != "100" {
 		t.Fatalf("updated and paginated: %+v %v", list, err)
 	}
 	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Symbol: " btc ", Limit: 50})
-	if err != nil || list.Total != 1 || list.Items[0].PlatformAssetSymbol != "BTC" || list.Items[0].ManualChange != "added" || *list.TotalUSD != "0" {
+	if err != nil || list.Total != 1 || list.Items[0].AssetSymbol != "BTC" || list.Items[0].ManualChange != "added" || *list.TotalUSD != "0" {
 		t.Fatalf("pending search: %+v %v", list, err)
 	}
 	manualSave(t, h, item, "USD", "100")

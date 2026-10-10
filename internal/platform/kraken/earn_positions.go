@@ -68,7 +68,7 @@ func (r *earnAllocation) position(symbol, amount string, s earnStrategy) adapter
 	p := adapters.NewEarnPosition("strategy:"+r.StrategyID, kind, "strategy", "allocated")
 	p.ProductRef = adapters.OptionalText(r.StrategyID)
 	p.ProductName = adapters.OptionalText("Kraken Earn")
-	p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: symbol, Amount: amount})
+	p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: symbol, Amount: amount})
 	p.AddDetail("Yield source", s.YieldSource.Type)
 	low := p.OptionalDecimal("Estimated APR lower bound", s.APR.Low)
 	high := p.OptionalDecimal("Estimated APR upper bound", s.APR.High)

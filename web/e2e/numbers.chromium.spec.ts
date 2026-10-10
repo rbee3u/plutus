@@ -54,7 +54,7 @@ const flow: CapitalFlow = {
   id: "00000000-0000-7000-8000-000000000005",
   portfolioId,
   direction: "contribution",
-  assetSymbol: "BTC",
+  canonicalAssetSymbol: "BTC",
   quantity: "0.000000004444567890123456789123",
   valueUsd: "1.005",
   effectiveAt: "2026-10-03T00:00:00Z",

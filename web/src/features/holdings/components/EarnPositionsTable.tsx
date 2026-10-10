@@ -31,12 +31,12 @@ const REWARD_LABELS: Record<string, string> = {
 };
 
 function assetLabel(asset: EarnAmount): string {
-  return asset.assetSymbol ?? asset.platformAssetSymbol;
+  return asset.assetSymbol;
 }
 function amountLines(assets: EarnAmount[]) {
   return assets.length
     ? assets.map((asset, index) => (
-        <div key={`${asset.platformAssetSymbol}-${index}`}>
+        <div key={`${asset.assetSymbol}-${index}`}>
           <NumericText>{`${formatDecimal(asset.amount)} ${assetLabel(asset)}`}</NumericText>
         </div>
       ))
@@ -47,13 +47,13 @@ function rateText(rate: EarnRate): string {
     rate.upper && rate.upper !== rate.value
       ? `${formatPercent(rate.value)}–${formatPercent(rate.upper)}`
       : formatPercent(rate.value);
-  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.platformAssetSymbol ? ` ${rate.platformAssetSymbol}` : ""}`;
+  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.assetSymbol ? ` ${rate.assetSymbol}` : ""}`;
 }
 function rewardLine(reward: EarnReward, index: number) {
   return (
-    <div key={`${reward.kind}-${reward.platformAssetSymbol}-${index}`}>
+    <div key={`${reward.kind}-${reward.assetSymbol}-${index}`}>
       {REWARD_LABELS[reward.kind] ?? reward.kind}{" "}
-      <NumericText>{`${formatDecimal(reward.amount)} ${reward.platformAssetSymbol}`}</NumericText>
+      <NumericText>{`${formatDecimal(reward.amount)} ${reward.assetSymbol}`}</NumericText>
     </div>
   );
 }
@@ -109,15 +109,13 @@ export function EarnPositionsTable({
           platform: platformLabel(platforms.data?.items, item.platform),
           identityName: item.identityName,
           asset: item.assets.map((asset, index) => (
-            <div
-              key={`${asset.platformAssetSymbol}-${index}`}
-              title={
-                asset.assetSymbol && asset.assetSymbol !== asset.platformAssetSymbol
-                  ? `Platform asset: ${asset.platformAssetSymbol}`
-                  : undefined
-              }
-            >
-              {assetLabel(asset)}
+            <div key={`${asset.assetSymbol}-${index}`} className={shared.cellStack}>
+              <span>{assetLabel(asset)}</span>
+              {asset.canonicalAssetSymbol && asset.canonicalAssetSymbol !== asset.assetSymbol ? (
+                <span className={shared.cellMeta}>
+                  Canonical Asset: {asset.canonicalAssetSymbol}
+                </span>
+              ) : null}
             </div>
           )),
           type: (
@@ -282,7 +280,17 @@ export function EarnBalanceSummaries({
           platform: platformLabel(platforms.data?.items, item.platform),
           identityName: item.identityName,
           asset: item.assets.length
-            ? item.assets.map((asset, index) => <div key={index}>{assetLabel(asset)}</div>)
+            ? item.assets.map((asset, index) => (
+                <div key={index} className={shared.cellStack}>
+                  <span>{assetLabel(asset)}</span>
+                  {asset.canonicalAssetSymbol &&
+                  asset.canonicalAssetSymbol !== asset.assetSymbol ? (
+                    <span className={shared.cellMeta}>
+                      Canonical Asset: {asset.canonicalAssetSymbol}
+                    </span>
+                  ) : null}
+                </div>
+              ))
             : "—",
           amount: amountLines(item.assets),
           issues: (

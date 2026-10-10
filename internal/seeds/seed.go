@@ -79,7 +79,7 @@ func BuildAt(now time.Time) (Seed, error) {
 					return Seed{}, fmt.Errorf("seed %s: %w", d.ID, err)
 				}
 				for _, price := range batch.Prices {
-					b.price(d.Platform, price.AssetSymbol, price.Price, price.ObservedAt)
+					b.price(d.Platform, price.CanonicalAssetSymbol, price.Price, price.ObservedAt)
 				}
 				for _, report := range batch.Reports {
 					r := reportSpec{Account: accountID(d.ID, string(report.AccountType)), AccountType: report.AccountType, Platform: d.Platform, MarginMode: batch.MarginMode, Scope: fake.DemoScope(d, anchor, at, report.AccountType)}

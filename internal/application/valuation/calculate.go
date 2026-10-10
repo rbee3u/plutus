@@ -22,8 +22,8 @@ type preparedReport struct {
 }
 
 type preparedBalance struct {
-	platformAssetSymbol, assetSymbol, rawEquity string
-	equity, price                               *big.Rat
+	assetSymbol, canonicalAssetSymbol, rawEquity string
+	equity, price                                *big.Rat
 }
 
 // evaluateReport is independent of storage, time, and the input loading strategy.
@@ -41,7 +41,7 @@ func evaluateReport(input preparedReport) AccountValuation {
 	}
 	total := decimal.Zero()
 	for _, balance := range input.balances {
-		omission := Omitted{PlatformAssetSymbol: balance.platformAssetSymbol, AssetSymbol: mappedSymbol(balance.platformAssetSymbol, balance.assetSymbol), Equity: balance.rawEquity}
+		omission := Omitted{AssetSymbol: balance.assetSymbol, CanonicalAssetSymbol: mappedCanonicalAssetSymbol(balance.assetSymbol, balance.canonicalAssetSymbol), Equity: balance.rawEquity}
 		if balance.equity == nil {
 			omission.Reason = "invalid_equity"
 			item.Omitted = append(item.Omitted, omission)
@@ -61,12 +61,12 @@ func evaluateReport(input preparedReport) AccountValuation {
 	return item
 }
 
-// mappedSymbol reports the Asset symbol only when a platform asset is mapped away from its Platform symbol.
-func mappedSymbol(platformAssetSymbol, assetSymbol string) string {
-	if assetSymbol == platformAssetSymbol {
+// mappedCanonicalAssetSymbol omits the Canonical Asset Symbol when it equals the Asset Symbol.
+func mappedCanonicalAssetSymbol(assetSymbol, canonicalAssetSymbol string) string {
+	if canonicalAssetSymbol == assetSymbol {
 		return ""
 	}
-	return assetSymbol
+	return canonicalAssetSymbol
 }
 
 type previousAccount struct {
@@ -184,11 +184,11 @@ func AccountIssues(a *AccountValuation) []Issue {
 		out = append(out, Issue{Code: "stale", AccountID: &id, AccountName: a.AccountName, Detail: detail})
 	}
 	for _, o := range a.Omitted {
-		detail := fmt.Sprintf("%s %s was excluded from the account value (%s).", o.Equity, o.PlatformAssetSymbol, o.Reason)
-		if o.AssetSymbol != "" {
-			detail = fmt.Sprintf("%s %s (mapped to %s) was excluded from the account value (%s).", o.Equity, o.PlatformAssetSymbol, o.AssetSymbol, o.Reason)
+		detail := fmt.Sprintf("%s %s was excluded from the account value (%s).", o.Equity, o.AssetSymbol, o.Reason)
+		if o.CanonicalAssetSymbol != "" {
+			detail = fmt.Sprintf("%s %s (mapped to %s) was excluded from the account value (%s).", o.Equity, o.AssetSymbol, o.CanonicalAssetSymbol, o.Reason)
 		}
-		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, Symbol: o.PlatformAssetSymbol, Detail: detail})
+		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, Symbol: o.AssetSymbol, Detail: detail})
 	}
 	return out
 }

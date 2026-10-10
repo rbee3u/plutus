@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -70,17 +71,19 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, in *ListFilte
 		return Page{}, err
 	}
 	params := sqlcgen.ListAuditEventsByPortfolioParams{
-		PortfolioID:        portfolioID[:],
-		FilterAction:       flagInt(in.Action != ""),
-		Action:             in.Action,
-		LegacyAction:       legacyAction(in.Action),
-		FilterResourceType: flagInt(in.ResourceType != ""),
-		ResourceType:       in.ResourceType,
-		LegacyResourceType: legacyResourceType(in.ResourceType),
-		HasCursor:          0,
-		CursorOccurredAt:   time.Time{},
-		CursorID:           make([]byte, 16),
-		Limit:              int32(limit + 1), // #nosec G115 -- normalizeLimit bounds the page size before adding the lookahead row.
+		PortfolioID:               portfolioID[:],
+		FilterAction:              flagInt(in.Action != ""),
+		Action:                    in.Action,
+		LegacyAction:              legacyAction(in.Action),
+		PlatformAssetAction:       strings.Replace(in.Action, "catalog.asset.", "catalog.platform_asset.", 1),
+		FilterResourceType:        flagInt(in.ResourceType != ""),
+		ResourceType:              in.ResourceType,
+		LegacyResourceType:        legacyResourceType(in.ResourceType),
+		PlatformAssetResourceType: platformAssetResourceType(in.ResourceType),
+		HasCursor:                 0,
+		CursorOccurredAt:          time.Time{},
+		CursorID:                  make([]byte, 16),
+		Limit:                     int32(limit + 1), // #nosec G115 -- normalizeLimit bounds the page size before adding the lookahead row.
 	}
 	if in.Cursor != "" {
 		decoded, err := decodeCursor(in.Cursor, portfolioID)
@@ -189,11 +192,11 @@ func flagInt(on bool) int {
 // Historical audit documents retain their original vocabulary.
 func legacyAction(action string) string {
 	switch action {
-	case "catalog.platform_asset.map":
+	case "catalog.asset.map":
 		return "catalog.listing.map"
-	case "catalog.platform_asset.exclude":
+	case "catalog.asset.exclude":
 		return "catalog.listing.exclude"
-	case "catalog.platform_asset.restore":
+	case "catalog.asset.restore":
 		return "catalog.listing.restore"
 	default:
 		return action
@@ -201,8 +204,15 @@ func legacyAction(action string) string {
 }
 
 func legacyResourceType(resource string) string {
-	if resource == "platform_asset" {
+	if resource == "asset" {
 		return "asset_listing"
+	}
+	return resource
+}
+
+func platformAssetResourceType(resource string) string {
+	if resource == "asset" {
+		return "platform_asset"
 	}
 	return resource
 }

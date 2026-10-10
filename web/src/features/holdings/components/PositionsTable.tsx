@@ -73,13 +73,13 @@ export function positionMarginDescription(item: PositionRow): string {
   if (item.marginMode === "isolated") {
     const margin = parseDecimal(item.settleMargin);
     const notional = parseDecimal(item.notionalUsd);
-    if (!margin || margin.lte(0) || !notional || !item.settlementSymbol) return "isolated";
+    if (!margin || margin.lte(0) || !notional || !item.settlementAssetSymbol) return "isolated";
     let marginUsd = new MarginDecimal(margin);
-    if (!usdEquivalent(item.settlementSymbol)) {
+    if (!usdEquivalent(item.settlementAssetSymbol)) {
       const mark = parseDecimal(item.markPrice);
       if (
-        item.settlementSymbol !== item.baseSymbol ||
-        !usdEquivalent(item.quoteSymbol) ||
+        item.settlementAssetSymbol !== item.baseAssetSymbol ||
+        !usdEquivalent(item.quoteAssetSymbol) ||
         !mark ||
         mark.lte(0)
       )
@@ -100,10 +100,10 @@ export function positionMarginDescription(item: PositionRow): string {
 export function positionRow(item: PositionRow, timezone?: string): DataRow {
   const inverse = item.kind.startsWith("inverse_");
   const delivery = item.kind.endsWith("_delivery");
-  const factorUnit = inverse ? item.quoteSymbol : item.baseSymbol;
+  const factorUnit = inverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
   const marginLabel =
-    item.settleMargin != null && item.settlementSymbol
-      ? `${formatDecimal(item.settleMargin)} ${item.settlementSymbol}`
+    item.settleMargin != null && item.settlementAssetSymbol
+      ? `${formatDecimal(item.settleMargin)} ${item.settlementAssetSymbol}`
       : "—";
   return {
     id: `${item.accountId}-${item.futuresContractId}-${item.platformPositionRef}`,
@@ -120,15 +120,15 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
           <dl>
             <div>
               <dt>Base</dt>
-              <dd>{item.baseSymbol ?? "—"}</dd>
+              <dd>{item.baseAssetSymbol ?? "—"}</dd>
             </div>
             <div>
               <dt>Quote</dt>
-              <dd>{item.quoteSymbol ?? "—"}</dd>
+              <dd>{item.quoteAssetSymbol ?? "—"}</dd>
             </div>
             <div>
               <dt>Settle</dt>
-              <dd>{item.settlementSymbol ?? "—"}</dd>
+              <dd>{item.settlementAssetSymbol ?? "—"}</dd>
             </div>
             {item.contractSize ? (
               <div>
@@ -173,7 +173,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
         </p>
       </HoverDetails>
     ),
-    unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementSymbol ?? null),
+    unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementAssetSymbol ?? null),
     notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),
     issues: (
       <ObservedCell

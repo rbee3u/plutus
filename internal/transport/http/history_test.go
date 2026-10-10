@@ -146,11 +146,11 @@ func TestStoredOmissionUsesExplicitAPIReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := toAPIAccountValuation(&valuation.AccountValuation{Omitted: omitted})
-	if len(out.Omitted) != 1 || out.Omitted[0].PlatformAssetSymbol != "DEMO-BTC" || out.Omitted[0].AssetSymbol == nil || *out.Omitted[0].AssetSymbol != "BTC" || out.Omitted[0].Equity != "2" {
+	if len(out.Omitted) != 1 || out.Omitted[0].AssetSymbol != "DEMO-BTC" || out.Omitted[0].CanonicalAssetSymbol == nil || *out.Omitted[0].CanonicalAssetSymbol != "BTC" || out.Omitted[0].Equity != "2" {
 		t.Fatalf("lost stored omission: %+v", out.Omitted)
 	}
 	encoded, err := json.Marshal(out.Omitted)
-	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || !bytes.Contains(encoded, []byte(`"platformAssetSymbol":"DEMO-BTC"`)) {
+	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || !bytes.Contains(encoded, []byte(`"assetSymbol":"DEMO-BTC"`)) {
 		t.Fatalf("API omission: %s (%v)", encoded, err)
 	}
 	encoded, err = json.Marshal(omitted)

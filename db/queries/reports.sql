@@ -21,9 +21,9 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
 
 -- name: InsertBalance :exec
 INSERT INTO balances (
-    report_id, portfolio_id, platform_asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl
+    report_id, portfolio_id, asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl
 ) VALUES (
-    sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(platform_asset_id), sqlc.arg(equity), sqlc.narg(available_to_withdraw),
+    sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(asset_id), sqlc.arg(equity), sqlc.narg(available_to_withdraw),
     sqlc.narg(available_to_trade), sqlc.narg(liability), sqlc.narg(interest), sqlc.narg(unrealized_pnl)
 );
 
@@ -31,12 +31,12 @@ INSERT INTO balances (
 INSERT INTO positions (
     report_id, portfolio_id, platform_position_ref, futures_contract_id, side, quantity, quantity_unit,
     entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin,
-    position_mode, margin_mode, margin_platform_asset_symbol, margin_basis
+    position_mode, margin_mode, margin_asset_symbol, margin_basis
 ) VALUES (
     sqlc.arg(report_id), sqlc.arg(portfolio_id), sqlc.arg(platform_position_ref), sqlc.arg(futures_contract_id), sqlc.arg(side),
     sqlc.arg(quantity), sqlc.arg(quantity_unit), sqlc.narg(entry_price), sqlc.narg(mark_price), sqlc.narg(liquidation_price),
     sqlc.narg(unrealized_pnl), sqlc.narg(leverage), sqlc.narg(margin),
-    sqlc.narg(position_mode), sqlc.narg(margin_mode), sqlc.narg(margin_platform_asset_symbol), sqlc.narg(margin_basis)
+    sqlc.narg(position_mode), sqlc.narg(margin_mode), sqlc.narg(margin_asset_symbol), sqlc.narg(margin_basis)
 );
 
 -- name: ListReportsByJob :many
@@ -84,17 +84,17 @@ ORDER BY created_at DESC, id DESC
 LIMIT 1;
 
 -- name: ListBalancesByReport :many
-SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol
 FROM balances b
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 WHERE b.report_id = sqlc.arg(report_id)
-ORDER BY l.asset_symbol ASC, l.symbol ASC;
+ORDER BY asset.symbol ASC, asset.canonical_symbol ASC;
 
 -- name: ListPositionsByReport :many
 SELECT p.report_id, p.platform_position_ref, p.futures_contract_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_platform_asset_symbol, p.margin_basis,
-       n.platform, n.symbol AS futures_symbol, n.kind, n.base_platform_asset_symbol, n.quote_platform_asset_symbol, n.settlement_platform_asset_symbol, n.expiry_at, n.contract_size
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_asset_symbol, p.margin_basis,
+       n.platform, n.symbol AS futures_symbol, n.kind, n.base_asset_symbol, n.quote_asset_symbol, n.settlement_asset_symbol, n.expiry_at, n.contract_size
 FROM positions p
 INNER JOIN futures_contracts n ON n.id = p.futures_contract_id
 WHERE p.report_id = sqlc.arg(report_id)
@@ -102,23 +102,23 @@ ORDER BY p.platform_position_ref;
 
 -- name: ListBalancesByJob :many
 SELECT cur.account_id, cur.source_report_id AS report_id, cur.observed_at AS current_observed_at, src.observed_at,
-       b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol,
+       b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol,
        a.identity_id, a.account_type, a.display_name AS account_name, i.display_name AS identity_name
 FROM account_reports cur
 INNER JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = cur.source_report_id
 INNER JOIN balances b ON b.report_id = src.id
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 INNER JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = sqlc.arg(portfolio_id) AND cur.job_id = sqlc.arg(job_id)
-ORDER BY cur.account_id, b.platform_asset_id;
+ORDER BY cur.account_id, b.asset_id;
 
 -- name: ListPositionsByJob :many
 SELECT cur.account_id, cur.source_report_id AS report_id, src.observed_at,
        p.platform_position_ref, p.futures_contract_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_platform_asset_symbol, p.margin_basis,
-       n.platform, n.symbol AS futures_symbol, n.kind, n.base_platform_asset_symbol, n.quote_platform_asset_symbol, n.settlement_platform_asset_symbol, n.expiry_at, n.contract_size,
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_asset_symbol, p.margin_basis,
+       n.platform, n.symbol AS futures_symbol, n.kind, n.base_asset_symbol, n.quote_asset_symbol, n.settlement_asset_symbol, n.expiry_at, n.contract_size,
        a.identity_id, a.account_type, a.display_name AS account_name, i.display_name AS identity_name
 FROM account_reports cur
 INNER JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = cur.source_report_id

@@ -58,18 +58,18 @@ func cycleTimes(anchor time.Time, loc *time.Location, large bool) []time.Time {
 
 func (b *builder) demoEvents(anchor time.Time) {
 	for _, f := range []flowSpec{
-		{ID: namedID("flow/btc-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "BTC", Quantity: "0.1", At: anchor.AddDate(0, 0, -60), Note: "Cold-wallet deposit into Binance Spot"},
-		{ID: namedID("flow/usdt-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", Asset: "USDT", Quantity: "5000", ValueUSD: "5000", At: anchor.AddDate(0, 0, -30), Note: "External funding into Binance Funding"},
-		{ID: namedID("flow/usdc-withdrawal"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "withdrawal", Asset: "USDC", Quantity: "1000", ValueUSD: "1000", At: anchor.AddDate(0, 0, -5), Note: "Withdrawal from Binance Funding"},
-		{ID: namedID("flow/unpriced-airdrop"), Portfolio: PortfolioAliceEdge, User: UserAlice, Direction: "contribution", Asset: "DEMO-NOPRICE", Quantity: "1000", At: anchor.AddDate(0, 0, -5), Note: "Unpriced airdrop; USD value remains unknown"},
+		{ID: namedID("flow/btc-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", CanonicalAssetSymbol: "BTC", Quantity: "0.1", At: anchor.AddDate(0, 0, -60), Note: "Cold-wallet deposit into Binance Spot"},
+		{ID: namedID("flow/usdt-deposit"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "contribution", CanonicalAssetSymbol: "USDT", Quantity: "5000", ValueUSD: "5000", At: anchor.AddDate(0, 0, -30), Note: "External funding into Binance Funding"},
+		{ID: namedID("flow/usdc-withdrawal"), Portfolio: PortfolioAliceMain, User: UserAlice, Direction: "withdrawal", CanonicalAssetSymbol: "USDC", Quantity: "1000", ValueUSD: "1000", At: anchor.AddDate(0, 0, -5), Note: "Withdrawal from Binance Funding"},
+		{ID: namedID("flow/unpriced-airdrop"), Portfolio: PortfolioAliceEdge, User: UserAlice, Direction: "contribution", CanonicalAssetSymbol: "DEMO-NOPRICE", Quantity: "1000", At: anchor.AddDate(0, 0, -5), Note: "Unpriced airdrop; USD value remains unknown"},
 	} {
-		if f.Asset == "BTC" {
+		if f.CanonicalAssetSymbol == "BTC" {
 			price := fake.DemoPrice(adapters.PlatformBinance, "BTC", f.At)
 			f.ValueUSD = decimal.Format(decimal.Mul(decimal.ParseOrZero(price), decimal.ParseOrZero(f.Quantity)))
 			b.price(adapters.PlatformBinance, "BTC", price, f.At)
 		}
 		id := accountID("daily-classic", "funding")
-		if f.Asset == "BTC" {
+		if f.CanonicalAssetSymbol == "BTC" {
 			id = accountID("daily-classic", "spot")
 		}
 		if f.Portfolio == PortfolioAliceEdge {
@@ -77,7 +77,7 @@ func (b *builder) demoEvents(anchor time.Time) {
 		}
 		f.Account = &id
 		b.flow(&f)
-		b.audit(&auditSpec{Portfolio: f.Portfolio, Actor: UserAlice, Action: "capital_flow.create", ResourceType: "capital_flow", ResourceID: f.ID, At: f.At, After: map[string]any{"direction": f.Direction, "assetSymbol": f.Asset, "quantity": f.Quantity, "valueUsd": f.ValueUSD, "note": f.Note}})
+		b.audit(&auditSpec{Portfolio: f.Portfolio, Actor: UserAlice, Action: "capital_flow.create", ResourceType: "capital_flow", ResourceID: f.ID, At: f.At, After: map[string]any{"direction": f.Direction, "canonicalAssetSymbol": f.CanonicalAssetSymbol, "quantity": f.Quantity, "valueUsd": f.ValueUSD, "note": f.Note}})
 	}
 	for _, event := range []struct {
 		identity, action string
@@ -91,18 +91,18 @@ func (b *builder) demoEvents(anchor time.Time) {
 	} {
 		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: event.action, ResourceType: "identity", ResourceID: identityID(event.identity), At: anchor.AddDate(0, 0, event.days), Before: event.before, After: event.after, System: event.action == "identity.margin_mode.change"})
 	}
-	b.demoPlatformAssetPolicy(anchor)
+	b.demoAssetPolicy(anchor)
 	// Independent Catalog reviews provide useful audit pagination without
 	// inventing dozens of meaningless Identity renames.
 	reviewed := 0
-	for _, key := range b.platformAssetKeys {
-		row := b.platformAssets[key]
+	for _, key := range b.assetKeys {
+		row := b.assets[key]
 		if row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
 			continue
 		}
 		reviewed++
 		row.source = catalog.MappingManual
-		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.platform_asset.map", ResourceType: "platform_asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "assetSymbol": row.asset, "mappingSource": catalog.MappingManual, "version": 2}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalSymbol": row.canonicalSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalSymbol": row.canonicalSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
 	}
 	if reviewed != 60 {
 		b.fail(fmt.Errorf("large scenario needs 60 independent Catalog reviews"))
@@ -114,17 +114,17 @@ func (b *builder) demoEvents(anchor time.Time) {
 	}
 }
 
-func (b *builder) demoPlatformAssetPolicy(anchor time.Time) {
-	alias := b.platformAssets["binance|DEMO-BTC"]
+func (b *builder) demoAssetPolicy(anchor time.Time) {
+	alias := b.assets["binance|DEMO-BTC"]
 	if alias == nil {
-		b.fail(fmt.Errorf("demo alias platform asset is missing"))
+		b.fail(fmt.Errorf("demo alias asset is missing"))
 		return
 	}
-	alias.asset, alias.source = "BTC", catalog.MappingManual
-	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.platform_asset.map", ResourceType: "platform_asset", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "assetSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "assetSymbol": "BTC", "mappingSource": catalog.MappingManual}})
-	dust := b.platformAssets["binance|DEMO-DUST"]
+	alias.canonicalSymbol, alias.source = "BTC", catalog.MappingManual
+	b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: alias.id, At: anchor.AddDate(0, 0, -7), Before: map[string]any{"symbol": alias.symbol, "canonicalSymbol": alias.symbol, "mappingSource": catalog.MappingAuto}, After: map[string]any{"symbol": alias.symbol, "canonicalSymbol": "BTC", "mappingSource": catalog.MappingManual}})
+	dust := b.assets["binance|DEMO-DUST"]
 	if dust == nil {
-		b.fail(fmt.Errorf("demo dust platform asset is missing"))
+		b.fail(fmt.Errorf("demo dust asset is missing"))
 		return
 	}
 	for i, days := range []int{-6, -4, -2} {
@@ -134,14 +134,14 @@ func (b *builder) demoPlatformAssetPolicy(anchor time.Time) {
 			reason = "Reviewed synthetic dust; intentionally omitted from calculated value."
 		}
 		at := anchor.AddDate(0, 0, days)
-		b.add("portfolio_platform_asset_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
-		action := "catalog.platform_asset.restore"
+		b.add("portfolio_asset_exclusion_events", bin(PortfolioAliceEdge), bin(dust.id), strconv.Itoa(i+1), boolean(ignored), qn(reason), bin(UserAlice), ts(at))
+		action := "catalog.asset.restore"
 		if ignored {
-			action = "catalog.platform_asset.exclude"
+			action = "catalog.asset.exclude"
 		}
-		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "platform_asset", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "ignored": !ignored, "version": i}, After: map[string]any{"symbol": dust.symbol, "ignored": ignored, "reason": reason, "version": i + 1}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: action, ResourceType: "asset", ResourceID: dust.id, At: at, Before: map[string]any{"symbol": dust.symbol, "ignored": !ignored, "version": i}, After: map[string]any{"symbol": dust.symbol, "ignored": ignored, "reason": reason, "version": i + 1}})
 		if i == 2 {
-			b.add("portfolio_platform_asset_exclusions", bin(PortfolioAliceEdge), bin(dust.id), boolean(ignored), qn(reason), "3", bin(UserAlice), ts(at))
+			b.add("portfolio_asset_exclusions", bin(PortfolioAliceEdge), bin(dust.id), boolean(ignored), qn(reason), "3", bin(UserAlice), ts(at))
 		}
 	}
 }

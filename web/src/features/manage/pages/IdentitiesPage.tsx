@@ -32,7 +32,7 @@ export function IdentitiesPage() {
   const identities = useIdentities(portfolioId);
   const platforms = usePlatforms();
   const portfolio = usePortfolio(portfolioId);
-  const timezone = portfolio.data?.item.timezone;
+  const timezone = portfolio.data?.timezone;
   const actions = useIdentityActions(portfolioId);
   const nonce = useRef(0);
   const [showArchived, setShowArchived] = useState(false);

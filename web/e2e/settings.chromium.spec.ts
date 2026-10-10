@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import type { Portfolio } from "../src/api";
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
 
@@ -108,4 +109,138 @@ test("Security preserves revoke refresh, password rejection and successful sign-
   await page.getByRole("button", { name: "Change password", exact: true }).click();
   await expect(page).toHaveURL("/login");
   await expect(page.getByText(/Password changed successfully/)).toBeVisible();
+});
+
+for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
+  test(`Portfolio writes use JSON versions with response ETag ${responseEtag ?? "absent"}`, async ({
+    page,
+  }) => {
+    const session = sessionFixture({ portfolio: { undeletable: false } });
+    const original = session.portfolios.items[0];
+    const fallback = {
+      ...original,
+      id: "00000000-0000-7000-8000-000000000002",
+      name: "default",
+      undeletable: true,
+    };
+    session.portfolios.items.push(fallback);
+    const path = `/api/v1/portfolios/${original.id}`;
+    const writes: string[] = [];
+    await mockApi(page, session, async (route) => {
+      const request = route.request();
+      const url = new URL(request.url()).pathname;
+      if (url === path) {
+        const current = session.portfolios.items[0];
+        if (request.method() !== "GET") {
+          writes.push(request.headers()["if-match"]);
+          if (request.headers()["if-match"] !== `"portfolio:${current.version}"`)
+            return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
+          if (request.method() === "DELETE") {
+            session.portfolios.items.shift();
+            return route.fulfill({ status: 204 });
+          }
+          session.portfolios.items[0] = {
+            ...current,
+            ...(request.postDataJSON() as Partial<Portfolio>),
+            version: current.version + 1,
+          };
+        }
+        return route.fulfill({
+          json: session.portfolios.items[0],
+          headers: responseEtag ? { ETag: responseEtag } : {},
+        });
+      }
+      if (
+        url.endsWith("/overview") ||
+        url.endsWith("/tree") ||
+        url.endsWith("/valuation-points") ||
+        url.endsWith("/history-window")
+      )
+        return route.fulfill({ status: 503, json: { detail: "No valuation in this fixture" } });
+      return route.fallback();
+    });
+    await page.goto(`/p/${original.id}/settings/portfolio`);
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill("Renamed");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("Portfolio settings saved.");
+    await page.getByLabel("Confirm name", { exact: true }).fill("Renamed");
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(page).toHaveURL(`/p/${fallback.id}/overview`);
+    expect(writes).toEqual(['"portfolio:1"', '"portfolio:2"']);
+  });
+}
+
+test("Portfolio drafts keep their baseline through background reads and require reload after conflicts", async ({
+  page,
+  context,
+}) => {
+  const session = sessionFixture();
+  const id = session.portfolios.items[0].id;
+  const path = `/api/v1/portfolios/${id}`;
+  const writes: string[] = [];
+  let reads = 0;
+  let failRead = false;
+  async function install(target: Page) {
+    await mockApi(target, session, async (route) => {
+      const request = route.request();
+      if (new URL(request.url()).pathname !== path) return route.fallback();
+      if (request.method() === "GET") {
+        reads++;
+        if (failRead) return route.fulfill({ status: 503, json: { detail: "Read unavailable" } });
+      } else {
+        const current = session.portfolios.items[0];
+        writes.push(request.headers()["if-match"]);
+        if (request.headers()["if-match"] !== `"portfolio:${current.version}"`)
+          return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
+        session.portfolios.items[0] = {
+          ...current,
+          ...(request.postDataJSON() as Partial<Portfolio>),
+          version: current.version + 1,
+        };
+      }
+      return route.fulfill({
+        json: session.portfolios.items[0],
+        headers: { ETag: `W/"portfolio:${session.portfolios.items[0].version}"` },
+      });
+    });
+  }
+  await install(page);
+  const other = await context.newPage();
+  await install(other);
+  await page.goto(`/p/${id}/settings/portfolio`);
+  await other.goto(`/p/${id}/settings/portfolio`);
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("My draft");
+  await other.getByRole("textbox", { name: "Name", exact: true }).fill("Other editor");
+  await other.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(other.getByRole("status")).toContainText("Portfolio settings saved.");
+  const before = reads;
+  const background = page.waitForResponse(
+    (response) => response.url().endsWith(path) && response.request().method() === "GET",
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("offline"));
+    window.dispatchEvent(new Event("online"));
+  });
+  await background;
+  expect(reads).toBeGreaterThan(before);
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue("My draft");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("changed in another session");
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  failRead = true;
+  await page.getByRole("button", { name: "Reload latest settings" }).click();
+  await expect(page.getByRole("button", { name: "Reload latest settings" })).toBeEnabled();
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue("My draft");
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  failRead = false;
+  await page.getByRole("button", { name: "Reload latest settings" }).click();
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toHaveValue(
+    "Other editor",
+  );
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Reviewed draft");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Portfolio settings saved.");
+  expect(writes).toEqual(['"portfolio:1"', '"portfolio:1"', '"portfolio:2"']);
+  expect(session.portfolios.items[0].name).toBe("Reviewed draft");
+  await other.close();
 });

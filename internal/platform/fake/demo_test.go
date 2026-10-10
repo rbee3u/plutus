@@ -48,10 +48,10 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 				}
 				coins := map[string]bool{}
 				for _, b := range r.Balances {
-					if coins[b.PlatformAssetSymbol] || !decimal.Valid(b.Equity) {
+					if coins[b.AssetSymbol] || !decimal.Valid(b.Equity) {
 						t.Fatalf("%s duplicate/invalid Balance %+v", d.ID, b)
 					}
-					coins[b.PlatformAssetSymbol] = true
+					coins[b.AssetSymbol] = true
 				}
 				if r.EarnDetailsCollected {
 					if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
@@ -128,7 +128,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	amount := func(kind adapters.AccountType, symbol string, at time.Time) string {
 		r := demoReport(d, anchor, at, kind)
 		for _, b := range r.Balances {
-			if b.PlatformAssetSymbol == symbol {
+			if b.AssetSymbol == symbol {
 				return b.Equity
 			}
 		}

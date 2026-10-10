@@ -267,7 +267,7 @@ func (q *Queries) InsertAccountReport(ctx context.Context, arg InsertAccountRepo
 
 const insertBalance = `-- name: InsertBalance :exec
 INSERT INTO balances (
-    report_id, portfolio_id, platform_asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl
+    report_id, portfolio_id, asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?
@@ -277,7 +277,7 @@ INSERT INTO balances (
 type InsertBalanceParams struct {
 	ReportID            []byte
 	PortfolioID         []byte
-	PlatformAssetID     []byte
+	AssetID             []byte
 	Equity              string
 	AvailableToWithdraw sql.NullString
 	AvailableToTrade    sql.NullString
@@ -290,7 +290,7 @@ func (q *Queries) InsertBalance(ctx context.Context, arg InsertBalanceParams) er
 	_, err := q.db.ExecContext(ctx, insertBalance,
 		arg.ReportID,
 		arg.PortfolioID,
-		arg.PlatformAssetID,
+		arg.AssetID,
 		arg.Equity,
 		arg.AvailableToWithdraw,
 		arg.AvailableToTrade,
@@ -305,7 +305,7 @@ const insertPosition = `-- name: InsertPosition :exec
 INSERT INTO positions (
     report_id, portfolio_id, platform_position_ref, futures_contract_id, side, quantity, quantity_unit,
     entry_price, mark_price, liquidation_price, unrealized_pnl, leverage, margin,
-    position_mode, margin_mode, margin_platform_asset_symbol, margin_basis
+    position_mode, margin_mode, margin_asset_symbol, margin_basis
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?,
@@ -315,23 +315,23 @@ INSERT INTO positions (
 `
 
 type InsertPositionParams struct {
-	ReportID                  []byte
-	PortfolioID               []byte
-	PlatformPositionRef       string
-	FuturesContractID         []byte
-	Side                      string
-	Quantity                  string
-	QuantityUnit              string
-	EntryPrice                sql.NullString
-	MarkPrice                 sql.NullString
-	LiquidationPrice          sql.NullString
-	UnrealizedPnl             sql.NullString
-	Leverage                  sql.NullString
-	Margin                    sql.NullString
-	PositionMode              sql.NullString
-	MarginMode                sql.NullString
-	MarginPlatformAssetSymbol sql.NullString
-	MarginBasis               sql.NullString
+	ReportID            []byte
+	PortfolioID         []byte
+	PlatformPositionRef string
+	FuturesContractID   []byte
+	Side                string
+	Quantity            string
+	QuantityUnit        string
+	EntryPrice          sql.NullString
+	MarkPrice           sql.NullString
+	LiquidationPrice    sql.NullString
+	UnrealizedPnl       sql.NullString
+	Leverage            sql.NullString
+	Margin              sql.NullString
+	PositionMode        sql.NullString
+	MarginMode          sql.NullString
+	MarginAssetSymbol   sql.NullString
+	MarginBasis         sql.NullString
 }
 
 func (q *Queries) InsertPosition(ctx context.Context, arg InsertPositionParams) error {
@@ -351,7 +351,7 @@ func (q *Queries) InsertPosition(ctx context.Context, arg InsertPositionParams) 
 		arg.Margin,
 		arg.PositionMode,
 		arg.MarginMode,
-		arg.MarginPlatformAssetSymbol,
+		arg.MarginAssetSymbol,
 		arg.MarginBasis,
 	)
 	return err
@@ -359,17 +359,17 @@ func (q *Queries) InsertPosition(ctx context.Context, arg InsertPositionParams) 
 
 const listBalancesByJob = `-- name: ListBalancesByJob :many
 SELECT cur.account_id, cur.source_report_id AS report_id, cur.observed_at AS current_observed_at, src.observed_at,
-       b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol,
+       b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol,
        a.identity_id, a.account_type, a.display_name AS account_name, i.display_name AS identity_name
 FROM account_reports cur
 INNER JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = cur.source_report_id
 INNER JOIN balances b ON b.report_id = src.id
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 INNER JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = ? AND cur.job_id = ?
-ORDER BY cur.account_id, b.platform_asset_id
+ORDER BY cur.account_id, b.asset_id
 `
 
 type ListBalancesByJobParams struct {
@@ -378,24 +378,24 @@ type ListBalancesByJobParams struct {
 }
 
 type ListBalancesByJobRow struct {
-	AccountID           []byte
-	ReportID            []byte
-	CurrentObservedAt   sql.NullTime
-	ObservedAt          sql.NullTime
-	PlatformAssetID     []byte
-	Equity              string
-	AvailableToWithdraw sql.NullString
-	AvailableToTrade    sql.NullString
-	Liability           sql.NullString
-	Interest            sql.NullString
-	UnrealizedPnl       sql.NullString
-	Platform            string
-	PlatformAssetSymbol string
-	AssetSymbol         string
-	IdentityID          []byte
-	AccountType         string
-	AccountName         string
-	IdentityName        string
+	AccountID            []byte
+	ReportID             []byte
+	CurrentObservedAt    sql.NullTime
+	ObservedAt           sql.NullTime
+	AssetID              []byte
+	Equity               string
+	AvailableToWithdraw  sql.NullString
+	AvailableToTrade     sql.NullString
+	Liability            sql.NullString
+	Interest             sql.NullString
+	UnrealizedPnl        sql.NullString
+	Platform             string
+	AssetSymbol          string
+	CanonicalAssetSymbol string
+	IdentityID           []byte
+	AccountType          string
+	AccountName          string
+	IdentityName         string
 }
 
 func (q *Queries) ListBalancesByJob(ctx context.Context, arg ListBalancesByJobParams) ([]ListBalancesByJobRow, error) {
@@ -412,7 +412,7 @@ func (q *Queries) ListBalancesByJob(ctx context.Context, arg ListBalancesByJobPa
 			&i.ReportID,
 			&i.CurrentObservedAt,
 			&i.ObservedAt,
-			&i.PlatformAssetID,
+			&i.AssetID,
 			&i.Equity,
 			&i.AvailableToWithdraw,
 			&i.AvailableToTrade,
@@ -420,8 +420,8 @@ func (q *Queries) ListBalancesByJob(ctx context.Context, arg ListBalancesByJobPa
 			&i.Interest,
 			&i.UnrealizedPnl,
 			&i.Platform,
-			&i.PlatformAssetSymbol,
 			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.IdentityID,
 			&i.AccountType,
 			&i.AccountName,
@@ -441,26 +441,26 @@ func (q *Queries) ListBalancesByJob(ctx context.Context, arg ListBalancesByJobPa
 }
 
 const listBalancesByReport = `-- name: ListBalancesByReport :many
-SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol
 FROM balances b
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 WHERE b.report_id = ?
-ORDER BY l.asset_symbol ASC, l.symbol ASC
+ORDER BY asset.symbol ASC, asset.canonical_symbol ASC
 `
 
 type ListBalancesByReportRow struct {
-	ReportID            []byte
-	PlatformAssetID     []byte
-	Equity              string
-	AvailableToWithdraw sql.NullString
-	AvailableToTrade    sql.NullString
-	Liability           sql.NullString
-	Interest            sql.NullString
-	UnrealizedPnl       sql.NullString
-	Platform            string
-	PlatformAssetSymbol string
-	AssetSymbol         string
+	ReportID             []byte
+	AssetID              []byte
+	Equity               string
+	AvailableToWithdraw  sql.NullString
+	AvailableToTrade     sql.NullString
+	Liability            sql.NullString
+	Interest             sql.NullString
+	UnrealizedPnl        sql.NullString
+	Platform             string
+	AssetSymbol          string
+	CanonicalAssetSymbol string
 }
 
 func (q *Queries) ListBalancesByReport(ctx context.Context, reportID []byte) ([]ListBalancesByReportRow, error) {
@@ -474,7 +474,7 @@ func (q *Queries) ListBalancesByReport(ctx context.Context, reportID []byte) ([]
 		var i ListBalancesByReportRow
 		if err := rows.Scan(
 			&i.ReportID,
-			&i.PlatformAssetID,
+			&i.AssetID,
 			&i.Equity,
 			&i.AvailableToWithdraw,
 			&i.AvailableToTrade,
@@ -482,8 +482,8 @@ func (q *Queries) ListBalancesByReport(ctx context.Context, reportID []byte) ([]
 			&i.Interest,
 			&i.UnrealizedPnl,
 			&i.Platform,
-			&i.PlatformAssetSymbol,
 			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -501,8 +501,8 @@ func (q *Queries) ListBalancesByReport(ctx context.Context, reportID []byte) ([]
 const listPositionsByJob = `-- name: ListPositionsByJob :many
 SELECT cur.account_id, cur.source_report_id AS report_id, src.observed_at,
        p.platform_position_ref, p.futures_contract_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_platform_asset_symbol, p.margin_basis,
-       n.platform, n.symbol AS futures_symbol, n.kind, n.base_platform_asset_symbol, n.quote_platform_asset_symbol, n.settlement_platform_asset_symbol, n.expiry_at, n.contract_size,
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_asset_symbol, p.margin_basis,
+       n.platform, n.symbol AS futures_symbol, n.kind, n.base_asset_symbol, n.quote_asset_symbol, n.settlement_asset_symbol, n.expiry_at, n.contract_size,
        a.identity_id, a.account_type, a.display_name AS account_name, i.display_name AS identity_name
 FROM account_reports cur
 INNER JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = cur.source_report_id
@@ -520,36 +520,36 @@ type ListPositionsByJobParams struct {
 }
 
 type ListPositionsByJobRow struct {
-	AccountID                     []byte
-	ReportID                      []byte
-	ObservedAt                    sql.NullTime
-	PlatformPositionRef           string
-	FuturesContractID             []byte
-	Side                          string
-	Quantity                      string
-	QuantityUnit                  string
-	EntryPrice                    sql.NullString
-	MarkPrice                     sql.NullString
-	LiquidationPrice              sql.NullString
-	UnrealizedPnl                 sql.NullString
-	Leverage                      sql.NullString
-	Margin                        sql.NullString
-	PositionMode                  sql.NullString
-	MarginMode                    sql.NullString
-	MarginPlatformAssetSymbol     sql.NullString
-	MarginBasis                   sql.NullString
-	Platform                      string
-	FuturesSymbol                 string
-	Kind                          string
-	BasePlatformAssetSymbol       sql.NullString
-	QuotePlatformAssetSymbol      sql.NullString
-	SettlementPlatformAssetSymbol sql.NullString
-	ExpiryAt                      sql.NullTime
-	ContractSize                  sql.NullString
-	IdentityID                    []byte
-	AccountType                   string
-	AccountName                   string
-	IdentityName                  string
+	AccountID             []byte
+	ReportID              []byte
+	ObservedAt            sql.NullTime
+	PlatformPositionRef   string
+	FuturesContractID     []byte
+	Side                  string
+	Quantity              string
+	QuantityUnit          string
+	EntryPrice            sql.NullString
+	MarkPrice             sql.NullString
+	LiquidationPrice      sql.NullString
+	UnrealizedPnl         sql.NullString
+	Leverage              sql.NullString
+	Margin                sql.NullString
+	PositionMode          sql.NullString
+	MarginMode            sql.NullString
+	MarginAssetSymbol     sql.NullString
+	MarginBasis           sql.NullString
+	Platform              string
+	FuturesSymbol         string
+	Kind                  string
+	BaseAssetSymbol       sql.NullString
+	QuoteAssetSymbol      sql.NullString
+	SettlementAssetSymbol sql.NullString
+	ExpiryAt              sql.NullTime
+	ContractSize          sql.NullString
+	IdentityID            []byte
+	AccountType           string
+	AccountName           string
+	IdentityName          string
 }
 
 func (q *Queries) ListPositionsByJob(ctx context.Context, arg ListPositionsByJobParams) ([]ListPositionsByJobRow, error) {
@@ -578,14 +578,14 @@ func (q *Queries) ListPositionsByJob(ctx context.Context, arg ListPositionsByJob
 			&i.Margin,
 			&i.PositionMode,
 			&i.MarginMode,
-			&i.MarginPlatformAssetSymbol,
+			&i.MarginAssetSymbol,
 			&i.MarginBasis,
 			&i.Platform,
 			&i.FuturesSymbol,
 			&i.Kind,
-			&i.BasePlatformAssetSymbol,
-			&i.QuotePlatformAssetSymbol,
-			&i.SettlementPlatformAssetSymbol,
+			&i.BaseAssetSymbol,
+			&i.QuoteAssetSymbol,
+			&i.SettlementAssetSymbol,
 			&i.ExpiryAt,
 			&i.ContractSize,
 			&i.IdentityID,
@@ -608,8 +608,8 @@ func (q *Queries) ListPositionsByJob(ctx context.Context, arg ListPositionsByJob
 
 const listPositionsByReport = `-- name: ListPositionsByReport :many
 SELECT p.report_id, p.platform_position_ref, p.futures_contract_id, p.side, p.quantity, p.quantity_unit,
-       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_platform_asset_symbol, p.margin_basis,
-       n.platform, n.symbol AS futures_symbol, n.kind, n.base_platform_asset_symbol, n.quote_platform_asset_symbol, n.settlement_platform_asset_symbol, n.expiry_at, n.contract_size
+       p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_mode, p.margin_asset_symbol, p.margin_basis,
+       n.platform, n.symbol AS futures_symbol, n.kind, n.base_asset_symbol, n.quote_asset_symbol, n.settlement_asset_symbol, n.expiry_at, n.contract_size
 FROM positions p
 INNER JOIN futures_contracts n ON n.id = p.futures_contract_id
 WHERE p.report_id = ?
@@ -617,30 +617,30 @@ ORDER BY p.platform_position_ref
 `
 
 type ListPositionsByReportRow struct {
-	ReportID                      []byte
-	PlatformPositionRef           string
-	FuturesContractID             []byte
-	Side                          string
-	Quantity                      string
-	QuantityUnit                  string
-	EntryPrice                    sql.NullString
-	MarkPrice                     sql.NullString
-	LiquidationPrice              sql.NullString
-	UnrealizedPnl                 sql.NullString
-	Leverage                      sql.NullString
-	Margin                        sql.NullString
-	PositionMode                  sql.NullString
-	MarginMode                    sql.NullString
-	MarginPlatformAssetSymbol     sql.NullString
-	MarginBasis                   sql.NullString
-	Platform                      string
-	FuturesSymbol                 string
-	Kind                          string
-	BasePlatformAssetSymbol       sql.NullString
-	QuotePlatformAssetSymbol      sql.NullString
-	SettlementPlatformAssetSymbol sql.NullString
-	ExpiryAt                      sql.NullTime
-	ContractSize                  sql.NullString
+	ReportID              []byte
+	PlatformPositionRef   string
+	FuturesContractID     []byte
+	Side                  string
+	Quantity              string
+	QuantityUnit          string
+	EntryPrice            sql.NullString
+	MarkPrice             sql.NullString
+	LiquidationPrice      sql.NullString
+	UnrealizedPnl         sql.NullString
+	Leverage              sql.NullString
+	Margin                sql.NullString
+	PositionMode          sql.NullString
+	MarginMode            sql.NullString
+	MarginAssetSymbol     sql.NullString
+	MarginBasis           sql.NullString
+	Platform              string
+	FuturesSymbol         string
+	Kind                  string
+	BaseAssetSymbol       sql.NullString
+	QuoteAssetSymbol      sql.NullString
+	SettlementAssetSymbol sql.NullString
+	ExpiryAt              sql.NullTime
+	ContractSize          sql.NullString
 }
 
 func (q *Queries) ListPositionsByReport(ctx context.Context, reportID []byte) ([]ListPositionsByReportRow, error) {
@@ -667,14 +667,14 @@ func (q *Queries) ListPositionsByReport(ctx context.Context, reportID []byte) ([
 			&i.Margin,
 			&i.PositionMode,
 			&i.MarginMode,
-			&i.MarginPlatformAssetSymbol,
+			&i.MarginAssetSymbol,
 			&i.MarginBasis,
 			&i.Platform,
 			&i.FuturesSymbol,
 			&i.Kind,
-			&i.BasePlatformAssetSymbol,
-			&i.QuotePlatformAssetSymbol,
-			&i.SettlementPlatformAssetSymbol,
+			&i.BaseAssetSymbol,
+			&i.QuoteAssetSymbol,
+			&i.SettlementAssetSymbol,
 			&i.ExpiryAt,
 			&i.ContractSize,
 		); err != nil {

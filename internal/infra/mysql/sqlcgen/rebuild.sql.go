@@ -15,12 +15,12 @@ import (
 )
 
 const listRebuildBalances = `-- name: ListRebuildBalances :many
-SELECT b.report_id, b.platform_asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
-       l.platform, l.symbol AS platform_asset_symbol, l.asset_symbol
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_symbol AS canonical_asset_symbol
 FROM balances b
-INNER JOIN platform_assets l ON l.id = b.platform_asset_id
+INNER JOIN assets asset ON asset.id = b.asset_id
 WHERE b.portfolio_id = ? AND b.report_id IN (/*SLICE:report_ids*/?)
-ORDER BY b.report_id, l.asset_symbol ASC, l.symbol ASC
+ORDER BY b.report_id, asset.symbol ASC, asset.canonical_symbol ASC
 `
 
 type ListRebuildBalancesParams struct {
@@ -29,17 +29,17 @@ type ListRebuildBalancesParams struct {
 }
 
 type ListRebuildBalancesRow struct {
-	ReportID            []byte
-	PlatformAssetID     []byte
-	Equity              string
-	AvailableToWithdraw sql.NullString
-	AvailableToTrade    sql.NullString
-	Liability           sql.NullString
-	Interest            sql.NullString
-	UnrealizedPnl       sql.NullString
-	Platform            string
-	PlatformAssetSymbol string
-	AssetSymbol         string
+	ReportID             []byte
+	AssetID              []byte
+	Equity               string
+	AvailableToWithdraw  sql.NullString
+	AvailableToTrade     sql.NullString
+	Liability            sql.NullString
+	Interest             sql.NullString
+	UnrealizedPnl        sql.NullString
+	Platform             string
+	AssetSymbol          string
+	CanonicalAssetSymbol string
 }
 
 func (q *Queries) ListRebuildBalances(ctx context.Context, arg ListRebuildBalancesParams) ([]ListRebuildBalancesRow, error) {
@@ -64,7 +64,7 @@ func (q *Queries) ListRebuildBalances(ctx context.Context, arg ListRebuildBalanc
 		var i ListRebuildBalancesRow
 		if err := rows.Scan(
 			&i.ReportID,
-			&i.PlatformAssetID,
+			&i.AssetID,
 			&i.Equity,
 			&i.AvailableToWithdraw,
 			&i.AvailableToTrade,
@@ -72,8 +72,8 @@ func (q *Queries) ListRebuildBalances(ctx context.Context, arg ListRebuildBalanc
 			&i.Interest,
 			&i.UnrealizedPnl,
 			&i.Platform,
-			&i.PlatformAssetSymbol,
 			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -123,29 +123,29 @@ func (q *Queries) ListRebuildPointTimes(ctx context.Context, portfolioID []byte)
 }
 
 const listRebuildPrices = `-- name: ListRebuildPrices :many
-SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
+SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
 FROM prices
-WHERE asset_symbol IN (/*SLICE:asset_symbols*/?)
+WHERE canonical_asset_symbol IN (/*SLICE:canonical_asset_symbols*/?)
   AND observed_at >= ? AND observed_at <= ?
-ORDER BY platform, asset_symbol, observed_at
+ORDER BY platform, canonical_asset_symbol, observed_at
 `
 
 type ListRebuildPricesParams struct {
-	AssetSymbols []string
-	FromAt       time.Time
-	ToAt         time.Time
+	CanonicalAssetSymbols []string
+	FromAt                time.Time
+	ToAt                  time.Time
 }
 
 func (q *Queries) ListRebuildPrices(ctx context.Context, arg ListRebuildPricesParams) ([]Price, error) {
 	query := listRebuildPrices
 	var queryParams []interface{}
-	if len(arg.AssetSymbols) > 0 {
-		for _, v := range arg.AssetSymbols {
+	if len(arg.CanonicalAssetSymbols) > 0 {
+		for _, v := range arg.CanonicalAssetSymbols {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE:asset_symbols*/?", strings.Repeat(",?", len(arg.AssetSymbols))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:canonical_asset_symbols*/?", strings.Repeat(",?", len(arg.CanonicalAssetSymbols))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE:asset_symbols*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE:canonical_asset_symbols*/?", "NULL", 1)
 	}
 	queryParams = append(queryParams, arg.FromAt)
 	queryParams = append(queryParams, arg.ToAt)
@@ -159,10 +159,10 @@ func (q *Queries) ListRebuildPrices(ctx context.Context, arg ListRebuildPricesPa
 		var i Price
 		if err := rows.Scan(
 			&i.Platform,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteAssetSymbol,
+			&i.QuoteCanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}

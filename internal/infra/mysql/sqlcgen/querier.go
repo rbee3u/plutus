@@ -14,9 +14,9 @@ type Querier interface {
 	AdvanceManualVersion(ctx context.Context, arg AdvanceManualVersionParams) error
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ClearIdentityCredentials(ctx context.Context, arg ClearIdentityCredentialsParams) (int64, error)
+	CountAssets(ctx context.Context, arg CountAssetsParams) (int64, error)
 	CountFuturesContracts(ctx context.Context, arg CountFuturesContractsParams) (int64, error)
 	CountIdentitiesWithCiphertext(ctx context.Context) (int64, error)
-	CountPlatformAssets(ctx context.Context, arg CountPlatformAssetsParams) (int64, error)
 	CountReportsForIdentity(ctx context.Context, arg CountReportsForIdentityParams) (int64, error)
 	CountValuationPoints(ctx context.Context, portfolioID []byte) (int64, error)
 	CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error)
@@ -26,6 +26,8 @@ type Querier interface {
 	DeletePortfolio(ctx context.Context, arg DeletePortfolioParams) (int64, error)
 	DeletePortfolioAccountReports(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioAccounts(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioAssetExclusionEvents(ctx context.Context, portfolioID []byte) error
+	DeletePortfolioAssetExclusions(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioAuditEvents(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioBalances(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioCapitalFlows(ctx context.Context, portfolioID []byte) error
@@ -38,13 +40,14 @@ type Querier interface {
 	DeletePortfolioManualCycleAccounts(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioManualCycles(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioManualRevisions(ctx context.Context, portfolioID []byte) error
-	DeletePortfolioPlatformAssetExclusionEvents(ctx context.Context, portfolioID []byte) error
-	DeletePortfolioPlatformAssetExclusions(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioPositions(ctx context.Context, portfolioID []byte) error
 	DeletePortfolioValuationPoints(ctx context.Context, portfolioID []byte) error
 	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
 	GetActiveJobByDedupe(ctx context.Context, arg GetActiveJobByDedupeParams) (GetActiveJobByDedupeRow, error)
 	GetAppliedManualState(ctx context.Context, arg GetAppliedManualStateParams) (GetAppliedManualStateRow, error)
+	GetAsset(ctx context.Context, id []byte) (Asset, error)
+	GetAssetByPlatformSymbol(ctx context.Context, arg GetAssetByPlatformSymbolParams) (Asset, error)
+	GetAssetExclusion(ctx context.Context, arg GetAssetExclusionParams) (GetAssetExclusionRow, error)
 	GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error)
 	GetEarnDetailsCollected(ctx context.Context, arg GetEarnDetailsCollectedParams) (bool, error)
 	GetFirstValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
@@ -59,9 +62,6 @@ type Querier interface {
 	GetManualCycle(ctx context.Context, arg GetManualCycleParams) ([]byte, error)
 	GetManualModifiedAt(ctx context.Context, arg GetManualModifiedAtParams) (time.Time, error)
 	GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtParams) (Price, error)
-	GetPlatformAsset(ctx context.Context, id []byte) (PlatformAsset, error)
-	GetPlatformAssetByPlatformSymbol(ctx context.Context, arg GetPlatformAssetByPlatformSymbolParams) (PlatformAsset, error)
-	GetPlatformAssetExclusion(ctx context.Context, arg GetPlatformAssetExclusionParams) (GetPlatformAssetExclusionRow, error)
 	GetPortfolioByID(ctx context.Context, id []byte) (Portfolio, error)
 	GetPortfolioByUserAndID(ctx context.Context, arg GetPortfolioByUserAndIDParams) (Portfolio, error)
 	GetReport(ctx context.Context, arg GetReportParams) (GetReportRow, error)
@@ -76,6 +76,7 @@ type Querier interface {
 	GetValuationPointByJob(ctx context.Context, arg GetValuationPointByJobParams) (ValuationPoint, error)
 	InsertAccount(ctx context.Context, arg InsertAccountParams) error
 	InsertAccountReport(ctx context.Context, arg InsertAccountReportParams) error
+	InsertAssetExclusionEvent(ctx context.Context, arg InsertAssetExclusionEventParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertBalance(ctx context.Context, arg InsertBalanceParams) error
 	InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowParams) error
@@ -86,21 +87,23 @@ type Querier interface {
 	InsertManualCycle(ctx context.Context, arg InsertManualCycleParams) error
 	InsertManualCycleAccount(ctx context.Context, arg InsertManualCycleAccountParams) error
 	InsertManualRevision(ctx context.Context, arg InsertManualRevisionParams) error
-	InsertPlatformAssetExclusionEvent(ctx context.Context, arg InsertPlatformAssetExclusionEventParams) error
 	InsertPortfolio(ctx context.Context, arg InsertPortfolioParams) error
 	InsertPosition(ctx context.Context, arg InsertPositionParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	ListAccountsByIdentity(ctx context.Context, arg ListAccountsByIdentityParams) ([]Account, error)
 	ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error)
+	ListAssetExclusionHistory(ctx context.Context, portfolioID []byte) ([]ListAssetExclusionHistoryRow, error)
+	ListAssetExclusionsBefore(ctx context.Context, arg ListAssetExclusionsBeforeParams) ([]ListAssetExclusionsBeforeRow, error)
+	ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset, error)
 	ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditEventsByPortfolioParams) ([]AuditEvent, error)
 	ListBalancesByJob(ctx context.Context, arg ListBalancesByJobParams) ([]ListBalancesByJobRow, error)
 	ListBalancesByReport(ctx context.Context, reportID []byte) ([]ListBalancesByReportRow, error)
 	ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error)
-	ListCalculatedPlatformAssetsAtJobs(ctx context.Context, arg ListCalculatedPlatformAssetsAtJobsParams) ([]ListCalculatedPlatformAssetsAtJobsRow, error)
+	ListCalculatedAssetsAtJobs(ctx context.Context, arg ListCalculatedAssetsAtJobsParams) ([]ListCalculatedAssetsAtJobsRow, error)
 	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
 	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
-	ListCurrentPlatformAssetExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentPlatformAssetExclusionsRow, error)
+	ListCurrentAssetExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentAssetExclusionsRow, error)
 	ListCycleJobsWithPoints(ctx context.Context, arg ListCycleJobsWithPointsParams) ([]ListCycleJobsWithPointsRow, error)
 	ListDualPositionsByJob(ctx context.Context, arg ListDualPositionsByJobParams) ([]ListDualPositionsByJobRow, error)
 	ListDualPositionsByReport(ctx context.Context, reportID []byte) ([]DualPosition, error)
@@ -111,16 +114,13 @@ type Querier interface {
 	ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]Price, error)
 	ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error)
 	ListManualCycleAccounts(ctx context.Context, arg ListManualCycleAccountsParams) ([]ListManualCycleAccountsRow, error)
-	ListPlatformAssetExclusionHistory(ctx context.Context, portfolioID []byte) ([]ListPlatformAssetExclusionHistoryRow, error)
-	ListPlatformAssetExclusionsBefore(ctx context.Context, arg ListPlatformAssetExclusionsBeforeParams) ([]ListPlatformAssetExclusionsBeforeRow, error)
-	ListPlatformAssets(ctx context.Context, arg ListPlatformAssetsParams) ([]PlatformAsset, error)
 	ListPortfolioManualBalances(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualBalancesRow, error)
 	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]Portfolio, error)
 	ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfoliosForSchedulingRow, error)
-	ListPortfoliosHoldingPlatformAsset(ctx context.Context, platformAssetID []byte) ([][]byte, error)
+	ListPortfoliosHoldingAsset(ctx context.Context, assetID []byte) ([][]byte, error)
 	ListPositionsByJob(ctx context.Context, arg ListPositionsByJobParams) ([]ListPositionsByJobRow, error)
 	ListPositionsByReport(ctx context.Context, reportID []byte) ([]ListPositionsByReportRow, error)
-	ListPricesForAssetBetween(ctx context.Context, arg ListPricesForAssetBetweenParams) ([]Price, error)
+	ListPricesForCanonicalAssetBetween(ctx context.Context, arg ListPricesForCanonicalAssetBetweenParams) ([]Price, error)
 	ListRebuildBalances(ctx context.Context, arg ListRebuildBalancesParams) ([]ListRebuildBalancesRow, error)
 	ListRebuildPointTimes(ctx context.Context, portfolioID []byte) ([]ListRebuildPointTimesRow, error)
 	ListRebuildPrices(ctx context.Context, arg ListRebuildPricesParams) ([]Price, error)
@@ -161,14 +161,14 @@ type Querier interface {
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (int64, error)
 	UpdateAccountReportValuation(ctx context.Context, arg UpdateAccountReportValuationParams) error
+	UpdateAssetMapping(ctx context.Context, arg UpdateAssetMappingParams) (int64, error)
 	UpdateCapitalFlow(ctx context.Context, arg UpdateCapitalFlowParams) (int64, error)
 	UpdateIdentity(ctx context.Context, arg UpdateIdentityParams) (int64, error)
-	UpdatePlatformAssetMapping(ctx context.Context, arg UpdatePlatformAssetMappingParams) (int64, error)
 	UpdatePortfolio(ctx context.Context, arg UpdatePortfolioParams) (int64, error)
 	UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error
+	UpsertAsset(ctx context.Context, arg UpsertAssetParams) error
+	UpsertAssetExclusion(ctx context.Context, arg UpsertAssetExclusionParams) error
 	UpsertFuturesContract(ctx context.Context, arg UpsertFuturesContractParams) error
-	UpsertPlatformAsset(ctx context.Context, arg UpsertPlatformAssetParams) error
-	UpsertPlatformAssetExclusion(ctx context.Context, arg UpsertPlatformAssetExclusionParams) error
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) error
 	UpsertValuationPoint(ctx context.Context, arg UpsertValuationPointParams) error
 }

@@ -69,15 +69,15 @@ func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFl
 	direction := string(request.Body.Direction)
 	effectiveAt := request.Body.EffectiveAt.UTC()
 	in := capital.Input{
-		ActorUserID: sc.user.ID,
-		RequestID:   requestTraceID(ctx),
-		Direction:   &direction,
-		AssetSymbol: &request.Body.AssetSymbol,
-		Quantity:    &request.Body.Quantity,
-		ValueUSD:    request.Body.ValueUsd,
-		EffectiveAt: &effectiveAt,
-		AccountID:   request.Body.AccountId,
-		Note:        request.Body.Note,
+		ActorUserID:          sc.user.ID,
+		RequestID:            requestTraceID(ctx),
+		Direction:            &direction,
+		CanonicalAssetSymbol: &request.Body.CanonicalAssetSymbol,
+		Quantity:             &request.Body.Quantity,
+		ValueUSD:             request.Body.ValueUsd,
+		EffectiveAt:          &effectiveAt,
+		AccountID:            request.Body.AccountId,
+		Note:                 request.Body.Note,
 	}
 	item, err := a.Capital.Create(ctx, sc.portfolio.ID, &in)
 	if err != nil {
@@ -121,15 +121,15 @@ func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlow
 	}
 	nulls := explicitNulls(ctx)
 	in := capital.Input{
-		ActorUserID:  sc.user.ID,
-		RequestID:    requestTraceID(ctx),
-		AssetSymbol:  request.Body.AssetSymbol,
-		Quantity:     request.Body.Quantity,
-		ValueUSD:     request.Body.ValueUsd,
-		AccountID:    request.Body.AccountId,
-		Note:         request.Body.Note,
-		ClearAccount: nulls["accountId"],
-		ClearValue:   nulls["valueUsd"],
+		ActorUserID:          sc.user.ID,
+		RequestID:            requestTraceID(ctx),
+		CanonicalAssetSymbol: request.Body.CanonicalAssetSymbol,
+		Quantity:             request.Body.Quantity,
+		ValueUSD:             request.Body.ValueUsd,
+		AccountID:            request.Body.AccountId,
+		Note:                 request.Body.Note,
+		ClearAccount:         nulls["accountId"],
+		ClearValue:           nulls["valueUsd"],
 	}
 	if request.Body.Direction != nil {
 		direction := string(*request.Body.Direction)

@@ -1,5 +1,5 @@
-// Package platformassetexclusion reads the Portfolio policy that was effective when a Collection Cycle began.
-package platformassetexclusion
+// Package assetexclusion reads the Portfolio policy that was effective when a Collection Cycle began.
+package assetexclusion
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// ActiveForJob returns the Asset PlatformAssets ignored at the start of a Collection Cycle.
+// ActiveForJob returns the Assets ignored at the start of a Collection Cycle.
 // A rule saved while a cycle is running first applies to the following cycle.
 func ActiveForJob(ctx context.Context, db *sql.DB, portfolioID, jobID uuid.UUID) (map[uuid.UUID]bool, error) {
 	q := sqlcgen.New(db)
@@ -18,14 +18,14 @@ func ActiveForJob(ctx context.Context, db *sql.DB, portfolioID, jobID uuid.UUID)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.ListPlatformAssetExclusionsBefore(ctx, sqlcgen.ListPlatformAssetExclusionsBeforeParams{PortfolioID: portfolioID[:], EffectiveAt: job.CreatedAt})
+	rows, err := q.ListAssetExclusionsBefore(ctx, sqlcgen.ListAssetExclusionsBeforeParams{PortfolioID: portfolioID[:], EffectiveAt: job.CreatedAt})
 	if err != nil {
 		return nil, err
 	}
 	active := map[uuid.UUID]bool{}
 	seen := map[uuid.UUID]bool{}
 	for _, row := range rows {
-		id, err := uuid.FromBytes(row.PlatformAssetID)
+		id, err := uuid.FromBytes(row.AssetID)
 		if err != nil {
 			return nil, err
 		}

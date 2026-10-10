@@ -148,7 +148,7 @@ func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.P
 		}
 		if multiCollateral {
 			if isolated, exists := r.snapshot.Flex.Isolated[row.Symbol]; exists {
-				position.MarginMode, position.MarginBasis, position.MarginCurrency = "isolated", "allocated", "USD"
+				position.MarginMode, position.MarginBasis, position.MarginAssetSymbol = "isolated", "allocated", "USD"
 				position.Margin = adapters.Plain(string(isolated.InitialWithoutOrders))
 			} else if r.snapshot.Flex.Isolated != nil {
 				position.MarginMode = "cross"
@@ -228,13 +228,13 @@ func mapPosition(row *openPosition, contract *nativeInstrument, ticker *futuresT
 	out := adapters.Position{
 		PlatformPositionRef: row.Symbol + ":" + row.Side,
 		FuturesContract: adapters.FuturesContract{
-			Symbol:           row.Symbol,
-			Kind:             kind,
-			BaseSymbol:       base,
-			QuoteSymbol:      quote,
-			SettlementSymbol: settle,
-			ExpiryAt:         expiry,
-			ContractSize:     contractSize,
+			Symbol:                row.Symbol,
+			Kind:                  kind,
+			BaseAssetSymbol:       base,
+			QuoteAssetSymbol:      quote,
+			SettlementAssetSymbol: settle,
+			ExpiryAt:              expiry,
+			ContractSize:          contractSize,
 		},
 		Side:         side,
 		PositionMode: "one_way",

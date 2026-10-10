@@ -136,32 +136,37 @@ cd /opt/plutus-test
 
 ### Catalog terminology upgrade
 
-Back up the database and stop all services before applying
-[20261009010000_catalog_terminology.sql](../db/migrations/20261009010000_catalog_terminology.sql)
-and
-[20261009020000_asset_reference_columns.sql](../db/migrations/20261009020000_asset_reference_columns.sql)
-with `plutus migrate up`. The command rejects historical spot instruments before
-any pending DDL; resolve unsupported records explicitly before retrying. Use
-this command, not direct Goose or SQL execution. MySQL DDL is not transactional;
-a failed partial migration requires inspection or restoration before retrying.
+Back up the database and stop all services before applying pending migrations
+with `plutus migrate up`, including
+[20261010010000_asset_canonical_terminology.sql](../db/migrations/20261010010000_asset_canonical_terminology.sql).
+Use this command, not direct Goose or SQL execution: its existing preflight
+rejects historical spot instruments before pending DDL. MySQL DDL is not
+transactional; inspect or restore a failed partial migration before retrying.
 
-The upgrade renames catalog tables and references while retaining IDs, versions,
-amounts, timestamps, and history. The follow-up migration makes persisted Asset
-reference namespaces explicit and clarifies index and check names without
-changing their rules; see
-[persisted references](./architecture.md#persisted-asset-references). New code
-reads both historical and current Manual revision formats without rewriting
-retained JSON or audit documents. Stored Earn metadata and omitted Balance JSON
-keep their historical `symbol` keys; their Go fields and HTTP responses use
-`PlatformAssetSymbol` and `platformAssetSymbol`, respectively.
+The upgrade renames Assets, references, indexes, and constraints while retaining
+IDs, versions, amounts, timestamps, and history. See
+[persisted references](./architecture.md#persisted-asset-references). Internal
+persisted JSON keeps its established keys for both reads and new writes,
+independently of Go field names and HTTP conversion:
+
+| Stored document                          | Asset reference                          | Canonical Asset reference |
+| ---------------------------------------- | ---------------------------------------- | ------------------------- |
+| Manual revisions and frozen cycle inputs | `platformAssetId`, `platformAssetSymbol` | `assetSymbol`             |
+| Earn metadata and omitted Balances       | `symbol`                                 | `assetSymbol`             |
+| Recalculation job payload                | `platformAssetId`                        | None                      |
+
+Manual readers also accept historical `listingId` and `symbol` aliases and
+reject conflicting aliases. Historical audit documents remain unchanged. New
+audit documents use current names; Asset filters include `asset`,
+`platform_asset`, and `asset_listing` resource types and their corresponding
+action generations.
 
 Deploy the server and embedded SPA together. API paths, reference fields, and
-catalog ETags change together without old API aliases. Refresh existing browser
-sessions. Old Catalog tab links retain their filters and resolve to the new
-tabs. Check readiness and exercise Catalog mapping/exclusion, Manual editing,
-and Holdings after startup. For a full rollback, restore the pre-upgrade backup
-with the previous binary; reversing table names alone does not undo new JSON
-writes.
+Catalog ETags change together without old HTTP aliases. Refresh existing browser
+sessions. Old Catalog tab links retain their filters and resolve to the current
+tabs. Check readiness, Catalog mapping/exclusion, Manual editing, Holdings,
+Capital Flows, and history after startup. For a full rollback, restore the
+pre-upgrade backup with the previous binary.
 
 ### Dual Investment split upgrade
 

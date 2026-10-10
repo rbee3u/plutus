@@ -63,7 +63,7 @@ func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.Margin
 			return nil, err
 		}
 		if mode == adapters.MarginOKXPM && position.MarginMode == "cross" {
-			position.Margin, position.MarginBasis, position.MarginCurrency = nil, "", ""
+			position.Margin, position.MarginBasis, position.MarginAssetSymbol = nil, "", ""
 		}
 		out = append(out, position)
 	}
@@ -110,9 +110,9 @@ func mapPosition(row *openPosition, amount *big.Rat, futuresContract *adapters.F
 	}
 	switch row.MgnMode {
 	case "cross":
-		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "cross", "initial", strings.TrimSpace(row.Ccy), adapters.Plain(row.IMR)
+		out.MarginMode, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "cross", "initial", strings.TrimSpace(row.Ccy), adapters.Plain(row.IMR)
 	case "isolated":
-		out.MarginMode, out.MarginBasis, out.MarginCurrency, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
+		out.MarginMode, out.MarginBasis, out.MarginAssetSymbol, out.Margin = "isolated", "allocated", strings.TrimSpace(row.Ccy), adapters.Plain(row.Margin)
 	}
 	return out, nil
 }

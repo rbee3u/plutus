@@ -44,7 +44,7 @@ type AccountReport struct {
 
 // Balance is one coin line within an Account Report.
 type Balance struct {
-	PlatformAssetSymbol string
+	AssetSymbol string
 	// Name is the Asset's full name when the Platform reports one; empty otherwise.
 	Name                string
 	Equity              string
@@ -57,13 +57,13 @@ type Balance struct {
 
 // FuturesContract describes the tradable contract behind a Position.
 type FuturesContract struct {
-	Symbol           string
-	Kind             string
-	BaseSymbol       string
-	QuoteSymbol      string
-	SettlementSymbol string
-	ExpiryAt         *time.Time
-	ContractSize     *string
+	Symbol                string
+	Kind                  string
+	BaseAssetSymbol       string
+	QuoteAssetSymbol      string
+	SettlementAssetSymbol string
+	ExpiryAt              *time.Time
+	ContractSize          *string
 }
 
 // Position is one open position within an Account Report.
@@ -73,7 +73,7 @@ type Position struct {
 	Side                string
 	PositionMode        string
 	MarginMode          string
-	MarginCurrency      string
+	MarginAssetSymbol   string
 	MarginBasis         string
 	Quantity            string
 	QuantityUnit        string
@@ -85,10 +85,10 @@ type Position struct {
 	Margin              *string
 }
 
-// Price is one Platform market price for an Asset symbol in a quote symbol.
+// Price is a Platform market price for a Canonical Asset, quoted in another Canonical Asset.
 type Price struct {
-	AssetSymbol string
-	Price       string
-	QuoteSymbol string
-	ObservedAt  time.Time
+	CanonicalAssetSymbol      string
+	Price                     string
+	QuoteCanonicalAssetSymbol string
+	ObservedAt                time.Time
 }

@@ -114,11 +114,11 @@ func mapUnifiedBalances(rows []walletCoin) ([]adapters.Balance, error) {
 			continue
 		}
 		out = append(out, adapters.Balance{
-			PlatformAssetSymbol: symbol,
-			Equity:              decimal.Format(equity),
-			Liability:           adapters.Reported(row.BorrowAmount, decimal.Abs(parsed["borrowAmount"])),
-			Interest:            adapters.Reported(row.AccruedInterest, parsed["accruedInterest"]),
-			UnrealizedPnl:       adapters.Reported(row.UnrealisedPnl, parsed["unrealisedPnl"]),
+			AssetSymbol:   symbol,
+			Equity:        decimal.Format(equity),
+			Liability:     adapters.Reported(row.BorrowAmount, decimal.Abs(parsed["borrowAmount"])),
+			Interest:      adapters.Reported(row.AccruedInterest, parsed["accruedInterest"]),
+			UnrealizedPnl: adapters.Reported(row.UnrealisedPnl, parsed["unrealisedPnl"]),
 		})
 	}
 	return out, nil
@@ -166,7 +166,7 @@ func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountRepor
 			continue
 		}
 		balances = append(balances, adapters.Balance{
-			PlatformAssetSymbol: symbol,
+			AssetSymbol:         symbol,
 			Equity:              decimal.Format(total),
 			AvailableToWithdraw: adapters.Reported(row.TransferBalance, transferable),
 		})

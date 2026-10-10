@@ -19,11 +19,11 @@ func TestDecodeHistoricalBalances(t *testing.T) {
 			t.Fatalf("decode: %+v %v", rows, err)
 		}
 		got := rows[0]
-		if got.PlatformAssetID.String() != id || got.PlatformAssetSymbol != "DEMO-BTC" || got.AssetSymbol != "BTC" || got.Quantity != "-2" || got.ModifiedAt.IsZero() {
+		if got.AssetID.String() != id || got.AssetSymbol != "DEMO-BTC" || got.CanonicalAssetSymbol != "BTC" || got.Quantity != "-2" || got.ModifiedAt.IsZero() {
 			t.Fatalf("lost history: %+v", got)
 		}
 		encoded, err := json.Marshal(rows)
-		if err != nil || strings.Contains(string(encoded), `"listingId"`) || strings.Contains(string(encoded), `"symbol"`) {
+		if err != nil || strings.Contains(string(encoded), `"listingId"`) || strings.Contains(string(encoded), `"symbol"`) || !strings.Contains(string(encoded), `"platformAssetSymbol":"DEMO-BTC"`) || !strings.Contains(string(encoded), `"assetSymbol":"BTC"`) {
 			t.Fatalf("legacy write: %s %v", encoded, err)
 		}
 	}

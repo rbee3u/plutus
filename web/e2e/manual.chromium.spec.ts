@@ -16,6 +16,7 @@ async function fixture(page: Page, initialPoint = true) {
     items: [] as ManualBalance[],
     applied: [] as ManualBalance[],
     privateWrites: 0,
+    versions: [] as string[],
     conflict: false,
   };
   const ledger = (): ManualBalanceState => ({
@@ -26,8 +27,8 @@ async function fixture(page: Page, initialPoint = true) {
     items: state.items,
     appliedItems: state.applied,
     pending:
-      JSON.stringify(state.items.map((i) => [i.platformAssetSymbol, i.quantity])) !==
-      JSON.stringify(state.applied.map((i) => [i.platformAssetSymbol, i.quantity])),
+      JSON.stringify(state.items.map((i) => [i.assetSymbol, i.quantity])) !==
+      JSON.stringify(state.applied.map((i) => [i.assetSymbol, i.quantity])),
   });
   const account = (): AccountValuation => ({
     accountId: "manual",
@@ -107,10 +108,11 @@ async function fixture(page: Page, initialPoint = true) {
           },
         });
       if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
-      if (path.endsWith("/platform-assets"))
+      if (path.endsWith("/assets"))
         return route.fulfill({ json: { items: [], page: { offset: 0, limit: 200, total: 0 } } });
       if (path.includes("/manual-balances")) {
         if (method !== "GET") {
+          state.versions.push(req.headers()["if-match"]);
           if (state.conflict || req.headers()["if-match"] !== `"manual:${state.version}"`) {
             state.conflict = false;
             return route.fulfill({ status: 412, json: { detail: "Concurrent update" } });
@@ -118,9 +120,9 @@ async function fixture(page: Page, initialPoint = true) {
           const body =
             method === "DELETE"
               ? null
-              : (req.postDataJSON() as { platformAssetSymbol?: string; quantity: string });
+              : (req.postDataJSON() as { assetSymbol?: string; quantity: string });
           const symbol = path.endsWith("/manual-balances")
-            ? (body?.platformAssetSymbol ?? "").trim().toUpperCase()
+            ? (body?.assetSymbol ?? "").trim().toUpperCase()
             : path.split("/").at(-1)!;
           const quantity = method === "DELETE" ? "0" : (body?.quantity ?? "0");
           state.items =
@@ -128,10 +130,10 @@ async function fixture(page: Page, initialPoint = true) {
               ? []
               : [
                   {
-                    platformAssetSymbol: symbol,
-                    quantity,
                     assetSymbol: symbol,
-                    platformAssetId: "platform-asset",
+                    quantity,
+                    canonicalAssetSymbol: symbol,
+                    assetId: "asset",
                     modifiedAt: at,
                   },
                 ];
@@ -187,34 +189,26 @@ async function fixture(page: Page, initialPoint = true) {
         const items: BalanceRow[] = state.applied.map((item) => ({
           ...item,
           ...account(),
-          platformAssetSymbol: item.platformAssetSymbol,
+          assetSymbol: item.assetSymbol,
           equity: item.quantity,
           equityUsd: item.quantity,
           priceUsd: "1",
           noPrice: false,
-          manualChange: !state.items.some(
-            (current) => current.platformAssetSymbol === item.platformAssetSymbol,
-          )
+          manualChange: !state.items.some((current) => current.assetSymbol === item.assetSymbol)
             ? "deleted"
-            : state.items.find(
-                  (current) => current.platformAssetSymbol === item.platformAssetSymbol,
-                )?.quantity !== item.quantity
+            : state.items.find((current) => current.assetSymbol === item.assetSymbol)?.quantity !==
+                item.quantity
               ? "updated"
               : undefined,
-          manualQuantity: state.items.find(
-            (current) => current.platformAssetSymbol === item.platformAssetSymbol,
-          )?.quantity,
+          manualQuantity: state.items.find((current) => current.assetSymbol === item.assetSymbol)
+            ?.quantity,
         }));
         for (const item of state.items) {
-          if (
-            !state.applied.some(
-              (applied) => applied.platformAssetSymbol === item.platformAssetSymbol,
-            )
-          ) {
+          if (!state.applied.some((applied) => applied.assetSymbol === item.assetSymbol)) {
             items.push({
               ...item,
               ...account(),
-              platformAssetSymbol: item.platformAssetSymbol,
+              assetSymbol: item.assetSymbol,
               equity: item.quantity,
               priceUsd: null,
               equityUsd: null,
@@ -382,4 +376,35 @@ test("adding recovers from a version conflict without losing the draft", async (
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
   await expect(dialog).toBeHidden();
+});
+
+test("Manual drafts keep their version during reconnect reads, including version zero", async ({
+  page,
+}) => {
+  const state = await fixture(page, false);
+  state.version = 0;
+  await page.goto(`/p/${portfolioId}/holdings/balances`);
+  await page.getByRole("button", { name: "Add manual balance", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Manual balances" });
+  await dialog.getByRole("combobox", { name: "Identity", exact: true }).selectOption("owner");
+  await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
+  await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("100");
+  state.version = 1;
+  const read = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/manual-balances") && response.request().method() === "GET",
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("offline"));
+    window.dispatchEvent(new Event("online"));
+  });
+  await read;
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("changed elsewhere");
+  expect(state.versions).toEqual(['"manual:0"']);
+  await dialog.getByRole("button", { name: "Reload current records" }).click();
+  await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("100");
+  await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.versions).toEqual(['"manual:0"', '"manual:1"']);
 });

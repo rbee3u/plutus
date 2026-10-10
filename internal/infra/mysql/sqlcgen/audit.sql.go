@@ -59,8 +59,8 @@ SELECT id, portfolio_id, actor_user_id, action, resource_type, resource_id, requ
        before_json, after_json, metadata_json, occurred_at
 FROM audit_events
 WHERE portfolio_id = ?
-  AND (? = 0 OR action IN (?, ?))
-  AND (? = 0 OR resource_type IN (?, ?))
+  AND (? = 0 OR action IN (?, ?, ?))
+  AND (? = 0 OR resource_type IN (?, ?, ?))
   AND (
       ? = 0
       OR occurred_at < ?
@@ -71,17 +71,19 @@ LIMIT ?
 `
 
 type ListAuditEventsByPortfolioParams struct {
-	PortfolioID        []byte
-	FilterAction       interface{}
-	Action             string
-	LegacyAction       string
-	FilterResourceType interface{}
-	ResourceType       string
-	LegacyResourceType string
-	HasCursor          interface{}
-	CursorOccurredAt   time.Time
-	CursorID           []byte
-	Limit              int32
+	PortfolioID               []byte
+	FilterAction              interface{}
+	Action                    string
+	LegacyAction              string
+	PlatformAssetAction       string
+	FilterResourceType        interface{}
+	ResourceType              string
+	LegacyResourceType        string
+	PlatformAssetResourceType string
+	HasCursor                 interface{}
+	CursorOccurredAt          time.Time
+	CursorID                  []byte
+	Limit                     int32
 }
 
 func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditEventsByPortfolioParams) ([]AuditEvent, error) {
@@ -90,9 +92,11 @@ func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditE
 		arg.FilterAction,
 		arg.Action,
 		arg.LegacyAction,
+		arg.PlatformAssetAction,
 		arg.FilterResourceType,
 		arg.ResourceType,
 		arg.LegacyResourceType,
+		arg.PlatformAssetResourceType,
 		arg.HasCursor,
 		arg.CursorOccurredAt,
 		arg.CursorOccurredAt,

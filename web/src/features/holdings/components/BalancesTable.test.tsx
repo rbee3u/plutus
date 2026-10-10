@@ -11,9 +11,9 @@ const balance: BalanceRow = {
   identityId: "identity",
   identityName: "Owner",
   platform: "okx",
-  platformAssetId: "platformAsset",
-  platformAssetSymbol: "XBT",
-  assetSymbol: "BTC",
+  assetId: "asset",
+  assetSymbol: "XBT",
+  canonicalAssetSymbol: "BTC",
   equity: "0.123456789",
   availableToWithdraw: "0.12",
   availableToTrade: "0.1",
@@ -55,7 +55,8 @@ describe("shared balance cells", () => {
     expect(row.unrealizedPnl).toBe("—");
     const symbol = renderToStaticMarkup(<>{row.symbol}</>);
     expect(symbol).toContain("XBT");
-    expect(symbol).toContain("as BTC");
+    expect(symbol.indexOf("XBT")).toBeLessThan(symbol.indexOf("Canonical Asset: BTC"));
+    expect(symbol).toContain("Canonical Asset: BTC");
     const issues = renderToStaticMarkup(<>{row.issues}</>);
     expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
     expect(issues).not.toContain("Stale");

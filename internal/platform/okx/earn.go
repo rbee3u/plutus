@@ -51,7 +51,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 				return adapters.AccountReport{}, adapters.AccountReport{}, err
 			}
 			if amount.Sign() != 0 {
-				p.Assets = append(p.Assets, adapters.EarnAmount{PlatformAssetSymbol: invested.Ccy, Amount: decimal.Format(amount)})
+				p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: invested.Ccy, Amount: decimal.Format(amount)})
 			}
 		}
 		if len(p.Assets) > 0 {
@@ -73,7 +73,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.InvestSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual Investment", p.InvestAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}

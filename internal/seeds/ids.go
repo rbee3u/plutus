@@ -13,7 +13,7 @@ const (
 	kindPortfolio       uint16 = 0x7002
 	kindIdentity        uint16 = 0x7003
 	kindAccount         uint16 = 0x7005
-	kindPlatformAsset   uint16 = 0x7007
+	kindAsset           uint16 = 0x7007
 	kindFuturesContract uint16 = 0x7008
 	kindJob             uint16 = 0x7010
 	kindReport          uint16 = 0x7011

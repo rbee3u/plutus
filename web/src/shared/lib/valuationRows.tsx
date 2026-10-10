@@ -67,8 +67,8 @@ export function accountValuationRow(item: AccountValuation, timezone?: string): 
             name={`Omitted balances for ${item.accountName}`}
           >
             {item.omitted.map((om) => (
-              <p key={om.platformAssetSymbol}>
-                {om.platformAssetSymbol}: {om.reason}
+              <p key={om.assetSymbol}>
+                {om.assetSymbol}: {om.reason}
               </p>
             ))}
           </HoverDetails>

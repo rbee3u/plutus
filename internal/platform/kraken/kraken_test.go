@@ -322,7 +322,7 @@ func reportsByType(t *testing.T, batch *adapters.Batch) map[adapters.AccountType
 func balances(report *adapters.AccountReport) map[string]string {
 	out := map[string]string{}
 	for _, balance := range report.Balances {
-		out[balance.PlatformAssetSymbol] = balance.Equity
+		out[balance.AssetSymbol] = balance.Equity
 	}
 	return out
 }
@@ -365,7 +365,7 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	}
 	for _, balance := range mainReport.Balances {
 		if balance.Name != "" || balance.AvailableToTrade == nil {
-			t.Fatalf("Unified Main balance %s: name %q, available %v", balance.PlatformAssetSymbol, balance.Name, balance.AvailableToTrade)
+			t.Fatalf("Unified Main balance %s: name %q, available %v", balance.AssetSymbol, balance.Name, balance.AvailableToTrade)
 		}
 	}
 	if len(mainReport.Positions) != 1 {
@@ -374,7 +374,7 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	position := mainReport.Positions[0]
 	if position.PlatformPositionRef != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.Quantity != "1" ||
 		position.QuantityUnit != adapters.UnitContracts || position.FuturesContract.Kind != adapters.KindLinearPerpetual ||
-		position.FuturesContract.BaseSymbol != "BTC" || position.FuturesContract.SettlementSymbol != "USD" || value(position.FuturesContract.ContractSize) != "1" ||
+		position.FuturesContract.BaseAssetSymbol != "BTC" || position.FuturesContract.SettlementAssetSymbol != "USD" || value(position.FuturesContract.ContractSize) != "1" ||
 		value(position.EntryPrice) != "570" || value(position.MarkPrice) != "30209.9" || position.UnrealizedPnl != nil {
 		t.Fatalf("Unified Main position: %+v", position)
 	}
@@ -388,13 +388,13 @@ func TestReplayUnifiedWallet(t *testing.T) {
 	if coin := reports[TypeCoinM]; value(coin.Equity) != "10" || balances(&coin)["BTC"] != "0.02" || len(coin.Positions) != 2 {
 		t.Fatalf("Coin-M: %+v", coin)
 	}
-	if len(batch.Prices) != 1 || batch.Prices[0].AssetSymbol != "BTC" || batch.Prices[0].QuoteSymbol != "USD" || batch.Prices[0].Price != "30000" {
+	if len(batch.Prices) != 1 || batch.Prices[0].CanonicalAssetSymbol != "BTC" || batch.Prices[0].QuoteCanonicalAssetSymbol != "USD" || batch.Prices[0].Price != "30000" {
 		t.Fatalf("prices: %+v", batch.Prices)
 	}
 	for i := range batch.Reports {
 		for _, price := range batch.Prices {
 			if price.ObservedAt.After(batch.Reports[i].ObservedAt) {
-				t.Fatalf("the price of %s is later than the %s report it values", price.AssetSymbol, batch.Reports[i].AccountType)
+				t.Fatalf("the price of %s is later than the %s report it values", price.CanonicalAssetSymbol, batch.Reports[i].AccountType)
 			}
 		}
 	}
@@ -434,7 +434,7 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if value(multi.Equity) != "5000" || value(multi.AdjustedEquity) != "5000" || value(multi.InitialMarginRatio) != "0" || balances(&multi)["USD"] != "5000" {
 		t.Fatalf("Multi-M: %+v", multi)
 	}
-	if len(multi.Positions) != 1 || multi.Positions[0].PlatformPositionRef != "PF_XBTUSD:long" || multi.Positions[0].FuturesContract.BaseSymbol != "BTC" ||
+	if len(multi.Positions) != 1 || multi.Positions[0].PlatformPositionRef != "PF_XBTUSD:long" || multi.Positions[0].FuturesContract.BaseAssetSymbol != "BTC" ||
 		multi.Positions[0].UnrealizedPnl != nil || value(multi.Positions[0].MarkPrice) != "30209.9" {
 		t.Fatalf("Multi-M positions (a BTC-denominated PnL is not the USD settlement): %+v", multi.Positions)
 	}
@@ -449,7 +449,7 @@ func TestReplaySeparateWallets(t *testing.T) {
 	}
 	perpetual, delivery := positions["PI_XBTUSD:short"], positions["FI_XBTUSD_220930:long"]
 	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.Quantity != "10000" || perpetual.FuturesContract.Kind != adapters.KindInversePerpetual ||
-		perpetual.FuturesContract.SettlementSymbol != "BTC" || value(perpetual.FuturesContract.ContractSize) != "1" || perpetual.UnrealizedPnl != nil {
+		perpetual.FuturesContract.SettlementAssetSymbol != "BTC" || value(perpetual.FuturesContract.ContractSize) != "1" || perpetual.UnrealizedPnl != nil {
 		t.Fatalf("inverse perpetual: %+v", perpetual)
 	}
 	if delivery.FuturesContract.Kind != adapters.KindInverseDelivery || delivery.FuturesContract.ExpiryAt == nil ||
@@ -568,7 +568,7 @@ func TestEarnIgnoresZeroHistoricalAllocations(t *testing.T) {
 				t.Fatal(err)
 			}
 			report := batch.Reports[0]
-			if report.Status != adapters.StatusOK || len(report.Balances) != 1 || report.Balances[0].PlatformAssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
+			if report.Status != adapters.StatusOK || len(report.Balances) != 1 || report.Balances[0].AssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
 				t.Fatalf("historical allocation changed current Earn holdings: %+v", report)
 			}
 			if r.reached(epBalancesSnapshot.String()) {
@@ -678,8 +678,8 @@ func TestMapPositionKeepsPnlOnlyInTheSettlementCurrency(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tc.name, err)
 		}
-		if p.FuturesContract.BaseSymbol != "BTC" || value(p.UnrealizedPnl) != tc.pnl {
-			t.Fatalf("%s: base %s, pnl %s", tc.name, p.FuturesContract.BaseSymbol, value(p.UnrealizedPnl))
+		if p.FuturesContract.BaseAssetSymbol != "BTC" || value(p.UnrealizedPnl) != tc.pnl {
+			t.Fatalf("%s: base %s, pnl %s", tc.name, p.FuturesContract.BaseAssetSymbol, value(p.UnrealizedPnl))
 		}
 	}
 	dated := nativeInstrument{Symbol: "FI_XBTUSD_X", Type: typeInverse, Base: "XBT", Quote: "USD", ContractSize: "1"}

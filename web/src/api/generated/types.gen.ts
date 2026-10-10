@@ -282,11 +282,11 @@ export type Issue = {
 };
 
 export type OmittedBalance = {
-    platformAssetSymbol: string;
+    assetSymbol: string;
     /**
-     * The Asset symbol the Platform Asset is mapped to, present only when it differs from platformAssetSymbol.
+     * The Canonical Asset Symbol the Asset is mapped to, present only when it differs from assetSymbol.
      */
-    assetSymbol?: string;
+    canonicalAssetSymbol?: string;
     equity: Decimal;
     reason: string;
 };
@@ -388,9 +388,9 @@ export type HoldingsTree = {
 };
 
 export type ManualBalance = {
-    platformAssetSymbol: string;
-    platformAssetId: Uuid;
     assetSymbol: string;
+    assetId: Uuid;
+    canonicalAssetSymbol: string;
     quantity: Decimal;
     modifiedAt: string;
 };
@@ -406,7 +406,7 @@ export type ManualBalanceState = {
 };
 
 export type CreateManualBalance = {
-    platformAssetSymbol: string;
+    assetSymbol: string;
     quantity: Decimal;
 };
 
@@ -421,9 +421,9 @@ export type BalanceRow = {
     identityId: Uuid;
     identityName: string;
     platform: string;
-    platformAssetId: Uuid;
-    platformAssetSymbol: string;
+    assetId: Uuid;
     assetSymbol: string;
+    canonicalAssetSymbol: string;
     equity: Decimal;
     availableToWithdraw?: NullableDecimal;
     availableToTrade?: NullableDecimal;
@@ -461,15 +461,15 @@ export type PositionRow = {
     futuresContractId: Uuid;
     futuresSymbol: string;
     kind: string;
-    baseSymbol?: string | null;
-    quoteSymbol?: string | null;
-    settlementSymbol?: string | null;
+    baseAssetSymbol?: string | null;
+    quoteAssetSymbol?: string | null;
+    settlementAssetSymbol?: string | null;
     expiryAt?: string | null;
     contractSize?: NullableDecimal;
     side: 'long' | 'short';
     positionMode?: 'one_way' | 'hedged' | null;
     marginMode?: 'cross' | 'isolated' | null;
-    marginCurrency?: string | null;
+    marginAssetSymbol?: string | null;
     marginBasis?: 'initial' | 'allocated' | null;
     portfolioMargin?: boolean | null;
     /**
@@ -514,9 +514,9 @@ export type DualPositionRow = {
     platformPositionRef: string;
     productRef?: string | null;
     orderRef?: string | null;
-    baseSymbol?: string | null;
-    quoteSymbol?: string | null;
-    investSymbol: string;
+    baseAssetSymbol?: string | null;
+    quoteAssetSymbol?: string | null;
+    investAssetSymbol: string;
     principal: Decimal;
     direction?: string | null;
     targetPrice?: NullableDecimal;
@@ -530,8 +530,8 @@ export type DualPositionRow = {
 };
 
 export type EarnAmount = {
-    assetSymbol?: string | null;
-    platformAssetSymbol: string;
+    canonicalAssetSymbol?: string | null;
+    assetSymbol: string;
     amount: Decimal;
 };
 
@@ -541,11 +541,11 @@ export type EarnRate = {
     kind: string;
     qualifier: string;
     label: string;
-    platformAssetSymbol?: string | null;
+    assetSymbol?: string | null;
 };
 
 export type EarnReward = {
-    platformAssetSymbol: string;
+    assetSymbol: string;
     amount: Decimal;
     kind: string;
 };
@@ -750,7 +750,7 @@ export type CapitalFlow = {
     id: Uuid;
     portfolioId: Uuid;
     direction: 'contribution' | 'withdrawal';
-    assetSymbol: string;
+    canonicalAssetSymbol: string;
     quantity: Decimal;
     valueUsd?: NullableDecimal;
     effectiveAt: string;
@@ -768,7 +768,7 @@ export type CapitalFlowList = {
 
 export type CreateCapitalFlowRequest = {
     direction: 'contribution' | 'withdrawal';
-    assetSymbol: string;
+    canonicalAssetSymbol: string;
     quantity: Decimal;
     valueUsd?: Decimal;
     effectiveAt: string;
@@ -778,7 +778,7 @@ export type CreateCapitalFlowRequest = {
 
 export type PatchCapitalFlowRequest = {
     direction?: 'contribution' | 'withdrawal';
-    assetSymbol?: string;
+    canonicalAssetSymbol?: string;
     quantity?: Decimal;
     valueUsd?: NullableDecimal;
     effectiveAt?: string;
@@ -786,11 +786,11 @@ export type PatchCapitalFlowRequest = {
     note?: string | null;
 };
 
-export type PlatformAsset = {
+export type Asset = {
     id: Uuid;
     platform: string;
     symbol: string;
-    assetSymbol: string;
+    canonicalSymbol: string;
     name?: string | null;
     mappingSource: 'auto' | 'manual';
     firstSeenAt: string;
@@ -802,16 +802,16 @@ export type PlatformAsset = {
     exclusionVersion: number;
 };
 
-export type PlatformAssetList = {
-    items: Array<PlatformAsset>;
+export type AssetList = {
+    items: Array<Asset>;
     page: OffsetPage;
 };
 
-export type PutPlatformAssetMappingRequest = {
-    assetSymbol: string;
+export type PutAssetMappingRequest = {
+    canonicalSymbol: string;
 };
 
-export type PutPlatformAssetExclusionRequest = {
+export type PutAssetExclusionRequest = {
     ignored: boolean;
     reason?: string;
 };
@@ -821,9 +821,9 @@ export type FuturesContract = {
     platform: string;
     symbol: string;
     kind: string;
-    baseSymbol?: string | null;
-    quoteSymbol?: string | null;
-    settlementSymbol?: string | null;
+    baseAssetSymbol?: string | null;
+    quoteAssetSymbol?: string | null;
+    settlementAssetSymbol?: string | null;
     expiryAt?: string | null;
     contractSize?: NullableDecimal;
     firstSeenAt: string;
@@ -952,7 +952,7 @@ export type FlowId = Uuid;
 
 export type SessionId = Uuid;
 
-export type PlatformAssetId = Uuid;
+export type AssetId = Uuid;
 
 /**
  * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
@@ -2174,7 +2174,7 @@ export type ListBalancesData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the native platform asset or mapped Asset Symbol.
+         * Case-insensitive literal substring of the Asset Symbol or Canonical Asset Symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2262,7 +2262,7 @@ export type ListDualPositionsData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the invested, Base, or Quote Symbol.
+         * Case-insensitive literal substring of the invested, Base, or Quote Asset Symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2306,7 +2306,7 @@ export type ListEarnPositionsData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of any invested native or mapped Asset Symbol.
+         * Case-insensitive literal substring of any invested Asset Symbol or Canonical Asset Symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2860,7 +2860,7 @@ export type ListBoundaryEventsResponses = {
 
 export type ListBoundaryEventsResponse = ListBoundaryEventsResponses[keyof ListBoundaryEventsResponses];
 
-export type ListPlatformAssetsData = {
+export type ListAssetsData = {
     body?: never;
     path: {
         portfolioId: Uuid;
@@ -2872,10 +2872,10 @@ export type ListPlatformAssetsData = {
         offset?: number;
         limit?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/assets';
 };
 
-export type ListPlatformAssetsErrors = {
+export type ListAssetsErrors = {
     /**
      * Problem details.
      */
@@ -2890,32 +2890,32 @@ export type ListPlatformAssetsErrors = {
     404: Problem;
 };
 
-export type ListPlatformAssetsError = ListPlatformAssetsErrors[keyof ListPlatformAssetsErrors];
+export type ListAssetsError = ListAssetsErrors[keyof ListAssetsErrors];
 
-export type ListPlatformAssetsResponses = {
+export type ListAssetsResponses = {
     /**
-     * Platform assets.
+     * Assets and their Canonical Asset mappings.
      */
-    200: PlatformAssetList;
+    200: AssetList;
 };
 
-export type ListPlatformAssetsResponse = ListPlatformAssetsResponses[keyof ListPlatformAssetsResponses];
+export type ListAssetsResponse = ListAssetsResponses[keyof ListAssetsResponses];
 
-export type PutPlatformAssetMappingData = {
-    body: PutPlatformAssetMappingRequest;
+export type PutAssetMappingData = {
+    body: PutAssetMappingRequest;
     headers: {
         'If-Match': string;
         'X-CSRF-Token'?: string;
     };
     path: {
         portfolioId: Uuid;
-        platformAssetId: Uuid;
+        assetId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/mapping';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping';
 };
 
-export type PutPlatformAssetMappingErrors = {
+export type PutAssetMappingErrors = {
     /**
      * Problem details.
      */
@@ -2934,32 +2934,32 @@ export type PutPlatformAssetMappingErrors = {
     412: Problem;
 };
 
-export type PutPlatformAssetMappingError = PutPlatformAssetMappingErrors[keyof PutPlatformAssetMappingErrors];
+export type PutAssetMappingError = PutAssetMappingErrors[keyof PutAssetMappingErrors];
 
-export type PutPlatformAssetMappingResponses = {
+export type PutAssetMappingResponses = {
     /**
-     * Updated platform asset.
+     * Updated asset.
      */
-    200: PlatformAsset;
+    200: Asset;
 };
 
-export type PutPlatformAssetMappingResponse = PutPlatformAssetMappingResponses[keyof PutPlatformAssetMappingResponses];
+export type PutAssetMappingResponse = PutAssetMappingResponses[keyof PutAssetMappingResponses];
 
-export type PutPlatformAssetExclusionData = {
-    body: PutPlatformAssetExclusionRequest;
+export type PutAssetExclusionData = {
+    body: PutAssetExclusionRequest;
     headers: {
         'If-Match': string;
         'X-CSRF-Token'?: string;
     };
     path: {
         portfolioId: Uuid;
-        platformAssetId: Uuid;
+        assetId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/catalog/platform-assets/{platformAssetId}/exclusion';
+    url: '/api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion';
 };
 
-export type PutPlatformAssetExclusionErrors = {
+export type PutAssetExclusionErrors = {
     /**
      * Problem details.
      */
@@ -2978,16 +2978,16 @@ export type PutPlatformAssetExclusionErrors = {
     412: Problem;
 };
 
-export type PutPlatformAssetExclusionError = PutPlatformAssetExclusionErrors[keyof PutPlatformAssetExclusionErrors];
+export type PutAssetExclusionError = PutAssetExclusionErrors[keyof PutAssetExclusionErrors];
 
-export type PutPlatformAssetExclusionResponses = {
+export type PutAssetExclusionResponses = {
     /**
-     * Updated Portfolio platform asset rule.
+     * Updated Portfolio asset rule.
      */
-    200: PlatformAsset;
+    200: Asset;
 };
 
-export type PutPlatformAssetExclusionResponse = PutPlatformAssetExclusionResponses[keyof PutPlatformAssetExclusionResponses];
+export type PutAssetExclusionResponse = PutAssetExclusionResponses[keyof PutAssetExclusionResponses];
 
 export type ListFuturesContractsData = {
     body?: never;
@@ -3249,10 +3249,10 @@ export type DeleteManualBalanceData = {
     path: {
         portfolioId: Uuid;
         identityId: Uuid;
-        platformAssetSymbol: string;
+        assetSymbol: string;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol}';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}';
 };
 
 export type DeleteManualBalanceErrors = {
@@ -3302,10 +3302,10 @@ export type UpdateManualBalanceData = {
     path: {
         portfolioId: Uuid;
         identityId: Uuid;
-        platformAssetSymbol: string;
+        assetSymbol: string;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{platformAssetSymbol}';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}';
 };
 
 export type UpdateManualBalanceErrors = {

@@ -9,7 +9,7 @@ import (
 func toAPIEarnAmounts(in []adapters.EarnAmount) []api.EarnAmount {
 	out := make([]api.EarnAmount, 0, len(in))
 	for _, a := range in {
-		out = append(out, api.EarnAmount{PlatformAssetSymbol: a.PlatformAssetSymbol, Amount: a.Amount, AssetSymbol: a.AssetSymbol})
+		out = append(out, api.EarnAmount{AssetSymbol: a.AssetSymbol, Amount: a.Amount, CanonicalAssetSymbol: a.CanonicalAssetSymbol})
 	}
 	return out
 }
@@ -23,16 +23,16 @@ func toAPIEarnPositions(in []financial.EarnPositionRow) []api.EarnPositionRow {
 		details := make([]api.EarnDetail, 0, len(r.Details))
 		for _, rate := range r.Rates {
 			rates = append(rates, api.EarnRate{
-				Value:               rate.Value,
-				Upper:               rate.Upper,
-				Kind:                rate.Kind,
-				Qualifier:           rate.Qualifier,
-				Label:               rate.Label,
-				PlatformAssetSymbol: rate.PlatformAssetSymbol,
+				Value:       rate.Value,
+				Upper:       rate.Upper,
+				Kind:        rate.Kind,
+				Qualifier:   rate.Qualifier,
+				Label:       rate.Label,
+				AssetSymbol: rate.AssetSymbol,
 			})
 		}
 		for _, reward := range r.Rewards {
-			rewards = append(rewards, api.EarnReward{PlatformAssetSymbol: reward.PlatformAssetSymbol, Amount: reward.Amount, Kind: reward.Kind})
+			rewards = append(rewards, api.EarnReward{AssetSymbol: reward.AssetSymbol, Amount: reward.Amount, Kind: reward.Kind})
 		}
 		for _, detail := range r.Details {
 			details = append(details, api.EarnDetail{Label: detail.Label, Value: detail.Value, At: detail.At})

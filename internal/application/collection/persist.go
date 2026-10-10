@@ -115,14 +115,14 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 	}
 	for _, balance := range report.Balances {
 		if !decimal.Valid(balance.Equity) {
-			return fmt.Errorf("%w: balance %s equity %q", catalog.ErrInvalid, balance.PlatformAssetSymbol, balance.Equity)
+			return fmt.Errorf("%w: balance %s equity %q", catalog.ErrInvalid, balance.AssetSymbol, balance.Equity)
 		}
-		platformAssetID, _, err := s.catalog.EnsurePlatformAsset(ctx, q, platform, balance.PlatformAssetSymbol, balance.Name, observed)
+		assetID, _, err := s.catalog.EnsureAsset(ctx, q, platform, balance.AssetSymbol, balance.Name, observed)
 		if err != nil {
 			return err
 		}
 		if err := q.InsertBalance(ctx, sqlcgen.InsertBalanceParams{
-			ReportID: id[:], PortfolioID: portfolioID[:], PlatformAssetID: platformAssetID[:], Equity: balance.Equity,
+			ReportID: id[:], PortfolioID: portfolioID[:], AssetID: assetID[:], Equity: balance.Equity,
 			AvailableToWithdraw: decimalColumn(balance.AvailableToWithdraw), AvailableToTrade: decimalColumn(balance.AvailableToTrade),
 			Liability: decimalColumn(balance.Liability), Interest: decimalColumn(balance.Interest), UnrealizedPnl: decimalColumn(balance.UnrealizedPnl),
 		}); err != nil {
@@ -141,7 +141,7 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 		if err := q.InsertPosition(ctx, sqlcgen.InsertPositionParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: truncate(position.PlatformPositionRef, 128), FuturesContractID: futuresContractID[:],
 			PositionMode: nonEmptyStringColumn(position.PositionMode), MarginMode: nonEmptyStringColumn(position.MarginMode),
-			MarginPlatformAssetSymbol: nonEmptyStringColumn(position.MarginCurrency), MarginBasis: nonEmptyStringColumn(position.MarginBasis),
+			MarginAssetSymbol: nonEmptyStringColumn(position.MarginAssetSymbol), MarginBasis: nonEmptyStringColumn(position.MarginBasis),
 			Side: position.Side, Quantity: position.Quantity, QuantityUnit: position.QuantityUnit,
 			EntryPrice: decimalColumn(position.EntryPrice), MarkPrice: decimalColumn(position.MarkPrice), LiquidationPrice: decimalColumn(position.LiquidationPrice),
 			UnrealizedPnl: decimalColumn(position.UnrealizedPnl), Leverage: decimalColumn(position.Leverage), Margin: decimalColumn(position.Margin),
@@ -167,8 +167,8 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 		}
 		if err := q.InsertDualPosition(ctx, sqlcgen.InsertDualPositionParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], PlatformPositionRef: p.PlatformPositionRef,
-			ProductRef: stringColumn(p.ProductRef), OrderRef: stringColumn(p.OrderRef), BasePlatformAssetSymbol: stringColumn(p.BaseSymbol), QuotePlatformAssetSymbol: stringColumn(p.QuoteSymbol),
-			InvestPlatformAssetSymbol: p.InvestSymbol, Principal: p.Principal, Direction: stringColumn(p.Direction), TargetPrice: decimalColumn(p.TargetPrice), ExpiryAt: expiry,
+			ProductRef: stringColumn(p.ProductRef), OrderRef: stringColumn(p.OrderRef), BaseAssetSymbol: stringColumn(p.BaseAssetSymbol), QuoteAssetSymbol: stringColumn(p.QuoteAssetSymbol),
+			InvestAssetSymbol: p.InvestAssetSymbol, Principal: p.Principal, Direction: stringColumn(p.Direction), TargetPrice: decimalColumn(p.TargetPrice), ExpiryAt: expiry,
 			AnnualizedRate: decimalColumn(p.AnnualizedRate), RateKind: stringColumn(p.RateKind), Status: p.Status,
 			SubscribedAt: subscribed,
 		}); err != nil {

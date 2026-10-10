@@ -11,9 +11,9 @@ import (
 )
 
 const getNearestPriceAt = `-- name: GetNearestPriceAt :one
-SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
+SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
 FROM prices
-WHERE asset_symbol = ?
+WHERE canonical_asset_symbol = ?
   AND (? = 0 OR platform = ?)
   AND observed_at <= ?
 ORDER BY observed_at DESC
@@ -21,15 +21,15 @@ LIMIT 1
 `
 
 type GetNearestPriceAtParams struct {
-	AssetSymbol    string
-	FilterPlatform interface{}
-	Platform       string
-	At             time.Time
+	CanonicalAssetSymbol string
+	FilterPlatform       interface{}
+	Platform             string
+	At                   time.Time
 }
 
 func (q *Queries) GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtParams) (Price, error) {
 	row := q.db.QueryRowContext(ctx, getNearestPriceAt,
-		arg.AssetSymbol,
+		arg.CanonicalAssetSymbol,
 		arg.FilterPlatform,
 		arg.Platform,
 		arg.At,
@@ -37,23 +37,23 @@ func (q *Queries) GetNearestPriceAt(ctx context.Context, arg GetNearestPriceAtPa
 	var i Price
 	err := row.Scan(
 		&i.Platform,
-		&i.AssetSymbol,
+		&i.CanonicalAssetSymbol,
 		&i.ObservedAt,
 		&i.Price,
-		&i.QuoteAssetSymbol,
+		&i.QuoteCanonicalAssetSymbol,
 	)
 	return i, err
 }
 
 const listLatestPricesByPlatformAt = `-- name: ListLatestPricesByPlatformAt :many
-SELECT p.platform, p.asset_symbol, p.observed_at, p.price, p.quote_asset_symbol
+SELECT p.platform, p.canonical_asset_symbol, p.observed_at, p.price, p.quote_canonical_asset_symbol
 FROM prices p
 INNER JOIN (
-    SELECT x.asset_symbol, MAX(x.observed_at) AS observed_at
+    SELECT x.canonical_asset_symbol, MAX(x.observed_at) AS observed_at
     FROM prices x
     WHERE x.platform = ? AND x.observed_at <= ?
-    GROUP BY x.asset_symbol
-) latest ON latest.asset_symbol = p.asset_symbol AND latest.observed_at = p.observed_at
+    GROUP BY x.canonical_asset_symbol
+) latest ON latest.canonical_asset_symbol = p.canonical_asset_symbol AND latest.observed_at = p.observed_at
 WHERE p.platform = ?
 `
 
@@ -73,10 +73,10 @@ func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLate
 		var i Price
 		if err := rows.Scan(
 			&i.Platform,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteAssetSymbol,
+			&i.QuoteCanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -91,21 +91,21 @@ func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLate
 	return items, nil
 }
 
-const listPricesForAssetBetween = `-- name: ListPricesForAssetBetween :many
-SELECT platform, asset_symbol, observed_at, price, quote_asset_symbol
+const listPricesForCanonicalAssetBetween = `-- name: ListPricesForCanonicalAssetBetween :many
+SELECT platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol
 FROM prices
-WHERE asset_symbol = ? AND observed_at >= ? AND observed_at <= ?
+WHERE canonical_asset_symbol = ? AND observed_at >= ? AND observed_at <= ?
 ORDER BY observed_at ASC
 `
 
-type ListPricesForAssetBetweenParams struct {
-	AssetSymbol string
-	FromAt      time.Time
-	ToAt        time.Time
+type ListPricesForCanonicalAssetBetweenParams struct {
+	CanonicalAssetSymbol string
+	FromAt               time.Time
+	ToAt                 time.Time
 }
 
-func (q *Queries) ListPricesForAssetBetween(ctx context.Context, arg ListPricesForAssetBetweenParams) ([]Price, error) {
-	rows, err := q.db.QueryContext(ctx, listPricesForAssetBetween, arg.AssetSymbol, arg.FromAt, arg.ToAt)
+func (q *Queries) ListPricesForCanonicalAssetBetween(ctx context.Context, arg ListPricesForCanonicalAssetBetweenParams) ([]Price, error) {
+	rows, err := q.db.QueryContext(ctx, listPricesForCanonicalAssetBetween, arg.CanonicalAssetSymbol, arg.FromAt, arg.ToAt)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +115,10 @@ func (q *Queries) ListPricesForAssetBetween(ctx context.Context, arg ListPricesF
 		var i Price
 		if err := rows.Scan(
 			&i.Platform,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.ObservedAt,
 			&i.Price,
-			&i.QuoteAssetSymbol,
+			&i.QuoteCanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -134,26 +134,26 @@ func (q *Queries) ListPricesForAssetBetween(ctx context.Context, arg ListPricesF
 }
 
 const upsertPrice = `-- name: UpsertPrice :exec
-INSERT INTO prices (platform, asset_symbol, observed_at, price, quote_asset_symbol)
+INSERT INTO prices (platform, canonical_asset_symbol, observed_at, price, quote_canonical_asset_symbol)
 VALUES (?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE price = VALUES(price), quote_asset_symbol = VALUES(quote_asset_symbol)
+ON DUPLICATE KEY UPDATE price = VALUES(price), quote_canonical_asset_symbol = VALUES(quote_canonical_asset_symbol)
 `
 
 type UpsertPriceParams struct {
-	Platform         string
-	AssetSymbol      string
-	ObservedAt       time.Time
-	Price            string
-	QuoteAssetSymbol string
+	Platform                  string
+	CanonicalAssetSymbol      string
+	ObservedAt                time.Time
+	Price                     string
+	QuoteCanonicalAssetSymbol string
 }
 
 func (q *Queries) UpsertPrice(ctx context.Context, arg UpsertPriceParams) error {
 	_, err := q.db.ExecContext(ctx, upsertPrice,
 		arg.Platform,
-		arg.AssetSymbol,
+		arg.CanonicalAssetSymbol,
 		arg.ObservedAt,
 		arg.Price,
-		arg.QuoteAssetSymbol,
+		arg.QuoteCanonicalAssetSymbol,
 	)
 	return err
 }

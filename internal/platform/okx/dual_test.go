@@ -31,7 +31,7 @@ func TestDocumentedDualPositions(t *testing.T) {
 	for i, p := range dual.DualPositions {
 		order := orders[i]
 		if order.ExpTime != "" || order.SettleTime == "" || p.PlatformPositionRef != order.OrdID ||
-			p.InvestSymbol != order.NotionalCcy || rat(t, p.Principal).Cmp(rat(t, order.NotionalSz)) != 0 ||
+			p.InvestAssetSymbol != order.NotionalCcy || rat(t, p.Principal).Cmp(rat(t, order.NotionalSz)) != 0 ||
 			p.ExpiryAt == nil || !p.ExpiryAt.Equal(wantExpiry) ||
 			p.TargetPrice == nil || rat(t, *p.TargetPrice).Cmp(rat(t, order.Strike)) != 0 ||
 			p.AnnualizedRate == nil || rat(t, *p.AnnualizedRate).Cmp(rat(t, order.AnnualizedYield)) != 0 ||
@@ -85,14 +85,14 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 					if len(p.MissingFields()) != 0 || *p.RateKind != "annualized_yield" {
 						t.Fatalf("missing synthetic terms: %+v", p)
 					}
-					if p.InvestSymbol == "ETH" && (*p.BaseSymbol != "ETH" || *p.TargetPrice != "5000") {
+					if p.InvestAssetSymbol == "ETH" && (*p.BaseAssetSymbol != "ETH" || *p.TargetPrice != "5000") {
 						t.Fatal("synthetic ETH terms contradict the product")
 					}
 				}
 			}
 			if r.AccountType == TypeEarn {
 				for _, b := range r.Balances {
-					if b.PlatformAssetSymbol == "BTC" || (b.PlatformAssetSymbol == "ETH" && b.Equity != "0.1") {
+					if b.AssetSymbol == "BTC" || (b.AssetSymbol == "ETH" && b.Equity != "0.1") {
 						t.Fatal("dual principal in Earn")
 					}
 				}

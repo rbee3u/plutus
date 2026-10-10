@@ -13,10 +13,10 @@ func validateReport(r *adapters.AccountReport) error {
 	}
 	seen := map[string]bool{}
 	for _, v := range r.Balances {
-		if v.PlatformAssetSymbol == "" || seen[v.PlatformAssetSymbol] || !decimal.Valid(v.Equity) {
+		if v.AssetSymbol == "" || seen[v.AssetSymbol] || !decimal.Valid(v.Equity) {
 			return fmt.Errorf("invalid or duplicate Balance")
 		}
-		seen[v.PlatformAssetSymbol] = true
+		seen[v.AssetSymbol] = true
 	}
 	if r.EarnDetailsCollected {
 		if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {

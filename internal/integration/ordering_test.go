@@ -174,17 +174,17 @@ func TestCatalogBusinessOrderBeforePagination(t *testing.T) {
 	q := sqlcgen.New(h.db)
 	symbol := "ORDER" + uuid.NewString()[:8]
 	for _, platform := range []adapters.Platform{adapters.PlatformKraken, adapters.PlatformBybit, adapters.PlatformOKX, adapters.PlatformBinance} {
-		if _, _, err := h.catalog.EnsurePlatformAsset(h.ctx, q, platform, symbol, "", time.Now()); err != nil {
+		if _, _, err := h.catalog.EnsureAsset(h.ctx, q, platform, symbol, "", time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseSymbol: "BTC"}, time.Now()); err != nil {
+		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC"}, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}
 	filter := catalog.ListFilter{Query: symbol, Offset: 1, Limit: 2}
-	platformAssets, err := h.catalog.ListPlatformAssets(h.ctx, filter)
-	if err != nil || len(platformAssets.Items) != 2 || platformAssets.Items[0].Platform != "okx" || platformAssets.Items[1].Platform != "bybit" || platformAssets.Total != 4 {
-		t.Fatalf("PlatformAsset page = %+v, %v", platformAssets, err)
+	assets, err := h.catalog.ListAssets(h.ctx, filter)
+	if err != nil || len(assets.Items) != 2 || assets.Items[0].Platform != "okx" || assets.Items[1].Platform != "bybit" || assets.Total != 4 {
+		t.Fatalf("Asset page = %+v, %v", assets, err)
 	}
 	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, filter)
 	if err != nil || len(futuresContracts.Items) != 2 || futuresContracts.Items[0].Platform != "okx" || futuresContracts.Items[1].Platform != "bybit" || futuresContracts.Total != 4 {

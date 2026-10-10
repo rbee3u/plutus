@@ -29,26 +29,26 @@ type EarnPosition struct {
 }
 
 // Earn amount, rate, and reward JSON tags retain the stored report format.
-// HTTP responses expose the explicit platformAssetSymbol field.
+// HTTP responses expose the explicit assetSymbol field.
 type EarnAmount struct {
-	PlatformAssetSymbol string  `json:"symbol"`
-	AssetSymbol         *string `json:"assetSymbol,omitempty"`
-	Amount              string  `json:"amount"`
+	AssetSymbol          string  `json:"symbol"`
+	CanonicalAssetSymbol *string `json:"assetSymbol,omitempty"`
+	Amount               string  `json:"amount"`
 }
 
 type EarnRate struct {
-	Value               string  `json:"value"`
-	Upper               *string `json:"upper"`
-	Kind                string  `json:"kind"`
-	Qualifier           string  `json:"qualifier"`
-	Label               string  `json:"label"`
-	PlatformAssetSymbol *string `json:"symbol"`
+	Value       string  `json:"value"`
+	Upper       *string `json:"upper"`
+	Kind        string  `json:"kind"`
+	Qualifier   string  `json:"qualifier"`
+	Label       string  `json:"label"`
+	AssetSymbol *string `json:"symbol"`
 }
 
 type EarnReward struct {
-	PlatformAssetSymbol string `json:"symbol"`
-	Amount              string `json:"amount"`
-	Kind                string `json:"kind"`
+	AssetSymbol string `json:"symbol"`
+	Amount      string `json:"amount"`
+	Kind        string `json:"kind"`
 }
 
 // EarnDetail contains normalized explanatory facts, never raw response data.
@@ -79,19 +79,19 @@ func (p *EarnPosition) OptionalDecimal(label, value string) *string {
 	return decimal.FormatPtr(n)
 }
 
-func (p *EarnPosition) AddRate(value, kind, qualifier, label string, platformAssetSymbol *string) {
+func (p *EarnPosition) AddRate(value, kind, qualifier, label string, assetSymbol *string) {
 	if n := p.OptionalDecimal(label, value); n != nil {
-		p.Rates = append(p.Rates, EarnRate{Value: *n, Kind: kind, Qualifier: qualifier, Label: label, PlatformAssetSymbol: platformAssetSymbol})
+		p.Rates = append(p.Rates, EarnRate{Value: *n, Kind: kind, Qualifier: qualifier, Label: label, AssetSymbol: assetSymbol})
 	}
 }
 
-func (p *EarnPosition) AddReward(platformAssetSymbol, value, kind string) {
+func (p *EarnPosition) AddReward(assetSymbol, value, kind string) {
 	if n := p.OptionalDecimal(kind+" rewards", value); n != nil {
-		if strings.TrimSpace(platformAssetSymbol) == "" {
+		if strings.TrimSpace(assetSymbol) == "" {
 			p.Problems = append(p.Problems, kind+" reward currency is unavailable.")
 			return
 		}
-		p.Rewards = append(p.Rewards, EarnReward{PlatformAssetSymbol: platformAssetSymbol, Amount: *n, Kind: kind})
+		p.Rewards = append(p.Rewards, EarnReward{AssetSymbol: assetSymbol, Amount: *n, Kind: kind})
 	}
 }
 
@@ -136,22 +136,22 @@ func NormalizeEarnPosition(p *EarnPosition) error {
 	seen := map[string]bool{}
 	for i := range p.Assets {
 		a := &p.Assets[i]
-		a.PlatformAssetSymbol = strings.ToUpper(strings.TrimSpace(a.PlatformAssetSymbol))
+		a.AssetSymbol = strings.ToUpper(strings.TrimSpace(a.AssetSymbol))
 		n, ok := decimal.Parse(a.Amount)
-		if !decimal.Valid(a.Amount) || !ok || n.Sign() <= 0 || a.PlatformAssetSymbol == "" || seen[a.PlatformAssetSymbol] {
+		if !decimal.Valid(a.Amount) || !ok || n.Sign() <= 0 || a.AssetSymbol == "" || seen[a.AssetSymbol] {
 			return NewError(ClassNormalization, "Earn position has invalid or duplicate invested amounts.")
 		}
-		seen[a.PlatformAssetSymbol] = true
+		seen[a.AssetSymbol] = true
 		a.Amount = decimal.Format(n)
 	}
-	slices.SortFunc(p.Assets, func(a, b EarnAmount) int { return strings.Compare(a.PlatformAssetSymbol, b.PlatformAssetSymbol) })
+	slices.SortFunc(p.Assets, func(a, b EarnAmount) int { return strings.Compare(a.AssetSymbol, b.AssetSymbol) })
 	for _, r := range p.Rates {
 		if !decimal.Valid(r.Value) || (r.Upper != nil && !decimal.Valid(*r.Upper)) || (r.Kind != "apr" && r.Kind != "apy") {
 			return NewError(ClassNormalization, "Earn position has invalid normalized rate metadata.")
 		}
 	}
 	for _, r := range p.Rewards {
-		if r.PlatformAssetSymbol == "" || !decimal.Valid(r.Amount) {
+		if r.AssetSymbol == "" || !decimal.Valid(r.Amount) {
 			return NewError(ClassNormalization, "Earn position has invalid normalized rewards.")
 		}
 	}
@@ -172,7 +172,7 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 		}
 		seen[p.PlatformPositionRef] = true
 		for _, a := range p.Assets {
-			if err := totals.Add("Earn positions", a.PlatformAssetSymbol, decimal.ParseOrZero(a.Amount)); err != nil {
+			if err := totals.Add("Earn positions", a.AssetSymbol, decimal.ParseOrZero(a.Amount)); err != nil {
 				return err
 			}
 		}
@@ -188,14 +188,14 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 		}
 		found := false
 		for i, k := range known {
-			if strings.EqualFold(k.PlatformAssetSymbol, b.PlatformAssetSymbol) && decimal.ParseOrZero(k.Equity).Cmp(amount) == 0 {
+			if strings.EqualFold(k.AssetSymbol, b.AssetSymbol) && decimal.ParseOrZero(k.Equity).Cmp(amount) == 0 {
 				known = slices.Delete(known, i, i+1)
 				found = true
 				break
 			}
 		}
 		if !found {
-			return NewError(ClassNormalization, fmt.Sprintf("Earn details do not match the %s Balance.", b.PlatformAssetSymbol))
+			return NewError(ClassNormalization, fmt.Sprintf("Earn details do not match the %s Balance.", b.AssetSymbol))
 		}
 	}
 	return nil

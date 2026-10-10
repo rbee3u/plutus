@@ -506,18 +506,18 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 	}
 
 	wantBalances := map[string]adapters.Balance{
-		"USDT": {PlatformAssetSymbol: "USDT", Equity: "5000", AvailableToTrade: new("4000"), AvailableToWithdraw: new("4000"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
-		"BTC":  {PlatformAssetSymbol: "BTC", Equity: "0.1", AvailableToTrade: new("0.08"), AvailableToWithdraw: new("0.08"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
+		"USDT": {AssetSymbol: "USDT", Equity: "5000", AvailableToTrade: new("4000"), AvailableToWithdraw: new("4000"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
+		"BTC":  {AssetSymbol: "BTC", Equity: "0.1", AvailableToTrade: new("0.08"), AvailableToWithdraw: new("0.08"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
 	}
 	if len(report.Balances) != len(wantBalances) {
 		t.Fatalf("PM Balances = %+v", report.Balances)
 	}
 	for _, got := range report.Balances {
-		want, exists := wantBalances[got.PlatformAssetSymbol]
+		want, exists := wantBalances[got.AssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
 			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
-		delete(wantBalances, got.PlatformAssetSymbol)
+		delete(wantBalances, got.AssetSymbol)
 	}
 
 	// Σ balance equity × spot price lands within 0.5% of totalEq, which ties
@@ -525,13 +525,13 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 	// 1 per ADR 0003).
 	prices := map[string]*big.Rat{"USDT": big.NewRat(1, 1), "USDC": big.NewRat(1, 1)}
 	for _, p := range batch.Prices {
-		prices[p.AssetSymbol] = rat(t, p.Price)
+		prices[p.CanonicalAssetSymbol] = rat(t, p.Price)
 	}
 	sum := new(big.Rat)
 	for _, b := range report.Balances {
-		price, ok := prices[b.PlatformAssetSymbol]
+		price, ok := prices[b.AssetSymbol]
 		if !ok {
-			t.Fatalf("no price for %s in %+v", b.PlatformAssetSymbol, batch.Prices)
+			t.Fatalf("no price for %s in %+v", b.AssetSymbol, batch.Prices)
 		}
 		sum.Add(sum, new(big.Rat).Mul(rat(t, b.Equity), price))
 	}
@@ -626,8 +626,8 @@ func TestCollectMapsPositionsAndFuturesContracts(t *testing.T) {
 		}
 	}
 	futuresContract := report.Positions[0].FuturesContract
-	if futuresContract.Symbol != "BTC-USDT-SWAP" || futuresContract.Kind != adapters.KindLinearPerpetual || futuresContract.BaseSymbol != "BTC" || futuresContract.QuoteSymbol != "USDT" ||
-		futuresContract.SettlementSymbol != "USDT" || deref(futuresContract.ContractSize) != "0.01" || futuresContract.ExpiryAt != nil {
+	if futuresContract.Symbol != "BTC-USDT-SWAP" || futuresContract.Kind != adapters.KindLinearPerpetual || futuresContract.BaseAssetSymbol != "BTC" || futuresContract.QuoteAssetSymbol != "USDT" ||
+		futuresContract.SettlementAssetSymbol != "USDT" || deref(futuresContract.ContractSize) != "0.01" || futuresContract.ExpiryAt != nil {
 		t.Fatalf("DOGE-USDT-SWAP futures contract %+v", futuresContract)
 	}
 	if r.count(epSwaps) != 1 || r.count(epFutures) != 0 {
@@ -659,7 +659,7 @@ func TestFuturesContractKinds(t *testing.T) {
 			t.Fatalf("%s is not in the synthetic instruments", tc.instID)
 		}
 		got, ok := mapFuturesContract(tc.m, &row)
-		if !ok || got.Kind != tc.kind || got.BaseSymbol != tc.base || got.QuoteSymbol != tc.quote || got.SettlementSymbol != tc.settle || deref(got.ContractSize) != tc.size {
+		if !ok || got.Kind != tc.kind || got.BaseAssetSymbol != tc.base || got.QuoteAssetSymbol != tc.quote || got.SettlementAssetSymbol != tc.settle || deref(got.ContractSize) != tc.size {
 			t.Errorf("%s mapped to %+v (size %s)", tc.instID, got, deref(got.ContractSize))
 		}
 		if tc.expires != (got.ExpiryAt != nil) {
@@ -775,7 +775,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 		t.Fatalf("funding report %+v", funding)
 	}
 	b := funding.Balances[0]
-	if b.PlatformAssetSymbol != "USDT" || b.Equity != "100" || b.AvailableToWithdraw == nil || *b.AvailableToWithdraw != "90" || b.AvailableToTrade != nil {
+	if b.AssetSymbol != "USDT" || b.Equity != "100" || b.AvailableToWithdraw == nil || *b.AvailableToWithdraw != "90" || b.AvailableToTrade != nil {
 		t.Fatalf("funding balance %+v", b)
 	}
 	// A successful Earn report has also passed the Earn check against the synthetic valuation.
@@ -785,11 +785,11 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 		t.Fatalf("earn report %+v, want %v", earn, want)
 	}
 	for _, b := range earn.Balances {
-		amount, ok := want[b.PlatformAssetSymbol]
+		amount, ok := want[b.AssetSymbol]
 		if !ok || b.Equity != amount || b.AvailableToTrade != nil || b.AvailableToWithdraw != nil || b.Liability != nil {
 			t.Errorf("earn balance %+v, want %v", b, amount)
 		}
-		delete(want, b.PlatformAssetSymbol)
+		delete(want, b.AssetSymbol)
 	}
 }
 
@@ -832,7 +832,7 @@ func TestEarnMergesSavingsAndOnChainOrders(t *testing.T) {
 		t.Fatal(err)
 	}
 	balances := reportOf(t, batch, TypeEarn).Balances
-	if len(balances) != 2 || balances[0].PlatformAssetSymbol != "SOL" || balances[0].Equity != "2.5" || balances[1].PlatformAssetSymbol != "USDT" || balances[1].Equity != "110.5" {
+	if len(balances) != 2 || balances[0].AssetSymbol != "SOL" || balances[0].Equity != "2.5" || balances[1].AssetSymbol != "USDT" || balances[1].Equity != "110.5" {
 		t.Fatalf("earn balances %+v; want SOL 2.5 and USDT 100 + 10.5, and no zero ETH", balances)
 	}
 }
@@ -855,8 +855,8 @@ func TestCollectPrices(t *testing.T) {
 	held := map[string]bool{}
 	for _, report := range batch.Reports {
 		for _, b := range report.Balances {
-			if !adapters.USDEquivalent(b.PlatformAssetSymbol) {
-				held[b.PlatformAssetSymbol] = true
+			if !adapters.USDEquivalent(b.AssetSymbol) {
+				held[b.AssetSymbol] = true
 			}
 		}
 	}
@@ -864,12 +864,12 @@ func TestCollectPrices(t *testing.T) {
 		t.Fatalf("prices %+v for held coins %v", batch.Prices, held)
 	}
 	for _, p := range batch.Prices {
-		if !held[p.AssetSymbol] || p.QuoteSymbol != "USDT" || p.Price != last[p.AssetSymbol+"-USDT"] || p.ObservedAt.IsZero() || p.ObservedAt.After(batch.ObservedAt) {
+		if !held[p.CanonicalAssetSymbol] || p.QuoteCanonicalAssetSymbol != "USDT" || p.Price != last[p.CanonicalAssetSymbol+"-USDT"] || p.ObservedAt.IsZero() || p.ObservedAt.After(batch.ObservedAt) {
 			t.Errorf("price %+v", p)
 		}
 		for _, report := range batch.Reports {
 			if p.ObservedAt.After(report.ObservedAt) {
-				t.Errorf("price %s observed after the %s report", p.AssetSymbol, report.AccountType)
+				t.Errorf("price %s observed after the %s report", p.CanonicalAssetSymbol, report.AccountType)
 			}
 		}
 	}
@@ -878,10 +878,10 @@ func TestCollectPrices(t *testing.T) {
 func TestPricesFallBackToUSDC(t *testing.T) {
 	t.Parallel()
 
-	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{PlatformAssetSymbol: "AAA"}, {PlatformAssetSymbol: "BBB"}, {PlatformAssetSymbol: "CCC"}, {PlatformAssetSymbol: "USDT"}, {PlatformAssetSymbol: "USDC"}}}}
+	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{AssetSymbol: "AAA"}, {AssetSymbol: "BBB"}, {AssetSymbol: "CCC"}, {AssetSymbol: "USDT"}, {AssetSymbol: "USDC"}}}}
 	tickers := map[string]string{"AAA-USDT": "2", "AAA-USDC": "2.1", "BBB-USDC": "3", "CCC-BTC": "4", "USDC-USDT": "0.9998"}
 	prices := adapters.QuotePrices(reports, quotes, spotLookup(tickers), time.Unix(1, 0))
-	if len(prices) != 2 || prices[0].AssetSymbol != "AAA" || prices[0].QuoteSymbol != "USDT" || prices[1].AssetSymbol != "BBB" || prices[1].QuoteSymbol != "USDC" {
+	if len(prices) != 2 || prices[0].CanonicalAssetSymbol != "AAA" || prices[0].QuoteCanonicalAssetSymbol != "USDT" || prices[1].CanonicalAssetSymbol != "BBB" || prices[1].QuoteCanonicalAssetSymbol != "USDC" {
 		t.Fatalf("prices %+v", prices)
 	}
 }
@@ -1168,9 +1168,9 @@ func TestSpotModeMapsBorrowingFigures(t *testing.T) {
 	}
 	for _, b := range report.Balances {
 		if b.AvailableToTrade != nil || b.UnrealizedPnl != nil || b.AvailableToWithdraw == nil {
-			t.Errorf("%s: Spot mode reports no per-coin available equity or PnL: %+v", b.PlatformAssetSymbol, b)
+			t.Errorf("%s: Spot mode reports no per-coin available equity or PnL: %+v", b.AssetSymbol, b)
 		}
-		if b.PlatformAssetSymbol == "USDT" && (deref(b.Liability) != "100.0125" || deref(b.Interest) != "0.0125") {
+		if b.AssetSymbol == "USDT" && (deref(b.Liability) != "100.0125" || deref(b.Interest) != "0.0125") {
 			t.Errorf("the USDT borrowing is %s with interest %s", deref(b.Liability), deref(b.Interest))
 		}
 	}
@@ -1197,7 +1197,7 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 	for _, b := range report.Balances {
 		// Borrowings live on the skipped MARGIN position rows: no liability or interest per coin.
 		if b.AvailableToTrade == nil || b.UnrealizedPnl == nil || b.Liability != nil || b.Interest != nil {
-			t.Errorf("%s: %+v", b.PlatformAssetSymbol, b)
+			t.Errorf("%s: %+v", b.AssetSymbol, b)
 		}
 	}
 	if len(report.Positions) != 1 {
@@ -1206,7 +1206,7 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 	swap := report.Positions[0]
 	if swap.FuturesContract.Symbol != "BTC-USDT-SWAP" || swap.PlatformPositionRef != "BTC-USDT-SWAP:long" || swap.Side != adapters.SideLong ||
 		swap.Quantity != "2" || deref(swap.Leverage) != "10" || deref(swap.LiquidationPrice) != "31012.5" ||
-		deref(swap.Margin) != "125.7838" || swap.MarginCurrency != "USDT" || swap.MarginBasis != "initial" {
+		deref(swap.Margin) != "125.7838" || swap.MarginAssetSymbol != "USDT" || swap.MarginBasis != "initial" {
 		t.Fatalf("cross swap position %+v", swap)
 	}
 }
@@ -1264,7 +1264,7 @@ func TestDualInvestmentCountsInvestedPrincipal(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, b := range earn.Balances {
-		got[b.PlatformAssetSymbol] = b.Equity
+		got[b.AssetSymbol] = b.Equity
 	}
 	for ccy, amount := range want {
 		if amount.Sign() != 0 && (got[ccy] == "" || rat(t, got[ccy]).Cmp(amount) != 0) {
@@ -1299,7 +1299,7 @@ func TestDualInvestmentStates(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, b := range earn.Balances {
-		got[b.PlatformAssetSymbol] = b.Equity
+		got[b.AssetSymbol] = b.Equity
 	}
 	for state, invested := range dcdInvested {
 		coin := strings.ToUpper(strings.ReplaceAll(state, "_", ""))

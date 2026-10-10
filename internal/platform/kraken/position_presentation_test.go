@@ -20,7 +20,7 @@ func TestIsolatedAllocationExcludesOrdersAndProfit(t *testing.T) {
 		t.Fatalf("positions %v %v", positions, err)
 	}
 	p := positions[0]
-	if p.PositionMode != "one_way" || p.MarginMode != "isolated" || p.MarginBasis != "allocated" || p.MarginCurrency != "USD" || p.Margin == nil || *p.Margin != "100" {
+	if p.PositionMode != "one_way" || p.MarginMode != "isolated" || p.MarginBasis != "allocated" || p.MarginAssetSymbol != "USD" || p.Margin == nil || *p.Margin != "100" {
 		t.Fatalf("allocation %+v", p)
 	}
 	r.snapshot.Flex.Isolated = map[string]isolatedWallet{}

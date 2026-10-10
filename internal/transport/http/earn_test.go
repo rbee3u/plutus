@@ -82,15 +82,15 @@ func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := toAPIEarnPositions([]financial.EarnPositionRow{{EarnPosition: stored}})
-	if rows[0].Assets[0].PlatformAssetSymbol != "XBT" || rows[0].Assets[0].AssetSymbol == nil || *rows[0].Assets[0].AssetSymbol != "BTC" || rows[0].Rates[0].PlatformAssetSymbol == nil || *rows[0].Rates[0].PlatformAssetSymbol != "XBT" || rows[0].Rewards[0].PlatformAssetSymbol != "XBT" {
+	if rows[0].Assets[0].AssetSymbol != "XBT" || rows[0].Assets[0].CanonicalAssetSymbol == nil || *rows[0].Assets[0].CanonicalAssetSymbol != "BTC" || rows[0].Rates[0].AssetSymbol == nil || *rows[0].Rates[0].AssetSymbol != "XBT" || rows[0].Rewards[0].AssetSymbol != "XBT" {
 		t.Fatalf("lost stored symbols: %+v", rows[0])
 	}
 	encoded, err := json.Marshal(rows)
-	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || bytes.Count(encoded, []byte(`"platformAssetSymbol":"XBT"`)) != 3 {
+	if err != nil || bytes.Contains(encoded, []byte(`"symbol"`)) || bytes.Count(encoded, []byte(`"assetSymbol":"XBT"`)) != 3 {
 		t.Fatalf("API symbols: %s (%v)", encoded, err)
 	}
 	encoded, err = json.Marshal(stored)
-	if err != nil || bytes.Contains(encoded, []byte(`"platformAssetSymbol"`)) || bytes.Count(encoded, []byte(`"symbol":"XBT"`)) != 3 {
+	if err != nil || bytes.Contains(encoded, []byte(`"canonicalAssetSymbol"`)) || !bytes.Contains(encoded, []byte(`"assetSymbol":"BTC"`)) || bytes.Count(encoded, []byte(`"symbol":"XBT"`)) != 3 {
 		t.Fatalf("stored symbols: %s (%v)", encoded, err)
 	}
 }

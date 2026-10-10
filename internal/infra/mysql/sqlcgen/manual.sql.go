@@ -30,17 +30,17 @@ func (q *Queries) AdvanceManualVersion(ctx context.Context, arg AdvanceManualVer
 }
 
 const deleteManualBalance = `-- name: DeleteManualBalance :exec
-DELETE FROM manual_balances WHERE portfolio_id = ? AND account_id = ? AND platform_asset_symbol = ?
+DELETE FROM manual_balances WHERE portfolio_id = ? AND account_id = ? AND asset_symbol = ?
 `
 
 type DeleteManualBalanceParams struct {
-	PortfolioID         []byte
-	AccountID           []byte
-	PlatformAssetSymbol string
+	PortfolioID []byte
+	AccountID   []byte
+	AssetSymbol string
 }
 
 func (q *Queries) DeleteManualBalance(ctx context.Context, arg DeleteManualBalanceParams) error {
-	_, err := q.db.ExecContext(ctx, deleteManualBalance, arg.PortfolioID, arg.AccountID, arg.PlatformAssetSymbol)
+	_, err := q.db.ExecContext(ctx, deleteManualBalance, arg.PortfolioID, arg.AccountID, arg.AssetSymbol)
 	return err
 }
 
@@ -199,10 +199,10 @@ func (q *Queries) InsertManualRevision(ctx context.Context, arg InsertManualRevi
 }
 
 const listManualBalances = `-- name: ListManualBalances :many
-SELECT b.platform_asset_symbol, b.platform_asset_id, b.quantity, b.modified_at, l.asset_symbol
-FROM manual_balances b JOIN platform_assets l ON l.id = b.platform_asset_id
+SELECT b.asset_symbol, b.asset_id, b.quantity, b.modified_at, asset.canonical_symbol AS canonical_asset_symbol
+FROM manual_balances b JOIN assets asset ON asset.id = b.asset_id
 WHERE b.portfolio_id = ? AND b.account_id = ?
-ORDER BY b.platform_asset_symbol
+ORDER BY b.asset_symbol
 `
 
 type ListManualBalancesParams struct {
@@ -211,11 +211,11 @@ type ListManualBalancesParams struct {
 }
 
 type ListManualBalancesRow struct {
-	PlatformAssetSymbol string
-	PlatformAssetID     []byte
-	Quantity            string
-	ModifiedAt          time.Time
-	AssetSymbol         string
+	AssetSymbol          string
+	AssetID              []byte
+	Quantity             string
+	ModifiedAt           time.Time
+	CanonicalAssetSymbol string
 }
 
 func (q *Queries) ListManualBalances(ctx context.Context, arg ListManualBalancesParams) ([]ListManualBalancesRow, error) {
@@ -228,11 +228,11 @@ func (q *Queries) ListManualBalances(ctx context.Context, arg ListManualBalances
 	for rows.Next() {
 		var i ListManualBalancesRow
 		if err := rows.Scan(
-			&i.PlatformAssetSymbol,
-			&i.PlatformAssetID,
+			&i.AssetSymbol,
+			&i.AssetID,
 			&i.Quantity,
 			&i.ModifiedAt,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 		); err != nil {
 			return nil, err
 		}
@@ -301,23 +301,23 @@ func (q *Queries) ListManualCycleAccounts(ctx context.Context, arg ListManualCyc
 }
 
 const listPortfolioManualBalances = `-- name: ListPortfolioManualBalances :many
-SELECT b.account_id, b.platform_asset_symbol, b.platform_asset_id, b.quantity, b.modified_at,
-       l.asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
+SELECT b.account_id, b.asset_symbol, b.asset_id, b.quantity, b.modified_at,
+       asset.canonical_symbol AS canonical_asset_symbol, COALESCE(e.ignored, FALSE) AS excluded
 FROM manual_balances b
-JOIN platform_assets l ON l.id = b.platform_asset_id
-LEFT JOIN portfolio_platform_asset_exclusions e ON e.portfolio_id = b.portfolio_id AND e.platform_asset_id = b.platform_asset_id
+JOIN assets asset ON asset.id = b.asset_id
+LEFT JOIN portfolio_asset_exclusions e ON e.portfolio_id = b.portfolio_id AND e.asset_id = b.asset_id
 WHERE b.portfolio_id = ?
-ORDER BY b.account_id, b.platform_asset_symbol
+ORDER BY b.account_id, b.asset_symbol
 `
 
 type ListPortfolioManualBalancesRow struct {
-	AccountID           []byte
-	PlatformAssetSymbol string
-	PlatformAssetID     []byte
-	Quantity            string
-	ModifiedAt          time.Time
-	AssetSymbol         string
-	Excluded            bool
+	AccountID            []byte
+	AssetSymbol          string
+	AssetID              []byte
+	Quantity             string
+	ModifiedAt           time.Time
+	CanonicalAssetSymbol string
+	Excluded             bool
 }
 
 func (q *Queries) ListPortfolioManualBalances(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualBalancesRow, error) {
@@ -331,11 +331,11 @@ func (q *Queries) ListPortfolioManualBalances(ctx context.Context, portfolioID [
 		var i ListPortfolioManualBalancesRow
 		if err := rows.Scan(
 			&i.AccountID,
-			&i.PlatformAssetSymbol,
-			&i.PlatformAssetID,
+			&i.AssetSymbol,
+			&i.AssetID,
 			&i.Quantity,
 			&i.ModifiedAt,
-			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
 			&i.Excluded,
 		); err != nil {
 			return nil, err
@@ -441,26 +441,26 @@ func (q *Queries) LockManualCycleJob(ctx context.Context, arg LockManualCycleJob
 }
 
 const putManualBalance = `-- name: PutManualBalance :exec
-INSERT INTO manual_balances (portfolio_id, account_id, platform_asset_symbol, platform_asset_id, quantity, modified_at)
+INSERT INTO manual_balances (portfolio_id, account_id, asset_symbol, asset_id, quantity, modified_at)
 VALUES (?, ?, ?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), modified_at = VALUES(modified_at)
 `
 
 type PutManualBalanceParams struct {
-	PortfolioID         []byte
-	AccountID           []byte
-	PlatformAssetSymbol string
-	PlatformAssetID     []byte
-	Quantity            string
-	ModifiedAt          time.Time
+	PortfolioID []byte
+	AccountID   []byte
+	AssetSymbol string
+	AssetID     []byte
+	Quantity    string
+	ModifiedAt  time.Time
 }
 
 func (q *Queries) PutManualBalance(ctx context.Context, arg PutManualBalanceParams) error {
 	_, err := q.db.ExecContext(ctx, putManualBalance,
 		arg.PortfolioID,
 		arg.AccountID,
-		arg.PlatformAssetSymbol,
-		arg.PlatformAssetID,
+		arg.AssetSymbol,
+		arg.AssetID,
 		arg.Quantity,
 		arg.ModifiedAt,
 	)

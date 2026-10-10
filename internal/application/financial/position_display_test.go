@@ -26,18 +26,18 @@ func TestPositionSizeDirectionAndUnknowns(t *testing.T) {
 			account := &valuation.AccountValuation{AccountID: uuid.New(), Freshness: valuation.FreshnessFresh, AccountStructure: string(adapters.StructureBinanceClassic)}
 			id := uuid.New()
 			row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
-				FuturesContractID:             id[:],
-				Platform:                      "binance",
-				FuturesSymbol:                 "BTCUSD",
-				Kind:                          tc.kind,
-				BasePlatformAssetSymbol:       nullString("BTC"),
-				QuotePlatformAssetSymbol:      nullString("USD"),
-				SettlementPlatformAssetSymbol: nullString("BTC"),
-				ContractSize:                  nullString(tc.factor),
-				PlatformPositionRef:           "ref",
-				Side:                          tc.side,
-				Quantity:                      tc.quantity,
-				QuantityUnit:                  tc.unit,
+				FuturesContractID:     id[:],
+				Platform:              "binance",
+				FuturesSymbol:         "BTCUSD",
+				Kind:                  tc.kind,
+				BaseAssetSymbol:       nullString("BTC"),
+				QuoteAssetSymbol:      nullString("USD"),
+				SettlementAssetSymbol: nullString("BTC"),
+				ContractSize:          nullString(tc.factor),
+				PlatformPositionRef:   "ref",
+				Side:                  tc.side,
+				Quantity:              tc.quantity,
+				QuantityUnit:          tc.unit,
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -76,7 +76,7 @@ func TestSettleMarginBasisConversionAndPortfolio(t *testing.T) {
 		{"unrelated currency", "cross", "initial", "EUR", "BTC", "50000", new(false), ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			row := PositionRow{Margin: new("100"), MarginMode: new(tc.mode), MarginBasis: new(tc.basis), MarginCurrency: new(tc.from), SettlementSymbol: new(tc.to), BaseSymbol: new("BTC"), QuoteSymbol: new("USD"), MarkPrice: nullDecimal(nullString(tc.mark)), PortfolioMargin: tc.portfolio}
+			row := PositionRow{Margin: new("100"), MarginMode: new(tc.mode), MarginBasis: new(tc.basis), MarginAssetSymbol: new(tc.from), SettlementAssetSymbol: new(tc.to), BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USD"), MarkPrice: nullDecimal(nullString(tc.mark)), PortfolioMargin: tc.portfolio}
 			if got := stringValue(settlePositionMargin(&row)); got != tc.want {
 				t.Fatalf("settle Margin=%q, want %q", got, tc.want)
 			}
@@ -106,7 +106,7 @@ func TestBinanceCrossMarginCalculationAndSourcePreference(t *testing.T) {
 			row := PositionRow{
 				Platform: "binance", AccountType: "portfolio_margin", Kind: tc.kind,
 				Quantity: tc.quantity, QuantityUnit: tc.unit, ContractSize: new(tc.factor),
-				BaseSymbol: new("BTC"), QuoteSymbol: new("USDT"), SettlementSymbol: new(tc.settle),
+				BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USDT"), SettlementAssetSymbol: new(tc.settle),
 				MarkPrice: new("1000"), Leverage: new("2"), MarginMode: new("cross"), PortfolioMargin: new(true),
 			}
 			if got := stringValue(settlePositionMargin(&row)); got != tc.want || stringValue(row.MarginSource) != "calculated" || row.MarginUnavailableReason != nil {
@@ -115,7 +115,7 @@ func TestBinanceCrossMarginCalculationAndSourcePreference(t *testing.T) {
 			if row.Margin != nil || row.MarginBasis != nil || row.Quantity != tc.quantity {
 				t.Fatal("calculation changed a source amount or basis")
 			}
-			row.Margin, row.MarginCurrency, row.MarginBasis = new("7"), new(tc.settle), new("initial")
+			row.Margin, row.MarginAssetSymbol, row.MarginBasis = new("7"), new(tc.settle), new("initial")
 			if got := stringValue(settlePositionMargin(&row)); got != "7" || stringValue(row.MarginSource) != "reported" {
 				t.Fatalf("reliable source was not preferred: %q %+v", got, row)
 			}
@@ -125,7 +125,7 @@ func TestBinanceCrossMarginCalculationAndSourcePreference(t *testing.T) {
 	// and exchange UI updates are not an atomic reconciliation.
 	row := PositionRow{
 		Platform: "binance", AccountType: "portfolio_margin", Kind: adapters.KindLinearPerpetual,
-		Quantity: "0.5", QuantityUnit: "base", BaseSymbol: new("ZEC"), QuoteSymbol: new("USDT"), SettlementSymbol: new("USDT"),
+		Quantity: "0.5", QuantityUnit: "base", BaseAssetSymbol: new("ZEC"), QuoteAssetSymbol: new("USDT"), SettlementAssetSymbol: new("USDT"),
 		MarkPrice: new("1317.81"), Leverage: new("3"), MarginMode: new("cross"), PortfolioMargin: new(true),
 	}
 	if got := stringValue(settlePositionMargin(&row)); got != "219.635" {
@@ -142,7 +142,7 @@ func TestCalculatedMarginUnknownsAndPlatformLimits(t *testing.T) {
 	base := PositionRow{
 		Platform: "binance", AccountType: "portfolio_margin", Kind: adapters.KindInverseDelivery,
 		Quantity: "2", QuantityUnit: "contracts", ContractSize: new("100"),
-		BaseSymbol: new("BTC"), QuoteSymbol: new("USD"), SettlementSymbol: new("BTC"),
+		BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USD"), SettlementAssetSymbol: new("BTC"),
 		MarkPrice: new("50000"), Leverage: new("10"), MarginMode: new("cross"), PortfolioMargin: new(true),
 	}
 	for _, tc := range []struct {
@@ -154,8 +154,8 @@ func TestCalculatedMarginUnknownsAndPlatformLimits(t *testing.T) {
 		{"missing leverage", func(r *PositionRow) { r.Leverage = nil }},
 		{"missing Mark", func(r *PositionRow) { r.MarkPrice = nil }},
 		{"negative Mark", func(r *PositionRow) { r.MarkPrice = new("-1") }},
-		{"unknown currency", func(r *PositionRow) { r.QuoteSymbol = nil }},
-		{"incompatible inverse Settle", func(r *PositionRow) { r.SettlementSymbol = new("USDT") }},
+		{"unknown currency", func(r *PositionRow) { r.QuoteAssetSymbol = nil }},
+		{"incompatible inverse Settle", func(r *PositionRow) { r.SettlementAssetSymbol = new("USDT") }},
 		{"Isolated is never calculated", func(r *PositionRow) { r.MarginMode = new("isolated"); r.MarginBasis = new("initial") }},
 		{"Bybit PM risk not allocated", func(r *PositionRow) { r.Platform = "bybit"; r.AccountType = "unified" }},
 		{"OKX PM risk not allocated", func(r *PositionRow) { r.Platform = "okx"; r.AccountType = "trading" }},
@@ -176,7 +176,7 @@ func TestCalculatedMarginUnknownsAndPlatformLimits(t *testing.T) {
 	// Bybit's source includes fee/hedge treatment; preserve it rather than
 	// replacing it with the Binance formula, even with the same inputs.
 	base.Platform, base.AccountType, base.PortfolioMargin = "bybit", "unified", new(false)
-	base.Margin, base.MarginCurrency, base.MarginBasis = new("0.00966596"), new("BTC"), new("initial")
+	base.Margin, base.MarginAssetSymbol, base.MarginBasis = new("0.00966596"), new("BTC"), new("initial")
 	if stringValue(settlePositionMargin(&base)) != "0.00966596" || stringValue(base.MarginSource) != "reported" {
 		t.Fatal("Bybit reported requirement was replaced")
 	}
@@ -186,7 +186,7 @@ func TestLegacyBinancePMUsesStoredPositionFacts(t *testing.T) {
 	account := &valuation.AccountValuation{AccountStructure: string(adapters.StructureBinancePM), Freshness: valuation.FreshnessFresh}
 	row := PositionRow{
 		Platform: "binance", AccountType: "portfolio_margin", Kind: adapters.KindLinearPerpetual,
-		Quantity: "0.5", QuantityUnit: "base", BaseSymbol: new("BTC"), QuoteSymbol: new("USDT"), SettlementSymbol: new("USDT"),
+		Quantity: "0.5", QuantityUnit: "base", BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USDT"), SettlementAssetSymbol: new("USDT"),
 		MarkPrice: new("1000"), Leverage: new("2"), NotionalUSD: new("500"),
 	}
 	completePosition(&row, account, positionMetadata{mode: nullString("one_way")})
@@ -198,20 +198,20 @@ func TestLegacyBinancePMUsesStoredPositionFacts(t *testing.T) {
 func TestOKXInverseMarginUnitsAreVerifiedOnce(t *testing.T) {
 	base := PositionRow{
 		Platform: "okx", Kind: adapters.KindInversePerpetual, Quantity: "2", QuantityUnit: "contracts", ContractSize: new("10"),
-		BaseSymbol: new("ETH"), QuoteSymbol: new("USD"), SettlementSymbol: new("ETH"), MarkPrice: new("2687.06"), Leverage: new("3"),
-		Margin: new("0.0024810263509809"), MarginCurrency: new("USD"), MarginBasis: new("initial"), MarginMode: new("cross"), PortfolioMargin: new(false),
+		BaseAssetSymbol: new("ETH"), QuoteAssetSymbol: new("USD"), SettlementAssetSymbol: new("ETH"), MarkPrice: new("2687.06"), Leverage: new("3"),
+		Margin: new("0.0024810263509809"), MarginAssetSymbol: new("USD"), MarginBasis: new("initial"), MarginMode: new("cross"), PortfolioMargin: new(false),
 	}
 	for _, from := range []string{"USD", "ETH"} {
 		row := base
-		row.MarginCurrency = new(from)
-		row.MarginCurrency = verifiedOKXMarginCurrency(&row)
-		if stringValue(row.MarginCurrency) != "ETH" || stringValue(settlePositionMargin(&row)) != "0.0024810263509809" {
+		row.MarginAssetSymbol = new(from)
+		row.MarginAssetSymbol = verifiedOKXMarginAssetSymbol(&row)
+		if stringValue(row.MarginAssetSymbol) != "ETH" || stringValue(settlePositionMargin(&row)) != "0.0024810263509809" {
 			t.Fatalf("native amount converted twice: %+v", row)
 		}
 	}
 	usd := base
 	usd.Margin = new("6.666666666666667")
-	if stringValue(verifiedOKXMarginCurrency(&usd)) != "USD" {
+	if stringValue(verifiedOKXMarginAssetSymbol(&usd)) != "USD" {
 		t.Fatal("documented USD candidate was not recognized")
 	}
 	for _, tc := range []struct {
@@ -220,14 +220,14 @@ func TestOKXInverseMarginUnitsAreVerifiedOnce(t *testing.T) {
 	}{
 		{"neither candidate", func(r *PositionRow) { r.Margin = new("17") }},
 		{"ambiguous candidates", func(r *PositionRow) { r.MarkPrice = new("1"); r.Margin = new("6.666666666666667") }},
-		{"missing source currency", func(r *PositionRow) { r.MarginCurrency = nil }},
-		{"unrelated currency", func(r *PositionRow) { r.MarginCurrency = new("EUR") }},
+		{"missing source currency", func(r *PositionRow) { r.MarginAssetSymbol = nil }},
+		{"unrelated currency", func(r *PositionRow) { r.MarginAssetSymbol = new("EUR") }},
 		{"missing contract factor", func(r *PositionRow) { r.ContractSize = nil }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			row := base
 			tc.change(&row)
-			if verifiedOKXMarginCurrency(&row) != nil {
+			if verifiedOKXMarginAssetSymbol(&row) != nil {
 				t.Fatal("unverified source unit guessed")
 			}
 		})

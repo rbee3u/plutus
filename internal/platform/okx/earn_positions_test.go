@@ -19,7 +19,7 @@ func TestEarnMultiAssetOrderAndSavingsPreference(t *testing.T) {
 		t.Fatalf("report: %+v", report)
 	}
 	p := report.EarnPositions[1]
-	if len(p.Assets) != 2 || p.MaturityAt != nil || p.SubscribedAt == nil || *p.Status != "Redeeming" || p.Rewards[0].Kind != "estimated" || p.Rewards[1].PlatformAssetSymbol != "COMP" || p.Rewards[1].Kind != "cumulative" {
+	if len(p.Assets) != 2 || p.MaturityAt != nil || p.SubscribedAt == nil || *p.Status != "Redeeming" || p.Rewards[0].Kind != "estimated" || p.Rewards[1].AssetSymbol != "COMP" || p.Rewards[1].Kind != "cumulative" {
 		t.Fatalf("order: %+v", p)
 	}
 	s := report.EarnPositions[0]

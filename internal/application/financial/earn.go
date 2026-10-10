@@ -59,9 +59,9 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 	if err != nil {
 		return nil, nil, false, err
 	}
-	assetSymbols := map[string]string{}
+	canonicalAssetSymbols := map[string]string{}
 	for _, balance := range balances {
-		assetSymbols[balance.PlatformAssetSymbol] = balance.AssetSymbol
+		canonicalAssetSymbols[balance.AssetSymbol] = balance.CanonicalAssetSymbol
 	}
 	if !collected {
 		issue := valuation.Issue{
@@ -81,7 +81,7 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 			Issues:           []valuation.Issue{issue},
 		}
 		for _, balance := range balances {
-			summary.Assets = append(summary.Assets, adapters.EarnAmount{PlatformAssetSymbol: balance.PlatformAssetSymbol, Amount: balance.Equity, AssetSymbol: adapters.OptionalText(balance.AssetSymbol)})
+			summary.Assets = append(summary.Assets, adapters.EarnAmount{AssetSymbol: balance.AssetSymbol, Amount: balance.Equity, CanonicalAssetSymbol: adapters.OptionalText(balance.CanonicalAssetSymbol)})
 		}
 		if account.Freshness == valuation.FreshnessStale {
 			summary.Issues = append(summary.Issues, staleAccountIssue(account))
@@ -102,7 +102,7 @@ func (s *Service) readEarnReport(ctx context.Context, p PortfolioContext, accoun
 		}
 		for i := range position.Assets {
 			asset := &position.Assets[i]
-			asset.AssetSymbol = adapters.OptionalText(assetSymbols[asset.PlatformAssetSymbol])
+			asset.CanonicalAssetSymbol = adapters.OptionalText(canonicalAssetSymbols[asset.AssetSymbol])
 		}
 		slices.SortFunc(position.Assets, compareEarnAssets)
 		row := EarnPositionRow{
@@ -152,7 +152,7 @@ func matchesEarnAssets(f *ListFilter, assets []adapters.EarnAmount) bool {
 		return true
 	}
 	for _, asset := range assets {
-		if matchesSymbol(f.Symbol, asset.PlatformAssetSymbol, optionalSymbol(asset.AssetSymbol)) {
+		if matchesSymbol(f.Symbol, asset.AssetSymbol, optionalSymbol(asset.CanonicalAssetSymbol)) {
 			return true
 		}
 	}
@@ -212,7 +212,7 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 			}
 			if f.Symbol != "" {
 				summary.Assets = slices.DeleteFunc(summary.Assets, func(asset adapters.EarnAmount) bool {
-					return !matchesSymbol(f.Symbol, asset.PlatformAssetSymbol, optionalSymbol(asset.AssetSymbol))
+					return !matchesSymbol(f.Symbol, asset.AssetSymbol, optionalSymbol(asset.CanonicalAssetSymbol))
 				})
 			}
 			out.BalanceSummaries = append(out.BalanceSummaries, summary)

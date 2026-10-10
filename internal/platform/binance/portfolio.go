@@ -122,11 +122,11 @@ func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
 		pnl := decimal.Add(parsed["umUnrealizedPNL"], parsed["cmUnrealizedPNL"])
 		equity := decimal.Sub(decimal.Sub(decimal.Add(parsed["totalWalletBalance"], pnl), parsed["crossMarginBorrowed"]), parsed["crossMarginInterest"])
 		out = append(out, adapters.Balance{
-			PlatformAssetSymbol: symbol,
-			Equity:              decimal.Format(equity),
-			Liability:           decimal.FormatPtr(parsed["crossMarginBorrowed"]),
-			Interest:            decimal.FormatPtr(parsed["crossMarginInterest"]),
-			UnrealizedPnl:       decimal.FormatPtr(pnl),
+			AssetSymbol:   symbol,
+			Equity:        decimal.Format(equity),
+			Liability:     decimal.FormatPtr(parsed["crossMarginBorrowed"]),
+			Interest:      decimal.FormatPtr(parsed["crossMarginInterest"]),
+			UnrealizedPnl: decimal.FormatPtr(pnl),
 		})
 	}
 	return out, nil
@@ -238,9 +238,9 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futu
 		default:
 			out.MarginMode = ""
 		}
-		out.MarginCurrency = strings.TrimSpace(row.MarginAsset)
-		if m == marketCM && out.MarginCurrency == "" {
-			out.MarginCurrency = futuresContract.SettlementSymbol
+		out.MarginAssetSymbol = strings.TrimSpace(row.MarginAsset)
+		if m == marketCM && out.MarginAssetSymbol == "" {
+			out.MarginAssetSymbol = futuresContract.SettlementAssetSymbol
 		}
 	} else if ep == epPMUMPositionRisk || ep == epPMCMPositionRisk {
 		// Retail Portfolio Margin futures use Cross and retain initial leverage.

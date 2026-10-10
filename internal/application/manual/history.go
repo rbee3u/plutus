@@ -43,8 +43,8 @@ func decodeBalances(raw []byte) ([]Balance, error) {
 		if err := json.Unmarshal(encoded, &balance); err != nil {
 			return nil, err
 		}
-		if balance.PlatformAssetID == uuid.Nil || balance.PlatformAssetSymbol == "" || balance.AssetSymbol == "" {
-			return nil, errors.New("manual history: missing platform asset identity")
+		if balance.AssetID == uuid.Nil || balance.AssetSymbol == "" || balance.CanonicalAssetSymbol == "" {
+			return nil, errors.New("manual history: missing asset identity")
 		}
 		balances = append(balances, balance)
 	}

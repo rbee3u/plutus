@@ -111,7 +111,7 @@ hold, which fails only its own Account. `ExternalRef` is `userID` from
 
 | Plutus column           | `unified` (`wallet-balance` `coin[]`)        | `funding` (`query-account-coins-balance`) | `earn`                                         |
 | ----------------------- | -------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `PlatformAssetSymbol`   | `coin`                                       | `coin`                                    | `coin`; Dual Asset `investCoin`                |
+| `AssetSymbol`           | `coin`                                       | `coin`                                    | `coin`; Dual Asset `investCoin`                |
 | `equity` (coin units)   | `equity` as reported, may be negative        | `walletBalance`                           | principal, see [Earn](#earn), one row per coin |
 | `available_to_trade`    | null                                         | null                                      | null                                           |
 | `available_to_withdraw` | null                                         | `transferBalance`                         | null                                           |
@@ -244,13 +244,13 @@ inverse, and option positions before any position is kept.
   `unified` report with `normalization`, naming the contract. It is never
   dropped. A position reference listed twice fails the report too.
 
-| Futures Contract column                                                                         | Source (`/v5/market/instruments-info`)                                                                                                                                       |
-| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                                                                                        | `symbol`                                                                                                                                                                     |
-| `kind`                                                                                          | `contractType`: `LinearPerpetual` → `linear_perpetual`, `InversePerpetual` → `inverse_perpetual`, `LinearFutures` → `linear_delivery`, `InverseFutures` → `inverse_delivery` |
-| `base_platform_asset_symbol`, `quote_platform_asset_symbol`, `settlement_platform_asset_symbol` | `baseCoin`, `quoteCoin`, `settleCoin`                                                                                                                                        |
-| `expiry_at`                                                                                     | `deliveryTime`, delivery contracts only                                                                                                                                      |
-| `contract_size`                                                                                 | not mapped: Bybit sizes positions in coins or USD, not in contracts                                                                                                          |
+| Futures Contract column                                              | Source (`/v5/market/instruments-info`)                                                                                                                                       |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                                             | `symbol`                                                                                                                                                                     |
+| `kind`                                                               | `contractType`: `LinearPerpetual` → `linear_perpetual`, `InversePerpetual` → `inverse_perpetual`, `LinearFutures` → `linear_delivery`, `InverseFutures` → `inverse_delivery` |
+| `base_asset_symbol`, `quote_asset_symbol`, `settlement_asset_symbol` | `baseCoin`, `quoteCoin`, `settleCoin`                                                                                                                                        |
+| `expiry_at`                                                          | `deliveryTime`, delivery contracts only                                                                                                                                      |
+| `contract_size`                                                      | not mapped: Bybit sizes positions in coins or USD, not in contracts                                                                                                          |
 
 An unknown contract type, a missing coin, or a delivery contract without
 `deliveryTime` fails the `unified` report with `normalization`.

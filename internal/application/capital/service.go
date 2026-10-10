@@ -43,19 +43,19 @@ func NewService(db *sql.DB) *Service {
 
 // Flow is one manual Capital Flow.
 type Flow struct {
-	ID          uuid.UUID
-	PortfolioID uuid.UUID
-	Direction   string
-	AssetSymbol string
-	Quantity    string
-	ValueUSD    *string
-	EffectiveAt time.Time
-	AccountID   *uuid.UUID
-	AccountName *string
-	Note        *string
-	Version     uint64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                   uuid.UUID
+	PortfolioID          uuid.UUID
+	Direction            string
+	CanonicalAssetSymbol string
+	Quantity             string
+	ValueUSD             *string
+	EffectiveAt          time.Time
+	AccountID            *uuid.UUID
+	AccountName          *string
+	Note                 *string
+	Version              uint64
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 // ETag returns the flow validator.
@@ -70,15 +70,15 @@ func ParseETag(value string) (uint64, bool) {
 
 // Input is the accepted create or patch payload.
 type Input struct {
-	ActorUserID uuid.UUID
-	RequestID   string
-	Direction   *string
-	AssetSymbol *string
-	Quantity    *string
-	ValueUSD    *string
-	EffectiveAt *time.Time
-	AccountID   *uuid.UUID
-	Note        *string
+	ActorUserID          uuid.UUID
+	RequestID            string
+	Direction            *string
+	CanonicalAssetSymbol *string
+	Quantity             *string
+	ValueUSD             *string
+	EffectiveAt          *time.Time
+	AccountID            *uuid.UUID
+	Note                 *string
 	// ClearAccount detaches the flow from its Account; ClearValue drops a manual USD value.
 	ClearAccount bool
 	ClearValue   bool
@@ -121,7 +121,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Flow, err
 
 // Create inserts a flow, valuing it in USD from the nearest Platform price when no value is given.
 func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *Input) (Flow, error) {
-	if in.Direction == nil || in.AssetSymbol == nil || in.Quantity == nil || in.EffectiveAt == nil {
+	if in.Direction == nil || in.CanonicalAssetSymbol == nil || in.Quantity == nil || in.EffectiveAt == nil {
 		return Flow{}, ErrInvalid
 	}
 	draft := Flow{PortfolioID: portfolioID}
@@ -135,7 +135,7 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *Input) 
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
 		params := sqlcgen.InsertCapitalFlowParams{
-			ID: id[:], PortfolioID: portfolioID[:], Direction: draft.Direction, AssetSymbol: draft.AssetSymbol, Quantity: draft.Quantity,
+			ID: id[:], PortfolioID: portfolioID[:], Direction: draft.Direction, CanonicalAssetSymbol: draft.CanonicalAssetSymbol, Quantity: draft.Quantity,
 			EffectiveAt: draft.EffectiveAt, CreatedByUserID: in.ActorUserID[:], Version: 1, CreatedAt: now, UpdatedAt: now,
 		}
 		if draft.ValueUSD != nil {
@@ -177,7 +177,7 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 	now := s.now().UTC()
 	if err := mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
 		params := sqlcgen.UpdateCapitalFlowParams{
-			Direction: draft.Direction, AssetSymbol: draft.AssetSymbol, Quantity: draft.Quantity, EffectiveAt: draft.EffectiveAt,
+			Direction: draft.Direction, CanonicalAssetSymbol: draft.CanonicalAssetSymbol, Quantity: draft.Quantity, EffectiveAt: draft.EffectiveAt,
 			UpdatedAt: now, PortfolioID: portfolioID[:], ID: id[:], Version: version,
 		}
 		if draft.ValueUSD != nil {
@@ -241,15 +241,15 @@ func (s *Service) apply(ctx context.Context, draft *Flow, in *Input) error {
 		}
 		draft.Direction = *in.Direction
 	}
-	if in.AssetSymbol != nil {
-		symbol, err := catalog.NormalizeSymbol(*in.AssetSymbol)
+	if in.CanonicalAssetSymbol != nil {
+		canonicalAssetSymbol, err := catalog.NormalizeSymbol(*in.CanonicalAssetSymbol)
 		if err != nil {
 			return ErrInvalid
 		}
-		if symbol != draft.AssetSymbol {
+		if canonicalAssetSymbol != draft.CanonicalAssetSymbol {
 			revalue = true
 		}
-		draft.AssetSymbol = symbol
+		draft.CanonicalAssetSymbol = canonicalAssetSymbol
 	}
 	if in.Quantity != nil {
 		quantity, ok := decimal.Parse(*in.Quantity)
@@ -303,27 +303,27 @@ func (s *Service) apply(ctx context.Context, draft *Flow, in *Input) error {
 		revalue = false
 	}
 	if revalue {
-		draft.ValueUSD = s.valueInUSD(ctx, draft.AssetSymbol, draft.Quantity, draft.EffectiveAt)
+		draft.ValueUSD = s.valueInUSD(ctx, draft.CanonicalAssetSymbol, draft.Quantity, draft.EffectiveAt)
 	}
 	return nil
 }
 
 // Cross-Platform lookup is an unresolved deviation from ADR 0003; see
 // docs/architecture.md#known-implementation-discrepancy.
-func (s *Service) valueInUSD(ctx context.Context, assetSymbol, quantity string, at time.Time) *string {
+func (s *Service) valueInUSD(ctx context.Context, canonicalAssetSymbol, quantity string, at time.Time) *string {
 	qty, ok := decimal.Parse(quantity)
 	if !ok {
 		return nil
 	}
-	switch assetSymbol {
+	switch canonicalAssetSymbol {
 	case "USD", "USDT", "USDC":
 		return decimal.FormatPtr(qty)
 	}
-	row, err := s.q.GetNearestPriceAt(ctx, sqlcgen.GetNearestPriceAtParams{AssetSymbol: assetSymbol, FilterPlatform: 0, At: at.UTC()})
+	row, err := s.q.GetNearestPriceAt(ctx, sqlcgen.GetNearestPriceAtParams{CanonicalAssetSymbol: canonicalAssetSymbol, FilterPlatform: 0, At: at.UTC()})
 	if err != nil || at.Sub(row.ObservedAt) > maxPriceAge {
 		return nil
 	}
-	switch row.QuoteAssetSymbol {
+	switch row.QuoteCanonicalAssetSymbol {
 	case "USD", "USDT", "USDC":
 	default:
 		return nil
@@ -345,7 +345,7 @@ func (s *Service) fromRow(ctx context.Context, row *sqlcgen.CapitalFlow) (Flow, 
 		return Flow{}, err
 	}
 	item := Flow{
-		ID: id, PortfolioID: portfolioID, Direction: row.Direction, AssetSymbol: row.AssetSymbol, Quantity: decimal.Compact(row.Quantity),
+		ID: id, PortfolioID: portfolioID, Direction: row.Direction, CanonicalAssetSymbol: row.CanonicalAssetSymbol, Quantity: decimal.Compact(row.Quantity),
 		EffectiveAt: row.EffectiveAt, Version: row.Version, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if row.ValueUsd.Valid {
@@ -371,18 +371,18 @@ func (s *Service) fromRow(ctx context.Context, row *sqlcgen.CapitalFlow) (Flow, 
 }
 
 type flowAudit struct {
-	Direction   string  `json:"direction"`
-	AssetSymbol string  `json:"assetSymbol"`
-	Quantity    string  `json:"quantity"`
-	ValueUSD    *string `json:"valueUsd"`
-	EffectiveAt string  `json:"effectiveAt"`
-	AccountID   *string `json:"accountId,omitempty"`
-	Note        *string `json:"note,omitempty"`
-	Version     uint64  `json:"version"`
+	Direction            string  `json:"direction"`
+	CanonicalAssetSymbol string  `json:"canonicalAssetSymbol"`
+	Quantity             string  `json:"quantity"`
+	ValueUSD             *string `json:"valueUsd"`
+	EffectiveAt          string  `json:"effectiveAt"`
+	AccountID            *string `json:"accountId,omitempty"`
+	Note                 *string `json:"note,omitempty"`
+	Version              uint64  `json:"version"`
 }
 
 func auditView(f *Flow) flowAudit {
-	view := flowAudit{Direction: f.Direction, AssetSymbol: f.AssetSymbol, Quantity: f.Quantity, ValueUSD: f.ValueUSD, EffectiveAt: f.EffectiveAt.UTC().Format(time.RFC3339Nano), Note: f.Note, Version: f.Version}
+	view := flowAudit{Direction: f.Direction, CanonicalAssetSymbol: f.CanonicalAssetSymbol, Quantity: f.Quantity, ValueUSD: f.ValueUSD, EffectiveAt: f.EffectiveAt.UTC().Format(time.RFC3339Nano), Note: f.Note, Version: f.Version}
 	if f.AccountID != nil {
 		id := f.AccountID.String()
 		view.AccountID = &id

@@ -3,12 +3,12 @@ import { type FormEvent, useRef, useState } from "react";
 import {
   invalidatePortfolioReads,
   keys,
-  listPlatformAssets,
+  listAssets,
   problemMessage,
-  putPlatformAssetExclusion,
-  putPlatformAssetMapping,
+  putAssetExclusion,
+  putAssetMapping,
 } from "@/api";
-import type { PlatformAsset, PlatformAssetList } from "@/api";
+import type { Asset, AssetList } from "@/api";
 import { formatInstant } from "@/shared/lib/datetime";
 import { useSessionScope } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
@@ -25,7 +25,7 @@ import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import {
   PAGE_SIZE,
   exclusionEtag,
-  platformAssetEtag,
+  assetEtag,
   type MappingRequest,
   type TabProps,
 } from "../lib/catalog";
@@ -42,11 +42,11 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const [request, setRequest] = useState<MappingRequest | null>(null);
   const [exclusionRequest, setExclusionRequest] = useState<MappingRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const query = usePortfolioQuery<PlatformAssetList>({
+  const query = usePortfolioQuery<AssetList>({
     key: (userId, portfolioId) =>
-      keys.catalogPlatformAssets(userId, portfolioId, platform, q, ignoredOnly, offset),
+      keys.catalogAssets(userId, portfolioId, platform, q, ignoredOnly, offset),
     load: (portfolioId) =>
-      listPlatformAssets({
+      listAssets({
         path: { portfolioId },
         query: {
           platform: platform || undefined,
@@ -58,9 +58,9 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
       }),
   });
 
-  async function invalidatePlatformAssets() {
+  async function invalidateAssets() {
     await queryClient.invalidateQueries({
-      queryKey: keys.catalogPlatformAssets(userId, portfolioId),
+      queryKey: keys.catalogAssets(userId, portfolioId),
     });
   }
 
@@ -140,7 +140,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
           { key: "actions", header: "Actions", nowrap: true, numeric: true },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
-          const isMapped = item.symbol !== item.assetSymbol;
+          const isMapped = item.symbol !== item.canonicalSymbol;
 
           return {
             id: item.id,
@@ -150,11 +150,11 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                 <span
                   style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
                 >
-                  <strong style={{ letterSpacing: "0.02em" }}>{item.assetSymbol}</strong>
+                  <strong style={{ letterSpacing: "0.02em" }}>{item.symbol}</strong>
                   {isMapped ? <Badge tone="info">mapped</Badge> : null}
                 </span>
                 {isMapped ? (
-                  <span className={shared.cellMeta}>Listed as: {item.symbol}</span>
+                  <span className={shared.cellMeta}>Canonical Asset: {item.canonicalSymbol}</span>
                 ) : null}
               </span>
             ),
@@ -233,7 +233,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
       />
       <Dialog
         open={request !== null}
-        title={request ? `Map ${request.item.symbol}` : "Map platform asset"}
+        title={request ? `Map ${request.item.symbol}` : "Map asset"}
         onClose={() => setRequest(null)}
       >
         {request ? (
@@ -245,7 +245,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             onDone={async (message) => {
               setRequest(null);
               setNotice(message);
-              await invalidatePlatformAssets();
+              await invalidateAssets();
               await invalidatePortfolioReads(queryClient, userId, portfolioId);
             }}
           />
@@ -256,7 +256,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
         title={
           exclusionRequest
             ? `${exclusionRequest.item.ignored ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
-            : "PlatformAsset status"
+            : "Asset status"
         }
         onClose={() => setExclusionRequest(null)}
       >
@@ -269,7 +269,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             onDone={async (message) => {
               setExclusionRequest(null);
               setNotice(message);
-              await invalidatePlatformAssets();
+              await invalidateAssets();
               await invalidatePortfolioReads(queryClient, userId, portfolioId);
             }}
           />
@@ -283,7 +283,7 @@ const EXCLUSION_REASON_PRESETS = [
   "Dust balance",
   "Spam / Airdrop",
   "Delisted asset",
-  "Duplicate platform asset",
+  "Duplicate asset",
 ];
 
 function ExclusionForm({
@@ -293,7 +293,7 @@ function ExclusionForm({
   onDone,
 }: {
   portfolioId: string;
-  item: PlatformAsset;
+  item: Asset;
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
@@ -315,27 +315,27 @@ function ExclusionForm({
     setError(null);
     try {
       const result = await write(() =>
-        putPlatformAssetExclusion({
-          path: { portfolioId, platformAssetId: item.id },
+        putAssetExclusion({
+          path: { portfolioId, assetId: item.id },
           headers: { "If-Match": exclusionEtag(item) },
           body: { ignored: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
         }),
       );
       if (result.response?.status === 412) {
         await onDone(
-          "The platform asset status changed in another session. The list was reloaded; open it again.",
+          "The asset status changed in another session. The list was reloaded; open it again.",
         );
         return;
       }
       if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The platform asset status could not be saved."));
+        setError(problemMessage(result.error, "The asset status could not be saved."));
         return;
       }
       await onDone(
         `${platform} ${result.data.symbol} ${ignoring ? "will be ignored" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
-      setError(problemMessage(cause, "The platform asset status could not be saved."));
+      setError(problemMessage(cause, "The asset status could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -391,7 +391,7 @@ function ExclusionForm({
       ) : null}
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
-          {ignoring ? "Ignore platform asset" : "Restore platform asset"}
+          {ignoring ? "Ignore asset" : "Restore asset"}
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
@@ -408,41 +408,39 @@ function MappingForm({
   onDone,
 }: {
   portfolioId: string;
-  item: PlatformAsset;
+  item: Asset;
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
   const write = useAuthenticatedWrite();
   const platforms = usePlatforms();
   const platform = platformLabel(platforms.data?.items, item.platform);
-  const [assetSymbol, setAssetSymbol] = useState(item.assetSymbol);
+  const [canonicalSymbol, setCanonicalSymbol] = useState(item.canonicalSymbol);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const trimmedSymbol = assetSymbol.trim().toUpperCase();
-  const isUnchanged = trimmedSymbol === item.assetSymbol;
-  const isCustomMapped = item.symbol !== item.assetSymbol;
+  const trimmedSymbol = canonicalSymbol.trim().toUpperCase();
+  const isUnchanged = trimmedSymbol === item.canonicalSymbol;
+  const isCustomMapped = item.symbol !== item.canonicalSymbol;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!trimmedSymbol) {
-      setError("Enter the Asset symbol this platform asset should merge into.");
+      setError("Enter the Canonical Asset symbol this Asset maps to.");
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const result = await write(() =>
-        putPlatformAssetMapping({
-          path: { portfolioId, platformAssetId: item.id },
-          headers: { "If-Match": platformAssetEtag(item) },
-          body: { assetSymbol: trimmedSymbol },
+        putAssetMapping({
+          path: { portfolioId, assetId: item.id },
+          headers: { "If-Match": assetEtag(item) },
+          body: { canonicalSymbol: trimmedSymbol },
         }),
       );
       if (result.response?.status === 412) {
-        await onDone(
-          "The platform asset changed in another session. The list was reloaded; open it again.",
-        );
+        await onDone("The asset changed in another session. The list was reloaded; open it again.");
         return;
       }
       if (result.error || !result.data) {
@@ -450,7 +448,7 @@ function MappingForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} now maps to ${result.data.assetSymbol}. Valuations use it from the next Collection Cycle.`,
+        `${platform} ${result.data.symbol} now maps to ${result.data.canonicalSymbol}. Valuations use it from the next Collection Cycle.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The mapping could not be saved."));
@@ -462,11 +460,11 @@ function MappingForm({
   return (
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
-        Map {platform} · {item.symbol} to a canonical asset symbol across your portfolio.
+        Map {platform} · {item.symbol} to a Canonical Asset symbol across Platforms.
       </p>
       <div className={manageStyles.mappingFlowCard}>
         <div className={manageStyles.mappingFlowSource}>
-          <span className={manageStyles.mappingFlowLabel}>Source platform asset</span>
+          <span className={manageStyles.mappingFlowLabel}>Asset</span>
           <span className={manageStyles.mappingFlowSymbol}>{item.symbol}</span>
           <span className={manageStyles.mappingFlowPlatform}>{platform}</span>
         </div>
@@ -474,7 +472,7 @@ function MappingForm({
           ➔
         </div>
         <div className={manageStyles.mappingFlowTarget}>
-          <span className={manageStyles.mappingFlowLabel}>Canonical asset</span>
+          <span className={manageStyles.mappingFlowLabel}>Canonical Asset</span>
           <span className={manageStyles.mappingFlowSymbol}>{trimmedSymbol || "—"}</span>
           <span className={manageStyles.mappingFlowPlatform}>
             {isCustomMapped && trimmedSymbol !== item.symbol
@@ -491,10 +489,10 @@ function MappingForm({
         </p>
       ) : null}
       <label className={shared.field}>
-        <span>Asset symbol</span>
+        <span>Canonical Asset</span>
         <TextInput
-          value={assetSymbol}
-          onChange={(event) => setAssetSymbol(event.target.value.toUpperCase())}
+          value={canonicalSymbol}
+          onChange={(event) => setCanonicalSymbol(event.target.value.toUpperCase())}
           maxLength={32}
           autoFocus
           autoCapitalize="characters"
@@ -511,7 +509,7 @@ function MappingForm({
       {isCustomMapped && trimmedSymbol !== item.symbol ? (
         <p className={shared.cellMeta}>
           Mapped from native {item.symbol}.{" "}
-          <ActionButton type="button" tone="ghost" onClick={() => setAssetSymbol(item.symbol)}>
+          <ActionButton type="button" tone="ghost" onClick={() => setCanonicalSymbol(item.symbol)}>
             Reset to native ({item.symbol})
           </ActionButton>
         </p>

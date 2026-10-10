@@ -11,6 +11,41 @@ import (
 	"time"
 )
 
+const countAssets = `-- name: CountAssets :one
+SELECT COUNT(*)
+FROM assets
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ? OR canonical_symbol LIKE ?)
+  AND (? = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_asset_exclusions e
+      WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.ignored = TRUE
+  ))
+`
+
+type CountAssetsParams struct {
+	FilterPlatform interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
+	IgnoredOnly    interface{}
+	PortfolioID    []byte
+}
+
+func (q *Queries) CountAssets(ctx context.Context, arg CountAssetsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAssets,
+		arg.FilterPlatform,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
+		arg.IgnoredOnly,
+		arg.PortfolioID,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countFuturesContracts = `-- name: CountFuturesContracts :one
 SELECT COUNT(*)
 FROM futures_contracts
@@ -37,43 +72,63 @@ func (q *Queries) CountFuturesContracts(ctx context.Context, arg CountFuturesCon
 	return count, err
 }
 
-const countPlatformAssets = `-- name: CountPlatformAssets :one
-SELECT COUNT(*)
-FROM platform_assets
-WHERE (? = 0 OR platform = ?)
-  AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
-  AND (? = 0 OR EXISTS (
-      SELECT 1 FROM portfolio_platform_asset_exclusions e
-      WHERE e.portfolio_id = ? AND e.platform_asset_id = platform_assets.id AND e.ignored = TRUE
-  ))
+const getAsset = `-- name: GetAsset :one
+SELECT id, platform, symbol, canonical_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+FROM assets
+WHERE id = ?
 `
 
-type CountPlatformAssetsParams struct {
-	FilterPlatform interface{}
-	Platform       string
-	FilterQuery    interface{}
-	Query          string
-	IgnoredOnly    interface{}
-	PortfolioID    []byte
+func (q *Queries) GetAsset(ctx context.Context, id []byte) (Asset, error) {
+	row := q.db.QueryRowContext(ctx, getAsset, id)
+	var i Asset
+	err := row.Scan(
+		&i.ID,
+		&i.Platform,
+		&i.Symbol,
+		&i.CanonicalSymbol,
+		&i.Name,
+		&i.MappingSource,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
-func (q *Queries) CountPlatformAssets(ctx context.Context, arg CountPlatformAssetsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPlatformAssets,
-		arg.FilterPlatform,
-		arg.Platform,
-		arg.FilterQuery,
-		arg.Query,
-		arg.Query,
-		arg.IgnoredOnly,
-		arg.PortfolioID,
+const getAssetByPlatformSymbol = `-- name: GetAssetByPlatformSymbol :one
+SELECT id, platform, symbol, canonical_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+FROM assets
+WHERE platform = ? AND symbol = ?
+`
+
+type GetAssetByPlatformSymbolParams struct {
+	Platform string
+	Symbol   string
+}
+
+func (q *Queries) GetAssetByPlatformSymbol(ctx context.Context, arg GetAssetByPlatformSymbolParams) (Asset, error) {
+	row := q.db.QueryRowContext(ctx, getAssetByPlatformSymbol, arg.Platform, arg.Symbol)
+	var i Asset
+	err := row.Scan(
+		&i.ID,
+		&i.Platform,
+		&i.Symbol,
+		&i.CanonicalSymbol,
+		&i.Name,
+		&i.MappingSource,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	return i, err
 }
 
 const getFuturesContractByPlatformSymbol = `-- name: GetFuturesContractByPlatformSymbol :one
-SELECT id, platform, symbol, kind, base_platform_asset_symbol, quote_platform_asset_symbol, settlement_platform_asset_symbol, expiry_at, contract_size,
+SELECT id, platform, symbol, kind, base_asset_symbol, quote_asset_symbol, settlement_asset_symbol, expiry_at, contract_size,
        first_seen_at, last_seen_at, created_at, updated_at
 FROM futures_contracts
 WHERE platform = ? AND symbol = ?
@@ -92,9 +147,9 @@ func (q *Queries) GetFuturesContractByPlatformSymbol(ctx context.Context, arg Ge
 		&i.Platform,
 		&i.Symbol,
 		&i.Kind,
-		&i.BasePlatformAssetSymbol,
-		&i.QuotePlatformAssetSymbol,
-		&i.SettlementPlatformAssetSymbol,
+		&i.BaseAssetSymbol,
+		&i.QuoteAssetSymbol,
+		&i.SettlementAssetSymbol,
 		&i.ExpiryAt,
 		&i.ContractSize,
 		&i.FirstSeenAt,
@@ -105,63 +160,81 @@ func (q *Queries) GetFuturesContractByPlatformSymbol(ctx context.Context, arg Ge
 	return i, err
 }
 
-const getPlatformAsset = `-- name: GetPlatformAsset :one
-SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
-FROM platform_assets
-WHERE id = ?
+const listAssets = `-- name: ListAssets :many
+SELECT id, platform, symbol, canonical_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+FROM assets
+WHERE (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ? OR canonical_symbol LIKE ?)
+  AND (? = 0 OR EXISTS (
+      SELECT 1 FROM portfolio_asset_exclusions e
+      WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.ignored = TRUE
+  ))
+ORDER BY FIND_IN_SET(platform, ?) = 0,
+         FIND_IN_SET(platform, ?), platform, symbol, canonical_symbol, id
+LIMIT ? OFFSET ?
 `
 
-func (q *Queries) GetPlatformAsset(ctx context.Context, id []byte) (PlatformAsset, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformAsset, id)
-	var i PlatformAsset
-	err := row.Scan(
-		&i.ID,
-		&i.Platform,
-		&i.Symbol,
-		&i.AssetSymbol,
-		&i.Name,
-		&i.MappingSource,
-		&i.FirstSeenAt,
-		&i.LastSeenAt,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+type ListAssetsParams struct {
+	FilterPlatform interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
+	IgnoredOnly    interface{}
+	PortfolioID    []byte
+	PlatformOrder  string
+	Limit          int32
+	Offset         int32
 }
 
-const getPlatformAssetByPlatformSymbol = `-- name: GetPlatformAssetByPlatformSymbol :one
-SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
-FROM platform_assets
-WHERE platform = ? AND symbol = ?
-`
-
-type GetPlatformAssetByPlatformSymbolParams struct {
-	Platform string
-	Symbol   string
-}
-
-func (q *Queries) GetPlatformAssetByPlatformSymbol(ctx context.Context, arg GetPlatformAssetByPlatformSymbolParams) (PlatformAsset, error) {
-	row := q.db.QueryRowContext(ctx, getPlatformAssetByPlatformSymbol, arg.Platform, arg.Symbol)
-	var i PlatformAsset
-	err := row.Scan(
-		&i.ID,
-		&i.Platform,
-		&i.Symbol,
-		&i.AssetSymbol,
-		&i.Name,
-		&i.MappingSource,
-		&i.FirstSeenAt,
-		&i.LastSeenAt,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset, error) {
+	rows, err := q.db.QueryContext(ctx, listAssets,
+		arg.FilterPlatform,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
+		arg.IgnoredOnly,
+		arg.PortfolioID,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
+		arg.Limit,
+		arg.Offset,
 	)
-	return i, err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Asset{}
+	for rows.Next() {
+		var i Asset
+		if err := rows.Scan(
+			&i.ID,
+			&i.Platform,
+			&i.Symbol,
+			&i.CanonicalSymbol,
+			&i.Name,
+			&i.MappingSource,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listFuturesContracts = `-- name: ListFuturesContracts :many
-SELECT id, platform, symbol, kind, base_platform_asset_symbol, quote_platform_asset_symbol, settlement_platform_asset_symbol, expiry_at, contract_size,
+SELECT id, platform, symbol, kind, base_asset_symbol, quote_asset_symbol, settlement_asset_symbol, expiry_at, contract_size,
        first_seen_at, last_seen_at, created_at, updated_at
 FROM futures_contracts
 WHERE (? = 0 OR platform = ?)
@@ -204,9 +277,9 @@ func (q *Queries) ListFuturesContracts(ctx context.Context, arg ListFuturesContr
 			&i.Platform,
 			&i.Symbol,
 			&i.Kind,
-			&i.BasePlatformAssetSymbol,
-			&i.QuotePlatformAssetSymbol,
-			&i.SettlementPlatformAssetSymbol,
+			&i.BaseAssetSymbol,
+			&i.QuoteAssetSymbol,
+			&i.SettlementAssetSymbol,
 			&i.ExpiryAt,
 			&i.ContractSize,
 			&i.FirstSeenAt,
@@ -227,88 +300,15 @@ func (q *Queries) ListFuturesContracts(ctx context.Context, arg ListFuturesContr
 	return items, nil
 }
 
-const listPlatformAssets = `-- name: ListPlatformAssets :many
-SELECT id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
-FROM platform_assets
-WHERE (? = 0 OR platform = ?)
-  AND (? = 0 OR symbol LIKE ? OR asset_symbol LIKE ?)
-  AND (? = 0 OR EXISTS (
-      SELECT 1 FROM portfolio_platform_asset_exclusions e
-      WHERE e.portfolio_id = ? AND e.platform_asset_id = platform_assets.id AND e.ignored = TRUE
-  ))
-ORDER BY FIND_IN_SET(platform, ?) = 0,
-         FIND_IN_SET(platform, ?), platform, symbol, id
-LIMIT ? OFFSET ?
-`
-
-type ListPlatformAssetsParams struct {
-	FilterPlatform interface{}
-	Platform       string
-	FilterQuery    interface{}
-	Query          string
-	IgnoredOnly    interface{}
-	PortfolioID    []byte
-	PlatformOrder  string
-	Limit          int32
-	Offset         int32
-}
-
-func (q *Queries) ListPlatformAssets(ctx context.Context, arg ListPlatformAssetsParams) ([]PlatformAsset, error) {
-	rows, err := q.db.QueryContext(ctx, listPlatformAssets,
-		arg.FilterPlatform,
-		arg.Platform,
-		arg.FilterQuery,
-		arg.Query,
-		arg.Query,
-		arg.IgnoredOnly,
-		arg.PortfolioID,
-		arg.PlatformOrder,
-		arg.PlatformOrder,
-		arg.Limit,
-		arg.Offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []PlatformAsset{}
-	for rows.Next() {
-		var i PlatformAsset
-		if err := rows.Scan(
-			&i.ID,
-			&i.Platform,
-			&i.Symbol,
-			&i.AssetSymbol,
-			&i.Name,
-			&i.MappingSource,
-			&i.FirstSeenAt,
-			&i.LastSeenAt,
-			&i.Version,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPortfoliosHoldingPlatformAsset = `-- name: ListPortfoliosHoldingPlatformAsset :many
+const listPortfoliosHoldingAsset = `-- name: ListPortfoliosHoldingAsset :many
 SELECT DISTINCT r.portfolio_id
 FROM balances b
 INNER JOIN account_reports r ON r.portfolio_id = b.portfolio_id AND r.id = b.report_id
-WHERE b.platform_asset_id = ?
+WHERE b.asset_id = ?
 `
 
-func (q *Queries) ListPortfoliosHoldingPlatformAsset(ctx context.Context, platformAssetID []byte) ([][]byte, error) {
-	rows, err := q.db.QueryContext(ctx, listPortfoliosHoldingPlatformAsset, platformAssetID)
+func (q *Queries) ListPortfoliosHoldingAsset(ctx context.Context, assetID []byte) ([][]byte, error) {
+	rows, err := q.db.QueryContext(ctx, listPortfoliosHoldingAsset, assetID)
 	if err != nil {
 		return nil, err
 	}
@@ -330,26 +330,26 @@ func (q *Queries) ListPortfoliosHoldingPlatformAsset(ctx context.Context, platfo
 	return items, nil
 }
 
-const updatePlatformAssetMapping = `-- name: UpdatePlatformAssetMapping :execrows
-UPDATE platform_assets
-SET asset_symbol = ?,
+const updateAssetMapping = `-- name: UpdateAssetMapping :execrows
+UPDATE assets
+SET canonical_symbol = ?,
     mapping_source = ?,
     version = version + 1,
     updated_at = ?
 WHERE id = ? AND version = ?
 `
 
-type UpdatePlatformAssetMappingParams struct {
-	AssetSymbol   string
-	MappingSource string
-	UpdatedAt     time.Time
-	ID            []byte
-	Version       uint64
+type UpdateAssetMappingParams struct {
+	CanonicalSymbol string
+	MappingSource   string
+	UpdatedAt       time.Time
+	ID              []byte
+	Version         uint64
 }
 
-func (q *Queries) UpdatePlatformAssetMapping(ctx context.Context, arg UpdatePlatformAssetMappingParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updatePlatformAssetMapping,
-		arg.AssetSymbol,
+func (q *Queries) UpdateAssetMapping(ctx context.Context, arg UpdateAssetMappingParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateAssetMapping,
+		arg.CanonicalSymbol,
 		arg.MappingSource,
 		arg.UpdatedAt,
 		arg.ID,
@@ -361,9 +361,46 @@ func (q *Queries) UpdatePlatformAssetMapping(ctx context.Context, arg UpdatePlat
 	return result.RowsAffected()
 }
 
+const upsertAsset = `-- name: UpsertAsset :exec
+INSERT INTO assets (
+    id, platform, symbol, canonical_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, 'auto',
+    ?, ?, 1, ?, ?
+)
+ON DUPLICATE KEY UPDATE
+    last_seen_at = VALUES(last_seen_at),
+    name = COALESCE(VALUES(name), name),
+    updated_at = VALUES(updated_at)
+`
+
+type UpsertAssetParams struct {
+	ID              []byte
+	Platform        string
+	Symbol          string
+	CanonicalSymbol string
+	Name            sql.NullString
+	SeenAt          time.Time
+}
+
+func (q *Queries) UpsertAsset(ctx context.Context, arg UpsertAssetParams) error {
+	_, err := q.db.ExecContext(ctx, upsertAsset,
+		arg.ID,
+		arg.Platform,
+		arg.Symbol,
+		arg.CanonicalSymbol,
+		arg.Name,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
+		arg.SeenAt,
+	)
+	return err
+}
+
 const upsertFuturesContract = `-- name: UpsertFuturesContract :exec
 INSERT INTO futures_contracts (
-    id, platform, symbol, kind, base_platform_asset_symbol, quote_platform_asset_symbol, settlement_platform_asset_symbol, expiry_at, contract_size,
+    id, platform, symbol, kind, base_asset_symbol, quote_asset_symbol, settlement_asset_symbol, expiry_at, contract_size,
     first_seen_at, last_seen_at, created_at, updated_at
 ) VALUES (
     ?, ?, ?, ?, ?, ?,
@@ -376,16 +413,16 @@ ON DUPLICATE KEY UPDATE
 `
 
 type UpsertFuturesContractParams struct {
-	ID                            []byte
-	Platform                      string
-	Symbol                        string
-	Kind                          string
-	BasePlatformAssetSymbol       sql.NullString
-	QuotePlatformAssetSymbol      sql.NullString
-	SettlementPlatformAssetSymbol sql.NullString
-	ExpiryAt                      sql.NullTime
-	ContractSize                  sql.NullString
-	SeenAt                        time.Time
+	ID                    []byte
+	Platform              string
+	Symbol                string
+	Kind                  string
+	BaseAssetSymbol       sql.NullString
+	QuoteAssetSymbol      sql.NullString
+	SettlementAssetSymbol sql.NullString
+	ExpiryAt              sql.NullTime
+	ContractSize          sql.NullString
+	SeenAt                time.Time
 }
 
 func (q *Queries) UpsertFuturesContract(ctx context.Context, arg UpsertFuturesContractParams) error {
@@ -394,48 +431,11 @@ func (q *Queries) UpsertFuturesContract(ctx context.Context, arg UpsertFuturesCo
 		arg.Platform,
 		arg.Symbol,
 		arg.Kind,
-		arg.BasePlatformAssetSymbol,
-		arg.QuotePlatformAssetSymbol,
-		arg.SettlementPlatformAssetSymbol,
+		arg.BaseAssetSymbol,
+		arg.QuoteAssetSymbol,
+		arg.SettlementAssetSymbol,
 		arg.ExpiryAt,
 		arg.ContractSize,
-		arg.SeenAt,
-		arg.SeenAt,
-		arg.SeenAt,
-		arg.SeenAt,
-	)
-	return err
-}
-
-const upsertPlatformAsset = `-- name: UpsertPlatformAsset :exec
-INSERT INTO platform_assets (
-    id, platform, symbol, asset_symbol, name, mapping_source, first_seen_at, last_seen_at, version, created_at, updated_at
-) VALUES (
-    ?, ?, ?, ?, ?, 'auto',
-    ?, ?, 1, ?, ?
-)
-ON DUPLICATE KEY UPDATE
-    last_seen_at = VALUES(last_seen_at),
-    name = COALESCE(VALUES(name), name),
-    updated_at = VALUES(updated_at)
-`
-
-type UpsertPlatformAssetParams struct {
-	ID          []byte
-	Platform    string
-	Symbol      string
-	AssetSymbol string
-	Name        sql.NullString
-	SeenAt      time.Time
-}
-
-func (q *Queries) UpsertPlatformAsset(ctx context.Context, arg UpsertPlatformAssetParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPlatformAsset,
-		arg.ID,
-		arg.Platform,
-		arg.Symbol,
-		arg.AssetSymbol,
-		arg.Name,
 		arg.SeenAt,
 		arg.SeenAt,
 		arg.SeenAt,

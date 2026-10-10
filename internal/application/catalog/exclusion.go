@@ -27,12 +27,12 @@ func (s *Service) currentExclusions(ctx context.Context, portfolioID uuid.UUID) 
 	if portfolioID == uuid.Nil {
 		return states, nil
 	}
-	rows, err := s.q.ListCurrentPlatformAssetExclusions(ctx, portfolioID[:])
+	rows, err := s.q.ListCurrentAssetExclusions(ctx, portfolioID[:])
 	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {
-		id, err := uuid.FromBytes(row.PlatformAssetID)
+		id, err := uuid.FromBytes(row.AssetID)
 		if err != nil {
 			return nil, err
 		}
@@ -45,36 +45,36 @@ func (s *Service) currentExclusions(ctx context.Context, portfolioID uuid.UUID) 
 	return states, nil
 }
 
-func applyExclusion(platformAsset *PlatformAsset, state exclusionState) {
-	platformAsset.Ignored = state.Ignored
-	platformAsset.ExclusionVersion = state.Version
+func applyExclusion(asset *Asset, state exclusionState) {
+	asset.Ignored = state.Ignored
+	asset.ExclusionVersion = state.Version
 	if state.Ignored {
-		platformAsset.IgnoreReason = state.Reason
-		platformAsset.IgnoredAt = &state.UpdatedAt
+		asset.IgnoreReason = state.Reason
+		asset.IgnoredAt = &state.UpdatedAt
 	}
 }
 
-// withExclusion adds a Portfolio's current rule to one shared catalog platform asset.
-func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, platformAsset *PlatformAsset) error {
+// withExclusion adds a Portfolio's current rule to one shared catalog asset.
+func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, asset *Asset) error {
 	states, err := s.currentExclusions(ctx, portfolioID)
 	if err != nil {
 		return err
 	}
-	applyExclusion(platformAsset, states[platformAsset.ID])
+	applyExclusion(asset, states[asset.ID])
 	return nil
 }
 
 // ExclusionETag is the Portfolio-specific validator, separate from mapping's global ETag.
-func (l *PlatformAsset) ExclusionETag() string {
-	return etag.Format("platform-asset-exclusion", l.ExclusionVersion)
+func (asset *Asset) ExclusionETag() string {
+	return etag.Format("asset-exclusion", asset.ExclusionVersion)
 }
 
 // ParseExclusionETag extracts the Portfolio-specific version.
 func ParseExclusionETag(value string) (uint64, bool) {
-	return etag.ParseAllowZero("platform-asset-exclusion", value)
+	return etag.ParseAllowZero("asset-exclusion", value)
 }
 
-// ExclusionInput changes one Portfolio's treatment of a Platform asset.
+// ExclusionInput changes one Portfolio's treatment of an Asset.
 type ExclusionInput struct {
 	PortfolioID uuid.UUID
 	ActorUserID uuid.UUID
@@ -85,90 +85,90 @@ type ExclusionInput struct {
 }
 
 // PutExclusion saves a rule for cycles that start after this operation.
-func (s *Service) PutExclusion(ctx context.Context, id uuid.UUID, in *ExclusionInput) (PlatformAsset, error) {
+func (s *Service) PutExclusion(ctx context.Context, id uuid.UUID, in *ExclusionInput) (Asset, error) {
 	if in == nil {
-		return PlatformAsset{}, ErrInvalid
+		return Asset{}, ErrInvalid
 	}
 	reason := strings.TrimSpace(in.Reason)
 	if in.Ignored && (reason == "" || utf8.RuneCountInString(reason) > 500) {
-		return PlatformAsset{}, ErrInvalid
+		return Asset{}, ErrInvalid
 	}
 	if !in.Ignored && reason != "" {
-		return PlatformAsset{}, ErrInvalid
+		return Asset{}, ErrInvalid
 	}
-	platformAsset, err := s.GetPlatformAsset(ctx, id)
+	asset, err := s.GetAsset(ctx, id)
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	q := s.q.WithTx(tx)
 	if _, err := q.LockExclusionPortfolio(ctx, in.PortfolioID[:]); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return PlatformAsset{}, ErrNotFound
+			return Asset{}, ErrNotFound
 		}
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
-	row, err := q.GetPlatformAssetExclusion(ctx, sqlcgen.GetPlatformAssetExclusionParams{PortfolioID: in.PortfolioID[:], PlatformAssetID: id[:]})
+	row, err := q.GetAssetExclusion(ctx, sqlcgen.GetAssetExclusionParams{PortfolioID: in.PortfolioID[:], AssetID: id[:]})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
 	current := exclusionState{Ignored: row.Ignored, Version: row.Version, UpdatedAt: row.UpdatedAt}
 	if row.Reason.Valid {
 		current.Reason = &row.Reason.String
 	}
 	if current.Version != in.Version {
-		return PlatformAsset{}, ErrPrecondition
+		return Asset{}, ErrPrecondition
 	}
 	if current.Ignored == in.Ignored {
-		applyExclusion(&platformAsset, current)
-		return platformAsset, nil
+		applyExclusion(&asset, current)
+		return asset, nil
 	}
 	now := s.now().UTC().Truncate(time.Microsecond)
 	reasonValue := sql.NullString{String: reason, Valid: in.Ignored}
 	next := current.Version + 1
-	err = q.UpsertPlatformAssetExclusion(ctx, sqlcgen.UpsertPlatformAssetExclusionParams{
-		PortfolioID: in.PortfolioID[:], PlatformAssetID: id[:], Ignored: in.Ignored,
+	err = q.UpsertAssetExclusion(ctx, sqlcgen.UpsertAssetExclusionParams{
+		PortfolioID: in.PortfolioID[:], AssetID: id[:], Ignored: in.Ignored,
 		Reason: reasonValue, Version: next, ActorUserID: in.ActorUserID[:], UpdatedAt: now,
 	})
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
-	err = q.InsertPlatformAssetExclusionEvent(ctx, sqlcgen.InsertPlatformAssetExclusionEventParams{
-		PortfolioID: in.PortfolioID[:], PlatformAssetID: id[:], Version: next, Ignored: in.Ignored,
+	err = q.InsertAssetExclusionEvent(ctx, sqlcgen.InsertAssetExclusionEventParams{
+		PortfolioID: in.PortfolioID[:], AssetID: id[:], Version: next, Ignored: in.Ignored,
 		Reason: reasonValue, ActorUserID: in.ActorUserID[:], EffectiveAt: now,
 	})
 	if err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
 	updated := exclusionState{Ignored: in.Ignored, Version: next, UpdatedAt: now}
 	if in.Ignored {
 		updated.Reason = &reason
 	}
-	action := "catalog.platform_asset.restore"
+	action := "catalog.asset.restore"
 	if in.Ignored {
-		action = "catalog.platform_asset.exclude"
+		action = "catalog.asset.exclude"
 	}
 	if err := audit.Record(ctx, q, now, &audit.Entry{
 		PortfolioID: in.PortfolioID, ActorUserID: in.ActorUserID, Action: action,
-		ResourceType: "platform_asset", ResourceID: id, RequestID: in.RequestID,
-		Before: exclusionAudit(&platformAsset, current), After: exclusionAudit(&platformAsset, updated),
+		ResourceType: "asset", ResourceID: id, RequestID: in.RequestID,
+		Before: exclusionAudit(&asset, current), After: exclusionAudit(&asset, updated),
 	}); err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
 	if err := tx.Commit(); err != nil {
-		return PlatformAsset{}, err
+		return Asset{}, err
 	}
-	applyExclusion(&platformAsset, updated)
-	return platformAsset, nil
+	applyExclusion(&asset, updated)
+	return asset, nil
 }
 
-func exclusionAudit(platformAsset *PlatformAsset, state exclusionState) map[string]any {
+func exclusionAudit(asset *Asset, state exclusionState) map[string]any {
 	return map[string]any{
-		"platform": platformAsset.Platform, "symbol": platformAsset.Symbol,
+		"platform": asset.Platform, "symbol": asset.Symbol,
 		"ignored": state.Ignored, "reason": state.Reason, "version": state.Version,
 	}
 }

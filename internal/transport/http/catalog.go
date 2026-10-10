@@ -7,7 +7,7 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func (a *API) ListPlatformAssets(ctx context.Context, request api.ListPlatformAssetsRequestObject) (api.ListPlatformAssetsResponseObject, error) {
+func (a *API) ListAssets(ctx context.Context, request api.ListAssetsRequestObject) (api.ListAssetsResponseObject, error) {
 	sc, err := a.scoped(ctx, request.PortfolioId)
 	if err != nil {
 		return nil, err
@@ -15,18 +15,18 @@ func (a *API) ListPlatformAssets(ctx context.Context, request api.ListPlatformAs
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListPlatformAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), IgnoredOnly: boolValue(request.Params.IgnoredOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	page, err := a.Catalog.ListAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), IgnoredOnly: boolValue(request.Params.IgnoredOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]api.PlatformAsset, 0, len(page.Items))
+	items := make([]api.Asset, 0, len(page.Items))
 	for i := range page.Items {
-		items = append(items, toAPIPlatformAsset(&page.Items[i]))
+		items = append(items, toAPIAsset(&page.Items[i]))
 	}
-	return api.ListPlatformAssets200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+	return api.ListAssets200JSONResponse{Items: items, Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
 }
 
-func (a *API) PutPlatformAssetMapping(ctx context.Context, request api.PutPlatformAssetMappingRequestObject) (api.PutPlatformAssetMappingResponseObject, error) {
+func (a *API) PutAssetMapping(ctx context.Context, request api.PutAssetMappingRequestObject) (api.PutAssetMappingResponseObject, error) {
 	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
 	if err != nil {
 		return nil, err
@@ -34,27 +34,27 @@ func (a *API) PutPlatformAssetMapping(ctx context.Context, request api.PutPlatfo
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := catalog.ParsePlatformAssetETag(request.Params.IfMatch)
+	version, ok := catalog.ParseAssetETag(request.Params.IfMatch)
 	if !ok {
-		return nil, validationError("If-Match must be a platform asset ETag.")
+		return nil, validationError("If-Match must be an asset ETag.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	item, err := a.Catalog.PutMapping(ctx, request.PlatformAssetId, catalog.MappingInput{
-		ActorUserID: sc.user.ID,
-		PortfolioID: sc.portfolio.ID,
-		RequestID:   requestTraceID(ctx),
-		AssetSymbol: request.Body.AssetSymbol,
-		Version:     version,
+	item, err := a.Catalog.PutMapping(ctx, request.AssetId, catalog.MappingInput{
+		ActorUserID:     sc.user.ID,
+		PortfolioID:     sc.portfolio.ID,
+		RequestID:       requestTraceID(ctx),
+		CanonicalSymbol: request.Body.CanonicalSymbol,
+		Version:         version,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.PutPlatformAssetMapping200JSONResponse{Body: toAPIPlatformAsset(&item), Headers: api.PutPlatformAssetMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PutAssetMapping200JSONResponse{Body: toAPIAsset(&item), Headers: api.PutAssetMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
 }
 
-func (a *API) PutPlatformAssetExclusion(ctx context.Context, request api.PutPlatformAssetExclusionRequestObject) (api.PutPlatformAssetExclusionResponseObject, error) {
+func (a *API) PutAssetExclusion(ctx context.Context, request api.PutAssetExclusionRequestObject) (api.PutAssetExclusionResponseObject, error) {
 	sc, err := a.mutating(ctx, request.PortfolioId, request.Params.XCSRFToken)
 	if err != nil {
 		return nil, err
@@ -64,19 +64,19 @@ func (a *API) PutPlatformAssetExclusion(ctx context.Context, request api.PutPlat
 	}
 	version, ok := catalog.ParseExclusionETag(request.Params.IfMatch)
 	if !ok {
-		return nil, validationError("If-Match must be a platform asset exclusion ETag.")
+		return nil, validationError("If-Match must be an asset exclusion ETag.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	item, err := a.Catalog.PutExclusion(ctx, request.PlatformAssetId, &catalog.ExclusionInput{
+	item, err := a.Catalog.PutExclusion(ctx, request.AssetId, &catalog.ExclusionInput{
 		PortfolioID: sc.portfolio.ID, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx),
 		Ignored: request.Body.Ignored, Reason: stringValue(request.Body.Reason), Version: version,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.PutPlatformAssetExclusion200JSONResponse{Body: toAPIPlatformAsset(&item), Headers: api.PutPlatformAssetExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
+	return api.PutAssetExclusion200JSONResponse{Body: toAPIAsset(&item), Headers: api.PutAssetExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
 }
 
 func (a *API) ListFuturesContracts(ctx context.Context, request api.ListFuturesContractsRequestObject) (api.ListFuturesContractsResponseObject, error) {

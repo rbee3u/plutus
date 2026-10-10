@@ -82,9 +82,9 @@ export function ManualEditor({
             if (result.error) throw result.error;
             return result.data!;
           }}
-          onSave={async (symbol, quantity, action) => {
-            const path = { portfolioId, identityId, platformAssetSymbol: symbol };
-            const headers = { "If-Match": `"manual:${query.data.version}"` };
+          onSave={async (symbol, quantity, action, version) => {
+            const path = { portfolioId, identityId, assetSymbol: symbol };
+            const headers = { "If-Match": `"manual:${version}"` };
             const result = await write(() => {
               switch (action) {
                 case "delete":
@@ -95,7 +95,7 @@ export function ManualEditor({
                   return createManualBalance({
                     path: { portfolioId, identityId },
                     headers,
-                    body: { platformAssetSymbol: symbol, quantity },
+                    body: { assetSymbol: symbol, quantity },
                   });
               }
             });
@@ -113,6 +113,7 @@ export function ManualEditor({
               }),
               queryClient.invalidateQueries({ queryKey: keys.overview(userId, portfolioId) }),
             ]);
+            return state;
           }}
         />
       ) : null}
@@ -129,12 +130,18 @@ function ManualForm({
 }: {
   state: ManualBalanceState;
   target: ManualTarget;
-  onSave: (symbol: string, quantity: string, action: "add" | "edit" | "delete") => Promise<void>;
+  onSave: (
+    symbol: string,
+    quantity: string,
+    action: "add" | "edit" | "delete",
+    version: number,
+  ) => Promise<ManualBalanceState>;
   onReload: () => Promise<ManualBalanceState>;
   onClose?: () => void;
 }) {
-  const initial = state.items.find((item) => item.platformAssetSymbol === target.symbol);
-  const [symbol, setSymbol] = useState(initial?.platformAssetSymbol ?? "");
+  const [baseline, setBaseline] = useState(state);
+  const initial = baseline.items.find((item) => item.assetSymbol === target.symbol);
+  const [symbol, setSymbol] = useState(initial?.assetSymbol ?? "");
   const [quantity, setQuantity] = useState(initial?.quantity ?? "");
   const action = target.action ?? (initial ? "edit" : "add");
   const [busy, setBusy] = useState(false);
@@ -145,14 +152,16 @@ function ManualForm({
   const [needsReload, setNeedsReload] = useState(false);
   const existing =
     !saved &&
-    Boolean(state.items.find((item) => item.platformAssetSymbol === symbol.trim().toUpperCase()));
+    Boolean(baseline.items.find((item) => item.assetSymbol === symbol.trim().toUpperCase()));
 
   async function save() {
+    if (busy || needsReload) return;
     setBusy(true);
     setMessage("");
     setSaved(false);
     try {
-      await onSave(symbol.trim().toUpperCase(), quantity, action);
+      const latest = await onSave(symbol.trim().toUpperCase(), quantity, action, baseline.version);
+      setBaseline(latest);
       setSaved(true);
       setMessage("Saved. The next Collection Cycle will apply this quantity.");
       onClose?.();
@@ -168,10 +177,9 @@ function ManualForm({
     setBusy(true);
     try {
       const latest = await onReload();
+      setBaseline(latest);
       if (action !== "add") {
-        setQuantity(
-          latest.items.find((item) => item.platformAssetSymbol === symbol)?.quantity ?? "",
-        );
+        setQuantity(latest.items.find((item) => item.assetSymbol === symbol)?.quantity ?? "");
       }
       setMessage("");
       setNeedsReload(false);

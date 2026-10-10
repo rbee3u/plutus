@@ -49,12 +49,12 @@ export function DualPositionsTable({
         id: `${item.accountId}-${item.platformPositionRef}`,
         platform: platformLabel(platforms.data?.items, item.platform),
         identityName: item.identityName,
-        pair: `${item.baseSymbol ?? "—"} / ${item.quoteSymbol ?? "—"}`,
+        pair: `${item.baseAssetSymbol ?? "—"} / ${item.quoteAssetSymbol ?? "—"}`,
         expiry: formatInstant(item.expiryAt, timezone),
         strike:
           item.targetPrice == null
             ? "—"
-            : `${formatPrice(item.targetPrice)} ${item.quoteSymbol ?? ""}`.trim(),
+            : `${formatPrice(item.targetPrice)} ${item.quoteAssetSymbol ?? ""}`.trim(),
         direction:
           item.direction === "buy_low"
             ? "Buy Low"
@@ -68,7 +68,7 @@ export function DualPositionsTable({
               : `${formatPercent(item.annualizedRate)}${item.rateKind === "apr" ? " APR" : item.rateKind === "apy" ? " APY" : item.rateKind === "annualized_yield" ? " annualized" : ""}`}
           </NumericText>
         ),
-        principal: `${formatDecimal(item.principal)} ${item.investSymbol}`,
+        principal: `${formatDecimal(item.principal)} ${item.investAssetSymbol}`,
         subscribed: formatInstant(item.subscribedAt, timezone),
         status: capitalize(item.status),
         issues: (

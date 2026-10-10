@@ -113,7 +113,3 @@ export function unwrapOrRedirect<T>(result: ApiResult<T>, redirect: () => void):
     throw error;
   }
 }
-
-export function readEtag(response: Response | undefined, fallback: string): string {
-  return response?.headers.get("ETag") ?? fallback;
-}

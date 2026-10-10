@@ -22,7 +22,7 @@ func TestModeAndInitialMarginProvenance(t *testing.T) {
 			}
 			continue
 		}
-		if position.MarginBasis != "initial" || position.MarginCurrency != "BTC" {
+		if position.MarginBasis != "initial" || position.MarginAssetSymbol != "BTC" {
 			t.Fatal("positionIM mislabeled as allocation")
 		}
 	}

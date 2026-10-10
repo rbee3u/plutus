@@ -118,7 +118,7 @@ portfolio margin's `account/risk-state`.
 
 | Plutus column           | Source                                                          | Spot mode | Futures mode | Multi-currency, Portfolio margin |
 | ----------------------- | --------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
-| `PlatformAssetSymbol`   | `ccy`                                                           | yes       | yes          | yes                              |
+| `AssetSymbol`           | `ccy`                                                           | yes       | yes          | yes                              |
 | `equity` (coin units)   | `eq` as reported, may be negative                               | yes       | yes          | yes                              |
 | `available_to_trade`    | `availEq`                                                       | null      | yes          | yes                              |
 | `available_to_withdraw` | `availBal`                                                      | yes       | yes          | yes                              |
@@ -127,8 +127,8 @@ portfolio margin's `account/risk-state`.
 | `unrealized_pnl`        | `upl`                                                           | null      | yes          | yes                              |
 | `name`                  | not mapped                                                      |           |              |                                  |
 
-`funding` reads `asset/balances`: `PlatformAssetSymbol` from `ccy`, `equity`
-from `bal`, and `available_to_withdraw` from `availBal`.
+`funding` reads `asset/balances`: `AssetSymbol` from `ccy`, `equity` from `bal`,
+and `available_to_withdraw` from `availBal`.
 
 `earn` has one row per coin, summing two sources:
 
@@ -299,14 +299,14 @@ the Balances are priced in.
 - **Spot mode** holds no swaps or futures, so its positions list is empty unless
   it holds options.
 
-| Futures Contract column                                     | Source (`public/instruments`)                                                                                         |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `symbol`                                                    | `instId`                                                                                                              |
-| `kind`                                                      | `SWAP` → `linear_perpetual` / `inverse_perpetual`, `FUTURES` → `linear_delivery` / `inverse_delivery`, by `ctType`    |
-| `base_platform_asset_symbol`, `quote_platform_asset_symbol` | the two halves of `uly` (`DOGE-USDT`, `BTC-USD`). Contract rows leave `baseCcy` and `quoteCcy` empty.                 |
-| `settlement_platform_asset_symbol`                          | `settleCcy`: `USDT` or `USDC` for linear swaps, `USD` for the `-USD_UM-` futures, the base coin for inverse contracts |
-| `expiry_at`                                                 | `expTime`, futures only (`alias` is deprecated)                                                                       |
-| `contract_size`                                             | `ctVal × ctMult`: base coins per contract for linear contracts, USD per contract for inverse ones                     |
+| Futures Contract column                   | Source (`public/instruments`)                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `symbol`                                  | `instId`                                                                                                              |
+| `kind`                                    | `SWAP` → `linear_perpetual` / `inverse_perpetual`, `FUTURES` → `linear_delivery` / `inverse_delivery`, by `ctType`    |
+| `base_asset_symbol`, `quote_asset_symbol` | the two halves of `uly` (`DOGE-USDT`, `BTC-USD`). Contract rows leave `baseCcy` and `quoteCcy` empty.                 |
+| `settlement_asset_symbol`                 | `settleCcy`: `USDT` or `USDC` for linear swaps, `USD` for the `-USD_UM-` futures, the base coin for inverse contracts |
+| `expiry_at`                               | `expTime`, futures only (`alias` is deprecated)                                                                       |
+| `contract_size`                           | `ctVal × ctMult`: base coins per contract for linear contracts, USD per contract for inverse ones                     |
 
 Rows are handled as follows:
 

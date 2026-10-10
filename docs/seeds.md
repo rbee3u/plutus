@@ -79,7 +79,7 @@ empty successful report. Unknown amounts have omissions rather than zero.
 | Binance unavailable core equity           | Normalization failure; no invalid Balance row is stored                                                              |
 | Binance retired sub-account               | Archived at D−2, real earlier reports and boundary withdrawals                                                       |
 | Binance wallet boundary                   | Funding enters D−5; Spot exits D−3; other unselected Accounts remain visible in configuration                        |
-| Binance reviewed platform asset policy    | `DEMO-BTC` maps to BTC; `DEMO-DUST` is excluded D−6, restored D−4, excluded D−2; audit gives the reason              |
+| Binance reviewed asset policy             | `DEMO-BTC` maps to BTC; `DEMO-DUST` is excluded D−6, restored D−4, excluded D−2; audit gives the reason              |
 | OKX optional metadata unavailable         | Known value with row-local optional Earn/Dual and Position problems                                                  |
 | Kraken legacy Earn summary                | Old known Balances shown separately, details incomplete; disabled collection preserves the example                   |
 | OKX Earn scope transition                 | Combined scope-1 Earn before D−4, separate scope-2 Earn/Dual afterward; old scope cannot provide stale ordinary Earn |
@@ -101,8 +101,8 @@ losses.
 In `large`, visit each of the four holdings tables, press Next, and check that
 rows continue beyond 50. Filter by Binance's diversified Identity or a symbol,
 return to page one, and remove the filter. Repeat for both Catalog lists.
-Activity Audit has 60 independent platform asset mapping reviews, each with
-actual resource IDs and before/after mapping state; follow its second page.
+Activity Audit has 60 independent asset mapping reviews, each with actual
+resource IDs and before/after mapping state; follow its second page.
 
 Click Collect now and repeat the checks. Product details, large row counts,
 configured modes, the unpriced airdrop, persistent Account failures and legacy
@@ -140,8 +140,8 @@ at :8081, Alice signed in and switched among all four Portfolios. The check
 covered all holdings views, asset filtering, both Catalog lists, audit
 pagination, Connection states, archived Identities, Capital Flows, boundary
 events, long history and the intentional Berlin empty day. Value Changes named
-the unvalued flow, scope transition and platform asset-treatment changes. The
-legacy Earn summary and optional metadata problems remained visible.
+the unvalued flow, scope transition and asset-treatment changes. The legacy Earn
+summary and optional metadata problems remained visible.
 
 Manual collection succeeded for `default`, `edge-cases` and `large`. The default
 remained complete; edge failures retained compatible observation times and

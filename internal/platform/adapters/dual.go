@@ -24,9 +24,9 @@ type DualPosition struct {
 	PlatformPositionRef string
 	ProductRef          *string
 	OrderRef            *string
-	BaseSymbol          *string
-	QuoteSymbol         *string
-	InvestSymbol        string
+	BaseAssetSymbol     *string
+	QuoteAssetSymbol    *string
+	InvestAssetSymbol   string
 	Principal           string
 	Direction           *string
 	TargetPrice         *string
@@ -44,8 +44,8 @@ func (p *DualPosition) MissingFields() []string {
 		name   string
 		absent bool
 	}{
-		{"base asset", p.BaseSymbol == nil},
-		{"quote asset", p.QuoteSymbol == nil},
+		{"base asset", p.BaseAssetSymbol == nil},
+		{"quote asset", p.QuoteAssetSymbol == nil},
 		{"direction", p.Direction == nil},
 		{"target price", p.TargetPrice == nil},
 		{"expiry", p.ExpiryAt == nil},
@@ -74,11 +74,11 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 			return p, Malformed(where, "dual product or order id")
 		}
 	}
-	p.InvestSymbol = strings.ToUpper(strings.TrimSpace(p.InvestSymbol))
-	if p.InvestSymbol == "" {
+	p.InvestAssetSymbol = strings.ToUpper(strings.TrimSpace(p.InvestAssetSymbol))
+	if p.InvestAssetSymbol == "" {
 		return p, Malformed(where, "dual investment currency")
 	}
-	principal, err := Decimal(where, "dual principal of "+p.InvestSymbol, p.Principal)
+	principal, err := Decimal(where, "dual principal of "+p.InvestAssetSymbol, p.Principal)
 	if err != nil {
 		return p, err
 	}
@@ -86,7 +86,7 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 		return p, Malformed(where, "positive dual principal")
 	}
 	p.Principal = decimal.Format(principal)
-	for _, symbol := range []**string{&p.BaseSymbol, &p.QuoteSymbol} {
+	for _, symbol := range []**string{&p.BaseAssetSymbol, &p.QuoteAssetSymbol} {
 		if *symbol != nil {
 			*symbol = OptionalText(strings.ToUpper(**symbol))
 		}
@@ -130,23 +130,23 @@ func NormalizeDualPosition(where string, input *DualPosition) (DualPosition, err
 		return p, Malformed(where, "dual direction")
 	}
 	if p.Direction != nil {
-		expected := p.QuoteSymbol
+		expected := p.QuoteAssetSymbol
 		if *p.Direction == "sell_high" {
-			expected = p.BaseSymbol
+			expected = p.BaseAssetSymbol
 		}
-		if expected != nil && *expected != p.InvestSymbol {
+		if expected != nil && *expected != p.InvestAssetSymbol {
 			return p, Malformed(where, "dual direction matching principal currency")
 		}
 	}
-	if p.BaseSymbol != nil && p.QuoteSymbol != nil {
-		if *p.BaseSymbol == *p.QuoteSymbol {
+	if p.BaseAssetSymbol != nil && p.QuoteAssetSymbol != nil {
+		if *p.BaseAssetSymbol == *p.QuoteAssetSymbol {
 			return p, Malformed(where, "distinct dual currencies")
 		}
 		var direction string
-		switch p.InvestSymbol {
-		case *p.BaseSymbol:
+		switch p.InvestAssetSymbol {
+		case *p.BaseAssetSymbol:
 			direction = "sell_high"
-		case *p.QuoteSymbol:
+		case *p.QuoteAssetSymbol:
 			direction = "buy_low"
 		default:
 			return p, Malformed(where, "dual principal currency matching the pair")
