@@ -13,7 +13,7 @@ Two questions, in priority order:
    and USD totals per Account, Platform, and Portfolio. The numbers are meant to
    match each exchange app.
 2. **How did the total change over a period, excluding my own transfers.** One
-   Valuation Point per Collection Cycle (default every 15 minutes), Period
+   Valuation Point per Collection Cycle (default every 30 minutes), Period
    Closes, and absolute USD Value Change by calendar day, ISO week, month,
    quarter, and year, after subtracting manual Capital Flows and derived
    Boundary Events.

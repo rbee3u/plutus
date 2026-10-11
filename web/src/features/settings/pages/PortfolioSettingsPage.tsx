@@ -19,7 +19,7 @@ import shared from "@/shared/styles/page.module.css";
 
 const MIN_INTERVAL = 900;
 const MAX_INTERVAL = 86_400;
-const DEFAULT_INTERVAL = 900;
+const DEFAULT_INTERVAL = 1800;
 const CONFLICT =
   "The portfolio changed in another session. Reload the latest settings to review before saving again.";
 
@@ -34,8 +34,8 @@ const TIMEZONE_OPTIONS = [
 ] as const;
 
 const INTERVAL_PRESETS = [
-  { label: "15m", seconds: 900, isDefault: true },
-  { label: "30m", seconds: 1800 },
+  { label: "15m", seconds: 900 },
+  { label: "30m", seconds: 1800, isDefault: true },
   { label: "1h", seconds: 3600 },
   { label: "2h", seconds: 7200 },
   { label: "6h", seconds: 21600 },
@@ -401,7 +401,7 @@ function SettingsForms({
           </div>
           <span className={shared.muted}>
             Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day;
-            default is 15 minutes / 900s). The schedule applies from the next cycle.
+            default is 30 minutes / 1,800s). The schedule applies from the next cycle.
           </span>
         </label>
         <div className={shared.actions}>

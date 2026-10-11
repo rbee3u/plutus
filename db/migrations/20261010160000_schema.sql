@@ -54,10 +54,11 @@ CREATE TABLE portfolios (
     name VARCHAR(120) NOT NULL,
     name_key VARCHAR(360) NOT NULL,
     timezone VARCHAR(64) NOT NULL,
-    collection_interval_seconds INT UNSIGNED NOT NULL DEFAULT 900,
+    collection_interval_seconds INT UNSIGNED NOT NULL DEFAULT 1800,
     is_initial BOOLEAN NOT NULL DEFAULT FALSE,
     deletion_requested_at DATETIME(6) NULL,
     price_anchors_before DATETIME(6) NULL,
+    history_before DATETIME(6) NULL,
     initial_user_id BINARY(16) AS (IF(is_initial, user_id, NULL)) STORED,
     version BIGINT UNSIGNED NOT NULL,
     created_at DATETIME(6) NOT NULL,
@@ -139,7 +140,7 @@ CREATE TABLE assets (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 -- Each row is one symbol with one immutable set of observed terms. Changed
--- terms add a row under the same symbol; all rows are retained.
+-- terms add a row under the same symbol; referenced history is retained.
 CREATE TABLE futures_contracts (
     portfolio_id BINARY(16) NOT NULL,
     id BINARY(16) NOT NULL,
@@ -254,7 +255,7 @@ CREATE TABLE account_reports (
     CONSTRAINT chk_account_reports_failed_measures CHECK (status <> 'failed' OR (reported_equity_usd IS NULL AND adjusted_equity_usd IS NULL AND available_equity_usd IS NULL AND initial_margin_requirement_usd IS NULL AND maintenance_margin_requirement_usd IS NULL AND reported_initial_margin_ratio IS NULL AND reported_maintenance_margin_ratio IS NULL AND reported_margin_ratio IS NULL AND spot_margin_unrealized_pnl_usd IS NULL)),
     PRIMARY KEY (portfolio_id, id),
     UNIQUE KEY uq_account_reports_cycle_account (portfolio_id, cycle_id, account_id),
-    UNIQUE KEY uq_account_reports_account (portfolio_id, account_id, id),
+    UNIQUE KEY uq_account_reports_account_report (portfolio_id, account_id, id),
     KEY idx_account_reports_retention (portfolio_id, recorded_at, id),
     KEY idx_account_reports_fallback (portfolio_id, account_id, status, recorded_at, id),
     KEY idx_account_reports_manual_revision (portfolio_id, account_id, manual_revision_number),
@@ -383,7 +384,7 @@ CREATE TABLE valuation_points (
     calculation_version BIGINT UNSIGNED NOT NULL,
     detail_state VARCHAR(16) NOT NULL DEFAULT 'full',
     PRIMARY KEY (portfolio_id, cycle_id),
-    KEY idx_valuation_points_timeline (portfolio_id, evaluated_at, cycle_id),
+    KEY idx_valuation_points_timeline (portfolio_id, evaluated_at, cycle_id, calculation_version),
     KEY idx_valuation_points_retention (portfolio_id, detail_state, evaluated_at, cycle_id),
     CONSTRAINT fk_valuation_points_cycle FOREIGN KEY (portfolio_id, cycle_id) REFERENCES collection_cycles (portfolio_id, id) ON DELETE RESTRICT,
     CONSTRAINT chk_valuation_points_counts CHECK (stale_account_count <= account_count AND incomplete_account_count <= account_count),
@@ -537,14 +538,14 @@ CREATE TABLE boundary_events (
 
 -- Manual adjustments compare adopted quantities that expire with point detail,
 -- so they are frozen at first commit. Other comparison markers are derived.
-CREATE TABLE manual_adjustments (
+CREATE TABLE manual_balance_changes (
     portfolio_id BINARY(16) NOT NULL,
     cycle_id BINARY(16) NOT NULL,
     account_id BINARY(16) NOT NULL,
     PRIMARY KEY (portfolio_id, cycle_id, account_id),
-    KEY idx_manual_adjustments_account (portfolio_id, account_id),
-    CONSTRAINT fk_manual_adjustments_point FOREIGN KEY (portfolio_id, cycle_id) REFERENCES valuation_points (portfolio_id, cycle_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_manual_adjustments_account FOREIGN KEY (portfolio_id, account_id) REFERENCES accounts (portfolio_id, id) ON DELETE RESTRICT
+    KEY idx_manual_balance_changes_account (portfolio_id, account_id),
+    CONSTRAINT fk_manual_balance_changes_point FOREIGN KEY (portfolio_id, cycle_id) REFERENCES valuation_points (portfolio_id, cycle_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_manual_balance_changes_account FOREIGN KEY (portfolio_id, account_id) REFERENCES accounts (portfolio_id, id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 -- Rows are sparse: one is appended only when a nonzero calculated Asset's
@@ -566,7 +567,7 @@ CREATE TABLE calculated_asset_changes (
 
 -- +goose Down
 DROP TABLE IF EXISTS calculated_asset_changes;
-DROP TABLE IF EXISTS manual_adjustments;
+DROP TABLE IF EXISTS manual_balance_changes;
 DROP TABLE IF EXISTS boundary_events;
 DROP TABLE IF EXISTS balance_valuations;
 DROP TABLE IF EXISTS manual_revision_balances;

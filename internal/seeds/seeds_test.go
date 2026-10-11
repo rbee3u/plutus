@@ -35,8 +35,8 @@ func TestBuild(t *testing.T) {
 	if !strings.Contains(seed.SQL, "'alice'") || strings.Contains(seed.SQL, "'bob'") {
 		t.Fatal("only Alice must be seeded")
 	}
-	if len(seed.Portfolios) != 4 {
-		t.Fatal("expected four theme Portfolios")
+	if len(seed.Portfolios) != 2 {
+		t.Fatal("expected two walkthrough Portfolios")
 	}
 	if strings.Contains(seed.SQL, "INSERT INTO valuation_points") {
 		t.Fatal("seeds must not write derived points")
@@ -91,7 +91,7 @@ func TestCalendarTimeline(t *testing.T) {
 		time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC),
 		time.Date(2026, 5, 31, 10, 0, 0, 0, time.UTC),
 	} {
-		points := cycleTimes(anchor, berlin, false)
+		points := cycleTimes(anchor, berlin)
 		days := map[string]bool{}
 		for i, at := range points {
 			if i > 0 && !at.After(points[i-1]) {
@@ -130,13 +130,19 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	db := mysqltest.OpenTestDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
-	anchor := time.Now().UTC().Truncate(15 * time.Minute)
+	anchor := time.Now().UTC().Truncate(30 * time.Minute)
 	seed, err := BuildAt(anchor)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := Apply(ctx, db, seed); err != nil {
 		t.Fatalf("apply: %v", err)
+	}
+	// Recent pagination sources must not inflate the three-month archive.
+	var early, recent int
+	paginationIdentity := identityID("large-classic")
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT c.id), COUNT(DISTINCT CASE WHEN c.created_at < i.created_at THEN c.id END) FROM account_reports r JOIN accounts a ON a.portfolio_id=r.portfolio_id AND a.id=r.account_id JOIN identities i ON i.portfolio_id=a.portfolio_id AND i.id=a.identity_id JOIN collection_cycles c ON c.portfolio_id=r.portfolio_id AND c.id=r.cycle_id WHERE i.id=?", paginationIdentity[:]).Scan(&recent, &early); err != nil || early != 0 || recent < 2 || recent > 3 {
+		t.Fatalf("pagination history: cycles=%d before-creation=%d: %v", recent, early, err)
 	}
 	assertSequentialHistory(ctx, t, db, seed)
 	registry := adapters.NewRegistry()
@@ -157,7 +163,7 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	queue := cycles.NewService(db)
 	assets := catalog.NewService(db)
 	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, RetryDelays: []time.Duration{}})
-	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge, PortfolioAliceLarge} {
+	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge} {
 		cycle, _, err := queue.Enqueue(ctx, p, cycles.TriggerUser)
 		if err != nil {
 			t.Fatal(err)
@@ -184,15 +190,6 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 			t.Fatalf("%s Connection: %s instead of %s", d.ID, stored.Connection.Status, d.Connection)
 		}
 	}
-	scheduled, err := queue.ListForScheduling(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range scheduled {
-		if p.PortfolioID == PortfolioAliceEmpty {
-			t.Fatal("empty Portfolio must not start collecting")
-		}
-	}
 }
 
 func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, anchor time.Time) {
@@ -200,7 +197,6 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	v := financial.NewService(db, valuation.NewService(db))
 	main := financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
 	edge := financial.PortfolioContext{ID: PortfolioAliceEdge, Timezone: "Europe/Berlin"}
-	large := financial.PortfolioContext{ID: PortfolioAliceLarge, Timezone: "UTC"}
 	overview, err := v.Overview(ctx, main)
 	if err != nil {
 		t.Fatal(err)
@@ -222,14 +218,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if len(earn.Items) == 0 {
 		t.Fatal("Earn details lost")
 	}
-	empty, err := v.Overview(ctx, financial.PortfolioContext{ID: PortfolioAliceEmpty, Timezone: "Asia/Shanghai"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if empty.Point != nil {
-		t.Fatal("empty Portfolio must have no point")
-	}
-	assertLargePages(ctx, t, db, large)
+	assertLargePages(ctx, t, db, main)
 	closes, err := v.PeriodCloses(ctx, edge, financial.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
 	if err != nil {
 		t.Fatal(err)

@@ -8,21 +8,224 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
-const deleteAccountReport = `-- name: DeleteAccountReport :exec
-DELETE FROM account_reports WHERE portfolio_id = ? AND id = ?
+const advanceHistoryBoundary = `-- name: AdvanceHistoryBoundary :exec
+UPDATE portfolios SET history_before = ?
+WHERE id = ? AND (history_before IS NULL OR history_before < ?)
 `
 
-type DeleteAccountReportParams struct {
-	PortfolioID []byte
-	ID          []byte
+type AdvanceHistoryBoundaryParams struct {
+	Before sql.NullTime
+	ID     []byte
 }
 
-func (q *Queries) DeleteAccountReport(ctx context.Context, arg DeleteAccountReportParams) error {
-	_, err := q.db.ExecContext(ctx, deleteAccountReport, arg.PortfolioID, arg.ID)
+// The persisted boundary hides internal predecessors after cleanup starts and
+// never moves backward after timezone edits or a clock correction.
+func (q *Queries) AdvanceHistoryBoundary(ctx context.Context, arg AdvanceHistoryBoundaryParams) error {
+	_, err := q.db.ExecContext(ctx, advanceHistoryBoundary, arg.Before, arg.ID, arg.Before)
 	return err
+}
+
+const deleteEmptyAccountReports = `-- name: DeleteEmptyAccountReports :exec
+DELETE FROM account_reports
+WHERE account_reports.portfolio_id = ? AND account_reports.id IN (/*SLICE:ids*/?)
+  AND NOT EXISTS(SELECT 1 FROM balances b WHERE b.portfolio_id = account_reports.portfolio_id AND b.report_id = account_reports.id)
+  AND NOT EXISTS(SELECT 1 FROM futures_positions f WHERE f.portfolio_id = account_reports.portfolio_id AND f.report_id = account_reports.id)
+  AND NOT EXISTS(SELECT 1 FROM earn_positions e WHERE e.portfolio_id = account_reports.portfolio_id AND e.report_id = account_reports.id)
+  AND NOT EXISTS(SELECT 1 FROM dual_positions d WHERE d.portfolio_id = account_reports.portfolio_id AND d.report_id = account_reports.id)
+`
+
+type DeleteEmptyAccountReportsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+// The page is already pin-checked under the Portfolio lock. A large report can
+// need several visits, so remove only parents whose children are all gone.
+func (q *Queries) DeleteEmptyAccountReports(ctx context.Context, arg DeleteEmptyAccountReportsParams) error {
+	query := deleteEmptyAccountReports
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
+}
+
+const deleteEmptyHistoricalPoints = `-- name: DeleteEmptyHistoricalPoints :execrows
+DELETE FROM valuation_points
+WHERE valuation_points.portfolio_id = ? AND valuation_points.cycle_id IN (/*SLICE:ids*/?) AND detail_state = 'expired'
+  AND NOT EXISTS(SELECT 1 FROM manual_balance_changes m WHERE m.portfolio_id = valuation_points.portfolio_id AND m.cycle_id = valuation_points.cycle_id)
+  AND NOT EXISTS(SELECT 1 FROM calculated_asset_changes c WHERE c.portfolio_id = valuation_points.portfolio_id AND c.cycle_id = valuation_points.cycle_id)
+  AND NOT EXISTS(SELECT 1 FROM boundary_events e WHERE e.portfolio_id = valuation_points.portfolio_id AND e.cycle_id = valuation_points.cycle_id)
+  AND NOT EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = valuation_points.portfolio_id AND v.cycle_id = valuation_points.cycle_id)
+`
+
+type DeleteEmptyHistoricalPointsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteEmptyHistoricalPoints(ctx context.Context, arg DeleteEmptyHistoricalPointsParams) (int64, error) {
+	query := deleteEmptyHistoricalPoints
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteExpiredAuditEvents = `-- name: DeleteExpiredAuditEvents :execrows
+DELETE FROM audit_events WHERE portfolio_id = ? AND occurred_at < ? LIMIT 1000
+`
+
+type DeleteExpiredAuditEventsParams struct {
+	PortfolioID []byte
+	Before      time.Time
+}
+
+func (q *Queries) DeleteExpiredAuditEvents(ctx context.Context, arg DeleteExpiredAuditEventsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredAuditEvents, arg.PortfolioID, arg.Before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteExpiredBoundaryEvents = `-- name: DeleteExpiredBoundaryEvents :execrows
+DELETE FROM boundary_events WHERE portfolio_id = ? AND cycle_id IN (/*SLICE:ids*/?) LIMIT 1000
+`
+
+type DeleteExpiredBoundaryEventsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteExpiredBoundaryEvents(ctx context.Context, arg DeleteExpiredBoundaryEventsParams) (int64, error) {
+	query := deleteExpiredBoundaryEvents
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteExpiredCalculatedChanges = `-- name: DeleteExpiredCalculatedChanges :execrows
+DELETE FROM calculated_asset_changes WHERE portfolio_id = ? AND cycle_id IN (/*SLICE:ids*/?) LIMIT 1000
+`
+
+type DeleteExpiredCalculatedChangesParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteExpiredCalculatedChanges(ctx context.Context, arg DeleteExpiredCalculatedChangesParams) (int64, error) {
+	query := deleteExpiredCalculatedChanges
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteExpiredCapitalFlows = `-- name: DeleteExpiredCapitalFlows :execrows
+DELETE FROM capital_flows WHERE portfolio_id = ? AND effective_at < ? LIMIT 1000
+`
+
+type DeleteExpiredCapitalFlowsParams struct {
+	PortfolioID []byte
+	Before      time.Time
+}
+
+// Flows after the opening point still contribute to the first retained interval.
+func (q *Queries) DeleteExpiredCapitalFlows(ctx context.Context, arg DeleteExpiredCapitalFlowsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredCapitalFlows, arg.PortfolioID, arg.Before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteExpiredExclusionVersion = `-- name: DeleteExpiredExclusionVersion :exec
+DELETE FROM asset_exclusion_versions WHERE portfolio_id = ? AND asset_id = ? AND version = ?
+`
+
+type DeleteExpiredExclusionVersionParams struct {
+	PortfolioID []byte
+	AssetID     []byte
+	Version     uint64
+}
+
+func (q *Queries) DeleteExpiredExclusionVersion(ctx context.Context, arg DeleteExpiredExclusionVersionParams) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredExclusionVersion, arg.PortfolioID, arg.AssetID, arg.Version)
+	return err
+}
+
+const deleteExpiredManualChanges = `-- name: DeleteExpiredManualChanges :execrows
+DELETE FROM manual_balance_changes WHERE portfolio_id = ? AND cycle_id IN (/*SLICE:ids*/?) LIMIT 1000
+`
+
+type DeleteExpiredManualChangesParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteExpiredManualChanges(ctx context.Context, arg DeleteExpiredManualChangesParams) (int64, error) {
+	query := deleteExpiredManualChanges
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const deleteManualRevision = `-- name: DeleteManualRevision :exec
@@ -40,9 +243,9 @@ func (q *Queries) DeleteManualRevision(ctx context.Context, arg DeleteManualRevi
 	return err
 }
 
-const deleteUnpinnedPriceObservation = `-- name: DeleteUnpinnedPriceObservation :exec
+const deleteUnpinnedPriceObservations = `-- name: DeleteUnpinnedPriceObservations :exec
 DELETE FROM price_observations
-WHERE price_observations.portfolio_id = ? AND price_observations.id = ? AND price_observations.daily_anchor = FALSE
+WHERE price_observations.portfolio_id = ? AND price_observations.id IN (/*SLICE:ids*/?) AND (price_observations.daily_anchor = FALSE OR price_observations.retrieved_at < ?)
   AND NOT EXISTS(SELECT 1 FROM balance_valuations b WHERE b.portfolio_id = price_observations.portfolio_id AND b.price_observation_id = price_observations.id)
   AND NOT EXISTS(SELECT 1 FROM capital_flows f WHERE f.portfolio_id = price_observations.portfolio_id AND f.price_observation_id = price_observations.id)
   AND NOT EXISTS(
@@ -58,9 +261,10 @@ WHERE price_observations.portfolio_id = ? AND price_observations.id = ? AND pric
       AND price_observations.price_at BETWEEN DATE_SUB(latest.recorded_at, INTERVAL 24 HOUR) AND latest.recorded_at)
 `
 
-type DeleteUnpinnedPriceObservationParams struct {
-	PortfolioID []byte
-	ID          []byte
+type DeleteUnpinnedPriceObservationsParams struct {
+	PortfolioID   []byte
+	Ids           [][]byte
+	HistoryBefore time.Time
 }
 
 // Preserve adopted prices and the source-time quote window of every Account's
@@ -68,9 +272,173 @@ type DeleteUnpinnedPriceObservationParams struct {
 // can adopt a new mapping. Grouping by the full fallback-index prefix lets
 // MySQL skip-scan one entry per Account; a correlated latest-report lookup
 // rescans each Account's report history for every candidate.
-func (q *Queries) DeleteUnpinnedPriceObservation(ctx context.Context, arg DeleteUnpinnedPriceObservationParams) error {
-	_, err := q.db.ExecContext(ctx, deleteUnpinnedPriceObservation, arg.PortfolioID, arg.ID, arg.PortfolioID)
+func (q *Queries) DeleteUnpinnedPriceObservations(ctx context.Context, arg DeleteUnpinnedPriceObservationsParams) error {
+	query := deleteUnpinnedPriceObservations
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.HistoryBefore)
+	queryParams = append(queryParams, arg.PortfolioID)
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
 	return err
+}
+
+const deleteUnreferencedHistoricalCycles = `-- name: DeleteUnreferencedHistoricalCycles :execrows
+DELETE FROM collection_cycles
+WHERE collection_cycles.portfolio_id = ? AND collection_cycles.id IN (/*SLICE:ids*/?) AND status IN ('succeeded', 'failed')
+  AND NOT EXISTS(SELECT 1 FROM valuation_points p WHERE p.portfolio_id = collection_cycles.portfolio_id AND p.cycle_id = collection_cycles.id)
+  AND NOT EXISTS(SELECT 1 FROM account_reports r WHERE r.portfolio_id = collection_cycles.portfolio_id AND r.cycle_id = collection_cycles.id)
+`
+
+type DeleteUnreferencedHistoricalCyclesParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteUnreferencedHistoricalCycles(ctx context.Context, arg DeleteUnreferencedHistoricalCyclesParams) (int64, error) {
+	query := deleteUnreferencedHistoricalCycles
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteUnusedAssetChanges = `-- name: DeleteUnusedAssetChanges :execrows
+DELETE FROM calculated_asset_changes WHERE portfolio_id = ? AND asset_id IN (/*SLICE:ids*/?) LIMIT 1000
+`
+
+type DeleteUnusedAssetChangesParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteUnusedAssetChanges(ctx context.Context, arg DeleteUnusedAssetChangesParams) (int64, error) {
+	query := deleteUnusedAssetChanges
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteUnusedHistoricalAssets = `-- name: DeleteUnusedHistoricalAssets :execrows
+DELETE FROM assets WHERE assets.portfolio_id = ? AND assets.id IN (/*SLICE:ids*/?)
+  AND NOT EXISTS(SELECT 1 FROM calculated_asset_changes c WHERE c.portfolio_id = assets.portfolio_id AND c.asset_id = assets.id)
+`
+
+type DeleteUnusedHistoricalAssetsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) DeleteUnusedHistoricalAssets(ctx context.Context, arg DeleteUnusedHistoricalAssetsParams) (int64, error) {
+	query := deleteUnusedHistoricalAssets
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteUnusedHistoricalContracts = `-- name: DeleteUnusedHistoricalContracts :execrows
+DELETE FROM futures_contracts
+WHERE futures_contracts.portfolio_id = ? AND last_observed_at < ?
+  AND NOT EXISTS(SELECT 1 FROM futures_positions p WHERE p.portfolio_id = futures_contracts.portfolio_id AND p.futures_contract_id = futures_contracts.id)
+LIMIT 64
+`
+
+type DeleteUnusedHistoricalContractsParams struct {
+	PortfolioID []byte
+	Before      time.Time
+}
+
+func (q *Queries) DeleteUnusedHistoricalContracts(ctx context.Context, arg DeleteUnusedHistoricalContractsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteUnusedHistoricalContracts, arg.PortfolioID, arg.Before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const expireEmptyPoint = `-- name: ExpireEmptyPoint :exec
+UPDATE valuation_points SET detail_state = 'expired'
+WHERE valuation_points.portfolio_id = ? AND valuation_points.cycle_id = ? AND valuation_points.detail_state = 'pruning'
+  AND NOT EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = valuation_points.portfolio_id AND v.cycle_id = valuation_points.cycle_id)
+`
+
+type ExpireEmptyPointParams struct {
+	PortfolioID []byte
+	CycleID     []byte
+}
+
+func (q *Queries) ExpireEmptyPoint(ctx context.Context, arg ExpireEmptyPointParams) error {
+	_, err := q.db.ExecContext(ctx, expireEmptyPoint, arg.PortfolioID, arg.CycleID)
+	return err
+}
+
+const getHistoryBoundary = `-- name: GetHistoryBoundary :one
+SELECT p.cycle_id, p.evaluated_at, c.created_at FROM valuation_points p FORCE INDEX (idx_valuation_points_timeline)
+JOIN collection_cycles c ON c.portfolio_id = p.portfolio_id AND c.id = p.cycle_id
+WHERE p.portfolio_id = ? AND p.evaluated_at < ?
+ORDER BY p.evaluated_at DESC, p.cycle_id DESC LIMIT 1
+`
+
+type GetHistoryBoundaryParams struct {
+	PortfolioID []byte
+	Before      time.Time
+}
+
+type GetHistoryBoundaryRow struct {
+	CycleID     []byte
+	EvaluatedAt time.Time
+	CreatedAt   time.Time
+}
+
+// The last point before the window supplies its opening value. Asset state
+// predecessors can live on still earlier points and remain as sparse evidence.
+func (q *Queries) GetHistoryBoundary(ctx context.Context, arg GetHistoryBoundaryParams) (GetHistoryBoundaryRow, error) {
+	row := q.db.QueryRowContext(ctx, getHistoryBoundary, arg.PortfolioID, arg.Before)
+	var i GetHistoryBoundaryRow
+	err := row.Scan(&i.CycleID, &i.EvaluatedAt, &i.CreatedAt)
+	return i, err
 }
 
 const getLatestFullPointBefore = `-- name: GetLatestFullPointBefore :one
@@ -189,44 +557,322 @@ func (q *Queries) HasActiveCollectionCycle(ctx context.Context, portfolioID []by
 	return active, err
 }
 
-const isReportPinned = `-- name: IsReportPinned :one
-SELECT (
-    EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = r.portfolio_id AND v.account_id = r.account_id AND v.source_report_id = r.id)
-    OR EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = r.portfolio_id AND v.cycle_id = r.cycle_id AND v.account_id = r.account_id)
-    OR (r.status = 'succeeded' AND NOT EXISTS(
-        SELECT 1 FROM account_reports n
-        WHERE n.portfolio_id = r.portfolio_id AND n.account_id = r.account_id AND n.status = 'succeeded'
-          AND (n.recorded_at > r.recorded_at OR (n.recorded_at = r.recorded_at AND n.id > r.id))))
-) AS pinned
-FROM account_reports r WHERE r.portfolio_id = ? AND r.id = ?
+const listEarlierRetainedPolicyBoundaries = `-- name: ListEarlierRetainedPolicyBoundaries :many
+SELECT c.created_at FROM collection_cycles c
+WHERE c.portfolio_id = ? AND c.created_at < ?
+  AND EXISTS (SELECT 1 FROM valuation_points p
+    WHERE p.portfolio_id = c.portfolio_id AND p.cycle_id = c.id
+      AND p.evaluated_at >= ?)
+ORDER BY c.created_at, c.id LIMIT 1
 `
 
-type IsReportPinnedParams struct {
-	PortfolioID []byte
-	ID          []byte
+type ListEarlierRetainedPolicyBoundariesParams struct {
+	PortfolioID   []byte
+	Before        time.Time
+	HistoryBefore time.Time
 }
 
-// A report stays while a retained valuation references it, as its own cycle's
-// report, or while it is the Account's last successful report.
-func (q *Queries) IsReportPinned(ctx context.Context, arg IsReportPinnedParams) (sql.NullBool, error) {
-	row := q.db.QueryRowContext(ctx, isReportPinned, arg.PortfolioID, arg.ID)
-	var pinned sql.NullBool
-	err := row.Scan(&pinned)
-	return pinned, err
+// A retained Cycle can start before the window and finish inside it.
+func (q *Queries) ListEarlierRetainedPolicyBoundaries(ctx context.Context, arg ListEarlierRetainedPolicyBoundariesParams) ([]time.Time, error) {
+	rows, err := q.db.QueryContext(ctx, listEarlierRetainedPolicyBoundaries, arg.PortfolioID, arg.Before, arg.HistoryBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []time.Time{}
+	for rows.Next() {
+		var created_at time.Time
+		if err := rows.Scan(&created_at); err != nil {
+			return nil, err
+		}
+		items = append(items, created_at)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-const listPriceRetentionCandidates = `-- name: ListPriceRetentionCandidates :many
-SELECT id, retrieved_at AS at FROM price_observations
-WHERE portfolio_id = ? AND daily_anchor = FALSE AND retrieved_at < ?
-  AND (retrieved_at > ? OR (retrieved_at = ? AND id > ?))
-ORDER BY retrieved_at, id LIMIT 64
+const listExpiredCycleCandidates = `-- name: ListExpiredCycleCandidates :many
+SELECT id, created_at AS at FROM collection_cycles FORCE INDEX (idx_collection_cycles_timeline)
+WHERE portfolio_id = ? AND created_at < ?
+  AND (created_at > ? OR (created_at = ? AND id > ?))
+ORDER BY created_at, id LIMIT 64
 `
 
-type ListPriceRetentionCandidatesParams struct {
+type ListExpiredCycleCandidatesParams struct {
 	PortfolioID []byte
 	Before      time.Time
 	AfterAt     time.Time
 	AfterID     []byte
+}
+
+type ListExpiredCycleCandidatesRow struct {
+	ID []byte
+	At time.Time
+}
+
+// Cycles also remain while a stale report still needs its owning cycle.
+func (q *Queries) ListExpiredCycleCandidates(ctx context.Context, arg ListExpiredCycleCandidatesParams) ([]ListExpiredCycleCandidatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listExpiredCycleCandidates,
+		arg.PortfolioID,
+		arg.Before,
+		arg.AfterAt,
+		arg.AfterAt,
+		arg.AfterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExpiredCycleCandidatesRow{}
+	for rows.Next() {
+		var i ListExpiredCycleCandidatesRow
+		if err := rows.Scan(&i.ID, &i.At); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExpiredExclusionVersions = `-- name: ListExpiredExclusionVersions :many
+SELECT e.asset_id, e.version FROM asset_exclusion_versions e
+WHERE e.portfolio_id = ? AND e.effective_at < ?
+  AND EXISTS(SELECT 1 FROM asset_exclusion_versions n WHERE n.portfolio_id = e.portfolio_id AND n.asset_id = e.asset_id AND n.version > e.version AND n.effective_at < ?)
+  AND NOT EXISTS(SELECT 1 FROM audit_events a WHERE a.portfolio_id = e.portfolio_id AND a.resource_id = e.asset_id AND a.resource_type = 'asset'
+    AND a.action IN ('catalog.asset.exclude', 'catalog.asset.restore')
+    AND (CAST(JSON_UNQUOTE(JSON_EXTRACT(a.before_json, '$.version')) AS UNSIGNED) = e.version OR CAST(JSON_UNQUOTE(JSON_EXTRACT(a.after_json, '$.version')) AS UNSIGNED) = e.version))
+ORDER BY e.asset_id, e.version LIMIT 64
+`
+
+type ListExpiredExclusionVersionsParams struct {
+	PortfolioID []byte
+	Before      time.Time
+}
+
+type ListExpiredExclusionVersionsRow struct {
+	AssetID []byte
+	Version uint64
+}
+
+// Version history keeps the opening state and every version used by a retained
+// audit. In particular, a restored rule must not reset its version counter.
+func (q *Queries) ListExpiredExclusionVersions(ctx context.Context, arg ListExpiredExclusionVersionsParams) ([]ListExpiredExclusionVersionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listExpiredExclusionVersions, arg.PortfolioID, arg.Before, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExpiredExclusionVersionsRow{}
+	for rows.Next() {
+		var i ListExpiredExclusionVersionsRow
+		if err := rows.Scan(&i.AssetID, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExpiredPointCandidates = `-- name: ListExpiredPointCandidates :many
+SELECT cycle_id AS id, evaluated_at AS at FROM valuation_points FORCE INDEX (idx_valuation_points_timeline)
+WHERE portfolio_id = ? AND evaluated_at < ?
+  AND (evaluated_at > ? OR (evaluated_at = ? AND cycle_id > ?))
+ORDER BY evaluated_at, cycle_id LIMIT 64
+`
+
+type ListExpiredPointCandidatesParams struct {
+	PortfolioID []byte
+	Before      time.Time
+	AfterAt     time.Time
+	AfterID     []byte
+}
+
+type ListExpiredPointCandidatesRow struct {
+	ID []byte
+	At time.Time
+}
+
+func (q *Queries) ListExpiredPointCandidates(ctx context.Context, arg ListExpiredPointCandidatesParams) ([]ListExpiredPointCandidatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listExpiredPointCandidates,
+		arg.PortfolioID,
+		arg.Before,
+		arg.AfterAt,
+		arg.AfterAt,
+		arg.AfterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExpiredPointCandidatesRow{}
+	for rows.Next() {
+		var i ListExpiredPointCandidatesRow
+		if err := rows.Scan(&i.ID, &i.At); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPinnedHistoricalPoints = `-- name: ListPinnedHistoricalPoints :many
+SELECT p.cycle_id FROM valuation_points p
+WHERE p.portfolio_id = ? AND p.cycle_id IN (/*SLICE:ids*/?)
+  AND (p.cycle_id = ? OR EXISTS (
+    SELECT 1 FROM calculated_asset_changes c
+    WHERE c.portfolio_id = p.portfolio_id AND c.cycle_id = p.cycle_id
+      AND c.cycle_id = (
+        SELECT prior.cycle_id FROM calculated_asset_changes prior
+        WHERE prior.portfolio_id = c.portfolio_id AND prior.asset_id = c.asset_id
+          AND (prior.evaluated_at < ? OR (prior.evaluated_at = ? AND prior.cycle_id <= ?))
+        ORDER BY prior.portfolio_id DESC, prior.asset_id DESC, prior.evaluated_at DESC, prior.cycle_id DESC LIMIT 1
+      )
+  ))
+`
+
+type ListPinnedHistoricalPointsParams struct {
+	PortfolioID     []byte
+	Ids             [][]byte
+	BoundaryCycleID []byte
+	BoundaryAt      time.Time
+}
+
+func (q *Queries) ListPinnedHistoricalPoints(ctx context.Context, arg ListPinnedHistoricalPointsParams) ([][]byte, error) {
+	query := listPinnedHistoricalPoints
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.BoundaryCycleID)
+	queryParams = append(queryParams, arg.BoundaryAt)
+	queryParams = append(queryParams, arg.BoundaryAt)
+	queryParams = append(queryParams, arg.BoundaryCycleID)
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var cycle_id []byte
+		if err := rows.Scan(&cycle_id); err != nil {
+			return nil, err
+		}
+		items = append(items, cycle_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPinnedReportIDs = `-- name: ListPinnedReportIDs :many
+SELECT r.id FROM account_reports r
+WHERE r.portfolio_id = ? AND r.id IN (/*SLICE:ids*/?) AND (
+    EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = r.portfolio_id AND v.account_id = r.account_id AND v.source_report_id = r.id)
+    OR EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = r.portfolio_id AND v.cycle_id = r.cycle_id AND v.account_id = r.account_id)
+    OR (r.status = 'succeeded' AND r.id = (
+        SELECT n.id FROM account_reports n FORCE INDEX (idx_account_reports_fallback)
+        WHERE n.portfolio_id = r.portfolio_id AND n.account_id = r.account_id AND n.status = 'succeeded'
+        ORDER BY n.portfolio_id DESC, n.account_id DESC, n.status DESC, n.recorded_at DESC, n.id DESC LIMIT 1))
+)
+`
+
+type ListPinnedReportIDsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+// A report stays while a retained valuation references it, as its own cycle's
+// report, or while it is the Account's last successful report.
+// The complete fallback-index order makes the correlated last-success lookup
+// a reverse one-row read instead of scanning and sorting the Account history.
+func (q *Queries) ListPinnedReportIDs(ctx context.Context, arg ListPinnedReportIDsParams) ([][]byte, error) {
+	query := listPinnedReportIDs
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var id []byte
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPriceRetentionCandidates = `-- name: ListPriceRetentionCandidates :many
+SELECT candidates.id, candidates.at FROM (
+    (SELECT p.id, p.retrieved_at AS at FROM price_observations p FORCE INDEX (idx_price_observations_retention)
+     WHERE p.portfolio_id = ? AND p.daily_anchor = FALSE AND p.retrieved_at < ?
+       AND (p.retrieved_at > ? OR (p.retrieved_at = ? AND p.id > ?))
+     ORDER BY p.retrieved_at, p.id LIMIT 64)
+    UNION ALL
+    (SELECT p.id, p.retrieved_at AS at FROM price_observations p FORCE INDEX (idx_price_observations_retention)
+     WHERE p.portfolio_id = ? AND p.daily_anchor = TRUE AND p.retrieved_at < ?
+       AND (p.retrieved_at > ? OR (p.retrieved_at = ? AND p.id > ?))
+     ORDER BY p.retrieved_at, p.id LIMIT 64)
+) candidates ORDER BY candidates.at, candidates.id LIMIT 64
+`
+
+type ListPriceRetentionCandidatesParams struct {
+	PortfolioID   []byte
+	Before        time.Time
+	AfterAt       time.Time
+	AfterID       []byte
+	HistoryBefore time.Time
 }
 
 type ListPriceRetentionCandidatesRow struct {
@@ -234,10 +880,17 @@ type ListPriceRetentionCandidatesRow struct {
 	At time.Time
 }
 
+// Seek each anchor class independently using the existing retention index;
+// the final merge sorts at most 128 candidates, not the whole price archive.
 func (q *Queries) ListPriceRetentionCandidates(ctx context.Context, arg ListPriceRetentionCandidatesParams) ([]ListPriceRetentionCandidatesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPriceRetentionCandidates,
 		arg.PortfolioID,
 		arg.Before,
+		arg.AfterAt,
+		arg.AfterAt,
+		arg.AfterID,
+		arg.PortfolioID,
+		arg.HistoryBefore,
 		arg.AfterAt,
 		arg.AfterAt,
 		arg.AfterID,
@@ -263,8 +916,99 @@ func (q *Queries) ListPriceRetentionCandidates(ctx context.Context, arg ListPric
 	return items, nil
 }
 
+const listRemainingHistoricalPoints = `-- name: ListRemainingHistoricalPoints :many
+SELECT cycle_id, detail_state FROM valuation_points WHERE portfolio_id = ? AND cycle_id IN (/*SLICE:ids*/?)
+`
+
+type ListRemainingHistoricalPointsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+type ListRemainingHistoricalPointsRow struct {
+	CycleID     []byte
+	DetailState string
+}
+
+func (q *Queries) ListRemainingHistoricalPoints(ctx context.Context, arg ListRemainingHistoricalPointsParams) ([]ListRemainingHistoricalPointsRow, error) {
+	query := listRemainingHistoricalPoints
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRemainingHistoricalPointsRow{}
+	for rows.Next() {
+		var i ListRemainingHistoricalPointsRow
+		if err := rows.Scan(&i.CycleID, &i.DetailState); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRemainingReportIDs = `-- name: ListRemainingReportIDs :many
+SELECT id FROM account_reports WHERE portfolio_id = ? AND id IN (/*SLICE:ids*/?)
+`
+
+type ListRemainingReportIDsParams struct {
+	PortfolioID []byte
+	Ids         [][]byte
+}
+
+func (q *Queries) ListRemainingReportIDs(ctx context.Context, arg ListRemainingReportIDsParams) ([][]byte, error) {
+	query := listRemainingReportIDs
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var id []byte
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReportRetentionCandidates = `-- name: ListReportRetentionCandidates :many
-SELECT id, recorded_at AS at FROM account_reports
+SELECT id, recorded_at AS at FROM account_reports FORCE INDEX (idx_account_reports_retention)
 WHERE portfolio_id = ? AND recorded_at < ?
   AND (recorded_at > ? OR (recorded_at = ? AND id > ?))
 ORDER BY recorded_at, id LIMIT 64
@@ -282,6 +1026,7 @@ type ListReportRetentionCandidatesRow struct {
 	At time.Time
 }
 
+// Seek the cursor range instead of rescanning the Portfolio's index prefix.
 func (q *Queries) ListReportRetentionCandidates(ctx context.Context, arg ListReportRetentionCandidatesParams) ([]ListReportRetentionCandidatesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listReportRetentionCandidates,
 		arg.PortfolioID,
@@ -301,6 +1046,49 @@ func (q *Queries) ListReportRetentionCandidates(ctx context.Context, arg ListRep
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnusedHistoricalAssets = `-- name: ListUnusedHistoricalAssets :many
+SELECT a.id FROM assets a
+WHERE a.portfolio_id = ? AND a.last_observed_at < ? AND a.mapping_version = 1
+  AND NOT EXISTS(SELECT 1 FROM balances b WHERE b.portfolio_id = a.portfolio_id AND b.asset_id = a.id)
+  AND NOT EXISTS(SELECT 1 FROM manual_revision_balances m WHERE m.portfolio_id = a.portfolio_id AND m.asset_id = a.id)
+  AND NOT EXISTS(SELECT 1 FROM asset_exclusion_versions e WHERE e.portfolio_id = a.portfolio_id AND e.asset_id = a.id)
+  AND NOT EXISTS(SELECT 1 FROM calculated_asset_changes c WHERE c.portfolio_id = a.portfolio_id AND c.asset_id = a.id AND c.evaluated_at >= ?)
+  AND COALESCE((SELECT latest.treatment FROM calculated_asset_changes latest WHERE latest.portfolio_id = a.portfolio_id AND latest.asset_id = a.id
+      ORDER BY latest.portfolio_id DESC, latest.asset_id DESC, latest.evaluated_at DESC, latest.cycle_id DESC LIMIT 1), 'absent') = 'absent'
+ORDER BY a.id LIMIT 64
+`
+
+type ListUnusedHistoricalAssetsParams struct {
+	PortfolioID []byte
+	Before      time.Time
+	StateBefore time.Time
+}
+
+// Default catalog entries may expire; explicit mappings and policy versions
+// are current configuration, even when the Asset is not currently held.
+func (q *Queries) ListUnusedHistoricalAssets(ctx context.Context, arg ListUnusedHistoricalAssetsParams) ([][]byte, error) {
+	rows, err := q.db.QueryContext(ctx, listUnusedHistoricalAssets, arg.PortfolioID, arg.Before, arg.StateBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := [][]byte{}
+	for rows.Next() {
+		var id []byte
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -351,6 +1139,38 @@ func (q *Queries) MarkFullPointsPruningBefore(ctx context.Context, arg MarkFullP
 	return err
 }
 
+const markHistoricalDetailsPruning = `-- name: MarkHistoricalDetailsPruning :execrows
+UPDATE valuation_points SET detail_state = 'pruning'
+WHERE portfolio_id = ? AND cycle_id IN (/*SLICE:ids*/?) AND cycle_id <> ? AND detail_state IN ('full', 'daily')
+`
+
+type MarkHistoricalDetailsPruningParams struct {
+	PortfolioID     []byte
+	Ids             [][]byte
+	BoundaryCycleID []byte
+}
+
+// Even pinned pre-window summaries no longer need daily snapshot detail.
+func (q *Queries) MarkHistoricalDetailsPruning(ctx context.Context, arg MarkHistoricalDetailsPruningParams) (int64, error) {
+	query := markHistoricalDetailsPruning
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.BoundaryCycleID)
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const pruneManualRevisionBalances = `-- name: PruneManualRevisionBalances :execrows
 DELETE FROM manual_revision_balances
 WHERE portfolio_id = ? AND account_id = ? AND revision_number = ? LIMIT 1000
@@ -371,7 +1191,11 @@ func (q *Queries) PruneManualRevisionBalances(ctx context.Context, arg PruneManu
 }
 
 const prunePointAccountValuations = `-- name: PrunePointAccountValuations :execrows
-DELETE FROM account_valuations WHERE portfolio_id = ? AND cycle_id = ? LIMIT 1000
+DELETE FROM account_valuations
+WHERE account_valuations.portfolio_id = ? AND account_valuations.cycle_id = ?
+  AND NOT EXISTS(SELECT 1 FROM balance_valuations b
+      WHERE b.portfolio_id = account_valuations.portfolio_id AND b.cycle_id = account_valuations.cycle_id AND b.account_id = account_valuations.account_id)
+LIMIT 1000
 `
 
 type PrunePointAccountValuationsParams struct {
@@ -405,16 +1229,27 @@ func (q *Queries) PrunePointBalanceValuations(ctx context.Context, arg PrunePoin
 }
 
 const pruneReportBalances = `-- name: PruneReportBalances :execrows
-DELETE FROM balances WHERE portfolio_id = ? AND report_id = ? LIMIT 1000
+DELETE FROM balances WHERE portfolio_id = ? AND report_id IN (/*SLICE:ids*/?) LIMIT 1000
 `
 
 type PruneReportBalancesParams struct {
 	PortfolioID []byte
-	ReportID    []byte
+	Ids         [][]byte
 }
 
 func (q *Queries) PruneReportBalances(ctx context.Context, arg PruneReportBalancesParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, pruneReportBalances, arg.PortfolioID, arg.ReportID)
+	query := pruneReportBalances
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
 	if err != nil {
 		return 0, err
 	}
@@ -422,16 +1257,27 @@ func (q *Queries) PruneReportBalances(ctx context.Context, arg PruneReportBalanc
 }
 
 const pruneReportDualPositions = `-- name: PruneReportDualPositions :execrows
-DELETE FROM dual_positions WHERE portfolio_id = ? AND report_id = ? LIMIT 1000
+DELETE FROM dual_positions WHERE portfolio_id = ? AND report_id IN (/*SLICE:ids*/?) LIMIT 1000
 `
 
 type PruneReportDualPositionsParams struct {
 	PortfolioID []byte
-	ReportID    []byte
+	Ids         [][]byte
 }
 
 func (q *Queries) PruneReportDualPositions(ctx context.Context, arg PruneReportDualPositionsParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, pruneReportDualPositions, arg.PortfolioID, arg.ReportID)
+	query := pruneReportDualPositions
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
 	if err != nil {
 		return 0, err
 	}
@@ -439,16 +1285,27 @@ func (q *Queries) PruneReportDualPositions(ctx context.Context, arg PruneReportD
 }
 
 const pruneReportEarnPositions = `-- name: PruneReportEarnPositions :execrows
-DELETE FROM earn_positions WHERE portfolio_id = ? AND report_id = ? LIMIT 1000
+DELETE FROM earn_positions WHERE portfolio_id = ? AND report_id IN (/*SLICE:ids*/?) LIMIT 1000
 `
 
 type PruneReportEarnPositionsParams struct {
 	PortfolioID []byte
-	ReportID    []byte
+	Ids         [][]byte
 }
 
 func (q *Queries) PruneReportEarnPositions(ctx context.Context, arg PruneReportEarnPositionsParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, pruneReportEarnPositions, arg.PortfolioID, arg.ReportID)
+	query := pruneReportEarnPositions
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
 	if err != nil {
 		return 0, err
 	}
@@ -456,16 +1313,27 @@ func (q *Queries) PruneReportEarnPositions(ctx context.Context, arg PruneReportE
 }
 
 const pruneReportFuturesPositions = `-- name: PruneReportFuturesPositions :execrows
-DELETE FROM futures_positions WHERE portfolio_id = ? AND report_id = ? LIMIT 1000
+DELETE FROM futures_positions WHERE portfolio_id = ? AND report_id IN (/*SLICE:ids*/?) LIMIT 1000
 `
 
 type PruneReportFuturesPositionsParams struct {
 	PortfolioID []byte
-	ReportID    []byte
+	Ids         [][]byte
 }
 
 func (q *Queries) PruneReportFuturesPositions(ctx context.Context, arg PruneReportFuturesPositionsParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, pruneReportFuturesPositions, arg.PortfolioID, arg.ReportID)
+	query := pruneReportFuturesPositions
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	result, err := q.db.ExecContext(ctx, query, queryParams...)
 	if err != nil {
 		return 0, err
 	}

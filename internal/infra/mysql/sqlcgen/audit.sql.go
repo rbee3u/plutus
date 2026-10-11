@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
@@ -115,6 +116,71 @@ func (q *Queries) ListAuditEventsByPortfolio(ctx context.Context, arg ListAuditE
 			&i.AfterJson,
 			&i.MetadataJson,
 			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAuditExclusionVersions = `-- name: ListAuditExclusionVersions :many
+SELECT e.id AS event_id, v.version, v.excluded, v.reason, v.effective_at
+FROM audit_events e
+JOIN asset_exclusion_versions v ON v.portfolio_id = e.portfolio_id AND v.asset_id = e.resource_id
+  AND (v.version = CAST(JSON_UNQUOTE(JSON_EXTRACT(e.before_json, '$.version')) AS UNSIGNED)
+    OR v.version = CAST(JSON_UNQUOTE(JSON_EXTRACT(e.after_json, '$.version')) AS UNSIGNED))
+WHERE e.portfolio_id = ? AND e.id IN (/*SLICE:event_ids*/?)
+  AND e.resource_type = 'asset' AND e.action IN ('catalog.asset.exclude', 'catalog.asset.restore')
+`
+
+type ListAuditExclusionVersionsParams struct {
+	PortfolioID []byte
+	EventIds    [][]byte
+}
+
+type ListAuditExclusionVersionsRow struct {
+	EventID     []byte
+	Version     uint64
+	Excluded    bool
+	Reason      sql.NullString
+	EffectiveAt time.Time
+}
+
+// Audit pages resolve only their referenced immutable rules, never today's rule.
+// Version zero denotes the implicit initial, non-excluded state.
+func (q *Queries) ListAuditExclusionVersions(ctx context.Context, arg ListAuditExclusionVersionsParams) ([]ListAuditExclusionVersionsRow, error) {
+	query := listAuditExclusionVersions
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.EventIds) > 0 {
+		for _, v := range arg.EventIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:event_ids*/?", strings.Repeat(",?", len(arg.EventIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:event_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAuditExclusionVersionsRow{}
+	for rows.Next() {
+		var i ListAuditExclusionVersionsRow
+		if err := rows.Scan(
+			&i.EventID,
+			&i.Version,
+			&i.Excluded,
+			&i.Reason,
+			&i.EffectiveAt,
 		); err != nil {
 			return nil, err
 		}

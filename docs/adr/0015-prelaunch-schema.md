@@ -4,7 +4,7 @@ status: accepted
 
 # Prelaunch schema and retained financial provenance
 
-Each Collection Cycle row is both permanent history and its own queue entry:
+Each Collection Cycle row is both retained history and its own queue entry:
 attempts, availability, and the lease live beside status and the last error.
 Source Account Reports stay separate from their committed valuations. A Futures
 Contract is one symbol with one immutable set of observed terms; no feature
@@ -31,11 +31,18 @@ Algorithm versions remain provenance; result revisions and rebuilds add no
 meaning to an immutable result. Manual adjustments and sparse calculated Asset
 changes are stored because long-term comparisons must survive detail pruning.
 Boundary Events freeze their completeness and amount independently of expiring
-Account Valuations. Facts derivable from permanent rows, such as calculation
+Account Valuations. Facts derivable from retained rows, such as calculation
 version changes and boundary totals, are computed on read rather than copied;
 Account issues follow the detail they describe. A Balance Valuation's pricing
 method alone records policy exclusion; a copied exclusion version would restate
 it.
+
+Manual edit audits retain the single changed Asset and its old/new quantity;
+revision numbers alone become dangling explanations after detail cleanup.
+Exclusion audits instead resolve their retained version rows, avoiding a second
+copy of policy facts. Sparse calculated Asset history remains appropriate for
+mostly stable holdings; a per-point encoded Asset set would add storage and
+encoding rules without a demonstrated capacity need at this workload.
 
 All market catalogs and price observations belong to a Portfolio. Duplicating
 markets across Portfolios is intentional: local mappings, collection, retention,

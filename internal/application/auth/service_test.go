@@ -26,15 +26,15 @@ func TestNewPortfolioIntervals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(initial) != 1 || initial[0].CollectionIntervalSeconds != 900 {
-		t.Fatalf("User's first Portfolio must start at 15 minutes: %+v", initial)
+	if len(initial) != 1 || initial[0].CollectionIntervalSeconds != 1800 {
+		t.Fatalf("User's first Portfolio must start at 30 minutes: %+v", initial)
 	}
 	secondary, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{Name: "secondary", Timezone: "UTC"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if secondary.CollectionIntervalSeconds != 900 {
-		t.Fatalf("subsequent Portfolio must also start at 15 minutes: %+v", secondary)
+	if secondary.CollectionIntervalSeconds != 1800 {
+		t.Fatalf("subsequent Portfolio must also start at 30 minutes: %+v", secondary)
 	}
 	interval := 1800
 	custom, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{

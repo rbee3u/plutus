@@ -47,7 +47,7 @@ func TestLoadDefaultsWithoutFile(t *testing.T) {
 	if cfg.Server.ListenAddress != "0.0.0.0" || cfg.Server.Port != 8080 {
 		t.Fatalf("unexpected listen %s:%d", cfg.Server.ListenAddress, cfg.Server.Port)
 	}
-	if cfg.Auth.SessionCookieName() != "plutus_session" || cfg.Auth.CSRFCookieName() != "plutus_csrf" {
+	if cfg.Auth.SessionCookieName() != "plutus_session_prod" || cfg.Auth.CSRFCookieName() != "plutus_csrf_prod" {
 		t.Fatalf("cookie defaults %s %s", cfg.Auth.SessionCookieName(), cfg.Auth.CSRFCookieName())
 	}
 	if cfg.Database.DSN != "" || cfg.Crypto.HasMasterKey() {
@@ -241,7 +241,7 @@ func TestExampleTOMLLoads(t *testing.T) {
 		{"local", "0.0.0.0", "local", 8080, true, true, false},
 		{"agent", "0.0.0.0", "agent", 8081, true, true, false},
 		{"test", "0.0.0.0", "test", 8082, false, true, true},
-		{"prod", "0.0.0.0", "", 8083, false, false, true},
+		{"prod", "0.0.0.0", "prod", 8083, false, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -478,4 +478,24 @@ func mustCert(t *testing.T, notBefore, notAfter time.Time) ([]byte, []byte) {
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
 	return certPEM, keyPEM
+}
+
+func TestCookieSuffixDefaultAndExplicitOverrides(t *testing.T) {
+	for _, tc := range []struct{ name, toml, suffix string }{
+		{"omitted", "[auth]", "_prod"},
+		{"agent", `[auth]
+cookie_suffix = "agent"`, "_agent"},
+		{"explicit empty", `[auth]
+cookie_suffix = ""`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := Load(Options{Path: "plutus.toml", LookupEnv: envMap(nil), ReadFile: filesMap(map[string]string{"plutus.toml": tc.toml})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Auth.SessionCookieName() != "plutus_session"+tc.suffix || cfg.Auth.CSRFCookieName() != "plutus_csrf"+tc.suffix {
+				t.Fatalf("cookie suffix: %+v", cfg.Auth)
+			}
+		})
+	}
 }

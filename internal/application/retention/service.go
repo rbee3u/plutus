@@ -6,12 +6,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-const detailAge = 30 * 24 * time.Hour
+const (
+	detailAge  = 14 * 24 * time.Hour
+	phaseCount = 11
+)
 
 var sweepStart = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -64,7 +68,7 @@ func (s *Service) Step(ctx context.Context, now time.Time) (bool, error) {
 	id, err := sqlcgen.New(s.db).GetNextRetentionPortfolioID(ctx, nonNil(s.portfolio))
 	if errors.Is(err, sql.ErrNoRows) {
 		s.portfolio = nil
-		s.phase = (s.phase + 1) % 6
+		s.phase = (s.phase + 1) % phaseCount
 		if s.phase != 0 {
 			return false, nil
 		}
@@ -79,6 +83,13 @@ func (s *Service) Step(ctx context.Context, now time.Time) (bool, error) {
 	worked, err := s.step(ctx, id, now)
 	if err != nil {
 		s.advance(id)
+		// Cursor movement is not committed when the transaction fails.
+		prefix := fmt.Sprintf("%x/", id)
+		for key := range s.sweeps {
+			if strings.HasPrefix(key, prefix) {
+				delete(s.sweeps, key)
+			}
+		}
 		return false, err
 	}
 	s.busy = s.busy || worked
@@ -114,6 +125,15 @@ func (s *Service) step(ctx context.Context, id []byte, now time.Time) (bool, err
 	if e := s.epochs[string(id)]; !e.cutoff.Equal(cutoff) {
 		s.epochs[string(id)] = epoch{cutoff: cutoff, n: e.n + 1}
 	}
+	historyBefore := historyCutoff(now, loc)
+	if p.HistoryBefore.Valid && p.HistoryBefore.Time.After(historyBefore) {
+		historyBefore = p.HistoryBefore.Time
+	}
+	if !p.HistoryBefore.Valid || p.HistoryBefore.Time.Before(historyBefore) {
+		if err := q.AdvanceHistoryBoundary(ctx, sqlcgen.AdvanceHistoryBoundaryParams{ID: id, Before: sql.NullTime{Time: historyBefore, Valid: true}}); err != nil {
+			return false, err
+		}
+	}
 	var worked bool
 	switch s.phase {
 	case 0:
@@ -125,9 +145,19 @@ func (s *Service) step(ctx context.Context, id []byte, now time.Time) (bool, err
 	case 3:
 		worked, err = anchorPrices(ctx, q, id, cutoff, loc, p.PriceAnchorsBefore)
 	case 4:
-		worked, err = s.prunePrices(ctx, q, id, cutoff, p.PriceAnchorsBefore)
+		worked, err = s.prunePrices(ctx, q, id, cutoff, historyBefore, p.PriceAnchorsBefore)
 	case 5:
-		worked, err = pruneManual(ctx, q, id, cutoff)
+		worked, err = s.pruneManual(ctx, q, id, cutoff)
+	case 6:
+		worked, err = s.pruneHistory(ctx, q, id, historyBefore)
+	case 7:
+		worked, err = pruneHistoricalRecords(ctx, q, id, historyBefore)
+	case 8:
+		worked, err = pruneHistoricalPolicies(ctx, q, id, historyBefore)
+	case 9:
+		worked, err = s.pruneCycles(ctx, q, id, historyBefore)
+	case 10:
+		worked, err = pruneHistoricalCatalog(ctx, q, id, historyBefore)
 	}
 	if err != nil {
 		return false, err
@@ -135,7 +165,7 @@ func (s *Service) step(ctx context.Context, id []byte, now time.Time) (bool, err
 	if err := tx.Commit(); err != nil {
 		return false, err
 	}
-	if worked && (s.phase == 0 || s.phase == 1 || s.phase == 3) {
+	if worked && (s.phase == 0 || s.phase == 1 || s.phase == 3 || s.phase == 7 || s.phase == 10) {
 		s.advance(id)
 	}
 	return worked, nil
@@ -160,7 +190,7 @@ func archiveDetails(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff t
 	if end.After(cutoff) {
 		return false, nil
 	}
-	// Only full points are candidates; an existing daily anchor is permanent.
+	// Only full points are candidates; timezone edits preserve existing daily anchors.
 	anchor, err := q.GetLatestFullPointBefore(ctx, sqlcgen.GetLatestFullPointBeforeParams{PortfolioID: id, Before: end})
 	if err != nil {
 		return false, err
@@ -181,15 +211,13 @@ func prunePoint(ctx context.Context, q *sqlcgen.Queries, id []byte) (bool, error
 	}
 	// Readers hide pruning details before any children are removed. REPEATABLE
 	// READ keeps an already-open read on the complete pre-cleanup snapshot.
-	n, err := q.PrunePointBalanceValuations(ctx, sqlcgen.PrunePointBalanceValuationsParams{PortfolioID: id, CycleID: cycle})
-	if err != nil || n > 0 {
-		return true, err
+	if _, err := q.PrunePointBalanceValuations(ctx, sqlcgen.PrunePointBalanceValuationsParams{PortfolioID: id, CycleID: cycle}); err != nil {
+		return false, err
 	}
-	n, err = q.PrunePointAccountValuations(ctx, sqlcgen.PrunePointAccountValuationsParams{PortfolioID: id, CycleID: cycle})
-	if err != nil || n > 0 {
-		return true, err
+	if _, err := q.PrunePointAccountValuations(ctx, sqlcgen.PrunePointAccountValuationsParams{PortfolioID: id, CycleID: cycle}); err != nil {
+		return false, err
 	}
-	return true, q.SetPointDetailState(ctx, sqlcgen.SetPointDetailStateParams{DetailState: "expired", PortfolioID: id, CycleID: cycle})
+	return true, q.ExpireEmptyPoint(ctx, sqlcgen.ExpireEmptyPointParams{PortfolioID: id, CycleID: cycle})
 }
 
 // pass returns the unfinished sweep for a table, starting a new pass from the
@@ -222,37 +250,65 @@ func (s *Service) pruneReport(ctx context.Context, q *sqlcgen.Queries, id []byte
 		pass.done = true
 		return false, nil
 	}
+	ids := make([][]byte, 0, len(rows))
 	for _, row := range rows {
-		report := sweepCursor(row)
-		pinned, err := q.IsReportPinned(ctx, sqlcgen.IsReportPinnedParams{PortfolioID: id, ID: report.ID})
+		ids = append(ids, row.ID)
+	}
+	pinnedIDs, err := q.ListPinnedReportIDs(ctx, sqlcgen.ListPinnedReportIDsParams{PortfolioID: id, Ids: ids})
+	if err != nil {
+		return false, err
+	}
+	pinned := make(map[string]bool, len(pinnedIDs))
+	for _, report := range pinnedIDs {
+		pinned[string(report)] = true
+	}
+	ids = ids[:0]
+	for _, row := range rows {
+		if !pinned[string(row.ID)] {
+			ids = append(ids, row.ID)
+		}
+	}
+	remaining := map[string]bool{}
+	if len(ids) > 0 {
+		// A visit deletes at most 1,000 rows from each child table and 64
+		// parents. Small reports share this budget instead of each requiring
+		// several complete worker rounds; oversized reports resume in place.
+		if _, err := q.PruneReportBalances(ctx, sqlcgen.PruneReportBalancesParams{PortfolioID: id, Ids: ids}); err != nil {
+			return false, err
+		}
+		if _, err := q.PruneReportFuturesPositions(ctx, sqlcgen.PruneReportFuturesPositionsParams{PortfolioID: id, Ids: ids}); err != nil {
+			return false, err
+		}
+		if _, err := q.PruneReportEarnPositions(ctx, sqlcgen.PruneReportEarnPositionsParams{PortfolioID: id, Ids: ids}); err != nil {
+			return false, err
+		}
+		if _, err := q.PruneReportDualPositions(ctx, sqlcgen.PruneReportDualPositionsParams{PortfolioID: id, Ids: ids}); err != nil {
+			return false, err
+		}
+		if err := q.DeleteEmptyAccountReports(ctx, sqlcgen.DeleteEmptyAccountReportsParams{PortfolioID: id, Ids: ids}); err != nil {
+			return false, err
+		}
+		left, err := q.ListRemainingReportIDs(ctx, sqlcgen.ListRemainingReportIDsParams{PortfolioID: id, Ids: ids})
 		if err != nil {
 			return false, err
 		}
-		if pinned.Bool {
-			pass.after = report
-			continue
+		for _, report := range left {
+			remaining[string(report)] = true
 		}
-		n, err := q.PruneReportBalances(ctx, sqlcgen.PruneReportBalancesParams{PortfolioID: id, ReportID: report.ID})
-		if err != nil || n > 0 {
-			return true, err
+		if len(remaining) < len(ids) {
+			// Deleted Manual reports can release revisions after their sweep
+			// already found nothing eligible in this epoch.
+			delete(s.sweeps, fmt.Sprintf("%x/manual_revisions", id))
+			delete(s.sweeps, fmt.Sprintf("%x/collection_cycles", id))
 		}
-		n, err = q.PruneReportFuturesPositions(ctx, sqlcgen.PruneReportFuturesPositionsParams{PortfolioID: id, ReportID: report.ID})
-		if err != nil || n > 0 {
-			return true, err
+	}
+	// Never advance past an unfinished report, even if later small reports
+	// were removed in the same visit. Pinned rows can be skipped this epoch.
+	for _, row := range rows {
+		if remaining[string(row.ID)] {
+			break
 		}
-		n, err = q.PruneReportEarnPositions(ctx, sqlcgen.PruneReportEarnPositionsParams{PortfolioID: id, ReportID: report.ID})
-		if err != nil || n > 0 {
-			return true, err
-		}
-		n, err = q.PruneReportDualPositions(ctx, sqlcgen.PruneReportDualPositionsParams{PortfolioID: id, ReportID: report.ID})
-		if err != nil || n > 0 {
-			return true, err
-		}
-		if err := q.DeleteAccountReport(ctx, sqlcgen.DeleteAccountReportParams{PortfolioID: id, ID: report.ID}); err != nil {
-			return false, err
-		}
-		pass.after = report
-		return true, nil
+		pass.after = sweepCursor(row)
 	}
 	return true, nil
 }
@@ -280,18 +336,20 @@ func anchorPrices(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff tim
 	return true, q.SetPriceAnchorsBefore(ctx, sqlcgen.SetPriceAnchorsBeforeParams{Before: sql.NullTime{Time: end, Valid: true}, ID: id})
 }
 
-func (s *Service) prunePrices(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff time.Time, anchored sql.NullTime) (bool, error) {
+func (s *Service) prunePrices(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff, historyBefore time.Time, anchored sql.NullTime) (bool, error) {
 	if !anchored.Valid {
-		return false, nil
-	}
-	if anchored.Time.Before(cutoff) {
+		cutoff = historyBefore
+	} else if anchored.Time.Before(cutoff) {
 		cutoff = anchored.Time
+		if cutoff.Before(historyBefore) {
+			cutoff = historyBefore
+		}
 	}
 	pass := s.pass(id, "price_observations")
 	if pass == nil {
 		return false, nil
 	}
-	rows, err := q.ListPriceRetentionCandidates(ctx, sqlcgen.ListPriceRetentionCandidatesParams{PortfolioID: id, Before: cutoff, AfterAt: pass.after.At, AfterID: pass.after.ID})
+	rows, err := q.ListPriceRetentionCandidates(ctx, sqlcgen.ListPriceRetentionCandidatesParams{PortfolioID: id, Before: cutoff, HistoryBefore: historyBefore, AfterAt: pass.after.At, AfterID: pass.after.ID})
 	if err != nil {
 		return false, err
 	}
@@ -299,19 +357,25 @@ func (s *Service) prunePrices(ctx context.Context, q *sqlcgen.Queries, id []byte
 		pass.done = true
 		return false, nil
 	}
+	ids := make([][]byte, 0, len(rows))
 	for _, row := range rows {
-		price := sweepCursor(row)
-		if err := q.DeleteUnpinnedPriceObservation(ctx, sqlcgen.DeleteUnpinnedPriceObservationParams{PortfolioID: id, ID: price.ID}); err != nil {
-			return false, err
-		}
-		pass.after = price
+		ids = append(ids, row.ID)
 	}
+	if err := q.DeleteUnpinnedPriceObservations(ctx, sqlcgen.DeleteUnpinnedPriceObservationsParams{PortfolioID: id, Ids: ids, HistoryBefore: historyBefore}); err != nil {
+		return false, err
+	}
+	pass.after = sweepCursor(rows[len(rows)-1])
 	return true, nil
 }
 
-func pruneManual(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff time.Time) (bool, error) {
+func (s *Service) pruneManual(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff time.Time) (bool, error) {
+	pass := s.pass(id, "manual_revisions")
+	if pass == nil {
+		return false, nil
+	}
 	revision, err := q.GetPrunableManualRevision(ctx, sqlcgen.GetPrunableManualRevisionParams{PortfolioID: id, Before: sql.NullTime{Time: cutoff, Valid: true}})
 	if errors.Is(err, sql.ErrNoRows) {
+		pass.done = true
 		return false, nil
 	}
 	if err != nil {

@@ -14,12 +14,12 @@ import (
 // persistComparisonEvidence runs inside the Point's first-commit transaction.
 // Reads of old summaries must never depend on details that retention can remove.
 func (s *Service) persistComparisonEvidence(ctx context.Context, q *sqlcgen.Queries, point *Point) error {
-	adjustments, err := s.manualAdjustmentsByPoints(ctx, point.PortfolioID, []Point{*point})
+	adjustments, err := s.manualBalanceChangesByPoints(ctx, point.PortfolioID, []Point{*point})
 	if err != nil {
 		return err
 	}
 	for _, adjustment := range adjustments[point.CycleID] {
-		if err := q.InsertManualAdjustment(ctx, sqlcgen.InsertManualAdjustmentParams{PortfolioID: point.PortfolioID[:], CycleID: point.CycleID[:], AccountID: adjustment.AccountID[:]}); err != nil {
+		if err := q.InsertManualBalanceChange(ctx, sqlcgen.InsertManualBalanceChangeParams{PortfolioID: point.PortfolioID[:], CycleID: point.CycleID[:], AccountID: adjustment.AccountID[:]}); err != nil {
 			return err
 		}
 	}

@@ -40,8 +40,9 @@ principal. See the
 [contract review and observed omission](./docs/platform/kraken/verification.md#dual-investment-contract-review).
 
 The prelaunch database baseline separates immutable observations from derived
-valuations. Summaries remain permanent; detailed snapshots keep 30 days and
-daily archives with pinned dependencies; Collection Cycles remain with them. See
+valuations. Summaries retain ten years at the default 30-minute collection
+interval. Detailed snapshots keep 14 full days and daily archives within that
+window; bounded cleanup preserves current and opening-boundary dependencies. See
 [the schema decision](./docs/adr/0015-prelaunch-schema.md) and
 [reset requirements](./docs/deployment.md#upgrades-and-resets).
 

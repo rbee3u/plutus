@@ -51,7 +51,7 @@ func (s *Service) Latest(ctx context.Context, portfolioID uuid.UUID) (Point, err
 // First returns the earliest point of the Portfolio.
 func (s *Service) First(ctx context.Context, portfolioID uuid.UUID) (Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
-		row, err := mysql.Queries(ctx, s.db).GetFirstValuationPoint(ctx, portfolioID[:])
+		row, err := mysql.Queries(ctx, s.db).GetFirstValuationPoint(ctx, sqlcgen.GetFirstValuationPointParams{PortfolioID: portfolioID[:]})
 		if errors.Is(err, sql.ErrNoRows) {
 			return Point{}, ErrNoPoint
 		}
@@ -260,7 +260,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 			}
 		}
 	}
-	adjustments, err := q.ListManualAdjustmentsByCycles(ctx, sqlcgen.ListManualAdjustmentsByCyclesParams{PortfolioID: portfolio[:], CycleIds: cycles})
+	adjustments, err := q.ListManualBalanceChangesByCycles(ctx, sqlcgen.ListManualBalanceChangesByCyclesParams{PortfolioID: portfolio[:], CycleIds: cycles})
 	if err != nil {
 		return err
 	}
@@ -273,8 +273,8 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		if err != nil {
 			return err
 		}
-		adjustment := ManualAdjustment{AccountID: account, AccountName: adapters.AccountName(adapters.AccountType(row.AccountType))}
-		byCycle[cycle].ManualAdjustments = append(byCycle[cycle].ManualAdjustments, adjustment)
+		adjustment := ManualBalanceChange{AccountID: account, AccountName: adapters.AccountName(adapters.AccountType(row.AccountType))}
+		byCycle[cycle].ManualBalanceChanges = append(byCycle[cycle].ManualBalanceChanges, adjustment)
 		byCycle[cycle].Issues = append(byCycle[cycle].Issues, adjustment.Issue())
 	}
 	mappings, err := q.ListAssetMappingChangesByCycles(ctx, sqlcgen.ListAssetMappingChangesByCyclesParams{PortfolioID: portfolio[:], CycleIds: cycles})
@@ -451,10 +451,10 @@ func (s *Service) predecessors(ctx context.Context, portfolio uuid.UUID, points 
 	return previous, nil
 }
 
-// manualAdjustmentsByPoints compares adopted quantities with each point's actual
+// manualBalanceChangesByPoints compares adopted quantities with each point's actual
 // predecessor, which may fall outside the requested batch. Set comparison stays
 // in Go to avoid nested correlated semijoins across the Portfolio's history.
-func (s *Service) manualAdjustmentsByPoints(ctx context.Context, portfolio uuid.UUID, points []Point) (map[uuid.UUID][]ManualAdjustment, error) {
+func (s *Service) manualBalanceChangesByPoints(ctx context.Context, portfolio uuid.UUID, points []Point) (map[uuid.UUID][]ManualBalanceChange, error) {
 	q := mysql.Queries(ctx, s.db)
 	predecessors, err := s.predecessors(ctx, portfolio, points)
 	if err != nil {
@@ -524,16 +524,16 @@ func (s *Service) manualAdjustmentsByPoints(ctx context.Context, portfolio uuid.
 			}
 		}
 	}
-	out := make(map[uuid.UUID][]ManualAdjustment)
+	out := make(map[uuid.UUID][]ManualBalanceChange)
 	for cycle, prior := range previous {
 		current, before := inputs[cycle], inputs[prior]
 		for account, manual := range current.manual {
 			if !before.identities[manual.identity] || maps.Equal(manual.quantities, before.manual[account].quantities) {
 				continue
 			}
-			out[cycle] = append(out[cycle], ManualAdjustment{AccountID: account, AccountName: adapters.AccountName(adapters.TypeManual)})
+			out[cycle] = append(out[cycle], ManualBalanceChange{AccountID: account, AccountName: adapters.AccountName(adapters.TypeManual)})
 		}
-		slices.SortFunc(out[cycle], func(a, b ManualAdjustment) int { return bytes.Compare(a.AccountID[:], b.AccountID[:]) })
+		slices.SortFunc(out[cycle], func(a, b ManualBalanceChange) int { return bytes.Compare(a.AccountID[:], b.AccountID[:]) })
 	}
 	return out, nil
 }

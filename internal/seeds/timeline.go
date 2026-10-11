@@ -21,16 +21,14 @@ func sameLocalDay(a, b time.Time, loc *time.Location) bool {
 	return a.In(loc).Format("2006-01-02") == b.In(loc).Format("2006-01-02")
 }
 
-func cycleTimes(anchor time.Time, loc *time.Location, large bool) []time.Time {
+func cycleTimes(anchor time.Time, loc *time.Location) []time.Time {
 	local := anchor.In(loc)
 	month := time.Date(local.Year(), local.Month()-3, 1, 0, 0, 0, 0, loc)
 	day := min(local.Day(), month.AddDate(0, 1, -1).Day())
 	start := time.Date(month.Year(), month.Month(), day, 0, 0, 0, 0, loc)
-	if large {
-		start = localMidnight(anchor, 7, loc)
-	}
-	dense := localMidnight(anchor, 14, loc)
-	times := map[int64]time.Time{anchor.Unix(): anchor}
+	dense := localMidnight(anchor, 3, loc)
+	joined := anchor.Add(-2 * time.Hour)
+	times := map[int64]time.Time{anchor.Unix(): anchor, joined.Unix(): joined}
 	for at := start; at.Before(anchor); {
 		times[at.Unix()] = at.UTC()
 		if at.Before(dense) {
@@ -97,12 +95,12 @@ func (b *builder) demoEvents(anchor time.Time) {
 	reviewed := 0
 	for _, key := range b.assetKeys {
 		row := b.assets[key]
-		if row.portfolio != PortfolioAliceLarge || row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
+		if row.portfolio != PortfolioAliceMain || row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
 			continue
 		}
 		reviewed++
 		row.source = catalog.MappingManual
-		b.audit(&auditSpec{Portfolio: PortfolioAliceLarge, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.AddDate(0, 0, -7).Add(time.Duration(reviewed) * 2 * time.Hour), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
+		b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.Add(-time.Hour).Add(time.Duration(reviewed) * time.Second), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
 	}
 	if reviewed != 60 {
 		b.fail(fmt.Errorf("large scenario needs 60 independent Catalog reviews"))

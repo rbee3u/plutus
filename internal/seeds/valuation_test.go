@@ -62,7 +62,7 @@ func assertSequentialHistory(ctx context.Context, t *testing.T, initialized *sql
 			t.Fatal(err)
 		}
 	}
-	for _, table := range []string{"valuation_points", "account_valuations", "balance_valuations", "boundary_events", "manual_adjustments", "calculated_asset_changes"} {
+	for _, table := range []string{"valuation_points", "account_valuations", "balance_valuations", "boundary_events", "manual_balance_changes", "calculated_asset_changes"} {
 		if want, got := tableRows(ctx, t, database.DB, table, p), tableRows(ctx, t, initialized, table, p); !slices.Equal(got, want) {
 			t.Fatalf("%s differs from sequential WritePoint: %d initialized rows, %d sequential rows", table, len(got), len(want))
 		}

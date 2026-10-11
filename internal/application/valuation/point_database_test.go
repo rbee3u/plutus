@@ -266,7 +266,7 @@ func (f *pointFixture) point(cycle uuid.UUID, at time.Time) Point {
 	return point
 }
 
-func TestManualAdjustmentsCompareReportedRevisions(t *testing.T) {
+func TestManualBalanceChangesCompareReportedRevisions(t *testing.T) {
 	f := newPointFixture(t)
 	spot := f.accounts("spot")["spot"]
 	var rawManual []byte
@@ -304,8 +304,8 @@ func TestManualAdjustmentsCompareReportedRevisions(t *testing.T) {
 		}
 		point := f.point(cycle, evaluated)
 		want := i != 1
-		if (len(point.ManualAdjustments) == 1) != want {
-			t.Fatalf("cycle %d adjustment=%+v, want %v", i, point.ManualAdjustments, want)
+		if (len(point.ManualBalanceChanges) == 1) != want {
+			t.Fatalf("cycle %d adjustment=%+v, want %v", i, point.ManualBalanceChanges, want)
 		}
 	}
 	// Neither current mappings nor a future editable revision can change the
@@ -320,7 +320,7 @@ func TestManualAdjustmentsCompareReportedRevisions(t *testing.T) {
 		t.Fatalf("batch details: %+v %v", points, err)
 	}
 	for i, point := range points {
-		if (len(point.ManualAdjustments) == 1) != (i != 1) || len(point.Issues) != map[bool]int{true: 1, false: 0}[i != 1] {
+		if (len(point.ManualBalanceChanges) == 1) != (i != 1) || len(point.Issues) != map[bool]int{true: 1, false: 0}[i != 1] {
 			t.Fatalf("light batch %d changed Manual decisions or loaded issues: %+v", i, point)
 		}
 	}
@@ -330,7 +330,7 @@ func TestManualAdjustmentsCompareReportedRevisions(t *testing.T) {
 	}
 }
 
-func TestManualAdjustmentStartsAtIdentityEntryAndUsesAdoptedSource(t *testing.T) {
+func TestManualBalanceChangeStartsAtIdentityEntryAndUsesAdoptedSource(t *testing.T) {
 	f := newPointFixture(t)
 	spot := f.accounts("spot")["spot"]
 	var raw []byte
@@ -352,7 +352,7 @@ func TestManualAdjustmentStartsAtIdentityEntryAndUsesAdoptedSource(t *testing.T)
 	report := f.manualReport(first, account, f.at.Add(time.Minute), 2)
 	f.exec("INSERT INTO balances(portfolio_id,report_id,asset_id,equity) VALUES(?,?,?,10)", f.portfolio[:], report[:], asset[:])
 	point := f.point(first, f.at.Add(time.Minute))
-	if len(point.ManualAdjustments) != 0 || point.BoundaryContributionUSD != "10" {
+	if len(point.ManualBalanceChanges) != 0 || point.BoundaryContributionUSD != "10" {
 		t.Fatalf("Identity entry became a Manual adjustment: %+v", point)
 	}
 	// Collection does not currently emit failed Manual Reports. This fixture
@@ -361,12 +361,70 @@ func TestManualAdjustmentStartsAtIdentityEntryAndUsesAdoptedSource(t *testing.T)
 	failed := f.cycle(f.at.Add(2*time.Minute), "succeeded")
 	f.report(failed, account, f.at.Add(2*time.Minute), "failed", 2, nil)
 	point = f.point(failed, f.at.Add(2*time.Minute))
-	if len(point.ManualAdjustments) != 0 || point.TotalUSD != "10" || len(point.Issues) != 1 || point.Issues[0].Code != "stale" {
+	if len(point.ManualBalanceChanges) != 0 || point.TotalUSD != "10" || len(point.Issues) != 1 || point.Issues[0].Code != "stale" {
 		t.Fatalf("unadopted revision changed the point: %+v", point)
 	}
 }
 
-func TestManualAdjustmentsCrossReadBatchesWithBoundedDatabaseWork(t *testing.T) {
+func TestInitializeHistoryRetainsManualChangesAcrossBatches(t *testing.T) {
+	f := newPointFixture(t)
+	spot := f.accounts("spot")["spot"]
+	var raw []byte
+	if err := f.db.QueryRowContext(f.ctx, "SELECT m.id FROM accounts m JOIN accounts s ON s.identity_id=m.identity_id WHERE s.id=? AND m.account_type='manual'", spot[:]).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	account := uuid.Must(uuid.FromBytes(raw))
+	asset := uuid.New()
+	f.exec("INSERT INTO assets(id,portfolio_id,platform,symbol,canonical_asset_symbol,mapping_version,first_observed_at,last_observed_at) VALUES(?,?,'binance','USD','USD',1,?,?)", asset[:], f.portfolio[:], f.at, f.at)
+	for revision, quantity := range map[int]int{2: 10, 3: 20, 4: 10, 5: 0} {
+		f.exec("INSERT INTO manual_revisions(portfolio_id,account_id,revision_number,changed_at) VALUES(?,?,?,?)", f.portfolio[:], account[:], revision, f.at)
+		if quantity != 0 {
+			f.exec("INSERT INTO manual_revision_balances(portfolio_id,account_id,revision_number,asset_id,quantity,changed_at) VALUES(?,?,?,?,?,?)", f.portfolio[:], account[:], revision, asset[:], quantity, f.at)
+		}
+	}
+	cycles := make([]uuid.UUID, 131)
+	for i := range cycles {
+		at := f.at.Add(time.Duration(i) * time.Minute)
+		cycles[i] = f.cycle(at, "succeeded")
+		if i > 65 && i < 130 {
+			f.report(cycles[i], account, at, "failed", 0, nil)
+			continue
+		}
+		revision, quantity := 2, 10
+		switch i {
+		case 0:
+			revision, quantity = 1, 0
+		case 63:
+			revision, quantity = 3, 20
+		case 64:
+			revision = 4
+		case 65:
+			revision, quantity = 5, 0
+		}
+		report := f.manualReport(cycles[i], account, at, revision)
+		if quantity != 0 {
+			f.exec("INSERT INTO balances(portfolio_id,report_id,asset_id,equity) VALUES(?,?,?,?)", f.portfolio[:], report[:], asset[:], quantity)
+		}
+	}
+	if err := f.service.InitializeHistory(f.ctx, f.portfolio); err != nil {
+		t.Fatal(err)
+	}
+	for i, cycle := range cycles {
+		point, err := f.service.PointByCycle(f.ctx, f.portfolio, cycle)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := i == 1 || i == 63 || i == 64 || i == 65 || i == 130
+		if (len(point.ManualBalanceChanges) == 1) != want {
+			t.Fatalf("cycle %d changes=%+v, want change=%v", i, point.ManualBalanceChanges, want)
+		}
+		if i > 65 && i < 130 && (point.TotalUSD != "0" || point.StaleAccountCount != 1) {
+			t.Fatalf("cycle %d lost empty stale source across batches: %+v", i, point)
+		}
+	}
+}
+
+func TestManualBalanceChangesCrossReadBatchesWithBoundedDatabaseWork(t *testing.T) {
 	f := newPointFixture(t)
 	spot := f.accounts("spot")["spot"]
 	var raw []byte
@@ -386,7 +444,7 @@ func TestManualAdjustmentsCrossReadBatchesWithBoundedDatabaseWork(t *testing.T) 
 		f.exec("INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version) VALUES(?,?,?,?,1,0,0,1)", f.portfolio[:], cycle[:], at, quantity)
 		f.exec("INSERT INTO account_valuations(portfolio_id,cycle_id,account_id,source_report_id,valuation_method,value_usd) VALUES(?,?,?,?,'calculated',?)", f.portfolio[:], cycle[:], account[:], report[:], quantity)
 		if i == valuationReadBatch+1 {
-			f.exec("INSERT INTO manual_adjustments(portfolio_id,cycle_id,account_id) VALUES(?,?,?)", f.portfolio[:], cycle[:], account[:])
+			f.exec("INSERT INTO manual_balance_changes(portfolio_id,cycle_id,account_id) VALUES(?,?,?)", f.portfolio[:], cycle[:], account[:])
 		}
 	}
 	rows, err := sqlcgen.New(f.db).ListValuationPointsBetween(f.ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: f.portfolio[:], FromAt: f.at.Add(time.Minute), ToAt: f.at.Add(count * time.Minute)})
@@ -426,8 +484,8 @@ func TestManualAdjustmentsCrossReadBatchesWithBoundedDatabaseWork(t *testing.T) 
 	}
 	for i, point := range points {
 		want := i == valuationReadBatch
-		if (len(point.ManualAdjustments) == 1) != want {
-			t.Fatalf("point %d adjustments=%+v, want changed=%v", i, point.ManualAdjustments, want)
+		if (len(point.ManualBalanceChanges) == 1) != want {
+			t.Fatalf("point %d adjustments=%+v, want changed=%v", i, point.ManualBalanceChanges, want)
 		}
 	}
 	// Count storage-engine row reads instead of elapsed time. The generous

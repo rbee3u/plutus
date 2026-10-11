@@ -79,7 +79,7 @@ type Point struct {
 	BoundaryWithdrawalUSD   string
 	BoundaryEvents          []BoundaryEvent
 	Issues                  []Issue
-	ManualAdjustments       []ManualAdjustment
+	ManualBalanceChanges    []ManualBalanceChange
 	DetailState             string
 }
 
@@ -157,14 +157,14 @@ func (p *Point) Revision() string {
 	return p.CycleID.String()
 }
 
-// ManualAdjustment identifies an effective quantity change within an existing
+// ManualBalanceChange identifies an effective quantity change within an existing
 // Identity. It is frozen at first commit, independently of issue text.
-type ManualAdjustment struct {
+type ManualBalanceChange struct {
 	AccountID   uuid.UUID
 	AccountName string
 }
 
-func (a ManualAdjustment) Issue() Issue {
+func (a ManualBalanceChange) Issue() Issue {
 	return Issue{
 		Code: "manual_balance_changed", AccountID: &a.AccountID,
 		AccountName: a.AccountName,

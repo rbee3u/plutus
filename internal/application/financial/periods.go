@@ -118,14 +118,39 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 		if len(periods) == 0 {
 			return []PeriodClose{}, nil
 		}
-		points, err := s.pointsInRange(ctx, p.ID, periods[0].start, periods[len(periods)-1].end)
+		headers, err := mysql.Queries(ctx, s.db).ListValuationPointHeadersBetween(ctx, sqlcgen.ListValuationPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: periods[0].start.UTC(), ToAt: periods[len(periods)-1].end.UTC()})
 		if err != nil {
 			return nil, err
 		}
+		ids := make([][]byte, 0, len(periods))
+		selected := make([]int, len(periods))
+		cursor := 0
+		for i, per := range periods {
+			selected[i] = -1
+			for cursor < len(headers) && headers[cursor].EvaluatedAt.Before(per.end) {
+				cursor++
+			}
+			if cursor > 0 && !headers[cursor-1].EvaluatedAt.Before(per.start) {
+				selected[i] = len(ids)
+				ids = append(ids, headers[cursor-1].CycleID)
+			}
+		}
+		rows, err := s.pointRowsByIDs(ctx, p.ID, ids)
+		if err != nil {
+			return nil, err
+		}
+		points, err := s.pointsFromRows(ctx, rows)
+		if err != nil {
+			return nil, err
+		}
+		seen := observedDays(headers, loc)
 		out := make([]PeriodClose, 0, len(periods))
-		for _, per := range periods {
+		for i, per := range periods {
 			item := PeriodClose{PeriodKind: kind, Label: per.label, PeriodStart: per.start, PeriodEnd: per.end, Completeness: valuation.CompletenessComplete, Reasons: []string{}}
-			point := lastPointBefore(points, per.end, per.start)
+			var point *valuation.Point
+			if selected[i] >= 0 {
+				point = &points[selected[i]]
+			}
 			if point == nil {
 				item.Completeness = valuation.CompletenessIncomplete
 				item.Reasons = append(item.Reasons, "no_point_in_period")
@@ -136,7 +161,7 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 					item.Reasons = append(item.Reasons, "point_incomplete")
 				}
 				if kind != PeriodDay {
-					if missing := daysWithoutPoints(points, per.start, per.end, loc); len(missing) > 0 {
+					if missing := daysWithoutPoints(seen, per.start, per.end, loc); len(missing) > 0 {
 						item.Completeness = valuation.CompletenessIncomplete
 						item.Reasons = append(item.Reasons, "days_without_points: "+joinDays(missing))
 					}
@@ -222,9 +247,9 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 		change.Reasons = append(change.Reasons, "end_point_incomplete")
 	}
 	if kind != PeriodCustom && kind != PeriodDay {
-		if points, err := s.pointsInRange(ctx, p.ID, periodStart, periodEnd); err != nil {
+		if headers, err := mysql.Queries(ctx, s.db).ListValuationPointHeadersBetween(ctx, sqlcgen.ListValuationPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: periodStart.UTC(), ToAt: periodEnd.UTC()}); err != nil {
 			return ValueChange{}, err
-		} else if missing := daysWithoutPoints(points, periodStart, periodEnd, p.location()); len(missing) > 0 {
+		} else if missing := daysWithoutPoints(observedDays(headers, p.location()), periodStart, periodEnd, p.location()); len(missing) > 0 {
 			change.Completeness = valuation.CompletenessIncomplete
 			change.Reasons = append(change.Reasons, "days_without_points: "+joinDays(missing))
 		}
@@ -259,7 +284,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 		}
 	}
 	boundaryContributions, boundaryWithdrawals := decimal.Zero(), decimal.Zero()
-	points, err := s.pointsInRange(ctx, p.ID, startPoint.EvaluatedAt.Add(time.Microsecond), endPoint.EvaluatedAt)
+	points, err := s.comparisonPointsBetween(ctx, p.ID, startPoint.EvaluatedAt.Add(time.Microsecond), endPoint.EvaluatedAt)
 	if err != nil {
 		return ValueChange{}, err
 	}
@@ -270,7 +295,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 				change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
 			}
 		}
-		for _, adjustment := range points[i].ManualAdjustments {
+		for _, adjustment := range points[i].ManualBalanceChanges {
 			change.Completeness = valuation.CompletenessIncomplete
 			issue := adjustment.Issue()
 			change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
@@ -337,9 +362,9 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 		err error
 	)
 	if inclusive {
-		row, err = mysql.Queries(ctx, s.db).GetValuationPointAtOrBefore(ctx, sqlcgen.GetValuationPointAtOrBeforeParams{PortfolioID: portfolioID[:], At: at.UTC()})
+		row, err = mysql.Queries(ctx, s.db).GetValuationPointAtOrBefore(ctx, sqlcgen.GetValuationPointAtOrBeforeParams{PortfolioID: portfolioID[:], At: sql.NullTime{Time: at.UTC(), Valid: true}})
 	} else {
-		row, err = mysql.Queries(ctx, s.db).GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: at.UTC(), CycleID: make([]byte, 16)})
+		row, err = mysql.Queries(ctx, s.db).GetHistoryValuationPointBefore(ctx, sqlcgen.GetHistoryValuationPointBeforeParams{PortfolioID: portfolioID[:], At: sql.NullTime{Time: at.UTC(), Valid: true}, CycleID: make([]byte, 16)})
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil //nolint:nilnil // no point at or before the instant is a valid, checked outcome.
@@ -354,31 +379,33 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 	return &point, nil
 }
 
-func (s *Service) pointsInRange(ctx context.Context, portfolioID uuid.UUID, from, to time.Time) ([]valuation.Point, error) {
-	rows, err := mysql.Queries(ctx, s.db).ListValuationPointsBetween(ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+// Only sparse evidence-bearing Points need hydration for a comparison. Ordinary
+// unchanged Points contribute neither flows nor completeness markers.
+func (s *Service) comparisonPointsBetween(ctx context.Context, portfolioID uuid.UUID, from, to time.Time) ([]valuation.Point, error) {
+	headers, err := mysql.Queries(ctx, s.db).ListComparisonPointHeadersBetween(ctx, sqlcgen.ListComparisonPointHeadersBetweenParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([][]byte, 0, len(headers))
+	for _, header := range headers {
+		ids = append(ids, header.CycleID)
+	}
+	rows, err := s.pointRowsByIDs(ctx, portfolioID, ids)
 	if err != nil {
 		return nil, err
 	}
 	return s.pointsFromRows(ctx, rows)
 }
 
-func lastPointBefore(points []valuation.Point, before, notBefore time.Time) *valuation.Point {
-	var found *valuation.Point
-	for i := range points {
-		at := points[i].EvaluatedAt
-		if at.Before(before) && !at.Before(notBefore) {
-			found = &points[i]
-		}
+func observedDays(headers []sqlcgen.ListValuationPointHeadersBetweenRow, loc *time.Location) map[string]bool {
+	seen := map[string]bool{}
+	for _, header := range headers {
+		seen[header.EvaluatedAt.In(loc).Format("2006-01-02")] = true
 	}
-	return found
+	return seen
 }
 
-func daysWithoutPoints(points []valuation.Point, start, end time.Time, loc *time.Location) []time.Time {
-	seen := map[string]bool{}
-	for i := range points {
-		local := points[i].EvaluatedAt.In(loc)
-		seen[local.Format("2006-01-02")] = true
-	}
+func daysWithoutPoints(seen map[string]bool, start, end time.Time, loc *time.Location) []time.Time {
 	var missing []time.Time
 	now := time.Now().In(loc)
 	for day := periodStart(PeriodDay, start.In(loc)); day.Before(end); day = day.AddDate(0, 0, 1) {

@@ -59,7 +59,7 @@ func (s *Service) DeleteBatch(ctx context.Context) (worked bool, err error) {
 			table  string
 			delete func(context.Context, []byte) (int64, error)
 		}{
-			{"manual_adjustments", q.DeletePortfolioManualAdjustments},
+			{"manual_balance_changes", q.DeletePortfolioManualBalanceChanges},
 			{"calculated_asset_changes", q.DeletePortfolioCalculatedAssetChanges},
 			{"boundary_events", q.DeletePortfolioBoundaryEvents},
 			{"balance_valuations", q.DeletePortfolioBalanceValuations},

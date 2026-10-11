@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/audit"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/cycles"
 	"github.com/rbee3u/plutus/internal/application/financial"
@@ -99,7 +100,7 @@ func manualSave(t *testing.T, h *harness, item identity.Identity, symbol, quanti
 	return next
 }
 
-func hasManualAdjustment(point valuation.Point) bool {
+func hasManualBalanceChange(point valuation.Point) bool {
 	for _, issue := range point.Issues {
 		if issue.Code == "manual_balance_changed" {
 			return true
@@ -182,6 +183,45 @@ func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 	if revisions != 4 || audits != 3 {
 		t.Fatalf("revisions=%d audits=%d", revisions, audits)
 	}
+	// Revision 3 was never collected and can expire. Its audit must still name
+	// the changed Asset and both quantities without consulting that revision.
+	q := sqlcgen.New(h.db)
+	if _, err := q.PruneManualRevisionBalances(h.ctx, sqlcgen.PruneManualRevisionBalancesParams{PortfolioID: h.portfolioID[:], AccountID: initial.AccountID[:], RevisionNumber: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.DeleteManualRevision(h.ctx, sqlcgen.DeleteManualRevisionParams{PortfolioID: h.portfolioID[:], AccountID: initial.AccountID[:], RevisionNumber: 3}); err != nil {
+		t.Fatal(err)
+	}
+	page, err := audit.NewService(h.db).List(h.ctx, h.portfolioID, &audit.ListFilter{ResourceType: "account"})
+	if err != nil || len(page.Items) != 3 {
+		t.Fatalf("manual audit: %+v %v", page, err)
+	}
+	for i, want := range []struct{ before, after string }{{"-100", ""}, {"100", "-100"}, {"", "100"}} {
+		event := page.Items[i]
+		if event.ActorUserID == nil || *event.ActorUserID != h.userID || event.ResourceID != initial.AccountID || event.OccurredAt.IsZero() {
+			t.Fatalf("manual audit identity: %+v", event)
+		}
+		for j, state := range []*map[string]any{event.Before, event.After} {
+			quantity := []string{want.before, want.after}[j]
+			if state == nil {
+				t.Fatal("missing manual audit state")
+			}
+			value, exists := (*state)["balance"]
+			if !exists {
+				t.Fatal("missing changed balance")
+			}
+			if quantity == "" {
+				if value != nil {
+					t.Fatalf("absent balance: %v", value)
+				}
+				continue
+			}
+			balance, ok := value.(map[string]any)
+			if !ok || balance["quantity"] != quantity || balance["assetSymbol"] != "USD" || balance["assetId"] != next.Items[0].AssetID.String() {
+				t.Fatalf("changed balance: %v, want %s USD", value, quantity)
+			}
+		}
+	}
 }
 
 func TestManualConservationHistoryAndSettlement(t *testing.T) {
@@ -195,7 +235,7 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 	a.usd = "30"
 	manualSave(t, h, item, "USD", "100")
 	second, secondCycle := h.runCycle()
-	if second.Point.TotalUSD != "130" || second.Point.BoundaryContributionUSD != "0" || !hasManualAdjustment(second.Point) {
+	if second.Point.TotalUSD != "130" || second.Point.BoundaryContributionUSD != "0" || !hasManualBalanceChange(second.Point) {
 		t.Fatalf("conservation %+v", second)
 	}
 	current, err := h.manual.Get(h.ctx, h.portfolioID, item.ID)
@@ -214,7 +254,7 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 	manualSave(t, h, item, "USD", "101")
 	manualSave(t, h, item, "USD", "100")
 	third, _ := h.runCycle()
-	if hasManualAdjustment(third.Point) {
+	if hasManualBalanceChange(third.Point) {
 		t.Fatal("edit then undo marked adjustment")
 	}
 	a.failed = true
@@ -238,7 +278,7 @@ func TestManualConservationHistoryAndSettlement(t *testing.T) {
 		t.Fatalf("history changed %+v %v", old, err)
 	}
 	rebuilt, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, secondCycle)
-	if err != nil || rebuilt.TotalUSD != "130" || !hasManualAdjustment(rebuilt) || rebuilt.BoundaryContributionUSD != "0" {
+	if err != nil || rebuilt.TotalUSD != "130" || !hasManualBalanceChange(rebuilt) || rebuilt.BoundaryContributionUSD != "0" {
 		t.Fatalf("rebuilt %+v %v", rebuilt, err)
 	}
 }
@@ -265,7 +305,7 @@ func TestManualDebtPricesMissingValuesAndTree(t *testing.T) {
 	before := h.accountsByType(cycleID, item.ID)["manual"].ManualModifiedAt
 	a.btc = "25000"
 	moved, cycleID := h.runCycle()
-	if moved.Point.TotalUSD != "50100" || hasManualAdjustment(moved.Point) || !h.accountsByType(cycleID, item.ID)["manual"].ManualModifiedAt.Equal(*before) {
+	if moved.Point.TotalUSD != "50100" || hasManualBalanceChange(moved.Point) || !h.accountsByType(cycleID, item.ID)["manual"].ManualModifiedAt.Equal(*before) {
 		t.Fatalf("price-only %+v", moved)
 	}
 	manualSave(t, h, item, "UNKNOWN", "-1")
@@ -298,7 +338,7 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 	item := h.createIdentity("Manual only", adapters.PlatformOKX, adapters.StructureOKXUnified)
 	manualSave(t, h, item, "USD", "-100")
 	entered, _ := h.runCycle()
-	if entered.Point.TotalUSD != "-100" || entered.Point.BoundaryContributionUSD != "-100" || hasManualAdjustment(entered.Point) {
+	if entered.Point.TotalUSD != "-100" || entered.Point.BoundaryContributionUSD != "-100" || hasManualBalanceChange(entered.Point) {
 		t.Fatalf("signed entry %+v", entered)
 	}
 	state := manualSave(t, h, first, "BTC", "2")
@@ -314,7 +354,7 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 		t.Fatalf("new edit %+v %v", ledger, err)
 	}
 	next, _ := h.runCycle()
-	if next.Point.TotalUSD != "59900" || !hasManualAdjustment(next.Point) || during.Point.TotalUSD != "39900" {
+	if next.Point.TotalUSD != "59900" || !hasManualBalanceChange(next.Point) || during.Point.TotalUSD != "39900" {
 		t.Fatalf("next %+v", next)
 	}
 	archived, err := h.identities.Archive(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})

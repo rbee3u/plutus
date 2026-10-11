@@ -2,6 +2,7 @@ package valuation
 
 import (
 	"database/sql"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -46,6 +47,20 @@ func TestHistoricalPriceEligibilityPrecedesSelection(t *testing.T) {
 			result, err := NewPriceBook(sqlcgen.New(f.db), f.portfolio).Resolve(f.ctx, "binance", tc.symbol, at)
 			if err != nil {
 				t.Fatal(err)
+			}
+			history, err := loadHistoryPrices(f.ctx, sqlcgen.New(f.db), f.portfolio)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, cutoff := range []time.Time{at, at.Add(48 * time.Hour), at.Add(-24 * time.Hour), at} {
+				want, err := NewPriceBook(sqlcgen.New(f.db), f.portfolio).Resolve(f.ctx, "binance", tc.symbol, cutoff)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := history.Resolve(f.ctx, "binance", tc.symbol, cutoff)
+				if err != nil || !reflect.DeepEqual(got, want) {
+					t.Fatalf("seed price at %s: %+v %v, want %+v", cutoff, got, err, want)
+				}
 			}
 			if tc.want == "" {
 				if result.Value != nil {

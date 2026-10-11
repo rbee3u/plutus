@@ -193,6 +193,10 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		if (index < 0 && amount.Sign() == 0) || (index >= 0 && items[index].Quantity == quantity) {
 			return nil
 		}
+		var before, after map[string]any
+		if index >= 0 {
+			before = map[string]any{"assetId": items[index].AssetID, "assetSymbol": symbol, "quantity": items[index].Quantity}
+		}
 		at := s.now().UTC().Truncate(time.Microsecond)
 		if amount.Sign() == 0 {
 			items = slices.Delete(items, index, index+1)
@@ -204,6 +208,10 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 				return err
 			}
 			items = append(items, Balance{AssetID: id, AssetSymbol: symbol, Quantity: quantity, ModifiedAt: at})
+		}
+		if amount.Sign() != 0 {
+			item := items[slices.IndexFunc(items, func(item Balance) bool { return item.AssetSymbol == symbol })]
+			after = map[string]any{"assetId": item.AssetID, "assetSymbol": symbol, "quantity": quantity}
 		}
 		slices.SortFunc(items, func(a, b Balance) int { return strings.Compare(a.AssetID.String(), b.AssetID.String()) })
 		if err := q.InsertManualRevision(ctx, sqlcgen.InsertManualRevisionParams{PortfolioID: portfolioID[:], AccountID: account.ID, RevisionNumber: revision.RevisionNumber + 1, ChangedAt: sql.NullTime{Time: at, Valid: true}}); err != nil {
@@ -218,7 +226,7 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		if err != nil {
 			return err
 		}
-		return audit.Record(ctx, q, at, &audit.Entry{PortfolioID: portfolioID, ActorUserID: in.ActorUserID, RequestID: in.RequestID, Action: "manual.balance." + action, ResourceType: "account", ResourceID: accountID, Before: map[string]any{"revisionNumber": revision.RevisionNumber}, After: map[string]any{"revisionNumber": revision.RevisionNumber + 1}})
+		return audit.Record(ctx, q, at, &audit.Entry{PortfolioID: portfolioID, ActorUserID: in.ActorUserID, RequestID: in.RequestID, Action: "manual.balance." + action, ResourceType: "account", ResourceID: accountID, Before: map[string]any{"revisionNumber": revision.RevisionNumber, "balance": before}, After: map[string]any{"revisionNumber": revision.RevisionNumber + 1, "balance": after}})
 	})
 	if err != nil {
 		return State{}, err

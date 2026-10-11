@@ -72,36 +72,39 @@ func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to 
 	if err != nil {
 		return nil, err
 	}
-	points := make([]valuation.Point, 0, len(headers))
-	for _, header := range headers {
-		id, err := uuid.FromBytes(header.CycleID)
+	selected := sample(headers, granularity, p.location())
+	ids := make([][]byte, 0, len(selected))
+	for _, header := range selected {
+		ids = append(ids, header.CycleID)
+	}
+	rows, err := s.pointRowsByIDs(ctx, p.ID, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]valuation.Point, 0, len(rows))
+	for _, row := range rows {
+		point, err := pointSummaryFromRow(row)
 		if err != nil {
 			return nil, err
 		}
-		points = append(points, valuation.Point{CycleID: id, EvaluatedAt: header.EvaluatedAt})
+		out = append(out, point)
 	}
-	selected := sample(points, granularity, p.location())
-	out := make([]valuation.Point, 0, len(selected))
-	// Batches bound SQL placeholders without changing chronological ordering.
-	for start := 0; start < len(selected); start += 500 {
-		batch := selected[start:min(start+500, len(selected))]
-		ids := make([][]byte, 0, len(batch))
-		for _, point := range batch {
-			ids = append(ids, point.CycleID[:])
-		}
-		rows, err := mysql.Queries(ctx, s.db).ListValuationPointSummariesByIDs(ctx, sqlcgen.ListValuationPointSummariesByIDsParams{PortfolioID: p.ID[:], Ids: ids})
+	return out, s.valuation.WithBoundaryTotals(ctx, out)
+}
+
+// IDs arrive in timeline order; batches preserve that order and bound SQL parameters.
+func (s *Service) pointRowsByIDs(ctx context.Context, portfolioID uuid.UUID, ids [][]byte) ([]sqlcgen.ValuationPoint, error) {
+	out := make([]sqlcgen.ValuationPoint, 0, len(ids))
+	for start := 0; start < len(ids); start += 500 {
+		rows, err := mysql.Queries(ctx, s.db).ListValuationPointSummariesByIDs(ctx, sqlcgen.ListValuationPointSummariesByIDsParams{PortfolioID: portfolioID[:], Ids: ids[start:min(start+500, len(ids))]})
 		if err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
-			point, err := pointSummaryFromRow(sqlcgen.ValuationPoint(row))
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, point)
+			out = append(out, sqlcgen.ValuationPoint(row))
 		}
 	}
-	return out, s.valuation.WithBoundaryTotals(ctx, out)
+	return out, nil
 }
 
 func pointSummaryFromRow(row sqlcgen.ValuationPoint) (valuation.Point, error) {

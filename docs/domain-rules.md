@@ -126,6 +126,12 @@ Manual complete-set reports are distinct from exchange Observations; collection
 time is separate from the last User modification time. A successful Manual
 report does not count as successful private Identity collection.
 
+Each effective User edit audits the changed Asset, its previous and new
+quantity, actor, and time. An absent entry remains distinct from a stored
+quantity. This evidence survives cleanup of the referenced Manual revisions;
+no-op edits create neither a revision nor an audit event. Audits follow the
+ten-year historical retention window.
+
 Manual uses calculated valuation and eligible own-Platform public prices,
 including Assets held only in Manual. Each Manual report references the
 immutable revision it reported. A new point uses current Portfolio mappings for
@@ -215,10 +221,13 @@ Mapping changes affect subsequent points in their owning Portfolio. An actual
 adopted mapping change for a nonzero calculated Asset marks comparisons crossing
 that point incomplete, retaining the calculated amount. A change of calculation
 version has the same effect. No-op mappings, unadopted changes reverted before
-collection, and descriptive mappings on reported Accounts create no marker.
-Adopted A-to-B-to-A changes remain two events. These are changes of valuation
-policy, not Capital Flows. Exceptional historical corrections require deliberate
-operator reconciliation; there is no automatic rebuild or repair workflow.
+collection, and descriptive mappings on reported Accounts create no marker. The
+Asset must have a nonzero, non-excluded calculated Balance at both adjacent
+points. Reappearance after an absent or excluded point creates no mapping
+marker. Adopted A-to-B-to-A changes remain two events. These are changes of
+valuation policy, not Capital Flows. Exceptional historical corrections require
+deliberate operator reconciliation; there is no automatic rebuild or repair
+workflow.
 
 ## Dual Investment and Earn completeness
 
@@ -315,29 +324,53 @@ Changing timezone changes query boundaries without changing committed points.
 
 Every committed Valuation Point's summary, completeness counts, Manual
 adjustment markers, adopted policy-change markers, and Boundary Events remain
-indefinitely. Named omissions and Account issues follow detail retention. Commit
-is atomic and final. Retrying the same cycle reads its existing result, even
-after mappings or calculation code change.
+for ten calendar years. Collection defaults to 30 minutes; every committed cycle
+remains, including additional manual collections. Summary retention does not
+downsample or merge points. Named omissions and Account issues follow detail
+retention. Commit is atomic and final; a retained result never recalculates.
 
-Keep all detailed snapshots for at least 30 days. For older complete local days,
-keep the final whole point, including incomplete or stale points. Use the
-Portfolio timezone at cleanup to choose anchors, and never replace an archived
-anchor after a timezone edit. Cleanup does not alter totals or completeness.
+Keep all detailed snapshots for at least 14 days. For older complete local days
+inside the ten-year window, keep the final whole point, including incomplete or
+stale points. Use the Portfolio timezone at cleanup to choose anchors, and never
+replace an archived anchor after a timezone edit. Cleanup does not alter
+retained totals or completeness.
 
-A historical snapshot request selects the latest retained full point before the
-requested day's end in the current timezone, falling back across days if needed.
+A historical snapshot request selects the latest retained full point inside the
+window before the requested day's end, falling back across days if needed.
 Return its actual cycle, evaluation time, total, and holdings together. Charts,
-period closes, and Value Change continue to use all summaries. They do not
-substitute daily anchors for their endpoints.
+period closes, and Value Change continue to use every retained summary. They do
+not substitute daily anchors for their endpoints.
+
+The rolling historical boundary is the start of the Portfolio-local day ten
+calendar years before maintenance, with February 29 clamped to February's last
+day when necessary. Once advanced, the boundary cannot move backward after a
+clock or timezone change. Historical lists omit older internal dependencies;
+comparisons requested before the boundary report a missing endpoint rather than
+using incomplete remnants. A comparison starting at the boundary can use the
+last preceding point as its opening value.
+
+Expired history is removed in bounded background batches, including daily
+snapshots, summaries, comparison evidence, completed cycles, audit events and
+Capital Flows. Preserve the opening snapshot, each Asset's state at that point,
+and policy versions adopted at the start of every retained cycle, including a
+cycle that starts before the window and finishes inside it. Flows between the
+opening point and the window still contribute to its first interval and remain.
+Retained exclusion audits pin the exact policy versions they describe.
 
 Retained snapshots preserve their source reports, holdings, contract terms, and
 adopted prices. Last-good sources remain available even for unselected Accounts.
-Current Manual revisions and revisions referenced by retained reports remain.
-Capital Flow price references never expire. Unreferenced old prices retain one
-eligible daily quote per Portfolio, Platform, and Canonical Asset; ordinary
-same-Platform, nonfuture, 24-hour eligibility still applies. A retained daily
-quote does not guarantee a price for every arbitrary historical instant.
+Current Manual revisions and revisions referenced by retained reports remain;
+the latest committed Manual report still establishes applied state after its
+summary expires. Current mappings and exclusion rules remain even if configured
+more than ten years ago. Unreferenced old contracts and default, unconfigured
+Asset catalog entries can expire.
 
-Old source details outside these dependencies can be removed. Retention trades
-intraday investigation and historical recalculation for a practical storage
-budget. Missing detail is distinct from a missing point or an unknown value.
+Unreferenced old prices retain one eligible daily quote per Portfolio, Platform,
+and Canonical Asset within the historical window. Older anchors can expire once
+retained valuations, Capital Flows and last-good source windows release them.
+Ordinary same-Platform, nonfuture, 24-hour eligibility still applies. A retained
+daily quote does not guarantee a price for every arbitrary historical instant.
+
+Retention bounds time-driven history growth under fixed workload; it is not a
+hard quota on user-created configuration, pinned dependencies or metadata size.
+Missing detail is distinct from a missing point or an unknown value.

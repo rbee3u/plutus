@@ -11,28 +11,30 @@ Agents use only `plutus_agent` on :8081. There are no seed profiles.
 
 ## Portfolios
 
-| Name         | Timezone      | History                                | Purpose                                                                                  |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `default`    | Asia/Shanghai | 3 months                               | Healthy daily holdings and coherent financial events                                     |
-| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day | Failures and policy/boundary transitions                                                 |
-| `large`      | UTC           | 7 days                                 | At least 60 current rows in each holdings table and both Catalog lists; audit pagination |
-| `empty`      | Asia/Shanghai | None                                   | Unconfigured initial state, no Identities or Valuation Points                            |
+| Name         | Timezone      | History                                                   | Purpose                                                             |
+| ------------ | ------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `default`    | Asia/Shanghai | 3 months; pagination fixtures join in the final two hours | Healthy holdings, financial events, all margin modes and pagination |
+| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day                    | Failures and policy/boundary transitions                            |
 
-Long histories have daily older points and two-hour points in the last 14 local
-days. Event instants have surrounding points. The current local day is included;
-the number of local date labels depends on the calendar months at the anchor.
-Nonempty Portfolios collect every 15 minutes. A collection does not advance a
-special simulation counter; observations depend on the original anchor and
-actual time. The earliest partial calendar month or quarter can be incomplete
-because its first dates predate the seed horizon; the history read names those
-missing dates. Dates inside the generated daily range remain covered.
+Long histories have daily older points and two-hour points in the last three
+local days. Event instants have surrounding points. The current local day is
+included; the number of local date labels depends on the calendar months at the
+anchor. Nonempty Portfolios collect every 30 minutes. A collection does not
+advance a special simulation counter; observations depend on the original anchor
+and actual time. The earliest partial calendar month or quarter can be
+incomplete because its first dates predate the seed horizon; the history read
+names those missing dates. Dates inside the generated daily range remain
+covered.
 
 ## Healthy walkthrough
 
-`default` has six independent Platform logins: Binance Classic and Portfolio
-Margin, OKX Multi-currency Margin, Bybit Cross Margin, Kraken Separate wallets
-and Unified Wallet. All their supported Accounts are selected. Other OKX and
-Bybit modes are represented in `large`; Spot mode has no contract Positions.
+`default` starts with six independent Platform logins: Binance Classic and
+Portfolio Margin, OKX Multi-currency Margin, Bybit Cross Margin, Kraken Separate
+wallets and Unified Wallet. All their supported Accounts are selected. Six
+additional logins join in the final two hours for large holdings and the other
+OKX and Bybit modes; Spot mode has no contract Positions. Their boundary entries
+are explicit Value Change events. The former `large` and `empty` Portfolios are
+no longer seeded. Create a Portfolio to walk through empty state.
 
 Expand each Identity and Account in Overview, then visit Balances, Futures, Earn
 and Dual Investment. Verify known zero USD-equivalent balances, tiny SHIB
@@ -63,9 +65,9 @@ closing and reopening there does not discard an accumulated gain or loss.
 
 ## Edge walkthrough
 
-Use the default seven-day History window and `edge-cases` Overview/holdings.
-Failures retain compatible source observation times; they never fabricate an
-empty successful report. Unknown amounts have omissions rather than zero.
+Use a seven-day History window and `edge-cases` Overview/holdings. Failures
+retain compatible source observation times; they never fabricate an empty
+successful report. Unknown amounts have omissions rather than zero.
 
 | Identity or location                      | Expected observable behavior                                                                            |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -94,16 +96,21 @@ supplies ordinary comparisons with both gains and losses.
 
 ## Pagination and continued collection
 
-In `large`, visit each of the four holdings tables, press Next, and check that
+In `default`, visit each of the four holdings tables, press Next, and check that
 rows continue beyond 50. Filter by Binance's diversified Identity or a symbol,
 return to page one, and remove the filter. Repeat for both Catalog lists.
 Activity Audit has 60 independent asset mapping reviews, each with actual
 resource IDs and before/after mapping state; follow its second page.
 
+The pagination fixtures have only a few recent source sets; repeating their
+large holdings over many historical cycles adds reset cost without helping the
+walkthrough. This sampling choice does not change the application retention
+policy.
+
 Click Collect now and repeat the checks. Product details, large row counts,
 configured modes, the unpriced airdrop, persistent Account failures remain
-available. Historical recoverable outages remain in History. `empty` is not
-scheduled until an enabled Connection is configured.
+available. Historical recoverable outages remain in History. A newly created
+empty Portfolio is not scheduled until an enabled Connection is configured.
 
 After the anchor, only Platform observations evolve. No fake background hook
 creates Capital Flows, changes selection, archives Identities or edits platform
@@ -155,19 +162,61 @@ synthetic walkthrough, not real exchange holdings or market history. Both
 session-started process groups and their children were stopped; agent health
 became unreachable and :8081 had no listener.
 
+## Two-Portfolio measurement and agent check: 2026-10-11
+
+The current dataset keeps two Portfolios and three months of daily coverage,
+with dense sampling reduced to the last three local days. Pagination Identities
+join `default` in the final two hours, retaining two or three historical cycles
+instead of repeating large holdings across a separate seven-day Portfolio. Event
+brackets, the Berlin missing day, all Account modes and all pagination views
+remain covered. This changes only synthetic sampling, not retention.
+
+Three consecutive compiled-binary `db reset --seed` runs before this reduction
+took 7.315, 6.562 and 6.204 seconds. Afterward they took 3.898, 2.938 and 3.019
+seconds: the median fell from 6.562 to 3.019 seconds, approximately 54%. These
+local runs used `config/agent.toml`, `config/agent.env` and normal SQL logging,
+with the server stopped. They include reset, migration, generation, source
+insertion, valuation and Connection initialization; compilation is excluded. The
+first optimized reset also removed the larger preceding dataset. Timings are
+evidence for this host, not a guarantee for other machines.
+
+The ordered format, web, build, test and lint gates passed, including 193 web
+tests. API verification on :8081 found 164 `default` points and 157 `edge-cases`
+points at this anchor. The latest default remained complete; edge-cases remained
+incomplete with explicit omissions. Balances, Futures, Earn and Dual Investment
+had 179, 103, 108 and 109 rows, respectively; asset and contract Catalogs had 82
+and 105 rows. Every list and the independent audit reviews had a second page.
+Counts vary with the anchor. The embedded UI verified login, both Portfolio
+choices and their complete/incomplete Overview states. Omitting `cookie_suffix`
+from a temporary agent configuration also verified the default
+`plutus_session_prod` and `plutus_csrf_prod` cookies without using production.
+
 ## Performance measurement: 2026-10-11
 
-Initializing every point through the collection writer issued about 178
-statements per point and made a complete reset take 49–52 seconds. The seed-only
-history initializer issues about 19. Three consecutive runs of a binary compiled
-from the working tree, using `config/agent.toml` and `config/agent.env` with
-normal SQL logging, took 10.21, 9.22 and 9.20 seconds. The median met the
-10-second target; the first run did not. One run without SQL logging took 8.70
-seconds. In the median run, generation took 1.1 seconds, source insertion and
-point initialization 7.765 seconds, and Connection initialization 0.12 seconds.
-Profiling the seed test attributed 0.36 seconds of CPU to the initializer; the
-remainder is database round trips. The dataset had 283 default, 265 edge-case,
-102 large and zero empty Valuation Points at this anchor.
+This earlier measurement predates the two-Portfolio reduction above.
+
+With normal SQL logging on the agent database, the previous initializer took
+9.08 seconds for a complete reset and issued 13,019 SQL statements. Historical
+price selection alone issued 4,939 queries. The revised seed-only initializer
+loads finite price and exclusion histories once per Portfolio and compares
+Manual quantities per 64-point batch. Runtime collection retains its bounded
+price reads and ordinary first-commit path.
+
+Three consecutive resets of the compiled working-tree binary took 7.191, 6.038,
+and 6.328 seconds: a 6.328-second median, about 30% below the measured baseline.
+Source insertion and Point initialization took 5.019, 4.715, and 5.000 seconds.
+The statement count fell to approximately 5,514; four bulk price loads replaced
+the individual price queries, and Manual comparison/timeline reads fell from
+approximately 1,297 to 24. All runs retained the same 650 Valuation Points.
+Compilation is excluded; generation, reset, source insertion, valuation, and
+Connection initialization are included. These are local measurements, not
+performance guarantees for other hosts or arbitrary seed-history sizes.
+
+Price selection parity tests cover Platform isolation, future retrievals,
+source-time ordering, expired prices, and nonmonotonic lookups. A 131-cycle
+regression covers Manual edits, clears, and stale empty sources across history
+batch boundaries. The complete seeded edge-case history still matches ordinary
+sequential valuation. No scenarios or history windows were reduced.
 
 ## Historical performance measurement: 2026-10-05
 

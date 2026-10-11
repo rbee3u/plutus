@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/audit"
 	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/collection"
@@ -20,6 +21,56 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
+
+func TestExclusionAuditPreservesHistoricalReasons(t *testing.T) {
+	h := newHarness(t)
+	item := h.createIdentity("Audit", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+	state := manualSave(t, h, item, "USD", "1")
+	asset := state.Items[0].AssetID
+	for i, reason := range []string{"First reviewed reason", "", "Later reviewed reason"} {
+		_, err := h.catalog.PutExclusion(h.ctx, asset, &catalog.ExclusionInput{
+			PortfolioID: h.portfolioID, ActorUserID: h.userID, Version: uint64(i),
+			Excluded: reason != "", Reason: reason,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := audit.NewService(h.db)
+	page, err := s.List(h.ctx, h.portfolioID, &audit.ListFilter{ResourceType: "asset", Limit: 2})
+	if err != nil || len(page.Items) != 2 || !page.HasMore || page.NextCursor == nil {
+		t.Fatalf("audit page: %+v %v", page, err)
+	}
+	older, err := s.List(h.ctx, h.portfolioID, &audit.ListFilter{ResourceType: "asset", Limit: 2, Cursor: *page.NextCursor})
+	if err != nil || len(older.Items) != 1 || older.HasMore {
+		t.Fatalf("older audit page: %+v %v", older, err)
+	}
+	events := page.Items
+	events = append(events, older.Items...)
+	for i, want := range []struct{ before, after string }{{"", "Later reviewed reason"}, {"First reviewed reason", ""}, {"", "First reviewed reason"}} {
+		for j, state := range []*map[string]any{events[i].Before, events[i].After} {
+			reason := []string{want.before, want.after}[j]
+			if state == nil || (*state)["excluded"] != (reason != "") {
+				t.Fatalf("exclusion state: %+v", state)
+			}
+			if reason == "" {
+				if (*state)["reason"] != nil {
+					t.Fatalf("restored reason: %v", (*state)["reason"])
+				}
+			} else if (*state)["reason"] != reason || (*state)["effectiveAt"] == nil {
+				t.Fatalf("historical exclusion: %+v, want %s", *state, reason)
+			}
+		}
+	}
+	if (*older.Items[0].Before)["effectiveAt"] != nil {
+		t.Fatal("invented an effective time for implicit version zero")
+	}
+	other := newHarness(t)
+	otherPage, err := s.List(h.ctx, other.portfolioID, &audit.ListFilter{ResourceType: "asset"})
+	if err != nil || len(otherPage.Items) != 0 {
+		t.Fatalf("cross-Portfolio audit: %+v %v", otherPage, err)
+	}
+}
 
 func TestEnableRequiresSuccessfulValidation(t *testing.T) {
 	h := newHarness(t)

@@ -262,7 +262,7 @@ func (q *Queries) ListPortfoliosForScheduling(ctx context.Context) ([]ListPortfo
 }
 
 const lockDeletingPortfolio = `-- name: LockDeletingPortfolio :one
-SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NOT NULL FOR UPDATE SKIP LOCKED
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, history_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NOT NULL FOR UPDATE SKIP LOCKED
 `
 
 func (q *Queries) LockDeletingPortfolio(ctx context.Context, id []byte) (Portfolio, error) {
@@ -278,6 +278,7 @@ func (q *Queries) LockDeletingPortfolio(ctx context.Context, id []byte) (Portfol
 		&i.IsInitial,
 		&i.DeletionRequestedAt,
 		&i.PriceAnchorsBefore,
+		&i.HistoryBefore,
 		&i.InitialUserID,
 		&i.Version,
 		&i.CreatedAt,
@@ -287,7 +288,7 @@ func (q *Queries) LockDeletingPortfolio(ctx context.Context, id []byte) (Portfol
 }
 
 const lockRetentionPortfolio = `-- name: LockRetentionPortfolio :one
-SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NULL FOR UPDATE
+SELECT id, user_id, name, name_key, timezone, collection_interval_seconds, is_initial, deletion_requested_at, price_anchors_before, history_before, initial_user_id, version, created_at, updated_at FROM portfolios WHERE id = ? AND deletion_requested_at IS NULL FOR UPDATE
 `
 
 func (q *Queries) LockRetentionPortfolio(ctx context.Context, id []byte) (Portfolio, error) {
@@ -303,6 +304,7 @@ func (q *Queries) LockRetentionPortfolio(ctx context.Context, id []byte) (Portfo
 		&i.IsInitial,
 		&i.DeletionRequestedAt,
 		&i.PriceAnchorsBefore,
+		&i.HistoryBefore,
 		&i.InitialUserID,
 		&i.Version,
 		&i.CreatedAt,

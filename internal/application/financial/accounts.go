@@ -84,6 +84,16 @@ func (s *Service) positionView(ctx context.Context, p PortfolioContext, accountI
 		return s.accountView(ctx, p, accountID)
 	}
 	detail, err := s.Detail(ctx, p, *cycleID)
+	if errors.Is(err, valuation.ErrNotFound) {
+		// Current holdings survive a dormant Portfolio's history window.
+		latest, latestErr := s.valuation.Latest(ctx, p.ID)
+		if latestErr == nil && latest.CycleID == *cycleID {
+			return s.accountView(ctx, p, accountID)
+		}
+		if latestErr != nil && !errors.Is(latestErr, valuation.ErrNoPoint) {
+			return AccountView{}, nil, latestErr
+		}
+	}
 	if err != nil {
 		return AccountView{}, nil, err
 	}

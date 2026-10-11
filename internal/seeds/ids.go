@@ -36,11 +36,9 @@ func SeedID(kind uint16, n uint64) uuid.UUID {
 
 // Well-known IDs retained across disposable development resets.
 var (
-	UserAlice           = SeedID(kindUser, 1)
-	PortfolioAliceMain  = SeedID(kindPortfolio, 1)
-	PortfolioAliceEdge  = namedID("portfolio/edge-cases")
-	PortfolioAliceLarge = namedID("portfolio/large")
-	PortfolioAliceEmpty = namedID("portfolio/empty")
+	UserAlice          = SeedID(kindUser, 1)
+	PortfolioAliceMain = SeedID(kindPortfolio, 1)
+	PortfolioAliceEdge = namedID("portfolio/edge-cases")
 )
 
 func namedID(key string) uuid.UUID {
@@ -49,7 +47,8 @@ func namedID(key string) uuid.UUID {
 }
 
 func portfolioID(name string) uuid.UUID {
-	if name == "default" {
+	// The pagination scenario joins the healthy Portfolio near the anchor.
+	if name == "default" || name == "large" {
 		return PortfolioAliceMain
 	}
 	return namedID("portfolio/" + name)

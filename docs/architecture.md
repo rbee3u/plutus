@@ -188,7 +188,7 @@ bypass Adapter Collect and private Identity success counters. Live valuation,
 reads all use the own-Platform lookup.
 
 Point commit compares the revision quantities adopted by consecutive points and
-stores changed Manual Accounts in `manual_adjustments`; revision numbers,
+stores changed Manual Accounts in `manual_balance_changes`; revision numbers,
 timestamps, and mappings do not establish an adjustment. The ledger API exposes
 current/last-applied quantities, versions, and pending state. Financial reads
 merge current Manual records with the selected report before filtering, sorting,
@@ -241,12 +241,15 @@ within that Portfolio.
 Seeds insert source facts and initialize their points in one transaction, then
 initialize Connections through real services. A seed-only history initializer
 shares the collection writer's calculation but loads sources in cycle batches,
-carries the previous point in memory, and skips per-Account evidence rereads;
-seed tests compare its edge-case rows with the collection writer. Historical
-Plutus events stop at the anchor; continued fake holdings cannot mutate flows,
-selection, archival, or Catalog policy. No persistent simulator or background
-application hook is needed. [Seeds](./seeds.md) owns scenarios, coverage, and
-performance evidence.
+carries the previous point in memory, and skips per-Account evidence rereads.
+Its finite, immutable price and exclusion histories are loaded once per
+Portfolio; price selection preserves source-time ordering, retrieval cutoffs,
+and the 24-hour window. Manual change detection runs per cycle batch. Seed tests
+compare its edge-case rows and price selections with the collection writer.
+Historical Plutus events stop at the anchor; continued fake holdings cannot
+mutate flows, selection, archival, or Catalog policy. No persistent simulator or
+background application hook is needed. [Seeds](./seeds.md) owns scenarios,
+coverage, and performance evidence.
 
 ## Persistence and retention
 
@@ -261,7 +264,7 @@ field, key, and constraint definition for 26 tables:
 | Collection and execution         | `collection_cycles`                                                                    |
 | Immutable Account facts          | `account_reports`, `balances`, `futures_positions`, `earn_positions`, `dual_positions` |
 | Derived financial results        | `valuation_points`, `account_valuations`, `balance_valuations`, `boundary_events`      |
-| Durable comparison evidence      | `manual_adjustments`, `calculated_asset_changes`                                       |
+| Durable comparison evidence      | `manual_balance_changes`, `calculated_asset_changes`                                   |
 | Manual and policy versions       | `manual_revisions`, `manual_revision_balances`, `asset_exclusion_versions`             |
 | User financial records and audit | `capital_flows`, `audit_events`                                                        |
 
@@ -274,7 +277,7 @@ therefore names the Portfolio; omitting it turns a key seek into a scan.
 Portfolio deletion locks its root and removes its entire owned graph in
 dependency order, including Catalogs, prices, and audit. Idempotency responses
 belong to Users and remain replayable for 24 hours even after a created
-Portfolio is deleted. Collection Cycles remain with their permanent Points.
+Portfolio is deleted. Collection Cycles remain with their retained Points.
 Hourly maintenance removes expired/revoked sessions and expired idempotency
 responses in bounded batches.
 
@@ -294,7 +297,7 @@ existing point; there is no result update, revision counter, recalculation time,
 or rebuild. First commits cannot insert a point before already committed
 history; exceptional manual reconciliation belongs to the operator. Boundary
 Events freeze completeness along with method and amount, referencing the
-permanent source point and Account rather than an expiring valuation row. Points
+retained source point and Account rather than an expiring valuation row. Points
 store no boundary totals; reads sum their Boundary Events.
 
 `valuation_points.cycle_id` is its primary key and only public identifier.
@@ -306,35 +309,74 @@ identifies the algorithm adopted at first commit.
 `detail_state` distinguishes full, daily, pruning, and expired detail. API
 readers expose pruning as expired before any holdings are removed. A reader's
 repeatable-read snapshot either sees all earlier rows or the unavailable state.
-Permanent daily Point states and the `price_anchors_before` cursor prevent
-timezone changes from replacing existing anchors. Detail cleanup, report/price
-sweeps, and Manual revision cleanup are resumable bounded work while no cycle is
+Daily Point states and the `price_anchors_before` cursor prevent timezone
+changes from replacing existing anchors. Detail cleanup, report/price sweeps,
+and Manual revision cleanup are resumable bounded work while no cycle is
 claimable. Price and report sweeps traverse bounded time/ID pages; they preserve
 adopted references and last-good source price windows. A finished sweep restarts
 only when the cutoff day moves or retention work may have released pins, so a
 release caused by collection waits at most one local day. Maintenance pauses for
 a minute after a round finds nothing to change or scan. Superseded Manual
-revisions go once no retained report references them. All Futures Contracts and
-exclusion history remain; exclusion history is required for arbitrary old
-endpoint comparisons.
+revisions go once no retained report references them. Referenced Futures
+Contracts and policy predecessors remain for retained endpoint comparisons.
+Unreferenced historical catalog entries can expire.
+
+Report sweeps check pins for a page of 64 candidates together. One visit removes
+at most 1,000 rows from each holdings table and then deletes empty, unpinned
+reports; its cursor stops before any unfinished report. Price sweeps delete
+eligible observations in 64-candidate batches. These bounds preserve resumable
+cleanup without requiring a worker round per report or per holdings table. An
+exhausted Manual revision search is also remembered for the current retention
+epoch; cutoff changes and released pins make it eligible again.
+
+Long-range comparisons hydrate only points with possible boundary, Manual,
+mapping, or calculation-version evidence. Calendar coverage and chart sampling
+read compact timeline headers; period closes hydrate only their selected
+endpoints. These reads preserve the original endpoint and completeness rules
+without permanent rollup tables. The timeline index also covers calculation
+versions; predecessor and version-window queries name that index because the
+measured optimizer otherwise scanned a whole Portfolio's clustered records.
+
+Manual audit payloads retain only the edited Asset's old and new quantity, so
+revision cleanup does not erase the edit. Exclusion audit reads resolve their
+referenced immutable policy versions in one query per page, keeping the policy
+table as the single source of rules and reasons.
 
 InnoDB reuses freed pages but never shrinks its files;
 [deployment](./deployment.md#mysql-capacity) owns disk and binlog settings. The
-planning scale is 20 Identities, each with about 50 Balances, 20 Positions, and
-its Manual Account, collected every 15 minutes for ten years: 350,400 permanent
-cycles and Points. Thirty full days plus daily anchors keep about 6,530 detailed
-Points, so about 6.5 million `balances` and `balance_valuations` rows, 2.6
-million Position rows, and 0.78 million Account Reports and Account Valuations
-remain before dependency pins. Per-cycle price deduplication keeps about 1.6
-million observations. A scaled MySQL 8.4 load measured 3.0 GB for the rolling
-30-day window and about 8.9 GB of data and indexes after ten years: about 3.6 GB
-after the first year, then about 0.6 GB per year. The window is charged at
-reserved pages, which later inserts reuse; each pruned daily anchor leaves used
-pages costing 1.0 to 2.3 dense Points. `balance_valuations` (3.1 GB), `balances`
-(2.2 GB), and Position rows (1.9 GB) dominate. This bounds table growth only;
-binary logs and free space belong to deployment. The
-[capacity load](./platform/schema-provenance-delivery.md#capacity-load) records
-the load shape and query plans.
+planning scale is a fixed total of 20 Identities, each with about 50 Balances
+across its Accounts, 20 combined Futures/Earn/Dual Positions, and its Manual
+Account. Assets are mostly stable holdings, with occasional turnover. Collection
+every 30 minutes for ten 365-day years produces 175,200 cycles and Points, plus
+calendar leap days. Fourteen full days plus daily anchors keep about 4,308
+detailed Points before boundary/source pins: roughly 4.31 million Balances and
+Balance Valuations, 1.72 million combined Positions and 0.52 million Account
+Reports and Account Valuations. With 244 shared market quotes per detailed
+cycle, about 1.05 million Price Observations remain. These are row-count
+planning estimates, not physical byte guarantees.
+
+The
+[rolling-retention verification](./platform/schema-provenance-delivery.md#rolling-retention-follow-up)
+records the updated policy and evidence. Earlier measurements in the same report
+used the former 15-minute/30-day policy and do not describe current retention.
+[Deployment](./deployment.md#mysql-capacity) owns the whole-machine disk budget.
+
+`portfolios.history_before` is a monotonic cleanup watermark. Public history
+queries omit older sparse dependencies; comparison endpoint reads allow an
+opening predecessor only when the requested instant is within the supported
+window. Retention keeps that snapshot and the last calculated state per Asset
+before it. Exclusion policy predecessors use the opening cycle's creation time,
+not its later evaluation time. Expired children leave before their Point;
+reports, prices and cycles are swept again after pins release. Current Manual
+application reads successful cycles, so deleting a historical Point does not
+turn an already applied revision into a pending edit.
+
+Price cleanup merges two bounded candidate pages from the existing retention
+index: non-anchors before the detail cutoff, and daily anchors before the
+historical cutoff. The merge sorts at most 128 rows. Cleanup also expires audits
+and unused Capital Flows, then unreferenced policy versions and catalog entries.
+A failed transaction invalidates disposable cursors so rolled-back work is not
+skipped.
 
 `collection_finished_at` freezes all cycle reports before valuation. A retry
 with that marker skips Platform reads, Account selection, and Manual reports; it
@@ -347,14 +389,14 @@ JSON is limited to bounded, typed documents that are read with their owner:
 - Audit owns before/after/metadata documents. Idempotency owns typed success
   response JSON and response headers.
 
-`manual_adjustments` freezes Manual markers at first commit, comparing adopted
-quantity sets before details can expire. `calculated_asset_changes` appends only
-changes of a nonzero calculated Asset's treatment: `included` with its adopted
-Canonical Asset, `excluded`, or `absent`. Endpoint comparison uses the latest
-change in `(evaluated_at, cycle_id)` order; an included change whose previous
-change adopted another Canonical Asset is a mapping change. Only a mapping
-update changes an Asset's Canonical Asset, and it advances the mapping version,
-so mapping-change reads consider only remapped Assets. Reads derive
+`manual_balance_changes` freezes Manual markers at first commit, comparing
+adopted quantity sets before details can expire. `calculated_asset_changes`
+appends only changes of a nonzero calculated Asset's treatment: `included` with
+its adopted Canonical Asset, `excluded`, or `absent`. Endpoint comparison uses
+the latest change in `(evaluated_at, cycle_id)` order; an included change whose
+previous change adopted another Canonical Asset is a mapping change. Only a
+mapping update changes an Asset's Canonical Asset, and it advances the mapping
+version, so mapping-change reads consider only remapped Assets. Reads derive
 calculation-version markers from consecutive points and Account issues and named
 omissions from retained Account Valuations, so expired points keep only counts.
 Value Change consumes these small durable facts and Boundary Events without

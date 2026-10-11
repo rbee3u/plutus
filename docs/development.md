@@ -113,7 +113,7 @@ than reverting to defaults. Durations use Go notation such as `15s`, `2m`, and
 | `logging.compress`                         | `true`      | gzip rotated files                                                                     |
 | `logging.sql_enabled`                      | `true`      | Record all project SQL executions and transaction boundaries                           |
 | `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks    |
-| `auth.cookie_suffix`                       | `""`        | Shared suffix for session and CSRF cookie names                                        |
+| `auth.cookie_suffix`                       | `"prod"`    | Shared suffix for session and CSRF cookie names                                        |
 | `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                   |
 | `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
 | `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
@@ -126,11 +126,13 @@ private-key path. Secret values remain outside TOML. Environment variables such
 as `PLUTUS_SERVER_PORT` cannot change ordinary settings, even when the TOML
 field is omitted.
 
-The cookie suffix generates both names. `cookie_suffix = "agent"` produces
-`plutus_session_agent` and `plutus_csrf_agent`; an empty suffix produces
-`plutus_session` and `plutus_csrf`. Nonempty suffixes may contain letters,
-digits, `_`, and `-`. Browser cookies are shared across ports on the same host,
-so use a distinct suffix for each instance.
+The default suffix is `prod`, producing `plutus_session_prod` and
+`plutus_csrf_prod`. The cookie suffix generates both names.
+`cookie_suffix = "agent"` produces `plutus_session_agent` and
+`plutus_csrf_agent`; an empty suffix produces `plutus_session` and
+`plutus_csrf`. Nonempty suffixes may contain letters, digits, `_`, and `-`.
+Browser cookies are shared across ports on the same host, so use a distinct
+suffix for each instance.
 
 With no certificate or key, Plutus serves HTTP. A complete certificate/key pair
 enables HTTPS; an incomplete, unreadable, invalid, or expired pair fails
@@ -146,9 +148,9 @@ key_file = "/etc/plutus/server-key.pem"
 # client_ca_file = "/etc/plutus/client-ca.pem"
 ```
 
-Collection Cycles are permanent execution history: Account Reports and Valuation
-Points reference them. Financial summaries are permanent; detailed snapshots
-follow the [retention policy](./domain-rules.md#historical-detail-retention).
+Collection Cycles, financial summaries, and detailed snapshots follow the
+[retention policy](./domain-rules.md#historical-detail-retention). Referenced
+Cycles remain available for their retained Account Reports and Valuation Points.
 
 ### Platform proxies
 
@@ -237,23 +239,23 @@ TOML file. An omitted policy defaults to direct; an explicit `environment` mode
 fails rather than silently switching routes. Secrets and stored data do not need
 migration.
 
-| Previous field                                        | Replacement                                                                            |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `server.tls.https_cert_path`                          | `server.tls.cert_file`                                                                 |
-| `server.tls.https_key_path`                           | `server.tls.key_file`                                                                  |
-| `server.tls.mtls_ca_path`                             | `server.tls.client_ca_file`                                                            |
-| `server.tls.https_enabled`, `server.tls.mtls_enabled` | Remove; transport mode follows the configured certificate and CA files                 |
-| `auth.session_cookie_name`, `auth.csrf_cookie_name`   | `auth.cookie_suffix`; use `local`, `agent`, `test`, or empty for the supplied examples |
-| `jobs.completed_retention`, `jobs.finished_retention` | Remove; Collection Cycles remain as permanent history                                  |
-| `collection.validate_timeout`                         | `collection.connection_validation_timeout`                                             |
-| `database.dsn`                                        | `PLUTUS_DSN` or `PLUTUS_DSN_FILE` outside TOML                                         |
-| `jobs.worker_poll_interval`                           | Remove; the serving worker polls an idle queue every 1 second                          |
-| `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long cycles                    |
-| `collection.default_interval`                         | Remove; new Portfolios start at 15 minutes; edit each Portfolio's interval in settings |
-| `collection.stagger`                                  | Remove; Collection Cycles wait 3 seconds between Identities                            |
+| Previous field                                        | Replacement                                                                             |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `server.tls.https_cert_path`                          | `server.tls.cert_file`                                                                  |
+| `server.tls.https_key_path`                           | `server.tls.key_file`                                                                   |
+| `server.tls.mtls_ca_path`                             | `server.tls.client_ca_file`                                                             |
+| `server.tls.https_enabled`, `server.tls.mtls_enabled` | Remove; transport mode follows the configured certificate and CA files                  |
+| `auth.session_cookie_name`, `auth.csrf_cookie_name`   | `auth.cookie_suffix`; use `local`, `agent`, `test`, or `prod` for the supplied examples |
+| `jobs.completed_retention`, `jobs.finished_retention` | Remove; Collection Cycles follow the history retention policy                           |
+| `collection.validate_timeout`                         | `collection.connection_validation_timeout`                                              |
+| `database.dsn`                                        | `PLUTUS_DSN` or `PLUTUS_DSN_FILE` outside TOML                                          |
+| `jobs.worker_poll_interval`                           | Remove; the serving worker polls an idle queue every 1 second                           |
+| `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long cycles                     |
+| `collection.default_interval`                         | Remove; new Portfolios start at 30 minutes; edit each Portfolio's interval in settings  |
+| `collection.stagger`                                  | Remove; Collection Cycles wait 3 seconds between Identities                             |
 
 Existing Portfolio intervals and financial history are unaffected. Both CLI User
-creation and subsequent Portfolio creation use the same 15-minute initial
+creation and subsequent Portfolio creation use the same 30-minute initial
 interval. Worker polling, leases, and the Identity delay are internal
 mechanisms, not deployment policies.
 
@@ -288,7 +290,7 @@ go run ./cmd/plutus --config config/local.toml --env-file config/local.env colle
 Sign in with the [seed login](./seeds.md).
 
 Alice's `default` Portfolio is undeletable. Once `serve` runs, the scheduler
-collects enabled Connections every 15 minutes. `Collect now` on Overview and
+collects enabled Connections every 30 minutes. `Collect now` on Overview and
 `plutus collect --portfolio <uuid>` trigger a cycle immediately. The empty
 Portfolio has no enabled Connection and is not scheduled.
 

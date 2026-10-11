@@ -50,7 +50,7 @@ type fileConfig struct {
 	Auth struct {
 		SessionIdleLifetime     *string `toml:"session_idle_lifetime"`
 		SessionAbsoluteLifetime *string `toml:"session_absolute_lifetime"`
-		CookieSuffix            string  `toml:"cookie_suffix"`
+		CookieSuffix            *string `toml:"cookie_suffix"`
 	} `toml:"auth"`
 	Collection struct {
 		ConnectionValidationTimeout *string   `toml:"connection_validation_timeout"`
@@ -102,6 +102,7 @@ func defaults() Config {
 			Port:          defaultPort,
 		},
 		Auth: Auth{
+			CookieSuffix:            "prod",
 			SessionIdleLifetime:     7 * 24 * time.Hour,
 			SessionAbsoluteLifetime: 30 * 24 * time.Hour,
 		},
@@ -162,7 +163,9 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	cfg.Server.TLS.CertFile = strings.TrimSpace(parsed.Server.TLS.CertFile)
 	cfg.Server.TLS.KeyFile = strings.TrimSpace(parsed.Server.TLS.KeyFile)
 	cfg.Server.TLS.ClientCAFile = strings.TrimSpace(parsed.Server.TLS.ClientCAFile)
-	cfg.Auth.CookieSuffix = strings.TrimSpace(parsed.Auth.CookieSuffix)
+	if parsed.Auth.CookieSuffix != nil {
+		cfg.Auth.CookieSuffix = strings.TrimSpace(*parsed.Auth.CookieSuffix)
+	}
 
 	if err := optionalDuration(&cfg.Auth.SessionIdleLifetime, parsed.Auth.SessionIdleLifetime, "auth.session_idle_lifetime"); err != nil {
 		return err

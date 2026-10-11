@@ -22,7 +22,7 @@ import (
 // Keep this inventory independent of the implementation. A new scoped table
 // needs an explicit lifecycle decision and a populated deletion scenario.
 var portfolioTables = []string{
-	"account_reports", "account_valuations", "accounts", "asset_exclusion_versions", "assets", "audit_events", "balance_valuations", "balances", "boundary_events", "calculated_asset_changes", "capital_flows", "collection_cycles", "dual_positions", "earn_positions", "futures_contracts", "futures_positions", "identities", "manual_adjustments", "manual_revision_balances", "manual_revisions", "price_observations", "valuation_points",
+	"account_reports", "account_valuations", "accounts", "asset_exclusion_versions", "assets", "audit_events", "balance_valuations", "balances", "boundary_events", "calculated_asset_changes", "capital_flows", "collection_cycles", "dual_positions", "earn_positions", "futures_contracts", "futures_positions", "identities", "manual_balance_changes", "manual_revision_balances", "manual_revisions", "price_observations", "valuation_points",
 }
 
 // Exercise the complete owned graph in a dedicated temporary database.
@@ -190,7 +190,7 @@ func TestSchemaRejectsCrossPortfolioPointEvidence(t *testing.T) {
 	if err := h.db.QueryRowContext(h.ctx, "SELECT id FROM accounts WHERE portfolio_id=? AND account_type='manual'", other.ID[:]).Scan(&accountID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO manual_adjustments (portfolio_id,cycle_id,account_id) VALUES (?,?,?)", other.ID[:], cycleID[:], accountID); err == nil {
+	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO manual_balance_changes (portfolio_id,cycle_id,account_id) VALUES (?,?,?)", other.ID[:], cycleID[:], accountID); err == nil {
 		t.Fatal("cross-Portfolio point reference accepted")
 	}
 }

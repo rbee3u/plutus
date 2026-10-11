@@ -13,7 +13,7 @@ import (
 )
 
 const countValuationPointsBetween = `-- name: CountValuationPointsBetween :one
-SELECT COUNT(*) FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+SELECT COUNT(*) FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 `
 
 type CountValuationPointsBetweenParams struct {
@@ -23,7 +23,12 @@ type CountValuationPointsBetweenParams struct {
 }
 
 func (q *Queries) CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countValuationPointsBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	row := q.db.QueryRowContext(ctx, countValuationPointsBetween,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -31,13 +36,54 @@ func (q *Queries) CountValuationPointsBetween(ctx context.Context, arg CountValu
 
 const getFirstValuationPoint = `-- name: GetFirstValuationPoint :one
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points
-WHERE portfolio_id = ?
+WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ?
 ORDER BY evaluated_at ASC, cycle_id ASC
 LIMIT 1
 `
 
-func (q *Queries) GetFirstValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error) {
-	row := q.db.QueryRowContext(ctx, getFirstValuationPoint, portfolioID)
+type GetFirstValuationPointParams struct {
+	PortfolioID []byte
+}
+
+func (q *Queries) GetFirstValuationPoint(ctx context.Context, arg GetFirstValuationPointParams) (ValuationPoint, error) {
+	row := q.db.QueryRowContext(ctx, getFirstValuationPoint, arg.PortfolioID, arg.PortfolioID)
+	var i ValuationPoint
+	err := row.Scan(
+		&i.PortfolioID,
+		&i.CycleID,
+		&i.EvaluatedAt,
+		&i.TotalUsd,
+		&i.AccountCount,
+		&i.StaleAccountCount,
+		&i.IncompleteAccountCount,
+		&i.CalculationVersion,
+		&i.DetailState,
+	)
+	return i, err
+}
+
+const getHistoryValuationPointBefore = `-- name: GetHistoryValuationPointBefore :one
+SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points FORCE INDEX (idx_valuation_points_timeline)
+WHERE ? >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND (evaluated_at < ? OR (evaluated_at = ? AND cycle_id < ?))
+ORDER BY evaluated_at DESC, cycle_id DESC
+LIMIT 1
+`
+
+type GetHistoryValuationPointBeforeParams struct {
+	At          sql.NullTime
+	PortfolioID []byte
+	CycleID     []byte
+}
+
+func (q *Queries) GetHistoryValuationPointBefore(ctx context.Context, arg GetHistoryValuationPointBeforeParams) (ValuationPoint, error) {
+	row := q.db.QueryRowContext(ctx, getHistoryValuationPointBefore,
+		arg.At,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.At,
+		arg.At,
+		arg.CycleID,
+	)
 	var i ValuationPoint
 	err := row.Scan(
 		&i.PortfolioID,
@@ -78,7 +124,7 @@ func (q *Queries) GetLatestValuationPoint(ctx context.Context, portfolioID []byt
 }
 
 const getRetainedSnapshotBefore = `-- name: GetRetainedSnapshotBefore :one
-SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points WHERE portfolio_id = ? AND evaluated_at < ? AND detail_state IN ('full','daily')
+SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at < ? AND detail_state IN ('full','daily')
 ORDER BY evaluated_at DESC, cycle_id DESC LIMIT 1
 `
 
@@ -88,7 +134,7 @@ type GetRetainedSnapshotBeforeParams struct {
 }
 
 func (q *Queries) GetRetainedSnapshotBefore(ctx context.Context, arg GetRetainedSnapshotBeforeParams) (ValuationPoint, error) {
-	row := q.db.QueryRowContext(ctx, getRetainedSnapshotBefore, arg.PortfolioID, arg.EvaluatedAt)
+	row := q.db.QueryRowContext(ctx, getRetainedSnapshotBefore, arg.PortfolioID, arg.PortfolioID, arg.EvaluatedAt)
 	var i ValuationPoint
 	err := row.Scan(
 		&i.PortfolioID,
@@ -133,18 +179,23 @@ func (q *Queries) GetValuationPoint(ctx context.Context, arg GetValuationPointPa
 
 const getValuationPointAtOrBefore = `-- name: GetValuationPointAtOrBefore :one
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points
-WHERE portfolio_id = ? AND evaluated_at <= ?
+WHERE ? >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at <= ?
 ORDER BY evaluated_at DESC, cycle_id DESC
 LIMIT 1
 `
 
 type GetValuationPointAtOrBeforeParams struct {
+	At          sql.NullTime
 	PortfolioID []byte
-	At          time.Time
 }
 
 func (q *Queries) GetValuationPointAtOrBefore(ctx context.Context, arg GetValuationPointAtOrBeforeParams) (ValuationPoint, error) {
-	row := q.db.QueryRowContext(ctx, getValuationPointAtOrBefore, arg.PortfolioID, arg.At)
+	row := q.db.QueryRowContext(ctx, getValuationPointAtOrBefore,
+		arg.At,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.At,
+	)
 	var i ValuationPoint
 	err := row.Scan(
 		&i.PortfolioID,
@@ -161,7 +212,7 @@ func (q *Queries) GetValuationPointAtOrBefore(ctx context.Context, arg GetValuat
 }
 
 const getValuationPointBefore = `-- name: GetValuationPointBefore :one
-SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points
+SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count, calculation_version, detail_state FROM valuation_points FORCE INDEX (idx_valuation_points_timeline)
 WHERE portfolio_id = ? AND (evaluated_at < ? OR (evaluated_at = ? AND cycle_id < ?))
 ORDER BY evaluated_at DESC, cycle_id DESC
 LIMIT 1
@@ -173,6 +224,7 @@ type GetValuationPointBeforeParams struct {
 	CycleID     []byte
 }
 
+// Prepared endpoint reads must seek the timeline even for distant history.
 func (q *Queries) GetValuationPointBefore(ctx context.Context, arg GetValuationPointBeforeParams) (ValuationPoint, error) {
 	row := q.db.QueryRowContext(ctx, getValuationPointBefore,
 		arg.PortfolioID,
@@ -302,18 +354,18 @@ func (q *Queries) InsertCalculatedAssetChange(ctx context.Context, arg InsertCal
 	return err
 }
 
-const insertManualAdjustment = `-- name: InsertManualAdjustment :exec
-INSERT INTO manual_adjustments (portfolio_id, cycle_id, account_id) VALUES (?, ?, ?)
+const insertManualBalanceChange = `-- name: InsertManualBalanceChange :exec
+INSERT INTO manual_balance_changes (portfolio_id, cycle_id, account_id) VALUES (?, ?, ?)
 `
 
-type InsertManualAdjustmentParams struct {
+type InsertManualBalanceChangeParams struct {
 	PortfolioID []byte
 	CycleID     []byte
 	AccountID   []byte
 }
 
-func (q *Queries) InsertManualAdjustment(ctx context.Context, arg InsertManualAdjustmentParams) error {
-	_, err := q.db.ExecContext(ctx, insertManualAdjustment, arg.PortfolioID, arg.CycleID, arg.AccountID)
+func (q *Queries) InsertManualBalanceChange(ctx context.Context, arg InsertManualBalanceChangeParams) error {
+	_, err := q.db.ExecContext(ctx, insertManualBalanceChange, arg.PortfolioID, arg.CycleID, arg.AccountID)
 	return err
 }
 
@@ -346,6 +398,24 @@ func (q *Queries) InsertValuationPoint(ctx context.Context, arg InsertValuationP
 		arg.CalculationVersion,
 	)
 	return err
+}
+
+const isPointInRetainedHistory = `-- name: IsPointInRetainedHistory :one
+SELECT EXISTS(SELECT 1 FROM valuation_points p JOIN portfolios owner ON owner.id = p.portfolio_id
+WHERE p.portfolio_id = ? AND p.cycle_id = ?
+AND (owner.history_before IS NULL OR p.evaluated_at >= owner.history_before)) AS available
+`
+
+type IsPointInRetainedHistoryParams struct {
+	PortfolioID []byte
+	CycleID     []byte
+}
+
+func (q *Queries) IsPointInRetainedHistory(ctx context.Context, arg IsPointInRetainedHistoryParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isPointInRetainedHistory, arg.PortfolioID, arg.CycleID)
+	var available bool
+	err := row.Scan(&available)
+	return available, err
 }
 
 const listAssetMappingChangesByCycles = `-- name: ListAssetMappingChangesByCycles :many
@@ -561,6 +631,53 @@ func (q *Queries) ListBoundaryEventsByCycles(ctx context.Context, arg ListBounda
 	return items, nil
 }
 
+const listBoundaryPointHeadersBetween = `-- name: ListBoundaryPointHeadersBetween :many
+SELECT DISTINCT p.cycle_id, p.evaluated_at
+FROM boundary_events e
+STRAIGHT_JOIN valuation_points p ON p.portfolio_id = e.portfolio_id AND p.cycle_id = e.cycle_id
+WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND e.portfolio_id = ? AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+ORDER BY p.evaluated_at, p.cycle_id
+`
+
+type ListBoundaryPointHeadersBetweenParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListBoundaryPointHeadersBetweenRow struct {
+	CycleID     []byte
+	EvaluatedAt time.Time
+}
+
+func (q *Queries) ListBoundaryPointHeadersBetween(ctx context.Context, arg ListBoundaryPointHeadersBetweenParams) ([]ListBoundaryPointHeadersBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBoundaryPointHeadersBetween,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBoundaryPointHeadersBetweenRow{}
+	for rows.Next() {
+		var i ListBoundaryPointHeadersBetweenRow
+		if err := rows.Scan(&i.CycleID, &i.EvaluatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBoundaryValuesBetween = `-- name: ListBoundaryValuesBetween :many
 SELECT e.cycle_id, e.direction, e.value_usd
 FROM boundary_events e
@@ -590,6 +707,92 @@ func (q *Queries) ListBoundaryValuesBetween(ctx context.Context, arg ListBoundar
 	for rows.Next() {
 		var i ListBoundaryValuesBetweenRow
 		if err := rows.Scan(&i.CycleID, &i.Direction, &i.ValueUsd); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listComparisonPointHeadersBetween = `-- name: ListComparisonPointHeadersBetween :many
+SELECT p.cycle_id, p.evaluated_at
+FROM manual_balance_changes m
+STRAIGHT_JOIN valuation_points p ON p.portfolio_id = m.portfolio_id AND p.cycle_id = m.cycle_id
+WHERE m.portfolio_id = ? AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+UNION
+SELECT p.cycle_id, p.evaluated_at
+FROM boundary_events e
+STRAIGHT_JOIN valuation_points p ON p.portfolio_id = e.portfolio_id AND p.cycle_id = e.cycle_id
+WHERE e.portfolio_id = ? AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+UNION
+SELECT p.cycle_id, p.evaluated_at
+FROM assets a
+STRAIGHT_JOIN calculated_asset_changes c ON c.portfolio_id = a.portfolio_id AND c.asset_id = a.id
+STRAIGHT_JOIN valuation_points p ON p.portfolio_id = c.portfolio_id AND p.cycle_id = c.cycle_id
+WHERE a.portfolio_id = ? AND a.mapping_version > 1 AND c.treatment = 'included'
+  AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+UNION
+SELECT versions.cycle_id, versions.evaluated_at FROM (
+    SELECT timeline.cycle_id, timeline.evaluated_at, timeline.calculation_version,
+           LAG(timeline.calculation_version) OVER (ORDER BY timeline.evaluated_at, timeline.cycle_id) AS previous_version
+    FROM (
+        SELECT current.cycle_id, current.evaluated_at, current.calculation_version FROM valuation_points current FORCE INDEX (idx_valuation_points_timeline)
+        WHERE current.portfolio_id = ? AND current.evaluated_at >= ? AND current.evaluated_at <= ?
+        UNION ALL
+        SELECT anchor.cycle_id, anchor.evaluated_at, anchor.calculation_version FROM (
+            SELECT earlier.cycle_id, earlier.evaluated_at, earlier.calculation_version FROM valuation_points earlier FORCE INDEX (idx_valuation_points_timeline)
+            WHERE earlier.portfolio_id = ? AND earlier.evaluated_at < ?
+            ORDER BY earlier.evaluated_at DESC, earlier.cycle_id DESC LIMIT 1
+        ) anchor
+    ) timeline
+) versions WHERE versions.calculation_version <> versions.previous_version
+ORDER BY evaluated_at, cycle_id
+`
+
+type ListComparisonPointHeadersBetweenParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListComparisonPointHeadersBetweenRow struct {
+	CycleID     []byte
+	EvaluatedAt time.Time
+}
+
+// Read only Points that can contribute comparison evidence. The version window
+// includes one predecessor, so A -> B -> A and equal-time Cycle ordering survive.
+func (q *Queries) ListComparisonPointHeadersBetween(ctx context.Context, arg ListComparisonPointHeadersBetweenParams) ([]ListComparisonPointHeadersBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listComparisonPointHeadersBetween,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PortfolioID,
+		arg.FromAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListComparisonPointHeadersBetweenRow{}
+	for rows.Next() {
+		var i ListComparisonPointHeadersBetweenRow
+		if err := rows.Scan(&i.CycleID, &i.EvaluatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -649,26 +852,26 @@ func (q *Queries) ListLatestCalculatedAssetChanges(ctx context.Context, portfoli
 	return items, nil
 }
 
-const listManualAdjustmentsByCycles = `-- name: ListManualAdjustmentsByCycles :many
-SELECT m.cycle_id, m.account_id, a.account_type FROM manual_adjustments m
+const listManualBalanceChangesByCycles = `-- name: ListManualBalanceChangesByCycles :many
+SELECT m.cycle_id, m.account_id, a.account_type FROM manual_balance_changes m
 JOIN accounts a ON a.portfolio_id = m.portfolio_id AND a.id = m.account_id
 WHERE m.portfolio_id = ? AND m.cycle_id IN (/*SLICE:cycle_ids*/?)
 ORDER BY m.cycle_id, m.account_id
 `
 
-type ListManualAdjustmentsByCyclesParams struct {
+type ListManualBalanceChangesByCyclesParams struct {
 	PortfolioID []byte
 	CycleIds    [][]byte
 }
 
-type ListManualAdjustmentsByCyclesRow struct {
+type ListManualBalanceChangesByCyclesRow struct {
 	CycleID     []byte
 	AccountID   []byte
 	AccountType string
 }
 
-func (q *Queries) ListManualAdjustmentsByCycles(ctx context.Context, arg ListManualAdjustmentsByCyclesParams) ([]ListManualAdjustmentsByCyclesRow, error) {
-	query := listManualAdjustmentsByCycles
+func (q *Queries) ListManualBalanceChangesByCycles(ctx context.Context, arg ListManualBalanceChangesByCyclesParams) ([]ListManualBalanceChangesByCyclesRow, error) {
+	query := listManualBalanceChangesByCycles
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.PortfolioID)
 	if len(arg.CycleIds) > 0 {
@@ -684,9 +887,9 @@ func (q *Queries) ListManualAdjustmentsByCycles(ctx context.Context, arg ListMan
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListManualAdjustmentsByCyclesRow{}
+	items := []ListManualBalanceChangesByCyclesRow{}
 	for rows.Next() {
-		var i ListManualAdjustmentsByCyclesRow
+		var i ListManualBalanceChangesByCyclesRow
 		if err := rows.Scan(&i.CycleID, &i.AccountID, &i.AccountType); err != nil {
 			return nil, err
 		}
@@ -823,12 +1026,12 @@ func (q *Queries) ListPointCalculatedAssets(ctx context.Context, arg ListPointCa
 }
 
 const listPointComparisonTimeline = `-- name: ListPointComparisonTimeline :many
-SELECT p.cycle_id, p.evaluated_at, p.calculation_version FROM valuation_points p
+SELECT p.cycle_id, p.evaluated_at, p.calculation_version FROM valuation_points p FORCE INDEX (idx_valuation_points_timeline)
 WHERE p.portfolio_id = ?
   AND p.evaluated_at >= ? AND p.evaluated_at <= ?
 UNION ALL
 SELECT anchor.cycle_id, anchor.evaluated_at, anchor.calculation_version FROM (
-    SELECT earlier.cycle_id, earlier.evaluated_at, earlier.calculation_version FROM valuation_points earlier
+    SELECT earlier.cycle_id, earlier.evaluated_at, earlier.calculation_version FROM valuation_points earlier FORCE INDEX (idx_valuation_points_timeline)
     WHERE earlier.portfolio_id = ? AND earlier.evaluated_at < ?
     ORDER BY earlier.evaluated_at DESC, earlier.cycle_id DESC LIMIT 1
 ) anchor
@@ -849,6 +1052,7 @@ type ListPointComparisonTimelineRow struct {
 
 // One earlier anchor supplies the first predecessor without scanning old
 // history once per requested point. Equal timestamps remain ordered by Cycle ID.
+// The covering timeline prevents a Portfolio-wide primary-key scan after imports.
 func (q *Queries) ListPointComparisonTimeline(ctx context.Context, arg ListPointComparisonTimelineParams) ([]ListPointComparisonTimelineRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPointComparisonTimeline,
 		arg.PortfolioID,
@@ -879,7 +1083,7 @@ func (q *Queries) ListPointComparisonTimeline(ctx context.Context, arg ListPoint
 }
 
 const listValuationPointHeadersBetween = `-- name: ListValuationPointHeadersBetween :many
-SELECT cycle_id, evaluated_at FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+SELECT cycle_id, evaluated_at FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 ORDER BY evaluated_at ASC, cycle_id ASC
 `
 
@@ -895,7 +1099,12 @@ type ListValuationPointHeadersBetweenRow struct {
 }
 
 func (q *Queries) ListValuationPointHeadersBetween(ctx context.Context, arg ListValuationPointHeadersBetweenParams) ([]ListValuationPointHeadersBetweenRow, error) {
-	rows, err := q.db.QueryContext(ctx, listValuationPointHeadersBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	rows, err := q.db.QueryContext(ctx, listValuationPointHeadersBetween,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -920,7 +1129,7 @@ func (q *Queries) ListValuationPointHeadersBetween(ctx context.Context, arg List
 const listValuationPointPage = `-- name: ListValuationPointPage :many
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
        calculation_version, detail_state
-FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 ORDER BY evaluated_at DESC, cycle_id DESC LIMIT ? OFFSET ?
 `
 
@@ -934,6 +1143,7 @@ type ListValuationPointPageParams struct {
 
 func (q *Queries) ListValuationPointPage(ctx context.Context, arg ListValuationPointPageParams) ([]ValuationPoint, error) {
 	rows, err := q.db.QueryContext(ctx, listValuationPointPage,
+		arg.PortfolioID,
 		arg.PortfolioID,
 		arg.FromAt,
 		arg.ToAt,
@@ -974,7 +1184,7 @@ func (q *Queries) ListValuationPointPage(ctx context.Context, arg ListValuationP
 const listValuationPointSummariesBetween = `-- name: ListValuationPointSummariesBetween :many
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
        calculation_version, detail_state
-FROM valuation_points WHERE portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 ORDER BY evaluated_at ASC, cycle_id ASC
 `
 
@@ -985,7 +1195,12 @@ type ListValuationPointSummariesBetweenParams struct {
 }
 
 func (q *Queries) ListValuationPointSummariesBetween(ctx context.Context, arg ListValuationPointSummariesBetweenParams) ([]ValuationPoint, error) {
-	rows, err := q.db.QueryContext(ctx, listValuationPointSummariesBetween, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	rows, err := q.db.QueryContext(ctx, listValuationPointSummariesBetween,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,8 @@ status: accepted
 
 # Immutable summaries, daily detail, and populated-database upgrades
 
-Keep all committed financial summaries and comparison evidence, with recent full
-detail and permanent daily snapshots. The
+Keep committed financial summaries and comparison evidence in a rolling ten-year
+window, with recent full detail and daily snapshots. The
 [domain retention policy](../domain-rules.md#historical-detail-retention) owns
 exact selection and dependency rules. Committed valuations are immutable; there
 is no rebuild API.
@@ -13,9 +13,11 @@ is no rebuild API.
 The target deployment has four cores, 8 GB RAM, and about 30 GB storage for ten
 years. Retaining all intraday holdings for years makes detail tables dominate
 that budget. Daily archives preserve useful long-term inspection while
-sacrificing exact intraday reconstruction. Durable comparison facts are small
-enough to keep; deriving them from expiring detail would silently change
-historical results. Unusual historical corrections are deliberate operator
+sacrificing exact intraday reconstruction. Comparison facts are small enough to
+retain throughout the window; deriving them from expiring detail would silently
+change historical results. Current configuration and opening-boundary evidence
+can precede the window; public history must not expose internal predecessors as
+complete old history. Unusual historical corrections are deliberate operator
 reconciliation, without a dedicated repair framework for rare cases.
 
 Migrations are explicit. After prod's first migration, freeze the baseline and

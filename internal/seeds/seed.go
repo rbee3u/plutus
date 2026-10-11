@@ -25,7 +25,7 @@ func BuildAt(now time.Time) (Seed, error) {
 	if now.IsZero() || now.Year() < 1972 || now.Year() > 9998 {
 		return Seed{}, fmt.Errorf("seed anchor is outside the supported calendar")
 	}
-	anchor := now.UTC().Truncate(15 * time.Minute)
+	anchor := now.UTC().Truncate(30 * time.Minute)
 	b := newBuilder()
 	b.comment("Deterministic offline walkthrough; synthetic values, not recorded market history")
 	b.comment("Scratch login: alice / Alice=123456")
@@ -33,10 +33,8 @@ func BuildAt(now time.Time) (Seed, error) {
 	created := anchor.AddDate(0, -3, -10)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
 	portfolios := []portfolioSpec{
-		{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 900, Undeletable: true, CreatedAt: created},
-		{ID: PortfolioAliceEdge, User: UserAlice, Name: "edge-cases", Timezone: "Europe/Berlin", Interval: 900, CreatedAt: created},
-		{ID: PortfolioAliceLarge, User: UserAlice, Name: "large", Timezone: "UTC", Interval: 900, CreatedAt: anchor.AddDate(0, 0, -8)},
-		{ID: PortfolioAliceEmpty, User: UserAlice, Name: "empty", Timezone: "Asia/Shanghai", Interval: 900, CreatedAt: anchor},
+		{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 1800, Undeletable: true, CreatedAt: created},
+		{ID: PortfolioAliceEdge, User: UserAlice, Name: "edge-cases", Timezone: "Europe/Berlin", Interval: 1800, CreatedAt: created},
 	}
 	definitions := fake.DemoIdentities()
 	seen := map[string]bool{}
@@ -54,24 +52,25 @@ func BuildAt(now time.Time) (Seed, error) {
 		b.portfolio(&p)
 		ids = append(ids, p.ID)
 		for _, d := range definitions {
-			if d.Portfolio == p.Name {
-				b.demoIdentity(d, anchor, p.CreatedAt)
+			if portfolioID(d.Portfolio) == p.ID {
+				created := p.CreatedAt
+				if d.Portfolio == "large" {
+					created = anchor.Add(-2 * time.Hour)
+				}
+				b.demoIdentity(d, anchor, created)
 			}
-		}
-		if p.Name == "empty" {
-			continue
 		}
 		loc, err := time.LoadLocation(p.Timezone)
 		if err != nil {
 			return Seed{}, fmt.Errorf("seed timezone: %w", err)
 		}
-		for _, at := range cycleTimes(anchor, loc, p.Name == "large") {
+		for _, at := range cycleTimes(anchor, loc) {
 			if p.Name == "edge-cases" && sameLocalDay(at, anchor.AddDate(0, 0, -4), loc) {
 				continue
 			}
 			var reports []reportSpec
 			for _, d := range definitions {
-				if d.Portfolio != p.Name {
+				if portfolioID(d.Portfolio) != p.ID || (d.Portfolio == "large" && at.Before(anchor.Add(-2*time.Hour))) {
 					continue
 				}
 				batch, err := fake.DemoBatch(d, anchor, at.Add(2*time.Second), fake.DemoAccounts(d, anchor, at))

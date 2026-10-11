@@ -201,12 +201,12 @@ func (q *Queries) DeletePortfolioIdentities(ctx context.Context, portfolioID []b
 	return result.RowsAffected()
 }
 
-const deletePortfolioManualAdjustments = `-- name: DeletePortfolioManualAdjustments :execrows
-DELETE FROM manual_adjustments WHERE portfolio_id = ? LIMIT 1000
+const deletePortfolioManualBalanceChanges = `-- name: DeletePortfolioManualBalanceChanges :execrows
+DELETE FROM manual_balance_changes WHERE portfolio_id = ? LIMIT 1000
 `
 
-func (q *Queries) DeletePortfolioManualAdjustments(ctx context.Context, portfolioID []byte) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deletePortfolioManualAdjustments, portfolioID)
+func (q *Queries) DeletePortfolioManualBalanceChanges(ctx context.Context, portfolioID []byte) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deletePortfolioManualBalanceChanges, portfolioID)
 	if err != nil {
 		return 0, err
 	}

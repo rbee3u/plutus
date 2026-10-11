@@ -7,16 +7,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/assetexclusion"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
 const historyBatch = 64
@@ -50,9 +51,18 @@ func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) 
 		slices.SortFunc(history, func(a, b sqlcgen.ListSucceededCyclesRow) int {
 			return cmp.Or(a.CollectionFinishedAt.Time.Compare(b.CollectionFinishedAt.Time), bytes.Compare(a.ID, b.ID))
 		})
+		prices, err := loadHistoryPrices(ctx, q, portfolioID)
+		if err != nil {
+			return struct{}{}, err
+		}
+		policies, err := q.ListSeedHistoryExclusions(ctx, portfolioID[:])
+		if err != nil {
+			return struct{}{}, err
+		}
 		var previous map[uuid.UUID]previousAccount
 		for start := 0; start < len(history); start += historyBatch {
 			batch := history[start:min(start+historyBatch, len(history))]
+			points := make([]Point, 0, len(batch))
 			reports, inputs, err := s.historyInputs(ctx, q, portfolioID, batch)
 			if err != nil {
 				return struct{}{}, err
@@ -62,7 +72,11 @@ func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) 
 				if err != nil {
 					return struct{}{}, err
 				}
-				accounts, err := s.valueHistoryCycle(ctx, q, portfolioID, cycleID, reports[cycleID], inputs)
+				excluded, err := historyExclusions(policies, cycle.CreatedAt)
+				if err != nil {
+					return struct{}{}, err
+				}
+				accounts, err := s.valueHistoryCycle(ctx, prices, excluded, reports[cycleID], inputs)
 				if err != nil {
 					return struct{}{}, fmt.Errorf("initialize Valuation Point %s: %w", cycleID, err)
 				}
@@ -72,6 +86,18 @@ func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) 
 					return struct{}{}, fmt.Errorf("initialize Valuation Point %s: %w", cycleID, err)
 				}
 				previous = previousFromAccounts(accounts)
+				points = append(points, point)
+			}
+			changes, err := s.manualBalanceChangesByPoints(ctx, portfolioID, points)
+			if err != nil {
+				return struct{}{}, err
+			}
+			for _, point := range points {
+				for _, change := range changes[point.CycleID] {
+					if err := q.InsertManualBalanceChange(ctx, sqlcgen.InsertManualBalanceChangeParams{PortfolioID: portfolioID[:], CycleID: point.CycleID[:], AccountID: change.AccountID[:]}); err != nil {
+						return struct{}{}, err
+					}
+				}
 			}
 		}
 		return struct{}{}, nil
@@ -141,12 +167,7 @@ func (s *Service) historyInputs(ctx context.Context, q *sqlcgen.Queries, portfol
 	return reports, inputs, nil
 }
 
-func (s *Service) valueHistoryCycle(ctx context.Context, q *sqlcgen.Queries, portfolioID, cycleID uuid.UUID, rows []sqlcgen.ListReportsByCycleRow, inputs *reportInputs) ([]AccountValuation, error) {
-	exclusions, err := assetexclusion.ActiveForCycle(ctx, s.db, portfolioID, cycleID)
-	if err != nil {
-		return nil, err
-	}
-	book := NewPriceBook(q, portfolioID)
+func (s *Service) valueHistoryCycle(ctx context.Context, book priceResolver, exclusions map[uuid.UUID]bool, rows []sqlcgen.ListReportsByCycleRow, inputs *reportInputs) ([]AccountValuation, error) {
 	out := make([]AccountValuation, 0, len(rows))
 	for i := range rows {
 		input, err := s.prepareReport(ctx, book, &rows[i], exclusions, inputs)
@@ -157,6 +178,82 @@ func (s *Service) valueHistoryCycle(ctx context.Context, q *sqlcgen.Queries, por
 	}
 	sortAccounts(out)
 	return out, nil
+}
+
+// Seed inputs are immutable and finite. Retain the ordinary price selection's
+// source-time ordering, retrieval cutoff, and staleness window without issuing
+// the same historical lookup for each Account.
+type historyPrices struct {
+	observations map[[2]string][]sqlcgen.PriceObservation
+	cache        map[priceKey]map[string]PriceSelection
+}
+
+func loadHistoryPrices(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID) (*historyPrices, error) {
+	rows, err := q.ListSeedHistoryPrices(ctx, portfolioID[:])
+	if err != nil {
+		return nil, err
+	}
+	book := &historyPrices{observations: map[[2]string][]sqlcgen.PriceObservation{}, cache: map[priceKey]map[string]PriceSelection{}}
+	for _, row := range rows {
+		key := [2]string{row.Platform, row.RequestedCanonicalAssetSymbol}
+		book.observations[key] = append(book.observations[key], row)
+	}
+	return book, nil
+}
+
+func (b *historyPrices) Resolve(_ context.Context, platform, symbol string, at time.Time) (PriceSelection, error) {
+	if USDQuote(symbol) {
+		return PriceSelection{Value: big.NewRat(1, 1), Method: "usd_parity"}, nil
+	}
+	key := priceKey{platform: platform, at: at}
+	if cached, ok := b.cache[key][symbol]; ok {
+		return cached, nil
+	}
+	rows := b.observations[[2]string{platform, symbol}]
+	start, _ := slices.BinarySearchFunc(rows, at, func(row sqlcgen.PriceObservation, cutoff time.Time) int {
+		return cutoff.Compare(row.PriceAt.Time)
+	})
+	selected := PriceSelection{Method: "unavailable"}
+	for _, row := range rows[start:] {
+		if at.Sub(row.PriceAt.Time) > maxPriceAge {
+			break
+		}
+		if row.RetrievedAt.After(at) {
+			continue
+		}
+		value, valid := decimal.Parse(row.Price)
+		if !valid || value.Sign() <= 0 {
+			break
+		}
+		id, err := uuid.FromBytes(row.ID)
+		if err != nil {
+			return PriceSelection{}, err
+		}
+		selected = PriceSelection{Value: value, ObservationID: &id, Method: "market_price"}
+		break
+	}
+	if b.cache[key] == nil {
+		b.cache[key] = map[string]PriceSelection{}
+	}
+	b.cache[key][symbol] = selected
+	return selected, nil
+}
+
+func historyExclusions(rows []sqlcgen.AssetExclusionVersion, at time.Time) (map[uuid.UUID]bool, error) {
+	excluded := map[uuid.UUID]bool{}
+	for _, row := range rows {
+		if !row.EffectiveAt.Before(at) {
+			continue
+		}
+		id, err := uuid.FromBytes(row.AssetID)
+		if err != nil {
+			return nil, err
+		}
+		if _, decided := excluded[id]; !decided {
+			excluded[id] = row.Excluded
+		}
+	}
+	return excluded, nil
 }
 
 func (s *Service) insertHistoryPoint(ctx context.Context, q *sqlcgen.Queries, point *Point, accounts []AccountValuation) error {
@@ -229,5 +326,5 @@ func (s *Service) insertHistoryPoint(ctx context.Context, q *sqlcgen.Queries, po
 			return err
 		}
 	}
-	return s.persistComparisonEvidence(ctx, q, point)
+	return persistCalculatedAssetChanges(ctx, q, point)
 }

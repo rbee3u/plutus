@@ -58,8 +58,8 @@ DELETE FROM assets WHERE portfolio_id = ? LIMIT 1000;
 -- name: DeletePortfolioPriceObservations :execrows
 DELETE FROM price_observations WHERE portfolio_id = ? LIMIT 1000;
 
--- name: DeletePortfolioManualAdjustments :execrows
-DELETE FROM manual_adjustments WHERE portfolio_id = ? LIMIT 1000;
+-- name: DeletePortfolioManualBalanceChanges :execrows
+DELETE FROM manual_balance_changes WHERE portfolio_id = ? LIMIT 1000;
 
 -- name: DeletePortfolioCalculatedAssetChanges :execrows
 DELETE FROM calculated_asset_changes WHERE portfolio_id = ? LIMIT 1000;

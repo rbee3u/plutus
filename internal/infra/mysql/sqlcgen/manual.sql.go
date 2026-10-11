@@ -14,7 +14,7 @@ import (
 const getAppliedManualRevision = `-- name: GetAppliedManualRevision :one
 SELECT r.manual_revision_number
 FROM account_reports r FORCE INDEX (idx_account_reports_fallback)
-JOIN valuation_points p ON p.portfolio_id = r.portfolio_id AND p.cycle_id = r.cycle_id
+JOIN collection_cycles c ON c.portfolio_id = r.portfolio_id AND c.id = r.cycle_id AND (c.status = 'succeeded' OR EXISTS(SELECT 1 FROM valuation_points p WHERE p.portfolio_id = c.portfolio_id AND p.cycle_id = c.id))
 WHERE r.portfolio_id = ? AND r.account_id = ? AND r.status = 'succeeded' AND r.manual_revision_number IS NOT NULL
 ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1
 `
@@ -24,7 +24,7 @@ type GetAppliedManualRevisionParams struct {
 	AccountID   []byte
 }
 
-// The applied revision is the latest one whose own cycle committed a point.
+// The applied revision is the latest one whose own cycle has committed, even after its point expires.
 // Serialized cycles make report time follow point order. The Account's
 // fallback range stops at its latest committed report; the optimizer can
 // prefer a Portfolio-wide time scan that walks every newer report of other

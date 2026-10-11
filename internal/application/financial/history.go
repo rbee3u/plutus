@@ -29,11 +29,11 @@ func (s *Service) Points(ctx context.Context, p PortfolioContext, from, to time.
 	})
 }
 
-func sample(points []valuation.Point, granularity string, loc *time.Location) []valuation.Point {
+func sample(points []sqlcgen.ListValuationPointHeadersBetweenRow, granularity string, loc *time.Location) []sqlcgen.ListValuationPointHeadersBetweenRow {
 	if granularity == "" || granularity == "raw" || len(points) == 0 {
 		return points
 	}
-	out := make([]valuation.Point, 0, len(points))
+	out := make([]sqlcgen.ListValuationPointHeadersBetweenRow, 0, len(points))
 	var lastBucket time.Time
 	for i := range points {
 		local := points[i].EvaluatedAt.In(loc)
@@ -56,6 +56,13 @@ func sample(points []valuation.Point, granularity string, loc *time.Location) []
 // Detail returns one point with its Account Valuations.
 func (s *Service) Detail(ctx context.Context, p PortfolioContext, cycleID uuid.UUID) (PointDetail, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PointDetail, error) {
+		available, err := mysql.Queries(ctx, s.db).IsPointInRetainedHistory(ctx, sqlcgen.IsPointInRetainedHistoryParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
+		if err != nil {
+			return PointDetail{}, err
+		}
+		if !available {
+			return PointDetail{}, valuation.ErrNotFound
+		}
 		point, err := s.valuation.Get(ctx, p.ID, cycleID)
 		if err != nil {
 			return PointDetail{}, err
@@ -77,7 +84,15 @@ func (s *Service) BoundaryEvents(ctx context.Context, p PortfolioContext, from, 
 		if !to.After(from) {
 			return nil, ErrInvalid
 		}
-		rows, err := mysql.Queries(ctx, s.db).ListValuationPointsBetween(ctx, sqlcgen.ListValuationPointsBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+		headers, err := mysql.Queries(ctx, s.db).ListBoundaryPointHeadersBetween(ctx, sqlcgen.ListBoundaryPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+		if err != nil {
+			return nil, err
+		}
+		ids := make([][]byte, 0, len(headers))
+		for _, header := range headers {
+			ids = append(ids, header.CycleID)
+		}
+		rows, err := s.pointRowsByIDs(ctx, p.ID, ids)
 		if err != nil {
 			return nil, err
 		}

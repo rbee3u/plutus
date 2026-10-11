@@ -23,7 +23,7 @@ const (
 	// DefaultTimezone is the IANA zone used when none is given.
 	DefaultTimezone = "Asia/Shanghai"
 	// DefaultCollectionInterval is the initial Collection Cycle interval for new Portfolios.
-	DefaultCollectionInterval = 15 * time.Minute
+	DefaultCollectionInterval = 30 * time.Minute
 	maxNameLength             = 120
 	minInterval               = 900
 	maxInterval               = 86400

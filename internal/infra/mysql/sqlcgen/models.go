@@ -276,7 +276,7 @@ type Identity struct {
 	UpdatedAt                 time.Time
 }
 
-type ManualAdjustment struct {
+type ManualBalanceChange struct {
 	PortfolioID []byte
 	CycleID     []byte
 	AccountID   []byte
@@ -308,6 +308,7 @@ type Portfolio struct {
 	IsInitial                 bool
 	DeletionRequestedAt       sql.NullTime
 	PriceAnchorsBefore        sql.NullTime
+	HistoryBefore             sql.NullTime
 	InitialUserID             []byte
 	Version                   uint64
 	CreatedAt                 time.Time

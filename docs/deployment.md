@@ -117,10 +117,26 @@ needed. Log levels control application output independently of access/SQL.
 
 ## MySQL capacity
 
-The [planning scale](./architecture.md#persistence-and-retention) measured about
-9 GB of data and indexes after ten years; the target host has four cores, 8 GB
-RAM, and about 30 GB of disk. MySQL defaults, not table growth, are the main
-disk risk. When MySQL and Plutus share a dedicated host, set at least:
+The [planning scale](./architecture.md#persistence-and-retention) is a fixed
+20-Identity workload. The
+[capacity verification](./platform/schema-provenance-delivery.md#full-retained-capacity)
+records physical retained-data measurements and their limits. The target host
+has four cores, 8 GB RAM, and about 30 GB of total disk. Keep long-term backups
+off-host. Use this decimal-GB planning budget for the whole machine:
+
+| Allocation                      | Budget | Purpose                                                                     |
+| ------------------------------- | -----: | --------------------------------------------------------------------------- |
+| Application table files         |  16 GB | Data, indexes, page slack, pinned evidence and bounded catalog/audit growth |
+| OS and application              |   4 GB | System files, binaries and deployed assets                                  |
+| Database and application logs   |   4 GB | Binary logs, redo/undo and rotated application logs                         |
+| Temporary and maintenance space |   6 GB | One table rebuild and operating free space                                  |
+
+These allocations are operating limits to monitor, not quotas enforced by the
+application. A full database copy or local long-term backup does not fit this
+maintenance allowance. A table rebuild must have room for that table and its
+indexes before it starts. Recheck the budget if product documents, retained
+stale sources, logs or catalogs grow beyond the measured shape. When MySQL and
+Plutus share a dedicated host, set at least:
 
 ```ini
 [mysqld]
