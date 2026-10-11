@@ -138,6 +138,7 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	if err := Apply(ctx, db, seed); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
+	assertSequentialHistory(ctx, t, db, seed)
 	registry := adapters.NewRegistry()
 	clock := anchor.Add(time.Minute)
 	for _, platform := range adapters.OfferedPlatforms() {

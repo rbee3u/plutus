@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/big"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -30,6 +31,7 @@ const (
 	maxBackoff           = time.Minute
 	schedulerInterval    = 15 * time.Second
 	pruneInterval        = time.Hour
+	maintenanceIdleDelay = time.Minute
 )
 
 // ErrUnavailable means the worker loop is not heartbeating.
@@ -90,7 +92,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	w.beat()
 	ticker := time.NewTicker(w.poll)
 	defer ticker.Stop()
-	var lastSchedule, lastPrune time.Time
+	var lastSchedule, lastPrune, maintenanceAt time.Time
 	for {
 		if w.scheduler && time.Since(lastSchedule) >= schedulerInterval {
 			if err := w.Schedule(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -112,11 +114,15 @@ func (w *Worker) Run(ctx context.Context) error {
 		if worked {
 			continue
 		}
-		if w.maintenance != nil {
+		if w.maintenance != nil && !time.Now().Before(maintenanceAt) {
 			deadline := time.Now().Add(250 * time.Millisecond)
 			for range 16 {
-				if err := w.maintenance.Step(ctx, time.Now().UTC()); err != nil {
+				idle, err := w.maintenance.Step(ctx, time.Now().UTC())
+				if err != nil {
 					w.logger.Error("history maintenance failed", slog.Any("err", err))
+				}
+				if err != nil || idle {
+					maintenanceAt = time.Now().Add(maintenanceIdleDelay)
 					break
 				}
 				if time.Now().After(deadline) {
@@ -262,13 +268,13 @@ func (w *Worker) renewLoop(ctx context.Context, claimed *cycles.Claim, cancel co
 	}
 }
 
-// safeDetail keeps error details short and free of payloads.
+// safeDetail keeps error details short, valid UTF-8, and free of payloads.
 func safeDetail(err error) string {
-	msg := err.Error()
-	if len(msg) > 300 {
-		msg = msg[:300]
+	runes := []rune(strings.ToValidUTF8(err.Error(), "\uFFFD"))
+	if len(runes) > 300 {
+		runes = runes[:300]
 	}
-	return msg
+	return string(runes)
 }
 
 func retryTime(attempt uint32, now time.Time) time.Time {

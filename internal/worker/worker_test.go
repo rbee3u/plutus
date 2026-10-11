@@ -3,8 +3,10 @@ package worker
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -120,5 +122,14 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 				t.Fatalf("lost owner wrote reports: %d %v", count, err)
 			}
 		})
+	}
+}
+
+func TestSafeDetailKeepsValidUTF8(t *testing.T) {
+	t.Parallel()
+
+	detail := safeDetail(errors.New(strings.Repeat("错", 299) + "\xff" + strings.Repeat("误", 10)))
+	if !utf8.ValidString(detail) || utf8.RuneCountInString(detail) != 300 || !strings.HasSuffix(detail, "\uFFFD") {
+		t.Fatalf("detail %q", detail)
 	}
 }

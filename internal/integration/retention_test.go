@@ -82,27 +82,40 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 	}
 	service := retention.NewService(h.db)
 	now := at.AddDate(0, 0, 50)
-	checkedPruning := false
-	for range 280 {
-		if err := service.Step(h.ctx, now); err != nil {
-			t.Fatal(err)
-		}
-
-		if !checkedPruning {
-			var state string
-			if err := h.db.QueryRowContext(h.ctx, "SELECT detail_state FROM valuation_points WHERE portfolio_id=? AND cycle_id=?", h.portfolioID[:], points[0].CycleID[:]).Scan(&state); err != nil {
+	// settle steps until a full round changes and scans nothing.
+	settle := func(each func()) int {
+		t.Helper()
+		for steps := 1; steps <= 400; steps++ {
+			idle, err := service.Step(h.ctx, now)
+			if err != nil {
 				t.Fatal(err)
 			}
-			if state == "pruning" {
-				detail, err := h.financial.Detail(h.ctx, pc, points[0].CycleID)
-				if err != nil || detail.Point.DetailState != "expired" || len(detail.Accounts) != 0 {
-					t.Fatalf("partially pruned details exposed: %+v %v", detail, err)
-				}
-				checkedPruning = true
-				service = retention.NewService(h.db)
+			if idle {
+				return steps
 			}
+			each()
 		}
+		t.Fatal("retention never became idle")
+		return 0
 	}
+	checkedPruning := false
+	settle(func() {
+		if checkedPruning {
+			return
+		}
+		var state string
+		if err := h.db.QueryRowContext(h.ctx, "SELECT detail_state FROM valuation_points WHERE portfolio_id=? AND cycle_id=?", h.portfolioID[:], points[0].CycleID[:]).Scan(&state); err != nil {
+			t.Fatal(err)
+		}
+		if state == "pruning" {
+			detail, err := h.financial.Detail(h.ctx, pc, points[0].CycleID)
+			if err != nil || detail.Point.DetailState != "expired" || len(detail.Accounts) != 0 {
+				t.Fatalf("partially pruned details exposed: %+v %v", detail, err)
+			}
+			checkedPruning = true
+			service = retention.NewService(h.db)
+		}
+	})
 	if !checkedPruning {
 		t.Fatal("pruning transition not exercised")
 	}
@@ -162,11 +175,7 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 	}
 	exec("UPDATE portfolios SET timezone='America/Los_Angeles' WHERE id=?", h.portfolioID[:])
 	service = retention.NewService(h.db)
-	for range 50 {
-		if err := service.Step(h.ctx, now); err != nil {
-			t.Fatal(err)
-		}
-	}
+	settle(func() {})
 	for _, i := range []int{1, 3} {
 		point, err := h.valuation.Get(h.ctx, h.portfolioID, points[i].CycleID)
 		if err != nil || point.DetailState != "daily" {
@@ -179,5 +188,17 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 	var raw []byte
 	if err := h.db.QueryRowContext(h.ctx, "SELECT id FROM account_reports WHERE id=?", reports[0][:]).Scan(&raw); errors.Is(err, sql.ErrNoRows) {
 		t.Fatal("pinned source deleted")
+	}
+	// A settled service does not rescan pinned history: each of the six phases
+	// visits the one Portfolio and wraps. The next cutoff day starts new sweeps.
+	if steps := settle(func() {}); steps != 6*2 {
+		t.Fatalf("idle round took %d steps", steps)
+	}
+	late := uuid.New()
+	exec("INSERT INTO price_observations(id,portfolio_id,platform,requested_canonical_asset_symbol,source_market_ref,quote_canonical_asset_symbol,price,retrieved_at) VALUES(?,?,'okx','BTC','BTCUSD','USD',100,?)", late[:], h.portfolioID[:], at.Add(3*time.Hour))
+	now = now.AddDate(0, 0, 1)
+	settle(func() {})
+	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM price_observations WHERE id=?", late[:]).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("next-day sweep kept quote: %d %v", count, err)
 	}
 }

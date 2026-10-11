@@ -139,6 +139,9 @@ type Querier interface {
 	ListBalanceValuationsByCycles(ctx context.Context, arg ListBalanceValuationsByCyclesParams) ([]ListBalanceValuationsByCyclesRow, error)
 	ListBalancesByCycle(ctx context.Context, arg ListBalancesByCycleParams) ([]ListBalancesByCycleRow, error)
 	ListBalancesByReport(ctx context.Context, arg ListBalancesByReportParams) ([]ListBalancesByReportRow, error)
+	// Seed history initialization runs inside the transaction that inserted every
+	// row, before statistics describe them; the join order stays fixed.
+	ListBalancesByReports(ctx context.Context, arg ListBalancesByReportsParams) ([]ListBalancesByReportsRow, error)
 	ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error)
 	ListBoundaryEventsByCycles(ctx context.Context, arg ListBoundaryEventsByCyclesParams) ([]ListBoundaryEventsByCyclesRow, error)
 	ListBoundaryValuesBetween(ctx context.Context, arg ListBoundaryValuesBetweenParams) ([]ListBoundaryValuesBetweenRow, error)

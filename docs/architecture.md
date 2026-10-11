@@ -238,12 +238,15 @@ validation binds a stable external reference. Prices keyed by Portfolio,
 Platform, Canonical Asset Symbol, and time remain independent of login identity
 within that Portfolio.
 
-Seeds insert source facts and initialize their points through the ordinary
-valuation writer in one transaction, then initialize Connections through real
-services. Historical Plutus events stop at the anchor; continued fake holdings
-cannot mutate flows, selection, archival, or Catalog policy. No persistent
-simulator or background application hook is needed. [Seeds](./seeds.md) owns
-scenarios, coverage, and performance evidence.
+Seeds insert source facts and initialize their points in one transaction, then
+initialize Connections through real services. A seed-only history initializer
+shares the collection writer's calculation but loads sources in cycle batches,
+carries the previous point in memory, and skips per-Account evidence rereads;
+seed tests compare its edge-case rows with the collection writer. Historical
+Plutus events stop at the anchor; continued fake holdings cannot mutate flows,
+selection, archival, or Catalog policy. No persistent simulator or background
+application hook is needed. [Seeds](./seeds.md) owns scenarios, coverage, and
+performance evidence.
 
 ## Persistence and retention
 
@@ -307,7 +310,10 @@ Permanent daily Point states and the `price_anchors_before` cursor prevent
 timezone changes from replacing existing anchors. Detail cleanup, report/price
 sweeps, and Manual revision cleanup are resumable bounded work while no cycle is
 claimable. Price and report sweeps traverse bounded time/ID pages; they preserve
-adopted references and last-good source price windows. Superseded Manual
+adopted references and last-good source price windows. A finished sweep restarts
+only when the cutoff day moves or retention work may have released pins, so a
+release caused by collection waits at most one local day. Maintenance pauses for
+a minute after a round finds nothing to change or scan. Superseded Manual
 revisions go once no retained report references them. All Futures Contracts and
 exclusion history remain; exclusion history is required for arbitrary old
 endpoint comparisons.

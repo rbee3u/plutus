@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
@@ -305,6 +306,9 @@ func classOf(status int, code string) string {
 func truncate(value string, limit int) string {
 	if len(value) <= limit {
 		return value
+	}
+	for limit > 0 && !utf8.RuneStart(value[limit]) {
+		limit--
 	}
 	return value[:limit]
 }

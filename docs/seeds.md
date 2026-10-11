@@ -117,11 +117,12 @@ initialize real Connection lifecycle services, initialize immutable valuations,
 read actual service results, and collect again through the same scenario
 generator. They cover deterministic IDs/output, exact event deltas, source
 amounts, calendar/DST timing, compatible stale fallback, normalized product
-descriptions, and pagination. Every edge-case point and report is compared
-against sequential collection valuation across multiple read chunks and
-idempotent retries. Database tests also cover interrupted collection cycles,
-nonmonotonic evaluation times, price fallback ties, cancellation, partial
-progress and transactional rollback after a later report batch fails.
+descriptions, and pagination. Every derived edge-case row is compared with
+sequential collection valuation of the same source facts across multiple history
+batches, and retries return existing points unchanged. Database tests also cover
+interrupted collection cycles, nonmonotonic evaluation times, price fallback
+ties, cancellation, partial progress and transactional rollback after a later
+report batch fails.
 
 Implementation boundaries and reset policy are recorded in
 [ADR 0010](./adr/0010-environments-and-configuration.md). Runtime verification
@@ -153,6 +154,20 @@ Portfolio had no Identities or Valuation Points. These observations validate the
 synthetic walkthrough, not real exchange holdings or market history. Both
 session-started process groups and their children were stopped; agent health
 became unreachable and :8081 had no listener.
+
+## Performance measurement: 2026-10-11
+
+Initializing every point through the collection writer issued about 178
+statements per point and made a complete reset take 49–52 seconds. The seed-only
+history initializer issues about 19. Three consecutive runs of a binary compiled
+from the working tree, using `config/agent.toml` and `config/agent.env` with
+normal SQL logging, took 10.21, 9.22 and 9.20 seconds. The median met the
+10-second target; the first run did not. One run without SQL logging took 8.70
+seconds. In the median run, generation took 1.1 seconds, source insertion and
+point initialization 7.765 seconds, and Connection initialization 0.12 seconds.
+Profiling the seed test attributed 0.36 seconds of CPU to the initializer; the
+remainder is database round trips. The dataset had 283 default, 265 edge-case,
+102 large and zero empty Valuation Points at this anchor.
 
 ## Historical performance measurement: 2026-10-05
 

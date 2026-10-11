@@ -74,6 +74,16 @@ INNER JOIN assets asset ON asset.portfolio_id = b.portfolio_id AND asset.id = b.
 WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id = sqlc.arg(report_id)
 ORDER BY asset.symbol ASC, asset.canonical_asset_symbol ASC;
 
+-- Seed history initialization runs inside the transaction that inserted every
+-- row, before statistics describe them; the join order stays fixed.
+-- name: ListBalancesByReports :many
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_asset_symbol AS canonical_asset_symbol
+FROM balances b
+STRAIGHT_JOIN assets asset ON asset.portfolio_id = b.portfolio_id AND asset.id = b.asset_id
+WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id IN (sqlc.slice('report_ids'))
+ORDER BY b.report_id, asset.symbol ASC, asset.canonical_asset_symbol ASC;
+
 -- name: ListPositionsByReport :many
 SELECT p.report_id, p.position_key, p.futures_contract_id, p.side, p.source_quantity, p.source_quantity_unit,
        p.entry_price, p.mark_price, p.liquidation_price, p.unrealized_pnl, p.leverage, p.margin, p.position_mode, p.margin_setting, p.margin_asset_symbol, p.margin_basis,

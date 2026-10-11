@@ -32,7 +32,7 @@ async function fixture(page: Page) {
     failPage: false,
     failSeries: false,
     revision: 1,
-    rebuildOnDetail: false,
+    mismatchOnDetail: false,
   };
   const context = { portfolioId, timezone: "Asia/Shanghai" };
   const session = sessionFixture({
@@ -162,9 +162,9 @@ async function fixture(page: Page) {
       }));
       await route.fulfill({ json: { context, periodKind: params.get("periodKind"), items } });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
-      if (state.rebuildOnDetail) {
+      if (state.mismatchOnDetail) {
         state.revision = 2;
-        state.rebuildOnDetail = false;
+        state.mismatchOnDetail = false;
       }
       await route.fulfill({
         json: {
@@ -367,14 +367,16 @@ for (const theme of ["light", "dark"]) {
   });
 }
 
-test("a rebuild between list and detail refreshes the entire read family", async ({ page }) => {
+test("a token mismatch between list and detail refreshes the entire read family", async ({
+  page,
+}) => {
   const state = await fixture(page);
   await page.goto(historyPath);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   const before = state.requests.filter(
     (url) => url.pathname === `${base}/valuation-points/page`,
   ).length;
-  state.rebuildOnDetail = true;
+  state.mismatchOnDetail = true;
   await rawTable(page)
     .getByRole("button", { name: /Expand the Valuation Point/ })
     .first()

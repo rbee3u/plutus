@@ -137,7 +137,7 @@ for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
             return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
           if (request.method() === "DELETE") {
             session.portfolios.items.shift();
-            return route.fulfill({ status: 204 });
+            return route.fulfill({ status: 202 });
           }
           session.portfolios.items[0] = {
             ...current,

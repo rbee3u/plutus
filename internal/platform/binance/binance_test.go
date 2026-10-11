@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
@@ -1307,6 +1308,16 @@ func TestErrorClasses(t *testing.T) {
 		if got := classOfErr(t, err); got != tc.class {
 			t.Errorf("HTTP %d %s: class %s, want %s", tc.status, tc.body, got, tc.class)
 		}
+	}
+}
+
+func TestErrorDetailKeepsWholeCharacters(t *testing.T) {
+	t.Parallel()
+
+	body := `{"code":-1102,"msg":"` + strings.Repeat("参数", 100) + `"}`
+	_, detail := adapters.Classify(classify(epPMAccount, response{status: http.StatusBadRequest, body: []byte(body)}))
+	if !utf8.ValidString(detail) || !strings.Contains(detail, "参数") {
+		t.Fatalf("detail %q", detail)
 	}
 }
 

@@ -472,6 +472,82 @@ func (q *Queries) ListBalancesByReport(ctx context.Context, arg ListBalancesByRe
 	return items, nil
 }
 
+const listBalancesByReports = `-- name: ListBalancesByReports :many
+SELECT b.report_id, b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       asset.platform, asset.symbol AS asset_symbol, asset.canonical_asset_symbol AS canonical_asset_symbol
+FROM balances b
+STRAIGHT_JOIN assets asset ON asset.portfolio_id = b.portfolio_id AND asset.id = b.asset_id
+WHERE b.portfolio_id = ? AND b.report_id IN (/*SLICE:report_ids*/?)
+ORDER BY b.report_id, asset.symbol ASC, asset.canonical_asset_symbol ASC
+`
+
+type ListBalancesByReportsParams struct {
+	PortfolioID []byte
+	ReportIds   [][]byte
+}
+
+type ListBalancesByReportsRow struct {
+	ReportID             []byte
+	AssetID              []byte
+	Equity               string
+	AvailableToWithdraw  sql.NullString
+	AvailableToTrade     sql.NullString
+	Liability            sql.NullString
+	Interest             sql.NullString
+	UnrealizedPnl        sql.NullString
+	Platform             string
+	AssetSymbol          string
+	CanonicalAssetSymbol string
+}
+
+// Seed history initialization runs inside the transaction that inserted every
+// row, before statistics describe them; the join order stays fixed.
+func (q *Queries) ListBalancesByReports(ctx context.Context, arg ListBalancesByReportsParams) ([]ListBalancesByReportsRow, error) {
+	query := listBalancesByReports
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.ReportIds) > 0 {
+		for _, v := range arg.ReportIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", strings.Repeat(",?", len(arg.ReportIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBalancesByReportsRow{}
+	for rows.Next() {
+		var i ListBalancesByReportsRow
+		if err := rows.Scan(
+			&i.ReportID,
+			&i.AssetID,
+			&i.Equity,
+			&i.AvailableToWithdraw,
+			&i.AvailableToTrade,
+			&i.Liability,
+			&i.Interest,
+			&i.UnrealizedPnl,
+			&i.Platform,
+			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPositionsByCycle = `-- name: ListPositionsByCycle :many
 SELECT cur.account_id, v.source_report_id AS report_id, COALESCE(src.source_observed_at, src.collected_at) AS observed_at,
        p.position_key, p.futures_contract_id, p.side, p.source_quantity, p.source_quantity_unit,
