@@ -97,12 +97,12 @@ type Page[T any] struct {
 
 // ListFilter selects catalog rows.
 type ListFilter struct {
-	PortfolioID  uuid.UUID
-	Platform     string
-	Query        string
-	ExcludedOnly bool
-	Offset       int
-	Limit        int
+	PortfolioID uuid.UUID
+	Platform    string
+	Query       string
+	Status      string
+	Offset      int
+	Limit       int
 }
 
 // ListAssets returns an offset page of assets.
@@ -112,14 +112,16 @@ func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], e
 		return Page[Asset]{}, err
 	}
 	query := likePattern(in.Query)
+	filterStatus := flag(in.Status == "active" || in.Status == "excluded")
 	rows, err := s.q.ListAssets(ctx, sqlcgen.ListAssetsParams{
 		PlatformOrder:  ordering.PlatformsCSV(),
 		PortfolioID:    in.PortfolioID[:],
-		ExcludedOnly:   flag(in.ExcludedOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
 		Query:          query,
+		FilterStatus:   filterStatus,
+		Status:         in.Status,
 		Limit:          int32(limit),  // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
 	})
@@ -128,11 +130,12 @@ func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], e
 	}
 	total, err := s.q.CountAssets(ctx, sqlcgen.CountAssetsParams{
 		PortfolioID:    in.PortfolioID[:],
-		ExcludedOnly:   flag(in.ExcludedOnly),
 		FilterPlatform: flag(in.Platform != ""),
 		Platform:       in.Platform,
 		FilterQuery:    flag(query != ""),
 		Query:          query,
+		FilterStatus:   filterStatus,
+		Status:         in.Status,
 	})
 	if err != nil {
 		return Page[Asset]{}, err

@@ -1360,11 +1360,12 @@ paths:
           in: query
           schema:
             type: string
-        - name: excludedOnly
+        - name: status
           in: query
           schema:
-            type: boolean
-            default: false
+            type: string
+            enum: [all, active, excluded]
+            default: all
         - name: offset
           in: query
           schema:

@@ -283,9 +283,13 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	if err := h.db.QueryRowContext(h.ctx, `SELECT COUNT(*) FROM audit_events WHERE portfolio_id = ? AND action = 'catalog.asset.exclude' AND resource_id = ?`, h.portfolioID[:], token.ID[:]).Scan(&auditCount); err != nil || auditCount != 1 {
 		t.Fatalf("review audit event count = %d: %v", auditCount, err)
 	}
-	excludedPage, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, ExcludedOnly: true, Limit: 50})
-	if err != nil || excludedPage.Total != 1 || excludedPage.Items[0].ID != token.ID {
-		t.Fatalf("excluded-only catalog filter: %+v %v", excludedPage, err)
+	statusExcludedPage, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Status: "excluded", Limit: 50})
+	if err != nil || statusExcludedPage.Total != 1 || statusExcludedPage.Items[0].ID != token.ID {
+		t.Fatalf("status=excluded catalog filter: %+v %v", statusExcludedPage, err)
+	}
+	activePage, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Status: "active", Query: "TOKENX", Limit: 50})
+	if err != nil || activePage.Total != 0 {
+		t.Fatalf("status=active catalog filter should not return excluded TOKENX: %+v %v", activePage, err)
 	}
 	if _, err := h.catalog.PutExclusion(h.ctx, token.ID, &input); !errors.Is(err, catalog.ErrPrecondition) {
 		t.Fatalf("stale exclusion version: %v", err)

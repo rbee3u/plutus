@@ -2905,7 +2905,7 @@ export type ListAssetsData = {
     query?: {
         platform?: string;
         q?: string;
-        excludedOnly?: boolean;
+        status?: 'all' | 'active' | 'excluded';
         offset?: number;
         limit?: number;
     };

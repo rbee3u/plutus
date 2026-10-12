@@ -23,10 +23,17 @@ SELECT portfolio_id, id, platform, symbol, canonical_asset_symbol, mapping_versi
 FROM assets
 WHERE assets.portfolio_id = sqlc.arg(portfolio_id) AND (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
   AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query) OR canonical_asset_symbol LIKE sqlc.arg(query))
-  AND (sqlc.arg(excluded_only) = 0 OR EXISTS (
-      SELECT 1 FROM asset_exclusion_versions e
-      WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-  ))
+  AND (
+      sqlc.arg(filter_status) = 0
+      OR (sqlc.arg(status) = 'excluded' AND EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+      OR (sqlc.arg(status) = 'active' AND NOT EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+  )
 ORDER BY FIND_IN_SET(platform, sqlc.arg(platform_order)) = 0,
          FIND_IN_SET(platform, sqlc.arg(platform_order)), platform, symbol, canonical_asset_symbol, id
 LIMIT ? OFFSET ?;
@@ -36,10 +43,17 @@ SELECT COUNT(*)
 FROM assets
 WHERE assets.portfolio_id = sqlc.arg(portfolio_id) AND (sqlc.arg(filter_platform) = 0 OR platform = sqlc.arg(platform))
   AND (sqlc.arg(filter_query) = 0 OR symbol LIKE sqlc.arg(query) OR canonical_asset_symbol LIKE sqlc.arg(query))
-  AND (sqlc.arg(excluded_only) = 0 OR EXISTS (
-      SELECT 1 FROM asset_exclusion_versions e
-      WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-  ));
+  AND (
+      sqlc.arg(filter_status) = 0
+      OR (sqlc.arg(status) = 'excluded' AND EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+      OR (sqlc.arg(status) = 'active' AND NOT EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+  );
 
 -- name: UpdateAssetMapping :execrows
 UPDATE assets

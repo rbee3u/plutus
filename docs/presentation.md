@@ -35,7 +35,9 @@ is its canonical Cross Margin mode.
 
 Catalog uses Assets and Futures tabs, with Asset and Symbol as their main column
 labels. Futures contains perpetual and delivery Futures Contracts. Holdings
-retains Balances and Futures with Asset and Symbol columns.
+retains Balances and Futures with Asset and Symbol columns. Catalog Assets
+column filters provide Platform, Asset search, and Status (All, Active, and
+Excluded) options.
 
 Catalog, Balances, and Earn display Asset Symbol first. When its Canonical Asset
 Symbol differs, show a secondary `Canonical Asset: ...` hint; omit redundant

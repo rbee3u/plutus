@@ -4,12 +4,12 @@ import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
 
-export type CatalogFilterKey = "platform" | "q" | "treatment" | "status";
+export type CatalogFilterKey = "platform" | "q" | "status";
 
 export interface CatalogFilterValues {
   platform: string;
   q: string;
-  excludedOnly: boolean;
+  status: "" | "active" | "excluded";
 }
 
 export function useCatalogFilters() {
@@ -18,10 +18,11 @@ export function useCatalogFilters() {
   const navigation = useSessionNavigation();
   const platforms = usePlatforms();
 
+  const statusValue = params.get("status");
   const values: CatalogFilterValues = {
     platform: params.get("platform") ?? "",
     q: params.get("q") ?? "",
-    excludedOnly: params.get("excludedOnly") === "true",
+    status: statusValue === "active" || statusValue === "excluded" ? statusValue : "",
   };
 
   const [open, setOpen] = useState<CatalogFilterKey | null>(null);
@@ -84,7 +85,7 @@ export function useCatalogFilters() {
     }
   }
 
-  function change(next: { platform?: string; q?: string; excludedOnly?: boolean }) {
+  function change(next: { platform?: string; q?: string; status?: string }) {
     cancelTimer();
     const q = pending.current;
     pending.current = null;
@@ -98,8 +99,8 @@ export function useCatalogFilters() {
       updates.q = next.q.trim();
       setDraft({ source: next.q, value: next.q });
     }
-    if (next.excludedOnly !== undefined) {
-      updates.excludedOnly = next.excludedOnly ? "true" : "";
+    if (next.status !== undefined) {
+      updates.status = next.status;
     }
     update(updates);
     setOpen(null);
@@ -122,10 +123,12 @@ export function useCatalogFilters() {
 
   const statusOptions = [
     { value: "", label: "All" },
-    { value: "true", label: "Excluded only" },
+    { value: "active", label: "Active" },
+    { value: "excluded", label: "Excluded" },
   ];
 
-  const treatmentOptions = statusOptions;
+  const statusName =
+    values.status === "active" ? "Active" : values.status === "excluded" ? "Excluded" : "All";
 
   return {
     values,
@@ -151,10 +154,10 @@ export function useCatalogFilters() {
       pending.current = null;
       composing.current = false;
       setDraft({ source: "", value: "" });
-      update({ platform: "", q: "", excludedOnly: "", offset: "" });
+      update({ platform: "", q: "", status: "", offset: "" });
       setOpen(null);
     },
-    hasFilters: Boolean(values.platform || values.q || values.excludedOnly || qDraft),
+    hasFilters: Boolean(values.platform || values.q || values.status || qDraft),
     offset: readOffset(params),
     page: (offset: number) => {
       cancelTimer();
@@ -169,9 +172,7 @@ export function useCatalogFilters() {
     platformOptions,
     platformName: platformLabel(platforms.data?.items, values.platform),
     statusOptions,
-    statusName: values.excludedOnly ? "Excluded" : "All",
-    treatmentOptions,
-    treatmentName: values.excludedOnly ? "Excluded" : "All",
+    statusName,
   };
 }
 

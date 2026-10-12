@@ -34,7 +34,7 @@ import manageStyles from "../styles.module.css";
 export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const { userId } = useSessionScope();
   const queryClient = useQueryClient();
-  const { platform, q, excludedOnly } = filters.values;
+  const { platform, q, status } = filters.values;
   const offset = filters.offset;
   const platforms = filters.platforms;
   const nonce = useRef(0);
@@ -43,14 +43,14 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const query = usePortfolioQuery<AssetList>({
     key: (userId, portfolioId) =>
-      keys.catalogAssets(userId, portfolioId, platform, q, excludedOnly, offset),
+      keys.catalogAssets(userId, portfolioId, platform, q, status, offset),
     load: (portfolioId) =>
       listAssets({
         path: { portfolioId },
         query: {
           platform: platform || undefined,
           q: q || undefined,
-          excludedOnly: excludedOnly || undefined,
+          status: status || undefined,
           offset,
           limit: PAGE_SIZE,
         },
@@ -124,15 +124,15 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
               <TableFilterHeader
                 label="Status"
                 display={filters.statusName}
-                active={excludedOnly}
+                active={Boolean(status)}
                 open={filters.open === "status"}
                 type="select"
                 options={filters.statusOptions}
-                selectedValue={excludedOnly ? "true" : ""}
+                selectedValue={status}
                 onToggle={() => filters.toggle("status")}
                 onClose={filters.close}
-                onClear={() => filters.change({ excludedOnly: false })}
-                onSelect={(val) => filters.change({ excludedOnly: val === "true" })}
+                onClear={() => filters.change({ status: "" })}
+                onSelect={(val) => filters.change({ status: val })}
               />
             ),
           },
@@ -213,7 +213,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             <div className={shared.emptyState}>
               <p className={shared.emptyStateTitle}>Loading assets...</p>
             </div>
-          ) : q || platform || excludedOnly ? (
+          ) : q || platform || status ? (
             <div className={shared.emptyState}>
               <p className={shared.emptyStateTitle}>No assets match these filters</p>
               <p className={shared.emptyStateHelp}>

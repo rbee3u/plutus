@@ -183,7 +183,7 @@ export function TableFilterHeader({
               id={id}
               role={isSearch ? "dialog" : "listbox"}
               aria-label={isSearch ? `Search ${label}` : `Choose ${label}`}
-              className={styles.panel}
+              className={`${styles.panel} ${isSearch ? styles.panelSearch : styles.panelSelect}`}
               style={position}
               onKeyDown={(event) => {
                 if (isSearch || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))

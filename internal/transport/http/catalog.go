@@ -15,7 +15,21 @@ func (a *API) ListAssets(ctx context.Context, request api.ListAssetsRequestObjec
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	page, err := a.Catalog.ListAssets(ctx, catalog.ListFilter{PortfolioID: sc.portfolio.ID, Platform: stringValue(request.Params.Platform), Query: stringValue(request.Params.Q), ExcludedOnly: boolValue(request.Params.ExcludedOnly), Offset: intValue(request.Params.Offset), Limit: intValue(request.Params.Limit)})
+	status := ""
+	if request.Params.Status != nil {
+		if !request.Params.Status.Valid() {
+			return nil, validationError("Status must be all, active, or excluded.")
+		}
+		status = string(*request.Params.Status)
+	}
+	page, err := a.Catalog.ListAssets(ctx, catalog.ListFilter{
+		PortfolioID: sc.portfolio.ID,
+		Platform:    stringValue(request.Params.Platform),
+		Query:       stringValue(request.Params.Q),
+		Status:      status,
+		Offset:      intValue(request.Params.Offset),
+		Limit:       intValue(request.Params.Limit),
+	})
 	if err != nil {
 		return nil, err
 	}

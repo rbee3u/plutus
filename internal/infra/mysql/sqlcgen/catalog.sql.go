@@ -17,10 +17,17 @@ SELECT COUNT(*)
 FROM assets
 WHERE assets.portfolio_id = ? AND (? = 0 OR platform = ?)
   AND (? = 0 OR symbol LIKE ? OR canonical_asset_symbol LIKE ?)
-  AND (? = 0 OR EXISTS (
-      SELECT 1 FROM asset_exclusion_versions e
-      WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-  ))
+  AND (
+      ? = 0
+      OR (? = 'excluded' AND EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+      OR (? = 'active' AND NOT EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+  )
 `
 
 type CountAssetsParams struct {
@@ -29,7 +36,8 @@ type CountAssetsParams struct {
 	Platform       string
 	FilterQuery    interface{}
 	Query          string
-	ExcludedOnly   interface{}
+	FilterStatus   interface{}
+	Status         interface{}
 }
 
 func (q *Queries) CountAssets(ctx context.Context, arg CountAssetsParams) (int64, error) {
@@ -40,7 +48,10 @@ func (q *Queries) CountAssets(ctx context.Context, arg CountAssetsParams) (int64
 		arg.FilterQuery,
 		arg.Query,
 		arg.Query,
-		arg.ExcludedOnly,
+		arg.FilterStatus,
+		arg.Status,
+		arg.PortfolioID,
+		arg.Status,
 		arg.PortfolioID,
 	)
 	var count int64
@@ -177,10 +188,17 @@ SELECT portfolio_id, id, platform, symbol, canonical_asset_symbol, mapping_versi
 FROM assets
 WHERE assets.portfolio_id = ? AND (? = 0 OR platform = ?)
   AND (? = 0 OR symbol LIKE ? OR canonical_asset_symbol LIKE ?)
-  AND (? = 0 OR EXISTS (
-      SELECT 1 FROM asset_exclusion_versions e
-      WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-  ))
+  AND (
+      ? = 0
+      OR (? = 'excluded' AND EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+      OR (? = 'active' AND NOT EXISTS (
+          SELECT 1 FROM asset_exclusion_versions e
+          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+      ))
+  )
 ORDER BY FIND_IN_SET(platform, ?) = 0,
          FIND_IN_SET(platform, ?), platform, symbol, canonical_asset_symbol, id
 LIMIT ? OFFSET ?
@@ -192,7 +210,8 @@ type ListAssetsParams struct {
 	Platform       string
 	FilterQuery    interface{}
 	Query          string
-	ExcludedOnly   interface{}
+	FilterStatus   interface{}
+	Status         interface{}
 	PlatformOrder  string
 	Limit          int32
 	Offset         int32
@@ -206,7 +225,10 @@ func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset
 		arg.FilterQuery,
 		arg.Query,
 		arg.Query,
-		arg.ExcludedOnly,
+		arg.FilterStatus,
+		arg.Status,
+		arg.PortfolioID,
+		arg.Status,
 		arg.PortfolioID,
 		arg.PlatformOrder,
 		arg.PlatformOrder,

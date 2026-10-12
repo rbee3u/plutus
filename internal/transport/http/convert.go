@@ -55,7 +55,3 @@ func toCursorPage(limit int, next *string, hasMore bool) api.CursorPage {
 func toOffsetPage(offset, limit, total int) api.OffsetPage {
 	return api.OffsetPage{Kind: api.Offset, Offset: offset, Limit: limit, Total: total}
 }
-
-func boolValue(value *bool) bool {
-	return value != nil && *value
-}
