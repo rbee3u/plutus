@@ -249,3 +249,26 @@
   font-weight: var(--weight-medium);
   letter-spacing: 0.02em;
 }
+
+/* Side-by-side equal-weight pill tags for Futures contract kind */
+.contractKindTags {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  vertical-align: middle;
+}
+
+.contractKindTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-sm);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  color: var(--ink-secondary);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+

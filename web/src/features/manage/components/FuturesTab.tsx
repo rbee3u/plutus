@@ -6,36 +6,41 @@ import { capitalize } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
+import manageStyles from "../styles.module.css";
 
 function formatContractSize(item: FuturesContract): string {
   const isInverse = item.kind.includes("inverse");
   const unit = isInverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
-  const size = formatDecimal(item.contractSize);
-  return size !== "—" && unit ? `${size} ${unit}` : size;
+  const nativeBaseQuantity =
+    item.platform === "binance" &&
+    (item.kind === "linear_perpetual" || item.kind === "linear_delivery") &&
+    Boolean(unit);
+  const size = formatDecimal(item.contractSize ?? (nativeBaseQuantity ? "1" : null));
+  const separator = !isInverse && unit && /^\d/.test(unit) ? " × " : " ";
+  return size !== "—" && unit ? `${size}${separator}${unit}` : size;
 }
 
 function renderFuturesContractKind(kind: string) {
   const isPerp = kind.includes("perpetual");
   const isDelivery = kind.includes("delivery");
   const isInverse = kind.includes("inverse");
-  const margin = isInverse ? "Inverse" : "Linear";
-  const typeLabel = isPerp
-    ? "PERP"
+  const payoff = isInverse ? "Inverse" : "Linear";
+  const term = isPerp
+    ? "Perpetual"
     : isDelivery
-      ? "DELIVERY"
+      ? "Delivery"
       : capitalize(kind.replaceAll("_", " "));
 
   return (
-    <span className={shared.cellStack}>
-      <Badge tone={isPerp ? "info" : isDelivery ? "warn" : "neutral"}>{typeLabel}</Badge>
-      <span className={shared.cellMeta}>{margin}</span>
+    <span className={manageStyles.contractKindTags}>
+      <span className={manageStyles.contractKindTag}>{payoff}</span>
+      <span className={manageStyles.contractKindTag}>{term}</span>
     </span>
   );
 }
@@ -93,7 +98,8 @@ export function FuturesTab({ filters, timezone }: TabProps) {
                 open={filters.open === "q"}
                 type="search"
                 searchDraft={filters.qDraft}
-                searchPlaceholder="Filter symbol or pair"
+                searchPlaceholder="Contains, e.g. BTC"
+                searchHelp="Matches part of a symbol, ignoring case."
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}
@@ -103,18 +109,15 @@ export function FuturesTab({ filters, timezone }: TabProps) {
               />
             ),
           },
-          { key: "kind", header: "Kind", nowrap: true, width: "100px" },
-          { key: "underlying", header: "Underlying", nowrap: true, width: "120px" },
+          { key: "kind", header: "Kind", nowrap: true, width: "180px" },
+          { key: "base", header: "Base", nowrap: true, width: "90px" },
+          { key: "quote", header: "Quote", nowrap: true, width: "90px" },
+          { key: "settle", header: "Settle", nowrap: true, width: "90px" },
           { key: "expiryAt", header: "Expiry", nowrap: true, width: "160px" },
           { key: "contractSize", header: "Contract size", numeric: true, width: "130px" },
           { key: "lastObservedAt", header: "Last observed", nowrap: true, width: "170px" },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
-          const pair =
-            item.baseAssetSymbol || item.quoteAssetSymbol
-              ? `${item.baseAssetSymbol ?? "—"} / ${item.quoteAssetSymbol ?? "—"}`
-              : "—";
-
           return {
             id: item.id,
             platform: platformLabel(platforms.data?.items, item.platform),
@@ -129,14 +132,9 @@ export function FuturesTab({ filters, timezone }: TabProps) {
               </strong>
             ),
             kind: renderFuturesContractKind(item.kind),
-            underlying: (
-              <span className={shared.cellStack}>
-                <span>{pair}</span>
-                {item.settlementAssetSymbol ? (
-                  <span className={shared.cellMeta}>Settle: {item.settlementAssetSymbol}</span>
-                ) : null}
-              </span>
-            ),
+            base: item.baseAssetSymbol ?? "—",
+            quote: item.quoteAssetSymbol ?? "—",
+            settle: item.settlementAssetSymbol ?? "—",
             expiryAt: item.expiryAt ? (
               <span className={shared.tabularDate}>{formatInstant(item.expiryAt, timezone)}</span>
             ) : (

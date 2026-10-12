@@ -46,6 +46,13 @@ names. Mapping dialogs label the source Asset and the target Canonical Asset.
 Capital Flow inputs and columns use Canonical Asset because flows identify
 cross-Platform value.
 
+Catalog Futures Contract size uses native Base units for linear contracts and
+Quote face amounts for inverse contracts. Binance linear quantities already use
+Base units, so an absent recorded size displays `1` with the known Base symbol.
+Digit-leading Base symbols use `×` to separate amount from symbol, for example
+`1 × 1000PEPE`; do not strip prefixes or apply another multiplier. Other missing
+sizes stay `—`. This display convention does not rewrite observed terms.
+
 ### Ordering
 
 Lists, groups, and selectors use Platform, Identity, then Account order; views
