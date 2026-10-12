@@ -346,13 +346,22 @@
 
 .rowActions button {
   min-height: var(--control-sm);
-  padding: 0 var(--space-sm);
+  padding: 0 var(--space-xs);
   font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
 }
 
 .rowActions button:not(:has(> svg:only-child)) {
-  min-width: 4.5rem;
-  justify-content: center;
+  min-width: auto;
+  justify-content: flex-start;
+}
+
+.rowActions button:not(:has(> svg:only-child)):has(+ button:not(:has(> svg:only-child))) {
+  min-width: 38px;
+}
+
+.rowActions button:not(:has(> svg:only-child)) + button:not(:has(> svg:only-child)) {
+  min-width: 58px;
 }
 
 .clickRow,

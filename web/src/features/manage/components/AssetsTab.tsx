@@ -15,7 +15,6 @@ import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { Badge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextArea, TextInput } from "@/shared/ui/FormControls";
@@ -106,7 +105,8 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                 open={filters.open === "q"}
                 type="search"
                 searchDraft={filters.qDraft}
-                searchPlaceholder="Filter asset or canonical symbol"
+                searchPlaceholder="Contains, e.g. BTC"
+                searchHelp="Matches part of an asset, ignoring case."
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}
@@ -145,20 +145,19 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
           return {
             id: item.id,
             platform: platformLabel(platforms.data?.items, item.platform),
-            asset: (
-              <span className={shared.cellStack}>
-                <span
-                  style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
-                >
-                  <strong style={{ letterSpacing: "0.02em" }}>{item.symbol}</strong>
-                  {isMapped ? <Badge tone="info">mapped</Badge> : null}
+            asset: isMapped ? (
+              <span
+                className={manageStyles.assetMapped}
+                title={`Mapped to ${item.canonicalAssetSymbol}`}
+              >
+                <strong style={{ letterSpacing: "0.02em" }}>{item.symbol}</strong>
+                <span className={manageStyles.assetArrow} aria-hidden="true">
+                  →
                 </span>
-                {isMapped ? (
-                  <span className={shared.cellMeta}>
-                    Canonical Asset: {item.canonicalAssetSymbol}
-                  </span>
-                ) : null}
+                <span className={manageStyles.canonicalSymbol}>{item.canonicalAssetSymbol}</span>
               </span>
+            ) : (
+              <strong style={{ letterSpacing: "0.02em" }}>{item.symbol}</strong>
             ),
             status: item.excluded ? (
               <span
@@ -171,10 +170,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                       : "Excluded"
                 }
               >
-                <StatusBadge value="excluded" />
-                {item.exclusionReason ? (
-                  <span className={manageStyles.exclusionReason}>{item.exclusionReason}</span>
-                ) : null}
+                Excluded
               </span>
             ) : (
               <span className={shared.cellMeta}>Active</span>
@@ -206,7 +202,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                     setExclusionRequest({ nonce: nonce.current, item });
                   }}
                 >
-                  {item.excluded ? "Restore" : "Ignore"}
+                  {item.excluded ? "Restore" : "Exclude"}
                 </ActionButton>
               </span>
             ),
@@ -267,7 +263,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
         open={exclusionRequest !== null}
         title={
           exclusionRequest
-            ? `${exclusionRequest.item.excluded ? "Restore" : "Ignore"} ${exclusionRequest.item.symbol}`
+            ? `${exclusionRequest.item.excluded ? "Restore" : "Exclude"} ${exclusionRequest.item.symbol}`
             : "Asset status"
         }
         onClose={() => setExclusionRequest(null)}
@@ -315,11 +311,11 @@ function ExclusionForm({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const ignoring = !item.excluded;
+  const excluding = !item.excluded;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (ignoring && !reason.trim()) {
+    if (excluding && !reason.trim()) {
       setError("Explain why this balance can be excluded.");
       return;
     }
@@ -330,7 +326,7 @@ function ExclusionForm({
         putAssetExclusion({
           path: { portfolioId, assetId: item.id },
           headers: { "If-Match": exclusionEtag(item) },
-          body: { excluded: ignoring, ...(ignoring ? { reason: reason.trim() } : {}) },
+          body: { excluded: excluding, ...(excluding ? { reason: reason.trim() } : {}) },
         }),
       );
       if (result.response?.status === 412) {
@@ -344,7 +340,7 @@ function ExclusionForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} ${ignoring ? "will be excluded" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
+        `${platform} ${result.data.symbol} ${excluding ? "will be excluded" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The asset status could not be saved."));
@@ -356,7 +352,7 @@ function ExclusionForm({
   return (
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
-        {ignoring
+        {excluding
           ? `Exclude ${platform} · ${item.symbol} from portfolio balances and valuations starting from the next cycle.`
           : `Include ${platform} · ${item.symbol} in portfolio balances and valuations starting from the next cycle.`}
       </p>
@@ -371,7 +367,7 @@ function ExclusionForm({
           {error}
         </p>
       ) : null}
-      {ignoring ? (
+      {excluding ? (
         <div className={shared.field}>
           <span>Review reason</span>
           <div className={manageStyles.presetChips}>
@@ -403,7 +399,7 @@ function ExclusionForm({
       ) : null}
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
-          {ignoring ? "Exclude asset" : "Restore asset"}
+          {excluding ? "Exclude asset" : "Restore asset"}
         </ActionButton>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
