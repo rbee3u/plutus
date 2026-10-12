@@ -69,6 +69,26 @@ export function TableFilterHeader({
     anchor.current?.focus({ preventScroll: true });
   }
 
+  function handleClear() {
+    onClear();
+    onClose();
+    anchor.current?.focus({ preventScroll: true });
+  }
+
+  const clearAction = (
+    <div className={styles.panelActions}>
+      <button
+        type="button"
+        className={styles.clearBtn}
+        aria-label={`Clear ${label} filter`}
+        onClick={handleClear}
+      >
+        <X size={iconSize.xs} aria-hidden="true" />
+        <span>Clear filter</span>
+      </button>
+    </div>
+  );
+
   useLayoutEffect(() => {
     if (!open || !anchor.current || !panel.current) return;
     const rect = anchor.current.getBoundingClientRect();
@@ -141,7 +161,9 @@ export function TableFilterHeader({
             ? active && display
               ? `Filter ${label}: ${display}`
               : `Search ${label}`
-            : `Filter ${label}: ${display}`
+            : active && display
+              ? `Filter ${label}: ${display}`
+              : `Filter ${label}: All`
         }
         aria-expanded={open}
         aria-haspopup={isSearch ? "dialog" : "listbox"}
@@ -156,27 +178,28 @@ export function TableFilterHeader({
         }}
       >
         <span className={styles.label}>{label}</span>
-        {(!isSearch || active) && display ? <span className={styles.value}>{display}</span> : null}
-        {isSearch ? (
-          <Search size={iconSize.xs} className={styles.icon} aria-hidden="true" />
-        ) : (
-          <ChevronDown size={iconSize.xs} className={styles.icon} aria-hidden="true" />
-        )}
+        {display ? (
+          <span className={`${styles.condition} ${active ? styles.conditionActive : ""}`}>
+            {display}
+          </span>
+        ) : null}
+        <span className={styles.iconWrapper}>
+          {isSearch ? (
+            <Search
+              size={iconSize.xs}
+              className={`${styles.icon} ${active ? styles.iconActive : ""}`}
+              aria-hidden="true"
+            />
+          ) : (
+            <ChevronDown
+              size={iconSize.xs}
+              className={`${styles.icon} ${active ? styles.iconActive : ""}`}
+              aria-hidden="true"
+            />
+          )}
+        </span>
       </button>
-      {active ? (
-        <button
-          type="button"
-          className={styles.clear}
-          aria-label={`Clear ${label} filter`}
-          onClick={() => {
-            onClear();
-            anchor.current?.focus({ preventScroll: true });
-          }}
-        >
-          <X size={iconSize.xs} aria-hidden="true" />
-        </button>
-      ) : null}
-      {open
+      {open && typeof document !== "undefined"
         ? createPortal(
             <div
               ref={panel}
@@ -230,21 +253,25 @@ export function TableFilterHeader({
                     }}
                   />
                   {searchHelp ? <p>{searchHelp}</p> : null}
+                  {active || searchDraft ? clearAction : null}
                 </form>
               ) : (
-                options.map((option) => (
-                  <MenuItem
-                    key={option.value}
-                    role="option"
-                    tabIndex={selectedValue === option.value ? 0 : -1}
-                    checked={selectedValue === option.value}
-                    title={option.label}
-                    value={option.value}
-                    onClick={handleSelect}
-                  >
-                    {option.label}
-                  </MenuItem>
-                ))
+                <>
+                  {options.map((option) => (
+                    <MenuItem
+                      key={option.value}
+                      role="option"
+                      tabIndex={selectedValue === option.value ? 0 : -1}
+                      checked={selectedValue === option.value}
+                      title={option.label}
+                      value={option.value}
+                      onClick={handleSelect}
+                    >
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                  {active ? clearAction : null}
+                </>
               )}
             </div>,
             document.body,

@@ -193,14 +193,14 @@ export function CapitalPage() {
         <DataTable
           caption="Manual Capital Flows, newest first"
           columns={[
-            { key: "effectiveAt", header: "Effective at", nowrap: true },
-            { key: "direction", header: "Direction" },
-            { key: "canonicalAssetSymbol", header: "Canonical Asset" },
-            { key: "quantity", header: "Quantity", numeric: true },
-            { key: "valueUsd", header: "Value (USD)", numeric: true },
-            { key: "account", header: "Account" },
+            { key: "effectiveAt", header: "Effective at", nowrap: true, width: "170px" },
+            { key: "direction", header: "Direction", width: "110px" },
+            { key: "canonicalAssetSymbol", header: "Canonical Asset", width: "140px" },
+            { key: "quantity", header: "Quantity", numeric: true, width: "130px" },
+            { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
+            { key: "account", header: "Account", width: "150px" },
             { key: "note", header: "Note" },
-            { key: "actions", header: "" },
+            { key: "actions", header: "", width: "80px" },
           ]}
           rows={(flows.data?.items ?? []).map((item) => {
             const dec = parseDecimal(item.valueUsd);

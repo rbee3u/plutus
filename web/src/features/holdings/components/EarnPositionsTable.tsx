@@ -82,18 +82,19 @@ export function EarnPositionsTable({
           key: "asset",
           header: "Asset",
           nowrap: true,
+          width: "140px",
           headerContent: filters ? (
             <HoldingsFilterHeader label="Asset" filterKey="symbol" filters={filters} />
           ) : undefined,
         },
-        { key: "type", header: "Type", nowrap: true },
-        { key: "maturity", header: "Maturity", nowrap: true },
-        { key: "rate", header: "Rate", numeric: true, nowrap: true },
-        { key: "amount", header: "Amount", numeric: true, nowrap: true },
-        { key: "rewards", header: "Rewards", numeric: true, nowrap: true },
-        { key: "subscribed", header: "Subscribed", nowrap: true },
-        { key: "status", header: "Status", nowrap: true },
-        { key: "issues", header: "Issues", nowrap: true },
+        { key: "type", header: "Type", nowrap: true, width: "100px" },
+        { key: "maturity", header: "Maturity", nowrap: true, width: "110px" },
+        { key: "rate", header: "Rate", numeric: true, nowrap: true, width: "110px" },
+        { key: "amount", header: "Amount", numeric: true, nowrap: true, width: "130px" },
+        { key: "rewards", header: "Rewards", numeric: true, nowrap: true, width: "130px" },
+        { key: "subscribed", header: "Subscribed", nowrap: true, width: "160px" },
+        { key: "status", header: "Status", nowrap: true, width: "100px" },
+        { key: "issues", header: "Issues", nowrap: true, width: "100px" },
       ]}
       rows={items.map((item) => {
         const name = `${item.assets.map(assetLabel).join(" / ")} ${item.positionKey}`;

@@ -78,6 +78,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             key: "platform",
             header: "Platform",
             nowrap: true,
+            width: "140px",
             headerContent: (
               <TableFilterHeader
                 label="Platform"
@@ -120,6 +121,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             key: "status",
             header: "Status",
             nowrap: true,
+            width: "120px",
             headerContent: (
               <TableFilterHeader
                 label="Status"
@@ -136,8 +138,8 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
               />
             ),
           },
-          { key: "lastObservedAt", header: "Last observed", nowrap: true },
-          { key: "actions", header: "Actions", nowrap: true, numeric: true },
+          { key: "lastObservedAt", header: "Last observed", nowrap: true, width: "170px" },
+          { key: "actions", header: "Actions", nowrap: true, numeric: true, width: "140px" },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
           const isMapped = item.symbol !== item.canonicalAssetSymbol;

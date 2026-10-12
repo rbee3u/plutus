@@ -32,18 +32,19 @@ export function DualPositionsTable({
           key: "pair",
           header: "Pair",
           nowrap: true,
+          width: "140px",
           headerContent: filters ? (
             <HoldingsFilterHeader label="Pair" filterKey="symbol" filters={filters} />
           ) : undefined,
         },
-        { key: "expiry", header: "Expiry", nowrap: true },
-        { key: "strike", header: "Strike", numeric: true, nowrap: true },
-        { key: "direction", header: "Direction", nowrap: true },
-        { key: "rate", header: "Rate", numeric: true, nowrap: true },
-        { key: "principal", header: "Principal", numeric: true, nowrap: true },
-        { key: "subscribed", header: "Subscribed", nowrap: true },
-        { key: "status", header: "Status" },
-        { key: "issues", header: "Issues", nowrap: true },
+        { key: "expiry", header: "Expiry", nowrap: true, width: "160px" },
+        { key: "strike", header: "Strike", numeric: true, nowrap: true, width: "120px" },
+        { key: "direction", header: "Direction", nowrap: true, width: "100px" },
+        { key: "rate", header: "Rate", numeric: true, nowrap: true, width: "110px" },
+        { key: "principal", header: "Principal", numeric: true, nowrap: true, width: "130px" },
+        { key: "subscribed", header: "Subscribed", nowrap: true, width: "160px" },
+        { key: "status", header: "Status", width: "100px" },
+        { key: "issues", header: "Issues", nowrap: true, width: "100px" },
       ]}
       rows={items.map((item) => ({
         id: `${item.accountId}-${item.positionKey}`,

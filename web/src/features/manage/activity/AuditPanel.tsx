@@ -109,11 +109,11 @@ function AuditResults({
           if (item) setDetail(item);
         }}
         columns={[
-          { key: "occurred", header: "Occurred", nowrap: true },
-          { key: "action", header: "Action" },
+          { key: "occurred", header: "Occurred", nowrap: true, width: "170px" },
+          { key: "action", header: "Action", width: "140px" },
           { key: "resource", header: "Resource" },
-          { key: "actor", header: "Actor" },
-          { key: "actions", header: "", nowrap: true },
+          { key: "actor", header: "Actor", width: "120px" },
+          { key: "actions", header: "", nowrap: true, width: "80px" },
         ]}
         rows={(query.data?.items ?? []).map((item) => ({
           id: item.id,

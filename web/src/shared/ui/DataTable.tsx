@@ -10,6 +10,8 @@ export interface DataColumn {
   numeric?: boolean;
   /** Keeps timestamps and short codes on one line; the wrapper scrolls instead. */
   nowrap?: boolean;
+  /** Explicit column width (e.g. "140px", "20%"). */
+  width?: string;
 }
 
 function cellClass(column: DataColumn): string | undefined {
@@ -37,6 +39,8 @@ export interface DataTableProps {
   renderDetail?: (row: DataRow) => ReactNode;
   /** Makes the whole row a target for opening its detail, called with the row key; controls inside the row keep their own click. */
   onRowClick?: (key: string) => void;
+  /** Defaults to 'auto'; 'fixed' requires content that fits its column widths. */
+  tableLayout?: "fixed" | "auto";
 }
 
 /** True when a click landed on a control that handles itself, so a row handler should stay quiet. */
@@ -64,6 +68,7 @@ export function DataTable({
   detailId,
   renderDetail,
   onRowClick,
+  tableLayout,
 }: DataTableProps) {
   function rowClick(key: string) {
     return onRowClick
@@ -78,10 +83,17 @@ export function DataTable({
     const classes = [onRowClick ? styles.clickRow : "", rowClassName?.(row) ?? ""].filter(Boolean);
     return classes.length > 0 ? classes.join(" ") : undefined;
   }
+  const isFixed = tableLayout === "fixed";
+
   return (
     <div className={styles.tableWrap}>
-      <table>
+      <table className={isFixed ? styles.fixedTable : undefined}>
         <caption className={styles.srOnly}>{caption}</caption>
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={column.width ? { width: column.width } : undefined} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             {columns.map((column) => (

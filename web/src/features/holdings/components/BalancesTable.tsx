@@ -83,12 +83,12 @@ export function BalancesTable({
 
 export const BALANCE_COLUMNS = [
   { key: "symbol", header: "Asset" },
-  { key: "equity", header: "Equity", numeric: true },
-  { key: "priceUsd", header: "Price (USD)", numeric: true },
-  { key: "equityUsd", header: "Equity (USD)", numeric: true },
-  { key: "liability", header: "Liability", numeric: true },
-  { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true },
-  { key: "issues", header: "Issues", nowrap: true },
+  { key: "equity", header: "Equity", numeric: true, width: "130px" },
+  { key: "priceUsd", header: "Price (USD)", numeric: true, width: "120px" },
+  { key: "equityUsd", header: "Equity (USD)", numeric: true, width: "130px" },
+  { key: "liability", header: "Liability", numeric: true, width: "120px" },
+  { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, width: "130px" },
+  { key: "issues", header: "Issues", nowrap: true, width: "100px" },
 ];
 
 function balancePnl(value: string | null | undefined) {

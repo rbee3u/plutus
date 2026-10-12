@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TableFilterHeader } from "./TableFilterHeader";
 
 describe("TableFilterHeader", () => {
-  it("renders trigger button with label and display value", () => {
+  it("renders trigger button with label and aria-label", () => {
     const html = renderToStaticMarkup(
       <TableFilterHeader
         label="Platform"
@@ -18,10 +18,9 @@ describe("TableFilterHeader", () => {
     expect(html).toContain('aria-label="Filter Platform: All"');
     expect(html).toContain("Platform");
     expect(html).toContain("All");
-    expect(html).not.toContain('aria-label="Clear Platform filter"');
   });
 
-  it("renders clear button and active state when filter is active", () => {
+  it("renders active state on trigger when filter is active", () => {
     const html = renderToStaticMarkup(
       <TableFilterHeader
         label="Platform"
@@ -34,10 +33,11 @@ describe("TableFilterHeader", () => {
       />,
     );
     expect(html).toContain('aria-label="Filter Platform: Binance"');
-    expect(html).toContain('aria-label="Clear Platform filter"');
+    expect(html).toContain("Platform");
+    expect(html).toContain("Binance");
   });
 
-  it("renders search type without badge when inactive", () => {
+  it("renders search type when inactive", () => {
     const html = renderToStaticMarkup(
       <TableFilterHeader
         label="Asset"
@@ -52,8 +52,6 @@ describe("TableFilterHeader", () => {
     );
     expect(html).toContain('aria-label="Search Asset"');
     expect(html).toContain("Asset");
-    expect(html).not.toContain("All");
-    expect(html).not.toContain('aria-label="Clear Asset filter"');
   });
 
   it("uses dialog popup for search type when active", () => {
@@ -72,6 +70,5 @@ describe("TableFilterHeader", () => {
     expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain('aria-label="Filter Asset: BTC"');
     expect(html).toContain("BTC");
-    expect(html).toContain('aria-label="Clear Asset filter"');
   });
 });

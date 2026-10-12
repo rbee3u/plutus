@@ -14,17 +14,17 @@ import shared from "@/shared/styles/page.module.css";
 
 export const PERIOD_CLOSE_COLUMNS = [
   { key: "label", header: "Period" },
-  { key: "totalUsd", header: "Close (USD)", numeric: true },
-  { key: "change", header: "Change", numeric: true },
-  { key: "issues", header: "Issues" },
+  { key: "totalUsd", header: "Close (USD)", numeric: true, width: "160px" },
+  { key: "change", header: "Change", numeric: true, width: "180px" },
+  { key: "issues", header: "Issues", width: "120px" },
 ];
 
 export const RAW_POINT_COLUMNS = [
-  { key: "evaluatedAt", header: "Evaluated at", nowrap: true },
-  { key: "totalUsd", header: "Total (USD)", numeric: true },
-  { key: "change", header: "Change", numeric: true },
-  { key: "issues", header: "Issues" },
-  { key: "actions", header: "" },
+  { key: "evaluatedAt", header: "Evaluated at", nowrap: true, width: "170px" },
+  { key: "totalUsd", header: "Total (USD)", numeric: true, width: "160px" },
+  { key: "change", header: "Change", numeric: true, width: "180px" },
+  { key: "issues", header: "Issues", width: "120px" },
+  { key: "actions", header: "", width: "80px" },
 ];
 
 export function deltaChangeCell(

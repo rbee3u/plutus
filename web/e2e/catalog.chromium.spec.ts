@@ -63,6 +63,7 @@ test("Catalog status filters reset pagination, survive reload, and clear indepen
   await expect(page.getByRole("button", { name: "Filter Status: Excluded" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "TOKEN-X", exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "Filter Status: Excluded" }).click();
   await page.getByRole("button", { name: "Clear Status filter", exact: true }).click();
   await expect(page).toHaveURL(`${base}?platform=binance&q=TOKEN`);
   await expect(page.getByRole("cell", { name: "TOKEN-A", exact: true })).toBeVisible();

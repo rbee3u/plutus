@@ -48,12 +48,12 @@ export function CyclesPanel({
       <DataTable
         caption="Collection cycles, newest first"
         columns={[
-          { key: "createdAt", header: "Created", nowrap: true },
-          { key: "status", header: "Status" },
-          { key: "trigger", header: "Trigger" },
-          { key: "finishedAt", header: "Finished", nowrap: true },
+          { key: "createdAt", header: "Created", nowrap: true, width: "170px" },
+          { key: "status", header: "Status", width: "120px" },
+          { key: "trigger", header: "Trigger", width: "120px" },
+          { key: "finishedAt", header: "Finished", nowrap: true, width: "170px" },
           { key: "point", header: "Valuation point" },
-          { key: "actions", header: "" },
+          { key: "actions", header: "", width: "80px" },
         ]}
         rowClassName={(row) => (row.id === selectedId ? shared.openRow : undefined)}
         openKey={selectedId}

@@ -154,8 +154,8 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const symbol = page.getByRole("button", { name: "Contract details for BTC-USD-SWAP" });
   await expect(page.getByRole("columnheader")).toHaveText([
-    /Platform\s*All/,
-    /Identity\s*All/,
+    /Platform/,
+    /Identity/,
     "Account",
     "Symbol",
     "Side",
@@ -228,6 +228,23 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
         parseFloat(getComputedStyle(elements[0].parentElement!).paddingRight),
     }));
     expect(widths.column - widths.longest - widths.padding).toBeLessThan(2);
+    const contentOverhang = await page.getByRole("row").evaluateAll((rows) => {
+      let maxOverhang = 0;
+      for (const row of rows) {
+        const cells = Array.from(row.children) as HTMLElement[];
+        for (const cell of cells) {
+          const cellRight = cell.getBoundingClientRect().right;
+          for (const child of Array.from(cell.children) as HTMLElement[]) {
+            const childRight = child.getBoundingClientRect().right;
+            if (childRight > cellRight + 1) {
+              maxOverhang = Math.max(maxOverhang, childRight - cellRight);
+            }
+          }
+        }
+      }
+      return maxOverhang;
+    });
+    expect(contentOverhang).toBe(0);
   }
   await page.getByRole("button", { name: "Margin details for ETHUSDT" }).click();
   await expect(details).toHaveText("1.88x isolated");

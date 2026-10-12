@@ -10,10 +10,10 @@ import shared from "@/shared/styles/page.module.css";
 
 export const VALUE_CHANGE_COLUMNS = [
   { key: "label", header: "Period" },
-  { key: "amountUsd", header: "Value change (USD)", numeric: true },
-  { key: "end", header: "Close (USD)", numeric: true },
-  { key: "flows", header: "Flows", numeric: true },
-  { key: "issues", header: "Issues" },
+  { key: "amountUsd", header: "Value change (USD)", numeric: true, width: "180px" },
+  { key: "end", header: "Close (USD)", numeric: true, width: "160px" },
+  { key: "flows", header: "Flows", numeric: true, width: "140px" },
+  { key: "issues", header: "Issues", width: "120px" },
 ];
 
 export function valueChangeCell(amount: string | null | undefined, startAmount?: string | null) {

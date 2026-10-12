@@ -64,6 +64,7 @@ export function FuturesTab({ filters, timezone }: TabProps) {
             key: "platform",
             header: "Platform",
             nowrap: true,
+            width: "140px",
             headerContent: (
               <TableFilterHeader
                 label="Platform"
@@ -102,11 +103,11 @@ export function FuturesTab({ filters, timezone }: TabProps) {
               />
             ),
           },
-          { key: "kind", header: "Kind", nowrap: true },
-          { key: "underlying", header: "Underlying", nowrap: true },
-          { key: "expiryAt", header: "Expiry", nowrap: true },
-          { key: "contractSize", header: "Contract size", numeric: true },
-          { key: "lastObservedAt", header: "Last observed", nowrap: true },
+          { key: "kind", header: "Kind", nowrap: true, width: "100px" },
+          { key: "underlying", header: "Underlying", nowrap: true, width: "120px" },
+          { key: "expiryAt", header: "Expiry", nowrap: true, width: "160px" },
+          { key: "contractSize", header: "Contract size", numeric: true, width: "130px" },
+          { key: "lastObservedAt", header: "Last observed", nowrap: true, width: "170px" },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
           const pair =

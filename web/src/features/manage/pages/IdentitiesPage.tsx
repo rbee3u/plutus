@@ -93,13 +93,23 @@ export function IdentitiesPage() {
       <DataTable
         caption="Identities of this Portfolio"
         columns={[
-          { key: "name", header: "Identity", nowrap: true },
-          { key: "platform", header: "Platform", nowrap: true },
+          { key: "name", header: "Identity", nowrap: true, width: "180px" },
+          { key: "platform", header: "Platform", nowrap: true, width: "140px" },
           { key: "connection", header: "Connection" },
-          { key: "accounts", header: "Accounts", nowrap: true },
-          { key: "lastValidationSucceededAt", header: "Last validated", nowrap: true },
-          { key: "lastCollectionFinishedAt", header: "Last collected", nowrap: true },
-          { key: "actions", header: "" },
+          { key: "accounts", header: "Accounts", nowrap: true, width: "120px" },
+          {
+            key: "lastValidationSucceededAt",
+            header: "Last validated",
+            nowrap: true,
+            width: "170px",
+          },
+          {
+            key: "lastCollectionFinishedAt",
+            header: "Last collected",
+            nowrap: true,
+            width: "170px",
+          },
+          { key: "actions", header: "", width: "120px" },
         ]}
         rowClassName={(row) => (row.archived ? styles.archivedRow : undefined)}
         rows={visible.map((item) => {

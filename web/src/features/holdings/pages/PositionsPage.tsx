@@ -69,7 +69,7 @@ export function PositionsPage() {
         caption="Positions at the latest Valuation Point"
         columns={[
           ...holdingsAccountColumns(filters),
-          { key: "accountName", header: "Account", nowrap: true },
+          { key: "accountName", header: "Account", nowrap: true, width: "140px" },
           ...POSITION_COLUMNS.map((column) =>
             column.key === "symbol"
               ? {

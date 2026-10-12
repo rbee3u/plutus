@@ -59,6 +59,7 @@ export function holdingsAccountColumns(filters?: HoldingsFilters): DataColumn[] 
       key: "platform",
       header: "Platform",
       nowrap: true,
+      width: "140px",
       headerContent: filters ? (
         <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
       ) : undefined,
@@ -67,6 +68,7 @@ export function holdingsAccountColumns(filters?: HoldingsFilters): DataColumn[] 
       key: "identityName",
       header: "Identity",
       nowrap: true,
+      width: "160px",
       headerContent: filters ? (
         <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
       ) : undefined,

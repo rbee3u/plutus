@@ -74,7 +74,7 @@ export function BalancesPage() {
         caption="Balances"
         columns={[
           ...holdingsAccountColumns(filters),
-          { key: "accountName", header: "Account", nowrap: true },
+          { key: "accountName", header: "Account", nowrap: true, width: "140px" },
           ...BALANCE_COLUMNS.map((column) =>
             column.key === "symbol"
               ? {

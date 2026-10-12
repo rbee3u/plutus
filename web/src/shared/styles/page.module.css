@@ -220,6 +220,11 @@
   font-size: var(--text-sm);
 }
 
+.tableWrap table.fixedTable {
+  table-layout: fixed;
+  min-width: max-content;
+}
+
 .tableWrap th,
 .tableWrap td {
   padding: var(--space-md) var(--space-lg);
@@ -232,8 +237,9 @@
 }
 
 .tableWrap th {
-  padding-top: var(--space-sm);
-  padding-bottom: var(--space-sm);
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 var(--space-lg);
   color: var(--muted);
   background: var(--surface-inset);
   font-size: var(--text-xs);
@@ -544,7 +550,10 @@
 }
 
 @media (max-width: 768px) {
-  .tableWrap th,
+  .tableWrap th {
+    padding: 0 var(--space-sm);
+  }
+
   .tableWrap td {
     padding: var(--space-sm) var(--space-sm);
   }

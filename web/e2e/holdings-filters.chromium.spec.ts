@@ -54,8 +54,8 @@ test("Earn keeps multiasset products and accessible details on mobile", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/p/${portfolioId}/holdings/earn`);
   await expect(page.getByRole("columnheader")).toHaveText([
-    /Platform.*All/,
-    /Identity.*All/,
+    /Platform/,
+    /Identity/,
     "Asset",
     "Type",
     "Maturity",
@@ -266,8 +266,8 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
   ];
   await page.goto(`/p/${portfolioId}/holdings/balances`);
   await expect(page.getByRole("columnheader")).toHaveText([
-    /Platform.*All/,
-    /Identity.*All/,
+    /Platform/,
+    /Identity/,
     "Account",
     "Asset",
     "Equity",
@@ -291,7 +291,6 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
   await expect
     .poll(() => state.requests.some((url) => url.searchParams.get("symbol") === "btc"))
     .toBe(true);
-  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Clear Asset filter" }).click();
   await expect(page).not.toHaveURL(/symbol=/);
 
@@ -316,8 +315,11 @@ test("column filters link configured candidates and clear independently", async 
   await platform.click();
   await expect(page.getByRole("option")).toHaveText(["All", "Binance"]);
   await page.getByRole("option", { name: "Binance", exact: true }).click();
+  await page.getByRole("button", { name: "Filter Platform: Binance" }).click();
   await page.getByRole("button", { name: "Clear Platform filter" }).click();
-  await expect(page.getByRole("button", { name: "Filter Identity: bn-main" })).toBeVisible();
+  const identityActive = page.getByRole("button", { name: "Filter Identity: bn-main" });
+  await expect(identityActive).toBeVisible();
+  await identityActive.click();
   await page.getByRole("button", { name: "Clear Identity filter" }).click();
   await platform.focus();
   await page.keyboard.press("ArrowDown");
@@ -379,6 +381,7 @@ test("search debounces, respects composition, and keeps its input through loadin
     await expect(input).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "Filter Symbol: 牛来" })).toBeFocused();
+    await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Clear Symbol filter" }).click();
     await expect(page).not.toHaveURL(/symbol=/);
   } finally {

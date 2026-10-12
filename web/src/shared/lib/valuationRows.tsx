@@ -10,8 +10,8 @@ import styles from "@/shared/styles/page.module.css";
 
 export const ACCOUNT_VALUATION_COLUMNS = [
   { key: "account", header: "Account" },
-  { key: "valueUsd", header: "Value (USD)", numeric: true },
-  { key: "issues", header: "Issues", nowrap: true },
+  { key: "valueUsd", header: "Value (USD)", numeric: true, width: "160px" },
+  { key: "issues", header: "Issues", nowrap: true, width: "120px" },
 ];
 
 export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
@@ -144,12 +144,12 @@ export function groupAccountValuations(
 }
 
 export const BOUNDARY_COLUMNS = [
-  { key: "evaluatedAt", header: "Evaluated at", nowrap: true },
+  { key: "evaluatedAt", header: "Evaluated at", nowrap: true, width: "170px" },
   { key: "account", header: "Account" },
-  { key: "platform", header: "Platform" },
-  { key: "direction", header: "Direction" },
-  { key: "valueUsd", header: "Value (USD)", numeric: true },
-  { key: "method", header: "Method" },
+  { key: "platform", header: "Platform", width: "140px" },
+  { key: "direction", header: "Direction", width: "110px" },
+  { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
+  { key: "method", header: "Method", width: "110px" },
 ];
 
 export function boundaryEventRow(
