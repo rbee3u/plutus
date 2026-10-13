@@ -15,14 +15,6 @@ export function ActivityPage() {
 
   return (
     <section className={shared.wide}>
-      <div className={shared.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
-        <div>
-          <h2 style={{ margin: 0 }}>Collection & Activity</h2>
-          <p className={shared.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
-            Background collection cycles and portfolio audit history.
-          </p>
-        </div>
-      </div>
       {tab === "cycles" ? (
         <CyclesPanel
           selectedId={params.get("cycle") ?? ""}

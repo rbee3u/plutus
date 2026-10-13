@@ -188,7 +188,7 @@ function ShellContent() {
               portfolios={portfolios}
               onPortfolioRemembered={setRememberedId}
             />
-            <UserMenu onSignOut={() => void logout()} />
+            <UserMenu portfolioId={navPortfolioId} onSignOut={() => void logout()} />
           </div>
         </header>
         <main

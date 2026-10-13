@@ -127,7 +127,10 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupId: "manage",
     groupLabel: "Manage",
     defaultPathSuffix: "/settings/portfolio",
-    subviews: [{ label: "Portfolio settings", pathSuffix: "/settings/portfolio" }],
+    subviews: [
+      { label: "Portfolio", pathSuffix: "/settings/portfolio" },
+      { label: "Security", pathSuffix: "/settings/security" },
+    ],
   },
 ];
 
@@ -141,6 +144,9 @@ function portfolioRoute(pathname: string): { portfolioId: string; suffix: string
 }
 
 export function isNavItemActive(pathname: string, item: Pick<NavItem, "activeSuffixes">): boolean {
+  if (isAccountPath(pathname) && item.activeSuffixes.includes("/settings/security")) {
+    return true;
+  }
   const route = portfolioRoute(pathname);
   return route !== null && item.activeSuffixes.includes(route.suffix);
 }

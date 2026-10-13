@@ -1,10 +1,8 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { portfoliosOptions } from "@/shared/lib/usePortfolios";
-import { Shield } from "lucide-react";
 import { formatCount } from "@/shared/lib/amount";
-import { iconSize } from "@/shared/icons/iconSizes";
 import { useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { deletePortfolio, keys, patchPortfolio, problemMessage, type Portfolio } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/shared/lib/preferences";
@@ -82,14 +80,6 @@ export function PortfolioSettingsPage() {
 
   return (
     <section className={styles.page}>
-      <div className={shared.panelHeader} style={{ flexWrap: "wrap", gap: "var(--space-md)" }}>
-        <div>
-          <h2 style={{ margin: 0 }}>Portfolio settings</h2>
-          <p className={shared.muted} style={{ margin: "4px 0 0", fontSize: "var(--text-sm)" }}>
-            Manage configuration, base timezone, and collection cadence for this portfolio.
-          </p>
-        </div>
-      </div>
       <QueryRecovery query={portfolio} fallback="The portfolio could not be loaded." />
       {portfolio.data ? (
         <SettingsForms
@@ -126,14 +116,26 @@ function SettingsForms({
   const queryClient = useQueryClient();
   const write = useAuthenticatedWrite();
   const navigate = useNavigate();
-  const [notice, setNotice] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
   const [baseline, setBaseline] = useState(initialPortfolio);
   const [needsReload, setNeedsReload] = useState(false);
   const [name, setName] = useState(initialPortfolio.name);
   const [timezone, setTimezone] = useState(initialPortfolio.timezone);
   const [interval, setInterval] = useState(String(initialPortfolio.collectionIntervalSeconds));
+  const [isCustom, setIsCustom] = useState(
+    () => !INTERVAL_PRESETS.some((p) => p.seconds === initialPortfolio.collectionIntervalSeconds),
+  );
   const [confirmName, setConfirmName] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   let browserTimezone: string | null = null;
@@ -160,6 +162,7 @@ function SettingsForms({
       }
     }
     setInterval(clean);
+    if (saveError) setSaveError(null);
   }
 
   function onIntervalBlur() {
@@ -180,18 +183,22 @@ function SettingsForms({
     setName(item.name);
     setTimezone(item.timezone);
     setInterval(String(item.collectionIntervalSeconds));
+    setIsCustom(!INTERVAL_PRESETS.some((p) => p.seconds === item.collectionIntervalSeconds));
     setConfirmName("");
     setNeedsReload(false);
+    setSaveError(null);
+    setDeleteError(null);
   }
 
   async function reloadLatest() {
-    setNotice(null);
+    setSaveNotice(null);
     setBusy(true);
     try {
       acceptPortfolio(await onReload());
-      setError(null);
+      setSaveError(null);
+      setDeleteError(null);
     } catch (cause) {
-      setError(problemMessage(cause, "The portfolio could not be loaded."));
+      setSaveError(problemMessage(cause, "The portfolio could not be loaded."));
     } finally {
       setBusy(false);
     }
@@ -209,14 +216,14 @@ function SettingsForms({
       setInterval(String(MAX_INTERVAL));
     }
     if (!Number.isInteger(seconds) || seconds < MIN_INTERVAL || seconds > MAX_INTERVAL) {
-      setError(
+      setSaveError(
         `The collection interval must be a whole number of seconds between ${formatCount(MIN_INTERVAL)} and ${formatCount(MAX_INTERVAL)}.`,
       );
       return;
     }
-    setNotice(null);
+    setSaveNotice(null);
     setBusy(true);
-    setError(null);
+    setSaveError(null);
     try {
       const result = await write(() =>
         patchPortfolio({
@@ -231,18 +238,20 @@ function SettingsForms({
       );
       if (result.response?.status === 412) {
         setNeedsReload(true);
-        setError(CONFLICT);
+        setSaveError(CONFLICT);
         return;
       }
       if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The portfolio could not be updated."));
+        setSaveError(problemMessage(result.error, "The portfolio could not be updated."));
         return;
       }
       acceptPortfolio(result.data);
-      setNotice("Portfolio settings saved.");
+      setSaveNotice("Settings saved.");
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setSaveNotice(null), 3000);
       await onSaved();
     } catch (cause) {
-      setError(
+      setSaveError(
         problemMessage(cause, "The portfolio could not be updated. Check the network and retry."),
       );
     } finally {
@@ -254,12 +263,11 @@ function SettingsForms({
     event.preventDefault();
     if (busy || needsReload) return;
     if (confirmName !== baseline.name) {
-      setError("Type the current portfolio name to delete it.");
+      setDeleteError("Type the current portfolio name to delete it.");
       return;
     }
-    setNotice(null);
     setBusy(true);
-    setError(null);
+    setDeleteError(null);
     try {
       const result = await write(() =>
         deletePortfolio({
@@ -269,11 +277,11 @@ function SettingsForms({
       );
       if (result.response?.status === 412) {
         setNeedsReload(true);
-        setError(CONFLICT);
+        setDeleteError(CONFLICT);
         return;
       }
       if (result.error || result.response?.status !== 202) {
-        setError(problemMessage(result.error, "The portfolio could not be deleted."));
+        setDeleteError(problemMessage(result.error, "The portfolio could not be deleted."));
         return;
       }
       await queryClient.invalidateQueries({ queryKey: keys.portfolios(userId) });
@@ -286,7 +294,7 @@ function SettingsForms({
       storePreference(LAST_PORTFOLIO_KEY, next.id);
       void navigate(`/p/${next.id}/overview`, { replace: true });
     } catch (cause) {
-      setError(
+      setDeleteError(
         problemMessage(cause, "The portfolio could not be deleted. Check the network and retry."),
       );
     } finally {
@@ -296,32 +304,30 @@ function SettingsForms({
 
   return (
     <>
-      {notice ? (
-        <p className={shared.notice} role="status">
-          {notice}
-        </p>
-      ) : null}
-      {error ? (
-        <p className={shared.alert} role="alert">
-          {error}
-        </p>
-      ) : null}
-      {needsReload ? (
-        <ActionButton type="button" disabled={busy} onClick={() => void reloadLatest()}>
-          Reload latest settings
-        </ActionButton>
-      ) : null}
       <form
         className={`${shared.form} ${styles.settingsCard}`}
         onSubmit={(event) => void onSubmit(event)}
       >
         <h2>General settings</h2>
+        {saveError ? (
+          <p className={shared.alert} role="alert">
+            {saveError}
+          </p>
+        ) : null}
+        {needsReload ? (
+          <ActionButton type="button" disabled={busy} onClick={() => void reloadLatest()}>
+            Reload latest settings
+          </ActionButton>
+        ) : null}
         <label className={shared.field}>
           <span>Name</span>
           <TextInput
             value={name}
             disabled={busy}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (saveError) setSaveError(null);
+            }}
             maxLength={120}
             required
           />
@@ -334,7 +340,10 @@ function SettingsForms({
                 type="button"
                 className={styles.tzSuggestionBtn}
                 disabled={busy}
-                onClick={() => setTimezone(browserTimezone)}
+                onClick={() => {
+                  setTimezone(browserTimezone);
+                  if (saveError) setSaveError(null);
+                }}
                 title={`Set timezone to ${browserTimezone}`}
               >
                 Match browser ({browserTimezone})
@@ -344,7 +353,10 @@ function SettingsForms({
           <Select
             disabled={busy}
             value={timezone}
-            onChange={(event) => setTimezone(event.target.value)}
+            onChange={(event) => {
+              setTimezone(event.target.value);
+              if (saveError) setSaveError(null);
+            }}
             required
           >
             {!isKnownTimezone && timezone ? <option value={timezone}>{timezone}</option> : null}
@@ -355,9 +367,9 @@ function SettingsForms({
             ))}
           </Select>
         </label>
-        <label className={shared.field}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span>Collection interval (seconds)</span>
+        <div className={shared.field}>
+          <div className={styles.fieldHeader}>
+            <span>Collection cadence</span>
             {durationText ? (
               <span className={styles.intervalDurationBadge}>{durationText}</span>
             ) : isIntervalBelowMin || isIntervalEmpty ? (
@@ -366,20 +378,9 @@ function SettingsForms({
               </span>
             ) : null}
           </div>
-          <TextInput
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={interval}
-            disabled={busy}
-            onChange={onIntervalChange}
-            onBlur={onIntervalBlur}
-            required
-          />
-          <div className={styles.intervalPresets} role="group" aria-label="Interval presets">
-            <span className={styles.intervalPresetsLabel}>Presets:</span>
+          <div className={styles.cadencePills} role="group" aria-label="Collection cadence presets">
             {INTERVAL_PRESETS.map((p) => {
-              const active = interval === String(p.seconds);
+              const active = !isCustom && interval === String(p.seconds);
               const presetTitle =
                 "isDefault" in p && p.isDefault
                   ? `${p.label} (default, ${formatCount(p.seconds)}s)`
@@ -390,39 +391,73 @@ function SettingsForms({
                   disabled={busy}
                   type="button"
                   aria-pressed={active}
-                  className={`${styles.intervalPresetBtn} ${active ? styles.intervalPresetActive : ""}`}
-                  onClick={() => setInterval(String(p.seconds))}
+                  className={`${styles.cadencePill} ${active ? styles.cadencePillActive : ""}`}
+                  onClick={() => {
+                    setInterval(String(p.seconds));
+                    setIsCustom(false);
+                    if (saveError) setSaveError(null);
+                  }}
                   title={presetTitle}
                 >
                   {p.label}
                 </button>
               );
             })}
+            <button
+              disabled={busy}
+              type="button"
+              aria-pressed={isCustom}
+              className={`${styles.cadencePill} ${isCustom ? styles.cadencePillActive : ""}`}
+              onClick={() => {
+                setIsCustom(true);
+                if (saveError) setSaveError(null);
+              }}
+              title="Custom interval in seconds"
+            >
+              Custom
+            </button>
           </div>
-          <span className={shared.muted}>
-            Between {formatCount(MIN_INTERVAL)} and {formatCount(MAX_INTERVAL)} seconds (one day;
-            default is 30 minutes / 1,800s). The schedule applies from the next cycle.
+          {isCustom ? (
+            <div className={styles.customIntervalRow}>
+              <TextInput
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label="Custom collection interval in seconds"
+                placeholder={`${MIN_INTERVAL} – ${MAX_INTERVAL}`}
+                value={interval}
+                disabled={busy}
+                onChange={onIntervalChange}
+                onBlur={onIntervalBlur}
+                className={styles.customIntervalInput}
+                required
+              />
+              <span className={shared.muted} style={{ fontSize: "var(--text-sm)" }}>
+                seconds
+              </span>
+            </div>
+          ) : null}
+          <span className={shared.muted} style={{ fontSize: "var(--text-xs)" }}>
+            Applies from the next cycle.
           </span>
-        </label>
+        </div>
         <div className={shared.actions}>
           <ActionButton type="submit" tone="primary" disabled={busy || needsReload}>
             Save
           </ActionButton>
+          {saveNotice ? (
+            <span className={shared.muted} role="status">
+              {saveNotice}
+            </span>
+          ) : null}
         </div>
       </form>
       {baseline.undeletable ? (
-        <div className={styles.defaultPortfolioNotice}>
-          <Shield
-            size={iconSize.sm}
-            className={shared.muted}
-            style={{ flexShrink: 0, marginTop: 2 }}
-          />
-          <div>
-            <strong>Initial portfolio</strong>
-            <p className={shared.muted}>
-              This initial portfolio was created with the account and cannot be deleted.
-            </p>
-          </div>
+        <div className={styles.settingsCard}>
+          <h2>Delete portfolio</h2>
+          <p className={shared.muted}>
+            This initial portfolio was created with the account and is protected from deletion.
+          </p>
         </div>
       ) : (
         <form
@@ -434,12 +469,25 @@ function SettingsForms({
             Permanently deletes this portfolio and every Identity, Collection Cycle, Valuation
             Point, and Capital Flow scoped to it. Type the current name to confirm.
           </p>
+          {deleteError ? (
+            <p className={shared.alert} role="alert">
+              {deleteError}
+            </p>
+          ) : null}
+          {needsReload ? (
+            <ActionButton type="button" disabled={busy} onClick={() => void reloadLatest()}>
+              Reload latest settings
+            </ActionButton>
+          ) : null}
           <label className={shared.field}>
             <span>Confirm name</span>
             <TextInput
               value={confirmName}
               disabled={busy}
-              onChange={(event) => setConfirmName(event.target.value)}
+              onChange={(event) => {
+                setConfirmName(event.target.value);
+                if (deleteError) setDeleteError(null);
+              }}
               autoComplete="off"
               required
             />

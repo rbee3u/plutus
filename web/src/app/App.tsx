@@ -69,7 +69,7 @@ export function App() {
                 <Route path="data/activity" element={<ActivityPage />} />
                 <Route path="settings" element={<Navigate to="portfolio" replace />} />
                 <Route path="settings/portfolio" element={<PortfolioSettingsPage />} />
-                <Route path="settings/security" element={<LegacySecurityRedirect />} />
+                <Route path="settings/security" element={<SecuritySettingsPage />} />
                 {LEGACY_PATHS.map((item) => (
                   <Route
                     key={item.from}

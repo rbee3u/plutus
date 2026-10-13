@@ -8,11 +8,13 @@ import styles from "@/shared/ui/Dialog.module.css";
 export function Dialog({
   open,
   title,
+  size = "md",
   onClose,
   children,
 }: {
   open: boolean;
   title: string;
+  size?: "md" | "lg";
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -49,7 +51,7 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
-      className={styles.dialog}
+      className={`${styles.dialog} ${size === "lg" ? styles.dialogLg : ""}`}
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       onCancel={(event) => {

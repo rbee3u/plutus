@@ -4,10 +4,17 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import styles from "@/app/shell/Shell.module.css";
 
-export function UserMenu({ onSignOut }: { onSignOut: () => void }) {
+export function UserMenu({
+  portfolioId,
+  onSignOut,
+}: {
+  portfolioId?: string;
+  onSignOut: () => void;
+}) {
   const user = useCurrentUser();
   const menu = useMenu();
   const username = user.data?.username ?? "Account";
+  const securityPath = portfolioId ? `/p/${portfolioId}/settings/security` : "/account/security";
 
   return (
     <>
@@ -25,7 +32,7 @@ export function UserMenu({ onSignOut }: { onSignOut: () => void }) {
       </button>
       <Menu menu={menu} label="Account">
         <MenuItem
-          to="/account/security"
+          to={securityPath}
           icon={<ShieldCheck size={iconSize.sm} />}
           onClick={() => menu.close()}
         >

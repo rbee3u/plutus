@@ -1,22 +1,31 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { keys, listAuditEvents } from "@/api";
 import type { AuditEvent, AuditEventList } from "@/api";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { useCurrentUser } from "@/shared/lib/session";
+import { capitalize } from "@/shared/lib/text";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
-import { TextInput } from "@/shared/ui/FormControls";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableFilterHeader, type FilterOption } from "@/shared/ui/TableFilterHeader";
 import { safeJson } from "../lib/json";
 import { useCursorPages } from "../hooks/useCursorPages";
 import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 const PAGE_SIZE = 50;
+
+const RESOURCE_OPTIONS: FilterOption[] = [
+  { value: "asset", label: "Asset" },
+  { value: "identity", label: "Identity" },
+  { value: "account", label: "Account" },
+  { value: "capital_flow", label: "Capital Flow" },
+  { value: "portfolio", label: "Portfolio" },
+];
 
 export function AuditPanel({
   action,
@@ -29,61 +38,50 @@ export function AuditPanel({
   timezone?: string;
   onFilter: (next: Record<string, string>) => void;
 }) {
-  return (
-    <>
-      <form
-        className={shared.compactFilterBar}
-        style={{ marginBottom: "var(--space-md)" }}
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <label className={shared.compactFilterField} style={{ maxWidth: "260px" }}>
-          <span className={shared.compactFilterLabel}>Action</span>
-          <TextInput
-            value={action}
-            onChange={(event) => onFilter({ action: event.target.value })}
-            placeholder="e.g. identity.enable"
-          />
-        </label>
-        <label className={shared.compactFilterField} style={{ maxWidth: "240px" }}>
-          <span className={shared.compactFilterLabel}>Resource type</span>
-          <TextInput
-            value={resourceType}
-            onChange={(event) => onFilter({ resourceType: event.target.value })}
-            placeholder="e.g. identity"
-          />
-        </label>
-        {action || resourceType ? (
-          <ActionButton
-            type="button"
-            tone="ghost"
-            onClick={() => onFilter({ action: "", resourceType: "" })}
-          >
-            Clear
-          </ActionButton>
-        ) : null}
-      </form>
-      <AuditResults
-        key={`${action}|${resourceType}`}
-        action={action}
-        resourceType={resourceType}
-        timezone={timezone}
-      />
-    </>
-  );
-}
-
-function AuditResults({
-  action,
-  resourceType,
-  timezone,
-}: {
-  action: string;
-  resourceType: string;
-  timezone?: string;
-}) {
   const me = useCurrentUser();
   const pages = useCursorPages();
   const [detail, setDetail] = useState<AuditEvent | null>(null);
+  const [openFilter, setOpenFilter] = useState<"action" | "resource" | null>(null);
+  const [actionDraft, setActionDraft] = useState(action);
+  const [prevFilters, setPrevFilters] = useState({ action, resourceType });
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const handleActionChange = (val: string) => {
+    setActionDraft(val);
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      onFilter({ action: val.trim() });
+    }, 250);
+  };
+
+  const handleActionClear = () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    setActionDraft("");
+    onFilter({ action: "" });
+  };
+
+  function actorDisplay(actorUserId?: string | null) {
+    if (!actorUserId) {
+      return <span className={shared.cellMeta}>system</span>;
+    }
+    if (actorUserId === me.data?.id) {
+      return <strong>{me.data.username}</strong>;
+    }
+    return <span className={shared.cellMeta}>#{shortId(actorUserId)}</span>;
+  }
+
+  if (prevFilters.action !== action || prevFilters.resourceType !== resourceType) {
+    setPrevFilters({ action, resourceType });
+    setActionDraft(action);
+    pages.reset();
+  }
+
   const query = usePortfolioQuery<AuditEventList>({
     key: (userId, portfolioId) =>
       keys.auditEvents(userId, portfolioId, action, resourceType, pages.cursor),
@@ -99,39 +97,104 @@ function AuditResults({
       }),
   });
 
+  const items = query.data?.items ?? [];
+  const hasFilters = Boolean(action || resourceType);
+
   return (
     <>
       <QueryRecovery query={query} fallback="Audit events could not be loaded." />
       <DataTable
         caption="Portfolio audit events"
         onRowClick={(key) => {
-          const item = (query.data?.items ?? []).find((i) => i.id === key);
+          const item = items.find((i) => i.id === key);
           if (item) setDetail(item);
         }}
         columns={[
-          { key: "occurred", header: "Occurred", nowrap: true, width: "170px" },
-          { key: "action", header: "Action", width: "140px" },
-          { key: "resource", header: "Resource" },
+          { key: "occurred", header: "Time", nowrap: true, width: "170px" },
+          {
+            key: "action",
+            header: "Action",
+            width: "180px",
+            headerContent: (
+              <TableFilterHeader
+                label="Action"
+                display={action || "All"}
+                active={Boolean(action)}
+                open={openFilter === "action"}
+                type="search"
+                searchDraft={actionDraft}
+                searchPlaceholder="e.g. catalog.asset.map"
+                searchHelp="Filter by exact action or prefix."
+                onToggle={() => {
+                  setOpenFilter((prev) => (prev === "action" ? null : "action"));
+                  setActionDraft(action);
+                }}
+                onClose={() => setOpenFilter(null)}
+                onClear={handleActionClear}
+                onSearchChange={handleActionChange}
+              />
+            ),
+          },
+          {
+            key: "resource",
+            header: "Resource",
+            headerContent: (
+              <TableFilterHeader
+                label="Resource"
+                display={
+                  resourceType
+                    ? (RESOURCE_OPTIONS.find((opt) => opt.value === resourceType)?.label ??
+                      capitalize(resourceType))
+                    : "All"
+                }
+                active={Boolean(resourceType)}
+                open={openFilter === "resource"}
+                type="select"
+                options={RESOURCE_OPTIONS}
+                selectedValue={resourceType}
+                onToggle={() => setOpenFilter((prev) => (prev === "resource" ? null : "resource"))}
+                onClose={() => setOpenFilter(null)}
+                onClear={() => {
+                  onFilter({ resourceType: "" });
+                  setOpenFilter(null);
+                }}
+                onSelect={(val) => {
+                  onFilter({ resourceType: val });
+                  setOpenFilter(null);
+                }}
+              />
+            ),
+          },
           { key: "actor", header: "Actor", width: "120px" },
           { key: "actions", header: "", nowrap: true, width: "80px" },
         ]}
-        rows={(query.data?.items ?? []).map((item) => ({
+        rows={items.map((item) => ({
           id: item.id,
-          occurred: formatInstant(item.occurredAt, timezone),
-          action: item.action,
+          occurred: (
+            <span className={shared.tabularDate}>{formatInstant(item.occurredAt, timezone)}</span>
+          ),
+          action: (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                letterSpacing: "0.02em",
+              }}
+            >
+              {item.action}
+            </span>
+          ),
           resource: (
             <span className={shared.cellStack}>
-              <span>{item.resourceType}</span>
+              <span style={{ fontWeight: "var(--weight-medium)" }}>
+                {capitalize(item.resourceType.replace("_", " "))}
+              </span>
               {item.resourceId ? (
                 <span className={shared.cellMeta}>#{shortId(item.resourceId)}</span>
               ) : null}
             </span>
           ),
-          actor: !item.actorUserId
-            ? "system"
-            : item.actorUserId === me.data?.id
-              ? me.data.username
-              : shortId(item.actorUserId),
+          actor: actorDisplay(item.actorUserId),
           actions: (
             <span className={shared.rowActions}>
               <ActionButton type="button" tone="ghost" onClick={() => setDetail(item)}>
@@ -141,44 +204,121 @@ function AuditResults({
           ),
         }))}
         empty={
-          query.isPending
-            ? "Loading audit events."
-            : action || resourceType
-              ? "No audit event matches these filters."
-              : "No audit events yet. Events are recorded when this Portfolio, its identities, capital flows, or mappings change."
+          query.isPending ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>Loading audit events...</p>
+            </div>
+          ) : hasFilters ? (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No audit events match these filters</p>
+              <p className={shared.emptyStateHelp}>
+                Try adjusting your action search or resource filter.
+              </p>
+              <ActionButton
+                type="button"
+                tone="secondary"
+                onClick={() => {
+                  setActionDraft("");
+                  onFilter({ action: "", resourceType: "" });
+                }}
+              >
+                Clear filters
+              </ActionButton>
+            </div>
+          ) : (
+            <div className={shared.emptyState}>
+              <p className={shared.emptyStateTitle}>No audit events recorded yet</p>
+            </div>
+          )
         }
       />
-      <CursorPager
-        canPrev={pages.canPrev}
-        hasMore={query.data?.page.hasMore ?? false}
-        onPrev={pages.prev}
-        onNext={() => pages.next(query.data?.page.nextCursor)}
-      />
-      <Dialog open={Boolean(detail)} title="Audit payload" onClose={() => setDetail(null)}>
+      {pages.canPrev || query.data?.page.hasMore || hasFilters ? (
+        <div className={shared.headingRow}>
+          <CursorPager
+            canPrev={pages.canPrev}
+            hasMore={query.data?.page.hasMore ?? false}
+            onPrev={pages.prev}
+            onNext={() => pages.next(query.data?.page.nextCursor)}
+          />
+          {hasFilters ? (
+            <ActionButton
+              type="button"
+              tone="ghost"
+              onClick={() => {
+                setActionDraft("");
+                onFilter({ action: "", resourceType: "" });
+              }}
+            >
+              Clear filters
+            </ActionButton>
+          ) : null}
+        </div>
+      ) : null}
+      <Dialog
+        open={Boolean(detail)}
+        title={detail ? `Audit Event · ${detail.action}` : "Audit Event"}
+        size="lg"
+        onClose={() => setDetail(null)}
+      >
         {detail ? (
           <>
-            <p className={shared.muted}>
-              {detail.action} · {detail.resourceType}
-              {detail.resourceId ? ` · ${detail.resourceId}` : ""}
-              {detail.requestId ? ` · request ${detail.requestId}` : ""}
-            </p>
-            {detail.before != null ? (
+            <div className={styles.payloadMetaGrid}>
+              <div className={styles.payloadMetaItem}>
+                <span className={styles.payloadMetaLabel}>Time</span>
+                <span className={styles.payloadMetaValue}>
+                  {formatInstant(detail.occurredAt, timezone)}
+                </span>
+              </div>
+              <div className={styles.payloadMetaItem}>
+                <span className={styles.payloadMetaLabel}>Actor</span>
+                <span className={styles.payloadMetaValue}>{actorDisplay(detail.actorUserId)}</span>
+              </div>
+              <div className={styles.payloadMetaItem}>
+                <span className={styles.payloadMetaLabel}>Resource</span>
+                <span className={styles.payloadMetaValue}>
+                  {capitalize(detail.resourceType.replace("_", " "))}
+                  {detail.resourceId ? ` · #${shortId(detail.resourceId)}` : ""}
+                </span>
+              </div>
+              <div className={styles.payloadMetaItem}>
+                <span className={styles.payloadMetaLabel}>Request ID</span>
+                <span className={styles.payloadMetaValue}>
+                  {detail.requestId ? `#${shortId(detail.requestId)}` : "—"}
+                </span>
+              </div>
+            </div>
+            {detail.before != null && detail.after != null ? (
+              <div className={styles.payloadDiffGrid}>
+                <div className={styles.payloadSection}>
+                  <span className={styles.payloadSectionLabel}>Before State</span>
+                  <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
+                </div>
+                <div className={styles.payloadSection}>
+                  <span className={styles.payloadSectionLabel}>After State</span>
+                  <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
+                </div>
+              </div>
+            ) : (
               <>
-                <h2>Before</h2>
-                <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
+                {detail.before != null ? (
+                  <div className={styles.payloadSection}>
+                    <span className={styles.payloadSectionLabel}>Before State</span>
+                    <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
+                  </div>
+                ) : null}
+                {detail.after != null ? (
+                  <div className={styles.payloadSection}>
+                    <span className={styles.payloadSectionLabel}>After State</span>
+                    <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
+                  </div>
+                ) : null}
               </>
-            ) : null}
-            {detail.after != null ? (
-              <>
-                <h2>After</h2>
-                <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
-              </>
-            ) : null}
+            )}
             {detail.metadata ? (
-              <>
-                <h2>Metadata</h2>
+              <div className={styles.payloadSection}>
+                <span className={styles.payloadSectionLabel}>Metadata</span>
                 <pre className={styles.jsonBlock}>{safeJson(detail.metadata)}</pre>
-              </>
+              </div>
             ) : null}
             {detail.before == null && detail.after == null && !detail.metadata ? (
               <p className={shared.muted}>No payload state recorded.</p>

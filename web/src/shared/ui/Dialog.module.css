@@ -11,6 +11,10 @@
   box-shadow: var(--shadow-lg);
 }
 
+.dialogLg {
+  width: min(800px, calc(100% - 32px));
+}
+
 /* Only the open dialog lays out as a column; a closed one keeps the browser's display: none. */
 .dialog[open] {
   display: flex;

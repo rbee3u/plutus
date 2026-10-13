@@ -1,7 +1,7 @@
 import { useSessionActions } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { type FormEvent, useRef, useState } from "react";
-import { AlertCircle, Check, Circle } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 import { problemError, problemMessage, putAuthPassword } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { ActionButton } from "@/shared/ui/ActionButton";
@@ -9,20 +9,6 @@ import { PasswordInput } from "@/shared/ui/PasswordInput";
 import styles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import passwordStyles from "./PasswordForm.module.css";
-
-function computeStrength(password: string): { score: number; label: string } {
-  if (!password) {
-    return { score: 0, label: "" };
-  }
-  let points = 0;
-  if (password.length >= 8) points++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) points++;
-  if (/[0-9]/.test(password)) points++;
-  if (/[^a-zA-Z0-9]/.test(password) || password.length >= 14) points++;
-
-  const labels = ["", "Weak", "Fair", "Good", "Strong"];
-  return { score: points, label: labels[points] ?? "Strong" };
-}
 
 export function PasswordForm({ onError: setError }: { onError: (error: string | null) => void }) {
   const write = useAuthenticatedWrite();
@@ -34,7 +20,6 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
-  const [newPasswordFocused, setNewPasswordFocused] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const isLengthValid = newPassword.length >= 8 && newPassword.length <= 128;
@@ -51,8 +36,6 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
   const isConfirmTouched = confirmPassword.length > 0;
   const isConfirmMatching = isConfirmTouched && confirmPassword === newPassword;
   const isConfirmMismatch = isConfirmTouched && confirmPassword !== newPassword;
-
-  const { score: strengthScore, label: strengthLabel } = computeStrength(newPassword);
 
   const canSubmit =
     currentPassword.length > 0 &&
@@ -104,28 +87,6 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
     }
   }
 
-  const scoreClass =
-    strengthScore === 1
-      ? passwordStyles.scoreWeak
-      : strengthScore === 2
-        ? passwordStyles.scoreFair
-        : strengthScore === 3
-          ? passwordStyles.scoreGood
-          : strengthScore === 4
-            ? passwordStyles.scoreStrong
-            : "";
-
-  const barColorClass =
-    strengthScore === 1
-      ? passwordStyles.strengthBarWeak
-      : strengthScore === 2
-        ? passwordStyles.strengthBarFair
-        : strengthScore === 3
-          ? passwordStyles.strengthBarGood
-          : strengthScore === 4
-            ? passwordStyles.strengthBarStrong
-            : "";
-
   return (
     <form
       className={`${shared.form} ${styles.settingsCard}`}
@@ -168,7 +129,6 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
           autoComplete="new-password"
           minLength={8}
           maxLength={128}
-          onFocus={() => setNewPasswordFocused(true)}
           onChange={(event) => setNewPassword(event.target.value)}
           aria-invalid={isSameAsCurrent}
           aria-describedby={isSameAsCurrent ? "new-password-error" : undefined}
@@ -184,58 +144,32 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
             New password must differ from current password
           </span>
         ) : null}
-        {newPasswordFocused || newPassword.length > 0 ? (
-          <div className={passwordStyles.strengthMeter}>
-            {strengthLabel ? (
-              <div className={passwordStyles.strengthHeader}>
-                <span>Password strength</span>
-                <span className={`${passwordStyles.strengthScore} ${scoreClass}`}>
-                  {strengthLabel}
-                </span>
-              </div>
-            ) : null}
-            <div className={passwordStyles.strengthBars}>
-              <div
-                className={`${passwordStyles.strengthBar} ${strengthScore >= 1 ? barColorClass : ""}`}
-              />
-              <div
-                className={`${passwordStyles.strengthBar} ${strengthScore >= 2 ? barColorClass : ""}`}
-              />
-              <div
-                className={`${passwordStyles.strengthBar} ${strengthScore >= 3 ? barColorClass : ""}`}
-              />
-              <div
-                className={`${passwordStyles.strengthBar} ${strengthScore >= 4 ? barColorClass : ""}`}
-              />
-            </div>
-            <ul className={passwordStyles.rulesList}>
-              <li
-                className={`${passwordStyles.ruleItem} ${isLengthValid ? passwordStyles.rulePassed : ""}`}
-              >
-                {isLengthValid ? <Check size={iconSize.xs} /> : <Circle size={iconSize.xs} />}
-                <span>8 to 128 characters</span>
-              </li>
-              <li
-                className={`${passwordStyles.ruleItem} ${hasUppercase ? passwordStyles.rulePassed : ""}`}
-              >
-                {hasUppercase ? <Check size={iconSize.xs} /> : <Circle size={iconSize.xs} />}
-                <span>An uppercase letter (A–Z)</span>
-              </li>
-              <li
-                className={`${passwordStyles.ruleItem} ${hasLowercase ? passwordStyles.rulePassed : ""}`}
-              >
-                {hasLowercase ? <Check size={iconSize.xs} /> : <Circle size={iconSize.xs} />}
-                <span>A lowercase letter (a–z)</span>
-              </li>
-              <li
-                className={`${passwordStyles.ruleItem} ${hasNumberOrSymbol ? passwordStyles.rulePassed : ""}`}
-              >
-                {hasNumberOrSymbol ? <Check size={iconSize.xs} /> : <Circle size={iconSize.xs} />}
-                <span>A number or symbol</span>
-              </li>
-            </ul>
-          </div>
-        ) : null}
+        <div className={passwordStyles.rulesRow} aria-label="Password requirements">
+          <span
+            className={`${passwordStyles.ruleBadge} ${isLengthValid ? passwordStyles.ruleBadgeMet : ""}`}
+          >
+            {isLengthValid ? <Check size={iconSize.xs} /> : null}
+            8+ chars
+          </span>
+          <span
+            className={`${passwordStyles.ruleBadge} ${hasUppercase ? passwordStyles.ruleBadgeMet : ""}`}
+          >
+            {hasUppercase ? <Check size={iconSize.xs} /> : null}
+            A–Z
+          </span>
+          <span
+            className={`${passwordStyles.ruleBadge} ${hasLowercase ? passwordStyles.ruleBadgeMet : ""}`}
+          >
+            {hasLowercase ? <Check size={iconSize.xs} /> : null}
+            a–z
+          </span>
+          <span
+            className={`${passwordStyles.ruleBadge} ${hasNumberOrSymbol ? passwordStyles.ruleBadgeMet : ""}`}
+          >
+            {hasNumberOrSymbol ? <Check size={iconSize.xs} /> : null}
+            0–9 / symbol
+          </span>
+        </div>
       </label>
 
       <label className={shared.field}>
@@ -245,24 +179,10 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
           autoComplete="new-password"
           onChange={(event) => setConfirmPassword(event.target.value)}
           aria-invalid={isConfirmMismatch}
-          aria-describedby={
-            isConfirmMismatch
-              ? "confirm-password-error"
-              : isConfirmMatching
-                ? "confirm-password-match"
-                : undefined
-          }
+          aria-describedby={isConfirmMismatch ? "confirm-password-error" : undefined}
           required
         />
-        {isConfirmMatching ? (
-          <span
-            id="confirm-password-match"
-            className={`${passwordStyles.fieldHint} ${passwordStyles.fieldHintSuccess}`}
-          >
-            <Check size={iconSize.xs} />
-            Passwords match
-          </span>
-        ) : isConfirmMismatch ? (
+        {isConfirmMismatch ? (
           <span
             id="confirm-password-error"
             className={`${passwordStyles.fieldHint} ${passwordStyles.fieldHintError}`}

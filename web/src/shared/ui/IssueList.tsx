@@ -31,9 +31,11 @@ export function IssuesPanel({ issues, empty }: { issues: Issue[]; empty: string 
 export function IssueList({
   issues,
   empty = "No issues for this view.",
+  resolveScope,
 }: {
   issues: Issue[];
   empty?: string;
+  resolveScope?: (issue: Issue) => string | undefined;
 }) {
   if (issues.length === 0) {
     return <p className={styles.muted}>{empty}</p>;
@@ -41,7 +43,8 @@ export function IssueList({
   return (
     <ul className={styles.issues}>
       {issues.map((issue, index) => {
-        const scope = [issue.accountName, issue.symbol].filter(Boolean).join(" · ");
+        const customScope = resolveScope?.(issue);
+        const scope = customScope ?? [issue.accountName, issue.symbol].filter(Boolean).join(" · ");
         return (
           <li key={`${issue.code}-${issue.accountId ?? ""}-${issue.symbol ?? ""}-${String(index)}`}>
             <span>
