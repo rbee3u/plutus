@@ -87,18 +87,19 @@ export function EditIdentityForm({
           <span>Selected accounts</span>
         </legend>
         <div className={styles.checkList}>
-          {item.accounts.map((account) => (
-            <Toggle
-              key={account.id}
-              disabled={account.accountType === "manual"}
-              checked={selected[account.id] ?? account.selected}
-              onCheckedChange={(checked) =>
-                setSelected((current) => ({ ...current, [account.id]: checked }))
-              }
-            >
-              {account.displayName}
-            </Toggle>
-          ))}
+          {item.accounts
+            .filter((account) => account.accountType !== "manual")
+            .map((account) => (
+              <Toggle
+                key={account.id}
+                checked={selected[account.id] ?? account.selected}
+                onCheckedChange={(checked) =>
+                  setSelected((current) => ({ ...current, [account.id]: checked }))
+                }
+              >
+                {account.displayName}
+              </Toggle>
+            ))}
         </div>
       </fieldset>
       <div className={shared.actions}>

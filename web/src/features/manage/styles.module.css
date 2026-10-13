@@ -5,18 +5,87 @@
   gap: var(--space-sm);
 }
 
-.accountPillBtn {
+.tableToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.summaryBar {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 2px 8px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+}
+
+.summaryCount {
   font-weight: var(--weight-medium);
+  color: var(--ink);
+}
+
+.summaryDot {
+  color: var(--line-strong);
+  user-select: none;
+}
+
+.summaryStatusHealthy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--success);
+  font-weight: var(--weight-medium);
+}
+
+.summaryStatusAttention {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--danger);
+  font-weight: var(--weight-medium);
+}
+
+.summaryStatusNeutral {
+  color: var(--muted);
+}
+
+.statusDotSuccess,
+.statusDotDanger {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+
+.statusDotSuccess {
+  background-color: var(--success);
+}
+
+.statusDotDanger {
+  background-color: var(--danger);
+}
+
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.accountPillBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-sm);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+  background: var(--surface-inset);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
   cursor: pointer;
   white-space: nowrap;
   transition:
@@ -28,20 +97,12 @@
 .accountPillBtn:hover:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--line);
-  color: var(--accent-strong);
+  color: var(--ink);
 }
 
 .accountPillBtn:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-.accountPillDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--success);
 }
 
 .archivedRow > td {
@@ -272,3 +333,117 @@
   white-space: nowrap;
 }
 
+/* Credentials dialog layouts */
+.credentialsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.credentialsPrimaryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.credentialsConfirmCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  border: 1px solid var(--danger-soft);
+}
+
+.credentialsConfirmText {
+  font-size: var(--text-xs);
+  color: var(--danger-strong);
+}
+
+.credentialsConfirmButtons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.credentialsGroup {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.credentialsGroupTitle {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.errorTrigger {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.errorHoverContent {
+  display: grid;
+  gap: var(--space-2xs);
+  max-width: 320px;
+}
+
+.errorHoverTitle {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--danger);
+}
+
+.errorHoverDetail {
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .tableToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .toolbarActions {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .credentialsFooter {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .credentialsPrimaryActions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+}

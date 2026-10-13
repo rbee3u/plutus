@@ -9,9 +9,9 @@ import { Select, TextInput, Toggle } from "@/shared/ui/FormControls";
 import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-/** The Account Structure to preselect: a Platform with a single structure needs no choice. */
-function onlyStructure(platform: Platform | undefined): AccountStructure | undefined {
-  return platform?.accountStructures.length === 1 ? platform.accountStructures[0] : undefined;
+/** The Account Structure to preselect: default to the platform's first structure. */
+function defaultStructure(platform: Platform | undefined): AccountStructure | undefined {
+  return platform?.accountStructures[0];
 }
 
 export function CreateIdentityForm({
@@ -29,9 +29,9 @@ export function CreateIdentityForm({
   const createKey = useRef(newIdempotencyKey());
   const firstPlatform = platforms[0];
   const [platformId, setPlatformId] = useState(firstPlatform?.id ?? "");
-  const [structureId, setStructureId] = useState(onlyStructure(firstPlatform)?.id ?? "");
+  const [structureId, setStructureId] = useState(defaultStructure(firstPlatform)?.id ?? "");
   const [selectedTypes, setSelectedTypes] = useState<string[]>(
-    () => onlyStructure(firstPlatform)?.accountTypes.map((type) => type.id) ?? [],
+    () => defaultStructure(firstPlatform)?.accountTypes.map((type) => type.id) ?? [],
   );
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +40,11 @@ export function CreateIdentityForm({
   const structure = platform?.accountStructures.find((item) => item.id === structureId);
 
   function choosePlatform(nextId: string) {
-    const only = onlyStructure(platforms.find((item) => item.id === nextId));
+    const nextPlatform = platforms.find((item) => item.id === nextId);
+    const initialStructure = defaultStructure(nextPlatform);
     setPlatformId(nextId);
-    setStructureId(only?.id ?? "");
-    setSelectedTypes(only?.accountTypes.map((type) => type.id) ?? []);
+    setStructureId(initialStructure?.id ?? "");
+    setSelectedTypes(initialStructure?.accountTypes.map((type) => type.id) ?? []);
   }
 
   function chooseStructure(nextId: string) {
@@ -131,17 +132,21 @@ export function CreateIdentityForm({
         </p>
       ) : null}
       <label className={shared.field}>
+        <span>Display name</span>
+        <TextInput
+          value={displayName}
+          onChange={(event) => setDisplayName(event.target.value)}
+          maxLength={120}
+          required
+        />
+      </label>
+      <label className={shared.field}>
         <span>Account structure</span>
         <Select
           value={structureId}
           onChange={(event) => chooseStructure(event.target.value)}
           required
         >
-          {(platform?.accountStructures.length ?? 0) > 1 ? (
-            <option value="" disabled>
-              Choose the structure of this login
-            </option>
-          ) : null}
           {(platform?.accountStructures ?? []).map((item) => (
             <option key={item.id} value={item.id}>
               {structureLabel(platforms, platformId, item.id)}
@@ -153,10 +158,6 @@ export function CreateIdentityForm({
         <legend>
           <span>Account types</span>
         </legend>
-        <p className={shared.muted}>
-          Every Identity also includes an always-selected Manual account.
-        </p>
-        {structure ? null : <p className={shared.muted}>Choose the account structure first.</p>}
         <div className={styles.checkList}>
           {(structure?.accountTypes ?? []).map((type) => (
             <Toggle
@@ -169,15 +170,6 @@ export function CreateIdentityForm({
           ))}
         </div>
       </fieldset>
-      <label className={shared.field}>
-        <span>Display name</span>
-        <TextInput
-          value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
-          maxLength={120}
-          required
-        />
-      </label>
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={busy}>
           Create identity

@@ -49,7 +49,7 @@ export function IdentityActions({
   return (
     <span className={shared.rowActions}>
       {next ? (
-        <ActionButton type="button" tone="ghost" disabled={busy} onClick={next.run}>
+        <ActionButton type="button" tone="secondary" disabled={busy} onClick={next.run}>
           {next.label}
         </ActionButton>
       ) : null}
@@ -83,7 +83,14 @@ export function IdentityActions({
           </MenuItem>
         )}
         <MenuSeparator />
-        <MenuItem danger onClick={() => pick(onArchive, false)}>
+        <MenuItem
+          danger
+          disabled={connection.status === "enabled"}
+          title={
+            connection.status === "enabled" ? "Disable connection before archiving" : undefined
+          }
+          onClick={() => pick(onArchive, false)}
+        >
           Archive
         </MenuItem>
       </Menu>

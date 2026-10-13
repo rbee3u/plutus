@@ -359,7 +359,8 @@
 
 .rowActions button:not(:has(> svg:only-child)) {
   min-width: auto;
-  justify-content: flex-start;
+  padding: 0 var(--space-sm);
+  justify-content: center;
 }
 
 .rowActions button:not(:has(> svg:only-child)):has(+ button:not(:has(> svg:only-child))) {

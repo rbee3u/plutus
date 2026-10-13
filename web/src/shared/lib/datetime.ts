@@ -37,6 +37,64 @@ export function formatInstant(iso: string | null | undefined, timeZone?: string)
     .replace(",", "");
 }
 
+const dateOnlyFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dateFormatter(timeZone: string | undefined): Intl.DateTimeFormat {
+  const key = timeZone ?? "";
+  let cached = dateOnlyFormatters.get(key);
+  if (!cached) {
+    try {
+      cached = new Intl.DateTimeFormat("en-CA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        timeZone,
+      });
+    } catch {
+      cached = new Intl.DateTimeFormat("en-CA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    }
+    dateOnlyFormatters.set(key, cached);
+  }
+  return cached;
+}
+
+/** Human-friendly relative elapsed time: `just now`, `5m ago`, `3h ago`, `4d ago`, or short date if > 30d. */
+export function formatRelativeTime(
+  iso: string | null | undefined,
+  now = Date.now(),
+  timeZone?: string,
+): string {
+  if (!iso) {
+    return "—";
+  }
+  const date = new Date(iso);
+  const time = date.getTime();
+  if (Number.isNaN(time)) {
+    return iso;
+  }
+  const diffMs = now - time;
+  if (diffMs < 0 || diffMs < 60_000) {
+    return "just now";
+  }
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const hours = Math.floor(diffMs / 3_600_000);
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+  const days = Math.floor(diffMs / 86_400_000);
+  if (days < 30) {
+    return `${days}d ago`;
+  }
+  return dateFormatter(timeZone).format(date);
+}
+
 export function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (!iso) {
     return "";

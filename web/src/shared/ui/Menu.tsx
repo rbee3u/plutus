@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -13,11 +14,12 @@ import { Link } from "react-router";
 import { iconSize } from "@/shared/icons/iconSizes";
 import styles from "@/shared/ui/Menu.module.css";
 
-export type MenuPlacement = "bottom-end" | "bottom-start" | "top-start";
+export type MenuPlacement = "bottom-end" | "bottom-start" | "top-start" | "top-end";
 
 const ITEM_SELECTOR =
   '[role="menuitem"]:not([disabled]), [role="menuitemradio"]:not([disabled]), [role="option"]:not([disabled])';
 const GAP = 4;
+const VIEWPORT_PADDING = 8;
 
 /**
  * State for one popover menu: open flag, positioning against its button,
@@ -27,8 +29,14 @@ export function useMenu(placement: MenuPlacement = "bottom-end") {
   const [open, setOpen] = useState(false);
   // Callback refs kept in state: effects re-run when the nodes mount.
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
-  const [panel, setPanel] = useState<HTMLDivElement | null>(null);
+  const [panel, setPanelState] = useState<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [style, setStyle] = useState<CSSProperties>({});
+
+  const setPanel = useCallback((node: HTMLDivElement | null) => {
+    panelRef.current = node;
+    setPanelState(node);
+  }, []);
 
   const close = useCallback(
     (restoreFocus = false) => {
@@ -46,18 +54,56 @@ export function useMenu(placement: MenuPlacement = "bottom-end") {
     }
     const update = () => {
       const rect = anchor.getBoundingClientRect();
-      if (placement === "top-start") {
-        setStyle({ bottom: window.innerHeight - rect.top + GAP, left: rect.left });
-      } else if (placement === "bottom-start") {
-        setStyle({ top: rect.bottom + GAP, left: rect.left });
+      const currentPanel = panel ?? panelRef.current;
+      const panelHeight = currentPanel?.offsetHeight || 200;
+
+      const spaceBelow = window.innerHeight - rect.bottom - GAP - VIEWPORT_PADDING;
+      const spaceAbove = rect.top - GAP - VIEWPORT_PADDING;
+
+      let effectivePlacement = placement;
+      if (placement.startsWith("bottom") && spaceBelow < panelHeight && spaceAbove > spaceBelow) {
+        effectivePlacement = placement === "bottom-end" ? "top-end" : "top-start";
+      } else if (
+        placement.startsWith("top") &&
+        spaceAbove < panelHeight &&
+        spaceBelow > spaceAbove
+      ) {
+        effectivePlacement = placement === "top-end" ? "bottom-end" : "bottom-start";
+      }
+
+      const availableHeight = effectivePlacement.startsWith("top") ? spaceAbove : spaceBelow;
+      const maxHeight = Math.min(window.innerHeight - 16, Math.max(80, availableHeight));
+
+      if (effectivePlacement === "top-start") {
+        setStyle({
+          bottom: window.innerHeight - rect.top + GAP,
+          left: Math.max(VIEWPORT_PADDING, rect.left),
+          maxHeight,
+        });
+      } else if (effectivePlacement === "top-end") {
+        setStyle({
+          bottom: window.innerHeight - rect.top + GAP,
+          right: Math.max(VIEWPORT_PADDING, window.innerWidth - rect.right),
+          maxHeight,
+        });
+      } else if (effectivePlacement === "bottom-start") {
+        setStyle({
+          top: rect.bottom + GAP,
+          left: Math.max(VIEWPORT_PADDING, rect.left),
+          maxHeight,
+        });
       } else {
-        setStyle({ top: rect.bottom + GAP, right: Math.max(8, window.innerWidth - rect.right) });
+        setStyle({
+          top: rect.bottom + GAP,
+          right: Math.max(VIEWPORT_PADDING, window.innerWidth - rect.right),
+          maxHeight,
+        });
       }
     };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [anchor, open, placement]);
+  }, [anchor, open, panel, placement]);
 
   useEffect(() => {
     if (!open || !panel) {

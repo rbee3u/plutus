@@ -8,6 +8,7 @@ import { identityEtag } from "@/shared/lib/useIdentities";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextArea } from "@/shared/ui/FormControls";
 import { PasswordInput } from "@/shared/ui/PasswordInput";
+import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 export function IdentityCredentialsForm({
@@ -122,23 +123,12 @@ export function IdentityCredentialsForm({
     }
   }
 
-  return (
-    <form className={shared.form} onSubmit={(event) => void onSubmit(event)} autoComplete="off">
-      <p className={shared.notice}>
-        Read-only API keys only. Credentials are write-only: the server never returns them.
-        {item.connection.credentialsConfigured
-          ? " Saving replaces the stored credentials."
-          : " None are stored yet."}
-      </p>
-      {error ? (
-        <p className={shared.alert} role="alert">
-          {error}
-        </p>
-      ) : null}
+  const primaryFields = (
+    <>
       <label className={shared.field}>
         <span>
           {form.primary.keyLabel}
-          {form.futures ? ` (${spotRequired ? "required" : "optional"})` : ""}
+          {form.futures ? ` (${spotRequired ? "required" : "optional"})` : null}
         </span>
         <PasswordInput
           autoComplete="off"
@@ -150,7 +140,7 @@ export function IdentityCredentialsForm({
       <label className={shared.field}>
         <span>
           {form.primary.secretLabel}
-          {form.futures ? ` (${spotRequired ? "required" : "optional"})` : ""}
+          {form.futures ? ` (${spotRequired ? "required" : "optional"})` : null}
         </span>
         {form.primary.secretInput === "multiline" ? (
           <TextArea
@@ -171,9 +161,37 @@ export function IdentityCredentialsForm({
           />
         )}
       </label>
+    </>
+  );
+
+  return (
+    <form className={shared.form} onSubmit={(event) => void onSubmit(event)} autoComplete="off">
+      <p className={shared.notice}>
+        Read-only keys only. Credentials are encrypted and write-only; existing keys cannot be
+        viewed.
+        {item.connection.credentialsConfigured
+          ? " Saving replaces stored keys."
+          : " No credentials stored yet."}
+      </p>
+      {error ? (
+        <p className={shared.alert} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {form.futures ? (
+        <div className={styles.credentialsGroup}>
+          <span className={styles.credentialsGroupTitle}>
+            {form.primary.keyLabel.includes("Spot") ? "Spot Credentials" : "Primary Credentials"}
+          </span>
+          {primaryFields}
+        </div>
+      ) : (
+        primaryFields
+      )}
       {form.help ? <p className={shared.muted}>{form.help}</p> : null}
       {form.futures ? (
-        <>
+        <div className={styles.credentialsGroup}>
+          <span className={styles.credentialsGroupTitle}>Futures Credentials</span>
           <label className={shared.field}>
             <span>
               {form.futures.keyLabel} ({futuresRequired ? "required" : "optional"})
@@ -196,7 +214,7 @@ export function IdentityCredentialsForm({
               required={futuresRequired || futuresApiKey.trim() !== ""}
             />
           </label>
-        </>
+        </div>
       ) : null}
       {form.passphrase !== "hidden" ? (
         <label className={shared.field}>
@@ -209,39 +227,29 @@ export function IdentityCredentialsForm({
           />
         </label>
       ) : null}
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
-          Store credentials
-        </ActionButton>
-        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-          Cancel
-        </ActionButton>
-      </div>
-      {item.connection.credentialsConfigured ? (
-        <div className={shared.actions}>
-          {confirmRemove ? (
-            <>
-              <span className={shared.muted}>
-                Removing disables the connection until new credentials are stored.
-              </span>
-              <ActionButton
-                type="button"
-                tone="danger"
-                disabled={busy}
-                onClick={() => void remove()}
-              >
-                Confirm removal
-              </ActionButton>
-              <ActionButton
-                type="button"
-                tone="ghost"
-                disabled={busy}
-                onClick={() => setConfirmRemove(false)}
-              >
-                Keep
-              </ActionButton>
-            </>
-          ) : (
+      {confirmRemove ? (
+        <div className={styles.credentialsConfirmCard}>
+          <span className={styles.credentialsConfirmText}>
+            Remove stored credentials? Connection sync will be disabled until new credentials are
+            provided.
+          </span>
+          <div className={styles.credentialsConfirmButtons}>
+            <ActionButton type="button" tone="danger" disabled={busy} onClick={() => void remove()}>
+              Confirm removal
+            </ActionButton>
+            <ActionButton
+              type="button"
+              tone="ghost"
+              disabled={busy}
+              onClick={() => setConfirmRemove(false)}
+            >
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.credentialsFooter}>
+          {item.connection.credentialsConfigured ? (
             <ActionButton
               type="button"
               tone="dangerQuiet"
@@ -250,9 +258,19 @@ export function IdentityCredentialsForm({
             >
               Remove credentials
             </ActionButton>
+          ) : (
+            <span />
           )}
+          <div className={styles.credentialsPrimaryActions}>
+            <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+              Cancel
+            </ActionButton>
+            <ActionButton type="submit" tone="primary" disabled={busy}>
+              Store credentials
+            </ActionButton>
+          </div>
         </div>
-      ) : null}
+      )}
     </form>
   );
 }
