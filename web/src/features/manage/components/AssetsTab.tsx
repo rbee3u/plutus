@@ -28,6 +28,7 @@ import {
   type MappingRequest,
   type TabProps,
 } from "../lib/catalog";
+import { AssetActions } from "./AssetActions";
 import shared from "@/shared/styles/page.module.css";
 import manageStyles from "../styles.module.css";
 
@@ -139,7 +140,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             ),
           },
           { key: "lastObservedAt", header: "Last observed", nowrap: true, width: "170px" },
-          { key: "actions", header: "Actions", nowrap: true, numeric: true, width: "140px" },
+          { key: "actions", header: "", width: "80px" },
         ]}
         rows={(query.data?.items ?? []).map((item) => {
           const isMapped = item.symbol !== item.canonicalAssetSymbol;
@@ -183,30 +184,19 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
               </span>
             ),
             actions: (
-              <span className={shared.rowActions}>
-                <ActionButton
-                  type="button"
-                  tone="ghost"
-                  onClick={() => {
-                    setNotice(null);
-                    nonce.current += 1;
-                    setRequest({ nonce: nonce.current, item });
-                  }}
-                >
-                  Map
-                </ActionButton>
-                <ActionButton
-                  type="button"
-                  tone="ghost"
-                  onClick={() => {
-                    setNotice(null);
-                    nonce.current += 1;
-                    setExclusionRequest({ nonce: nonce.current, item });
-                  }}
-                >
-                  {item.excluded ? "Restore" : "Exclude"}
-                </ActionButton>
-              </span>
+              <AssetActions
+                item={item}
+                onMap={() => {
+                  setNotice(null);
+                  nonce.current += 1;
+                  setRequest({ nonce: nonce.current, item });
+                }}
+                onExclude={() => {
+                  setNotice(null);
+                  nonce.current += 1;
+                  setExclusionRequest({ nonce: nonce.current, item });
+                }}
+              />
             ),
           };
         })}

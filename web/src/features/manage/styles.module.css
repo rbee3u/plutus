@@ -16,7 +16,7 @@
 .summaryBar {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   font-size: var(--text-sm);
   color: var(--ink-secondary);
 }
@@ -26,45 +26,22 @@
   color: var(--ink);
 }
 
-.summaryDot {
-  color: var(--line-strong);
-  user-select: none;
-}
-
-.summaryStatusHealthy {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
+.statusEnabled {
   color: var(--success);
+  font-size: var(--text-xs);
   font-weight: var(--weight-medium);
 }
 
-.summaryStatusAttention {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
+.statusInvalid {
   color: var(--danger);
+  font-size: var(--text-xs);
   font-weight: var(--weight-medium);
 }
 
-.summaryStatusNeutral {
-  color: var(--muted);
-}
-
-.statusDotSuccess,
-.statusDotDanger {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-}
-
-.statusDotSuccess {
-  background-color: var(--success);
-}
-
-.statusDotDanger {
-  background-color: var(--danger);
+.statusDisabled {
+  color: var(--warning);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
 }
 
 .toolbarActions {

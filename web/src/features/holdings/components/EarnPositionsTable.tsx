@@ -2,6 +2,7 @@ import type { EarnAmount, EarnPositionRow, EarnRate, EarnReward } from "@/api";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatDecimal, formatPercent } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
+import { capitalize } from "@/shared/lib/text";
 import { DataTable } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -225,7 +226,7 @@ export function EarnPositionsTable({
             </HoverDetails>
           ),
           subscribed: formatInstant(item.subscribedAt, timezone),
-          status: item.status ?? "—",
+          status: item.status ? capitalize(item.status) : "—",
           issues: (
             <ObservedCell
               observedAt={item.reportObservedAt}

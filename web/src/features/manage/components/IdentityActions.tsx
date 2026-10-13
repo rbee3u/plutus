@@ -1,7 +1,6 @@
 import { MoreHorizontal } from "lucide-react";
 import type { Identity } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { ActionButton } from "@/shared/ui/ActionButton";
 import { IconButton } from "@/shared/ui/IconButton";
 import { Menu, MenuItem, MenuSeparator, useMenu } from "@/shared/ui/Menu";
 import shared from "@/shared/styles/page.module.css";
@@ -17,10 +16,6 @@ interface IdentityActionsProps {
   onArchive: () => void;
 }
 
-/**
- * The next step for the connection sits in the row; everything else waits in
- * a menu. An enabled connection needs nothing, so its row shows only the menu.
- */
 export function IdentityActions({
   item,
   busy,
@@ -33,13 +28,6 @@ export function IdentityActions({
 }: IdentityActionsProps) {
   const menu = useMenu();
   const connection = item.connection;
-  const next = !connection.credentialsConfigured
-    ? { label: "Add credentials", run: onCredentials }
-    : connection.status === "invalid"
-      ? { label: "Validate", run: onValidate }
-      : connection.status === "enabled"
-        ? null
-        : { label: "Enable", run: onEnable };
 
   function pick(action: () => void, restoreFocus: boolean) {
     menu.close(restoreFocus);
@@ -48,14 +36,9 @@ export function IdentityActions({
 
   return (
     <span className={shared.rowActions}>
-      {next ? (
-        <ActionButton type="button" tone="secondary" disabled={busy} onClick={next.run}>
-          {next.label}
-        </ActionButton>
-      ) : null}
       <IconButton
         ref={(node) => menu.setAnchor(node)}
-        label={`More actions for ${item.displayName}`}
+        label={`Actions for ${item.displayName}`}
         aria-haspopup="menu"
         aria-expanded={menu.open}
         disabled={busy}
