@@ -21,8 +21,12 @@ describe("numeric chart ticks", () => {
 
   it.each([
     [191400, 400, "191.4K"],
-    [191000, 400, "191K"],
+    [191000, 400, "191.0K"],
     [191050, 50, "191.05K"],
+    [191000, 50, "191.00K"],
+    [72150, 50, "72.15K"],
+    [72100, 50, "72.10K"],
+    [72000, 50, "72.00K"],
     [191575, 5, "191,575"],
     [150000, 10000, "150K"],
     [1240000, 20000, "1.24M"],
@@ -43,7 +47,9 @@ describe("numeric chart ticks", () => {
     });
     const yAxis = styled.yAxis as Record<string, unknown>;
     expect(yAxis.boundaryGap).toEqual(["5%", "5%"]);
-    const axisLabel = yAxis.axisLabel as { formatter: (v: number) => string };
+    const axisLabel = yAxis.axisLabel as { align: string; formatter: (v: number) => string };
+    expect(axisLabel.align).toBe("right");
     expect(axisLabel.formatter(191400)).toBe("191.4K");
+    expect(axisLabel.formatter(191000)).toBe("191.0K");
   });
 });

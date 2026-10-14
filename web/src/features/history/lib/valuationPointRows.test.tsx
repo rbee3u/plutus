@@ -177,8 +177,28 @@ describe("valuationPointRows", () => {
       boundaryWithdrawalUsd: "0",
     };
     const html = renderToStaticMarkup(rawPointIssuesCell(item));
-    expect(html).toContain("2 stale");
-    expect(html).toContain("1 incomplete");
+    expect(html).toContain("2 Stale");
+    expect(html).toContain("1 Incomplete");
+  });
+
+  it("suppresses redundant CompletenessBadge in rawPointIssuesCell when incompleteAccountCount > 0", () => {
+    const item: ValuationPointSummary = {
+      cycleId: "pt3",
+      valuationRevision: "pt3:1",
+      calculationVersion: 1,
+      detailState: "full" as const,
+      evaluatedAt: "2026-10-09T14:12:00Z",
+      totalUsd: "132055.51",
+      completeness: "incomplete",
+      accountCount: 36,
+      staleAccountCount: 0,
+      incompleteAccountCount: 2,
+      boundaryContributionUsd: "0",
+      boundaryWithdrawalUsd: "0",
+    };
+    const html = renderToStaticMarkup(rawPointIssuesCell(item));
+    expect(html).toContain("2 Incomplete");
+    expect(html).not.toContain(">Incomplete</span>");
   });
 
   it("constructs periodCloseRow with change from previous close", () => {

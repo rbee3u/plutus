@@ -75,7 +75,7 @@ describe("AccountValuationsGrouped", () => {
     expect(html).toContain("Failed");
     expect(html).toContain("Stale");
     expect(html).toContain("Incomplete");
-    expect(html).toContain("1 issue");
+    expect(html).toContain("1 Issue");
   });
 
   it("renders empty state when no accounts exist", () => {

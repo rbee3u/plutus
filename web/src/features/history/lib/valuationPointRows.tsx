@@ -103,7 +103,7 @@ export function periodCloseIssuesCell(item: PeriodClose) {
       <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
     ) : (
       <Badge tone="warn">
-        {item.reasons.length === 1 ? "1 issue" : `${item.reasons.length} issues`}
+        {item.reasons.length === 1 ? "1 Issue" : `${item.reasons.length} Issues`}
       </Badge>
     );
 
@@ -173,14 +173,14 @@ export function rawPointIssuesCell(item: ValuationPointSummary) {
 
   const trigger = (
     <span className={shared.statusGroup}>
-      {item.completeness !== "complete" ? (
+      {item.completeness !== "complete" && item.incompleteAccountCount === 0 ? (
         <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
       ) : null}
       {item.staleAccountCount > 0 ? (
-        <Badge tone="warn">{item.staleAccountCount} stale</Badge>
+        <Badge tone="warn">{item.staleAccountCount} Stale</Badge>
       ) : null}
       {item.incompleteAccountCount > 0 ? (
-        <Badge tone="bad">{item.incompleteAccountCount} incomplete</Badge>
+        <Badge tone="bad">{item.incompleteAccountCount} Incomplete</Badge>
       ) : null}
     </span>
   );
@@ -198,8 +198,8 @@ export function rawPointIssuesCell(item: ValuationPointSummary) {
           <span className={shared.cellMeta}>Accounts summary</span>
           <p style={{ margin: "4px 0 0" }}>
             {item.accountCount} total
-            {item.staleAccountCount > 0 ? ` · ${item.staleAccountCount} stale` : ""}
-            {item.incompleteAccountCount > 0 ? ` · ${item.incompleteAccountCount} incomplete` : ""}
+            {item.staleAccountCount > 0 ? ` · ${item.staleAccountCount} Stale` : ""}
+            {item.incompleteAccountCount > 0 ? ` · ${item.incompleteAccountCount} Incomplete` : ""}
           </p>
         </div>
       </div>

@@ -40,9 +40,9 @@ export function PointDetail({
           <span className={styles.pointStatMeta}>
             {accountsHealthy
               ? "All healthy"
-              : `${point.staleAccountCount > 0 ? `${point.staleAccountCount} stale` : ""}${
+              : `${point.staleAccountCount > 0 ? `${point.staleAccountCount} Stale` : ""}${
                   point.staleAccountCount > 0 && point.incompleteAccountCount > 0 ? " · " : ""
-                }${point.incompleteAccountCount > 0 ? `${point.incompleteAccountCount} incomplete` : ""}`}
+                }${point.incompleteAccountCount > 0 ? `${point.incompleteAccountCount} Incomplete` : ""}`}
           </span>
         </div>
 

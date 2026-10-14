@@ -51,8 +51,15 @@ const compactOne = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-const compactTwo = new Intl.NumberFormat("en-US", {
+const compactOneFixed = new Intl.NumberFormat("en-US", {
   notation: "compact",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+const compactTwoFixed = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
@@ -76,8 +83,8 @@ export function formatAxisNumber(value: number, step?: number): string {
       if (unit >= 1e3) {
         const stepInUnit = step / unit;
         if (stepInUnit >= 0.8) return compactZero.format(value);
-        if (stepInUnit >= 0.08) return compactOne.format(value);
-        if (stepInUnit >= 0.008) return compactTwo.format(value);
+        if (stepInUnit >= 0.08) return compactOneFixed.format(value);
+        if (stepInUnit >= 0.008) return compactTwoFixed.format(value);
         return standardInteger.format(value);
       }
     }
@@ -287,7 +294,12 @@ function styleAxis(
       fontFamily: tokens.mono,
       fontSize: 11,
       hideOverlap: true,
-      ...(which === "y" ? { formatter: (value: number) => formatAxisNumber(value, step) } : {}),
+      ...(which === "y"
+        ? {
+            align: "right",
+            formatter: (value: number) => formatAxisNumber(value, step),
+          }
+        : {}),
       ...label,
     },
     splitLine: {

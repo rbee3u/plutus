@@ -139,14 +139,16 @@ function cycleRow(
       <span className={shared.statusGroup}>
         {item.errorClass ? <Codes values={[item.errorClass]} /> : null}
         {item.status === "failed" && !item.errorClass ? <Badge tone="bad">Failed</Badge> : null}
-        {point?.completeness && point.completeness !== "complete" ? (
+        {point?.completeness &&
+        point.completeness !== "complete" &&
+        point.incompleteAccountCount === 0 ? (
           <CompletenessBadge value={point.completeness} />
         ) : null}
         {point?.staleAccountCount && point.staleAccountCount > 0 ? (
-          <Badge tone="warn">{formatCount(point.staleAccountCount)} stale</Badge>
+          <Badge tone="warn">{formatCount(point.staleAccountCount)} Stale</Badge>
         ) : null}
         {point?.incompleteAccountCount && point.incompleteAccountCount > 0 ? (
-          <Badge tone="warn">{formatCount(point.incompleteAccountCount)} incomplete</Badge>
+          <Badge tone="warn">{formatCount(point.incompleteAccountCount)} Incomplete</Badge>
         ) : null}
       </span>
     ),
@@ -229,11 +231,11 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
                 (cycle.point.staleAccountCount > 0 || cycle.point.incompleteAccountCount > 0) ? (
                   <span className={shared.statusGroup}>
                     {cycle.point.staleAccountCount > 0 ? (
-                      <Badge tone="warn">{formatCount(cycle.point.staleAccountCount)} stale</Badge>
+                      <Badge tone="warn">{formatCount(cycle.point.staleAccountCount)} Stale</Badge>
                     ) : null}
                     {cycle.point.incompleteAccountCount > 0 ? (
                       <Badge tone="warn">
-                        {formatCount(cycle.point.incompleteAccountCount)} incomplete
+                        {formatCount(cycle.point.incompleteAccountCount)} Incomplete
                       </Badge>
                     ) : null}
                   </span>

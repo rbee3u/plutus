@@ -104,7 +104,7 @@ describe("Earn presentation", () => {
     expect(status).not.toContain("Stale");
     expect(status).not.toContain("issue");
     expect(issues).toContain("Stale");
-    expect(issues).toContain("1 issue");
+    expect(issues).toContain("1 Issue");
   });
   it("labels Dual APR accurately and retains product status independently", () => {
     const html = render(
@@ -136,6 +136,6 @@ describe("Earn presentation", () => {
     expect(html).toContain("18% APR");
     expect(html).toContain("Active");
     expect(html).toContain("Stale");
-    expect(html).toContain("1 issue");
+    expect(html).toContain("1 Issue");
   });
 });

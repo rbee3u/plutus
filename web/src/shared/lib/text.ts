@@ -52,11 +52,11 @@ export function clientSummary(userAgent: string): string {
   return [browser, os].filter(Boolean).join(" on ");
 }
 
-/** "6", or "6 · 1 stale · 2 incomplete" when something is off. */
+/** "6", or "6 · 1 Stale · 2 Incomplete" when something is off. */
 export function accountSummary(total: number, stale: number, incomplete: number): string {
   const parts = [formatCount(total)];
-  if (stale > 0) parts.push(`${formatCount(stale)} stale`);
-  if (incomplete > 0) parts.push(`${formatCount(incomplete)} incomplete`);
+  if (stale > 0) parts.push(`${formatCount(stale)} Stale`);
+  if (incomplete > 0) parts.push(`${formatCount(incomplete)} Incomplete`);
   return parts.join(" · ");
 }
 

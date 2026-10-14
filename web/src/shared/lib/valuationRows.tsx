@@ -63,7 +63,7 @@ export function accountValuationRow(item: AccountValuation, timezone?: string): 
         ) : null}
         {item.omitted.length > 0 ? (
           <HoverDetails
-            label={<Badge tone="warn">{formatCount(item.omitted.length)} omitted</Badge>}
+            label={<Badge tone="warn">{formatCount(item.omitted.length)} Omitted</Badge>}
             name={`Omitted balances for ${item.accountName}`}
           >
             {item.omitted.map((om) => (

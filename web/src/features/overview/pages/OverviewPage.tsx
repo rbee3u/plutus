@@ -189,12 +189,12 @@ export function OverviewPage() {
                     </span>
                     {overview.staleAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.staleAccountCount)} stale
+                        {formatCount(overview.staleAccountCount)} Stale
                       </span>
                     ) : null}
                     {overview.incompleteAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.incompleteAccountCount)} incomplete
+                        {formatCount(overview.incompleteAccountCount)} Incomplete
                       </span>
                     ) : null}
                   </div>

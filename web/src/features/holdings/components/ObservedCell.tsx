@@ -40,7 +40,7 @@ export function IssuesCell({
         <HoverDetails
           label={
             <Badge tone="warn">
-              {formatCount(anomalies.length)} {anomalies.length === 1 ? "issue" : "issues"}
+              {formatCount(anomalies.length)} {anomalies.length === 1 ? "Issue" : "Issues"}
             </Badge>
           }
           name={`Data issues for ${name}`}

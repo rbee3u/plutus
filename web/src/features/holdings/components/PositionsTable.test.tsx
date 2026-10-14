@@ -107,7 +107,7 @@ describe("shared position cells", () => {
     expect(renderToStaticMarkup(<>{longRow.side}</>)).toContain("Long");
     const html = renderToStaticMarkup(<>{shortRow.issues}</>);
     expect(html).toContain("Stale");
-    expect(html).toContain("1 issue");
+    expect(html).toContain("1 Issue");
   });
   it.each([
     ["cross", position, "0.002 BTC"],
