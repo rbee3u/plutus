@@ -18,10 +18,10 @@ async function fixture(page: Page) {
     canonicalAssetSymbol: "USD",
     quantity: "100",
     valueUsd: "100",
-    effectiveAt: "2026-10-03T00:00:00Z",
+    effectiveAt: "2026-10-10T00:00:00Z",
     version: 1,
-    createdAt: "2026-10-03T00:00:00Z",
-    updatedAt: "2026-10-03T00:00:00Z",
+    createdAt: "2026-10-10T00:00:00Z",
+    updatedAt: "2026-10-10T00:00:00Z",
   };
   const state = { flow: initial as CapitalFlow | null, writes: [] as string[], failRead: false };
   await mockApi(page, session, async (route) => {
@@ -33,6 +33,40 @@ async function fixture(page: Page) {
       path.endsWith("/platforms")
     )
       return route.fulfill({ json: { items: [] } });
+    if (path.endsWith("/history-window")) {
+      const url = new URL(request.url());
+      const fromLocal = url.searchParams.get("fromLocal");
+      const toLocal = url.searchParams.get("toLocal");
+      if (fromLocal && toLocal) {
+        return route.fulfill({
+          json: {
+            context: { portfolioId, timezone: "UTC" },
+            from: `${fromLocal}Z`,
+            to: `${toLocal}Z`,
+          },
+        });
+      }
+      const preset = url.searchParams.get("preset") ?? "1W";
+      const days =
+        {
+          "1D": 1,
+          "3D": 3,
+          "1W": 7,
+          "2W": 14,
+          "1M": 30,
+          "3M": 90,
+          "6M": 180,
+        }[preset] ?? 7;
+      const to = new Date("2026-10-14T00:00:00Z");
+      const from = new Date(to.getTime() - days * 86_400_000);
+      return route.fulfill({
+        json: {
+          context: { portfolioId, timezone: "UTC" },
+          from: from.toISOString(),
+          to: to.toISOString(),
+        },
+      });
+    }
     if (path.endsWith("/capital-flows"))
       return route.fulfill({ json: { items: state.flow ? [state.flow] : [] } });
     if (path.endsWith(`/capital-flows/${initial.id}`)) {
@@ -70,27 +104,19 @@ async function openFlowAction(page: Page, action: "Edit" | "Delete") {
   await page.getByRole("menuitem", { name: action, exact: true }).click();
 }
 
-for (const [tab, dateParam, endpoint] of [
-  ["flows", "from", "capital-flows"],
-  ["events", "eventsFrom", "boundary-events"],
-]) {
-  test(`${tab} clears nonexistent URL dates without querying a rolled-over day`, async ({
-    page,
-  }) => {
-    await fixture(page);
-    const portfolioId = sessionFixture().portfolios.items[0].id;
-    const request = page.waitForRequest((item) => {
-      const url = new URL(item.url());
-      return url.pathname.endsWith(`/${endpoint}`) && url.searchParams.has("to");
-    });
-    await page.goto(`/p/${portfolioId}/capital?tab=${tab}&${dateParam}=2026-02-30&to=2026-03-05`);
-    const query = new URL((await request).url()).searchParams;
-    await expect(page.getByLabel("From", { exact: true })).toHaveValue("");
-    await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-03-05");
-    await expect(page).toHaveURL(new RegExp(`tab=${tab}&to=2026-03-05$`));
-    expect(query.has("from")).toBe(false);
-  });
-}
+test("Capital views default to 1W and expose presets", async ({ page }) => {
+  await fixture(page);
+  await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "3D", exact: true }).click();
+  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page).toHaveURL(/range=3D/);
+});
 
 test("Boundary Events includes the selected day's final microsecond and excludes the next day", async ({
   page,
@@ -116,17 +142,33 @@ test("Boundary Events includes the selected day's final microsecond and excludes
   await mockApi(page, session, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
+    if (url.pathname.endsWith("/history-window")) {
+      return route.fulfill({
+        json: {
+          context: { portfolioId, timezone: "UTC" },
+          from: "2026-10-13T00:00:00.000000Z",
+          to: "2026-10-13T23:59:59.999999Z",
+        },
+      });
+    }
     if (url.pathname.endsWith("/boundary-events")) {
       const to = url.searchParams.get("to") ?? "";
       // Six fractional digits retain the database's precision during this replay.
       const upper = to.replace(/\.(\d{3})Z$/, (_match, fraction: string) => `.${fraction}000Z`);
       return route.fulfill({
-        json: { items: [event, nextDay].filter((item) => item.evaluatedAt <= upper) },
+        json: {
+          items: [event, nextDay].filter(
+            (item) =>
+              item.evaluatedAt <= upper && item.evaluatedAt >= "2026-10-13T00:00:00.000000Z",
+          ),
+        },
       });
     }
     return route.fallback();
   });
-  await page.goto(`/p/${portfolioId}/capital?tab=events&from=2026-10-13&to=2026-10-13`);
+  await page.goto(
+    `/p/${portfolioId}/capital?tab=events&from=2026-10-13T00:00:00Z&to=2026-10-13T23:59:59.999999Z`,
+  );
   const table = page.getByRole("table", { name: "Boundary Events in the window", exact: true });
   await expect(table).toContainText("Final microsecond");
   await expect(table).not.toContainText("Next day");

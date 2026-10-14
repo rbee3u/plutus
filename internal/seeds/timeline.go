@@ -27,8 +27,7 @@ func cycleTimes(anchor time.Time, loc *time.Location) []time.Time {
 	day := min(local.Day(), month.AddDate(0, 1, -1).Day())
 	start := time.Date(month.Year(), month.Month(), day, 0, 0, 0, 0, loc)
 	dense := localMidnight(anchor, 3, loc)
-	joined := anchor.Add(-2 * time.Hour)
-	times := map[int64]time.Time{anchor.Unix(): anchor, joined.Unix(): joined}
+	times := map[int64]time.Time{anchor.Unix(): anchor}
 	for at := start; at.Before(anchor); {
 		times[at.Unix()] = at.UTC()
 		if at.Before(dense) {
@@ -82,29 +81,18 @@ func (b *builder) demoEvents(anchor time.Time) {
 		days             int
 		before, after    any
 	}{
-		{"edge-boundary", "identity.update", -5, map[string]any{"accounts": map[string]bool{"spot": true, "funding": false}}, map[string]any{"accounts": map[string]bool{"spot": true, "funding": true}}},
-		{"edge-boundary", "identity.update", -3, map[string]any{"accounts": map[string]bool{"spot": true, "funding": true}}, map[string]any{"accounts": map[string]bool{"spot": false, "funding": true}}},
-		{"edge-archive", "identity.archive", -2, map[string]any{"status": "enabled"}, map[string]any{"status": "archived"}},
-		{"edge-mode", "identity.margin_mode.change", -3, map[string]any{"marginMode": adapters.MarginBybitCross}, map[string]any{"marginMode": adapters.MarginBybitPM}},
+		{"edge-unpriced", "identity.update", -5, map[string]any{"accounts": map[string]bool{"spot": true, "funding": false}}, map[string]any{"accounts": map[string]bool{"spot": true, "funding": true}}},
+		{"edge-unpriced", "identity.update", -3, map[string]any{"accounts": map[string]bool{"spot": true, "funding": true}}, map[string]any{"accounts": map[string]bool{"spot": true, "funding": false}}},
+		{"retired-classic", "identity.archive", -2, map[string]any{"status": "enabled"}, map[string]any{"status": "archived"}},
+		{"daily-bybit", "identity.margin_mode.change", -3, map[string]any{"marginMode": adapters.MarginBybitCross}, map[string]any{"marginMode": adapters.MarginBybitPM}},
 	} {
-		b.audit(&auditSpec{Portfolio: PortfolioAliceEdge, Actor: UserAlice, Action: event.action, ResourceType: "identity", ResourceID: identityID(event.identity), At: anchor.AddDate(0, 0, event.days), Before: event.before, After: event.after, System: event.action == "identity.margin_mode.change"})
+		portfolio := PortfolioAliceEdge
+		if event.identity == "retired-classic" || event.identity == "daily-bybit" {
+			portfolio = PortfolioAliceMain
+		}
+		b.audit(&auditSpec{Portfolio: portfolio, Actor: UserAlice, Action: event.action, ResourceType: "identity", ResourceID: identityID(event.identity), At: anchor.AddDate(0, 0, event.days), Before: event.before, After: event.after, System: event.action == "identity.margin_mode.change"})
 	}
 	b.demoAssetPolicy(anchor)
-	// Independent Catalog reviews provide useful audit pagination without
-	// inventing dozens of meaningless Identity renames.
-	reviewed := 0
-	for _, key := range b.assetKeys {
-		row := b.assets[key]
-		if row.portfolio != PortfolioAliceMain || row.platform != adapters.PlatformBinance || row.source != catalog.MappingAuto || reviewed >= 60 {
-			continue
-		}
-		reviewed++
-		row.source = catalog.MappingManual
-		b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.Add(-time.Hour).Add(time.Duration(reviewed) * time.Second), Before: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"platform": row.platform, "symbol": row.symbol, "canonicalAssetSymbol": row.canonicalAssetSymbol, "mappingSource": catalog.MappingManual, "version": 2}})
-	}
-	if reviewed != 60 {
-		b.fail(fmt.Errorf("large scenario needs 60 independent Catalog reviews"))
-	}
 }
 
 func (b *builder) demoAssetPolicy(anchor time.Time) {

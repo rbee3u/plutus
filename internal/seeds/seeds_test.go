@@ -138,12 +138,6 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	if err := Apply(ctx, db, seed); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	// Recent pagination sources must not inflate the three-month archive.
-	var early, recent int
-	paginationIdentity := identityID("large-classic")
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT c.id), COUNT(DISTINCT CASE WHEN c.created_at < i.created_at THEN c.id END) FROM account_reports r JOIN accounts a ON a.portfolio_id=r.portfolio_id AND a.id=r.account_id JOIN identities i ON i.portfolio_id=a.portfolio_id AND i.id=a.identity_id JOIN collection_cycles c ON c.portfolio_id=r.portfolio_id AND c.id=r.cycle_id WHERE i.id=?", paginationIdentity[:]).Scan(&recent, &early); err != nil || early != 0 || recent < 2 || recent > 3 {
-		t.Fatalf("pagination history: cycles=%d before-creation=%d: %v", recent, early, err)
-	}
 	assertSequentialHistory(ctx, t, db, seed)
 	registry := adapters.NewRegistry()
 	clock := anchor.Add(time.Minute)
@@ -211,14 +205,17 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if incomplete.Completeness != valuation.CompletenessIncomplete || incomplete.StaleAccountCount == 0 {
 		t.Fatalf("edge combination lost missing/stale states: %+v", incomplete)
 	}
-	earn, err := v.FlatEarnPositions(ctx, edge, &financial.ListFilter{Limit: 200})
+	earn, err := v.FlatEarnPositions(ctx, main, &financial.ListFilter{Limit: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(earn.Items) == 0 {
 		t.Fatal("Earn details lost")
 	}
-	assertLargePages(ctx, t, db, main)
+	dual, err := v.FlatDualPositions(ctx, main, &financial.ListFilter{Limit: 200})
+	if err != nil || dual.Total != 2 {
+		t.Fatalf("healthy Dual concentration: %d %v", dual.Total, err)
+	}
 	closes, err := v.PeriodCloses(ctx, edge, financial.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
 	if err != nil {
 		t.Fatal(err)
@@ -274,7 +271,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 		incomplete                    bool
 	}{
 		{"edge-stale", "cm_futures", valuation.FreshnessStale, valuation.MethodCalculated, false},
-		{"edge-stale-incomplete", "spot", valuation.FreshnessStale, valuation.MethodCalculated, true},
+		{"edge-stale", "spot", valuation.FreshnessStale, valuation.MethodCalculated, true},
 		{"edge-unpriced", "spot", valuation.FreshnessFresh, valuation.MethodCalculated, true},
 		{"edge-missing", "unified", valuation.FreshnessFresh, valuation.MethodMissing, true},
 	} {
@@ -389,6 +386,51 @@ func assertLargePages(ctx context.Context, t *testing.T, db *sql.DB, p financial
 			t.Fatal("audit cursor repeated an event")
 		}
 	}
+}
+
+func TestDedicatedPaginationFixture(t *testing.T) {
+	ctx := context.Background()
+	tdb, err := mysqltest.CreateTestDatabase(ctx, mysqltest.GotestDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := tdb.Drop(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	anchor := time.Now().UTC().Truncate(30 * time.Minute)
+	b := newBuilder()
+	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: anchor})
+	b.portfolio(&portfolioSpec{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 1800, Undeletable: true, CreatedAt: anchor})
+	d := fake.DemoIdentity{ID: "pagination-fixture", Portfolio: "default", Name: "Pagination fixture", Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Profile: "large", Connection: "enabled"}
+	b.demoIdentity(d, anchor, anchor)
+	batch, err := fake.DemoBatch(d, anchor, anchor.Add(2*time.Second), fake.DemoAccounts(d, anchor, anchor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, price := range batch.Prices {
+		b.price(PortfolioAliceMain, d.Platform, price.CanonicalAssetSymbol, price.Price, price.RetrievedAt)
+	}
+	var reports []reportSpec
+	for i := range batch.Reports {
+		r := &batch.Reports[i]
+		reports = append(reports, reportSpec{Account: accountID(d.ID, string(r.AccountType)), AccountType: r.AccountType, Platform: d.Platform, Report: r})
+	}
+	b.cycle(PortfolioAliceMain, anchor, reports)
+	for i, key := range b.assetKeys {
+		row := b.assets[key]
+		row.source = catalog.MappingManual
+		b.audit(&auditSpec{Portfolio: PortfolioAliceMain, Actor: UserAlice, Action: "catalog.asset.map", ResourceType: "asset", ResourceID: row.id, At: anchor.Add(time.Duration(i) * time.Second), Before: map[string]any{"canonicalAssetSymbol": row.symbol, "mappingSource": catalog.MappingAuto, "version": 1}, After: map[string]any{"canonicalAssetSymbol": row.symbol, "mappingSource": catalog.MappingManual, "version": 2}})
+	}
+	sql := b.SQL()
+	if b.err != nil {
+		t.Fatal(b.err)
+	}
+	if err := Apply(ctx, tdb.DB, Seed{SQL: sql, Portfolios: []uuid.UUID{PortfolioAliceMain}}); err != nil {
+		t.Fatal(err)
+	}
+	assertLargePages(ctx, t, tdb.DB, financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"})
 }
 
 func TestSeedManualRevisionKeysAndReportDecimalColumns(t *testing.T) {

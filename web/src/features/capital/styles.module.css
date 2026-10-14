@@ -105,3 +105,11 @@
   font-family: var(--font-mono);
   color: var(--ink);
 }
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}

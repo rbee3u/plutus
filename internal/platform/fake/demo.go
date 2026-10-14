@@ -27,33 +27,22 @@ type DemoIdentity struct {
 // DemoIdentities returns an independent copy in stable ownership order.
 func DemoIdentities() []DemoIdentity {
 	return []DemoIdentity{
-		{"daily-classic", "default", "Binance trading desk", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "daily", "enabled"},
-		{"daily-pm", "default", "Binance hedging desk", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
-		{"daily-okx", "default", "OKX multi-currency", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
-		{"daily-bybit", "default", "Bybit cross collateral", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitCross, "daily", "enabled"},
-		{"daily-kraken", "default", "Kraken separate wallets", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "daily", "enabled"},
-		{"daily-kraken-unified", "default", "Kraken unified treasury", adapters.PlatformKraken, adapters.StructureKrakenUnified, "", "daily", "enabled"},
-		{"large-classic", "large", "Binance diversified contracts and subscriptions", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "large", "enabled"},
-		{"large-okx-spot", "large", "OKX spot mode", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXSpot, "daily", "enabled"},
-		{"large-okx-futures", "large", "OKX futures mode", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXFutures, "daily", "enabled"},
-		{"large-okx-pm", "large", "OKX portfolio margin", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXPM, "daily", "enabled"},
-		{"large-bybit-isolated", "large", "Bybit isolated collateral", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitIsolated, "daily", "enabled"},
-		{"large-bybit-pm", "large", "Bybit portfolio margin", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitPM, "daily", "enabled"},
+		{"daily-classic", "default", "bn-sub-04", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "daily", "enabled"},
+		{"daily-pm", "default", "bn-main", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-okx", "default", "ok-main", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXPM, "daily", "enabled"},
+		{"daily-bybit", "default", "by-main", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitPM, "daily", "enabled"},
+		{"daily-kraken", "default", "kkSum", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "daily", "enabled"},
+		{"daily-kraken-unified", "default", "kr-main", adapters.PlatformKraken, adapters.StructureKrakenUnified, "", "daily", "enabled"},
+		{"daily-sub-01", "default", "bn-sub-01", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-sub-02", "default", "bn-sub-02", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-sub-03", "default", "bn-sub-03", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-okx-sum", "default", "okxSum", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
+		{"daily-okx-coin", "default", "okxCoinM", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
+		{"daily-okx-usd", "default", "okxUsdM", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
+		{"retired-classic", "default", "bn-retired", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "archived", "unconfigured"},
 		{"edge-unpriced", "edge-cases", "Binance unpriced airdrop", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "unpriced", "enabled"},
-		{"edge-stale", "edge-cases", "Binance delayed COIN-M", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "stale", "enabled"},
-		{"edge-stale-incomplete", "edge-cases", "Binance stale unpriced holdings", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "stale_incomplete", "enabled"},
+		{"edge-stale", "edge-cases", "Binance delayed reports", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "stale", "enabled"},
 		{"edge-missing", "edge-cases", "Bybit never collected", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitCross, "missing", "enabled"},
-		{"edge-invalid", "edge-cases", "OKX revoked credentials", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "invalid", "invalid"},
-		{"edge-disabled", "edge-cases", "Kraken collection paused", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "disabled", "disabled"},
-		{"edge-unconfigured", "edge-cases", "Binance awaiting credentials", adapters.PlatformBinance, adapters.StructureBinancePM, "", "unconfigured", "unconfigured"},
-		{"edge-archive", "edge-cases", "Binance retired sub-account", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "archived", "unconfigured"},
-		{"edge-boundary", "edge-cases", "Binance wallet boundary", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "boundary", "enabled"},
-		{"edge-policy", "edge-cases", "Binance reviewed asset policy", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "policy", "enabled"},
-		{"edge-metadata", "edge-cases", "OKX optional metadata unavailable", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "metadata", "enabled"},
-		{"edge-mode", "edge-cases", "Bybit observed mode change", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitPM, "mode", "enabled"},
-		{"edge-empty", "edge-cases", "Binance successful empty wallets", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "empty", "enabled"},
-		{"edge-unsupported", "edge-cases", "OKX unsupported product report", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "unsupported", "enabled"},
-		{"edge-normalization", "edge-cases", "Binance unavailable core equity", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "normalization", "enabled"},
 	}
 }
 
@@ -63,7 +52,7 @@ func ValidateDemoIdentity(d DemoIdentity) error {
 		!adapters.ValidStructure(d.Platform, d.Structure) || !adapters.ValidMarginMode(d.Structure, d.Mode) {
 		return fmt.Errorf("invalid demo identity %q: identity or capability", d.ID)
 	}
-	if d.Portfolio != "default" && d.Portfolio != "edge-cases" && d.Portfolio != "large" {
+	if d.Portfolio != "default" && d.Portfolio != "edge-cases" {
 		return fmt.Errorf("invalid demo identity %q: portfolio", d.ID)
 	}
 	switch d.Connection {
@@ -112,10 +101,12 @@ func DemoEventTime(anchor time.Time, days int) time.Time {
 // DemoAccounts returns the historical Portfolio Boundary for one login. Only
 // seeds use this timeline; runtime always honors the owner's requested Accounts.
 func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
-	if d.Portfolio != "edge-cases" {
-		return adapters.AccountTypeIDs(d.Structure)
-	}
 	switch d.Profile {
+	case "daily", "large":
+		if d.Profile == "daily" && d.Structure == adapters.StructureBinanceClassic {
+			return []adapters.AccountType{"spot", "funding", "um_futures", "cm_futures", "earn", adapters.TypeDualInvestment}
+		}
+		return adapters.AccountTypeIDs(d.Structure)
 	case "archived":
 		if !at.Before(DemoEventTime(anchor, -2)) {
 			return nil
@@ -130,7 +121,12 @@ func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
 		}
 		return []adapters.AccountType{"funding"}
 	case "stale":
-		return []adapters.AccountType{"cm_futures"}
+		return []adapters.AccountType{"cm_futures", "spot"}
+	case "unpriced":
+		if !at.Before(DemoEventTime(anchor, -5)) && at.Before(DemoEventTime(anchor, -3)) {
+			return []adapters.AccountType{"spot", "funding"}
+		}
+		return []adapters.AccountType{"spot"}
 	case "missing", "mode":
 		return []adapters.AccountType{"unified"}
 	case "invalid", "unsupported", "metadata":
@@ -147,7 +143,7 @@ func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
 }
 
 func demoMode(d DemoIdentity, anchor, at time.Time) adapters.MarginMode {
-	if d.Profile == "mode" && at.Before(DemoEventTime(anchor, -3)) {
+	if (d.Profile == "mode" || d.ID == "daily-bybit") && at.Before(DemoEventTime(anchor, -3)) {
 		return adapters.MarginBybitCross
 	}
 	return d.Mode

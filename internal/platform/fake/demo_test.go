@@ -2,6 +2,7 @@ package fake
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -9,6 +10,72 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
+
+func TestDemoNormalMajorityAndConcentration(t *testing.T) {
+	anchor := time.Date(2026, 10, 14, 10, 0, 0, 0, time.UTC)
+	normal, exceptional, archived, empty, earn, dual := 0, 0, 0, 0, 0, 0
+	shapes := map[string]bool{}
+	total := "0"
+	for _, d := range DemoIdentities() {
+		if d.Profile == "archived" {
+			archived++
+			if len(DemoAccounts(d, anchor, anchor)) != 0 {
+				t.Fatal("archived login remains in the current boundary")
+			}
+			continue
+		}
+		if d.Portfolio == "edge-cases" {
+			exceptional++
+			continue
+		}
+		normal++
+		batch, err := DemoBatch(d, anchor, anchor, DemoAccounts(d, anchor, anchor))
+		if err != nil {
+			t.Fatal(err)
+		}
+		shape := ""
+		for _, r := range batch.Reports {
+			for _, b := range r.Balances {
+				shape += fmt.Sprintf("%s/%s=%s;", r.AccountType, b.AssetSymbol, b.Equity)
+			}
+			if r.Status != adapters.StatusSucceeded {
+				t.Fatalf("normal login %s has a current failure", d.ID)
+			}
+			if len(r.Balances) == 0 {
+				empty++
+			}
+			earn += len(r.EarnPositions)
+			dual += len(r.DualPositions)
+			if r.Equity != nil {
+				total = demoAdd(total, *r.Equity)
+			} else {
+				for _, b := range r.Balances {
+					price := DemoPrice(d.Platform, b.AssetSymbol, anchor)
+					if price == "" {
+						t.Fatalf("normal Asset %s has no price", b.AssetSymbol)
+					}
+					total = demoAdd(total, demoMul(b.Equity, price))
+				}
+			}
+			for _, p := range r.Positions {
+				if p.Side != adapters.SideShort || p.MarginSetting != "cross" || p.FuturesContract.ExpiryAt != nil {
+					t.Fatal("normal hedges lost the production-shaped short perpetual mix")
+				}
+			}
+		}
+		shapes[shape] = true
+	}
+
+	if normal != 12 || exceptional != 3 || archived != 1 || len(shapes) != normal {
+		t.Fatalf("Identity mix normal=%d exceptional=%d archived=%d distinct=%d", normal, exceptional, archived, len(shapes))
+	}
+	if empty < 20 || earn < 15 || earn > 30 || dual != 2 {
+		t.Fatalf("wallet/product concentration: empty=%d Earn=%d Dual=%d", empty, earn, dual)
+	}
+	if demoNumber(total).Cmp(demoNumber("200000")) < 0 || demoNumber(total).Cmp(demoNumber("400000")) > 0 {
+		t.Fatalf("normal value left the intended synthetic scale: %s", total)
+	}
+}
 
 func demoByID(t *testing.T, id string) DemoIdentity {
 	t.Helper()
@@ -25,7 +92,23 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
 	covered := map[adapters.AccountStructure]map[adapters.MarginMode]bool{}
 	seen := map[string]bool{}
-	for _, d := range DemoIdentities() {
+	definitions := DemoIdentities()
+	// Scope coverage belongs to explicit fixtures, independently of the seed mix.
+	for _, p := range adapters.NewRegistry().Platforms() {
+		for _, s := range p.Structures {
+			modes := []adapters.MarginMode{""}
+			if len(s.MarginModes) > 0 {
+				modes = nil
+				for _, m := range s.MarginModes {
+					modes = append(modes, m.ID)
+				}
+			}
+			for _, mode := range modes {
+				definitions = append(definitions, DemoIdentity{ID: "test-" + string(s.ID) + "-" + string(mode), Portfolio: "default", Name: "Capability fixture", Platform: p.ID, Structure: s.ID, Mode: mode, Profile: "metadata", Connection: "enabled"})
+			}
+		}
+	}
+	for _, d := range definitions {
 		if err := ValidateDemoIdentity(d); err != nil {
 			t.Fatal(err)
 		}
@@ -179,7 +262,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 
 func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
-	d := demoByID(t, "large-classic")
+	d := largeDemoIdentity()
 	first, err := DemoBatch(d, anchor, anchor, adapters.AccountTypeIDs(d.Structure))
 	if err != nil {
 		t.Fatal(err)
@@ -241,7 +324,7 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 
 func TestDemoDualStagesAndRollover(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
-	d := demoByID(t, "large-classic")
+	d := largeDemoIdentity()
 	initial := demoReport(d, anchor, anchor, adapters.TypeDualInvestment)
 	later := demoReport(d, anchor, anchor.AddDate(0, 0, 2), adapters.TypeDualInvestment)
 	rolled := demoReport(d, anchor, anchor.AddDate(0, 0, 4), adapters.TypeDualInvestment)
@@ -257,4 +340,8 @@ func TestDemoDualStagesAndRollover(t *testing.T) {
 	if !reflect.DeepEqual(initial.Balances, rolled.Balances) {
 		t.Fatal("settlement and reinvestment changed principal")
 	}
+}
+
+func largeDemoIdentity() DemoIdentity {
+	return DemoIdentity{ID: "pagination-fixture", Portfolio: "default", Name: "Pagination fixture", Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Profile: "large", Connection: "enabled"}
 }

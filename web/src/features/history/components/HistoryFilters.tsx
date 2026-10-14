@@ -1,95 +1,13 @@
-import { useState, type FormEvent } from "react";
-import { ActionButton } from "@/shared/ui/ActionButton";
-import { TextInput, Select } from "@/shared/ui/FormControls";
-import { RequestRecovery } from "@/shared/ui/QueryRecovery";
-import { Pager } from "@/shared/ui/Pager";
-import { type useHistoryWindow, type useHistoryPager } from "../hooks/useHistoryWindow";
-import {
-  HISTORY_PRESETS,
-  HISTORY_PAGE_SIZES,
-  historyLocalValue,
-} from "@/features/history/lib/timeWindow";
+import { TimeWindowFilters, type TimeWindowState } from "@/shared/ui/TimeWindowFilters";
+import { type useHistoryPager } from "../hooks/useHistoryWindow";
+import { HISTORY_PAGE_SIZES } from "@/shared/lib/timeWindow";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
+import { Select } from "@/shared/ui/FormControls";
+import { Pager } from "@/shared/ui/Pager";
 
-type WindowState = ReturnType<typeof useHistoryWindow>;
-export function HistoryFilters({ state }: { state: WindowState }) {
-  return (
-    <div className={styles.historyToolbar}>
-      <div className={styles.historyPresets} role="group" aria-label="History time range">
-        {HISTORY_PRESETS.map((preset) => (
-          <ActionButton
-            key={preset}
-            type="button"
-            tone={state.preset === preset ? "primary" : "ghost"}
-            aria-pressed={state.preset === preset}
-            disabled={state.applying}
-            onClick={() => state.selectPreset(preset)}
-            className={state.preset === preset ? styles.presetActive : styles.presetInactive}
-          >
-            {preset}
-          </ActionButton>
-        ))}
-      </div>
-      {state.window ? (
-        <DateRangeForm key={`${state.window.from}|${state.window.to}`} state={state} />
-      ) : null}
-      {state.applyError ? (
-        <p className={shared.alert} role="alert">
-          {state.applyError.message}
-        </p>
-      ) : null}
-      <RequestRecovery
-        error={state.error}
-        hasData={Boolean(state.window)}
-        busy={state.busy || state.applying}
-        fallback="The history window could not be loaded."
-        onRetry={state.retry}
-      />
-      {state.busy && !state.window ? <p className={shared.muted}>Loading history window.</p> : null}
-    </div>
-  );
-}
-
-function DateRangeForm({ state }: { state: WindowState }) {
-  const window = state.window!;
-  const timezone = window.context.timezone;
-  const [from, setFrom] = useState(() => historyLocalValue(window.from, timezone));
-  const [to, setTo] = useState(() => historyLocalValue(window.to, timezone));
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    void state.apply(from, to);
-  }
-  return (
-    <form className={styles.rangeForm} onSubmit={submit}>
-      <label className={styles.rangeField}>
-        <span className={styles.rangeLabel}>From</span>
-        <TextInput
-          type="datetime-local"
-          step="1"
-          required
-          value={from}
-          onChange={(event) => setFrom(event.target.value)}
-        />
-      </label>
-      <label className={styles.rangeField}>
-        <span className={styles.rangeLabel}>To</span>
-        <TextInput
-          type="datetime-local"
-          step="1"
-          required
-          value={to}
-          onChange={(event) => setTo(event.target.value)}
-        />
-      </label>
-      <div className={styles.rangeActions}>
-        <ActionButton type="submit" tone="primary" disabled={state.applying}>
-          {state.applying ? "Applying" : "Apply"}
-        </ActionButton>
-        <span className={styles.rangeTimezone}>Timezone: {timezone}</span>
-      </div>
-    </form>
-  );
+export function HistoryFilters({ state }: { state: TimeWindowState }) {
+  return <TimeWindowFilters state={state} ariaLabel="History time range" />;
 }
 
 export function HistoryPager({

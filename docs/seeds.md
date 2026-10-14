@@ -11,137 +11,153 @@ Agents use only `plutus_agent` on :8081. There are no seed profiles.
 
 ## Portfolios
 
-| Name         | Timezone      | History                                                   | Purpose                                                             |
-| ------------ | ------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
-| `default`    | Asia/Shanghai | 3 months; pagination fixtures join in the final two hours | Healthy holdings, financial events, all margin modes and pagination |
-| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day                    | Failures and policy/boundary transitions                            |
+| Name         | Timezone      | History                                | Purpose                                                        |
+| ------------ | ------------- | -------------------------------------- | -------------------------------------------------------------- |
+| `default`    | Asia/Shanghai | 3 months                               | 12 healthy active Identities and one archived historical login |
+| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day | 3 Identities covering four representative valuation states     |
 
 Long histories have daily older points and two-hour points in the last three
-local days. Event instants have surrounding points. The current local day is
-included; the number of local date labels depends on the calendar months at the
-anchor. Nonempty Portfolios collect every 30 minutes. A collection does not
-advance a special simulation counter; observations depend on the original anchor
-and actual time. The earliest partial calendar month or quarter can be
-incomplete because its first dates predate the seed horizon; the history read
-names those missing dates. Dates inside the generated daily range remain
-covered.
+local days, with brackets around event instants. The current local day is
+included. Collection runs every 30 minutes. Observations depend on the original
+anchor and actual time; collection does not advance a simulation counter.
+Partial calendar periods can be incomplete when their opening dates predate the
+seed horizon; History names those missing dates.
 
 ## Healthy walkthrough
 
-`default` starts with six independent Platform logins: Binance Classic and
-Portfolio Margin, OKX Multi-currency Margin, Bybit Cross Margin, Kraken Separate
-wallets and Unified Wallet. All their supported Accounts are selected. Six
-additional logins join in the final two hours for large holdings and the other
-OKX and Bybit modes; Spot mode has no contract Positions. Their boundary entries
-are explicit Value Change events. The former `large` and `empty` Portfolios are
-no longer seeded. Create a Portfolio to walk through empty state.
+Identity names and account combinations borrow the shapes of a locally inspected
+production dump from October 11–13, 2026. Generic labels such as `bn-main`,
+`ok-main`, `by-main`, `kr-main`, `okxSum`, `okxCoinM`, `okxUsdM`, and `kkSum`
+are retained; personal sub-login labels become `bn-sub-01` through `bn-sub-04`.
+No production IDs, credentials, sessions, exact balances, or financial records
+are imported. The dump's roughly 57-hour history cannot establish the realism of
+three-month synthetic curves or long-term failure frequencies.
 
-Expand each Identity and Account in Overview, then visit Balances, Futures, Earn
-and Dual Investment. Verify known zero USD-equivalent balances, tiny SHIB
-quantities, negative borrowed USDT equity, linear and inverse contracts,
-opposing hedged holdings, one-way delivery contracts, and margin provenance.
-Earn includes product/strategy/position granularity, multi-Asset strategies,
-qualified rates and rewards, and distinct maturity and redemption information.
-Dual keeps subscriptions separate, including principal in BTC and USDT.
+`default` has four Binance Portfolio Margin logins, one Binance Classic login,
+four OKX logins (one Portfolio Margin and three Multi-currency Margin), one
+Bybit Portfolio Margin login, and Kraken Separate and Unified logins. Unused
+Classic margin wallets are unselected. Many selected wallets are freshly empty.
+Balances, hedge sizes, and Earn products differ by login; most value is
+concentrated in Earn and trading wallets. Negative stablecoin equity and tiny
+balances are normal observations. The aggregate synthetic scale is a few hundred
+thousand USD, with one larger main login and several smaller logins.
 
-The table uses `D` for the rounded UTC seed anchor, not the browser's current
-time. Find exact timestamps in Capital or Activity; History uses the Portfolio
-timezone for labels.
+Current Futures Positions are short cross perpetuals, with both linear and
+inverse settlement. Most Earn descriptions are flexible product aggregates;
+Kraken retains strategy granularity and bonded/timed descriptions. Dual has just
+two current BTC/USDT subscriptions under `okxSum`, with 120 USDT and 0.002 BTC
+principal. Other selected Dual wallets are empty. Optional measures stay unknown
+where the simulated Platform does not supply them.
 
-| When            | Event                                   | Expected result                                                             |
-| --------------- | --------------------------------------- | --------------------------------------------------------------------------- |
-| D−60 days       | Binance Spot receives 0.1 BTC           | Spot BTC increases by 0.1; a valued contribution offsets it in Value Change |
-| D−30 days       | Binance Funding receives 5,000 USDT     | Funding increases by 5,000 and Capital records the contribution             |
-| D−8 to D−4 days | Historical ETH hedge opens, then closes | The Position disappears after success; realized PnL remains in collateral   |
-| D−6 to D−5 days | Bybit temporary outage                  | History carries compatible reports as stale; current Bybit is healthy       |
-| D−5 days        | Binance Funding withdraws 1,000 USDC    | The Balance decreases by 1,000 and Capital records a withdrawal             |
-| D−3 days        | 750 USDT moves Funding → Spot           | Total principal is unchanged; no Capital Flow is invented                   |
-| D−3 days        | Named Earn/Dual terms return principal  | Product rows disappear after success; 400/200 USDT lands in Funding         |
+Expand Identities and Accounts in Overview, then inspect Balances, Futures,
+Earn, and Dual Investment. Create a new Portfolio to inspect empty state.
 
-Kraken has no Dual Account; its Earn redemption returns 400 USDT to Derivatives
-Holding. Ordinary rolling 28-day cohorts keep subscription and entry dates
-stable within a cohort. Contract price waves repeat at cohort boundaries;
-closing and reopening there does not discard an accumulated gain or loss.
+The table uses `D` for the rounded UTC seed anchor. Find exact timestamps in
+Capital or Activity; History labels use the Portfolio timezone.
+
+| When            | Event                                                         | Expected result                                                           |
+| --------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| D−60 days       | `bn-sub-04` Spot receives 0.1 BTC                             | A valued contribution offsets the increase in Value Change                |
+| D−30 days       | `bn-sub-04` Funding receives 5,000 USDT                       | Capital records the contribution                                          |
+| D−8 to D−4 days | A historical SOL hedge opens and closes in `bn-sub-04` USDⓈ-M | The Position disappears after success; realized PnL remains in collateral |
+| D−6 to D−5 days | Temporary Bybit outage                                        | Historical reports are stale; current Bybit is healthy                    |
+| D−5 days        | `bn-sub-04` Funding withdraws 1,000 USDC                      | Capital records the withdrawal                                            |
+| D−3 days        | 750 USDT moves Funding → Spot                                 | Total principal is unchanged; no Capital Flow is invented                 |
+| D−3 days        | `bn-sub-04` Earn/Dual terms return principal                  | 400/200 USDT returns to Funding after the product rows disappear          |
+| D−3 days        | Bybit changes Cross → Portfolio Margin                        | Historical reports retain their observed regime                           |
+| D−2 days        | `bn-retired` is archived                                      | Earlier holdings and boundary withdrawals remain in History               |
+
+Only `bn-sub-04` owns the scripted investment and transfer events. Ordinary
+rolling cohorts keep entry and subscription dates stable; bounded price waves
+repeat at close/reopen boundaries. Long-term curves and all scripted financial
+events are synthetic.
 
 ## Edge walkthrough
 
 Use a seven-day History window and `edge-cases` Overview/holdings. Failures
-retain compatible source observation times; they never fabricate an empty
-successful report. Unknown amounts have omissions rather than zero.
+retain compatible source observation times rather than fabricating successful
+empty reports. Unknown amounts have named omissions.
 
-| Identity or location                      | Expected observable behavior                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Binance unpriced airdrop                  | Fresh incomplete calculated value; named `DEMO-NOPRICE` omission and unvalued contribution at D−5       |
-| Binance delayed COIN-M                    | Stale but known Account value and Futures rows since D−2                                                |
-| Binance stale unpriced holdings           | Stale and incomplete are visible together                                                               |
-| Bybit never collected                     | Missing Account without compatible success; no invented Positions                                       |
-| OKX revoked credentials                   | Invalid Connection, retained stale balances and products                                                |
-| Kraken collection paused                  | Disabled Connection with compatible stale Main report                                                   |
-| Binance awaiting credentials              | Unconfigured Connection and missing selected Spot Account                                               |
-| Binance unavailable core equity           | Normalization failure; no invalid Balance row is stored                                                 |
-| Binance retired sub-account               | Archived at D−2, real earlier reports and boundary withdrawals                                          |
-| Binance wallet boundary                   | Funding enters D−5; Spot exits D−3; other unselected Accounts remain visible in configuration           |
-| Binance reviewed asset policy             | `DEMO-BTC` maps to BTC; `DEMO-DUST` is excluded D−6, restored D−4, excluded D−2; audit gives the reason |
-| OKX optional metadata unavailable         | Known value with row-local optional Earn/Dual and Position problems                                     |
-| Bybit observed mode change                | Cross → Portfolio Margin at D−3; historical reports retain their own mode                               |
-| Binance successful empty wallets          | A genuine empty Complete Set, distinct from missing reports                                             |
-| OKX unsupported product report            | Enabled Connection, unsupported Account outcomes and compatible stale history                           |
-| History: Berlin local date containing D−4 | No points, null Period Close and explicit missing-day reason                                            |
+| Identity / Account               | Expected observable behavior                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| Binance unpriced airdrop / Spot  | Fresh incomplete calculated value; `DEMO-NOPRICE` omission and unvalued contribution at D−5 |
+| Binance delayed reports / COIN-M | Stale but known Account value and Futures rows since D−2                                    |
+| Binance delayed reports / Spot   | Stale and incomplete together, with unpriced historical holdings                            |
+| Bybit never collected / Unified  | Unknown value without compatible successful history; no invented Positions                  |
 
-Compare ranges spanning the unvalued flow, boundary and exclusion changes. The
-results remain incomplete and name the reasons. Longer windows exercise quarter,
-month, ISO week and Berlin DST boundaries when present in the three-month range.
-Controlled-anchor tests cover year and DST changes. The complete daily Portfolio
-supplies ordinary comparisons with both gains and losses.
+The unpriced Identity also supplies historical boundary changes: Funding enters
+at D−5 and exits at D−3 while Spot stays selected. `DEMO-BTC` maps to BTC;
+`DEMO-DUST` is excluded at D−6, restored at D−4, and excluded at D−2, with audit
+reasons. Comparisons crossing the unvalued flow or relevant treatment changes
+remain incomplete and name those reasons. The Berlin local date containing D−4
+has no points and an explicit missing-day reason.
 
-## Pagination and continued collection
+Invalid/disabled/unconfigured Connections, additional failure classes, optional
+metadata failures, all supported modes, and large lists belong to dedicated
+fake, application, and pagination tests. They do not inflate the daily seed mix.
 
-In `default`, visit each of the four holdings tables, press Next, and check that
-rows continue beyond 50. Filter by Binance's diversified Identity or a symbol,
-return to page one, and remove the filter. Repeat for both Catalog lists.
-Activity Audit has 60 independent asset mapping reviews, each with actual
-resource IDs and before/after mapping state; follow its second page.
+## Continued collection and verification
 
-The pagination fixtures have only a few recent source sets; repeating their
-large holdings over many historical cycles adds reset cost without helping the
-walkthrough. This sampling choice does not change the application retention
-policy.
+Click Collect now and repeat the holdings checks. `default` stays healthy and
+retains its differentiated wallets and sparse products; the four representative
+edge states retain their observation times and omissions. Historical recoverable
+outages stay in History. After the anchor, only Platform observations evolve;
+the fake creates no new Capital Flows, selection changes, archives, or policy
+edits. Owner actions through the UI still affect collection.
 
-Click Collect now and repeat the checks. Product details, large row counts,
-configured modes, the unpriced airdrop, persistent Account failures remain
-available. Historical recoverable outages remain in History. A newly created
-empty Portfolio is not scheduled until an enabled Connection is configured.
+Automated tests apply source SQL in a throwaway database, initialize real
+Connection services and immutable valuations, read the results, and collect
+again through the same generator. They cover the normal majority, empty wallets,
+product concentration, deterministic output, coherent events, stale fallback,
+and calendar/DST timing. Edge history is compared with sequential valuation
+across history batches; retries leave committed points unchanged. Separate
+fixtures verify every supported mode and second pages of all holdings, Catalog,
+and Activity lists. Daily seeds need not have a second page in every list.
 
-After the anchor, only Platform observations evolve. No fake background hook
-creates Capital Flows, changes selection, archives Identities or edits platform
-asset policy. Owner actions through the normal UI still work and affect
-collection.
+Reset policy is recorded in
+[ADR 0010](./adr/0010-environments-and-configuration.md). Runtime acceptance
+follows [agent verification](./testing.md#agent-runtime-verification). Synthetic
+walkthrough checks do not establish exchange-app reconciliation.
 
-## Verification contract
+## Production-shaped seed and agent check: 2026-10-14
 
-Automated tests apply source SQL and initialize points in a throwaway database,
-initialize real Connection lifecycle services, initialize immutable valuations,
-read actual service results, and collect again through the same scenario
-generator. They cover deterministic IDs/output, exact event deltas, source
-amounts, calendar/DST timing, compatible stale fallback, normalized product
-descriptions, and pagination. Every derived edge-case row is compared with
-sequential collection valuation of the same source facts across multiple history
-batches, and retries return existing points unchanged. Database tests also cover
-interrupted collection cycles, nonmonotonic evaluation times, price fallback
-ties, cancellation, partial progress and transactional rollback after a later
-report batch fails.
+The ordered format, web, build, test, and lint gates passed, including temporary
+MySQL coverage and 228 frontend tests. Dedicated fixtures retained the full
+capability matrix and second-page checks for all holdings, Catalog, and Activity
+lists. No production database connection or dump import was used.
 
-Implementation boundaries and reset policy are recorded in
-[ADR 0010](./adr/0010-environments-and-configuration.md). Runtime verification
-uses [the agent workflow](./testing.md#agent-runtime-verification); successful
-offline fixtures are not a substitute for that check or real exchange-app
-comparison.
+A compiled-binary reset of `plutus_agent` generated source facts in 280 ms,
+initialized source facts and valuations in 2.085 seconds, and initialized
+Connections in 76 ms. The seed load reported 2.442 seconds, excluding migration
+and compilation. This single host measurement is not a performance guarantee.
+
+On the embedded SPA at :8081, Alice switched between both Portfolios. `default`
+had 12 active Identities and 67 selected Accounts, with approximately
+$266,112
+known value, no stale Accounts, and complete valuation. Its current holdings had
+72 Balances, 28 Futures Positions, 20 Earn descriptions, and two Dual
+subscriptions. The main Binance login concentrated about $64k
+in Portfolio Margin and $50k in Earn. Fresh empty wallets stayed hidden from
+Overview.
+
+Interaction covered all four holdings views and both manual collections. Normal
+collection preserved completeness and product counts. `edge-cases` retained
+seven selected Accounts, two stale Accounts, and three incomplete Accounts;
+unknown Unified value displayed as an em dash and stale observation times stayed
+at their compatible pre-outage reports. History's three-month range remained
+available, including the intentional Berlin missing day. Capital showed three
+normal flows, the unvalued airdrop, the Funding entry/exit pair, and the
+archived login's three boundary withdrawals.
+
+The verification server was stopped, health became unreachable, and :8081 had no
+listener. The production dump stayed outside the repository. These observations
+validate synthetic walkthrough behavior, not exchange-app reconciliation.
 
 ## Recorded agent check: 2026-10-05
 
 This record describes the previous baseline. Its retired scope-transition and
-legacy Earn-summary scenarios are not part of the current dataset. Current
-acceptance is recorded in the
+legacy Earn-summary scenarios are not part of the current dataset. Acceptance
+for that baseline is recorded in the
 [schema delivery report](./platform/schema-provenance-delivery.md).
 
 The ordered format, web, build, test and lint gates passed. On the embedded SPA
@@ -164,9 +180,9 @@ became unreachable and :8081 had no listener.
 
 ## Two-Portfolio measurement and agent check: 2026-10-11
 
-The current dataset keeps two Portfolios and three months of daily coverage,
-with dense sampling reduced to the last three local days. Pagination Identities
-join `default` in the final two hours, retaining two or three historical cycles
+That baseline kept two Portfolios and three months of daily coverage, with dense
+sampling reduced to the last three local days. Pagination Identities join
+`default` in the final two hours, retaining two or three historical cycles
 instead of repeating large holdings across a separate seven-day Portfolio. Event
 brackets, the Berlin missing day, all Account modes and all pagination views
 remain covered. This changes only synthetic sampling, not retention.

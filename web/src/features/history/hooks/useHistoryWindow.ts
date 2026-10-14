@@ -1,118 +1,18 @@
-import { useState, useId } from "react";
-import { useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getHistoryWindow, keys, unwrapOrRedirect } from "@/api";
-import type { HistoryWindow } from "@/api";
-import { usePortfolio } from "@/shared/lib/portfolio";
 import { useSearchState } from "@/shared/lib/searchParams";
-import { useSessionScope } from "@/shared/lib/session";
-
-import {
-  HISTORY_PAGE_SIZES,
-  normalizePreset,
-  presetPeriod,
-  type HistoryPreset,
-} from "../lib/timeWindow";
+import { useTimeWindow } from "@/shared/lib/useTimeWindow";
+import { HISTORY_PAGE_SIZES, presetPeriod } from "@/shared/lib/timeWindow";
 
 export function useHistoryWindow() {
-  const { portfolioId = "" } = useParams();
-  const { userId, redirect } = useSessionScope();
-  const portfolio = usePortfolio(portfolioId);
-  const { params, update: merge } = useSearchState();
-  // History has independent pagers: unrelated URL edits must not reset them.
-  const update = (next: Record<string, string>) =>
-    merge({ offset: params.get("offset") ?? "", ...next });
-  const from = params.get("from") ?? "";
-  const to = params.get("to") ?? "";
-  const custom = Boolean(from || to);
-  const preset = normalizePreset(params.get("range")) ?? "3D";
-  const timezone = portfolio.data?.timezone;
-  const mountId = useId();
-  const [anchor, setAnchor] = useState(0);
-  const [applyError, setApplyError] = useState<Error | null>(null);
-  const [applying, setApplying] = useState(false);
-  const window = useQuery({
-    queryKey: keys.historyWindow(
-      userId,
-      portfolioId,
-      timezone,
-      custom ? from : preset,
-      to,
-      mountId,
-      anchor,
-    ),
-    enabled: Boolean(userId && portfolioId && timezone),
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: false,
-    queryFn: async (): Promise<HistoryWindow> => {
-      if (custom && /(?:Z|[+-]\d\d:\d\d)$/.test(from) && /(?:Z|[+-]\d\d:\d\d)$/.test(to)) {
-        if (
-          !Number.isFinite(Date.parse(from)) ||
-          !Number.isFinite(Date.parse(to)) ||
-          Date.parse(to) <= Date.parse(from)
-        ) {
-          throw new Error("The end must be after a valid start.");
-        }
-        return { context: { portfolioId, timezone: timezone! }, from, to };
-      }
-      return unwrapOrRedirect(
-        await getHistoryWindow({
-          path: { portfolioId },
-          query: custom ? { fromLocal: from, toLocal: to } : { preset },
-        }),
-        redirect,
-      );
-    },
-  });
   const resets = { pointsOffset: "", closesOffset: "", changesOffset: "", point: "" };
-  function selectPreset(next: HistoryPreset) {
-    setApplyError(null);
-    setAnchor((value) => value + 1);
-    update({
+  return useTimeWindow({
+    defaultPreset: "1W",
+    onSelectPreset: (next) => ({
       ...resets,
-      range: next,
-      from: "",
-      to: "",
       granularity: "",
       periodKind: presetPeriod(next),
-    });
-  }
-  async function apply(fromLocal: string, toLocal: string) {
-    setApplyError(null);
-    setApplying(true);
-    try {
-      const resolved = unwrapOrRedirect(
-        await getHistoryWindow({ path: { portfolioId }, query: { fromLocal, toLocal } }),
-        redirect,
-      );
-      update({ ...resets, range: "", from: resolved.from, to: resolved.to, granularity: "" });
-    } catch (cause) {
-      setApplyError(cause instanceof Error ? cause : new Error("Enter a valid range."));
-    } finally {
-      setApplying(false);
-    }
-  }
-  return {
-    portfolioId,
-    userId,
-    redirect,
-    params,
-    update,
-    preset: custom ? null : preset,
-    defaultPeriod: presetPeriod(preset),
-    window: window.data,
-    error: portfolio.error ?? window.error,
-    applyError,
-    applying,
-    busy: portfolio.isPending || window.isFetching,
-    selectPreset,
-    apply,
-    retry: () => {
-      void (portfolio.error ? portfolio.refetch() : window.refetch());
-    },
-  };
+    }),
+    onApply: () => ({ ...resets, granularity: "" }),
+  });
 }
 
 export function useHistoryPager(prefix: "points" | "closes" | "changes", total?: number) {

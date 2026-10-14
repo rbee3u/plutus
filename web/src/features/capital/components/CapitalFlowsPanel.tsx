@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   deleteCapitalFlow,
   getCapitalFlow,
@@ -13,20 +13,20 @@ import {
 import type { CapitalFlow, CapitalFlowList } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { formatAmount, formatCount, formatDecimal, parseDecimal } from "@/shared/lib/amount";
-import { formatInstant, isoFromDateInput, normalizeDateInput } from "@/shared/lib/datetime";
-import { useSearchState } from "@/shared/lib/searchParams";
+import { formatInstant } from "@/shared/lib/datetime";
 import { useSessionScope } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { accountOptions, useIdentities } from "@/shared/lib/useIdentities";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { useTimeWindow } from "@/shared/lib/useTimeWindow";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DirectionBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
-import { TextInput } from "@/shared/ui/FormControls";
 import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TimeWindowFilters } from "@/shared/ui/TimeWindowFilters";
 import { FlowActions } from "./FlowActions";
 import { CapitalFlowDialog, type FlowDialogRequest, flowEtag } from "../dialogs/CapitalFlowDialog";
 import styles from "../styles.module.css";
@@ -42,17 +42,10 @@ export function CapitalFlowsPanel({
   const { userId, redirect } = useSessionScope();
   const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
-  const { params, update } = useSearchState();
-  const rawFrom = params.get("from");
-  const rawTo = params.get("to");
-  const from = normalizeDateInput(rawFrom);
-  const to = normalizeDateInput(rawTo);
-
-  useEffect(() => {
-    if ((rawFrom !== null && rawFrom !== from) || (rawTo !== null && rawTo !== to)) {
-      update({ from, to });
-    }
-  }, [rawFrom, rawTo, from, to, update]);
+  const timeWindow = useTimeWindow({ defaultPreset: "1W" });
+  const window = timeWindow.window;
+  const from = window?.from;
+  const to = window?.to;
 
   const identities = useIdentities(portfolioId);
   const accounts = accountOptions(identities.data?.items);
@@ -65,10 +58,11 @@ export function CapitalFlowsPanel({
 
   const flows = usePortfolioQuery<CapitalFlowList>({
     key: (userId, portfolioId) => keys.capitalFlows(userId, portfolioId, from, to),
+    ready: Boolean(from && to),
     load: (portfolioId) =>
       listCapitalFlows({
         path: { portfolioId },
-        query: { from: isoFromDateInput(from), to: isoFromDateInput(to, "exclusiveEnd") },
+        query: { from: from!, to: to! },
       }),
   });
 
@@ -141,7 +135,6 @@ export function CapitalFlowsPanel({
   }
 
   const items = flows.data?.items ?? [];
-  const hasFilter = Boolean(from || to);
 
   return (
     <>
@@ -156,41 +149,14 @@ export function CapitalFlowsPanel({
         </p>
       ) : null}
       <QueryRecovery query={flows} fallback="Capital Flows could not be loaded." />
+      <TimeWindowFilters state={timeWindow} ariaLabel="Capital flow time range" />
       <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
         <div className={`${shared.summaryBar} ${styles.summaryBar}`}>
           <span className={shared.summaryCount}>
             {formatCount(items.length)} {items.length === 1 ? "flow" : "flows"}
           </span>
-          {hasFilter ? (
-            <ActionButton type="button" tone="ghost" onClick={() => update({ from: "", to: "" })}>
-              Clear filters
-            </ActionButton>
-          ) : null}
         </div>
         <div className={`${shared.toolbarActions} ${styles.toolbarActions}`}>
-          <form
-            className={`${shared.compactFilterBar} ${styles.filterForm}`}
-            onSubmit={(event) => event.preventDefault()}
-          >
-            <label className={`${shared.compactFilterField} ${styles.filterField}`}>
-              <span className={shared.compactFilterLabel}>From</span>
-              <TextInput
-                type="date"
-                value={from}
-                className={styles.compactDateInput}
-                onChange={(event) => update({ from: event.target.value })}
-              />
-            </label>
-            <label className={`${shared.compactFilterField} ${styles.filterField}`}>
-              <span className={shared.compactFilterLabel}>To</span>
-              <TextInput
-                type="date"
-                value={to}
-                className={styles.compactDateInput}
-                onChange={(event) => update({ to: event.target.value })}
-              />
-            </label>
-          </form>
           <ActionButton
             type="button"
             tone="primary"
@@ -241,36 +207,32 @@ export function CapitalFlowsPanel({
                 item={item}
                 disabled={busy}
                 onEdit={(target) => void openEdit(target)}
-                onDelete={(target) => setDeleteTarget(target)}
+                onDelete={setDeleteTarget}
               />
             ),
           };
         })}
         empty={
-          flows.isPending ? (
+          flows.isPending || timeWindow.busy ? (
             <TableEmptyState title="Loading Capital Flows..." />
-          ) : hasFilter ? (
-            <TableEmptyState
-              title="No Capital Flows match this date range"
-              help="Try adjusting your from or to dates."
-              action={
-                <ActionButton
-                  type="button"
-                  tone="secondary"
-                  onClick={() => update({ from: "", to: "" })}
-                >
-                  Clear date filter
-                </ActionButton>
-              }
-            />
           ) : (
             <TableEmptyState
-              title="No Capital Flows recorded yet"
-              help="Record external contributions or withdrawals to track capital flows."
+              title={`No Capital Flows in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
+              help="Try expanding your time window or record a new capital flow."
               action={
-                <ActionButton tone="primary" onClick={openCreate}>
-                  <Plus size={iconSize.sm} aria-hidden="true" /> Record flow
-                </ActionButton>
+                <div className={styles.emptyActions}>
+                  <ActionButton
+                    type="button"
+                    tone="secondary"
+                    onClick={() => timeWindow.selectPreset("6M")}
+                  >
+                    View last 6 months (6M)
+                  </ActionButton>
+                  <ActionButton tone="primary" onClick={openCreate}>
+                    <Plus size={iconSize.sm} aria-hidden="true" />
+                    <span>Record flow</span>
+                  </ActionButton>
+                </div>
               }
             />
           )
@@ -312,13 +274,28 @@ export function CapitalFlowsPanel({
                   {formatInstant(deleteTarget.effectiveAt, timezone)}
                 </span>
               </div>
-              {deleteTarget.accountName ? (
-                <div className={styles.flowSummaryItem}>
-                  <span className={styles.flowSummaryLabel}>Account</span>
-                  <span className={styles.flowSummaryValue}>{deleteTarget.accountName}</span>
-                </div>
-              ) : null}
+              <div className={styles.flowSummaryItem}>
+                <span className={styles.flowSummaryLabel}>Value (USD)</span>
+                <span className={styles.flowSummaryValue}>
+                  {deleteTarget.valueUsd ? (
+                    <NumericText>{formatAmount(deleteTarget.valueUsd)}</NumericText>
+                  ) : (
+                    "—"
+                  )}
+                </span>
+              </div>
+              <div className={styles.flowSummaryItem}>
+                <span className={styles.flowSummaryLabel}>Account</span>
+                <span className={styles.flowSummaryValue}>
+                  {deleteTarget.accountName ?? deleteTarget.accountId ?? "—"}
+                </span>
+              </div>
             </div>
+            {deleteTarget.note ? (
+              <p className={shared.dialogNote}>
+                <strong>Note:</strong> {deleteTarget.note}
+              </p>
+            ) : null}
             <div className={shared.dialogActions}>
               <ActionButton
                 type="button"
@@ -334,7 +311,7 @@ export function CapitalFlowsPanel({
                 disabled={busy}
                 onClick={() => void confirmDelete()}
               >
-                {busy ? "Deleting..." : "Delete"}
+                {busy ? "Deleting..." : "Delete flow"}
               </ActionButton>
             </div>
           </>

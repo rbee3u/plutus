@@ -266,9 +266,10 @@ leaves an empty migrated database. It requires `[database].allow_reset = true`
 in the selected TOML and a database name matching `plutus` or `plutus_<suffix>`
 that does not contain `prod`. `serve` never migrates or seeds automatically.
 
-The single Alice dataset covers healthy, edge-case, large-list, and empty
-Portfolios. See [seeds](./seeds.md) for scenarios, history windows, expected
-results, and measured reset times.
+The single Alice dataset has healthy and representative edge-case Portfolios.
+Dedicated tests own large-list coverage; create a Portfolio to inspect empty
+state. See [seeds](./seeds.md) for scenarios, history windows, expected results,
+and measured reset times.
 
 Seeding requires the fake Adapter and a master key. It writes source facts and
 uses real valuation code to initialize immutable points. Continued fake

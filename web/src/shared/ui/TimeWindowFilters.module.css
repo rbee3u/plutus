@@ -1,0 +1,98 @@
+.timeWindowToolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.timeWindowPresets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  width: fit-content;
+}
+
+.presetActive {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow-sm);
+  font-weight: var(--weight-medium);
+}
+
+.presetInactive {
+  color: var(--muted) !important;
+}
+
+.presetInactive:hover {
+  color: var(--ink) !important;
+}
+
+.rangeForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.rangeField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 0 0 auto;
+}
+
+.rangeLabel {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.rangeActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.rangeTimezone {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .timeWindowToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+  }
+
+  .rangeForm {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .rangeField {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2xs);
+  }
+
+  .rangeActions {
+    justify-content: space-between;
+    margin-top: var(--space-xs);
+  }
+}

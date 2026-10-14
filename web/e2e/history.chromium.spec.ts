@@ -85,7 +85,7 @@ async function fixture(page: Page) {
             "2w": 14,
             "1Month": 30,
             "1Year": 365,
-          }[params.get("preset") ?? "3D"] ?? 3;
+          }[params.get("preset") ?? "1W"] ?? 7;
         await route.fulfill({
           json: {
             context,
@@ -198,11 +198,11 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
     Object.defineProperty(window.crypto, "randomUUID", { value: undefined }),
   );
   await page.goto(historyPath);
-  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-10-01T12:16:44");
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-27T12:16:44");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   await expect(rawTable(page).locator("tbody > tr").first()).toContainText("100,560");
   await expect(pager(page, "Raw Valuation Points")).toContainText("1–20 of 561");
@@ -214,7 +214,7 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   const resolved = state.requests.find((url) => url.pathname === `${base}/valuation-points`)!;
   const closes = state.requests.find((url) => url.pathname === `${base}/period-closes`)!;
   expect(closes.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
-  expect(resolved.searchParams.get("granularity")).toBe("raw");
+  expect(resolved.searchParams.get("granularity")).toBe("hour");
   await pager(page, "Raw Valuation Points")
     .getByRole("button", { name: "Next", exact: true })
     .click();
@@ -254,7 +254,7 @@ test("date drafts apply once; custom endpoints survive reload, presets reanchor"
   expect(state.requests).toHaveLength(count);
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/from=2026-09-01T04/);
-  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
@@ -264,12 +264,12 @@ test("date drafts apply once; custom endpoints survive reload, presets reanchor"
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("The end must be after the start.");
   await expect(page).toHaveURL(/from=2026-09-01T04/);
-  await page.getByRole("button", { name: "3D", exact: true }).click();
-  await expect(page.getByText(/raw granularity/)).toBeVisible();
+  await page.getByRole("button", { name: "1W", exact: true }).click();
+  await expect(page.getByText(/hour granularity/)).toBeVisible();
   state.now = "2026-10-05T04:16:44Z";
   await page.reload();
   await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-05T12:16:44");
-  await expect(page.getByRole("button", { name: "3D", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );

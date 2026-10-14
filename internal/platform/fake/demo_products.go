@@ -9,7 +9,9 @@ import (
 
 func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	count := 4
-	if d.Profile == "large" {
+	if d.Profile == "daily" {
+		count = len(demoWallets[d.ID]["earn"])
+	} else if d.Profile == "large" {
 		count = 64
 	}
 	for i := 0; i < count; i++ {
@@ -27,6 +29,13 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		case adapters.PlatformKraken:
 			kind, grain, basis, symbol, amount = []string{"flexible", "bonded", "timed", "bonded"}[i%4], "strategy", "allocated", "DOT", "20"
 		}
+		if d.Profile == "daily" {
+			h := demoWallets[d.ID]["earn"][i]
+			symbol, amount = h.Symbol, h.Amount
+			if d.Platform != adapters.PlatformKraken && !(d.ID == "daily-classic" && i == 1) {
+				kind, grain, basis = "flexible", "product", "total"
+			}
+		}
 		if d.Profile == "large" {
 			amount = "25"
 			if symbol != "USDT" {
@@ -37,6 +46,16 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		ref := fmt.Sprintf("earn-%02d-%d", i, cohort.Unix())
 		p := adapters.NewEarnPosition(ref, kind, grain, basis)
 		p.ProductRef, p.ProductName = adapters.OptionalText(fmt.Sprintf("%s-%s-%02d", symbol, kind, i)), adapters.OptionalText("Offline "+symbol+" "+kind)
+		if d.Profile == "daily" {
+			name := "Simple Earn Flexible"
+			if kind == "fixed" {
+				name = "Simple Earn Locked"
+			}
+			if d.Platform == adapters.PlatformKraken {
+				name = "Kraken Earn"
+			}
+			p.ProductName = adapters.OptionalText(name)
+		}
 		p.Assets = []adapters.EarnAmount{{AssetSymbol: symbol, Amount: amount}}
 		p.AddRate("0.035", "apr", "estimated", "Estimated APR", nil)
 		p.AddReward(symbol, demoMul(amount, "0.002"), "cumulative")
@@ -82,7 +101,7 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		r.EarnPositions = append(r.EarnPositions, p)
 	}
 	// A named historical investment is removed only by a successful report.
-	if d.Portfolio != "edge-cases" && !at.Before(DemoEventTime(anchor, -33)) && at.Before(DemoEventTime(anchor, -3)) {
+	if d.ID == "daily-classic" && !at.Before(DemoEventTime(anchor, -33)) && at.Before(DemoEventTime(anchor, -3)) {
 		p := adapters.NewEarnPosition("historical-earn-redemption", "fixed", "position", "principal")
 		p.ProductName = adapters.OptionalText("Offline completed term")
 		p.Assets = []adapters.EarnAmount{{AssetSymbol: "USDT", Amount: "400"}}
@@ -105,7 +124,12 @@ func demoEarn(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 
 func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	count := 5
-	if d.Profile == "large" {
+	if d.Profile == "daily" {
+		count = 0
+		if d.ID == "daily-okx-sum" {
+			count = 2
+		}
+	} else if d.Profile == "large" {
 		count = 64
 	}
 	for i := 0; i < count; i++ {
@@ -114,6 +138,12 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		invest, amount, direction, target := "USDT", "200", "buy_low", "60000"
 		if i%2 == 1 {
 			invest, amount, direction, target = "BTC", "0.003", "sell_high", "72000"
+		}
+		if d.Profile == "daily" {
+			amount = "120"
+			if invest == "BTC" {
+				amount = "0.002"
+			}
 		}
 		// Principal remains held during the reported payout stages, then a
 		// successful 28-day rollover settles and reinvests it. These strikes
@@ -141,7 +171,7 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 		}
 		r.DualPositions = append(r.DualPositions, p)
 	}
-	if d.Portfolio != "edge-cases" && !at.Before(DemoEventTime(anchor, -10)) && at.Before(DemoEventTime(anchor, -3)) {
+	if d.ID == "daily-classic" && !at.Before(DemoEventTime(anchor, -10)) && at.Before(DemoEventTime(anchor, -3)) {
 		subscribed, expiry := DemoEventTime(anchor, -10), DemoEventTime(anchor, -3)
 		r.DualPositions = append(r.DualPositions, adapters.DualPosition{PositionKey: "historical-dual-settlement", BaseAssetSymbol: adapters.OptionalText("BTC"), QuoteAssetSymbol: adapters.OptionalText("USDT"), PrincipalAssetSymbol: "USDT", Principal: "200", Direction: adapters.OptionalText("buy_low"), TargetPrice: adapters.OptionalText("10000"), SubscribedAt: &subscribed, ExpiryAt: &expiry, AnnualizedRate: adapters.OptionalText("0.02"), RateKind: adapters.OptionalText("apr"), Status: "active"})
 	}

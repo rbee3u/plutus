@@ -363,11 +363,12 @@ Android browser-chrome coverage.
 
 ## History windows and tables
 
-Both History views default to the rolling last three days. They expose 1D, 3D,
-1W, 2W, 1M, 3M, and 6M shortcuts and populated From / To controls in the
-Portfolio timezone. Days and weeks are fixed elapsed durations; months and years
-preserve local calendar time and clamp to the target month's last day. Reject
-ambiguous or nonexistent manually entered wall times explicitly.
+History views and Capital views default to the rolling last week (seven days).
+They expose 1D, 3D, 1W, 2W, 1M, 3M, and 6M shortcuts and populated From / To
+controls in the Portfolio timezone. Days and weeks are fixed elapsed durations;
+months and years preserve local calendar time and clamp to the target month's
+last day. Reject ambiguous or nonexistent manually entered wall times
+explicitly.
 
 Shortcuts apply immediately; manual edits apply together through Apply. Anchor a
 relative window once for all reads while browsing: pagination, detail expansion,

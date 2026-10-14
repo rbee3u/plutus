@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { getHistoryWindow, keys, listValuationPoints } from "@/api";
 import type { HistoryWindow } from "@/api";
-import { historyGranularity, type HistoryPreset } from "@/features/history/timeWindow";
+import { historyGranularity, type HistoryPreset } from "@/shared/lib/timeWindow";
 import { HoldingsTree } from "@/features/holdings/display";
 import { iconSize } from "@/shared/icons/iconSizes";
 import {
@@ -37,7 +37,7 @@ export function OverviewPage() {
   const overview = query.data;
   const timezone = overview?.context.timezone;
 
-  const [selectedRange, setSelectedRange] = useState<HistoryPreset>("3D");
+  const [selectedRange, setSelectedRange] = useState<HistoryPreset>("1W");
 
   const rangeWindow = usePortfolioQuery<HistoryWindow>({
     key: (userId, portfolioId) => keys.overviewChartWindow(userId, portfolioId, selectedRange),

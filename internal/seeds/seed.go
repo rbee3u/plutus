@@ -53,11 +53,7 @@ func BuildAt(now time.Time) (Seed, error) {
 		ids = append(ids, p.ID)
 		for _, d := range definitions {
 			if portfolioID(d.Portfolio) == p.ID {
-				created := p.CreatedAt
-				if d.Portfolio == "large" {
-					created = anchor.Add(-2 * time.Hour)
-				}
-				b.demoIdentity(d, anchor, created)
+				b.demoIdentity(d, anchor, p.CreatedAt)
 			}
 		}
 		loc, err := time.LoadLocation(p.Timezone)
@@ -70,7 +66,7 @@ func BuildAt(now time.Time) (Seed, error) {
 			}
 			var reports []reportSpec
 			for _, d := range definitions {
-				if portfolioID(d.Portfolio) != p.ID || (d.Portfolio == "large" && at.Before(anchor.Add(-2*time.Hour))) {
+				if portfolioID(d.Portfolio) != p.ID {
 					continue
 				}
 				batch, err := fake.DemoBatch(d, anchor, at.Add(2*time.Second), fake.DemoAccounts(d, anchor, at))
@@ -110,8 +106,8 @@ func (b *builder) demoIdentity(d fake.DemoIdentity, anchor, created time.Time) {
 	if d.Profile == "missing" || d.Profile == "unconfigured" || d.Profile == "normalization" {
 		collected = time.Time{}
 	}
-	if d.Connection == "disabled" || d.Connection == "invalid" || d.Profile == "stale" || d.Profile == "stale_incomplete" || d.Profile == "unsupported" {
-		collected = anchor.AddDate(0, 0, -2).Add(-2 * time.Hour)
+	if d.Connection == "disabled" || d.Connection == "invalid" || d.Profile == "stale" || d.Profile == "stale_incomplete" || d.Profile == "unsupported" || d.Profile == "archived" {
+		collected = anchor.AddDate(0, 0, -2).Add(-time.Minute + 2*time.Second)
 	}
 	b.identity(&identitySpec{ID: identityID(d.ID), Portfolio: portfolioID(d.Portfolio), Platform: d.Platform, Structure: d.Structure, MarginMode: d.Mode, Name: d.Name, APIKey: key, Connection: d.Connection, Archived: d.Profile == "archived", ArchivedAt: anchor.AddDate(0, 0, -2), CreatedAt: created, CollectedAt: collected})
 	accounts := map[adapters.AccountType]uuid.UUID{}

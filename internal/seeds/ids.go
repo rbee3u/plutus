@@ -47,8 +47,7 @@ func namedID(key string) uuid.UUID {
 }
 
 func portfolioID(name string) uuid.UUID {
-	// The pagination scenario joins the healthy Portfolio near the anchor.
-	if name == "default" || name == "large" {
+	if name == "default" {
 		return PortfolioAliceMain
 	}
 	return namedID("portfolio/" + name)
