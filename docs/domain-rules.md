@@ -309,8 +309,12 @@ values make affected Value Changes incomplete and name the flow.
 
 Periods use the Portfolio's IANA timezone; ISO weeks start Monday. Each period
 covers `[start, end)`, so a point at its end belongs to the next period. Without
-points its close is unknown with an explicit reason. A larger period missing
-days is incomplete even if it has a closing point.
+points its close is unknown with an explicit reason. Calendar lists start with
+the period containing the Portfolio's first retained Valuation Point; earlier
+periods are omitted, and an empty history has no calendar rows. Missing periods
+after that start remain explicit, including gaps before the query's first point.
+A larger period missing days is incomplete even if it has a closing point; days
+before the first retained point's local day are outside its coverage.
 
 Calendar Value Change selects the latest point strictly before each period
 boundary. Custom ranges select the latest point at or before each requested

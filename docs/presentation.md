@@ -397,10 +397,12 @@ Period closes columns are Period, Close (USD), Change, Issues. Raw Valuation
 Points columns are Evaluated at, Total (USD), Change, Issues. Value Changes
 columns are Period, Value change (USD), Close (USD), Flows, Issues.
 Point-to-point and period-to-period movements display directional amounts and
-percentages. Flows consolidates external capital and boundary movements into
-compact descriptors. Across History tables, Issues stays quiet (`—`) during
-complete intervals, opening badges and diagnostics for missing periods,
-incomplete data, or stale Accounts.
+percentages. Change retains the known-total difference when either endpoint
+Valuation Point is incomplete, with an Incomplete badge identifying the previous
+and/or current point. An absent endpoint displays `—`. Flows consolidates
+external capital and boundary movements into compact descriptors. Across History
+tables, Issues stays quiet (`—`) during complete intervals, opening badges and
+diagnostics for missing periods, incomplete data, or stale Accounts.
 
 All three tables default to 20 rows with 10/20/50 choices, Previous / Next, and
 row counts. Range changes reset pagination and open point details; period

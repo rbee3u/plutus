@@ -56,6 +56,31 @@ func periodsBetween(kind string, from, to time.Time, loc *time.Location) ([]peri
 	return out, nil
 }
 
+// Calendar rows start with the first retained Point's whole local period.
+// Use Portfolio history rather than the query's first Point to preserve gaps.
+func (s *Service) periodsInHistory(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]period, time.Time, error) {
+	loc := p.location()
+	if !to.After(from) || periodStart(kind, from.In(loc)).IsZero() {
+		return nil, time.Time{}, ErrInvalid
+	}
+	first, err := mysql.Queries(ctx, s.db).GetFirstValuationPoint(ctx, sqlcgen.GetFirstValuationPointParams{PortfolioID: p.ID[:]})
+	if errors.Is(err, sql.ErrNoRows) {
+		return []period{}, time.Time{}, nil
+	}
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	start := periodStart(kind, first.EvaluatedAt.In(loc))
+	if !to.After(start) {
+		return []period{}, first.EvaluatedAt, nil
+	}
+	if from.Before(start) {
+		from = start
+	}
+	periods, err := periodsBetween(kind, from, to, loc)
+	return periods, first.EvaluatedAt, err
+}
+
 func periodStart(kind string, t time.Time) time.Time {
 	loc := t.Location()
 	switch kind {
@@ -111,7 +136,7 @@ func periodLabel(kind string, start time.Time) string {
 func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]PeriodClose, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]PeriodClose, error) {
 		loc := p.location()
-		periods, err := periodsBetween(kind, from, to, loc)
+		periods, historyStart, err := s.periodsInHistory(ctx, p, kind, from, to)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +186,11 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 					item.Reasons = append(item.Reasons, "point_incomplete")
 				}
 				if kind != PeriodDay {
-					if missing := daysWithoutPoints(seen, per.start, per.end, loc); len(missing) > 0 {
+					coverageStart := per.start
+					if coverageStart.Before(historyStart) {
+						coverageStart = historyStart
+					}
+					if missing := daysWithoutPoints(seen, coverageStart, per.end, loc); len(missing) > 0 {
 						item.Completeness = valuation.CompletenessIncomplete
 						item.Reasons = append(item.Reasons, "days_without_points: "+joinDays(missing))
 					}
@@ -176,8 +205,7 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 // ValueChanges returns the Value Change of every period of kind between two instants.
 func (s *Service) ValueChanges(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]ValueChange, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]ValueChange, error) {
-		loc := p.location()
-		periods, err := periodsBetween(kind, from, to, loc)
+		periods, _, err := s.periodsInHistory(ctx, p, kind, from, to)
 		if err != nil {
 			return nil, err
 		}

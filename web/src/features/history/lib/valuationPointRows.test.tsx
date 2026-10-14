@@ -12,6 +12,75 @@ import {
 import type { PeriodClose, ValuationPointSummary } from "@/api";
 
 describe("valuationPointRows", () => {
+  it.each([
+    ["complete", "complete", []],
+    ["incomplete", "complete", ["previous"]],
+    ["complete", "incomplete", ["current"]],
+    ["incomplete", "incomplete", ["previous", "current"]],
+  ] as const)(
+    "qualifies changes from %s to %s points in both tables",
+    (before, after, affected) => {
+      const previous: ValuationPointSummary = {
+        cycleId: "before",
+        valuationRevision: "before:1",
+        calculationVersion: 1,
+        detailState: "expired",
+        evaluatedAt: "2026-10-11T10:58:00Z",
+        totalUsd: "10439.46",
+        completeness: before,
+        accountCount: 10,
+        staleAccountCount: 0,
+        incompleteAccountCount: before === "incomplete" ? 8 : 0,
+        boundaryContributionUsd: "0",
+        boundaryWithdrawalUsd: "0",
+      };
+      const current: ValuationPointSummary = {
+        ...previous,
+        cycleId: "after",
+        evaluatedAt: "2026-10-12T10:59:00Z",
+        totalUsd: "71999.75",
+        completeness: after,
+        incompleteAccountCount: after === "incomplete" ? 8 : 0,
+      };
+      const close = (point: ValuationPointSummary): PeriodClose => ({
+        periodKind: "day",
+        label: point.evaluatedAt.slice(0, 10),
+        periodStart: point.evaluatedAt,
+        periodEnd: point.evaluatedAt,
+        completeness: point.completeness,
+        reasons: [],
+        point,
+      });
+      const rows = [
+        rawPointRow(current, previous, "UTC", "", () => {}),
+        periodCloseRow(close(current), close(previous), "UTC"),
+      ];
+      for (const row of rows) {
+        const html = renderToStaticMarkup(<>{row.change}</>);
+        expect(html).toContain("+$61,560.29");
+        expect(html).toContain("(+589.69%)");
+        expect(html.includes("Incomplete")).toBe(affected.length > 0);
+        for (const endpoint of ["previous", "current"] as const) {
+          expect(html.includes(`The ${endpoint} Valuation Point is incomplete.`)).toBe(
+            affected.some((value) => value === endpoint),
+          );
+        }
+      }
+      // A missing predecessor is not a zero or an incomplete numeric difference.
+      const first = renderToStaticMarkup(
+        <>{rawPointRow(current, undefined, "UTC", "", () => {}).change}</>,
+      );
+      expect(first).toContain("—");
+      expect(first).not.toContain("Incomplete");
+      const gap = { ...close(previous), point: undefined, completeness: "incomplete" as const };
+      const missing = renderToStaticMarkup(
+        <>{periodCloseRow(close(current), gap, "UTC").change}</>,
+      );
+      expect(missing).toContain("—");
+      expect(missing).not.toContain("+$");
+    },
+  );
+
   it("defines 4 high-signal columns for Period Closes", () => {
     expect(PERIOD_CLOSE_COLUMNS.map((col) => col.header)).toEqual([
       "Period",

@@ -58,6 +58,40 @@ export function deltaChangeCell(
   );
 }
 
+function pointChangeCell(
+  current: ValuationPointSummary | null | undefined,
+  previous: ValuationPointSummary | null | undefined,
+) {
+  const delta = deltaChangeCell(current?.totalUsd, previous?.totalUsd);
+  if (!current || !previous) return delta;
+
+  const reasons = [];
+  if (previous.completeness === "incomplete") {
+    reasons.push("The previous Valuation Point is incomplete.");
+  }
+  if (current.completeness === "incomplete") {
+    reasons.push("The current Valuation Point is incomplete.");
+  }
+  if (reasons.length === 0) return delta;
+
+  return (
+    <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+      {delta}
+      <HoverDetails
+        name={`Incomplete change: ${reasons.join(" ")}`}
+        label={<Badge tone="warn">Incomplete</Badge>}
+      >
+        <div className={shared.metaStack}>
+          {reasons.map((reason) => (
+            <p key={reason}>{reason}</p>
+          ))}
+          <p>The difference uses known totals and may include recovered missing value.</p>
+        </div>
+      </HoverDetails>
+    </span>
+  );
+}
+
 export function periodCloseIssuesCell(item: PeriodClose) {
   const isHealthy = item.completeness === "complete" && item.reasons.length === 0;
   if (isHealthy) {
@@ -122,7 +156,7 @@ export function periodCloseRow(
     ) : (
       <span className={shared.cellMeta}>no point</span>
     ),
-    change: deltaChangeCell(item.point?.totalUsd, previousItem?.point?.totalUsd),
+    change: pointChangeCell(item.point, previousItem?.point),
     issues: periodCloseIssuesCell(item),
   };
 }
@@ -186,7 +220,7 @@ export function rawPointRow(
     id: item.cycleId,
     evaluatedAt,
     totalUsd: <NumericText>{formatAmount(item.totalUsd)}</NumericText>,
-    change: deltaChangeCell(item.totalUsd, previousItem?.totalUsd),
+    change: pointChangeCell(item, previousItem),
     issues: rawPointIssuesCell(item),
     actions: (
       <span className={shared.rowActions}>
