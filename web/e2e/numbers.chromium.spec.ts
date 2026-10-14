@@ -117,13 +117,13 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
   const total = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Total Net Worth", exact: true }) });
-  await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.0₅444");
+  await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.05444");
   await expect(total).toContainText("0.00000444");
   await expect(
     page
       .getByRole("button", { name: "Collapse OKX", exact: true })
       .locator('span[aria-hidden="true"]'),
-  ).toHaveText("$0.0₅444");
+  ).toHaveText("$0.05444");
   await expect(
     page.getByRole("button", { name: "Collapse OKX", exact: true }),
   ).toHaveAccessibleDescription("$0.00000444");
@@ -149,7 +149,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
       })
       .toBe(true);
     await total.scrollIntoViewIfNeeded();
-    await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.0₅444");
+    await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.05444");
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
@@ -165,7 +165,7 @@ test("Capital Flow editing and submission retain source precision while display 
   const row = page
     .getByRole("row")
     .filter({ has: page.getByRole("button", { name: /^Actions for flow/i }) });
-  await expect(row).toContainText("0.0₈444457");
+  await expect(row).toContainText("0.08444457");
   await expect(row).toContainText("1.01");
   await row.getByRole("button", { name: /^Actions for flow/i }).click();
   await page.getByRole("menuitem", { name: "Edit", exact: true }).click();

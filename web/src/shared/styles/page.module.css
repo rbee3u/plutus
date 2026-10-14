@@ -593,6 +593,18 @@
   border: 0;
 }
 
+.zeroCount {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.72em;
+  font-weight: var(--weight-medium);
+  line-height: 0;
+  vertical-align: baseline;
+  position: relative;
+  bottom: -0.22em;
+  margin-inline: 0.04em;
+}
+
 @media (max-width: 900px) {
   .wide {
     padding: var(--space-xl) var(--space-lg);
