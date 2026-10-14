@@ -105,9 +105,10 @@ export function HistoryPager({
 }) {
   return (
     <div className={shared.headingRow} aria-label={`${label} pagination`}>
-      <label className={`${shared.field} ${styles.toolbarField}`}>
-        <span>Rows per page</span>
+      <label className={styles.periodSwitcher}>
+        <span className={styles.periodLabel}>Rows per page</span>
         <Select
+          className={styles.periodSelect}
           aria-label={`${label} rows per page`}
           value={pager.limit}
           disabled={busy}

@@ -70,7 +70,7 @@ describe("valuationPointRows", () => {
       reasons: ["missing accounts"],
     };
     const html = renderToStaticMarkup(periodCloseIssuesCell(item));
-    expect(html).toContain("incomplete");
+    expect(html).toContain("Incomplete");
   });
 
   it("renders rawPointIssuesCell quietly when healthy", () => {

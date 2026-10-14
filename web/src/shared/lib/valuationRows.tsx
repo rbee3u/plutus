@@ -2,7 +2,7 @@ import type { AccountValuation, BoundaryEvent, Platform } from "@/api";
 import { formatAmount, formatCount, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { platformLabel } from "@/shared/lib/usePlatforms";
-import { Badge, DirectionBadge, StatusBadge } from "@/shared/ui/Badge";
+import { Badge, CompletenessBadge, DirectionBadge, StatusBadge } from "@/shared/ui/Badge";
 import type { DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -145,11 +145,11 @@ export function groupAccountValuations(
 
 export const BOUNDARY_COLUMNS = [
   { key: "evaluatedAt", header: "Evaluated at", nowrap: true, width: "170px" },
-  { key: "account", header: "Account" },
-  { key: "platform", header: "Platform", width: "140px" },
+  { key: "platform", header: "Platform", nowrap: true, width: "130px" },
+  { key: "account", header: "Account", width: "160px" },
   { key: "direction", header: "Direction", width: "110px" },
   { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
-  { key: "method", header: "Method", width: "110px" },
+  { key: "method", header: "Method", width: "120px" },
 ];
 
 export function boundaryEventRow(
@@ -158,25 +158,29 @@ export function boundaryEventRow(
   platforms?: Platform[],
 ): DataRow {
   const dec = parseDecimal(item.valueUsd);
-  const isContribution = item.direction.toLowerCase() === "contribution";
   return {
     id: `${item.cycleId}-${item.accountId}-${item.direction}`,
-    evaluatedAt: formatInstant(item.evaluatedAt, timezone),
+    evaluatedAt: (
+      <span className={styles.tabularDate}>{formatInstant(item.evaluatedAt, timezone)}</span>
+    ),
+    platform: item.platform ? platformLabel(platforms, item.platform) : "—",
     account: (
       <span className={styles.cellStack}>
-        <span>{item.accountName}</span>
+        <strong>{item.accountName}</strong>
         {item.identityName ? <span className={styles.cellMeta}>{item.identityName}</span> : null}
       </span>
     ),
-    platform: item.platform ? platformLabel(platforms, item.platform) : "—",
     direction: <DirectionBadge value={item.direction} />,
     valueUsd: dec ? (
-      <span className={isContribution ? styles.pnlPositive : styles.pnlNegative}>
-        <NumericText>{`${isContribution ? "+" : "-"}$${formatAmount(dec.abs().toFixed())}`}</NumericText>
-      </span>
+      <NumericText>{formatAmount(dec.abs().toFixed())}</NumericText>
     ) : (
       <span className={styles.muted}>—</span>
     ),
-    method: <StatusBadge value={item.method} />,
+    method: (
+      <span className={styles.statusGroup}>
+        <StatusBadge value={item.method} />
+        <CompletenessBadge value={item.completeness} />
+      </span>
+    ),
   };
 }

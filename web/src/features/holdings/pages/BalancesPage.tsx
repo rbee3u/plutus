@@ -5,12 +5,12 @@ import { keys, listBalances } from "@/api";
 import type { BalanceList } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { formatAmount } from "@/shared/lib/amount";
-import { NO_POINT } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { BALANCE_COLUMNS, balanceRow } from "../components/BalancesTable";
@@ -107,13 +107,30 @@ export function BalancesPage() {
             ),
         }))}
         empty={
-          query.isPending
-            ? "Loading balances."
-            : query.isError && !data
-              ? "Balances could not be loaded. Retry above."
-              : !data?.context.cycleId
-                ? NO_POINT
-                : "No balances match these filters at the latest Valuation Point."
+          query.isPending ? (
+            <TableEmptyState title="Loading balances..." />
+          ) : query.isError && !data ? (
+            <TableEmptyState
+              title="Balances could not be loaded"
+              help="Check the notice above to retry the request."
+            />
+          ) : !data?.context.cycleId ? (
+            <TableEmptyState
+              title="No Valuation Point yet"
+              help="Run a Collection Cycle to create the first point."
+            />
+          ) : filters.hasFilters ? (
+            <TableEmptyState
+              title="No balances match these filters"
+              help="Try adjusting your platform, identity, or asset filter."
+            />
+          ) : (
+            <TableEmptyState
+              title="No balances recorded yet"
+              help="Balances will appear automatically once platform identities are connected and sync."
+              action={addManualButton}
+            />
+          )
         }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
@@ -122,9 +139,7 @@ export function BalancesPage() {
         target={manualTarget}
         onClose={() => setManualTarget(null)}
       />
-      {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} empty="No issues for these balances." />
-      ) : null}
+      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
     </section>
   );
 }

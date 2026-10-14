@@ -26,23 +26,10 @@ import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { Codes } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { capitalize } from "@/shared/lib/text";
+import { StatusBadge } from "@/shared/ui/Badge";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
-
-function renderConnectionStatus(status: string) {
-  const label = capitalize(status);
-  if (status === "enabled") {
-    return <span className={styles.statusEnabled}>{label}</span>;
-  }
-  if (status === "invalid") {
-    return <span className={styles.statusInvalid}>{label}</span>;
-  }
-  if (status === "disabled") {
-    return <span className={styles.statusDisabled}>{label}</span>;
-  }
-  return <span className={shared.cellMeta}>{label}</span>;
-}
 
 export function IdentitiesPage() {
   const { portfolioId = "" } = useParams();
@@ -82,13 +69,13 @@ export function IdentitiesPage() {
       ) : null}
       <QueryRecovery query={identities} fallback="Identities could not be loaded." />
       <QueryRecovery query={platforms} fallback="Platforms could not be loaded." />
-      <div className={styles.tableToolbar}>
-        <div className={styles.summaryBar}>
-          <span className={styles.summaryCount}>
+      <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
+        <div className={shared.summaryBar}>
+          <span className={shared.summaryCount}>
             {formatCount(visible.length)} {visible.length === 1 ? "identity" : "identities"}
           </span>
         </div>
-        <div className={styles.toolbarActions}>
+        <div className={`${shared.toolbarActions} ${styles.toolbarActions}`}>
           {archivedCount > 0 ? (
             <SegmentedControl
               size="sm"
@@ -198,7 +185,7 @@ export function IdentitiesPage() {
               <span
                 style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-xs)" }}
               >
-                {renderConnectionStatus(connection.status)}
+                <StatusBadge value={connection.status} />
                 {connection.lastErrorClass ? (
                   connection.lastErrorDetail ? (
                     <HoverDetails
@@ -263,13 +250,29 @@ export function IdentitiesPage() {
           };
         })}
         empty={
-          identities.isPending
-            ? "Loading identities."
-            : activeView === "archived"
-              ? "No archived identities."
-              : items.length > 0
-                ? "No active identities."
-                : "No identities configured in this portfolio."
+          identities.isPending ? (
+            <TableEmptyState title="Loading identities..." />
+          ) : activeView === "archived" ? (
+            <TableEmptyState
+              title="No archived identities"
+              help="Identities that you archive will appear here."
+            />
+          ) : items.length > 0 ? (
+            <TableEmptyState
+              title="No active identities"
+              help="All configured identities are currently archived."
+            />
+          ) : (
+            <TableEmptyState
+              title="No identities configured yet"
+              help="Connect an exchange API key to begin collecting balances and positions."
+              action={
+                <ActionButton tone="primary" onClick={() => open({ kind: "create" })}>
+                  <Plus size={iconSize.sm} aria-hidden="true" /> New identity
+                </ActionButton>
+              }
+            />
+          )
         }
       />
       <IdentityDialog
@@ -300,7 +303,15 @@ export function IdentitiesPage() {
             This connection is currently enabled. Disable the connection before archiving.
           </p>
         ) : null}
-        <div className={shared.actions}>
+        <div className={shared.dialogActions}>
+          <ActionButton
+            type="button"
+            tone="ghost"
+            disabled={actions.busyId !== null}
+            onClick={() => actions.setArchiveTarget(null)}
+          >
+            Cancel
+          </ActionButton>
           <ActionButton
             type="button"
             tone="danger"
@@ -310,14 +321,6 @@ export function IdentitiesPage() {
             onClick={() => void actions.confirmArchive()}
           >
             Archive
-          </ActionButton>
-          <ActionButton
-            type="button"
-            tone="ghost"
-            disabled={actions.busyId !== null}
-            onClick={() => actions.setArchiveTarget(null)}
-          >
-            Cancel
           </ActionButton>
         </div>
       </Dialog>

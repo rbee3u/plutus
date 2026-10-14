@@ -49,8 +49,16 @@
 }
 
 .conditionActive {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-strong);
   font-weight: var(--weight-medium);
+}
+
+.conditionSep {
+  margin-inline-end: 2px;
+  color: var(--accent-strong);
+  opacity: 0.6;
 }
 
 .iconWrapper {

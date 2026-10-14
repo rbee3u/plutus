@@ -37,7 +37,7 @@ export function HistoricalPositions({
           query.isPending ? "Loading historical positions." : "No positions in this Account Report."
         }
       />
-      {data ? <IssuesPanel issues={data.issues} empty="No position issues." /> : null}
+      {data ? <IssuesPanel issues={data.issues} /> : null}
     </>
   );
 }

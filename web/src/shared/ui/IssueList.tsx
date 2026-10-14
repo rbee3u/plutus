@@ -15,10 +15,10 @@ export function Codes({ values }: { values: string[] }) {
   );
 }
 
-/** A page section for issues: a heading and list when there are any, one quiet line otherwise. */
-export function IssuesPanel({ issues, empty }: { issues: Issue[]; empty: string }) {
+/** A page section for issues: a heading and list when there are any, hidden when empty. */
+export function IssuesPanel({ issues }: { issues: Issue[] }) {
   if (issues.length === 0) {
-    return <p className={styles.muted}>{empty}</p>;
+    return null;
   }
   return (
     <section className={styles.panel}>

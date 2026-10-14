@@ -170,12 +170,12 @@ export function CreateIdentityForm({
           ))}
         </div>
       </fieldset>
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
-          Create identity
-        </ActionButton>
+      <div className={shared.dialogActions}>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
+        </ActionButton>
+        <ActionButton type="submit" tone="primary" disabled={busy}>
+          Create identity
         </ActionButton>
       </div>
     </form>

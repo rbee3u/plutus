@@ -17,6 +17,7 @@ import { Codes, IssueList } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { useCursorPages } from "../hooks/useCursorPages";
 import manageStyles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -78,13 +79,9 @@ export function CyclesPanel({
         rows={items.map((item) => cycleRow(item, timezone, selectedId, onSelect))}
         empty={
           query.isPending ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading collection cycles...</p>
-            </div>
+            <TableEmptyState title="Loading collection cycles..." />
           ) : (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No collection cycles recorded yet</p>
-            </div>
+            <TableEmptyState title="No collection cycles recorded yet" />
           )
         }
       />

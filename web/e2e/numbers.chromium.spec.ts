@@ -164,10 +164,11 @@ test("Capital Flow editing and submission retain source precision while display 
   await page.goto(`/p/${portfolioId}/capital`);
   const row = page
     .getByRole("row")
-    .filter({ has: page.getByRole("button", { name: "Edit", exact: true }) });
+    .filter({ has: page.getByRole("button", { name: /^Actions for flow/i }) });
   await expect(row).toContainText("0.0₈444457");
   await expect(row).toContainText("1.01");
-  await row.getByRole("button", { name: "Edit", exact: true }).click();
+  await row.getByRole("button", { name: /^Actions for flow/i }).click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Quantity", exact: true })).toHaveValue(
     flow.quantity,
   );

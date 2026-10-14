@@ -110,14 +110,6 @@ function Bootstrap() {
   return <RootRedirect />;
 }
 
-function LegacySecurityRedirect() {
-  const { portfolioId = "" } = useParams();
-  if (portfolioId) {
-    storePreference(LAST_PORTFOLIO_KEY, portfolioId);
-  }
-  return <Navigate to="/account/security" replace />;
-}
-
 function PortfolioRedirect({ to }: { to: string }) {
   const { portfolioId = "" } = useParams();
   return <Navigate to={`/p/${portfolioId}/${to}`} replace />;

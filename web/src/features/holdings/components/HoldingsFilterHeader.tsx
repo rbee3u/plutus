@@ -15,9 +15,7 @@ export function HoldingsFilterHeader({
   const search = filterKey === "symbol";
   const value = search ? filters.symbolDraft : filters.values[filterKey];
   const display = !value
-    ? search
-      ? ""
-      : "All"
+    ? ""
     : search
       ? value
       : filterKey === "platform"

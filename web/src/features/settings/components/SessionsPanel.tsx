@@ -3,6 +3,7 @@ import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { formatInstant } from "@/shared/lib/datetime";
 import { clientSummary } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { Badge } from "@/shared/ui/Badge";
 import { useSessions } from "../hooks/useSessions";
 import styles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -44,9 +45,7 @@ export function SessionsPanel({ onError: setError }: { onError: (error: string |
                 <strong>
                   {session.userAgent ? clientSummary(session.userAgent) : "Unknown client"}
                 </strong>
-                {session.current ? (
-                  <span className={styles.currentSessionBadge}>Current</span>
-                ) : null}
+                {session.current ? <Badge tone="good">Current</Badge> : null}
               </div>
               <p className={shared.muted} title={session.userAgent ?? undefined}>
                 Signed in {formatInstant(session.createdAt)} · last seen{" "}

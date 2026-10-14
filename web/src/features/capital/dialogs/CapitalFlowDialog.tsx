@@ -33,16 +33,18 @@ interface FlowFields {
   note: string;
 }
 
-const emptyForm: FlowFields = {
-  direction: "contribution",
-  canonicalAssetSymbol: "",
-  quantity: "",
-  valueUsd: "",
-  effectiveAt: "",
-  accountId: "",
-  pricingPlatform: "",
-  note: "",
-};
+function newEmptyForm(): FlowFields {
+  return {
+    direction: "contribution",
+    canonicalAssetSymbol: "",
+    quantity: "",
+    valueUsd: "",
+    effectiveAt: toDatetimeLocalValue(new Date().toISOString()),
+    accountId: "",
+    pricingPlatform: "",
+    note: "",
+  };
+}
 
 function formFromFlow(item: CapitalFlow): FlowFields {
   return {
@@ -108,7 +110,7 @@ function FlowForm({
   const write = useAuthenticatedWrite();
   const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<FlowFields>(() =>
-    request.mode === "edit" ? formFromFlow(request.item) : emptyForm,
+    request.mode === "edit" ? formFromFlow(request.item) : newEmptyForm(),
   );
   const [baseline, setBaseline] = useState(request.mode === "edit" ? request.item : null);
   const [needsReload, setNeedsReload] = useState(false);
@@ -268,12 +270,21 @@ function FlowForm({
       </div>
       <div className={styles.formRow2}>
         <label className={shared.field}>
-          <span>Canonical Asset</span>
+          <span>Asset</span>
           <TextInput
             disabled={busy}
             value={form.canonicalAssetSymbol}
             placeholder="USDT"
-            onChange={(event) => set({ canonicalAssetSymbol: event.target.value })}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            autoFocus={request.mode === "create"}
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: "var(--weight-semibold)",
+              letterSpacing: "0.04em",
+            }}
+            onChange={(event) => set({ canonicalAssetSymbol: event.target.value.toUpperCase() })}
             required
           />
         </label>
@@ -284,6 +295,7 @@ function FlowForm({
             value={form.quantity}
             inputMode="decimal"
             placeholder="0.00"
+            style={{ fontFamily: "var(--font-mono)" }}
             onChange={(event) => set({ quantity: event.target.value })}
             required
           />
@@ -301,12 +313,13 @@ function FlowForm({
           />
         </label>
         <label className={shared.field}>
-          <span>Manual value (USD, optional)</span>
+          <span>Value (USD, optional)</span>
           <TextInput
             disabled={busy}
             value={form.valueUsd}
             inputMode="decimal"
-            placeholder="Leave empty for automatic valuation"
+            placeholder="Automatic valuation if empty"
+            style={{ fontFamily: "var(--font-mono)" }}
             onChange={(event) => set({ valueUsd: event.target.value })}
           />
         </label>
@@ -342,10 +355,7 @@ function FlowForm({
               </option>
             ))}
           </Select>
-          <span className={shared.muted}>
-            USD, USDT, and USDC use 1 USD. Other assets remain unknown without an eligible price
-            from this Platform.
-          </span>
+          <span className={shared.muted}>Used to price assets when no account is specified.</span>
         </label>
       ) : null}
       <label className={shared.field}>
@@ -359,12 +369,12 @@ function FlowForm({
           onChange={(event) => set({ note: event.target.value })}
         />
       </label>
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy || needsReload}>
-          {editingId ? "Save flow" : "Record flow"}
-        </ActionButton>
+      <div className={shared.dialogActions}>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
+        </ActionButton>
+        <ActionButton type="submit" tone="primary" disabled={busy || needsReload}>
+          {editingId ? "Save flow" : "Record flow"}
         </ActionButton>
       </div>
     </form>

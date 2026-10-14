@@ -16,6 +16,7 @@ import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
+import shared from "@/shared/styles/page.module.css";
 import styles from "./ManualEditor.module.css";
 
 class ManualConflictError extends Error {}
@@ -204,7 +205,19 @@ function ManualForm({
     </p>
   ) : null;
   const actions = (
-    <div className={styles.cardActions}>
+    <div className={shared.dialogActions}>
+      {!saved ? (
+        <span className={shared.dialogActionLead}>
+          <ActionButton type="button" tone="ghost" disabled={busy} onClick={() => void reload()}>
+            Reload current records
+          </ActionButton>
+        </span>
+      ) : null}
+      {!saved && onClose ? (
+        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+          Cancel
+        </ActionButton>
+      ) : null}
       {saved ? (
         onClose ? (
           <ActionButton type="button" tone="primary" onClick={onClose}>
@@ -220,16 +233,6 @@ function ManualForm({
           {action === "delete" ? "Delete record" : "Save quantity"}
         </ActionButton>
       )}
-      {!saved && onClose ? (
-        <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-          Cancel
-        </ActionButton>
-      ) : null}
-      {!saved ? (
-        <ActionButton type="button" tone="ghost" disabled={busy} onClick={() => void reload()}>
-          Reload current records
-        </ActionButton>
-      ) : null}
     </div>
   );
 

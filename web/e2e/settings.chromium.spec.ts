@@ -96,11 +96,19 @@ test("Security preserves revoke refresh, password rejection and successful sign-
     return route.fallback();
   });
   await page.goto("/account/security");
+  const newPassword = page.getByLabel("New password", { exact: true });
+  await expect(newPassword).toHaveAccessibleDescription("8+ chars A–Z a–z 0–9 / symbol");
+  expect(await page.getByRole("main").ariaSnapshot()).toContain("8+ chars A–Z a–z 0–9 / symbol");
   await page.getByRole("button", { name: "Revoke", exact: true }).click();
   await expect(page.getByRole("button", { name: "Revoke", exact: true })).toHaveCount(0);
   expect(reads).toBe(2);
   await page.getByLabel(/^Current password/).fill("OldPassword=123");
   await page.getByLabel("New password", { exact: true }).fill("NewPassword=123");
+  await page.getByLabel(/^Current password/).fill("NewPassword=123");
+  await expect(newPassword).toHaveAccessibleDescription(
+    "8+ chars A–Z a–z 0–9 / symbol New password must differ from current password",
+  );
+  await page.getByLabel(/^Current password/).fill("OldPassword=123");
   await page.getByLabel("Confirm new password", { exact: true }).fill("NewPassword=123");
   await page.getByRole("button", { name: "Change password", exact: true }).click();
   await expect(page.getByText("Current password is incorrect.", { exact: true })).toBeVisible();

@@ -2,13 +2,13 @@ import { useParams } from "react-router";
 import { keys, listPositions } from "@/api";
 import type { PositionList } from "@/api";
 import { formatAmount } from "@/shared/lib/amount";
-import { NO_POINT } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
@@ -34,14 +34,6 @@ export function PositionsPage() {
       }),
   });
   const data = query.data;
-  let empty = "No positions match these filters at the latest Valuation Point.";
-  if (query.isPending) {
-    empty = "Loading positions.";
-  } else if (query.isError && !data) {
-    empty = "Positions could not be loaded. Retry above.";
-  } else if (!data?.context.cycleId) {
-    empty = NO_POINT;
-  }
 
   return (
     <section className={shared.wide}>
@@ -87,12 +79,34 @@ export function PositionsPage() {
           identityName: item.identityName,
           accountName: item.accountName,
         }))}
-        empty={empty}
+        empty={
+          query.isPending ? (
+            <TableEmptyState title="Loading positions..." />
+          ) : query.isError && !data ? (
+            <TableEmptyState
+              title="Positions could not be loaded"
+              help="Check the notice above to retry the request."
+            />
+          ) : !data?.context.cycleId ? (
+            <TableEmptyState
+              title="No Valuation Point yet"
+              help="Run a Collection Cycle to create the first point."
+            />
+          ) : filters.hasFilters ? (
+            <TableEmptyState
+              title="No positions match these filters"
+              help="Try adjusting your platform, identity, or symbol filter."
+            />
+          ) : (
+            <TableEmptyState
+              title="No positions recorded yet"
+              help="Futures positions will appear automatically once platform identities are connected and sync."
+            />
+          )
+        }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} empty="No issues for these positions." />
-      ) : null}
+      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
     </section>
   );
 }

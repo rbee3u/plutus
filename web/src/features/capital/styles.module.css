@@ -18,3 +18,90 @@
   padding: 0 var(--space-sm);
   border-radius: var(--radius-md);
 }
+
+@media (pointer: coarse) {
+  .compactDateInput {
+    height: 44px;
+    min-height: 44px;
+    font-size: 16px;
+    padding: 0 var(--space-md);
+  }
+}
+
+@media (max-width: 640px) {
+  .tableToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+  }
+
+  .summaryBar {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .toolbarActions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: var(--space-sm);
+  }
+
+  .filterForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+
+  .filterField {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2xs);
+    min-width: 0;
+  }
+
+  .filterField .compactDateInput {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .primaryAction {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.flowSummaryCard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.flowSummaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.flowSummaryLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.flowSummaryValue {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-mono);
+  color: var(--ink);
+}

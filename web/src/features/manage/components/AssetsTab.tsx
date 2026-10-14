@@ -19,6 +19,8 @@ import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { TextArea, TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { StatusBadge } from "@/shared/ui/Badge";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import {
@@ -83,7 +85,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             headerContent: (
               <TableFilterHeader
                 label="Platform"
-                display={platform ? filters.platformName : "All"}
+                display={platform ? filters.platformName : ""}
                 active={Boolean(platform)}
                 open={filters.open === "platform"}
                 type="select"
@@ -162,21 +164,19 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
             ) : (
               <strong style={{ letterSpacing: "0.02em" }}>{item.symbol}</strong>
             ),
-            status: item.excluded ? (
-              <span
-                className={manageStyles.statusExcluded}
+            status: (
+              <StatusBadge
+                value={item.excluded ? "excluded" : "active"}
                 title={
-                  item.exclusionReason
-                    ? `${item.exclusionReason}${item.excludedAt ? ` (${formatInstant(item.excludedAt, timezone)})` : ""}`
-                    : item.excludedAt
-                      ? `Excluded at ${formatInstant(item.excludedAt, timezone)}`
-                      : "Excluded"
+                  item.excluded
+                    ? item.exclusionReason
+                      ? `${item.exclusionReason}${item.excludedAt ? ` (${formatInstant(item.excludedAt, timezone)})` : ""}`
+                      : item.excludedAt
+                        ? `Excluded at ${formatInstant(item.excludedAt, timezone)}`
+                        : "Excluded"
+                    : undefined
                 }
-              >
-                Excluded
-              </span>
-            ) : (
-              <span className={shared.cellMeta}>Active</span>
+              />
             ),
             lastObservedAt: (
               <span className={shared.tabularDate}>
@@ -202,26 +202,17 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
         })}
         empty={
           query.isPending ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading assets...</p>
-            </div>
+            <TableEmptyState title="Loading assets..." />
           ) : q || platform || status ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No assets match these filters</p>
-              <p className={shared.emptyStateHelp}>
-                Try adjusting your search query, platform, or status filter.
-              </p>
-              <ActionButton type="button" tone="secondary" onClick={filters.reset}>
-                Clear filters
-              </ActionButton>
-            </div>
+            <TableEmptyState
+              title="No assets match these filters"
+              help="Try adjusting your search query, platform, or status filter."
+            />
           ) : (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No assets recorded yet</p>
-              <p className={shared.emptyStateHelp}>
-                Assets will appear automatically once platform identities are connected and sync.
-              </p>
-            </div>
+            <TableEmptyState
+              title="No assets recorded yet"
+              help="Assets will appear automatically once platform identities are connected and sync."
+            />
           )
         }
       />
@@ -389,12 +380,12 @@ function ExclusionForm({
           />
         </div>
       ) : null}
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
-          {excluding ? "Exclude asset" : "Restore asset"}
-        </ActionButton>
+      <div className={shared.dialogActions}>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
+        </ActionButton>
+        <ActionButton type="submit" tone="primary" disabled={busy}>
+          {excluding ? "Exclude asset" : "Restore asset"}
         </ActionButton>
       </div>
     </form>
@@ -525,18 +516,16 @@ function MappingForm({
           </ActionButton>
         </p>
       ) : null}
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy || isUnchanged}>
-          Save mapping
-        </ActionButton>
+      <div className={shared.dialogActions}>
+        {isUnchanged ? (
+          <span className={`${shared.cellMeta} ${shared.dialogActionLead}`}>Unchanged</span>
+        ) : null}
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
         </ActionButton>
-        {isUnchanged ? (
-          <span className={shared.cellMeta} style={{ marginInlineStart: "auto" }}>
-            Unchanged
-          </span>
-        ) : null}
+        <ActionButton type="submit" tone="primary" disabled={busy || isUnchanged}>
+          Save mapping
+        </ActionButton>
       </div>
     </form>
   );

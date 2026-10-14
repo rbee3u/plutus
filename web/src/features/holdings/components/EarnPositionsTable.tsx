@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
 import type { EarnAmount, EarnPositionRow, EarnRate, EarnReward } from "@/api";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatDecimal, formatPercent } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { capitalize } from "@/shared/lib/text";
 import { DataTable } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
+import { StatusBadge } from "@/shared/ui/Badge";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "./HoldingsFilterHeader";
 import type { HoldingsFilters } from "../hooks/useHoldingsFilters";
 import { ObservedCell } from "./ObservedCell";
@@ -70,7 +72,7 @@ export function EarnPositionsTable({
   timezone?: string;
   showAccount?: boolean;
   loading?: boolean;
-  empty?: string;
+  empty?: ReactNode;
   filters?: HoldingsFilters;
 }) {
   const platforms = usePlatforms();
@@ -226,7 +228,7 @@ export function EarnPositionsTable({
             </HoverDetails>
           ),
           subscribed: formatInstant(item.subscribedAt, timezone),
-          status: item.status ? capitalize(item.status) : "—",
+          status: item.status ? <StatusBadge value={item.status} /> : "—",
           issues: (
             <ObservedCell
               observedAt={item.reportObservedAt}
@@ -239,7 +241,16 @@ export function EarnPositionsTable({
         };
       })}
       empty={
-        loading ? "Loading Earn positions." : (empty ?? "No Earn positions match this selection.")
+        loading ? (
+          <TableEmptyState title="Loading Earn positions..." />
+        ) : (
+          (empty ?? (
+            <TableEmptyState
+              title="No Earn positions recorded yet"
+              help="Earn products will appear automatically once platform identities are connected and sync."
+            />
+          ))
+        )
       }
     />
   );

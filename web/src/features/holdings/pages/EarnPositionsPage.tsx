@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import { useParams } from "react-router";
 import { keys, listEarnPositions } from "@/api";
 import type { EarnPositionList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { EarnPositionsTable } from "../components/EarnPositionsTable";
 import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
 import { HoldingsSummary } from "../components/HoldingsSummary";
@@ -27,13 +29,35 @@ export function EarnPositionsPage() {
       }),
   });
   const data = query.data;
-  let empty: string | undefined;
+  let empty: ReactNode | undefined;
   if (query.isError && !data) {
-    empty = "Earn positions could not be loaded. Retry above.";
+    empty = (
+      <TableEmptyState
+        title="Earn positions could not be loaded"
+        help="Check the notice above to retry the request."
+      />
+    );
   } else if (!data?.context.cycleId) {
-    empty = "No Collection Cycle has produced a Valuation Point yet.";
+    empty = (
+      <TableEmptyState
+        title="No Valuation Point yet"
+        help="No Collection Cycle has produced a Valuation Point yet."
+      />
+    );
   } else if (!data.detailsComplete) {
-    empty = "Some Earn Accounts have no compatible successful report. See Issues below.";
+    empty = (
+      <TableEmptyState
+        title="Some Earn Accounts have no compatible report"
+        help="Detailed Earn positions could not be resolved. See Issues below."
+      />
+    );
+  } else if (filters.hasFilters) {
+    empty = (
+      <TableEmptyState
+        title="No Earn positions match these filters"
+        help="Try adjusting your platform, identity, or asset filter."
+      />
+    );
   }
   return (
     <section className={shared.wide}>
@@ -61,9 +85,7 @@ export function EarnPositionsPage() {
         filters={filters}
         page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
       />
-      {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} empty="No issues for these Earn positions." />
-      ) : null}
+      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
     </section>
   );
 }

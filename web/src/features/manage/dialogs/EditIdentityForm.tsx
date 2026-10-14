@@ -102,12 +102,12 @@ export function EditIdentityForm({
             ))}
         </div>
       </fieldset>
-      <div className={shared.actions}>
-        <ActionButton type="submit" tone="primary" disabled={busy}>
-          Save identity
-        </ActionButton>
+      <div className={shared.dialogActions}>
         <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
           Cancel
+        </ActionButton>
+        <ActionButton type="submit" tone="primary" disabled={busy}>
+          Save identity
         </ActionButton>
       </div>
     </form>

@@ -1,5 +1,6 @@
 import { tabFromSearch, tabHref } from "@/shared/navigation/tabs";
 import { CATALOG_TABS, ACTIVITY_TABS } from "@/features/manage/navigation";
+import { CAPITAL_TABS } from "@/features/capital/navigation";
 import {
   Activity,
   BarChart3,
@@ -85,7 +86,10 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupId: "portfolio",
     groupLabel: "Portfolio",
     defaultPathSuffix: "/capital",
-    subviews: [{ label: "Capital", pathSuffix: "/capital" }],
+    subviews: [
+      { label: "Capital Flows", pathSuffix: "/capital", tab: CAPITAL_TABS[0] },
+      { label: "Boundary Events", pathSuffix: "/capital", tab: CAPITAL_TABS[1] },
+    ],
   },
   {
     id: "identities",

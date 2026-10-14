@@ -249,12 +249,7 @@ export function OverviewPage() {
             </div>
           )}
           <HoldingsTree portfolioId={portfolioId} tree={overview.tree} />
-          {point ? (
-            <IssuesPanel
-              issues={overview.tree.issues}
-              empty="No issues at the latest Valuation Point."
-            />
-          ) : null}
+          {point ? <IssuesPanel issues={overview.tree.issues} /> : null}
         </>
       ) : null}
     </section>

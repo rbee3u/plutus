@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Completeness, Freshness } from "@/api";
+import { capitalize } from "@/shared/lib/text";
 import styles from "@/shared/styles/page.module.css";
 
 export type BadgeTone = "neutral" | "good" | "warn" | "bad" | "info";
@@ -38,7 +39,8 @@ export function CompletenessBadge({
   if (!value || (silentWhenHealthy && value === "complete")) {
     return null;
   }
-  return <Badge tone={value === "complete" ? "good" : "warn"}>{value}</Badge>;
+  const label = value === "complete" ? "Complete" : "Incomplete";
+  return <Badge tone={value === "complete" ? "good" : "warn"}>{label}</Badge>;
 }
 
 export function FreshnessBadge({
@@ -51,7 +53,8 @@ export function FreshnessBadge({
   if (!value || (silentWhenHealthy && value === "fresh")) {
     return null;
   }
-  return <Badge tone={value === "fresh" ? "good" : "warn"}>{value}</Badge>;
+  const label = value === "fresh" ? "Fresh" : "Stale";
+  return <Badge tone={value === "fresh" ? "good" : "warn"}>{label}</Badge>;
 }
 
 export function DirectionBadge({ value }: { value: string }) {
@@ -63,40 +66,60 @@ export function DirectionBadge({ value }: { value: string }) {
   );
 }
 
+const STATUS_CUSTOM_LABELS: Record<string, string> = {
+  ok: "OK",
+};
+
 const STATUS_TONES: Record<string, BadgeTone> = {
   enabled: "good",
   succeeded: "good",
   complete: "good",
   fresh: "good",
   reported: "good",
+  holding: "good",
+  active: "neutral",
+  settled: "neutral",
   failed: "bad",
   invalid: "bad",
   stale: "warn",
   incomplete: "warn",
   disabled: "warn",
   missing: "warn",
+  excluded: "warn",
+  redeeming: "warn",
+  unbonding: "warn",
   queued: "info",
   running: "info",
   calculated: "info",
   manual: "info",
-  excluded: "warn",
+  bonding: "info",
+  pending: "info",
 };
 
-/** Badge for a server status word; unknown words render neutrally. */
+/** Badge for a server status word; formats to Title Case; unknown words render neutrally. */
 export function StatusBadge({
   value,
+  title,
   silentWhenHealthy = false,
 }: {
   value: string | null | undefined;
+  title?: string;
   silentWhenHealthy?: boolean;
 }) {
   if (
     !value ||
-    (silentWhenHealthy && (value === "succeeded" || value === "complete" || value === "fresh"))
+    (silentWhenHealthy &&
+      (value === "succeeded" || value === "complete" || value === "fresh" || value === "active"))
   ) {
     return null;
   }
-  return <Badge tone={STATUS_TONES[value] ?? "neutral"}>{value}</Badge>;
+  const normalized = value.toLowerCase();
+  const label = STATUS_CUSTOM_LABELS[normalized] ?? capitalize(value);
+  return (
+    <Badge tone={STATUS_TONES[normalized] ?? "neutral"} title={title}>
+      {label}
+    </Badge>
+  );
 }
 
 /** Renders warning/error badges only when an account has an anomaly (silent when healthy). */
@@ -127,17 +150,17 @@ export function AccountHealthBadges({
     <span className={styles.statusGroup}>
       {isFailed ? (
         <Badge tone="bad" title={errorTitle || "collection failed"}>
-          failed
+          Failed
         </Badge>
       ) : null}
       {isStale ? (
         <Badge tone="warn" title={errorTitle || "stale: report carried forward"}>
-          stale
+          Stale
         </Badge>
       ) : null}
       {isIncomplete ? (
         <Badge tone="warn" title="incomplete: some assets omitted or unpriced">
-          incomplete
+          Incomplete
         </Badge>
       ) : null}
     </span>

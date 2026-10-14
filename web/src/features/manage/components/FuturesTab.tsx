@@ -5,9 +5,9 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
-import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
@@ -73,7 +73,7 @@ export function FuturesTab({ filters, timezone }: TabProps) {
             headerContent: (
               <TableFilterHeader
                 label="Platform"
-                display={platform ? filters.platformName : "All"}
+                display={platform ? filters.platformName : ""}
                 active={Boolean(platform)}
                 open={filters.open === "platform"}
                 type="select"
@@ -150,27 +150,17 @@ export function FuturesTab({ filters, timezone }: TabProps) {
         })}
         empty={
           query.isPending ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading futures...</p>
-            </div>
+            <TableEmptyState title="Loading futures..." />
           ) : q || platform ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No futures contracts match these filters</p>
-              <p className={shared.emptyStateHelp}>
-                Try adjusting your search query or platform filter.
-              </p>
-              <ActionButton type="button" tone="secondary" onClick={filters.reset}>
-                Clear filters
-              </ActionButton>
-            </div>
+            <TableEmptyState
+              title="No futures contracts match these filters"
+              help="Try adjusting your search query or platform filter."
+            />
           ) : (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No futures contracts recorded yet</p>
-              <p className={shared.emptyStateHelp}>
-                Market contracts will appear automatically once platform identities are connected
-                and sync.
-              </p>
-            </div>
+            <TableEmptyState
+              title="No futures contracts recorded yet"
+              help="Market contracts will appear automatically once platform identities are connected and sync."
+            />
           )
         }
       />

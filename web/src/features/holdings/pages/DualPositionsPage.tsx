@@ -3,6 +3,7 @@ import { keys, listDualPositions } from "@/api";
 import type { DualPositionList } from "@/api";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { DualPositionsTable } from "../components/DualPositionsTable";
 import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
 import { HoldingsSummary } from "../components/HoldingsSummary";
@@ -46,11 +47,27 @@ export function DualPositionsPage() {
         showAccount
         loading={query.isPending}
         filters={filters}
+        empty={
+          query.isError && !data ? (
+            <TableEmptyState
+              title="Dual Investment subscriptions could not be loaded"
+              help="Check the notice above to retry the request."
+            />
+          ) : !data?.context.cycleId ? (
+            <TableEmptyState
+              title="No Valuation Point yet"
+              help="Run a Collection Cycle to create the first point."
+            />
+          ) : filters.hasFilters ? (
+            <TableEmptyState
+              title="No Dual Investment subscriptions match these filters"
+              help="Try adjusting your platform, identity, or pair filter."
+            />
+          ) : undefined
+        }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} empty="No issues for these dual positions." />
-      ) : null}
+      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
     </section>
   );
 }

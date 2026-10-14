@@ -178,8 +178,9 @@ export function TableFilterHeader({
         }}
       >
         <span className={styles.label}>{label}</span>
-        {display ? (
-          <span className={`${styles.condition} ${active ? styles.conditionActive : ""}`}>
+        {active && display ? (
+          <span className={styles.conditionActive}>
+            <span className={styles.conditionSep}>:</span>
             {display}
           </span>
         ) : null}

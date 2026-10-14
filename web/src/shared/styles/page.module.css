@@ -61,6 +61,7 @@
 }
 
 .field > span,
+.field > label,
 .field legend {
   color: var(--ink-secondary);
   font-size: var(--text-xs);
@@ -78,6 +79,21 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--line-soft);
+}
+
+.dialogActionLead {
+  margin-inline-end: auto;
 }
 
 /* Filter fields keep a control width; a wide viewport gains room, not wider inputs. */
@@ -203,6 +219,41 @@
   height: 260px;
 }
 
+/* Table and List Toolbars */
+.tableToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.summaryBar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+}
+
+.summaryCount {
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  font-feature-settings: "tnum" 1;
+}
+
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
 /* Tables */
 /* Positioned descendants (visually hidden labels) stay inside the scrolling wrapper, not the page. */
 .tableWrap {
@@ -308,10 +359,15 @@
 }
 
 .emptyStateHelp {
-  margin: 0 0 var(--space-md);
+  margin: 0;
   font-size: var(--text-xs);
   color: var(--muted);
   line-height: var(--line-height-sm);
+  text-align: center;
+}
+
+.emptyStateAction {
+  margin-top: var(--space-xs);
 }
 
 .tabularDate {

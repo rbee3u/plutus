@@ -590,7 +590,7 @@ test("unknown and stale valuations keep exceptions inside Account details", asyn
   await expect(spot).not.toContainText(/failed|stale|incomplete/);
   await spot.click();
   const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
-  await expect(tree.getByText("incomplete", { exact: true })).toBeVisible();
+  await expect(tree.getByText("Incomplete", { exact: true })).toBeVisible();
   await expect(
     tree.getByText("No compatible successful Account Report; value is unknown."),
   ).toBeVisible();
@@ -608,7 +608,7 @@ test("unknown and stale valuations keep exceptions inside Account details", asyn
     page.getByRole("button", { name: "Collapse balances and positions for Spot" }),
   ).toHaveText("Spot$100.00");
   await page.getByRole("button", { name: "Collapse Owner", exact: true }).click();
-  await expect(tree.getByText("failed", { exact: true })).toHaveCount(0);
+  await expect(tree.getByText("Failed", { exact: true })).toHaveCount(0);
   await expect(
     page.getByText("Named omission remains visible while Accounts are folded.").first(),
   ).toBeVisible();

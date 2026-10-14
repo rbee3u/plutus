@@ -1,6 +1,6 @@
 import { useSessionActions } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 import { AlertCircle, Check } from "lucide-react";
 import { problemError, problemMessage, putAuthPassword } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
@@ -14,6 +14,10 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
   const write = useAuthenticatedWrite();
   const { endSession } = useSessionActions();
   const currentPasswordRef = useRef<HTMLInputElement>(null);
+  const currentPasswordId = useId();
+  const newPasswordId = useId();
+  const confirmPasswordId = useId();
+  const passwordRequirementsId = useId();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -94,9 +98,12 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
     >
       <h2>Change password</h2>
 
-      <label className={shared.field}>
-        <span>Current password</span>
+      <div className={shared.field}>
+        <label htmlFor={currentPasswordId}>
+          <span>Current password</span>
+        </label>
         <PasswordInput
+          id={currentPasswordId}
           ref={currentPasswordRef}
           value={currentPassword}
           autoComplete="current-password"
@@ -120,18 +127,21 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
             {currentPasswordError}
           </span>
         ) : null}
-      </label>
+      </div>
 
-      <label className={shared.field}>
-        <span>New password</span>
+      <div className={shared.field}>
+        <label htmlFor={newPasswordId}>
+          <span>New password</span>
+        </label>
         <PasswordInput
+          id={newPasswordId}
           value={newPassword}
           autoComplete="new-password"
           minLength={8}
           maxLength={128}
           onChange={(event) => setNewPassword(event.target.value)}
           aria-invalid={isSameAsCurrent}
-          aria-describedby={isSameAsCurrent ? "new-password-error" : undefined}
+          aria-describedby={`${passwordRequirementsId}${isSameAsCurrent ? " new-password-error" : ""}`}
           required
         />
         {isSameAsCurrent ? (
@@ -144,37 +154,40 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
             New password must differ from current password
           </span>
         ) : null}
-        <div className={passwordStyles.rulesRow} aria-label="Password requirements">
+        <div className={passwordStyles.rulesRow} id={passwordRequirementsId}>
           <span
             className={`${passwordStyles.ruleBadge} ${isLengthValid ? passwordStyles.ruleBadgeMet : ""}`}
           >
-            {isLengthValid ? <Check size={iconSize.xs} /> : null}
+            {isLengthValid ? <Check size={iconSize.xs} aria-hidden="true" /> : null}
             8+ chars
           </span>
           <span
             className={`${passwordStyles.ruleBadge} ${hasUppercase ? passwordStyles.ruleBadgeMet : ""}`}
           >
-            {hasUppercase ? <Check size={iconSize.xs} /> : null}
+            {hasUppercase ? <Check size={iconSize.xs} aria-hidden="true" /> : null}
             A–Z
           </span>
           <span
             className={`${passwordStyles.ruleBadge} ${hasLowercase ? passwordStyles.ruleBadgeMet : ""}`}
           >
-            {hasLowercase ? <Check size={iconSize.xs} /> : null}
+            {hasLowercase ? <Check size={iconSize.xs} aria-hidden="true" /> : null}
             a–z
           </span>
           <span
             className={`${passwordStyles.ruleBadge} ${hasNumberOrSymbol ? passwordStyles.ruleBadgeMet : ""}`}
           >
-            {hasNumberOrSymbol ? <Check size={iconSize.xs} /> : null}
+            {hasNumberOrSymbol ? <Check size={iconSize.xs} aria-hidden="true" /> : null}
             0–9 / symbol
           </span>
         </div>
-      </label>
+      </div>
 
-      <label className={shared.field}>
-        <span>Confirm new password</span>
+      <div className={shared.field}>
+        <label htmlFor={confirmPasswordId}>
+          <span>Confirm new password</span>
+        </label>
         <PasswordInput
+          id={confirmPasswordId}
           value={confirmPassword}
           autoComplete="new-password"
           onChange={(event) => setConfirmPassword(event.target.value)}
@@ -192,7 +205,7 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
             Passwords do not match
           </span>
         ) : null}
-      </label>
+      </div>
 
       <div className={shared.actions}>
         <ActionButton type="submit" tone="primary" disabled={!canSubmit}>

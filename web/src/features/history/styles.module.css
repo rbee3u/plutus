@@ -7,10 +7,6 @@
   gap: var(--space-sm);
 }
 
-.toolbarField {
-  width: min(200px, 100%);
-}
-
 .historyToolbar {
   display: flex;
   flex-direction: row;
@@ -77,20 +73,6 @@
   white-space: nowrap;
 }
 
-.historyMetaNotice {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-xs);
-}
-
-.bullet {
-  color: var(--faint);
-}
-
 .detailPanel {
   display: grid;
   gap: var(--space-lg);
@@ -110,6 +92,7 @@
   font-size: var(--text-xs);
   color: var(--muted);
   font-weight: var(--weight-medium);
+  white-space: nowrap;
 }
 
 .periodSelect {

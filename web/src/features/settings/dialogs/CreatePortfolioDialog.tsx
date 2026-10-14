@@ -80,10 +80,7 @@ export function CreatePortfolioDialog({
             required
           />
         </label>
-        <div className={pageStyles.actions}>
-          <ActionButton type="submit" tone="primary" disabled={busy}>
-            Create
-          </ActionButton>
+        <div className={pageStyles.dialogActions}>
           <ActionButton
             type="button"
             tone="ghost"
@@ -94,6 +91,9 @@ export function CreatePortfolioDialog({
             }}
           >
             Cancel
+          </ActionButton>
+          <ActionButton type="submit" tone="primary" disabled={busy}>
+            Create
           </ActionButton>
         </div>
       </form>

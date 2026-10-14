@@ -58,26 +58,6 @@
   align-items: baseline;
 }
 
-.intervalDurationBadge {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--accent);
-  background: var(--accent-soft);
-  padding: 2px var(--space-xs);
-  border-radius: var(--radius-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.intervalDurationBadgeWarn {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--warning);
-  background: var(--warning-soft);
-  padding: 2px var(--space-xs);
-  border-radius: var(--radius-sm);
-  font-variant-numeric: tabular-nums;
-}
-
 .cadencePills {
   display: flex;
   flex-wrap: wrap;
@@ -145,19 +125,6 @@
 
 .tzSuggestionBtn:hover {
   color: var(--accent-strong);
-}
-
-
-.currentSessionBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px var(--space-xs);
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-semibold);
-  color: var(--success);
-  background: var(--success-soft);
-  border-radius: var(--radius-sm);
-  line-height: var(--line-height-xs);
 }
 
 .dangerCard {

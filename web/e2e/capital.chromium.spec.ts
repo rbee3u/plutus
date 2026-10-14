@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { CapitalFlow } from "../src/api";
+import type { BoundaryEvent, CapitalFlow } from "../src/api";
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
+
+test.use({ timezoneId: "UTC" });
 
 async function fixture(page: Page) {
   const session = sessionFixture();
@@ -56,15 +58,85 @@ async function fixture(page: Page) {
     return route.fallback();
   });
   await page.goto(`/p/${portfolioId}/capital`);
-  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Actions for flow/i })).toBeVisible();
   return state;
 }
+
+async function openFlowAction(page: Page, action: "Edit" | "Delete") {
+  await page
+    .getByRole("button", { name: /^Actions for flow/i })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+}
+
+for (const [tab, dateParam, endpoint] of [
+  ["flows", "from", "capital-flows"],
+  ["events", "eventsFrom", "boundary-events"],
+]) {
+  test(`${tab} clears nonexistent URL dates without querying a rolled-over day`, async ({
+    page,
+  }) => {
+    await fixture(page);
+    const portfolioId = sessionFixture().portfolios.items[0].id;
+    const request = page.waitForRequest((item) => {
+      const url = new URL(item.url());
+      return url.pathname.endsWith(`/${endpoint}`) && url.searchParams.has("to");
+    });
+    await page.goto(`/p/${portfolioId}/capital?tab=${tab}&${dateParam}=2026-02-30&to=2026-03-05`);
+    const query = new URL((await request).url()).searchParams;
+    await expect(page.getByLabel("From", { exact: true })).toHaveValue("");
+    await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-03-05");
+    await expect(page).toHaveURL(new RegExp(`tab=${tab}&to=2026-03-05$`));
+    expect(query.has("from")).toBe(false);
+  });
+}
+
+test("Boundary Events includes the selected day's final microsecond and excludes the next day", async ({
+  page,
+}) => {
+  const session = sessionFixture();
+  const portfolioId = session.portfolios.items[0].id;
+  const event: BoundaryEvent = {
+    cycleId: "00000000-0000-7000-8000-000000000004",
+    evaluatedAt: "2026-10-13T23:59:59.999999Z",
+    accountId: "00000000-0000-7000-8000-000000000005",
+    accountName: "Final microsecond",
+    direction: "contribution",
+    valueUsd: "1",
+    completeness: "complete",
+    method: "reported",
+  };
+  const nextDay = {
+    ...event,
+    cycleId: "00000000-0000-7000-8000-000000000006",
+    accountName: "Next day",
+    evaluatedAt: "2026-10-14T00:00:00.000000Z",
+  };
+  await mockApi(page, session, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
+    if (url.pathname.endsWith("/boundary-events")) {
+      const to = url.searchParams.get("to") ?? "";
+      // Six fractional digits retain the database's precision during this replay.
+      const upper = to.replace(/\.(\d{3})Z$/, (_match, fraction: string) => `.${fraction}000Z`);
+      return route.fulfill({
+        json: { items: [event, nextDay].filter((item) => item.evaluatedAt <= upper) },
+      });
+    }
+    return route.fallback();
+  });
+  await page.goto(`/p/${portfolioId}/capital?tab=events&from=2026-10-13&to=2026-10-13`);
+  const table = page.getByRole("table", { name: "Boundary Events in the window", exact: true });
+  await expect(table).toContainText("Final microsecond");
+  await expect(table).not.toContainText("Next day");
+});
 
 test("Capital Flow edits use the JSON baseline and explicitly reload conflicts", async ({
   page,
 }) => {
   const state = await fixture(page);
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await openFlowAction(page, "Edit");
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Quantity", { exact: true }).fill("150");
   state.flow = { ...state.flow!, quantity: "200", version: 2 };
@@ -89,7 +161,7 @@ test("Capital Flow edits use the JSON baseline and explicitly reload conflicts",
 
 test("Capital Flow deletion cannot silently advance the confirmed version", async ({ page }) => {
   const state = await fixture(page);
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await openFlowAction(page, "Delete");
   const dialog = page.getByRole("dialog", { name: "Delete Capital Flow" });
   await expect(dialog).toContainText("100 USD");
   state.flow = { ...state.flow!, quantity: "200", version: 2 };
@@ -97,7 +169,7 @@ test("Capital Flow deletion cannot silently advance the confirmed version", asyn
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("alert")).toContainText("Review the updated list");
   expect(state.flow?.quantity).toBe("200");
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await openFlowAction(page, "Delete");
   await expect(dialog).toContainText("200 USD");
   await dialog.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(dialog).toBeHidden();

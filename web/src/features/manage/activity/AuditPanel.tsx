@@ -11,6 +11,7 @@ import { DataTable } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { CursorPager } from "@/shared/ui/Pager";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { TableFilterHeader, type FilterOption } from "@/shared/ui/TableFilterHeader";
 import { safeJson } from "../lib/json";
 import { useCursorPages } from "../hooks/useCursorPages";
@@ -118,7 +119,7 @@ export function AuditPanel({
             headerContent: (
               <TableFilterHeader
                 label="Action"
-                display={action || "All"}
+                display={action}
                 active={Boolean(action)}
                 open={openFilter === "action"}
                 type="search"
@@ -145,7 +146,7 @@ export function AuditPanel({
                   resourceType
                     ? (RESOURCE_OPTIONS.find((opt) => opt.value === resourceType)?.label ??
                       capitalize(resourceType))
-                    : "All"
+                    : ""
                 }
                 active={Boolean(resourceType)}
                 open={openFilter === "resource"}
@@ -205,30 +206,14 @@ export function AuditPanel({
         }))}
         empty={
           query.isPending ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>Loading audit events...</p>
-            </div>
+            <TableEmptyState title="Loading audit events..." />
           ) : hasFilters ? (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No audit events match these filters</p>
-              <p className={shared.emptyStateHelp}>
-                Try adjusting your action search or resource filter.
-              </p>
-              <ActionButton
-                type="button"
-                tone="secondary"
-                onClick={() => {
-                  setActionDraft("");
-                  onFilter({ action: "", resourceType: "" });
-                }}
-              >
-                Clear filters
-              </ActionButton>
-            </div>
+            <TableEmptyState
+              title="No audit events match these filters"
+              help="Try adjusting your action search or resource filter."
+            />
           ) : (
-            <div className={shared.emptyState}>
-              <p className={shared.emptyStateTitle}>No audit events recorded yet</p>
-            </div>
+            <TableEmptyState title="No audit events recorded yet" />
           )
         }
       />
@@ -323,7 +308,7 @@ export function AuditPanel({
             {detail.before == null && detail.after == null && !detail.metadata ? (
               <p className={shared.muted}>No payload state recorded.</p>
             ) : null}
-            <div className={shared.actions}>
+            <div className={shared.dialogActions}>
               <ActionButton type="button" tone="ghost" onClick={() => setDetail(null)}>
                 Close
               </ActionButton>

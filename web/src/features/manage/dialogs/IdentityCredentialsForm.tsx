@@ -233,10 +233,7 @@ export function IdentityCredentialsForm({
             Remove stored credentials? Connection sync will be disabled until new credentials are
             provided.
           </span>
-          <div className={styles.credentialsConfirmButtons}>
-            <ActionButton type="button" tone="danger" disabled={busy} onClick={() => void remove()}>
-              Confirm removal
-            </ActionButton>
+          <div className={shared.dialogActions}>
             <ActionButton
               type="button"
               tone="ghost"
@@ -245,30 +242,31 @@ export function IdentityCredentialsForm({
             >
               Cancel
             </ActionButton>
+            <ActionButton type="button" tone="danger" disabled={busy} onClick={() => void remove()}>
+              Confirm removal
+            </ActionButton>
           </div>
         </div>
       ) : (
-        <div className={styles.credentialsFooter}>
+        <div className={shared.dialogActions}>
           {item.connection.credentialsConfigured ? (
-            <ActionButton
-              type="button"
-              tone="dangerQuiet"
-              disabled={busy}
-              onClick={() => setConfirmRemove(true)}
-            >
-              Remove credentials
-            </ActionButton>
-          ) : (
-            <span />
-          )}
-          <div className={styles.credentialsPrimaryActions}>
-            <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
-              Cancel
-            </ActionButton>
-            <ActionButton type="submit" tone="primary" disabled={busy}>
-              Store credentials
-            </ActionButton>
-          </div>
+            <span className={shared.dialogActionLead}>
+              <ActionButton
+                type="button"
+                tone="dangerQuiet"
+                disabled={busy}
+                onClick={() => setConfirmRemove(true)}
+              >
+                Remove credentials
+              </ActionButton>
+            </span>
+          ) : null}
+          <ActionButton type="button" tone="ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </ActionButton>
+          <ActionButton type="submit" tone="primary" disabled={busy}>
+            Store credentials
+          </ActionButton>
         </div>
       )}
     </form>

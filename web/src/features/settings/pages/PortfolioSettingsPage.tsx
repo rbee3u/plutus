@@ -10,6 +10,7 @@ import { portfolioEtag, usePortfolio } from "@/shared/lib/portfolio";
 import { storePreference } from "@/shared/lib/preferences";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { Badge } from "@/shared/ui/Badge";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import styles from "@/features/settings/styles.module.css";
@@ -246,7 +247,7 @@ function SettingsForms({
         return;
       }
       acceptPortfolio(result.data);
-      setSaveNotice("Settings saved.");
+      setSaveNotice("Portfolio settings saved.");
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
       noticeTimer.current = setTimeout(() => setSaveNotice(null), 3000);
       await onSaved();
@@ -320,7 +321,14 @@ function SettingsForms({
           </ActionButton>
         ) : null}
         <label className={shared.field}>
-          <span>Name</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Name</span>
+            {baseline.undeletable ? (
+              <span aria-hidden="true">
+                <Badge tone="neutral">Protected</Badge>
+              </span>
+            ) : null}
+          </div>
           <TextInput
             value={name}
             disabled={busy}
@@ -371,11 +379,9 @@ function SettingsForms({
           <div className={styles.fieldHeader}>
             <span>Collection cadence</span>
             {durationText ? (
-              <span className={styles.intervalDurationBadge}>{durationText}</span>
+              <Badge tone="info">{durationText}</Badge>
             ) : isIntervalBelowMin || isIntervalEmpty ? (
-              <span className={styles.intervalDurationBadgeWarn}>
-                Min {formatCount(MIN_INTERVAL)}s (15m)
-              </span>
+              <Badge tone="warn">Min {formatCount(MIN_INTERVAL)}s (15m)</Badge>
             ) : null}
           </div>
           <div className={styles.cadencePills} role="group" aria-label="Collection cadence presets">
@@ -452,14 +458,7 @@ function SettingsForms({
           ) : null}
         </div>
       </form>
-      {baseline.undeletable ? (
-        <div className={styles.settingsCard}>
-          <h2>Delete portfolio</h2>
-          <p className={shared.muted}>
-            This initial portfolio was created with the account and is protected from deletion.
-          </p>
-        </div>
-      ) : (
+      {!baseline.undeletable ? (
         <form
           className={`${shared.form} ${styles.dangerCard}`}
           onSubmit={(event) => void onDelete(event)}
@@ -502,7 +501,7 @@ function SettingsForms({
             </ActionButton>
           </div>
         </form>
-      )}
+      ) : null}
     </>
   );
 }

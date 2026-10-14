@@ -102,14 +102,6 @@
   line-height: var(--line-height-md);
 }
 
-.cardActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-top: var(--space-xs);
-}
-
 .statusSuccess {
   margin: 0;
   font-size: var(--text-xs);

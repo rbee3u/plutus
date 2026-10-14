@@ -103,7 +103,7 @@ describe("valueChangeRows", () => {
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(valueChangeIssuesCell(item));
-    expect(html).toContain("incomplete");
+    expect(html).toContain("Incomplete");
   });
 
   it("constructs full row data properly", () => {

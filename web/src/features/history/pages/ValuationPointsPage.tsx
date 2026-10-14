@@ -128,34 +128,25 @@ export function ValuationPointsPage() {
         <p className={shared.muted}>Loading Valuation Points.</p>
       ) : null}
       {series ? (
-        <>
-          <p className={styles.historyMetaNotice}>
-            <span>
-              {formatInstant(series.from, timezone)} – {formatInstant(series.to, timezone)}
-            </span>
-            <span className={styles.bullet}>·</span>
-            <span>{series.context.timezone}</span>
-            <span className={styles.bullet}>·</span>
-            <span>{series.granularity} granularity</span>
-          </p>
-          <ChartBlock
-            title="Portfolio value"
-            option={chartOption}
-            empty={
-              series.items.length === 0
-                ? NO_POINT
-                : "Only one Valuation Point in this window; the chart needs two."
-            }
-          />
-        </>
+        <ChartBlock
+          title="Portfolio value"
+          summary={`${formatInstant(series.from, timezone)} – ${formatInstant(series.to, timezone)} · ${series.granularity} granularity`}
+          option={chartOption}
+          empty={
+            series.items.length === 0
+              ? NO_POINT
+              : "Only one Valuation Point in this window; the chart needs two."
+          }
+        />
       ) : null}
       <section className={shared.panel}>
         <div className={shared.headingRow}>
           <h2>Period closes</h2>
-          <label className={`${shared.field} ${styles.toolbarField}`}>
-            <span>Period</span>
+          <label className={styles.periodSwitcher}>
+            <span className={styles.periodLabel}>Period</span>
             <Select
               value={periodKind}
+              className={styles.periodSelect}
               onChange={(event) => update({ periodKind: event.target.value, closesOffset: "" })}
             >
               {PERIOD_KINDS.map((option) => (
