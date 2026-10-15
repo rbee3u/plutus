@@ -72,7 +72,7 @@ func evaluateReport(input preparedReport) AccountValuation {
 	return item
 }
 
-// mappedCanonicalAssetSymbol omits the Canonical Asset Symbol when it equals the Asset Symbol.
+// mappedCanonicalAssetSymbol omits the canonical asset symbol when it equals the asset symbol.
 func mappedCanonicalAssetSymbol(assetSymbol, canonicalAssetSymbol string) string {
 	if canonicalAssetSymbol == assetSymbol {
 		return ""
@@ -91,7 +91,7 @@ type previousAccount struct {
 	value        *big.Rat
 }
 
-// buildPoint aggregates Account Valuations and snapshots Boundary Events.
+// buildPoint aggregates account valuations and snapshots boundary events.
 func buildPoint(portfolioID, cycleID uuid.UUID, evaluatedAt time.Time, accounts []AccountValuation, previous map[uuid.UUID]previousAccount) Point {
 	point := Point{PortfolioID: portfolioID, CycleID: cycleID, EvaluatedAt: evaluatedAt, AccountCount: len(accounts)}
 	total := decimal.Zero()
@@ -153,17 +153,18 @@ func AccountIssues(a *AccountValuation) []Issue {
 		if a.ErrorDetail != nil {
 			detail = "The account report failed this cycle (" + *a.ErrorDetail + "); the previous successful report is carried forward."
 		}
-		if a.ReportObservedAt != nil {
-			detail += " Observed at " + a.ReportObservedAt.UTC().Format(time.RFC3339) + "."
-		}
-		out = append(out, Issue{Code: "stale", AccountID: &id, AccountName: a.AccountName, Detail: detail})
+		out = append(out, Issue{Code: "stale", AccountID: &id, AccountName: a.AccountName, Detail: detail, ReportObservedAt: a.ReportObservedAt})
 	}
 	for _, o := range a.Omitted {
-		detail := fmt.Sprintf("%s %s was excluded from the account value (%s).", o.Equity, o.AssetSymbol, o.Reason)
-		if o.CanonicalAssetSymbol != "" {
-			detail = fmt.Sprintf("%s %s (mapped to %s) was excluded from the account value (%s).", o.Equity, o.AssetSymbol, o.CanonicalAssetSymbol, o.Reason)
+		reason := "its value could not be determined"
+		switch o.Reason {
+		case "no_price":
+			reason = "no price is available"
+		case "invalid_equity":
+			reason = "its equity is invalid"
 		}
-		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, AssetID: &o.AssetID, Symbol: o.AssetSymbol, Detail: detail})
+		detail := fmt.Sprintf("Omitted from the account value because %s.", reason)
+		out = append(out, Issue{Code: o.Reason, AccountID: &id, AccountName: a.AccountName, AssetID: &o.AssetID, Symbol: o.AssetSymbol, Detail: detail, OmittedBalance: &o})
 	}
 	return out
 }

@@ -1,5 +1,5 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 import { createCapitalFlow, getCapitalFlow, patchCapitalFlow, problemMessage } from "@/api";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import type { CapitalFlow } from "@/api";
@@ -75,7 +75,7 @@ export function CapitalFlowDialog({
   return (
     <Dialog
       open={request !== null}
-      title={request?.mode === "edit" ? "Edit Capital Flow" : "Record Capital Flow"}
+      title={request?.mode === "edit" ? "Edit capital flow" : "Record capital flow"}
       onClose={onClose}
     >
       {request ? (
@@ -108,6 +108,7 @@ function FlowForm({
   const { redirect } = useSessionScope();
   const platforms = usePlatforms();
   const write = useAuthenticatedWrite();
+  const valueId = useId();
   const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<FlowFields>(() =>
     request.mode === "edit" ? formFromFlow(request.item) : newEmptyForm(),
@@ -134,7 +135,7 @@ function FlowForm({
       }
       if (result.error || !result.data) {
         throw new Error(
-          problemMessage(result.error, "The latest Capital Flow could not be loaded."),
+          problemMessage(result.error, "The latest capital flow could not be loaded."),
         );
       }
       setForm(formFromFlow(result.data));
@@ -142,7 +143,7 @@ function FlowForm({
       setNeedsReload(false);
       setError(null);
     } catch (cause) {
-      setError(problemMessage(cause, "The latest Capital Flow could not be loaded."));
+      setError(problemMessage(cause, "The latest capital flow could not be loaded."));
     } finally {
       setBusy(false);
     }
@@ -207,10 +208,10 @@ function FlowForm({
           return;
         }
         if (result.error || !result.data) {
-          setError(problemMessage(result.error, "The Capital Flow could not be updated."));
+          setError(problemMessage(result.error, "The capital flow could not be updated."));
           return;
         }
-        await onSaved("Capital Flow updated.");
+        await onSaved("Capital flow updated.");
       } else {
         const result = await write(() =>
           createCapitalFlow({
@@ -231,14 +232,14 @@ function FlowForm({
           }),
         );
         if (result.error || !result.data) {
-          setError(problemMessage(result.error, "The Capital Flow could not be recorded."));
+          setError(problemMessage(result.error, "The capital flow could not be recorded."));
           return;
         }
         createKey.current = newIdempotencyKey();
-        await onSaved("Capital Flow recorded.");
+        await onSaved("Capital flow recorded.");
       }
     } catch (cause) {
-      setError(problemMessage(cause, "The Capital Flow could not be saved."));
+      setError(problemMessage(cause, "The capital flow could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -270,7 +271,7 @@ function FlowForm({
       </div>
       <div className={styles.formRow2}>
         <label className={shared.field}>
-          <span>Asset</span>
+          <span>Canonical asset</span>
           <TextInput
             disabled={busy}
             value={form.canonicalAssetSymbol}
@@ -312,17 +313,21 @@ function FlowForm({
             required
           />
         </label>
-        <label className={shared.field}>
-          <span>Value (USD, optional)</span>
+        <div className={shared.field}>
+          <label htmlFor={valueId}>Value (USD, optional)</label>
           <TextInput
+            id={valueId}
+            aria-describedby={`${valueId}-hint`}
             disabled={busy}
             value={form.valueUsd}
             inputMode="decimal"
-            placeholder="Automatic valuation if empty"
             style={{ fontFamily: "var(--font-mono)" }}
             onChange={(event) => set({ valueUsd: event.target.value })}
           />
-        </label>
+          <span id={`${valueId}-hint`} className={shared.muted}>
+            Calculated automatically when possible; otherwise unknown.
+          </span>
+        </div>
       </div>
       <label className={shared.field}>
         <span>Account (optional)</span>
@@ -342,13 +347,13 @@ function FlowForm({
       </label>
       {!form.accountId && !form.valueUsd ? (
         <label className={shared.field}>
-          <span>Pricing Platform (optional)</span>
+          <span>Pricing platform (optional)</span>
           <Select
             disabled={busy}
             value={form.pricingPlatform}
             onChange={(event) => set({ pricingPlatform: event.target.value })}
           >
-            <option value="">No Platform price</option>
+            <option value="">No platform price</option>
             {platforms.data?.items.map((platform) => (
               <option key={platform.id} value={platform.id}>
                 {platform.name}

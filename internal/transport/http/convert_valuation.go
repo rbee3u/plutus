@@ -51,21 +51,31 @@ func toAPIIssues(issues []valuation.Issue) []api.Issue {
 	out := make([]api.Issue, 0, len(issues))
 	for i := range issues {
 		item := &issues[i]
+		var omitted *api.OmittedBalance
+		if item.OmittedBalance != nil {
+			omitted = new(toAPIOmittedBalance(item.OmittedBalance))
+		}
 		out = append(out, api.Issue{
-			Code:        item.Code,
-			Detail:      item.Detail,
-			AccountId:   item.AccountID,
-			AccountName: nonEmptyStringPtr(item.AccountName),
-			Symbol:      nonEmptyStringPtr(item.Symbol),
+			Code:             item.Code,
+			Detail:           item.Detail,
+			AccountId:        item.AccountID,
+			AccountName:      nonEmptyStringPtr(item.AccountName),
+			Symbol:           nonEmptyStringPtr(item.Symbol),
+			OmittedBalance:   omitted,
+			ReportObservedAt: item.ReportObservedAt,
 		})
 	}
 	return out
 }
 
+func toAPIOmittedBalance(item *valuation.Omitted) api.OmittedBalance {
+	return api.OmittedBalance{AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: nonEmptyStringPtr(item.CanonicalAssetSymbol), Equity: item.Equity, Reason: item.Reason}
+}
+
 func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 	omitted := make([]api.OmittedBalance, 0, len(v.Omitted))
 	for i := range v.Omitted {
-		omitted = append(omitted, api.OmittedBalance{AssetSymbol: v.Omitted[i].AssetSymbol, CanonicalAssetSymbol: nonEmptyStringPtr(v.Omitted[i].CanonicalAssetSymbol), Equity: v.Omitted[i].Equity, Reason: v.Omitted[i].Reason})
+		omitted = append(omitted, toAPIOmittedBalance(&v.Omitted[i]))
 	}
 	return api.AccountValuation{
 		ReportId:               nonNilUUIDPtr(v.ReportID),

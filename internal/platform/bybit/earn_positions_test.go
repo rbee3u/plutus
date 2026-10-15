@@ -53,7 +53,7 @@ func TestEarnCatalogueMetadataIsOptionalAndSelected(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r.count(epEarnProduct.path) != 0 {
-		t.Fatal("catalogue read for unselected Earn")
+		t.Fatal("catalogue read for unselected earn")
 	}
 }
 

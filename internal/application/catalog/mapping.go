@@ -13,7 +13,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// NormalizeSymbol upper-cases and validates an Asset, Canonical Asset, or Futures Contract symbol.
+// NormalizeSymbol upper-cases and validates an asset, canonical asset, or futures contract symbol.
 func NormalizeSymbol(raw string) (string, error) {
 	symbol := norm.NFC.String(strings.ToUpper(norm.NFC.String(strings.TrimSpace(raw))))
 	if symbol == "" || len(symbol) > maxSymbol || !symbolPattern.MatchString(symbol) {
@@ -22,7 +22,7 @@ func NormalizeSymbol(raw string) (string, error) {
 	return symbol, nil
 }
 
-// CanonicalAssetSymbolFor derives the automatic Canonical Asset Symbol from an Asset
+// CanonicalAssetSymbolFor derives the automatic canonical asset symbol from an asset
 // symbol (ADR 0003).
 func CanonicalAssetSymbolFor(assetSymbol string) string {
 	upper := norm.NFC.String(strings.ToUpper(norm.NFC.String(strings.TrimSpace(assetSymbol))))
@@ -30,7 +30,7 @@ func CanonicalAssetSymbolFor(assetSymbol string) string {
 	return upper
 }
 
-// MappingInput overrides the Canonical Asset Symbol of an asset.
+// MappingInput overrides the canonical asset symbol of an asset.
 type MappingInput struct {
 	ActorUserID          uuid.UUID
 	PortfolioID          uuid.UUID

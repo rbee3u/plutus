@@ -15,7 +15,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// Create inserts an Identity and one Account per Account Type of its Account Structure.
+// Create inserts an identity and one account per account type of its account structure.
 func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateInput) (Identity, error) {
 	name, err := normalizeName(in.DisplayName)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *CreateI
 	return s.Get(ctx, portfolioID, id)
 }
 
-// Patch renames an Identity and updates Account selection when the version matches.
+// Patch renames an identity and updates account selection when the version matches.
 func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in PatchInput) (Identity, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
@@ -134,7 +134,7 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 			return Identity{}, err
 		}
 		if err := adapters.CheckCredentials(current.Platform, current.AccountStructure, selectedTypes(accounts), creds); err != nil {
-			return Identity{}, fmt.Errorf("%w: %w Disable the Connection to change Accounts before replacing credentials", ErrInvalid, err)
+			return Identity{}, fmt.Errorf("%w: %w Disable the connection to change accounts before replacing credentials", ErrInvalid, err)
 		}
 	}
 	now := s.now().UTC()
@@ -185,7 +185,7 @@ func (s *Service) Patch(ctx context.Context, portfolioID, id uuid.UUID, version 
 	return s.Get(ctx, portfolioID, id)
 }
 
-// Archive removes an Identity from the boundary. It is refused while the Connection is enabled.
+// Archive removes an identity from the boundary. It is refused while the connection is enabled.
 func (s *Service) Archive(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in ActionInput) (Identity, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {

@@ -112,7 +112,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 		},
 	}}).DialContext(t.Context(), "tcp", host)
 	if err != nil {
-		t.Fatalf("tls 1.3 dial: %v", err)
+		t.Fatalf("TLS 1.3 dial: %v", err)
 	}
 	if conn.(*tls.Conn).ConnectionState().Version != tls.VersionTLS13 {
 		t.Fatalf("negotiated 0x%x", conn.(*tls.Conn).ConnectionState().Version)

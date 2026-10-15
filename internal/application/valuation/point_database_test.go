@@ -157,13 +157,13 @@ func (f *pointFixture) rejectTrigger(table, operation string, id uuid.UUID) func
 func TestPointRollsBackEveryReportBatch(t *testing.T) {
 	f := newPointFixture(t)
 	cycleID := f.cycle(f.at, "succeeded")
-	// Six supported Accounts on each of 45 Identities cross the write boundary.
+	// Six supported accounts on each of 45 identities cross the write boundary.
 	for range 45 {
 		for _, account := range f.accounts("spot", "funding", "um_futures", "cm_futures", "earn", "dual_investment") {
 			f.report(cycleID, account, f.at, "succeeded", 2, "2")
 		}
 	}
-	// Reports are sorted by Identity and Account name. Select the last one so
+	// Reports are sorted by identity and account name. Select the last one so
 	// the failure follows at least one successful UPDATE batch.
 	accounts, err := f.service.valueCycle(f.ctx, f.portfolio, cycleID)
 	if err != nil {
@@ -321,7 +321,7 @@ func TestManualBalanceChangesCompareReportedRevisions(t *testing.T) {
 	}
 	for i, point := range points {
 		if (len(point.ManualBalanceChanges) == 1) != (i != 1) || len(point.Issues) != map[bool]int{true: 1, false: 0}[i != 1] {
-			t.Fatalf("light batch %d changed Manual decisions or loaded issues: %+v", i, point)
+			t.Fatalf("light batch %d changed manual decisions or loaded issues: %+v", i, point)
 		}
 	}
 	first, err := f.service.Get(f.ctx, f.portfolio, cycles[0])
@@ -344,8 +344,8 @@ func TestManualBalanceChangeStartsAtIdentityEntryAndUsesAdoptedSource(t *testing
 		f.exec("INSERT INTO manual_revisions(portfolio_id,account_id,revision_number,changed_at) VALUES(?,?,?,?)", f.portfolio[:], account[:], revision, f.at)
 		f.exec("INSERT INTO manual_revision_balances(portfolio_id,account_id,revision_number,asset_id,quantity,changed_at) VALUES(?,?,?,?,?,?)", f.portfolio[:], account[:], revision, asset[:], quantity, f.at)
 	}
-	// An existing Portfolio point with no representation of this Identity
-	// establishes an actual boundary entry, not a Manual adjustment.
+	// An existing portfolio point with no representation of this identity
+	// establishes an actual boundary entry, not a manual adjustment.
 	empty := f.cycle(f.at, "succeeded")
 	f.point(empty, f.at)
 	first := f.cycle(f.at.Add(time.Minute), "succeeded")
@@ -353,9 +353,9 @@ func TestManualBalanceChangeStartsAtIdentityEntryAndUsesAdoptedSource(t *testing
 	f.exec("INSERT INTO balances(portfolio_id,report_id,asset_id,equity) VALUES(?,?,?,10)", f.portfolio[:], report[:], asset[:])
 	point := f.point(first, f.at.Add(time.Minute))
 	if len(point.ManualBalanceChanges) != 0 || point.BoundaryContributionUSD != "10" {
-		t.Fatalf("Identity entry became a Manual adjustment: %+v", point)
+		t.Fatalf("Identity entry became a manual adjustment: %+v", point)
 	}
-	// Collection does not currently emit failed Manual Reports. This fixture
+	// Collection does not currently emit failed manual reports. This fixture
 	// still proves that reads use the adopted source rather than the current
 	// revision.
 	failed := f.cycle(f.at.Add(2*time.Minute), "succeeded")

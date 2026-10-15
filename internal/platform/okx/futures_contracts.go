@@ -19,19 +19,19 @@ type market string
 const (
 	marketSwap    market = "SWAP"    // perpetual swaps
 	marketFutures market = "FUTURES" // delivery futures
-	// instTypeMargin is a borrow-backed spot position, valued through the Balances instead.
+	// instTypeMargin is a borrow-backed spot position, valued through the balances instead.
 	instTypeMargin = "MARGIN"
 )
 
 // markets maps the instType of a position row to the market that lists its contract. OPTION and
-// EVENTS positions have no Plutus Futures Contract kind and are refused by name.
+// EVENTS positions have no Plutus futures contract kind and are refused by name.
 var markets = map[string]market{
 	string(marketSwap):    marketSwap,
 	string(marketFutures): marketFutures,
 }
 
 const (
-	// futuresContractTTL bounds how long a Futures Contract list is reused before a refresh.
+	// futuresContractTTL bounds how long a futures contract list is reused before a refresh.
 	futuresContractTTL = time.Hour
 	// futuresContractRetry keeps an unknown contract from refetching the list on every position.
 	futuresContractRetry = time.Minute
@@ -64,7 +64,7 @@ func newFuturesContractCache(now func() time.Time) *futuresContractCache {
 	return &futuresContractCache{now: now, sets: map[market]*futuresContractSet{}}
 }
 
-// lookup returns the Futures Contract of a position. A contract missing from a fresh list is a
+// lookup returns the futures contract of a position. A contract missing from a fresh list is a
 // normalization failure, so the position is never dropped silently.
 func (ic *futuresContractCache) lookup(ctx context.Context, c *client, m market, instID string) (adapters.FuturesContract, error) {
 	ic.mu.Lock()
@@ -113,7 +113,7 @@ func fetchFuturesContracts(ctx context.Context, c *client, m market) (*futuresCo
 
 // mapFuturesContract converts one listed contract. Rows that cannot be stored are skipped: pre-open
 // listings without an id or contract type, and futures without a delivery time. A position in
-// such a contract then fails its Account through lookup.
+// such a contract then fails its account through lookup.
 func mapFuturesContract(m market, row *nativeInstrumentRow) (adapters.FuturesContract, bool) {
 	instID := strings.TrimSpace(row.InstID)
 	kind, delivery, ok := contractKind(m, row.CtType)

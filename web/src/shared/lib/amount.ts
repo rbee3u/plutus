@@ -53,12 +53,7 @@ export function presentNumber(value: NumberInput, kind: NumberKind): NumberPrese
   }
   const amount = kind === "percent" ? new DisplayDecimal(source).times(100) : source;
   const rounded = round(amount, kind);
-  let fixed: string;
-  if (kind === "usd" && rounded.abs().gte(1)) {
-    fixed = rounded.toFixed(2);
-  } else {
-    fixed = rounded.isZero() ? "0" : rounded.toFixed();
-  }
+  const fixed = rounded.isZero() ? "0" : rounded.toFixed();
   const suffix = kind === "percent" ? "%" : kind === "leverage" ? "x" : "";
   const plainText = `${group(fixed)}${suffix}`;
   const text = plainText.replace(
@@ -112,7 +107,8 @@ export function formatCount(value: NumberInput): string {
 /** A USD amount with its unit, for prose and summaries. */
 export function formatUsd(value: NumberInput): string {
   const amount = formatAmount(value);
-  return amount === UNKNOWN ? amount : `${amount} USD`;
+  if (amount === UNKNOWN) return amount;
+  return amount.startsWith("-") ? `-$${amount.slice(1)}` : `$${amount}`;
 }
 
 export function chartNumber(value: NullableDecimal | undefined): number | null {
@@ -124,12 +120,12 @@ export function isZeroDecimal(value: NullableDecimal | undefined): boolean {
   return parseDecimal(value)?.isZero() ?? false;
 }
 
-/** Boundary contribution and withdrawal at a point as one figure: "0 USD" or "+a / −b". */
+/** Boundary contribution and withdrawal at a point as one figure: "$0" or "+$a / -$b". */
 export function formatBoundaryFlows(point: {
   boundaryContributionUsd: NullableDecimal | undefined;
   boundaryWithdrawalUsd: NullableDecimal | undefined;
 }): string {
   return isZeroDecimal(point.boundaryContributionUsd) && isZeroDecimal(point.boundaryWithdrawalUsd)
     ? formatUsd(point.boundaryContributionUsd)
-    : `+${formatUsd(point.boundaryContributionUsd)} / −${formatUsd(point.boundaryWithdrawalUsd)}`;
+    : `+${formatUsd(point.boundaryContributionUsd)} / -${formatUsd(point.boundaryWithdrawalUsd)}`;
 }

@@ -62,7 +62,7 @@ export function LoginPage() {
           <span>Plutus</span>
         </div>
         <h1>Sign in</h1>
-        <p className={styles.cardSubtitle}>Portfolio valuation and wealth analytics</p>
+        <p className={styles.cardSubtitle}>Track your portfolio value over time.</p>
         {notice ? (
           <p className={shared.notice} role="status">
             {notice}

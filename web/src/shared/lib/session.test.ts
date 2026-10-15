@@ -19,7 +19,7 @@ const user: User = { id: "alice", username: "alice", status: "active" };
 describe("Authenticated cache lifetime", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("shares one cached User across independent consumers", async () => {
+  it("shares one cached user across independent consumers", async () => {
     vi.mocked(getAuthMe).mockResolvedValue({
       data: { user, sessionCount: 1 },
       error: undefined,
@@ -41,7 +41,7 @@ describe("Authenticated cache lifetime", () => {
         title: "Unauthorized",
         status: 401,
         detail: "Session expired",
-        code: "unauthenticated",
+        code: "Unauthenticated.",
       },
       response: new Response(null, { status: 401 }),
     });
@@ -54,7 +54,7 @@ describe("Authenticated cache lifetime", () => {
     client.clear();
   });
 
-  it("cancels in-flight reads before another User can acquire cached data", async () => {
+  it("cancels in-flight reads before another user can acquire cached data", async () => {
     const client = new QueryClient();
     client.setQueryData(keys.authMe(), user);
     client.setQueryData(keys.manualEditor("alice", "main", "id", "editor"), { version: 7 });

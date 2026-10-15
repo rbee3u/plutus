@@ -24,7 +24,7 @@ import (
 )
 
 // harness owns public cross-module scenarios, including direct database setup.
-// Package-private Collection recovery tests retain their own local assembly.
+// Package-private collection recovery tests retain their own local assembly.
 type harness struct {
 	ctx         context.Context
 	t           *testing.T

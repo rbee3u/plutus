@@ -15,7 +15,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// AccountBalances returns the Balances of an Account's current report with USD values.
+// AccountBalances returns the balances of an account's current report with USD values.
 func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
 		view, source, err := s.accountView(ctx, p, accountID)
@@ -149,7 +149,7 @@ func balanceExcluded(account *valuation.AccountValuation, id uuid.UUID) bool {
 	return false
 }
 
-// FlatBalances lists every Balance in the boundary at the latest point.
+// FlatBalances lists every balance in the boundary at the latest point.
 func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[BalanceRow], error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (FlatList[BalanceRow], error) {
 		limit, offset, err := normalizePage(f.Limit, f.Offset)
@@ -162,7 +162,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		}
 		out := FlatList[BalanceRow]{Context: c, Items: []BalanceRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		if point == nil {
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 		} else {
 			out.Completeness = point.Completeness()
 			out.Issues = point.Issues

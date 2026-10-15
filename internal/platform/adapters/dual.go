@@ -11,7 +11,7 @@ import (
 const TypeDualInvestment AccountType = "dual_investment"
 
 // DualPosition is one outstanding subscription. Principal is also represented in
-// Balances; the position is descriptive and never adds to Account Valuation.
+// balances; the position is descriptive and never adds to account valuation.
 type DualPosition struct {
 	PositionKey          string
 	ProductRef           *string
@@ -158,8 +158,8 @@ func DualExpiry(where, value string) (*time.Time, error) {
 	return OptionalMillis(where, "dual expiry", value)
 }
 
-// CollectEarnPair shares auxiliary reads and their failures within one Collection
-// Run. Only reports requested by CollectAccounts leave the adapter.
+// CollectEarnPair shares auxiliary reads and their failures within one collection
+// run. Only reports requested by CollectAccounts leave the adapter.
 func CollectEarnPair(load func(context.Context) (AccountReport, AccountReport, error)) func(context.Context, AccountType) (AccountReport, error) {
 	var loaded bool
 	var earn, dual AccountReport

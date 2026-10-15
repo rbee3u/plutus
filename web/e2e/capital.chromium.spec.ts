@@ -118,7 +118,7 @@ test("Capital views default to 1W and expose presets", async ({ page }) => {
   await expect(page).toHaveURL(/range=3D/);
 });
 
-test("Boundary Events includes the selected day's final microsecond and excludes the next day", async ({
+test("Boundary events includes the selected day's final microsecond and excludes the next day", async ({
   page,
 }) => {
   const session = sessionFixture();
@@ -169,12 +169,12 @@ test("Boundary Events includes the selected day's final microsecond and excludes
   await page.goto(
     `/p/${portfolioId}/capital?tab=events&from=2026-10-13T00:00:00Z&to=2026-10-13T23:59:59.999999Z`,
   );
-  const table = page.getByRole("table", { name: "Boundary Events in the window", exact: true });
+  const table = page.getByRole("table", { name: "Boundary events in the window", exact: true });
   await expect(table).toContainText("Final microsecond");
   await expect(table).not.toContainText("Next day");
 });
 
-test("Capital Flow edits use the JSON baseline and explicitly reload conflicts", async ({
+test("Capital flow edits use the JSON baseline and explicitly reload conflicts", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -201,19 +201,19 @@ test("Capital Flow edits use the JSON baseline and explicitly reload conflicts",
   expect(state.writes).toEqual(['"capital-flow:1"', '"capital-flow:2"']);
 });
 
-test("Capital Flow deletion cannot silently advance the confirmed version", async ({ page }) => {
+test("Capital flow deletion cannot silently advance the confirmed version", async ({ page }) => {
   const state = await fixture(page);
   await openFlowAction(page, "Delete");
-  const dialog = page.getByRole("dialog", { name: "Delete Capital Flow" });
+  const dialog = page.getByRole("dialog", { name: "Delete capital flow" });
   await expect(dialog).toContainText("100 USD");
   state.flow = { ...state.flow!, quantity: "200", version: 2 };
-  await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete flow", exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("alert")).toContainText("Review the updated list");
   expect(state.flow?.quantity).toBe("200");
   await openFlowAction(page, "Delete");
   await expect(dialog).toContainText("200 USD");
-  await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete flow", exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(state.flow).toBeNull();
   expect(state.writes).toEqual(['"capital-flow:1"', '"capital-flow:2"']);

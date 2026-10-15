@@ -30,7 +30,7 @@ type FailActiveCollectionCycleParams struct {
 }
 
 // Ends the active cycle without a lease check: retry exhaustion after a lost
-// worker, and Portfolio deletion requests.
+// worker, and portfolio deletion requests.
 func (q *Queries) FailActiveCollectionCycle(ctx context.Context, arg FailActiveCollectionCycleParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, failActiveCollectionCycle,
 		arg.FinishedAt,
@@ -281,7 +281,7 @@ type LockClaimableCollectionCycleParams struct {
 }
 
 // Only active cycles have a non-NULL active_portfolio_id, so the unique key
-// bounds the scan by the number of Portfolios.
+// bounds the scan by the number of portfolios.
 func (q *Queries) LockClaimableCollectionCycle(ctx context.Context, arg LockClaimableCollectionCycleParams) (CollectionCycle, error) {
 	row := q.db.QueryRowContext(ctx, lockClaimableCollectionCycle, arg.QueuedBefore, arg.RunningBefore)
 	var i CollectionCycle

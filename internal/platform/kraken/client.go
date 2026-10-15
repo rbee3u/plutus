@@ -24,7 +24,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// Production Kraken hosts. Spot and Futures are separate services with separate keys.
+// Production Kraken hosts. Spot and futures are separate services with separate keys.
 const (
 	DefaultSpotHost     = "https://api.kraken.com"
 	DefaultFuturesHost  = "https://futures.kraken.com"
@@ -53,7 +53,7 @@ func (e endpoint) String() string { return e.method + " " + e.path }
 
 // Every endpoint the adapter and the recorder call. All are read-only: the Spot private calls are
 // POST only because Kraken signs a form body, and the WebSocket entry is the one balances_snapshot
-// message of the Futures balances feed, read and closed at once.
+// message of the futures balances feed, read and closed at once.
 var (
 	epAssets           = endpoint{familySpot, http.MethodGet, "/0/public/Assets", false}
 	epAssetPairs       = endpoint{familySpot, http.MethodGet, "/0/public/AssetPairs", false}
@@ -194,8 +194,8 @@ func (c *client) spot(ctx context.Context, ep endpoint, params url.Values) (resp
 	return c.send(ctx, ep, req)
 }
 
-// futures sends one Futures request. A private request carries the Authent header: HMAC-SHA512
-// of SHA-256(query + path without /derivatives), keyed by the decoded Futures secret.
+// futures sends one futures request. A private request carries the Authent header: HMAC-SHA512
+// of SHA-256(query + path without /derivatives), keyed by the decoded futures secret.
 func (c *client) futures(ctx context.Context, ep endpoint, params url.Values) (response, error) {
 	query := params.Encode()
 	target := c.a.futuresHost + ep.path
@@ -278,7 +278,7 @@ func decodeSpot(ep endpoint, resp response, out any) error {
 	return nil
 }
 
-// decodeFutures converts a Futures exchange into out, or into a classified error. Futures marks
+// decodeFutures converts a futures exchange into out, or into a classified error. Futures marks
 // success with result = "success"; the key check alone answers with the key and no result field.
 func decodeFutures(ep endpoint, resp response, out any) error {
 	var env struct {
@@ -309,7 +309,7 @@ func failedStatus(status int) bool {
 }
 
 // errorNames classify the error names Kraken documents for both services; any other name is
-// temporary. A detail carries only the matched name, never arbitrary Platform text or an echoed
+// temporary. A detail carries only the matched name, never arbitrary platform text or an echoed
 // input.
 var errorNames = []struct{ token, class, detail string }{
 	{"Invalid key", adapters.ClassAuthentication, "Invalid key."},
@@ -347,7 +347,7 @@ func classify(ep endpoint, status int, name string) error {
 	return adapters.NewError(class, fmt.Sprintf("Kraken %s: HTTP %d. %s", ep, status, detail))
 }
 
-// balancesSnapshot subscribes to the Futures balances feed, reads the first balances_snapshot,
+// balancesSnapshot subscribes to the futures balances feed, reads the first balances_snapshot,
 // and closes the connection. The subscription is authenticated by signing Kraken's challenge.
 func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 	ctx, cancel := context.WithTimeout(ctx, snapshotTimeout)
@@ -427,7 +427,7 @@ func writeMessage(ctx context.Context, conn *websocket.Conn, value map[string]st
 func spotSignature(path, nonce, body, secret string) (string, error) {
 	key, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return "", adapters.NewError(adapters.ClassAuthentication, "The Kraken Spot secret is not base64.")
+		return "", adapters.NewError(adapters.ClassAuthentication, "The Kraken spot secret is not base64.")
 	}
 	hash := sha256.Sum256([]byte(nonce + body))
 	mac := hmac.New(sha512.New, key)
@@ -444,8 +444,8 @@ func challengeSignature(challenge, secret string) (string, error) {
 	return futuresDigest(challenge, secret)
 }
 
-// futuresDigest is the Futures signature scheme: HMAC-SHA512 of SHA-256(message), keyed by the
-// decoded Futures secret, in base64.
+// futuresDigest is the futures signature scheme: HMAC-SHA512 of SHA-256(message), keyed by the
+// decoded futures secret, in base64.
 func futuresDigest(message, secret string) (string, error) {
 	key, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {

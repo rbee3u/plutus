@@ -10,6 +10,7 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import {
   formatAmount,
   formatCount,
+  formatPercent,
   formatUsd,
   isZeroDecimal,
   parseDecimal,
@@ -78,13 +79,13 @@ export function OverviewPage() {
     if (!baseline || baseline.isZero()) return null;
 
     const diff = current.minus(baseline);
-    const percent = diff.dividedBy(baseline).times(100);
+    const percent = diff.dividedBy(baseline);
     const isPositive = diff.gt(0);
     const isNegative = diff.lt(0);
 
     return {
       diffUsd: formatAmount(diff.abs().toFixed()),
-      percent: percent.abs().toFixed(2),
+      percent: formatPercent(percent.abs().toFixed()),
       isPositive,
       isNegative,
       label: selectedRange,
@@ -94,7 +95,7 @@ export function OverviewPage() {
   if (query.isPending && !overview) {
     return (
       <section className={shared.wide}>
-        <p className={shared.muted}>Loading the latest Valuation Point.</p>
+        <p className={shared.muted}>Loading the latest valuation point.</p>
       </section>
     );
   }
@@ -115,7 +116,7 @@ export function OverviewPage() {
       <QueryRecovery query={query} fallback="Overview could not be loaded." />
       {query.isFetching && overview ? (
         <p className={shared.muted} role="status">
-          Updating the latest Valuation Point.
+          Updating the latest valuation point.
         </p>
       ) : null}
       {overview ? (
@@ -125,7 +126,7 @@ export function OverviewPage() {
               <article className={styles.heroCard}>
                 <div className={styles.heroHeader}>
                   <div className={styles.heroMeta}>
-                    <h2 className={styles.heroTitle}>Total Net Worth</h2>
+                    <h2 className={styles.heroTitle}>Total net worth</h2>
                   </div>
                   <div className={styles.heroSync}>
                     <ActionButton
@@ -170,8 +171,9 @@ export function OverviewPage() {
                           <NumericText>
                             {`${changeInsight.isPositive ? "+" : changeInsight.isNegative ? "-" : ""}$${changeInsight.diffUsd}`}
                           </NumericText>{" "}
-                          ({changeInsight.isPositive ? "+" : changeInsight.isNegative ? "-" : ""}
-                          {changeInsight.percent}%)
+                          <NumericText>
+                            {`(${changeInsight.isPositive ? "+" : changeInsight.isNegative ? "-" : ""}${changeInsight.percent})`}
+                          </NumericText>
                           <span className={styles.changeLabel}>{changeInsight.label}</span>
                         </span>
                       ) : null}
@@ -185,16 +187,17 @@ export function OverviewPage() {
                     </span>
                     <span className={styles.heroMetaDot}>·</span>
                     <span className={styles.heroAccountsCount}>
-                      {formatCount(overview.accountCount)} accounts
+                      {formatCount(overview.accountCount)}{" "}
+                      {overview.accountCount === 1 ? "account" : "accounts"}
                     </span>
                     {overview.staleAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.staleAccountCount)} Stale
+                        {formatCount(overview.staleAccountCount)} stale
                       </span>
                     ) : null}
                     {overview.incompleteAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.incompleteAccountCount)} Incomplete
+                        {formatCount(overview.incompleteAccountCount)} incomplete
                       </span>
                     ) : null}
                   </div>
@@ -221,10 +224,10 @@ export function OverviewPage() {
               <div className={styles.emptyHeroIcon}>
                 <Layers size={iconSize.lg} aria-hidden="true" />
               </div>
-              <h2 className={styles.emptyHeroTitle}>No Valuation Data Yet</h2>
+              <h2 className={styles.emptyHeroTitle}>No valuation point yet</h2>
               <p className={styles.emptyHeroText}>
-                This portfolio has no valuation history. Add an exchange identity under Identities,
-                or run a collection cycle to record your first valuation point.
+                Add an identity to track accounts, or run a collection cycle to create the first
+                point.
               </p>
               <div className={styles.emptyHeroActions}>
                 <ActionButton
@@ -249,7 +252,7 @@ export function OverviewPage() {
             </div>
           )}
           <HoldingsTree portfolioId={portfolioId} tree={overview.tree} />
-          {point ? <IssuesPanel issues={overview.tree.issues} /> : null}
+          {point ? <IssuesPanel issues={overview.tree.issues} timezone={timezone} /> : null}
         </>
       ) : null}
     </section>

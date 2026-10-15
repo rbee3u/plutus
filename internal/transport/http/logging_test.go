@@ -40,7 +40,7 @@ func TestFailedListenDoesNotLogStarted(t *testing.T) {
 	if err := Run(context.Background(), cfg, logger, http.NotFoundHandler()); err == nil {
 		t.Fatal("expected occupied port to fail")
 	}
-	if strings.Contains(output.String(), "http server started") {
+	if strings.Contains(output.String(), "HTTP server started") {
 		t.Fatalf("failed server logged successful startup: %s", output.String())
 	}
 }
@@ -112,7 +112,7 @@ func TestAccessRecoveryAndContextLogging(t *testing.T) {
 		return string(raw)
 	}
 	app, access, sql := read("app"), read("access"), read("sql")
-	if strings.Count(access, "http request") != 10 || strings.Count(app, "http request panic") != 3 || strings.Contains(app, "http request\"") {
+	if strings.Count(access, "HTTP request") != 10 || strings.Count(app, "HTTP request panic") != 3 || strings.Contains(app, "HTTP request\"") {
 		t.Fatalf("wrong request/panic counts: %s %s", app, access)
 	}
 	for _, text := range []string{app, access, sql} {
@@ -120,7 +120,7 @@ func TestAccessRecoveryAndContextLogging(t *testing.T) {
 			t.Fatal("request metadata leaked")
 		}
 	}
-	if !strings.Contains(app, "http handler failed") || !strings.Contains(app, "trace_id=test-request") || !strings.Contains(sql, "trace_id=test-request") {
+	if !strings.Contains(app, "HTTP handler failed") || !strings.Contains(app, "trace_id=test-request") || !strings.Contains(sql, "trace_id=test-request") {
 		t.Fatal("diagnostic/correlation fields missing")
 	}
 	for _, line := range strings.Split(sql, "\n") {

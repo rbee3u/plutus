@@ -6,23 +6,23 @@ import (
 
 // ValidationResult is the outcome of one read-only validation.
 type ValidationResult struct {
-	// ExternalRef is the Platform's own reference of the account the key reaches.
+	// ExternalRef is the platform's own reference of the account the key reaches.
 	ExternalRef string
-	// MarginMode is the Margin Mode the Platform reports, empty for a structure that has none.
+	// MarginMode is the margin mode the platform reports, empty for a structure that has none.
 	MarginMode MarginMode
 }
 
-// Batch is one normalized collection result for one Identity.
+// Batch is one normalized collection result for one identity.
 type Batch struct {
 	CollectedAt time.Time
-	// MarginMode is the Margin Mode the Platform reported at the start of the run, empty for a
+	// MarginMode is the margin mode the platform reported at the start of the run, empty for a
 	// structure that has none.
 	MarginMode MarginMode
 	Reports    []AccountReport
 	Prices     []Price
 }
 
-// AccountReport is the normalized state of one Account, or its structured failure.
+// AccountReport is the normalized state of one account, or its structured failure.
 type AccountReport struct {
 	SourceObservedAt                *time.Time
 	AccountType                     AccountType
@@ -45,7 +45,7 @@ type AccountReport struct {
 	EarnPositions                   []EarnPosition
 }
 
-// Balance is one coin line within an Account Report.
+// Balance is one coin line within an account report.
 type Balance struct {
 	AssetSymbol         string
 	Equity              string
@@ -56,7 +56,7 @@ type Balance struct {
 	UnrealizedPnl       *string
 }
 
-// FuturesContract describes the tradable contract behind a Position.
+// FuturesContract describes the tradable contract behind a position.
 type FuturesContract struct {
 	Symbol                string     `json:"symbol"`
 	Kind                  string     `json:"kind"`
@@ -67,7 +67,7 @@ type FuturesContract struct {
 	ContractSize          *string    `json:"contractSize"`
 }
 
-// Position is one open position within an Account Report.
+// Position is one open position within an account report.
 type Position struct {
 	PositionKey        string
 	FuturesContract    FuturesContract
@@ -86,7 +86,7 @@ type Position struct {
 	Margin             *string
 }
 
-// Price is a Platform market price for a Canonical Asset, quoted in another Canonical Asset.
+// Price is a platform market price for a canonical asset, quoted in another canonical asset.
 type Price struct {
 	CanonicalAssetSymbol      string
 	Price                     string

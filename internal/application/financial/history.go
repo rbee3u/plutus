@@ -53,7 +53,7 @@ func sample(points []sqlcgen.ListValuationPointHeadersBetweenRow, granularity st
 	return out
 }
 
-// Detail returns one point with its Account Valuations.
+// Detail returns one point with its account valuations.
 func (s *Service) Detail(ctx context.Context, p PortfolioContext, cycleID uuid.UUID) (PointDetail, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PointDetail, error) {
 		available, err := mysql.Queries(ctx, s.db).IsPointInRetainedHistory(ctx, sqlcgen.IsPointInRetainedHistoryParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
@@ -78,7 +78,7 @@ func (s *Service) Detail(ctx context.Context, p PortfolioContext, cycleID uuid.U
 	})
 }
 
-// BoundaryEvents lists derived Boundary Events between two instants.
+// BoundaryEvents lists derived boundary events between two instants.
 func (s *Service) BoundaryEvents(ctx context.Context, p PortfolioContext, from, to time.Time) ([]valuation.BoundaryEvent, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]valuation.BoundaryEvent, error) {
 		if !to.After(from) {

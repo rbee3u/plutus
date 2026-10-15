@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { invalidatePortfolioReads, keys } from "./keys";
 
 describe("Collection cache policy", () => {
-  it("invalidates dependent reads only within the authenticated Portfolio", async () => {
+  it("invalidates dependent reads only within the authenticated portfolio", async () => {
     const client = new QueryClient();
     const reads = [
       keys.overview("alice", "main"),

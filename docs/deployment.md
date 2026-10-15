@@ -19,10 +19,10 @@ test. For prod, replace `test` with `prod` in paths and commands, and use port
    that directory; prod uses the [prod TOML](../config/prod-example.toml) and
    [env](../config/prod-example.env) pair. Set the DSN, a fresh master key, and
    listen address. Back up the prod master key separately; losing it makes
-   stored Platform credentials unreadable.
+   stored platform credentials unreadable.
 
 3. Prepare the [certificates](#certificates), create MySQL database
-   `plutus_test`, then migrate and create a User:
+   `plutus_test`, then migrate and create a user:
 
    ```sh
    cd /opt/plutus-test
@@ -30,8 +30,8 @@ test. For prod, replace `test` with `prod` in paths and commands, and use port
    ./plutus --config test.toml --env-file test.env user create
    ```
 
-4. Start the [service](#systemd-services), sign in, create and enable Identities
-   with read-only keys, and select their Accounts.
+4. Start the [service](#systemd-services), sign in, create and enable identities
+   with read-only keys, and select their accounts.
 
 ## Certificates
 
@@ -118,7 +118,7 @@ needed. Log levels control application output independently of access/SQL.
 ## MySQL capacity
 
 The [planning scale](./architecture.md#persistence-and-retention) is a fixed
-20-Identity workload. The
+20-identity workload. The
 [capacity verification](./platform/schema-provenance-delivery.md#full-retained-capacity)
 records physical retained-data measurements and their limits. The target host
 has four cores, 8 GB RAM, and about 30 GB of total disk. Keep long-term backups
@@ -180,8 +180,8 @@ The initial schema is
 development schemas are disposable; reset those environments before starting
 this build. There is no populated-database upgrade path from the retired
 development baselines and no compatibility reader for their JSON. Deploy the
-server and embedded SPA together, then check Catalog, Manual editing, Capital
-Flows, collection, and history. Agent verification uses only the isolated
+server and embedded SPA together, then check Catalog, manual editing, capital
+flows, collection, and history. Agent verification uses only the isolated
 [agent instance](./development.md#agent-setup).
 
 This reset decision applies only before the first production migration. Once
@@ -191,13 +191,13 @@ inspect or restore a failed partial migration before retrying.
 
 ## Platform connectivity
 
-Allow the server's public IPv4 address in each Platform API key. Live Adapters
+Allow the server's public IPv4 address in each platform API key. Live adapters
 use IPv4 for HTTP and Kraken WebSocket connections; an external proxy determines
-the address family seen by the Platform.
+the address family seen by the platform.
 
 For an optional instance-wide HTTP/SOCKS proxy, configure
 [`collection.proxy`](./development.md#platform-proxies) and restart Plutus. A
 local sing-box entry point may forward through SS to an allowlisted exit; Plutus
 does not implement SS or fall back to direct access. Verify the actual exit IPv4
-and successful Account Reports separately from readiness. When moving an
+and successful account reports separately from readiness. When moving an
 existing database, retain its original credential encryption master key.

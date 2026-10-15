@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { PeriodClose, ValuationPointSummary } from "@/api";
-import { formatAmount, parseDecimal } from "@/shared/lib/amount";
+import { formatAmount, formatPercent, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { reasonText } from "@/shared/lib/text";
 import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
@@ -40,15 +40,15 @@ export function deltaChangeCell(
   if (diff.isZero()) {
     return (
       <span className={shared.pnlNeutral}>
-        <NumericText>$0.00 (0.00%)</NumericText>
+        <NumericText>$0 (0%)</NumericText>
       </span>
     );
   }
   const isPositive = diff.gt(0);
   const sign = isPositive ? "+" : "-";
-  const pct = previous.isZero() ? null : diff.abs().dividedBy(previous.abs()).times(100);
+  const pct = previous.isZero() ? null : diff.abs().dividedBy(previous.abs());
 
-  const pctText = pct !== null ? ` (${sign}${pct.toFixed(2)}%)` : "";
+  const pctText = pct !== null ? ` (${sign}${formatPercent(pct.toFixed())})` : "";
   const text = `${sign}$${formatAmount(diff.abs().toFixed())}${pctText}`;
 
   return (
@@ -67,10 +67,10 @@ function pointChangeCell(
 
   const reasons = [];
   if (previous.completeness === "incomplete") {
-    reasons.push("The previous Valuation Point is incomplete.");
+    reasons.push("The previous valuation point is incomplete.");
   }
   if (current.completeness === "incomplete") {
-    reasons.push("The current Valuation Point is incomplete.");
+    reasons.push("The current valuation point is incomplete.");
   }
   if (reasons.length === 0) return delta;
 
@@ -103,7 +103,7 @@ export function periodCloseIssuesCell(item: PeriodClose) {
       <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
     ) : (
       <Badge tone="warn">
-        {item.reasons.length === 1 ? "1 Issue" : `${item.reasons.length} Issues`}
+        {item.reasons.length === 1 ? "1 issue" : `${item.reasons.length} issues`}
       </Badge>
     );
 
@@ -118,7 +118,7 @@ export function periodCloseIssuesCell(item: PeriodClose) {
         </div>
         {item.reasons.length > 0 ? (
           <div>
-            <span className={shared.cellMeta}>Missing Data</span>
+            <span className={shared.cellMeta}>Missing data</span>
             <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
               {item.reasons.map((reason, i) => (
                 <li key={i}>{reasonText(reason)}</li>
@@ -154,7 +154,7 @@ export function periodCloseRow(
         </span>
       </span>
     ) : (
-      <span className={shared.cellMeta}>no point</span>
+      <span className={shared.cellMeta}>No valuation point</span>
     ),
     change: pointChangeCell(item.point, previousItem?.point),
     issues: periodCloseIssuesCell(item),
@@ -177,10 +177,10 @@ export function rawPointIssuesCell(item: ValuationPointSummary) {
         <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
       ) : null}
       {item.staleAccountCount > 0 ? (
-        <Badge tone="warn">{item.staleAccountCount} Stale</Badge>
+        <Badge tone="warn">{item.staleAccountCount} stale</Badge>
       ) : null}
       {item.incompleteAccountCount > 0 ? (
-        <Badge tone="bad">{item.incompleteAccountCount} Incomplete</Badge>
+        <Badge tone="bad">{item.incompleteAccountCount} incomplete</Badge>
       ) : null}
     </span>
   );
@@ -198,8 +198,8 @@ export function rawPointIssuesCell(item: ValuationPointSummary) {
           <span className={shared.cellMeta}>Accounts summary</span>
           <p style={{ margin: "4px 0 0" }}>
             {item.accountCount} total
-            {item.staleAccountCount > 0 ? ` · ${item.staleAccountCount} Stale` : ""}
-            {item.incompleteAccountCount > 0 ? ` · ${item.incompleteAccountCount} Incomplete` : ""}
+            {item.staleAccountCount > 0 ? ` · ${item.staleAccountCount} stale` : ""}
+            {item.incompleteAccountCount > 0 ? ` · ${item.incompleteAccountCount} incomplete` : ""}
           </p>
         </div>
       </div>
@@ -225,7 +225,7 @@ export function rawPointRow(
     actions: (
       <span className={shared.rowActions}>
         <IconButton
-          label={`${open ? "Collapse" : "Expand"} the Valuation Point at ${evaluatedAt}`}
+          label={`${open ? "Collapse" : "Expand"} the valuation point at ${evaluatedAt}`}
           aria-expanded={open}
           aria-controls={open ? POINT_DETAIL_ID : undefined}
           onClick={() => update({ point: open ? "" : item.cycleId })}

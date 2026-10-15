@@ -96,7 +96,7 @@ const STATUS_TONES: Record<string, BadgeTone> = {
   pending: "info",
 };
 
-/** Badge for a server status word; formats to Title Case; unknown words render neutrally. */
+/** Badge for a server status word; capitalizes its first letter; unknown words render neutrally. */
 export function StatusBadge({
   value,
   title,
@@ -159,7 +159,7 @@ export function AccountHealthBadges({
         </Badge>
       ) : null}
       {isIncomplete ? (
-        <Badge tone="warn" title="incomplete: some assets omitted or unpriced">
+        <Badge tone="warn" title="Some or all of the account value is unknown.">
           Incomplete
         </Badge>
       ) : null}

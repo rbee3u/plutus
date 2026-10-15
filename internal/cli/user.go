@@ -34,12 +34,12 @@ func newUserCreateCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "created user %s (%s)\n", user.Username, user.ID)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created user %s (%s)\n", user.Username, user.ID)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&username, "username", "", "login username")
-	cmd.Flags().StringVar(&password, "password", "", "password of 8 to 128 characters")
+	cmd.Flags().StringVar(&username, "username", "", "Login username")
+	cmd.Flags().StringVar(&password, "password", "", "Password of 8 to 128 characters")
 	_ = cmd.MarkFlagRequired("username")
 	_ = cmd.MarkFlagRequired("password")
 	return cmd
@@ -60,11 +60,11 @@ func newUserDisableCommand() *cobra.Command {
 			if err := svc.DisableUser(cmd.Context(), username); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "disabled user %s\n", username)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Disabled user %s\n", username)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&username, "username", "", "login username")
+	cmd.Flags().StringVar(&username, "username", "", "Login username")
 	_ = cmd.MarkFlagRequired("username")
 	return cmd
 }
@@ -84,12 +84,12 @@ func newUserResetPasswordCommand() *cobra.Command {
 			if err := svc.ResetPassword(cmd.Context(), username, password); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "reset password for %s\n", username)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Reset password for %s\n", username)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&username, "username", "", "login username")
-	cmd.Flags().StringVar(&password, "password", "", "password of 8 to 128 characters")
+	cmd.Flags().StringVar(&username, "username", "", "Login username")
+	cmd.Flags().StringVar(&password, "password", "", "Password of 8 to 128 characters")
 	_ = cmd.MarkFlagRequired("username")
 	_ = cmd.MarkFlagRequired("password")
 	return cmd

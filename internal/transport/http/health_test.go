@@ -96,7 +96,7 @@ func TestLiveAndReady(t *testing.T) {
 	csrf := httptest.NewRecorder()
 	Engine(&EngineOptions{Logger: logger, Ready: StaticReady{}}).ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if csrf.Code != http.StatusOK {
-		t.Fatalf("csrf %d %s", csrf.Code, csrf.Body.String())
+		t.Fatalf("CSRF %d %s", csrf.Code, csrf.Body.String())
 	}
 
 	me := httptest.NewRecorder()
@@ -155,7 +155,7 @@ func TestEmbeddedShellServesIndex(t *testing.T) {
 	unknownAPI := httptest.NewRecorder()
 	engine.ServeHTTP(unknownAPI, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/nope", nil))
 	if unknownAPI.Code != http.StatusNotFound {
-		t.Fatalf("unknown api status %d", unknownAPI.Code)
+		t.Fatalf("unknown API status %d", unknownAPI.Code)
 	}
 	if strings.Contains(strings.ToLower(unknownAPI.Body.String()), "<!doctype html>") {
 		t.Fatal("unknown API path should not serve the SPA")

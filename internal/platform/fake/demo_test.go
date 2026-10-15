@@ -52,7 +52,7 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 				for _, b := range r.Balances {
 					price := DemoPrice(d.Platform, b.AssetSymbol, anchor)
 					if price == "" {
-						t.Fatalf("normal Asset %s has no price", b.AssetSymbol)
+						t.Fatalf("normal asset %s has no price", b.AssetSymbol)
 					}
 					total = demoAdd(total, demoMul(b.Equity, price))
 				}
@@ -70,7 +70,7 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 		t.Fatalf("Identity mix normal=%d exceptional=%d archived=%d distinct=%d", normal, exceptional, archived, len(shapes))
 	}
 	if empty < 20 || earn < 15 || earn > 30 || dual != 2 {
-		t.Fatalf("wallet/product concentration: empty=%d Earn=%d Dual=%d", empty, earn, dual)
+		t.Fatalf("wallet/product concentration: empty=%d earn=%d dual=%d", empty, earn, dual)
 	}
 	if demoNumber(total).Cmp(demoNumber("200000")) < 0 || demoNumber(total).Cmp(demoNumber("400000")) > 0 {
 		t.Fatalf("normal value left the intended synthetic scale: %s", total)
@@ -113,7 +113,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 			t.Fatal(err)
 		}
 		if seen[d.ID] {
-			t.Fatal("duplicate Identity")
+			t.Fatal("duplicate identity")
 		}
 		seen[d.ID] = true
 		if covered[d.Structure] == nil {
@@ -132,7 +132,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 				coins := map[string]bool{}
 				for _, b := range r.Balances {
 					if coins[b.AssetSymbol] || !decimal.Valid(b.Equity) {
-						t.Fatalf("%s duplicate/invalid Balance %+v", d.ID, b)
+						t.Fatalf("%s duplicate/invalid balance %+v", d.ID, b)
 					}
 					coins[b.AssetSymbol] = true
 				}
@@ -201,7 +201,7 @@ func TestDemoCredentialContinuity(t *testing.T) {
 	}
 	creds.APIKey = DemoKey("daily-bybit", anchor)
 	if _, err := a.Validate(context.Background(), creds, d.Structure); err == nil {
-		t.Fatal("scenario used on wrong Platform")
+		t.Fatal("scenario used on wrong platform")
 	}
 }
 
@@ -256,7 +256,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	}
 	failed := demoReport(demoByID(t, "edge-stale"), anchor, anchor, "cm_futures")
 	if failed.Status != adapters.StatusFailed || len(failed.Positions) != 0 {
-		t.Fatal("failure invented a Complete Set")
+		t.Fatal("failure invented a complete set")
 	}
 }
 
@@ -292,7 +292,7 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, r := range future.Reports {
-		//nolint:exhaustive // Manual is application-owned and outside the private Adapter report fixture.
+		//nolint:exhaustive // manual is application-owned and outside the private adapter report fixture.
 		switch r.AccountType {
 		case "spot":
 			if len(r.Balances) < 60 {

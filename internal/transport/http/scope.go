@@ -16,7 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/portfolio"
 )
 
-// scope is the authenticated user and the owned Portfolio a request acts on.
+// scope is the authenticated user and the owned portfolio a request acts on.
 type scope struct {
 	user      auth.User
 	session   auth.Session
@@ -27,7 +27,7 @@ func (sc *scope) portfolioContext() financial.PortfolioContext {
 	return financial.PortfolioContext{ID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
 }
 
-// scoped authenticates the caller and loads one owned Portfolio.
+// scoped authenticates the caller and loads one owned portfolio.
 func (a *API) scoped(ctx context.Context, portfolioID uuid.UUID) (scope, error) {
 	user, session, ok := a.currentSession(ctx)
 	if !ok {

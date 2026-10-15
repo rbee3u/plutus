@@ -41,7 +41,7 @@ async function fixture(page: Page) {
   });
   const account = (dual = false): AccountValuation => ({
     accountId: dual ? "dual" : "spot",
-    accountName: dual ? "Dual Account" : "Spot",
+    accountName: dual ? "Dual account" : "Spot",
     accountType: dual ? "dual_investment" : "spot",
     reportId: `${state.point}-${dual ? "dual" : "spot"}`,
     identityId: "owner",
@@ -50,9 +50,9 @@ async function fixture(page: Page) {
     selected: true,
     status: state.stale || (state.unknown && !dual) ? "failed" : "succeeded",
     method: state.unknown && !dual ? "missing" : "reported",
-    freshness: state.stale ? "stale" : "fresh",
+    freshness: state.stale || (state.unknown && !dual) ? "stale" : "fresh",
     completeness: state.unknown && !dual ? "incomplete" : "complete",
-    reportObservedAt: observed,
+    reportObservedAt: state.unknown && !dual ? null : observed,
     valueUsd: dual ? "0" : state.unknown ? null : state.value,
     equity: dual ? "0" : state.unknown ? null : state.value,
     omitted: [],
@@ -93,7 +93,7 @@ async function fixture(page: Page) {
       {
         code: "test_omission",
         accountName: "Spot",
-        detail: "Named omission remains visible while Accounts are folded.",
+        detail: "Named omission remains visible while accounts are folded.",
       },
     ],
     platforms: state.emptyTree
@@ -282,7 +282,7 @@ async function openSpot(page: Page) {
     .click();
 }
 
-test("Overview replaces groups with an Identity-depth Tree and accessible drilldown", async ({
+test("Overview replaces groups with an identity-depth tree and accessible drilldown", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -302,7 +302,7 @@ test("Overview replaces groups with an Identity-depth Tree and accessible drilld
   ).toHaveCount(0);
   expect(state.requests.filter((path) => path.includes("/accounts/"))).toHaveLength(0);
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded.").first(),
+    page.getByText("Named omission remains visible while accounts are folded.").first(),
   ).toBeVisible();
   const identity = page.getByRole("button", { name: "Expand Owner", exact: true });
   await identity.focus();
@@ -316,19 +316,19 @@ test("Overview replaces groups with an Identity-depth Tree and accessible drilld
   await page.getByRole("button", { name: "Expand Binance" }).click();
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toBeVisible();
   await page
-    .getByRole("button", { name: "Expand balances and positions for Dual Account" })
+    .getByRole("button", { name: "Expand balances and positions for Dual account" })
     .click();
   await expect
     .poll(() => state.requests.some((path) => path.includes("/accounts/dual/dual-positions")))
     .toBe(true);
-  await expect(page.getByRole("heading", { name: "Dual Investment", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Dual investment", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Holdings", exact: true }).click();
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/balances`);
   await page.getByRole("link", { name: "Overview", exact: true }).click();
   await expect(page.getByRole("button", { name: "Expand Owner", exact: true })).toBeVisible();
 });
 
-test("manual collection updates both totals and open details without display polling", async ({
+test("Manual collection updates both totals and open details without display polling", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -350,7 +350,7 @@ test("manual collection updates both totals and open details without display pol
   expect(state.requests.filter((path) => path.startsWith("POST"))).toHaveLength(1);
 });
 
-test("a mismatched Tree is rejected and retry restores one consistent point", async ({ page }) => {
+test("A mismatched tree is rejected and retry restores one consistent point", async ({ page }) => {
   const state = await fixture(page);
   state.treePoint = "other";
   await page.goto(`/p/${portfolioId}/overview`);
@@ -369,7 +369,7 @@ test("a mismatched Tree is rejected and retry restores one consistent point", as
   await expect(page.getByRole("article").first()).toContainText("200");
 });
 
-test("empty, loading, failed and newer Account Reports are not treated as empty positions", async ({
+test("Empty, loading, failed and newer account reports are not treated as empty positions", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -394,13 +394,13 @@ test("empty, loading, failed and newer Account Reports are not treated as empty 
   await page.getByRole("button", { name: "Collapse balances and positions for Spot" }).click();
   state.detailReport = "newer-report";
   await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
-  await expect(page.getByRole("alert").first()).toContainText("Refreshing the Portfolio");
+  await expect(page.getByRole("alert").first()).toContainText("Refreshing the portfolio");
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("100");
   await expect(page.getByRole("alert").first()).toContainText("Showing the last successful result");
 });
 
 for (const noPoint of [false, true]) {
-  test(`Overview handles ${noPoint ? "no point" : "empty Tree"} without duplicate notices`, async ({
+  test(`Overview handles ${noPoint ? "no point" : "empty tree"} without duplicate notices`, async ({
     page,
   }) => {
     const state = await fixture(page);
@@ -413,7 +413,7 @@ for (const noPoint of [false, true]) {
       await expect(page.getByRole("article")).toHaveCount(0);
     } else
       await expect(page.getByRole("region", { name: "Holdings tree", exact: true })).toContainText(
-        "No accounts inside the boundary yet.",
+        "No accounts in the portfolio boundary. Add an identity.",
       );
   });
 }
@@ -431,7 +431,7 @@ test("Activity cycles list does not poll", async ({ page }) => {
   expect(state.requests.filter((request) => request.endsWith(path))).toHaveLength(1);
 });
 
-test("stale Futures and Dual Investment remain visible and a failed initial Balance read stays unknown", async ({
+test("Stale futures and dual investment remain visible and a failed initial balance read stays unknown", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -463,7 +463,7 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
   state.dual = [
     {
       accountId: "dual",
-      accountName: "Dual Account",
+      accountName: "Dual account",
       accountType: "dual_investment",
       identityId: "owner",
       identityName: state.ownerName,
@@ -485,16 +485,16 @@ test("stale Futures and Dual Investment remain visible and a failed initial Bala
   await expect(page.getByRole("table", { name: "Positions of Spot" })).toContainText("BTCUSDT");
   await expect(page.getByRole("table", { name: "Positions of Spot" })).toContainText(/stale/i);
   await page
-    .getByRole("button", { name: "Expand balances and positions for Dual Account" })
+    .getByRole("button", { name: "Expand balances and positions for Dual account" })
     .click();
-  await expect(page.getByRole("heading", { name: "Dual Investment", exact: true })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Dual Investment positions" })).toContainText(
+  await expect(page.getByRole("heading", { name: "Dual investment", exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Dual investment positions" })).toContainText(
     "Stale",
   );
   await page.reload();
   state.detailReport = "newer-report";
   await openSpot(page);
-  await expect(page.getByRole("alert").first()).toContainText("Refreshing the Portfolio");
+  await expect(page.getByRole("alert").first()).toContainText("Refreshing the portfolio");
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText(
     "Balances could not be loaded. Retry above.",
   );
@@ -510,7 +510,7 @@ for (const viewport of [
   { width: 375, height: 812 },
 ]) {
   for (const theme of ["light", "dark"] as const) {
-    test(`nested Account details stay contained at ${viewport.width}px in ${theme} mode`, async ({
+    test(`Nested account details stay contained at ${viewport.width}px in ${theme} mode`, async ({
       page,
     }) => {
       const state = await fixture(page);
@@ -521,7 +521,7 @@ for (const viewport of [
       const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
       await expect(tree.getByRole("table")).toHaveCount(0);
       await expect(tree.getByRole("button", { name: "Collapse Binance" })).toHaveText(
-        /^Binance\$100\.00(\d+\.\d+%)?$/,
+        /^Binance\$100(\d+(?:\.\d+)?%)?$/,
       );
       await expect(tree).not.toContainText(/\d+ (identities|accounts)|connection enabled/);
       await tree.getByRole("button", { name: `Expand ${state.ownerName}`, exact: true }).click();
@@ -546,7 +546,7 @@ for (const viewport of [
       await source.locator("summary").focus();
       await page.keyboard.press("Enter");
       await expect(source).toHaveAttribute("open");
-      await expect(source).toContainText("Account value uses equity reported by the Platform.");
+      await expect(source).toContainText("Account value uses equity reported by the platform.");
       await expect(source).toContainText("2026-10-04 00:00");
       const bounds = await open.boundingBox();
       const wrapper = balances.locator("..");
@@ -577,7 +577,7 @@ for (const viewport of [
   }
 }
 
-test("unknown and stale valuations keep exceptions inside Account details", async ({ page }) => {
+test("Unknown and stale valuations keep exceptions inside account details", async ({ page }) => {
   const state = await fixture(page);
   state.unknown = true;
   await page.goto(`/p/${portfolioId}/overview`);
@@ -592,29 +592,29 @@ test("unknown and stale valuations keep exceptions inside Account details", asyn
   const tree = page.getByRole("region", { name: "Holdings tree", exact: true });
   await expect(tree.getByText("Incomplete", { exact: true })).toBeVisible();
   await expect(
-    tree.getByText("No compatible successful Account Report; value is unknown."),
+    tree.getByText("No compatible successful account report; holdings and value are unknown."),
   ).toBeVisible();
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded.").first(),
+    page.getByText("Named omission remains visible while accounts are folded.").first(),
   ).toBeVisible();
   state.unknown = false;
   state.stale = true;
   await page.reload();
   await openSpot(page);
   await expect(
-    tree.getByText("Earlier successful Account Report retained", { exact: false }),
+    tree.getByText("Earlier successful account report retained", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Collapse balances and positions for Spot" }),
-  ).toHaveText("Spot$100.00");
+  ).toHaveText("Spot$100");
   await page.getByRole("button", { name: "Collapse Owner", exact: true }).click();
   await expect(tree.getByText("Failed", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByText("Named omission remains visible while Accounts are folded.").first(),
+    page.getByText("Named omission remains visible while accounts are folded.").first(),
   ).toBeVisible();
 });
 
-test("Overview shares Earn columns without ownership and rejects mismatched reports", async ({
+test("Overview shares earn columns without ownership and rejects mismatched reports", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -677,7 +677,7 @@ test("Overview shares Earn columns without ownership and rejects mismatched repo
   await expect(
     page
       .getByText(
-        "This Account changed since the displayed Valuation Point. Refreshing the Portfolio to read a consistent Account Report.",
+        "This account changed since the displayed valuation point. Refreshing the portfolio to read a consistent account report.",
       )
       .first(),
   ).toBeVisible();

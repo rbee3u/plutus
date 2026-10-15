@@ -52,7 +52,7 @@ type nativeInstrument struct {
 }
 
 // Read complete lists before retaining positions; fetch metadata only for held
-// categories. Unsupported options fail the Account instead of disappearing.
+// categories. Unsupported options fail the account instead of disappearing.
 func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.MarginMode) ([]adapters.Position, error) {
 	open := map[string][]openPosition{}
 	sizes := map[string][]*big.Rat{}
@@ -124,9 +124,9 @@ func readNativeInstruments(ctx context.Context, c *client, category string) (map
 	return out, nil
 }
 
-// Bybit size is positive: Base units for linear, USD face value for inverse.
+// Bybit size is positive: base units for linear, USD face value for inverse.
 // PM has no position-level leverage, margin, or liquidation price. Cross
-// liquidation price estimates liquidation of the whole Account.
+// liquidation price estimates liquidation of the whole account.
 func mapPosition(row *openPosition, size *big.Rat, info *nativeInstrument, mode adapters.MarginMode) (adapters.Position, error) {
 	kind, ok := contractKinds[info.ContractType]
 	if !ok || strings.TrimSpace(info.BaseCoin) == "" || strings.TrimSpace(info.QuoteCoin) == "" || strings.TrimSpace(info.SettleCoin) == "" {

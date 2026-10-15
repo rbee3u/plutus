@@ -12,7 +12,7 @@ export function portfoliosOptions(userId: string | undefined, redirect: () => vo
   });
 }
 
-/** User-scoped list shared by bootstrap, the switcher, and Portfolio mutations. */
+/** User-scoped list shared by bootstrap, the switcher, and portfolio mutations. */
 export function usePortfolios() {
   const { userId, redirect } = useSessionScope();
   return useQuery(portfoliosOptions(userId, redirect));

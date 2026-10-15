@@ -57,7 +57,7 @@ type endpoint struct {
 func (e endpoint) String() string { return e.method + " " + e.path }
 
 // Every endpoint the adapter and the fixture recorder call. All are read-only: market data,
-// account, balance, position, and Earn position queries a key with only "Enable Reading" may call.
+// account, balance, position, and earn position queries a key with only "Enable Reading" may call.
 var (
 	epServerTime   = endpoint{http.MethodGet, hostAPI, "/api/v3/time", false}
 	epTickerPrice  = endpoint{http.MethodGet, hostAPI, "/api/v3/ticker/price", false}
@@ -70,13 +70,13 @@ var (
 	epLockedEarn   = endpoint{http.MethodGet, hostAPI, "/sapi/v1/simple-earn/locked/position", true}
 	epDualInvest   = endpoint{http.MethodGet, hostAPI, "/sapi/v1/dci/product/positions", true}
 
-	// Portfolio Margin.
+	// Portfolio margin.
 	epPMAccount        = endpoint{http.MethodGet, hostPAPI, "/papi/v1/account", true}
 	epPMBalance        = endpoint{http.MethodGet, hostPAPI, "/papi/v1/balance", true}
 	epPMUMPositionRisk = endpoint{http.MethodGet, hostPAPI, "/papi/v1/um/positionRisk", true}
 	epPMCMPositionRisk = endpoint{http.MethodGet, hostPAPI, "/papi/v1/cm/positionRisk", true}
 
-	// Classic Trading.
+	// Classic trading.
 	epCrossMargin    = endpoint{http.MethodGet, hostAPI, "/sapi/v1/margin/account", true}
 	epIsolatedMargin = endpoint{http.MethodGet, hostAPI, "/sapi/v1/margin/isolated/account", true}
 	epUMAccount      = endpoint{http.MethodGet, hostFAPI, "/fapi/v3/account", true}
@@ -86,7 +86,7 @@ var (
 	epCMAccount      = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/account", true}
 	epCMPositionRisk = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/positionRisk", true}
 
-	// Futures Contracts, for both Account Structures.
+	// Futures contracts, for both account structures.
 	epUMExchangeInfo = endpoint{http.MethodGet, hostFAPI, "/fapi/v1/exchangeInfo", false}
 	epCMExchangeInfo = endpoint{http.MethodGet, hostDAPI, "/dapi/v1/exchangeInfo", false}
 )

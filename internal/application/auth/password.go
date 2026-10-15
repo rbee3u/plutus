@@ -27,10 +27,10 @@ const (
 )
 
 // ErrPasswordPolicy is returned when a password does not satisfy length or complexity requirements.
-var ErrPasswordPolicy = apperr.Invalid("password must be 8 to 128 characters and include uppercase, lowercase, and a number or symbol")
+var ErrPasswordPolicy = apperr.Invalid("Password must be 8 to 128 characters and include uppercase, lowercase, and a number or symbol.")
 
 // ErrSamePassword is returned when the new password is the same as the current password.
-var ErrSamePassword = apperr.Invalid("new password must differ from current password")
+var ErrSamePassword = apperr.Invalid("New password must differ from current password.")
 
 // HashPassword returns a PHC-encoded Argon2id hash.
 func HashPassword(password string) (string, error) {

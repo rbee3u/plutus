@@ -171,7 +171,7 @@ func TestTLSMatrix(t *testing.T) {
 		{name: "mtls", cert: "cert.pem", key: "key.pem", ca: "ca.pem", https: true, mtls: true},
 		{name: "certificate only", cert: "cert.pem", wantError: "configured together"},
 		{name: "key only", key: "key.pem", wantError: "configured together"},
-		{name: "ca without https", ca: "ca.pem", wantError: "requires cert_file and key_file"},
+		{name: "CA without HTTPS", ca: "ca.pem", wantError: "requires cert_file and key_file"},
 		{name: "expired", cert: "expired.pem", key: "expired.key", wantError: "expired"},
 		{name: "mismatch", cert: "cert.pem", key: "other.key", wantError: "do not match"},
 		{name: "missing certificate", cert: "missing.pem", key: "key.pem", wantError: "read TLS certificate"},

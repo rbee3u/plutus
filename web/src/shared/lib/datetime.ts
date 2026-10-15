@@ -23,7 +23,7 @@ function formatter(timeZone: string | undefined): Intl.DateTimeFormat {
   return cached;
 }
 
-/** An instant as `2026-09-22 23:13` in the Portfolio timezone; unknown instants stay an em dash. */
+/** An instant as `2026-09-22 23:13` in the portfolio timezone; unknown instants stay an em dash. */
 export function formatInstant(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) {
     return "—";

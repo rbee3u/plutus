@@ -96,7 +96,7 @@ type ListLatestPricesByPlatformAtParams struct {
 
 // Rank only the 24-hour window inside the covering selection index, then read
 // the winners; a correlated per-row lookup rescans each symbol's history.
-// Bulk imports can leave stale statistics favoring a Portfolio-only scan, so
+// Bulk imports can leave stale statistics favoring a portfolio-only scan, so
 // the window scan forces the selection index.
 func (q *Queries) ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]PriceObservation, error) {
 	query := listLatestPricesByPlatformAt

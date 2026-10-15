@@ -33,7 +33,7 @@ const platforms: Pick<Platform, "id" | "name" | "adapterAvailable" | "accountStr
     accountStructures: [
       {
         id: "binance_classic",
-        name: "Classic Trading",
+        name: "Classic trading",
         accountTypes: [{ id: "spot", name: "Spot" }],
         marginModes: [],
       },
@@ -61,8 +61,8 @@ describe("Identity structure labels", () => {
   });
 
   it.each([
-    ["okx", "okx_unified", "okx_spot", "SPOT"],
-    ["okx", "okx_unified", "okx_futures", "FUTURES"],
+    ["okx", "okx_unified", "okx_spot", "Spot"],
+    ["okx", "okx_unified", "okx_futures", "Futures"],
     ["okx", "okx_unified", "okx_mcm", "MCM"],
     ["okx", "okx_unified", "okx_pm", "PM"],
     ["bybit", "bybit_uta_2_0", "bybit_isolated", "ISO"],
@@ -79,10 +79,10 @@ describe("Identity structure labels", () => {
   it.each([
     ["okx", "okx_unified"],
     ["bybit", "bybit_uta_2_0"],
-  ])("shows UNKNOWN for an unobserved %s mode", (platform, structure) => {
+  ])("shows Unknown for an unobserved %s mode", (platform, structure) => {
     for (const mode of [null, undefined, ""]) {
-      expect(marginModeLabel(undefined, platform, structure, mode)).toBe("UNKNOWN");
-      expect(marginModeLabel(platforms, platform, structure, mode)).toBe("UNKNOWN");
+      expect(marginModeLabel(undefined, platform, structure, mode)).toBe("Unknown");
+      expect(marginModeLabel(platforms, platform, structure, mode)).toBe("Unknown");
     }
   });
 
@@ -91,7 +91,7 @@ describe("Identity structure labels", () => {
     ["binance", "binance_pm"],
     ["kraken", "kraken_separate"],
     ["kraken", "kraken_unified"],
-  ])("omits the Margin Mode for %s / %s", (platform, structure) => {
+  ])("omits the margin mode for %s / %s", (platform, structure) => {
     expect(marginModeLabel(undefined, platform, structure, null)).toBeNull();
     expect(marginModeLabel(platforms, platform, structure, null)).toBeNull();
   });
@@ -107,7 +107,7 @@ describe("Identity structure labels", () => {
     expect(marginModeLabel(platforms, "okx", "okx_future_structure", "okx_future_mode")).toBe(
       "Future OKX mode",
     );
-    expect(marginModeLabel(platforms, "okx", "okx_future_structure", null)).toBe("UNKNOWN");
+    expect(marginModeLabel(platforms, "okx", "okx_future_structure", null)).toBe("Unknown");
     expect(marginModeLabel(undefined, "future_platform", "future_structure", null)).toBeNull();
   });
 

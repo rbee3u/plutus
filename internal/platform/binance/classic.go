@@ -10,12 +10,12 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// Classic Trading keeps Cross Margin, Isolated Margin, USDⓈ-M Futures, and COIN-M Futures in
-// separate wallets, each its own Account. Binance reports no USD equity for any of them, so every
-// Account's value is calculated from its Balances and its equity stays null.
+// Classic trading keeps cross margin, isolated margin, USDⓈ-M futures, and COIN-M futures in
+// separate wallets, each its own account. Binance reports no USD equity for any of them, so every
+// account's value is calculated from its balances and its equity stays null.
 
-// marginAsset is one coin of a margin wallet: a Cross Margin userAssets row, or the base or quote
-// side of an Isolated Margin pair.
+// marginAsset is one coin of a margin wallet: a cross margin userAssets row, or the base or quote
+// side of an isolated margin pair.
 type marginAsset struct {
 	Asset    string `json:"asset"`
 	Free     string `json:"free"`
@@ -31,7 +31,7 @@ type crossMarginAccount struct {
 	UserAssets  []marginAsset `json:"userAssets"`
 }
 
-// crossMargin maps the Cross Margin wallet. Binance's margin level, total asset ÷ total liability
+// crossMargin maps the cross margin wallet. Binance's margin level, total asset ÷ total liability
 // where higher is safer, is retained as reported; Binance uses 999 when nothing is borrowed.
 // A margin account that was never created is empty.
 func (a *Adapter) crossMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
@@ -64,8 +64,8 @@ type isolatedMarginAccount struct {
 	} `json:"assets"`
 }
 
-// isolatedMargin maps the Isolated Margin wallet. Every pair holds its base and quote coins apart
-// from the other pairs; the Account sums one coin across all pairs, so it appears once however
+// isolatedMargin maps the isolated margin wallet. Every pair holds its base and quote coins apart
+// from the other pairs; the account sums one coin across all pairs, so it appears once however
 // many pairs hold it.
 func (a *Adapter) isolatedMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var account isolatedMarginAccount
@@ -114,7 +114,7 @@ func (t *marginTotals) add(ep endpoint, row *marginAsset) error {
 	return t.interest.Add(where, row.Asset, parsed["interest"])
 }
 
-// balances returns one Balance per coin with a nonzero equity, liability, or interest, ordered by
+// balances returns one balance per coin with a nonzero equity, liability, or interest, ordered by
 // coin.
 func (t *marginTotals) balances() []adapters.Balance {
 	out := make([]adapters.Balance, 0, len(t.net))
@@ -160,7 +160,7 @@ type futuresAsset struct {
 	MaxWithdrawAmount string `json:"maxWithdrawAmount"`
 }
 
-// umFutures maps the USDⓈ-M Futures wallet. In Multi-Assets Mode its margin assets form one pool
+// umFutures maps the USDⓈ-M futures wallet. In Multi-Assets Mode its margin assets form one pool
 // and Binance reports USD account figures for it; in Single-Asset Mode every margin asset stands
 // alone and the totals cover USDT only, so no account figure is stored.
 func (a *Adapter) umFutures(ctx context.Context, c *client) (adapters.AccountReport, error) {
@@ -201,7 +201,7 @@ func (a *Adapter) umFutures(ctx context.Context, c *client) (adapters.AccountRep
 }
 
 // mapMultiAssets retains the USD account measures of Multi-Assets Mode.
-// Ratios are read-model calculations, not Platform-reported observations.
+// Ratios are read-model calculations, not platform-reported observations.
 func mapMultiAssets(account *futuresAccount, report *adapters.AccountReport) error {
 	where := epUMAccount.String()
 	for name, value := range map[string]string{
@@ -219,7 +219,7 @@ func mapMultiAssets(account *futuresAccount, report *adapters.AccountReport) err
 	return nil
 }
 
-// cmFutures maps the COIN-M Futures wallet, where every margin coin stands alone.
+// cmFutures maps the COIN-M futures wallet, where every margin coin stands alone.
 func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var account futuresAccount
 	if err := c.call(ctx, epCMAccount, nil, &account); err != nil {

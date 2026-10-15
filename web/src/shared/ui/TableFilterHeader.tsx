@@ -63,6 +63,7 @@ export function TableFilterHeader({
   const anchorPosition = useRef({ left: 0, bottom: 0 });
   const [position, setPosition] = useState({ left: 0, top: 0, maxHeight: 320 });
   const isSearch = type === "search";
+  const field = /^[A-Z]{2}/.test(label) ? label : label.charAt(0).toLowerCase() + label.slice(1);
 
   function handleSelect(event: MouseEvent<HTMLButtonElement>) {
     onSelect?.(event.currentTarget.value);
@@ -80,7 +81,7 @@ export function TableFilterHeader({
       <button
         type="button"
         className={styles.clearBtn}
-        aria-label={`Clear ${label} filter`}
+        aria-label={`Clear ${field} filter`}
         onClick={handleClear}
       >
         <X size={iconSize.xs} aria-hidden="true" />
@@ -159,11 +160,11 @@ export function TableFilterHeader({
         aria-label={
           isSearch
             ? active && display
-              ? `Filter ${label}: ${display}`
-              : `Search ${label}`
+              ? `Filter ${field}: ${display}`
+              : `Search ${field}`
             : active && display
-              ? `Filter ${label}: ${display}`
-              : `Filter ${label}: All`
+              ? `Filter ${field}: ${display}`
+              : `Filter ${field}: All`
         }
         aria-expanded={open}
         aria-haspopup={isSearch ? "dialog" : "listbox"}
@@ -206,7 +207,7 @@ export function TableFilterHeader({
               ref={panel}
               id={id}
               role={isSearch ? "dialog" : "listbox"}
-              aria-label={isSearch ? `Search ${label}` : `Choose ${label}`}
+              aria-label={isSearch ? `Search ${field}` : `Choose ${field}`}
               className={`${styles.panel} ${isSearch ? styles.panelSearch : styles.panelSelect}`}
               style={position}
               onKeyDown={(event) => {
@@ -239,7 +240,7 @@ export function TableFilterHeader({
                     onClose();
                   }}
                 >
-                  <label htmlFor={`${id}-input`}>Search {label}</label>
+                  <label htmlFor={`${id}-input`}>Search {field}</label>
                   <TextInput
                     id={`${id}-input`}
                     value={searchDraft}

@@ -1,4 +1,4 @@
-// Package secret encrypts Connection credentials with AES-256-GCM.
+// Package secret encrypts connection credentials with AES-256-GCM.
 package secret
 
 import (
@@ -47,7 +47,7 @@ type document struct {
 	FuturesAPISecret string `json:"futuresApiSecret,omitempty"`
 }
 
-// Box seals and opens Connection credentials.
+// Box seals and opens connection credentials.
 type Box struct {
 	aead cipher.AEAD
 }
@@ -76,7 +76,7 @@ func CurrentKeyVersion() uint16 {
 	return currentKeyVersion
 }
 
-// Seal encrypts credentials. AAD binds Connection ID, Portfolio ID, document version, and key version.
+// Seal encrypts credentials. AAD binds connection ID, portfolio ID, document version, and key version.
 func (b *Box) Seal(connectionID, portfolioID [16]byte, keyVersion uint16, cred Credentials) (ciphertext, nonce []byte, err error) {
 	if b == nil {
 		return nil, nil, ErrInvalidKey

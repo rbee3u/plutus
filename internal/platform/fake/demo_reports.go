@@ -177,18 +177,18 @@ func DemoPrice(platform adapters.Platform, symbol string, at time.Time) string {
 func demoFailure(d DemoIdentity, anchor, at time.Time) error {
 	switch d.Profile {
 	case "missing":
-		return adapters.NewError(adapters.ClassTemporary, "The first complete Account Report is not available.")
+		return adapters.NewError(adapters.ClassTemporary, "The first complete account report is not available.")
 	case "unconfigured":
-		return adapters.NewError(adapters.ClassAuthentication, "The Connection has no credentials.")
+		return adapters.NewError(adapters.ClassAuthentication, "The connection has no credentials.")
 	case "normalization":
-		return adapters.NewError(adapters.ClassNormalization, "Required Balance equity is unavailable; no partial Complete Set was stored.")
+		return adapters.NewError(adapters.ClassNormalization, "Required balance equity is unavailable; no partial complete set was stored.")
 	case "stale", "stale_incomplete":
 		if !at.Before(DemoEventTime(anchor, -2)) {
-			return adapters.NewError(adapters.ClassRateLimited, "The Platform is withholding this Account's report.")
+			return adapters.NewError(adapters.ClassRateLimited, "The platform is withholding this account's report.")
 		}
 	case "invalid":
 		if !at.Before(DemoEventTime(anchor, -2)) {
-			return adapters.NewError(adapters.ClassAuthentication, "The Platform rejected the revoked read-only key.")
+			return adapters.NewError(adapters.ClassAuthentication, "The platform rejected the revoked read-only key.")
 		}
 	case "disabled":
 		if !at.Before(DemoEventTime(anchor, -2)) {
@@ -196,12 +196,12 @@ func demoFailure(d DemoIdentity, anchor, at time.Time) error {
 		}
 	case "unsupported":
 		if !at.Before(DemoEventTime(anchor, -2)) {
-			return adapters.NewError(adapters.ClassUnsupported, "The Platform product report cannot be normalized under the declared structure.")
+			return adapters.NewError(adapters.ClassUnsupported, "The platform product report cannot be normalized under the declared structure.")
 		}
 	}
 	// A historical recoverable outage leaves the current daily combination healthy.
 	if d.ID == "daily-bybit" && !at.Before(DemoEventTime(anchor, -6)) && at.Before(DemoEventTime(anchor, -5)) {
-		return adapters.NewError(adapters.ClassTemporary, "A historical Platform outage delayed collection.")
+		return adapters.NewError(adapters.ClassTemporary, "A historical platform outage delayed collection.")
 	}
 	return nil
 }
@@ -214,7 +214,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 	if d.Profile == "empty" {
 		return r
 	}
-	//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
+	//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 	switch kind {
 	case "earn":
 		demoEarn(&r, d, anchor, at)
@@ -265,7 +265,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapters.AccountType)
 				r.Balances[0].Equity = demoSub(r.Balances[0].Equity, "750")
 			}
 		}
-		// Principal sits in Funding before subscription and after redemption.
+		// Principal sits in funding before subscription and after redemption.
 		// Edge scenarios have no unrelated product lifecycle mutations.
 		if d.ID == "daily-classic" {
 			if at.Before(DemoEventTime(anchor, -33)) || !at.Before(DemoEventTime(anchor, -3)) {
@@ -347,7 +347,7 @@ func demoTrading(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time
 			r.Positions = append(r.Positions, p)
 		}
 	}
-	// Only the Classic futures wallet owns this synthetic open/close event.
+	// Only the classic futures wallet owns this synthetic open/close event.
 	historical := d.ID == "daily-classic" && r.AccountType == "um_futures"
 	closed := !at.Before(DemoEventTime(anchor, -4))
 	if historical && !at.Before(DemoEventTime(anchor, -8)) && !closed {
@@ -565,13 +565,13 @@ func demoAmounts(r *adapters.AccountReport) {
 	totals := adapters.Totals{}
 	for _, p := range r.EarnPositions {
 		for _, a := range p.Assets {
-			if err := totals.Add("demo Earn", a.AssetSymbol, demoNumber(a.Amount)); err != nil {
+			if err := totals.Add("Demo earn", a.AssetSymbol, demoNumber(a.Amount)); err != nil {
 				panic(err)
 			}
 		}
 	}
 	for _, p := range r.DualPositions {
-		if err := totals.Add("demo Dual", p.PrincipalAssetSymbol, demoNumber(p.Principal)); err != nil {
+		if err := totals.Add("Demo dual", p.PrincipalAssetSymbol, demoNumber(p.Principal)); err != nil {
 			panic(err)
 		}
 	}

@@ -20,9 +20,9 @@ export const POSITION_COLUMNS = [
   { key: "symbol", header: "Symbol", nowrap: true },
   { key: "side", header: "Side", nowrap: true, width: "80px" },
   { key: "size", header: "Size", numeric: true, nowrap: true, width: "110px" },
-  { key: "entryPrice", header: "Entry Price", numeric: true, nowrap: true, width: "120px" },
-  { key: "markPrice", header: "Mark Price", numeric: true, nowrap: true, width: "120px" },
-  { key: "liquidationPrice", header: "Liq. Price", numeric: true, nowrap: true, width: "120px" },
+  { key: "entryPrice", header: "Entry price", numeric: true, nowrap: true, width: "120px" },
+  { key: "markPrice", header: "Mark price", numeric: true, nowrap: true, width: "120px" },
+  { key: "liquidationPrice", header: "Liq. price", numeric: true, nowrap: true, width: "120px" },
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, nowrap: true, width: "130px" },
   { key: "margin", header: "Margin", numeric: true, nowrap: true, width: "118px" },
   { key: "notionalUsd", header: "Notional (USD)", numeric: true, nowrap: true, width: "130px" },
@@ -132,7 +132,7 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
             </div>
             {item.contractSize ? (
               <div>
-                <dt>Contract Size</dt>
+                <dt>Contract size</dt>
                 <dd>
                   1 contract = <NumericText>{formatDecimal(item.contractSize)}</NumericText>{" "}
                   {factorUnit ?? "—"}

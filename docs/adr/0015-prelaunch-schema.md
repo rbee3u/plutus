@@ -4,57 +4,57 @@ status: accepted
 
 # Prelaunch schema and retained financial provenance
 
-Each Collection Cycle row is both retained history and its own queue entry:
+Each collection cycle row is both retained history and its own queue entry:
 attempts, availability, and the lease live beside status and the last error.
-Source Account Reports stay separate from their committed valuations. A Futures
-Contract is one symbol with one immutable set of observed terms; no feature
+Source account reports stay separate from their committed valuations. A futures
+contract is one symbol with one immutable set of observed terms; no feature
 reads a symbol across term changes, so a separate per-symbol parent would add a
-join without a reader. Manual revisions and Asset Exclusions use versioned
+join without a reader. Manual revisions and asset exclusions use versioned
 children without duplicate current-state tables; their actors are recorded once,
-in audit events. A Manual report references the revision it reported instead of
+in audit events. A manual report references the revision it reported instead of
 a per-cycle input table: revisions are immutable, and the reports commit with
 the cycle's marker.
 
 Preserve these responsibilities rather than merging entities with different
 lifetimes. A separate job table would duplicate cycle state on its own expiry
-clock, while Points stay separate because a cycle changes until first commit and
-a Point never changes after it. Core financial references need scoped foreign
-keys. Every Portfolio-owned primary key starts with `portfolio_id`, so key
+clock, while points stay separate because a cycle changes until first commit and
+a point never changes after it. Core financial references need scoped foreign
+keys. Every portfolio-owned primary key starts with `portfolio_id`, so key
 prefixes cover those foreign keys and cluster rows by owner; every join must
-name the Portfolio. Earn's variable descriptions stay in bounded typed JSON;
+name the portfolio. Earn's variable descriptions stay in bounded typed JSON;
 optional product lists do not require separate entities. Mappings stay inline on
-Assets.
+assets.
 
-The cycle is the sole identity of an immutable Valuation Point. First commit
+The cycle is the sole identity of an immutable valuation point. First commit
 includes summaries, evidence, and cycle completion. Retries return it unchanged.
 Algorithm versions remain provenance; result revisions and rebuilds add no
-meaning to an immutable result. Manual adjustments and sparse calculated Asset
+meaning to an immutable result. Manual adjustments and sparse calculated asset
 changes are stored because long-term comparisons must survive detail pruning.
-Boundary Events freeze their completeness and amount independently of expiring
-Account Valuations. Facts derivable from retained rows, such as calculation
+Boundary events freeze their completeness and amount independently of expiring
+account valuations. Facts derivable from retained rows, such as calculation
 version changes and boundary totals, are computed on read rather than copied;
-Account issues follow the detail they describe. A Balance Valuation's pricing
+account issues follow the detail they describe. A balance valuation's pricing
 method alone records policy exclusion; a copied exclusion version would restate
 it.
 
-Manual edit audits retain the single changed Asset and its old/new quantity;
+Manual edit audits retain the single changed asset and its old/new quantity;
 revision numbers alone become dangling explanations after detail cleanup.
 Exclusion audits instead resolve their retained version rows, avoiding a second
-copy of policy facts. Sparse calculated Asset history remains appropriate for
-mostly stable holdings; a per-point encoded Asset set would add storage and
+copy of policy facts. Sparse calculated asset history remains appropriate for
+mostly stable holdings; a per-point encoded asset set would add storage and
 encoding rules without a demonstrated capacity need at this workload.
 
-All market catalogs and price observations belong to a Portfolio. Duplicating
-markets across Portfolios is intentional: local mappings, collection, retention,
-and deletion cannot change another Portfolio's evidence. One observation per
-Platform and Canonical Asset per cycle attempt suffices: Identities on one
-Platform read the same public market minutes apart at most, well inside the
-price staleness window. Only access resources and User-scoped idempotency
+All market catalogs and price observations belong to a portfolio. Duplicating
+markets across portfolios is intentional: local mappings, collection, retention,
+and deletion cannot change another portfolio's evidence. One observation per
+platform and canonical asset per cycle attempt suffices: identities on one
+platform read the same public market minutes apart at most, well inside the
+price staleness window. Only access resources and user-scoped idempotency
 records have shared lifetimes.
 
-Use names that distinguish stored facts from interpretations: Position source
-quantity and unit, Asset mapping version, and initial Portfolio. Extensible
-Platform, Account Structure, Account Type and Margin Mode catalogs are validated
+Use names that distinguish stored facts from interpretations: position source
+quantity and unit, asset mapping version, and initial portfolio. Extensible
+platform, account structure, account type and margin mode catalogs are validated
 by runtime domain rules rather than repeated SQL enums. Stable signedness,
 shape, quote currency, uniqueness, and ownership constraints remain in SQL.
 

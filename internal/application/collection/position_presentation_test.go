@@ -88,7 +88,7 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 			t.Fatalf("historical %+v %v", historical, err)
 		}
 	}
-	// A missing linear Mark must not hide the known inverse face notional.
+	// A missing linear mark must not hide the known inverse face notional.
 	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE futures_positions p JOIN futures_contracts n ON n.id=p.futures_contract_id JOIN account_reports r ON r.id=p.report_id SET p.mark_price=NULL WHERE r.portfolio_id=? AND n.kind='linear_perpetual'", h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	h.runCycle()
 	after, err := h.financial.AccountPositionsAt(h.ctx, pctx, historicalAccount.AccountID, &first.Point.CycleID)
 	if err != nil || *before.Positions[0].MarkPrice != *after.Positions[0].MarkPrice || !before.Positions[0].ReportObservedAt.Equal(*after.Positions[0].ReportObservedAt) {
-		t.Fatal("historical Positions changed after new collection")
+		t.Fatal("historical positions changed after new collection")
 	}
 	foreign := financial.PortfolioContext{ID: uuid.New(), Timezone: "UTC"}
 	if _, err := h.financial.AccountPositionsAt(h.ctx, foreign, historicalAccount.AccountID, &first.Point.CycleID); !errors.Is(err, valuation.ErrNotFound) {
@@ -148,7 +148,7 @@ func TestStalePositionsKeepSourceModeAndObservedTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	broken := h.storeCredentials(item, "invalid-position-source")
-	// The Identity's latest setting cannot establish an older Report's regime.
+	// The identity's latest setting cannot establish an older report's regime.
 	if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE identities SET connection_status='enabled',last_observed_margin_mode='okx_futures' WHERE id=?", broken.ID[:]); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestStalePositionsKeepSourceModeAndObservedTime(t *testing.T) {
 			t.Fatalf("source mode or time changed: %+v", row)
 		}
 		if row.SettleMargin != nil {
-			t.Fatal("Portfolio risk allocated to a stale Position")
+			t.Fatal("Portfolio risk allocated to a stale position")
 		}
 	}
 }
@@ -178,8 +178,8 @@ func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
 	first, _ := h.runCycle()
 	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
 	accountID := h.accountsByType(first.Point.CycleID, item.ID)["portfolio_margin"].AccountID
-	// Old PM rows retained size/Mark/leverage without margin provenance. Reads
-	// can establish Cross from the immutable supported PM structure.
+	// Old PM rows retained size/mark/leverage without margin provenance. Reads
+	// can establish cross from the immutable supported PM structure.
 	if _, err := h.collection.db.ExecContext(h.ctx, `UPDATE futures_positions p JOIN account_reports r ON r.id=p.report_id
         SET p.margin_setting=NULL,p.margin_basis=NULL,p.margin_asset_symbol=NULL WHERE r.portfolio_id=?`, h.portfolioID[:]); err != nil {
 		t.Fatal(err)

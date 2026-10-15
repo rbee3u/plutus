@@ -1,5 +1,5 @@
-// Package kraken implements read-only Kraken access for Separate wallets and
-// Unified Wallet. Field mappings: docs/platform/kraken/mapping.md. Runtime
+// Package kraken implements read-only Kraken access for separate wallets and
+// unified wallet. Field mappings: docs/platform/kraken/mapping.md. Runtime
 // responses stay private; RecordRequest is the explicit recording path.
 package kraken
 
@@ -13,8 +13,8 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
-// Account Types of the kraken_separate and kraken_unified Account Structures. Multi-M exists only
-// in Separate wallets: in Unified Wallet the multi-collateral wallet is Main itself.
+// Account types of the kraken_separate and kraken_unified account structures. Multi-M exists only
+// in separate wallets: in unified wallet the multi-collateral wallet is main itself.
 const (
 	TypeMain               adapters.AccountType = "main"
 	TypeEarn               adapters.AccountType = "earn"
@@ -24,18 +24,18 @@ const (
 )
 
 var structureWords = map[adapters.AccountStructure]string{
-	adapters.StructureKrakenUnified:  "unified_balances = true (Unified Wallet)",
+	adapters.StructureKrakenUnified:  "unified_balances = true (Unified wallet)",
 	adapters.StructureKrakenSeparate: "unified_balances = false (Separate wallets)",
 }
 
-// Options configures an Adapter. Zero values select production defaults.
+// Options configures an adapter. Zero values select production defaults.
 type Options struct {
 	SpotHost     string
 	FuturesHost  string
 	WebSocketURL string
 	HTTP         *http.Client
 	Now          func() time.Time
-	// HTTPFactory creates a client with the Adapter timeout when HTTP is nil.
+	// HTTPFactory creates a client with the adapter timeout when HTTP is nil.
 	HTTPFactory func(time.Duration) *http.Client
 }
 
@@ -91,8 +91,8 @@ func (a *Adapter) client(creds adapters.Credentials) *client {
 
 func (a *Adapter) now() time.Time { return a.clock().UTC() }
 
-// structureOf reads the Account Structure from the documented unified_balances flag of the
-// balances snapshot. A missing flag is unknown; it is never read as Separate wallets.
+// structureOf reads the account structure from the documented unified_balances flag of the
+// balances snapshot. A missing flag is unknown; it is never read as separate wallets.
 func structureOf(s *snapshot) (adapters.AccountStructure, error) {
 	if s.Flex.UnifiedBalances == nil {
 		return "", adapters.Malformed("Kraken "+epBalancesSnapshot.String(), "flex_futures.unified_balances")
@@ -103,7 +103,7 @@ func structureOf(s *snapshot) (adapters.AccountStructure, error) {
 	return adapters.StructureKrakenSeparate, nil
 }
 
-// Platform wallet settings can change after the Identity is created.
+// Platform wallet settings can change after the identity is created.
 func checkStructure(s *snapshot, structure adapters.AccountStructure) error {
 	actual, err := structureOf(s)
 	if err != nil {
@@ -116,7 +116,7 @@ func checkStructure(s *snapshot, structure adapters.AccountStructure) error {
 }
 
 // Validate matches supplied key groups by customer reference. Futures-only keys
-// may use accountUid when iiban is absent. Structure checks require Futures
+// may use accountUid when iiban is absent. Structure checks require futures
 // access; Spot-only validation cannot perform them.
 func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
 	if !adapters.ValidStructure(adapters.PlatformKraken, structure) {
@@ -158,7 +158,7 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 		}
 	}
 	if spotRef != "" && futuresRef != "" && spotRef != futuresRef {
-		return adapters.ValidationResult{}, adapters.NewError(adapters.ClassAuthentication, "The Kraken Spot and Futures keys belong to different customer accounts.")
+		return adapters.ValidationResult{}, adapters.NewError(adapters.ClassAuthentication, "The Kraken spot and futures keys belong to different customer accounts.")
 	}
 	if spotRef != "" {
 		return adapters.ValidationResult{ExternalRef: spotRef}, nil
@@ -169,7 +169,7 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 // normalizeRef removes the spaces Kraken may print inside a customer reference.
 func normalizeRef(ref string) string { return strings.ToUpper(strings.Join(strings.Fields(ref), "")) }
 
-// run holds what one Collect call shares across its Accounts.
+// run holds what one Collect call shares across its accounts.
 type run struct {
 	earnMetadata map[string]earnStrategy
 	a            *Adapter
@@ -179,12 +179,12 @@ type run struct {
 	prices       spotPrices
 	// Earn-only runs do not need a wallet snapshot.
 	snapshot *snapshot
-	// open caches the open positions and their contracts, shared by Main or Multi-M and Coin-M.
+	// open caches the open positions and their contracts, shared by main or Multi-M and Coin-M.
 	open *openBook
 }
 
-// Collect checks structure through the Futures snapshot when wallet Accounts
-// are requested. Earn-only collection skips it because Earn spans both structures.
+// Collect checks structure through the futures snapshot when wallet accounts
+// are requested. Earn-only collection skips it because earn spans both structures.
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
 	if !adapters.ValidStructure(adapters.PlatformKraken, structure) {
 		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformKraken, structure)
@@ -239,7 +239,7 @@ func needsSnapshot(accounts []adapters.AccountType) bool {
 }
 
 func (r *run) account(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
-	switch accountType { //nolint:exhaustive // Kraken supports only its declared Account Types, not Dual Investment.
+	switch accountType { //nolint:exhaustive // Kraken supports only its declared account types, not dual investment.
 	case TypeMain:
 		if r.structure == adapters.StructureKrakenUnified {
 			return r.multiCollateral(ctx, TypeMain)

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Plutus API
   version: 0.1.0
-  description: Transport contract for authentication, Portfolios, Identities with embedded Connections, Collection Cycles, holdings, history, Capital Flows, catalog, and audit.
+  description: Transport contract for authentication, portfolios, identities with embedded connections, collection cycles, holdings, history, capital flows, catalog, and audit.
 servers:
   - url: /
 paths:
@@ -287,7 +287,7 @@ paths:
     get:
       operationId: listPlatforms
       tags: [identities]
-      summary: List supported platforms with their Account Structures, Account Types, and Margin Modes
+      summary: List supported platforms with their account structures, account types, and margin modes
       responses:
         "200":
           description: Supported platforms.
@@ -729,13 +729,13 @@ paths:
     get:
       operationId: listAccountPositions
       tags: [holdings]
-      summary: Positions of an account at the latest or a specified Valuation Point
+      summary: Positions of an account at the latest or a specified valuation point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AccountID"
         - name: cycleId
           in: query
-          description: Historical Valuation Point; omitted for the latest point.
+          description: Historical valuation point; omitted for the latest point.
           schema:
             $ref: "#/components/schemas/UUID"
       responses:
@@ -805,7 +805,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of the Asset Symbol or Canonical Asset Symbol.
+          description: Case-insensitive literal substring of the asset symbol or canonical asset symbol.
           schema:
             type: string
         - name: offset
@@ -852,7 +852,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of the native contract Symbol.
+          description: Case-insensitive literal substring of the native contract symbol.
           schema:
             type: string
         - name: offset
@@ -899,7 +899,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of the invested, Base, or Quote Asset Symbol.
+          description: Case-insensitive literal substring of the invested, base, or quote asset symbol.
           schema:
             type: string
         - name: offset
@@ -932,7 +932,7 @@ paths:
     get:
       operationId: listEarnPositions
       tags: [holdings]
-      summary: Flat Earn position list across the boundary at the latest point
+      summary: Flat earn position list across the boundary at the latest point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -946,7 +946,7 @@ paths:
             format: uuid
         - name: symbol
           in: query
-          description: Case-insensitive literal substring of any invested Asset Symbol or Canonical Asset Symbol.
+          description: Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
           schema:
             type: string
         - name: offset
@@ -979,8 +979,8 @@ paths:
     get:
       operationId: getHistoryWindow
       tags: [history]
-      summary: Resolve a relative or Portfolio-local history window
-      description: Use a preset (default 1w), or both local endpoints without a preset. Local endpoints use the Portfolio timezone; nonexistent and ambiguous times are rejected.
+      summary: Resolve a relative or portfolio-local history window
+      description: Use a preset (default 1w), or both local endpoints without a preset. Local endpoints use the portfolio timezone; nonexistent and ambiguous times are rejected.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: preset
@@ -1013,7 +1013,7 @@ paths:
     get:
       operationId: listValuationPointPage
       tags: [history]
-      summary: Raw Valuation Points, newest first
+      summary: Raw valuation points, newest first
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/TimeFrom"
@@ -1082,7 +1082,7 @@ paths:
           schema:
             type: string
             pattern: '^\d{4}-\d{2}-\d{2}$'
-          description: Calendar date in the current Portfolio timezone; may fall back to an earlier day.
+          description: Calendar date in the current portfolio timezone; may fall back to an earlier day.
       responses:
         "200":
           description: A complete retained snapshot with its actual cycle, time and total.
@@ -1349,7 +1349,7 @@ paths:
     get:
       operationId: listAssets
       tags: [catalog]
-      summary: List Assets and their Canonical Asset mappings
+      summary: List assets and their canonical asset mappings
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -1381,7 +1381,7 @@ paths:
             default: 50
       responses:
         "200":
-          description: Assets and their Canonical Asset mappings.
+          description: Assets and their canonical asset mappings.
           content:
             application/json:
               schema:
@@ -1396,7 +1396,7 @@ paths:
     put:
       operationId: putAssetMapping
       tags: [catalog]
-      summary: Override the Canonical Asset mapping for future Valuation Points
+      summary: Override the canonical asset mapping for future valuation points
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AssetID"
@@ -1431,7 +1431,7 @@ paths:
     put:
       operationId: putAssetExclusion
       tags: [catalog]
-      summary: Ignore or restore an Asset for future Collection Cycles in one Portfolio
+      summary: Ignore or restore an asset for future collection cycles in one portfolio
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AssetID"
@@ -1445,7 +1445,7 @@ paths:
               $ref: "#/components/schemas/PutAssetExclusionRequest"
       responses:
         "200":
-          description: Updated Portfolio asset rule.
+          description: Updated portfolio asset rule.
           headers:
             ETag:
               schema:
@@ -1766,7 +1766,7 @@ components:
     TimeFrom:
       name: from
       in: query
-      description: Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+      description: Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
       schema:
         type: string
         format: date-time
@@ -2030,13 +2030,13 @@ components:
           type: array
           items:
             type: string
-          description: Selected Accounts matching this list (selected) or outside it (selected_except); ignored for always.
+          description: Selected accounts matching this list (selected) or outside it (selected_except); ignored for always.
     AccountStructure:
       type: object
       additionalProperties: false
       description: >-
-        How the Platform arranges an Identity's Accounts. It decides the Account Types, is chosen
-        when the Identity is created, and cannot be changed afterwards.
+        How the platform arranges an identity's accounts. It decides the account types, is chosen
+        when the identity is created, and cannot be changed afterwards.
       required: [id, name, accountTypes, marginModes]
       properties:
         id:
@@ -2048,7 +2048,7 @@ components:
           items:
             $ref: "#/components/schemas/AccountTypeInfo"
         marginModes:
-          description: Margin Modes the Platform may report within this structure; empty when it has none.
+          description: Margin modes the platform may report within this structure; empty when it has none.
           type: array
           items:
             $ref: "#/components/schemas/MarginModeInfo"
@@ -2134,8 +2134,8 @@ components:
           type: string
         marginMode:
           description: >-
-            The Margin Mode the Platform last reported. Null before the first successful validation
-            and for Account Structures that have none.
+            The margin mode the platform last reported. Null before the first successful validation
+            and for account structures that have none.
           type: [string, "null"]
         externalRef:
           type: [string, "null"]
@@ -2217,14 +2217,14 @@ components:
         apiSecret:
           type: string
           maxLength: 1024
-          description: For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other Platforms use their ordinary API secret.
+          description: For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other platforms use their ordinary API secret.
         passphrase:
           type: string
           maxLength: 512
         futuresApiKey:
           type: string
           maxLength: 512
-          description: Kraken Futures API key; required for Main and derivatives Accounts.
+          description: Kraken Futures API key; required for main and derivatives accounts.
         futuresApiSecret:
           type: string
           maxLength: 1024
@@ -2316,7 +2316,7 @@ components:
       properties:
         valuationRevision:
           type: [string, "null"]
-          description: Identity of the immutable valuation result, equal to its Collection Cycle ID.
+          description: Identity of the immutable valuation result, equal to its collection cycle ID.
         portfolioId:
           $ref: "#/components/schemas/UUID"
         timezone:
@@ -2343,6 +2343,11 @@ components:
           type: [string, "null"]
         symbol:
           type: [string, "null"]
+        omittedBalance:
+          $ref: "#/components/schemas/OmittedBalance"
+        reportObservedAt:
+          type: string
+          format: date-time
     OmittedBalance:
       type: object
       additionalProperties: false
@@ -2352,7 +2357,7 @@ components:
           type: string
         canonicalAssetSymbol:
           type: string
-          description: The Canonical Asset Symbol the Asset is mapped to, present only when it differs from assetSymbol.
+          description: The canonical asset symbol the asset is mapped to, present only when it differs from assetSymbol.
         equity:
           $ref: "#/components/schemas/Decimal"
         reason:
@@ -2383,7 +2388,7 @@ components:
       properties:
         valuationRevision:
           type: string
-          description: Identity of the immutable valuation result, equal to its Collection Cycle ID.
+          description: Identity of the immutable valuation result, equal to its collection cycle ID.
         calculationVersion:
           type: integer
           format: int64
@@ -2503,7 +2508,7 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         marginRatio:
           $ref: "#/components/schemas/NullableDecimal"
-          description: Platform-reported, unscaled Account margin ratio. Its label and denominator depend on the immutable Platform and Account scope.
+          description: Platform-reported, unscaled account margin ratio. Its label and denominator depend on the immutable platform and account scope.
         omitted:
           type: array
           items:
@@ -2746,7 +2751,7 @@ components:
         portfolioMargin:
           type: [boolean, "null"]
         size:
-          description: Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
+          description: Base quantity for linear contracts or quote face amount for inverse contracts; signed for known one-way positions.
           $ref: "#/components/schemas/NullableDecimal"
         sizeSymbol:
           type: [string, "null"]
@@ -2754,11 +2759,11 @@ components:
           description: Margin in settlement currency, using the position's cross or isolated display basis.
           $ref: "#/components/schemas/NullableDecimal"
         marginSource:
-          description: Provenance of the displayed settlement Margin; source amounts remain unchanged.
+          description: Provenance of the displayed settlement margin; source amounts remain unchanged.
           type: [string, "null"]
           enum: [reported, calculated, null]
         marginUnavailableReason:
-          description: Why settlement Margin is unknown; optional Margin omissions do not affect notional completeness.
+          description: Why settlement margin is unknown; optional margin omissions do not affect notional completeness.
           type: [string, "null"]
         issues:
           type: array

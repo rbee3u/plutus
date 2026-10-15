@@ -22,7 +22,7 @@ const (
 	typeOptions = "options"
 )
 
-// openPosition is one row of Futures openpositions.
+// openPosition is one row of futures openpositions.
 type openPosition struct {
 	Symbol        string `json:"symbol"`
 	Side          string `json:"side"`
@@ -32,7 +32,7 @@ type openPosition struct {
 	PnlCurrency   string `json:"pnlCurrency"`
 }
 
-// nativeInstrument is the contract metadata Futures instruments reports.
+// nativeInstrument is the contract metadata futures instruments reports.
 type nativeInstrument struct {
 	Symbol          string     `json:"symbol"`
 	Type            string     `json:"type"`
@@ -43,7 +43,7 @@ type nativeInstrument struct {
 	LastTradingTime *time.Time `json:"lastTradingTime"`
 }
 
-// futuresTicker is one row of Futures tickers: the mark price and the contract's tag.
+// futuresTicker is one row of futures tickers: the mark price and the contract's tag.
 type futuresTicker struct {
 	Symbol    string `json:"symbol"`
 	MarkPrice number `json:"markPrice"`
@@ -102,9 +102,9 @@ func (r *run) book(ctx context.Context) (*openBook, error) {
 	return book, nil
 }
 
-// positions maps the open Futures positions of one wallet family: flexible futures belong to the
-// multi-collateral wallet (Multi-M, or Main in Unified Wallet), inverse and vanilla futures to
-// Coin-M. An option position fails the multi-collateral report, because Plutus has no Futures Contract
+// positions maps the open futures positions of one wallet family: flexible futures belong to the
+// multi-collateral wallet (Multi-M, or main in unified wallet), inverse and vanilla futures to
+// Coin-M. An option position fails the multi-collateral report, because Plutus has no futures contract
 // kind for it. A contract missing from the instrument list fails the report instead of
 // disappearing.
 func (r *run) positions(ctx context.Context, multiCollateral bool) ([]adapters.Position, error) {

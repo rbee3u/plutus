@@ -1,4 +1,4 @@
-// Package collection runs one Collection Cycle: adapter calls, Account Reports, and the Valuation Point.
+// Package collection runs one collection cycle: adapter calls, account reports, and the valuation point.
 package collection
 
 import (
@@ -22,7 +22,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// IdentityDelay is the fixed runtime delay between Identities in one Collection Cycle.
+// IdentityDelay is the fixed runtime delay between identities in one collection cycle.
 const IdentityDelay = 3 * time.Second
 
 // Error classes written by the runner itself.
@@ -43,7 +43,7 @@ type Options struct {
 	Logger      *slog.Logger
 }
 
-// Service runs Collection Cycles.
+// Service runs collection cycles.
 type Service struct {
 	db          *sql.DB
 	q           *sqlcgen.Queries
@@ -115,7 +115,7 @@ func plural(n int, one, many string) string {
 	return fmt.Sprintf("%d %s", n, many)
 }
 
-// RunCycle collects every enabled Identity of the Portfolio for cycleID and writes the Valuation Point.
+// RunCycle collects every enabled identity of the portfolio for cycleID and writes the valuation point.
 func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, claim ...*cycles.Claim) (Summary, error) {
 	point, err := s.valuation.PointByCycle(ctx, portfolioID, cycleID)
 	if err == nil {
@@ -239,7 +239,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, 
 	return summary, nil
 }
 
-// collectIdentity calls the adapter with bounded retries and writes one report per selected Account.
+// collectIdentity calls the adapter with bounded retries and writes one report per selected account.
 func (s *Service) collectIdentity(ctx context.Context, portfolioID, cycleID uuid.UUID, item *identity.Collectable, prices recordedPrices) (map[uuid.UUID]bool, error) {
 	written := map[uuid.UUID]bool{}
 	if len(item.Accounts) == 0 {

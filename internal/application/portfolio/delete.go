@@ -12,7 +12,7 @@ import (
 
 // deleteCascade requests deletion; physical cleanup is bounded worker work.
 // Ending the active cycle keeps the queue from claiming it again; collection
-// writes already refuse a deleting Portfolio.
+// writes already refuse a deleting portfolio.
 func (s *Service) deleteCascade(ctx context.Context, userID, portfolioID []byte, version uint64) error {
 	_, err := mysql.WithWriteContext(ctx, s.db, func(ctx context.Context) (struct{}, error) {
 		q := mysql.Queries(ctx, s.db)
@@ -29,7 +29,7 @@ func (s *Service) deleteCascade(ctx context.Context, userID, portfolioID []byte,
 		_, err = q.FailActiveCollectionCycle(ctx, sqlcgen.FailActiveCollectionCycleParams{
 			PortfolioID: portfolioID, FinishedAt: sql.NullTime{Time: now, Valid: true},
 			ErrorClass:  sql.NullString{String: "portfolio_deleted", Valid: true},
-			ErrorDetail: sql.NullString{String: "The Portfolio was deleted before the cycle finished.", Valid: true},
+			ErrorDetail: sql.NullString{String: "The portfolio was deleted before the cycle finished.", Valid: true},
 		})
 		return struct{}{}, err
 	})
@@ -37,7 +37,7 @@ func (s *Service) deleteCascade(ctx context.Context, userID, portfolioID []byte,
 }
 
 // DeleteBatch removes at most one bounded set of rows owned by the oldest
-// deleting Portfolio; the final batch removes the Portfolio itself. worked is
+// deleting portfolio; the final batch removes the portfolio itself. worked is
 // false when no deletion is pending or another worker holds it.
 func (s *Service) DeleteBatch(ctx context.Context) (worked bool, err error) {
 	return mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (bool, error) {

@@ -5,9 +5,14 @@ import { iconSize } from "@/shared/icons/iconSizes";
 import formStyles from "@/shared/ui/FormControls.module.css";
 import styles from "@/shared/ui/PasswordInput.module.css";
 
-export const PasswordInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  function PasswordInput({ className, disabled, ...props }, ref) {
+interface PasswordInputProps extends InputHTMLAttributes<HTMLInputElement> {
+  fieldName?: string;
+}
+
+export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
+  function PasswordInput({ className, disabled, fieldName = "password", ...props }, ref) {
     const [visible, setVisible] = useState(false);
+    const toggleLabel = `${visible ? "Hide" : "Show"} ${fieldName}`;
 
     return (
       <div className={styles.container}>
@@ -23,8 +28,8 @@ export const PasswordInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HT
           disabled={disabled}
           className={styles.toggle}
           onClick={() => setVisible((prev) => !prev)}
-          aria-label={visible ? "Hide password" : "Show password"}
-          title={visible ? "Hide password" : "Show password"}
+          aria-label={toggleLabel}
+          title={toggleLabel}
         >
           {visible ? <EyeOff size={iconSize.sm} /> : <Eye size={iconSize.sm} />}
         </button>

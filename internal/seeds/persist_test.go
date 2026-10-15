@@ -24,7 +24,7 @@ func TestApplyRollsBackSourceInsertionFailure(t *testing.T) {
 	})
 	b := newBuilder()
 	b.user(userSpec{ID: id, Username: "rollback-" + uuid.NewString()[:8], Hash: alicePasswordHash, CreatedAt: time.Now()})
-	// The second statement violates the unique User ID. The first must roll back.
+	// The second statement violates the unique user ID. The first must roll back.
 	source := b.SQL()
 	if err := Apply(ctx, db, Seed{SQL: source + source}); err == nil {
 		t.Fatal("duplicate source insertion was accepted")
@@ -51,10 +51,10 @@ func TestApplyRollsBackInitializedPointsOnFailure(t *testing.T) {
 	if b.err != nil {
 		t.Fatal(b.err)
 	}
-	// The first Portfolio's point is initialized before the missing second
-	// Portfolio fails. Both its source rows and derived point must roll back.
+	// The first portfolio's point is initialized before the missing second
+	// portfolio fails. Both its source rows and derived point must roll back.
 	if err := Apply(ctx, db, seed); !errors.Is(err, sql.ErrNoRows) || !strings.Contains(err.Error(), missingPortfolioID.String()) {
-		t.Fatalf("expected missing initialization Portfolio: %v", err)
+		t.Fatalf("expected missing initialization portfolio: %v", err)
 	}
 	for _, check := range []struct {
 		query string

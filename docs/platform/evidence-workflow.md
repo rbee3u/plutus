@@ -1,16 +1,16 @@
 # Adapter evidence workflow
 
 Use this procedure for explicit recording, review, and promotion of sanitized
-Platform responses. Automated test requirements belong in
+platform responses. Automated test requirements belong in
 [testing](../testing.md); the reasons for separating tests and evidence are in
 [the verification decision](../adr/0009-adapter-verification.md).
 
-Each Platform has two independent flat directories: `evidence/` holds reviewed
+Each platform has two independent flat directories: `evidence/` holds reviewed
 recorded responses, and `testdata/` holds constructed synthetic test inputs.
 Tests never load evidence, files need not correspond one-to-one, and new
 evidence does not regenerate mocks. Current evidence, official contracts,
 synthetic inputs, remaining gaps, and exchange-app checklists are maintained in
-the Platform verification documents: [Binance](./binance/verification.md),
+the platform verification documents: [Binance](./binance/verification.md),
 [OKX](./okx/verification.md), [Bybit](./bybit/verification.md), and
 [Kraken](./kraken/verification.md).
 
@@ -68,7 +68,7 @@ prepared futures contracts that must survive local market trimming; these hints
 are never sent to the exchange. Public requests read no keys; private requests
 read only their selected `PLUTUS_RECORD_*` credential group from the process
 environment or gitignored `config/record.env` (copy
-[record-example.env](../../config/record-example.env)). Kraken Spot/Futures use
+[record-example.env](../../config/record-example.env)). Kraken Spot/futures use
 separate groups. Recording never falls back to `gotest.env` or old
 `PLUTUS_GOTEST_*` keys; ordinary tests never load recording credentials
 ([Environment decision](../adr/0010-environments-and-configuration.md)).
@@ -122,14 +122,14 @@ complete collection, batch manifest or asset-total proof is generated. Identity
 fields and secrets are masked; unsafe redaction leaves no file.
 Request/response/write failures return nonzero even when a safe failed response
 is retained. Terminal output separately reports the saved path, HTTP/WS result,
-Platform success and empty state. Saving does not prove correct business
+platform success and empty state. Saving does not prove correct business
 mapping. Empty and failed responses remain in `/tmp/plutus/` by default; there
 is no automatic promotion. System temporary-file cleanup may remove unpromoted
 recordings.
 
 Review request identity, sanitation, critical response shapes and differences
 from official documentation; then the owner reviews before promoting the exact
-response to `evidence/`. Full Adapter replay is not an evidence gate. Update the
+response to `evidence/`. Full adapter replay is not an evidence gate. Update the
 inventory with the actual date, observed or owner-declared settings, useful
 differences and remaining gaps. Do not infer generic product applicability from
 the account used to record it. Freeze reviewed evidence; replacements require a
@@ -145,6 +145,6 @@ nonempty, mode, pagination, failure, storage, and valuation assertions. Do not
 require artificial real states simply to reproduce a test scene.
 
 Run the applicable [verification gates](../testing.md#validation-gates) and
-[Adapter delivery checks](../testing.md#adapter-delivery-reports). Real evidence
+[adapter delivery checks](../testing.md#adapter-delivery-reports). Real evidence
 acceptance does not establish exchange-app reconciliation or a complete
 integration.

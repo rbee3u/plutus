@@ -36,7 +36,7 @@ function outcomeText(outcome: ValidationOutcome): string {
   return `${outcome.errorClass ?? "failed"}${outcome.errorDetail ? `: ${outcome.errorDetail}` : ""}`;
 }
 
-/** Connection actions of one Identity row: validate, enable, disable, and archive. */
+/** Connection actions of one identity row: validate, enable, disable, and archive. */
 export function useIdentityActions(portfolioId: string) {
   const { userId } = useSessionScope();
   const write = useAuthenticatedWrite();
@@ -96,7 +96,7 @@ export function useIdentityActions(portfolioId: string) {
         }
         return {
           status: result.response?.status,
-          message: `Validation of ${item.displayName}: ${sentence(outcomeText(result.data))} Connection is ${result.data.identity.connection.status}.`,
+          message: `Validation of ${item.displayName}: ${sentence(outcomeText(result.data))} connection is ${result.data.identity.connection.status}.`,
         };
       },
       "Validation could not run.",
@@ -119,7 +119,7 @@ export function useIdentityActions(portfolioId: string) {
             status: 422,
             message: null,
             error: new Error(
-              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} Connection is now ${result.error.identity.connection.status}.`,
+              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} connection is now ${result.error.identity.connection.status}.`,
             ),
           };
         }
@@ -128,7 +128,7 @@ export function useIdentityActions(portfolioId: string) {
         }
         return {
           status: result.response?.status,
-          message: `Connection enabled for ${item.displayName}: ${sentence(outcomeText(result.data))} It joins the next Collection Cycle.`,
+          message: `Connection enabled for ${item.displayName}: ${sentence(outcomeText(result.data))} It joins the next collection cycle.`,
         };
       },
       "The connection could not be enabled.",
@@ -150,7 +150,7 @@ export function useIdentityActions(portfolioId: string) {
         }
         return {
           status: result.response?.status,
-          message: `Connection disabled for ${item.displayName}. Its accounts leave the boundary at the next Collection Cycle.`,
+          message: `Connection disabled for ${item.displayName}. Its accounts leave the boundary at the next collection cycle.`,
         };
       },
       "The connection could not be disabled.",

@@ -18,13 +18,13 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// recordedPrices holds the Platform and Canonical Asset pairs already priced in
+// recordedPrices holds the platform and canonical asset pairs already priced in
 // this cycle attempt. Any write error aborts the attempt, so the set never
 // outlives a rolled-back transaction.
 type recordedPrices map[adapters.Platform]map[string]bool
 
-// recordPrices stores at most one observation per Platform and Canonical Asset
-// per cycle attempt; later Identities on that Platform reuse it.
+// recordPrices stores at most one observation per platform and canonical asset
+// per cycle attempt; later identities on that platform reuse it.
 func (s *Service) recordPrices(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, prices []adapters.Price, recorded recordedPrices) error {
 	for _, price := range prices {
 		symbol, err := catalog.NormalizeSymbol(price.CanonicalAssetSymbol)
@@ -58,7 +58,7 @@ func (s *Service) storeBatch(ctx context.Context, q *sqlcgen.Queries, portfolioI
 		if report.Status == adapters.StatusSucceeded {
 			for _, balance := range report.Balances {
 				if !decimal.Valid(balance.Equity) {
-					report.Status, report.ErrorClass, report.ErrorDetail = adapters.StatusFailed, adapters.ClassNormalization, "A required Balance equity is unavailable."
+					report.Status, report.ErrorClass, report.ErrorDetail = adapters.StatusFailed, adapters.ClassNormalization, "A required balance equity is unavailable."
 					break
 				}
 			}
@@ -98,11 +98,11 @@ func insertFailedReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, cy
 	})
 }
 
-// manualRevision is set only for Manual reports, which copy that revision.
+// manualRevision is set only for manual reports, which copy that revision.
 func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries, portfolioID, cycleID uuid.UUID, platform adapters.Platform, accountID uuid.UUID, report *adapters.AccountReport, mode adapters.MarginMode, batchObserved, now time.Time, manualRevision sql.NullInt64) error {
 	if report.AccountType == "earn" || len(report.EarnPositions) > 0 {
 		if report.AccountType != "earn" {
-			return fmt.Errorf("%w: Earn details outside a collected Earn report", catalog.ErrInvalid)
+			return fmt.Errorf("%w: earn details outside a collected earn report", catalog.ErrInvalid)
 		}
 		if err := adapters.CheckEarnPositions(report.EarnPositions, report.Balances); err != nil {
 			return err
@@ -179,9 +179,9 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 	for i := range report.DualPositions {
 		position := &report.DualPositions[i]
 		if report.AccountType != adapters.TypeDualInvestment {
-			return fmt.Errorf("%w: dual positions outside Dual Investment", catalog.ErrInvalid)
+			return fmt.Errorf("%w: dual positions outside dual investment", catalog.ErrInvalid)
 		}
-		p, err := adapters.NormalizeDualPosition("Account Report", position)
+		p, err := adapters.NormalizeDualPosition("Account report", position)
 		if err != nil {
 			return err
 		}

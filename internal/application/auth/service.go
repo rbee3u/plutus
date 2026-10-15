@@ -88,7 +88,7 @@ func (s *Service) Login(ctx context.Context, username, password, ip, userAgent s
 		if current.Status != "active" {
 			return Session{}, ErrUserDisabled
 		}
-		// Password replacement and session creation serialize on the same User.
+		// Password replacement and session creation serialize on the same user.
 		if current.PasswordHash != row.PasswordHash {
 			return Session{}, ErrInvalidCredentials
 		}

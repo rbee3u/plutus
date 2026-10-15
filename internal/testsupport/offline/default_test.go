@@ -19,7 +19,7 @@ import (
 )
 
 // The panic happens in net/http's dial goroutine. A subprocess demonstrates that converting an
-// ordinary HTTP error into a failed Account Report cannot hide a forbidden connection.
+// ordinary HTTP error into a failed account report cannot hide a forbidden connection.
 func TestDefaultClientsCannotReachExchanges(t *testing.T) {
 	for _, target := range []string{"http", "https", "websocket", "binance", "okx", "bybit", "kraken"} {
 		t.Run(target, func(t *testing.T) {

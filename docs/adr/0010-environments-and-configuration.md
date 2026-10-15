@@ -14,9 +14,9 @@ Ordinary settings use TOML and code defaults; environment variables supply
 secrets. DSNs and master keys stay outside TOML. Non-secret environment names
 are silently ignored; unknown TOML fields and invalid values fail. There are no
 legacy configuration aliases. Deployment policies are configurable, internal
-scheduling defaults remain code constants, and Portfolio intervals are editable.
+scheduling defaults remain code constants, and portfolio intervals are editable.
 
-Live Adapters share an instance-wide IPv4/proxy policy. Runtime and recording
+Live adapters share an instance-wide IPv4/proxy policy. Runtime and recording
 default to direct access and accept only explicit TOML proxies, never proxy
 environment variables. A forced proxy never falls back to direct. Recording's
 optional TOML contains only proxy policy and loads no runtime configuration or
@@ -25,7 +25,7 @@ secrets. External software owns tunnels and their credentials.
 These boundaries protect credentials and make routing predictable without a
 second configuration precedence system. Ignored non-secret environment values
 receive no startup diagnostics; operators must configure TOML explicitly.
-Configuration requires restart. Per-Platform routing, authenticated proxy URLs,
+Configuration requires restart. Per-platform routing, authenticated proxy URLs,
 and automatic direct fallback are not offered.
 
 One deterministic dataset supplies seeds and ongoing fake collection. Real

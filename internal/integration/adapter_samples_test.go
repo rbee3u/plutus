@@ -61,12 +61,12 @@ type fixtureAccountValue struct{ method, value string }
 func assertFixtureAccountValues(t *testing.T, got map[string]valuation.AccountValuation, want map[string]fixtureAccountValue) {
 	t.Helper()
 	if len(got) != len(want) {
-		t.Fatalf("got %d Accounts, want %d: %+v", len(got), len(want), got)
+		t.Fatalf("got %d accounts, want %d: %+v", len(got), len(want), got)
 	}
 	for kind, expected := range want {
 		account, ok := got[kind]
 		if !ok {
-			t.Fatalf("missing Account %s", kind)
+			t.Fatalf("missing account %s", kind)
 		}
 		if account.ValueUSD == nil || decimal.Compact(*account.ValueUSD) != expected.value || account.Method != expected.method ||
 			account.Freshness != valuation.FreshnessFresh || len(account.Omitted) != 0 {

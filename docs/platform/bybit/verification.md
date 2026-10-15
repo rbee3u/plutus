@@ -1,34 +1,34 @@
 # Bybit verification
 
 Current evidence and pending exchange-app checks. See the
-[Adapter mapping](./mapping.md) for field semantics,
+[adapter mapping](./mapping.md) for field semantics,
 [evidence workflow](../evidence-workflow.md) for recording and promotion, and
-[Earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
+[earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
 
 ## Current evidence
 
 **19 reviewed responses**, recorded and owner-reviewed on 2026-10-01. They cover
-PM One-way, Cross One-way/Hedge, and shared Funding, Flexible Saving, BuyLow,
+PM One-way, cross One-way/Hedge, and shared funding, Flexible Savings, BuyLow,
 overview, and market interfaces. Configuration directly observes UTA 2.0 Pro
 (`unifiedMarginStatus=6`) with `PORTFOLIO_MARGIN` and `REGULAR_MARGIN`.
-Credential metadata directly observes read-only, master-account, and Earn flags;
+Credential metadata directly observes read-only, master-account, and earn flags;
 masked identities do not independently prove ownership.
 
 Nonempty linear USDT/USDC and inverse perpetual/delivery contracts are present.
-PM positions have `positionIdx=0`; Cross includes HYPEUSDT sides 1/2 alongside
+PM positions have `positionIdx=0`; cross includes HYPEUSDT sides 1/2 alongside
 One-way contracts. Cross has populated leverage and margin and both blank and
 populated liquidation fields. Negative equity, borrowing, and accrued interest
-remain intact; the Adapter uses reported per-coin equity.
+remain intact; the adapter uses reported per-coin equity.
 
 ## Important observations
 
 - PM `riskLimitValue` is blank for linear positions and `200`/`3000` for inverse
   positions, unlike documented zero; the field is not mapped.
-- Each PM and Cross position response has a nonempty percent-escaped
+- Each PM and cross position response has a nonempty percent-escaped
   `nextPageCursor` despite few rows. No continuation was recorded and the
   samples do not prove complete position enumeration.
 - Cross retains `spotHedgingStatus=ON` with zero hedging quantities; the flag
-  alone does not establish effective Cross spot hedging. SOLPERP metadata uses
+  alone does not establish effective cross spot hedging. SOLPERP metadata uses
   display symbol SOLUSDC.
 - A zero-principal HYPE Savings row remains because historical PnL is nonzero,
   not because it represents an active subscription.
@@ -51,8 +51,9 @@ accepted responses are frozen under the
 - Isolated configuration, wallet, and positions are owner-deferred because the
   mode is rarely used. Its implementation and independent synthetic coverage
   remain; no real observation is claimed.
-- Nonempty Fixed-Term Saving is owner-deferred because minimum principal exceeds
-  preparation funds. SellHigh is deferred under principal/product requirements.
+- Nonempty Fixed-Term Savings is owner-deferred because minimum principal
+  exceeds preparation funds. SellHigh is deferred under principal/product
+  requirements.
 - Unobserved transient, refusal, and pagination-boundary shapes remain gaps.
   Captured cursors are not evidence of following additional pages.
 - Exchange-app comparison and complete asset-total reconciliation remain
@@ -84,7 +85,7 @@ settings do not limit an interface's applicability.
 - Recorded:
   [PM](../../../internal/platform/bybit/evidence/v5_account_info.pm.json),
   [Cross](../../../internal/platform/bybit/evidence/v5_account_info.cross.json);
-  directly observed UTA 2.0 Pro and the corresponding Margin Mode; both report
+  directly observed UTA 2.0 Pro and the corresponding margin mode; both report
   Spot Hedging ON
 
 ### [`v5: GET /v5/account/wallet-balance`](https://bybit-exchange.github.io/docs/v5/account/wallet-balance)
@@ -98,7 +99,7 @@ settings do not limit an interface's applicability.
   [PM](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.pm.json),
   [Cross](../../../internal/platform/bybit/evidence/v5_account_wallet_balance.cross.json);
   nonzero HYPE borrowing/interest and negative equity; PM SOL spotHedgingQty
-  nonzero, Cross quantities zero
+  nonzero, cross quantities zero
 
 ### [`v5: GET /v5/asset/asset-overview`](https://bybit-exchange.github.io/docs/v5/asset/balance/asset-overview)
 
@@ -108,7 +109,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/bybit/testdata/v5_asset_asset_overview.json).
 - Recorded:
   [sample](../../../internal/platform/bybit/evidence/v5_asset_asset_overview.json);
-  Funding, Unified and Earn with EasyEarn/DualAsset entries; independent
+  funding, unified and earn with EasyEarn/DualAsset entries; independent
   interface totals
 
 ### [`v5: GET /v5/asset/transfer/query-account-coins-balance`](https://bybit-exchange.github.io/docs/v5/asset/balance/all-balance)
@@ -118,7 +119,7 @@ settings do not limit an interface's applicability.
   [rate_limited](../../../internal/platform/bybit/testdata/v5_asset_transfer_query_account_coins_balance.rate_limited.json).
 - Recorded:
   [sample](../../../internal/platform/bybit/evidence/v5_asset_transfer_query_account_coins_balance.json);
-  nonzero USDT/USDC Funding; memberId masked, including the disclosed local
+  nonzero USDT/USDC funding; memberId masked, including the disclosed local
   redaction repair
 
 ### [`v5: GET /v5/earn/advance/position`](https://bybit-exchange.github.io/docs/v5/finance/advanced-earn/dual-asset/position)
@@ -145,7 +146,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/bybit/testdata/v5_earn_position.json).
 - Recorded:
   [sample](../../../internal/platform/bybit/evidence/v5_earn_position.json);
-  USDT Flexible principal 20; zero-principal HYPE row with historical PnL
+  USDT flexible principal 20; zero-principal HYPE row with historical PnL
   retained
 
 ### [`v5: GET /v5/market/instruments-info`](https://bybit-exchange.github.io/docs/v5/market/instrument)
@@ -192,7 +193,7 @@ settings do not limit an interface's applicability.
   [USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_pm.json),
   [USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_pm.json),
   [inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_pm.json);
-  Cross
+  cross
   [USDT](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdt_cross.json),
   [USDC](../../../internal/platform/bybit/evidence/v5_position_list.linear_usdc_cross.json),
   [inverse](../../../internal/platform/bybit/evidence/v5_position_list.inverse_cross.json);
@@ -205,49 +206,49 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/bybit/testdata/v5_user_query_api.json).
 - Recorded:
   [sample](../../../internal/platform/bybit/evidence/v5_user_query_api.json);
-  readOnly=1, isMaster=true and Earn permission; identity/key/IP/label masked
+  readOnly=1, isMaster=true and earn permission; identity/key/IP/label masked
 
 ## Exchange-app validation checklist
 
 Status: pending. This is an acceptance procedure, not a record of completed
 checks. Recorded evidence and synthetic tests do not establish a reconciled
-Account total. Human operators execute it on the remote test environment; agent
+account total. Human operators execute it on the remote test environment; agent
 sessions remain limited to the isolated development instance.
 
 Run these on the test environment against the Bybit app on the same account,
-within a few minutes of a collection. Items 5 and 6 need an Isolated or Cross
-Margin account. Item 8 includes Dual Asset app comparison; available evidence
+within a few minutes of a collection. Items 5 and 6 need an isolated or cross
+margin account. Item 8 includes dual asset app comparison; available evidence
 and preparation deferrals are listed above.
 
 1. **Identity and structure**: validation stores the UID shown under the app's
-   profile. The Identity's Margin Mode matches the margin mode shown for the
-   Unified Trading Account.
-2. **Margin Mode change**: after switching the margin mode in the app, the next
-   Collection Run succeeds and the Identity shows the new Margin Mode.
-3. **Portfolio Margin equity**: `Equity` equals the Unified Trading Account's
+   profile. The identity's margin mode matches the margin mode shown for the
+   unified trading account.
+2. **Margin mode change**: after switching the margin mode in the app, the next
+   collection run succeeds and the identity shows the new margin mode.
+3. **Portfolio margin equity**: `Equity` equals the unified trading account's
    total equity in USD, `available_equity` its available balance, and the two
    margin ratios the IM and MM rates the app shows, possibly as percentages.
 4. **Unified balances**: each coin's equity matches the app's per-coin equity,
    including unrealized PnL and net of spot borrowing. `liability` matches the
    borrowed amount.
-5. **Cross Margin**: the account figures appear as in item 3. Positions show
+5. **Cross margin**: the account figures appear as in item 3. Positions show
    leverage and margin, and Bybit's estimated liquidation price when provided;
    empty liquidation fields remain null.
-6. **Isolated Margin**: the account figures are empty, and the value is
-   calculated from the Balances. Each position shows its own liquidation price,
-   leverage, and an unknown allocated Margin when only `positionIM` is returned.
+6. **Isolated margin**: the account figures are empty, and the value is
+   calculated from the balances. Each position shows its own liquidation price,
+   leverage, and an unknown allocated margin when only `positionIM` is returned.
    Its hover identifies the retained initial requirement.
 7. **Positions**: every open linear and inverse position appears with the same
    side, size (linear in coins, inverse in USD), entry price, and mark price.
-   Portfolio Margin positions show no leverage, margin, or liquidation price.
-8. **Funding and Earn**: Funding coin amounts and transferable amounts match the
-   Funding account. Flexible and Fixed-Term principal per coin matches the Earn
-   page, including an early redemption in progress. Each open Dual Asset
+   Portfolio margin positions show no leverage, margin, or liquidation price.
+8. **Funding and earn**: funding coin amounts and transferable amounts match the
+   funding account. Flexible and fixed-term principal per coin matches the earn
+   page, including an early redemption in progress. Each open dual asset
    position appears at its invested amount in the invested coin until Bybit pays
-   it out. The Earn Account succeeds. Holding an Earn product Plutus does not
-   read, such as On-chain Earn, makes it Stale with both USD amounts.
-9. **Account values**: the calculated USD values of Funding and Earn are within
+   it out. The earn account succeeds. Holding an earn product Plutus does not
+   read, such as on-chain earn, makes it stale with both USD amounts.
+9. **Account values**: the calculated USD values of funding and earn are within
    about 0.1% of the app's asset overview.
 10. **Failures**: removing the server IP from the key's whitelist sets the
-    Connection `invalid` with a `10010` detail at the next cycle. Restoring it
+    connection `invalid` with a `10010` detail at the next cycle. Restoring it
     and validating again resumes collection.

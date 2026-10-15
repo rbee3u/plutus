@@ -7,7 +7,7 @@ import (
 )
 
 // Sequence replays explicitly ordered responses, including repeated requests and cursor pages.
-// Tests must check Done even when Adapter code classifies a mismatch as a report failure.
+// Tests must check Done even when adapter code classifies a mismatch as a report failure.
 type Sequence struct {
 	mu      sync.Mutex
 	steps   []File

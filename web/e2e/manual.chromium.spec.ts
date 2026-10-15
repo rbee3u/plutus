@@ -274,7 +274,7 @@ async function fixture(page: Page, initialPoint = true) {
   return state;
 }
 
-test("all three manual entries share fresh editing and keep pending values separate", async ({
+test("All three manual entries share fresh editing and keep pending values separate", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -326,7 +326,7 @@ test("all three manual entries share fresh editing and keep pending values separ
   await expect(page.getByRole("tooltip")).toHaveText("Pending removal");
 });
 
-test("global entry works before a point and requires Identity selection on mobile", async ({
+test("Global entry works before a point and requires identity selection on mobile", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -357,7 +357,7 @@ test("global entry works before a point and requires Identity selection on mobil
   expect(state.privateWrites).toBe(0);
 });
 
-test("adding recovers from a version conflict without losing the draft", async ({ page }) => {
+test("Adding recovers from a version conflict without losing the draft", async ({ page }) => {
   const state = await fixture(page, false);
   await page.goto(`/p/${portfolioId}/holdings/balances`);
   await page.getByRole("button", { name: "Add manual balance", exact: true }).click();

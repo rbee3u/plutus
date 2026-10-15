@@ -15,7 +15,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND status = 'succeeded'
 ORDER BY created_at ASC, id ASC;
 
 -- Only active cycles have a non-NULL active_portfolio_id, so the unique key
--- bounds the scan by the number of Portfolios.
+-- bounds the scan by the number of portfolios.
 -- name: LockClaimableCollectionCycle :one
 SELECT * FROM collection_cycles
 WHERE active_portfolio_id IS NOT NULL
@@ -84,7 +84,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id)
   AND status = 'running' AND lease_owner = sqlc.arg(lease_owner) AND lease_expires_at > sqlc.arg(lease_at);
 
 -- Ends the active cycle without a lease check: retry exhaustion after a lost
--- worker, and Portfolio deletion requests.
+-- worker, and portfolio deletion requests.
 -- name: FailActiveCollectionCycle :execrows
 UPDATE collection_cycles
 SET status = 'failed',

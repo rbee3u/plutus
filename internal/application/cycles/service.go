@@ -1,4 +1,4 @@
-// Package cycles owns Collection Cycles: the durable queue, worker leases, and
+// Package cycles owns collection cycles: the durable queue, worker leases, and
 // cycle history reads.
 package cycles
 
@@ -45,7 +45,7 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
-// Point is the Valuation Point written by a succeeded Collection Cycle.
+// Point is the valuation point written by a succeeded collection cycle.
 type Point struct {
 	Revision               string
 	CalculationVersion     uint64
@@ -82,14 +82,14 @@ type Page struct {
 	HasMore    bool
 }
 
-// Enqueue returns the Portfolio's active cycle, or creates a queued one.
+// Enqueue returns the portfolio's active cycle, or creates a queued one.
 func (s *Service) Enqueue(ctx context.Context, portfolioID uuid.UUID, trigger string) (Cycle, bool, error) {
 	type result struct {
 		cycle   Cycle
 		created bool
 	}
 	value, err := mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (result, error) {
-		// Serialize first insertion as well as active-cycle reuse within the Portfolio.
+		// Serialize first insertion as well as active-cycle reuse within the portfolio.
 		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return result{}, ErrNotFound
@@ -134,7 +134,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, cycleID uuid.UUID) (Cycl
 	return cycleFromRow(&row)
 }
 
-// List returns cycles newest first with their Valuation Points.
+// List returns cycles newest first with their valuation points.
 func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, rawCursor string) (Page, error) {
 	if limit == 0 {
 		limit = defaultLimit
@@ -210,14 +210,14 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, ra
 	return page, nil
 }
 
-// SchedulingRow is one Portfolio the scheduler may need to enqueue.
+// SchedulingRow is one portfolio the scheduler may need to enqueue.
 type SchedulingRow struct {
 	PortfolioID uuid.UUID
 	Interval    time.Duration
 	LastCycleAt *time.Time
 }
 
-// ListForScheduling returns Portfolios with at least one enabled Connection.
+// ListForScheduling returns portfolios with at least one enabled connection.
 func (s *Service) ListForScheduling(ctx context.Context) ([]SchedulingRow, error) {
 	rows, err := s.q.ListPortfoliosForScheduling(ctx)
 	if err != nil {

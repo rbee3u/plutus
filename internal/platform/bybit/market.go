@@ -28,7 +28,7 @@ func (p spotPrices) lookup(symbol, quote string) (adapters.Quote, bool) {
 	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
-// usd returns the USD value of one unit of symbol, for the Earn check.
+// usd returns the USD value of one unit of symbol, for the earn check.
 func (p spotPrices) usd(symbol string) (*big.Rat, bool) {
 	return adapters.USDPrice(symbol, quotes, p.lookup)
 }

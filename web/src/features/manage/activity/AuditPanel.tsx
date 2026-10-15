@@ -24,9 +24,16 @@ const RESOURCE_OPTIONS: FilterOption[] = [
   { value: "asset", label: "Asset" },
   { value: "identity", label: "Identity" },
   { value: "account", label: "Account" },
-  { value: "capital_flow", label: "Capital Flow" },
+  { value: "capital_flow", label: "Capital flow" },
   { value: "portfolio", label: "Portfolio" },
 ];
+
+function resourceLabel(resourceType: string): string {
+  return (
+    RESOURCE_OPTIONS.find((option) => option.value === resourceType)?.label ??
+    capitalize(resourceType.replaceAll("_", " "))
+  );
+}
 
 export function AuditPanel({
   action,
@@ -69,7 +76,7 @@ export function AuditPanel({
 
   function actorDisplay(actorUserId?: string | null) {
     if (!actorUserId) {
-      return <span className={shared.cellMeta}>system</span>;
+      return <span className={shared.cellMeta}>System</span>;
     }
     if (actorUserId === me.data?.id) {
       return <strong>{me.data.username}</strong>;
@@ -142,12 +149,7 @@ export function AuditPanel({
             headerContent: (
               <TableFilterHeader
                 label="Resource"
-                display={
-                  resourceType
-                    ? (RESOURCE_OPTIONS.find((opt) => opt.value === resourceType)?.label ??
-                      capitalize(resourceType))
-                    : ""
-                }
+                display={resourceType ? resourceLabel(resourceType) : ""}
                 active={Boolean(resourceType)}
                 open={openFilter === "resource"}
                 type="select"
@@ -188,7 +190,7 @@ export function AuditPanel({
           resource: (
             <span className={shared.cellStack}>
               <span style={{ fontWeight: "var(--weight-medium)" }}>
-                {capitalize(item.resourceType.replace("_", " "))}
+                {resourceLabel(item.resourceType)}
               </span>
               {item.resourceId ? (
                 <span className={shared.cellMeta}>#{shortId(item.resourceId)}</span>
@@ -241,7 +243,7 @@ export function AuditPanel({
       ) : null}
       <Dialog
         open={Boolean(detail)}
-        title={detail ? `Audit Event · ${detail.action}` : "Audit Event"}
+        title={detail ? `Audit event · ${detail.action}` : "Audit event"}
         size="lg"
         onClose={() => setDetail(null)}
       >
@@ -261,7 +263,7 @@ export function AuditPanel({
               <div className={styles.payloadMetaItem}>
                 <span className={styles.payloadMetaLabel}>Resource</span>
                 <span className={styles.payloadMetaValue}>
-                  {capitalize(detail.resourceType.replace("_", " "))}
+                  {resourceLabel(detail.resourceType)}
                   {detail.resourceId ? ` · #${shortId(detail.resourceId)}` : ""}
                 </span>
               </div>
@@ -275,11 +277,11 @@ export function AuditPanel({
             {detail.before != null && detail.after != null ? (
               <div className={styles.payloadDiffGrid}>
                 <div className={styles.payloadSection}>
-                  <span className={styles.payloadSectionLabel}>Before State</span>
+                  <span className={styles.payloadSectionLabel}>Before state</span>
                   <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
                 </div>
                 <div className={styles.payloadSection}>
-                  <span className={styles.payloadSectionLabel}>After State</span>
+                  <span className={styles.payloadSectionLabel}>After state</span>
                   <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
                 </div>
               </div>
@@ -287,13 +289,13 @@ export function AuditPanel({
               <>
                 {detail.before != null ? (
                   <div className={styles.payloadSection}>
-                    <span className={styles.payloadSectionLabel}>Before State</span>
+                    <span className={styles.payloadSectionLabel}>Before state</span>
                     <pre className={styles.jsonBlock}>{safeJson(detail.before)}</pre>
                   </div>
                 ) : null}
                 {detail.after != null ? (
                   <div className={styles.payloadSection}>
-                    <span className={styles.payloadSectionLabel}>After State</span>
+                    <span className={styles.payloadSectionLabel}>After state</span>
                     <pre className={styles.jsonBlock}>{safeJson(detail.after)}</pre>
                   </div>
                 ) : null}

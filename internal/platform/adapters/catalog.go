@@ -1,6 +1,6 @@
 package adapters
 
-// PlatformInfo describes one supported Platform for the API and the UI.
+// PlatformInfo describes one supported platform for the API and the UI.
 type PlatformInfo struct {
 	ID               Platform
 	Name             string
@@ -9,8 +9,8 @@ type PlatformInfo struct {
 	CredentialForm   CredentialForm
 }
 
-// StructureInfo describes one Account Structure, the Account Types it holds, and the Margin
-// Modes the Platform may report within it.
+// StructureInfo describes one account structure, the account types it holds, and the margin
+// modes the platform may report within it.
 type StructureInfo struct {
 	ID           AccountStructure
 	Name         string
@@ -18,13 +18,13 @@ type StructureInfo struct {
 	MarginModes  []MarginModeInfo
 }
 
-// AccountTypeInfo describes one Account Type.
+// AccountTypeInfo describes one account type.
 type AccountTypeInfo struct {
 	ID   AccountType
 	Name string
 }
 
-// MarginModeInfo describes one Margin Mode.
+// MarginModeInfo describes one margin mode.
 type MarginModeInfo struct {
 	ID   MarginMode
 	Name string
@@ -40,22 +40,22 @@ type platformDescriptor struct {
 // platformCatalog is the ordered product catalog, independent of runtime availability.
 var platformCatalog = []platformDescriptor{
 	{id: PlatformBinance, name: "Binance", credentialForm: binanceCredentialForm(), structures: []StructureInfo{
-		{ID: StructureBinanceClassic, Name: "Classic Trading", AccountTypes: []AccountTypeInfo{
+		{ID: StructureBinanceClassic, Name: "Classic trading", AccountTypes: []AccountTypeInfo{
 			{ID: "spot", Name: "Spot"},
-			{ID: "cross_margin", Name: "Cross Margin"},
-			{ID: "isolated_margin", Name: "Isolated Margin"},
-			{ID: "um_futures", Name: "USDⓈ-M Futures"},
-			{ID: "cm_futures", Name: "COIN-M Futures"},
+			{ID: "cross_margin", Name: "Cross margin"},
+			{ID: "isolated_margin", Name: "Isolated margin"},
+			{ID: "um_futures", Name: "USDⓈ-M futures"},
+			{ID: "cm_futures", Name: "COIN-M futures"},
 			{ID: "funding", Name: "Funding"},
 			{ID: "earn", Name: "Earn"},
-			{ID: TypeDualInvestment, Name: "Dual Investment"},
+			{ID: TypeDualInvestment, Name: "Dual investment"},
 		}},
-		{ID: StructureBinancePM, Name: "Portfolio Margin", AccountTypes: []AccountTypeInfo{
+		{ID: StructureBinancePM, Name: "Portfolio margin", AccountTypes: []AccountTypeInfo{
 			{ID: "spot", Name: "Spot"},
-			{ID: "portfolio_margin", Name: "Portfolio Margin"},
+			{ID: "portfolio_margin", Name: "Portfolio margin"},
 			{ID: "funding", Name: "Funding"},
 			{ID: "earn", Name: "Earn"},
-			{ID: TypeDualInvestment, Name: "Dual Investment"},
+			{ID: TypeDualInvestment, Name: "Dual investment"},
 		}},
 	}},
 	{id: PlatformOKX, name: "OKX", credentialForm: okxCredentialForm(), structures: []StructureInfo{
@@ -66,7 +66,7 @@ var platformCatalog = []platformDescriptor{
 				{ID: "trading", Name: "Trading"},
 				{ID: "funding", Name: "Funding"},
 				{ID: "earn", Name: "Earn"},
-				{ID: TypeDualInvestment, Name: "Dual Investment"},
+				{ID: TypeDualInvestment, Name: "Dual investment"},
 			},
 			MarginModes: []MarginModeInfo{
 				{ID: MarginOKXSpot, Name: "Spot mode"},
@@ -84,12 +84,12 @@ var platformCatalog = []platformDescriptor{
 				{ID: "unified", Name: "Unified"},
 				{ID: "funding", Name: "Funding"},
 				{ID: "earn", Name: "Earn"},
-				{ID: TypeDualInvestment, Name: "Dual Investment"},
+				{ID: TypeDualInvestment, Name: "Dual investment"},
 			},
 			MarginModes: []MarginModeInfo{
-				{ID: MarginBybitIsolated, Name: "Isolated Margin"},
-				{ID: MarginBybitCross, Name: "Cross Margin"},
-				{ID: MarginBybitPM, Name: "Portfolio Margin"},
+				{ID: MarginBybitIsolated, Name: "Isolated margin"},
+				{ID: MarginBybitCross, Name: "Cross margin"},
+				{ID: MarginBybitPM, Name: "Portfolio margin"},
 			},
 		},
 	}},
@@ -98,19 +98,19 @@ var platformCatalog = []platformDescriptor{
 			{ID: "main", Name: "Main"},
 			{ID: "multi_m", Name: "Multi-M"},
 			{ID: "coin_m", Name: "Coin-M"},
-			{ID: "derivatives_holding", Name: "Derivatives Holding"},
+			{ID: "derivatives_holding", Name: "Derivatives holding"},
 			{ID: "earn", Name: "Earn"},
 		}},
-		{ID: StructureKrakenUnified, Name: "Unified Wallet", AccountTypes: []AccountTypeInfo{
+		{ID: StructureKrakenUnified, Name: "Unified wallet", AccountTypes: []AccountTypeInfo{
 			{ID: "main", Name: "Main"},
 			{ID: "coin_m", Name: "Coin-M"},
-			{ID: "derivatives_holding", Name: "Derivatives Holding"},
+			{ID: "derivatives_holding", Name: "Derivatives holding"},
 			{ID: "earn", Name: "Earn"},
 		}},
 	}},
 }
 
-// OfferedPlatforms lists the offered Platforms in display order.
+// OfferedPlatforms lists the offered platforms in display order.
 func OfferedPlatforms() []Platform {
 	ids := make([]Platform, 0, len(platformCatalog))
 	for _, spec := range platformCatalog {
@@ -159,13 +159,13 @@ func structureSpec(id AccountStructure) (StructureInfo, bool) {
 	return StructureInfo{}, false
 }
 
-// ValidPlatform reports whether the code is a supported Platform.
+// ValidPlatform reports whether the code is a supported platform.
 func ValidPlatform(platform Platform) bool {
 	_, ok := platformSpec(platform)
 	return ok
 }
 
-// ValidStructure reports whether the Account Structure belongs to the Platform.
+// ValidStructure reports whether the account structure belongs to the platform.
 func ValidStructure(platform Platform, structure AccountStructure) bool {
 	spec, _ := platformSpec(platform)
 	for _, s := range spec.structures {
@@ -176,7 +176,7 @@ func ValidStructure(platform Platform, structure AccountStructure) bool {
 	return false
 }
 
-// StructureName returns the display name of an Account Structure.
+// StructureName returns the display name of an account structure.
 func StructureName(structure AccountStructure) string {
 	if spec, ok := structureSpec(structure); ok {
 		return spec.Name
@@ -184,13 +184,13 @@ func StructureName(structure AccountStructure) string {
 	return string(structure)
 }
 
-// AccountTypes returns the Account Types of an Account Structure in display order.
+// AccountTypes returns the account types of an account structure in display order.
 func AccountTypes(structure AccountStructure) []AccountTypeInfo {
 	spec, _ := structureSpec(structure)
 	return append([]AccountTypeInfo(nil), spec.AccountTypes...)
 }
 
-// AccountTypeIDs returns the Account Type codes of an Account Structure in display order.
+// AccountTypeIDs returns the account type codes of an account structure in display order.
 func AccountTypeIDs(structure AccountStructure) []AccountType {
 	types := AccountTypes(structure)
 	out := make([]AccountType, 0, len(types))
@@ -200,7 +200,7 @@ func AccountTypeIDs(structure AccountStructure) []AccountType {
 	return out
 }
 
-// ValidAccountType reports whether the Account Type belongs to the Account Structure.
+// ValidAccountType reports whether the account type belongs to the account structure.
 func ValidAccountType(structure AccountStructure, accountType AccountType) bool {
 	for _, t := range AccountTypes(structure) {
 		if t.ID == accountType {
@@ -210,14 +210,14 @@ func ValidAccountType(structure AccountStructure, accountType AccountType) bool 
 	return false
 }
 
-// MarginModes returns the Margin Modes the Platform may report within an Account Structure.
+// MarginModes returns the margin modes the platform may report within an account structure.
 func MarginModes(structure AccountStructure) []MarginModeInfo {
 	spec, _ := structureSpec(structure)
 	return append([]MarginModeInfo(nil), spec.MarginModes...)
 }
 
-// ValidMarginMode reports whether a Margin Mode belongs to the Account Structure. The empty
-// Margin Mode is valid exactly for structures that have none.
+// ValidMarginMode reports whether a margin mode belongs to the account structure. The empty
+// margin mode is valid exactly for structures that have none.
 func ValidMarginMode(structure AccountStructure, mode MarginMode) bool {
 	modes := MarginModes(structure)
 	if mode == "" {
@@ -231,7 +231,7 @@ func ValidMarginMode(structure AccountStructure, mode MarginMode) bool {
 	return false
 }
 
-// MarginModeName returns the display name of a Margin Mode.
+// MarginModeName returns the display name of a margin mode.
 func MarginModeName(mode MarginMode) string {
 	for _, spec := range platformCatalog {
 		for _, structure := range spec.structures {
@@ -245,7 +245,7 @@ func MarginModeName(mode MarginMode) string {
 	return string(mode)
 }
 
-// PlatformName returns the display name of a Platform.
+// PlatformName returns the display name of a platform.
 func PlatformName(platform Platform) string {
 	if spec, ok := platformSpec(platform); ok {
 		return spec.name

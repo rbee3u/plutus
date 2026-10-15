@@ -14,7 +14,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// DualPositionRow describes principal already included in the Account's Balances.
+// DualPositionRow describes principal already included in the account's balances.
 type DualPositionRow struct {
 	adapters.DualPosition
 	AccountID        uuid.UUID
@@ -95,7 +95,7 @@ func (s *Service) AccountDualPositions(ctx context.Context, p PortfolioContext, 
 	})
 }
 
-// FlatDualPositions lists only subscriptions in selected Accounts at the latest point.
+// FlatDualPositions lists only subscriptions in selected accounts at the latest point.
 func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[DualPositionRow], error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (FlatList[DualPositionRow], error) {
 		limit, offset, err := normalizePage(f.Limit, f.Offset)
@@ -108,7 +108,7 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 		}
 		out := FlatList[DualPositionRow]{Context: c, Items: []DualPositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		if point == nil {
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
 		}
 		out.Completeness = point.Completeness()

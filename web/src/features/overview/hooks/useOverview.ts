@@ -24,7 +24,7 @@ export function useOverview(portfolioId: string) {
           (overview.totalUsd !== tree.totalUsd || overview.completeness !== tree.completeness))
       ) {
         throw new Error(
-          "Overview and holdings changed while loading. Retry to read a consistent Valuation Point.",
+          "Overview and holdings changed while loading. Retry to read a consistent valuation point.",
         );
       }
       return { ...overview, tree };

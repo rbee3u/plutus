@@ -43,7 +43,7 @@ type DeleteEmptyAccountReportsParams struct {
 	Ids         [][]byte
 }
 
-// The page is already pin-checked under the Portfolio lock. A large report can
+// The page is already pin-checked under the portfolio lock. A large report can
 // need several visits, so remove only parents whose children are all gone.
 func (q *Queries) DeleteEmptyAccountReports(ctx context.Context, arg DeleteEmptyAccountReportsParams) error {
 	query := deleteEmptyAccountReports
@@ -267,11 +267,11 @@ type DeleteUnpinnedPriceObservationsParams struct {
 	HistoryBefore time.Time
 }
 
-// Preserve adopted prices and the source-time quote window of every Account's
+// Preserve adopted prices and the source-time quote window of every account's
 // last successful report, even outside the boundary: future stale valuation
 // can adopt a new mapping. Grouping by the full fallback-index prefix lets
-// MySQL skip-scan one entry per Account; a correlated latest-report lookup
-// rescans each Account's report history for every candidate.
+// MySQL skip-scan one entry per account; a correlated latest-report lookup
+// rescans each account's report history for every candidate.
 func (q *Queries) DeleteUnpinnedPriceObservations(ctx context.Context, arg DeleteUnpinnedPriceObservationsParams) error {
 	query := deleteUnpinnedPriceObservations
 	var queryParams []interface{}
@@ -572,7 +572,7 @@ type ListEarlierRetainedPolicyBoundariesParams struct {
 	HistoryBefore time.Time
 }
 
-// A retained Cycle can start before the window and finish inside it.
+// A retained cycle can start before the window and finish inside it.
 func (q *Queries) ListEarlierRetainedPolicyBoundaries(ctx context.Context, arg ListEarlierRetainedPolicyBoundariesParams) ([]time.Time, error) {
 	rows, err := q.db.QueryContext(ctx, listEarlierRetainedPolicyBoundaries, arg.PortfolioID, arg.Before, arg.HistoryBefore)
 	if err != nil {
@@ -816,9 +816,9 @@ type ListPinnedReportIDsParams struct {
 }
 
 // A report stays while a retained valuation references it, as its own cycle's
-// report, or while it is the Account's last successful report.
+// report, or while it is the account's last successful report.
 // The complete fallback-index order makes the correlated last-success lookup
-// a reverse one-row read instead of scanning and sorting the Account history.
+// a reverse one-row read instead of scanning and sorting the account history.
 func (q *Queries) ListPinnedReportIDs(ctx context.Context, arg ListPinnedReportIDsParams) ([][]byte, error) {
 	query := listPinnedReportIDs
 	var queryParams []interface{}
@@ -1026,7 +1026,7 @@ type ListReportRetentionCandidatesRow struct {
 	At time.Time
 }
 
-// Seek the cursor range instead of rescanning the Portfolio's index prefix.
+// Seek the cursor range instead of rescanning the portfolio's index prefix.
 func (q *Queries) ListReportRetentionCandidates(ctx context.Context, arg ListReportRetentionCandidatesParams) ([]ListReportRetentionCandidatesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listReportRetentionCandidates,
 		arg.PortfolioID,
@@ -1075,7 +1075,7 @@ type ListUnusedHistoricalAssetsParams struct {
 }
 
 // Default catalog entries may expire; explicit mappings and policy versions
-// are current configuration, even when the Asset is not currently held.
+// are current configuration, even when the asset is not currently held.
 func (q *Queries) ListUnusedHistoricalAssets(ctx context.Context, arg ListUnusedHistoricalAssetsParams) ([][]byte, error) {
 	rows, err := q.db.QueryContext(ctx, listUnusedHistoricalAssets, arg.PortfolioID, arg.Before, arg.StateBefore)
 	if err != nil {

@@ -116,8 +116,8 @@ export function BalancesPage() {
             />
           ) : !data?.context.cycleId ? (
             <TableEmptyState
-              title="No Valuation Point yet"
-              help="Run a Collection Cycle to create the first point."
+              title="No valuation point yet"
+              help="Run a collection cycle to create the first point."
             />
           ) : filters.hasFilters ? (
             <TableEmptyState
@@ -126,8 +126,8 @@ export function BalancesPage() {
             />
           ) : (
             <TableEmptyState
-              title="No balances recorded yet"
-              help="Balances will appear automatically once platform identities are connected and sync."
+              title="No balances to display"
+              help="Only reported balances and pending manual additions are shown."
               action={addManualButton}
             />
           )
@@ -139,7 +139,9 @@ export function BalancesPage() {
         target={manualTarget}
         onClose={() => setManualTarget(null)}
       />
-      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
+      {data?.context.cycleId ? (
+        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+      ) : null}
     </section>
   );
 }

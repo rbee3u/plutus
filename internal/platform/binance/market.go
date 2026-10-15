@@ -28,13 +28,13 @@ func (p lastPrices) quote(symbol, quote string) (adapters.Quote, bool) {
 	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
-// usd returns the USD value of one unit of symbol, for the Earn completeness check.
+// usd returns the USD value of one unit of symbol, for the earn completeness check.
 func (p lastPrices) usd(symbol string) (*big.Rat, bool) {
 	return adapters.USDPrice(symbol, quotes, p.quote)
 }
 
 // lastPrices returns every spot last price and when it arrived. A failure yields no prices rather
-// than failing the batch: valuation falls back to the latest price within 24 hours, and the Earn
+// than failing the batch: valuation falls back to the latest price within 24 hours, and the earn
 // completeness check is skipped for coins without a price.
 func (a *Adapter) lastPrices(ctx context.Context, c *client) (lastPrices, time.Time) {
 	var rows []struct {

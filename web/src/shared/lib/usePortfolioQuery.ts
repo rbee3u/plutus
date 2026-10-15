@@ -14,13 +14,13 @@ interface PortfolioQueryOptions<T> extends Omit<
 > {
   key: (userId: string | undefined, portfolioId: string) => QueryKey;
   load: (portfolioId: string) => Promise<ApiResult<T>>;
-  /** Extra readiness on top of the session scope and the route Portfolio. */
+  /** Extra readiness on top of the session scope and the route portfolio. */
   ready?: boolean;
-  /** Override the route Portfolio (dialogs and embedded lists pass one). */
+  /** Override the route portfolio (dialogs and embedded lists pass one). */
   portfolioId?: string;
 }
 
-/** Scope reads to the session and Portfolio, handling session expiry. */
+/** Scope reads to the session and portfolio, handling session expiry. */
 export function usePortfolioQuery<T>({
   key,
   load,

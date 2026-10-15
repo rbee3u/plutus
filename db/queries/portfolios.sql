@@ -46,7 +46,7 @@ WHERE p.deletion_requested_at IS NULL AND EXISTS (
 )
 ORDER BY p.created_at ASC, p.id ASC;
 
--- A consistent read avoids locking every scanned Portfolio row; the caller
+-- A consistent read avoids locking every scanned portfolio row; the caller
 -- then locks the chosen row by primary key.
 -- name: GetNextDeletingPortfolioID :one
 SELECT id FROM portfolios WHERE deletion_requested_at IS NOT NULL

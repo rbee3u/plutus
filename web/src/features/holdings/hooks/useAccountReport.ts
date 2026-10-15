@@ -13,7 +13,7 @@ import {
 import type { AccountValuation, ReadContext } from "@/api";
 import { useSessionScope } from "@/shared/lib/session";
 
-/** Own the independent reads for one visible Account Report. */
+/** Own the independent reads for one visible account report. */
 export function useAccountReport(
   portfolioId: string,
   account: AccountValuation,
@@ -146,7 +146,7 @@ export function useAccountReport(
   };
 }
 
-/** A newer latest-only response must not describe an older visible Account row. */
+/** A newer latest-only response must not describe an older visible account row. */
 function checkAccountReport<T extends { context: ReadContext; account: AccountValuation }>(
   data: T,
   account: AccountValuation,
@@ -159,7 +159,7 @@ function checkAccountReport<T extends { context: ReadContext; account: AccountVa
   ) {
     refresh();
     throw new Error(
-      "This Account changed since the displayed Valuation Point. Refreshing the Portfolio to read a consistent Account Report.",
+      "This account changed since the displayed valuation point. Refreshing the portfolio to read a consistent account report.",
     );
   }
   return data;

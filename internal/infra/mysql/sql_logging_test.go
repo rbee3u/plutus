@@ -32,13 +32,13 @@ func TestRenderSQL(t *testing.T) {
 		{"minus", "SELECT 1--?", "SELECT 1--42", []driver.Value{int64(42)}, false},
 		{"mode independent string", "SELECT ?", "SELECT CONVERT(X'615c620a' USING utf8mb4)", []driver.Value{"a\\b\n"}, false},
 		{"binary null", "SELECT ?, ?", "SELECT NULL, X''", []driver.Value{[]byte(nil), []byte{}}, false},
-		{"json null", "SELECT ?, ?, ?", "SELECT NULL, '', '{\"key\":\"value\"}'", []driver.Value{json.RawMessage(nil), json.RawMessage{}, json.RawMessage(`{"key":"value"}`)}, false},
+		{"JSON null", "SELECT ?, ?, ?", "SELECT NULL, '', '{\"key\":\"value\"}'", []driver.Value{json.RawMessage(nil), json.RawMessage{}, json.RawMessage(`{"key":"value"}`)}, false},
 		{"time trailing zeros", "SELECT ?", "SELECT '2026-10-02 00:00:00.12'", []driver.Value{time.Date(2026, 10, 2, 0, 0, 0, 120000000, time.UTC)}, false},
 		{"false", "SELECT ?", "SELECT 0", []driver.Value{false}, false},
 		{"literal statement", "INSERT INTO users VALUES ('hash')", "INSERT INTO users VALUES ('hash')", nil, false},
 		{"mismatch", "SELECT ?, ?", "", []driver.Value{int64(1)}, true},
 		{"unterminated", "SELECT ? /*", "", []driver.Value{int64(1)}, true},
-		{"sql mode ambiguity", "SELECT 'a\\'?', ?", "", []driver.Value{int64(1)}, true},
+		{"SQL mode ambiguity", "SELECT 'a\\'?', ?", "", []driver.Value{int64(1)}, true},
 		{"executable comment", "SELECT /*! ? */ ?", "", []driver.Value{int64(1)}, true},
 		{"unsupported", "SELECT ?", "", []driver.Value{struct{}{}}, true},
 		{"nan", "SELECT ?", "", []driver.Value{math.NaN()}, true},
@@ -243,7 +243,7 @@ func TestDriverLoggingPreservesFallbackAndInterfaces(t *testing.T) {
 		t.Fatalf("interfaces not forwarded: %+v", conn)
 	}
 	text := output.String()
-	if strings.Count(text, "sql execution") != 8 || strings.Count(text, "18446744073709551615") != 1 || strings.Contains(text, "skip") {
+	if strings.Count(text, "SQL execution") != 8 || strings.Count(text, "18446744073709551615") != 1 || strings.Contains(text, "skip") {
 		t.Fatalf("duplicate/missing events: %s", text)
 	}
 	if !strings.Contains(text, "operation=prepare") || !strings.Contains(text, "level=ERROR") {

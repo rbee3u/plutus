@@ -11,7 +11,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// persistComparisonEvidence runs inside the Point's first-commit transaction.
+// persistComparisonEvidence runs inside the point's first-commit transaction.
 // Reads of old summaries must never depend on details that retention can remove.
 func (s *Service) persistComparisonEvidence(ctx context.Context, q *sqlcgen.Queries, point *Point) error {
 	adjustments, err := s.manualBalanceChangesByPoints(ctx, point.PortfolioID, []Point{*point})

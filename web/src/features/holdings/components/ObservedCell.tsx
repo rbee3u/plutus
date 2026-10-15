@@ -30,7 +30,7 @@ export function IssuesCell({
     <span className={shared.statusGroup}>
       {isStale ? (
         <HoverDetails label={<Badge tone="warn">Stale</Badge>} name={`Stale report for ${name}`}>
-          <p>{stale?.detail ?? "An earlier successful Account Report is carried forward."}</p>
+          <p>{stale?.detail ?? "An earlier successful account report is carried forward."}</p>
           {observedAt ? (
             <p className={shared.cellMeta}>Observed {formatInstant(observedAt, timezone)}</p>
           ) : null}
@@ -40,7 +40,7 @@ export function IssuesCell({
         <HoverDetails
           label={
             <Badge tone="warn">
-              {formatCount(anomalies.length)} {anomalies.length === 1 ? "Issue" : "Issues"}
+              {formatCount(anomalies.length)} {anomalies.length === 1 ? "issue" : "issues"}
             </Badge>
           }
           name={`Data issues for ${name}`}

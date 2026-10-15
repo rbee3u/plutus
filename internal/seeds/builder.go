@@ -26,7 +26,7 @@ const (
 	rowsPerInsert     = 400
 )
 
-// LiveIdentity is an explicit post-insert Connection initialization plan.
+// LiveIdentity is an explicit post-insert connection initialization plan.
 type LiveIdentity struct {
 	PortfolioID uuid.UUID
 	IdentityID  uuid.UUID
@@ -151,7 +151,7 @@ func (b *builder) add(table string, row ...string) {
 		case "equity", "reported_equity_usd", "adjusted_equity_usd", "available_equity_usd", "initial_margin_requirement_usd", "maintenance_margin_requirement_usd", "reported_initial_margin_ratio", "reported_maintenance_margin_ratio", "reported_margin_ratio", "spot_margin_unrealized_pnl_usd", "value_usd", "available_to_withdraw", "available_to_trade", "liability", "interest", "unrealized_pnl", "quantity", "entry_price", "mark_price", "liquidation_price", "leverage", "margin", "principal", "target_price", "annualized_rate", "contract_size", "price":
 			if row[i] == "NULL" {
 				if table == "balances" && col == "equity" {
-					b.fail(fmt.Errorf("seed Balance equity must be known"))
+					b.fail(fmt.Errorf("seed balance equity must be known"))
 				}
 				continue
 			}
@@ -320,12 +320,12 @@ type identitySpec struct {
 	Portfolio uuid.UUID
 	Platform  adapters.Platform
 	Structure adapters.AccountStructure
-	// MarginMode is the Margin Mode the Identity last observed; empty for structures without one.
+	// MarginMode is the margin mode the identity last observed; empty for structures without one.
 	MarginMode  adapters.MarginMode
 	Name        string
 	Archived    bool
 	ArchivedAt  time.Time
-	APIKey      string // non-empty: credentials are sealed and the Connection enabled after seeding
+	APIKey      string // non-empty: credentials are sealed and the connection enabled after seeding
 	LastError   string
 	LastDetail  string
 	CollectedAt time.Time
@@ -335,7 +335,7 @@ type identitySpec struct {
 
 func (b *builder) identity(i *identitySpec) {
 	if !b.portfolios[i.Portfolio] || !adapters.ValidStructure(i.Platform, i.Structure) || !adapters.ValidMarginMode(i.Structure, i.MarginMode) {
-		b.fail(fmt.Errorf("seed Identity references an invalid Portfolio or capability"))
+		b.fail(fmt.Errorf("seed identity references an invalid portfolio or capability"))
 		return
 	}
 	var archivedAt *time.Time
@@ -348,7 +348,7 @@ func (b *builder) identity(i *identitySpec) {
 		at := i.CollectedAt
 		collectedAt = &at
 	}
-	// An Identity with credentials was validated once, which bound it to the account its key reaches.
+	// An identity with credentials was validated once, which bound it to the account its key reaches.
 	externalRef := ""
 	if i.APIKey != "" {
 		externalRef = fake.ExternalRef(i.APIKey)
@@ -365,11 +365,11 @@ func (b *builder) identity(i *identitySpec) {
 	}
 }
 
-// accounts inserts one Account per Account Type of the Identity's structure with the given selection.
+// accounts inserts one account per account type of the identity's structure with the given selection.
 func (b *builder) accounts(identityID uuid.UUID, ids map[adapters.AccountType]uuid.UUID, selected map[adapters.AccountType]bool, createdAt time.Time) {
 	spec, exists := b.identities[identityID]
 	if !exists {
-		b.fail(fmt.Errorf("seed Account references unknown Identity %s", identityID))
+		b.fail(fmt.Errorf("seed account references unknown identity %s", identityID))
 		return
 	}
 	types := append(adapters.AccountTypes(spec.Structure), adapters.AccountTypeInfo{ID: adapters.TypeManual, Name: "Manual"})
@@ -392,7 +392,7 @@ func (b *builder) asset(portfolio uuid.UUID, platform adapters.Platform, symbol 
 	key := portfolio.String() + "|" + string(platform) + "|" + symbol
 	row, ok := b.assets[key]
 	if !ok {
-		// Retain the historical ID namespace so terminology changes do not replace seeded Assets.
+		// Retain the historical ID namespace so terminology changes do not replace seeded assets.
 		row = &assetRow{portfolio: portfolio, id: namedID("asset/" + key), platform: platform, symbol: symbol, canonicalAssetSymbol: catalog.CanonicalAssetSymbolFor(symbol), source: catalog.MappingAuto, first: observedAt, last: observedAt}
 		b.assets[key] = row
 		b.assetKeys = append(b.assetKeys, key)
@@ -442,7 +442,7 @@ func (b *builder) price(portfolio uuid.UUID, platform adapters.Platform, canonic
 	b.add("price_observations", bin(namedID("price/"+key)), bin(portfolio), q(string(platform)), q(canonicalAssetSymbol), q(canonicalAssetSymbol+"USDT"), q("USDT"), price, ts(at))
 }
 
-// reportSpec is one Account's outcome within a cycle.
+// reportSpec is one account's outcome within a cycle.
 type reportSpec struct {
 	AccountType adapters.AccountType
 	Account     uuid.UUID
@@ -453,8 +453,8 @@ type reportSpec struct {
 	Detail      string
 }
 
-// cycle inserts one succeeded Collection Cycle and its Account Reports.
-// Apply initializes its Valuation Point before committing these source facts.
+// cycle inserts one succeeded collection cycle and its account reports.
+// Apply initializes its valuation point before committing these source facts.
 func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpec) {
 	cycleID := namedID("cycle/" + portfolioID.String() + "/" + at.Format(timestampLayout))
 	started := at.Add(time.Second)
@@ -473,7 +473,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 	for i := range reports {
 		r := &reports[i]
 		if b.accountOwners[r.Account] != portfolioID || b.accountTypes[r.Account] != r.AccountType {
-			b.fail(fmt.Errorf("seed report references an invalid Account boundary"))
+			b.fail(fmt.Errorf("seed report references an invalid account boundary"))
 			continue
 		}
 		reportID := namedID("report/" + cycleID.String() + "/" + r.Account.String())
@@ -491,7 +491,7 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 			observed = at.Add(2 * time.Second)
 		}
 		if err := validateReport(rep); err != nil {
-			b.fail(fmt.Errorf("seed Account %s at %s: %w", r.Account, at.Format(time.RFC3339), err))
+			b.fail(fmt.Errorf("seed account %s at %s: %w", r.Account, at.Format(time.RFC3339), err))
 			continue
 		}
 		manualRevision := "NULL"

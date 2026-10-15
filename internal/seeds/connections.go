@@ -9,16 +9,16 @@ import (
 	"github.com/rbee3u/plutus/internal/application/identity"
 )
 
-// ActivateConnections uses the same lifecycle as owner-configured Connections.
+// ActivateConnections uses the same lifecycle as owner-configured connections.
 // A deliberately invalid scenario is accepted only after its expected result.
 func ActivateConnections(ctx context.Context, svc *identity.Service, plans []LiveIdentity, out io.Writer) error {
 	for _, plan := range plans {
 		if plan.Status != identity.ConnectionEnabled && plan.Status != identity.ConnectionDisabled && plan.Status != identity.ConnectionInvalid {
-			return fmt.Errorf("unsupported seed Connection state %q", plan.Status)
+			return fmt.Errorf("unsupported seed connection state %q", plan.Status)
 		}
 		current, err := svc.Get(ctx, plan.PortfolioID, plan.IdentityID)
 		if err != nil {
-			return fmt.Errorf("load seeded Identity: %w", err)
+			return fmt.Errorf("load seeded identity: %w", err)
 		}
 		stored, err := svc.PutCredentials(ctx, plan.PortfolioID, plan.IdentityID, current.Version, identity.ActionInput{}, plan.Credentials)
 		if err != nil {
@@ -37,7 +37,7 @@ func ActivateConnections(ctx context.Context, svc *identity.Service, plans []Liv
 		if result.Connection.Status != plan.Status {
 			return fmt.Errorf("initialize %s: expected %s, got %s", current.DisplayName, plan.Status, result.Connection.Status)
 		}
-		if _, err := fmt.Fprintf(out, "identity %q: connection %s\n", current.DisplayName, result.Connection.Status); err != nil {
+		if _, err := fmt.Fprintf(out, "Identity %q: connection %s\n", current.DisplayName, result.Connection.Status); err != nil {
 			return err
 		}
 	}

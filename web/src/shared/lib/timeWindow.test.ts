@@ -50,7 +50,7 @@ describe("timeWindow helpers", () => {
     expect(presetPeriod("6M")).toBe("month");
   });
 
-  it("formats inputs in the Portfolio timezone rather than the browser timezone", () => {
+  it("formats inputs in the portfolio timezone rather than the browser timezone", () => {
     expect(timeWindowLocalValue("2026-10-04T04:16:44Z", "Asia/Shanghai")).toBe(
       "2026-10-04T12:16:44",
     );

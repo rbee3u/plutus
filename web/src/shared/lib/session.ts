@@ -10,7 +10,7 @@ export function sessionGeneration(queryClient: QueryClient): number {
   return generations.get(queryClient) ?? 0;
 }
 
-/** One authenticated User source for routes, features, and the application shell. */
+/** One authenticated user source for routes, features, and the application shell. */
 export function currentUserOptions() {
   return queryOptions({
     queryKey: keys.authMe(),

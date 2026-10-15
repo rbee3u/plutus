@@ -134,7 +134,7 @@ type ListCalculatedAssetsAtCyclesRow struct {
 	Symbol   string
 }
 
-// One backward primary-key walk per Asset and endpoint reads only the Asset's
+// One backward primary-key walk per asset and endpoint reads only the asset's
 // changes after that endpoint; see ListLatestCalculatedAssetChanges for the
 // ORDER BY constraint.
 func (q *Queries) ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalculatedAssetsAtCyclesParams) ([]ListCalculatedAssetsAtCyclesRow, error) {

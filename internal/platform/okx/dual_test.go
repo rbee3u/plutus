@@ -21,7 +21,7 @@ func TestDocumentedDualPositions(t *testing.T) {
 		t.Fatalf("synthetic dual report: %+v", dual)
 	}
 	if reportOf(t, batch, TypeEarn).Status != adapters.StatusSucceeded || r.count(epDCD) != 1 {
-		t.Fatal("the synthetic Earn and Dual Accounts must share a successful order history read")
+		t.Fatal("the synthetic earn and dual accounts must share a successful order history read")
 	}
 	orders := rowsIn[dcdOrder](t, r.file(epDCD, ""))
 	if len(orders) != 3 || orders[0].State != "LIVE" || orders[1].State != "LIVE" || orders[2].State != "SETTLED" {
@@ -93,7 +93,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			if r.AccountType == TypeEarn {
 				for _, b := range r.Balances {
 					if b.AssetSymbol == "BTC" || (b.AssetSymbol == "ETH" && b.Equity != "0.1") {
-						t.Fatal("dual principal in Earn")
+						t.Fatal("dual principal in earn")
 					}
 				}
 			}

@@ -18,8 +18,8 @@ const identityLabels: Record<
     okx_unified: {
       name: "Unified",
       marginModes: {
-        okx_spot: "SPOT",
-        okx_futures: "FUTURES",
+        okx_spot: "Spot",
+        okx_futures: "Futures",
         okx_mcm: "MCM",
         okx_pm: "PM",
       },
@@ -41,7 +41,7 @@ const identityLabels: Record<
   },
 };
 
-/** Supported Platforms with their Account Structures, Account Types, and Margin Modes. */
+/** Supported platforms with their account structures, account types, and margin modes. */
 export function usePlatforms() {
   const { userId, redirect } = useSessionScope();
   return useQuery({
@@ -84,7 +84,7 @@ export function structureLabel(
   );
 }
 
-/** UNKNOWN when a required mode is unavailable; null when no mode applies. */
+/** `Unknown` when a required mode is unavailable; null when no mode applies. */
 export function marginModeLabel(
   platforms: PlatformLabels[] | undefined,
   platformId: string,
@@ -101,7 +101,7 @@ export function marginModeLabel(
     return structure?.marginModes.find((mode) => mode.id === marginMode)?.name ?? marginMode;
   }
   if (labels?.marginModes || (structure && structure.marginModes.length > 0)) {
-    return "UNKNOWN";
+    return "Unknown";
   }
   return null;
 }

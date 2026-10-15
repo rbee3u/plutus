@@ -392,13 +392,13 @@ func TestUnknownAccountLevelIsRefused(t *testing.T) {
 			}
 			for _, ep := range []endpoint{epTickers, epBalance, epFunding, epSavings} {
 				if r.count(ep) != 0 {
-					t.Errorf("%s called %d times after the Margin Mode was refused", ep, r.count(ep))
+					t.Errorf("%s called %d times after the margin mode was refused", ep, r.count(ep))
 				}
 			}
 		})
 	}
 	if adapters.StopsScheduling(adapters.ClassUnsupported) || adapters.Retryable(adapters.ClassUnsupported) {
-		t.Fatal("an unknown Margin Mode must neither invalidate the Connection nor be retried")
+		t.Fatal("an unknown margin mode must neither invalidate the connection nor be retried")
 	}
 }
 
@@ -422,7 +422,7 @@ func TestOtherStructuresAreRefused(t *testing.T) {
 func TestLevelChangedInsideOKXIsObserved(t *testing.T) {
 	t.Parallel()
 
-	// The Margin Mode is observed, never declared: a level switched inside OKX is reported with
+	// The margin mode is observed, never declared: a level switched inside OKX is reported with
 	// the batch instead of failing it.
 	r, a := newReplay(t)
 	r.always(epConfig, r.configAt("3"))
@@ -447,10 +447,10 @@ func TestUnknownAccountTypeFailsOnlyItsAccount(t *testing.T) {
 	}
 	unknown := reportOf(t, batch, "margin")
 	if unknown.Status != adapters.StatusFailed || unknown.ErrorClass != adapters.ClassUnsupported || !strings.Contains(unknown.ErrorDetail, "margin") {
-		t.Fatalf("unknown Account Type report %+v", unknown)
+		t.Fatalf("unknown account type report %+v", unknown)
 	}
 	if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
-		t.Fatal("funding must not fail with an unknown Account Type")
+		t.Fatal("funding must not fail with an unknown account type")
 	}
 }
 
@@ -511,12 +511,12 @@ func TestCollectMapsTradingAccount(t *testing.T) {
 		"BTC":  {AssetSymbol: "BTC", Equity: "0.1", AvailableToTrade: new("0.08"), AvailableToWithdraw: new("0.08"), Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("0")},
 	}
 	if len(report.Balances) != len(wantBalances) {
-		t.Fatalf("PM Balances = %+v", report.Balances)
+		t.Fatalf("PM balances = %+v", report.Balances)
 	}
 	for _, got := range report.Balances {
 		want, exists := wantBalances[got.AssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
-			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
+			t.Fatalf("PM balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
 		delete(wantBalances, got.AssetSymbol)
 	}
@@ -779,7 +779,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	if b.AssetSymbol != "USDT" || b.Equity != "100" || b.AvailableToWithdraw == nil || *b.AvailableToWithdraw != "90" || b.AvailableToTrade != nil {
 		t.Fatalf("funding balance %+v", b)
 	}
-	// A successful Earn report has also passed the Earn check against the synthetic valuation.
+	// A successful earn report has also passed the earn check against the synthetic valuation.
 	earn := reportOf(t, batch, TypeEarn)
 	want := map[string]string{"USDT": "20", "ETH": "0.1"}
 	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != len(want) || earn.Equity != nil {
@@ -794,7 +794,7 @@ func TestCollectMapsFundingAndEarn(t *testing.T) {
 	}
 }
 
-// A nonzero synthetic valuation must expose omitted Earn funds.
+// A nonzero synthetic valuation must expose omitted earn funds.
 func TestSyntheticValuationCatchesUnreadEarn(t *testing.T) {
 	t.Parallel()
 
@@ -805,7 +805,7 @@ func TestSyntheticValuationCatchesUnreadEarn(t *testing.T) {
 		} `json:"details"`
 	}](t, r.file(epValuation, ""))[0].Details.Earn)
 	if synthetic.Cmp(big.NewRat(1, 1)) <= 0 {
-		t.Fatal("the synthetic scenario must contain Earn value to detect omitted funds")
+		t.Fatal("the synthetic scenario must contain earn value to detect omitted funds")
 	}
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
@@ -1113,8 +1113,8 @@ func TestNonDecimalFieldIsNormalizationFailure(t *testing.T) {
 func TestEmptyAmountFailsItsAccount(t *testing.T) {
 	t.Parallel()
 
-	// An empty amount is unknown. Read as zero it would drop the coin under the Complete Set rule,
-	// so it fails its Account, naming the coin, and leaves the siblings alone.
+	// An empty amount is unknown. Read as zero it would drop the coin under the complete set rule,
+	// so it fails its account, naming the coin, and leaves the siblings alone.
 	for name, tc := range map[string]struct {
 		ep      endpoint
 		answer  string
@@ -1223,7 +1223,7 @@ func TestFuturesModeLeavesAccountMarginFiguresUnknown(t *testing.T) {
 }
 
 // earnWithout empties Simple Earn and on-chain earn so a test sees only dual investment, and
-// answers an empty Earn valuation, which the Earn check passes whatever the orders hold.
+// answers an empty earn valuation, which the earn check passes whatever the orders hold.
 func (r *replay) earnWithout() {
 	r.always(epSavings, ok(`[]`))
 	r.always(epStaking, ok(`[]`))
@@ -1326,10 +1326,10 @@ func TestDualInvestmentStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	if earn := reportOf(t, batch, TypeDualInvestment); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, `"ExPiReD"`) {
-		t.Fatalf("an undocumented state must fail Earn by name: %+v", earn)
+		t.Fatalf("an undocumented state must fail earn by name: %+v", earn)
 	}
 	if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
-		t.Fatal("funding must not fail with Earn")
+		t.Fatal("funding must not fail with earn")
 	}
 }
 
@@ -1446,7 +1446,7 @@ func TestDualInvestmentPagesWaitForTheRateLimit(t *testing.T) {
 	}
 }
 
-// valuation answers asset-valuation with an Earn bucket of earn USD.
+// valuation answers asset-valuation with an earn bucket of earn USD.
 func valuation(earn string) func(w http.ResponseWriter) {
 	return ok(`[{"details":{"classic":"0","earn":"` + earn + `","funding":"0","trading":"0"},"totalBal":"` + earn + `","ts":"1"}]`)
 }
@@ -1474,13 +1474,13 @@ func TestEarnCheckComparesWithOKXValuation(t *testing.T) {
 			}
 			earn := reportOf(t, batch, TypeEarn)
 			if tc.ok != (earn.Status == adapters.StatusSucceeded) {
-				t.Fatalf("OKX values Earn at %s against 100 itemized: %+v", tc.earn, earn)
+				t.Fatalf("OKX values earn at %s against 100 itemized: %+v", tc.earn, earn)
 			}
 			if !tc.ok && (earn.ErrorClass != adapters.ClassUnsupported || !strings.Contains(earn.ErrorDetail, "100.00 USD")) {
 				t.Fatalf("the failure must name both amounts: %+v", earn)
 			}
 			if reportOf(t, batch, TypeFunding).Status != adapters.StatusSucceeded {
-				t.Fatal("funding must not fail with the Earn check")
+				t.Fatal("funding must not fail with the earn check")
 			}
 		})
 	}
@@ -1526,6 +1526,6 @@ func TestEarnCheckIsSkippedWithoutPrices(t *testing.T) {
 		t.Fatal(err)
 	}
 	if earn := reportOf(t, batch, TypeEarn); earn.Status != adapters.StatusSucceeded {
-		t.Fatalf("an unpriced Balance cannot be compared, so the check must pass: %+v", earn)
+		t.Fatalf("an unpriced balance cannot be compared, so the check must pass: %+v", earn)
 	}
 }

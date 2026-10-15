@@ -46,7 +46,7 @@ export function normalizeTimeWindowPreset(val: string | null): TimeWindowPreset 
 }
 export const normalizePreset = normalizeTimeWindowPreset;
 
-/** Wall-clock text only; interpretation happens on the server in the Portfolio timezone. */
+/** Wall-clock text only; interpretation happens on the server in the portfolio timezone. */
 export function timeWindowLocalValue(iso: string, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,

@@ -21,8 +21,8 @@ export function isTerminalStatus(status: CollectionCycleStatus | undefined): boo
 }
 
 /**
- * Enqueues a manual Collection Cycle and follows it until it finishes, then
- * invalidates every read that depends on the new Valuation Point.
+ * Enqueues a manual collection cycle and follows it until it finishes, then
+ * invalidates every read that depends on the new valuation point.
  */
 export function useCollectNow(portfolioId: string) {
   const { userId } = useSessionScope();
@@ -68,14 +68,14 @@ export function useCollectNow(portfolioId: string) {
         }),
       );
       if (result.error || !result.data) {
-        setError(problemMessage(result.error, "The Collection Cycle could not be queued."));
+        setError(problemMessage(result.error, "The collection cycle could not be queued."));
         return;
       }
       idempotencyKey.current = newIdempotencyKey();
       setStarted(result.data);
       await queryClient.invalidateQueries({ queryKey: keys.collectionCycles(userId, portfolioId) });
     } catch (cause) {
-      setError(problemMessage(cause, "The Collection Cycle could not be queued."));
+      setError(problemMessage(cause, "The collection cycle could not be queued."));
     } finally {
       setBusy(false);
     }

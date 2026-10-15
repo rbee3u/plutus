@@ -17,7 +17,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// PutCredentials encrypts and stores read-only API credentials. The Connection becomes disabled until enabled.
+// PutCredentials encrypts and stores read-only API credentials. The connection becomes disabled until enabled.
 func (s *Service) PutCredentials(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in ActionInput, creds adapters.Credentials) (Identity, error) {
 	if s.box == nil {
 		return Identity{}, ErrMasterKeyRequired
@@ -72,7 +72,7 @@ func (s *Service) PutCredentials(ctx context.Context, portfolioID, id uuid.UUID,
 	return s.Get(ctx, portfolioID, id)
 }
 
-// ClearCredentials removes stored credentials and returns the Connection to unconfigured.
+// ClearCredentials removes stored credentials and returns the connection to unconfigured.
 func (s *Service) ClearCredentials(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in ActionInput) (Identity, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
@@ -105,8 +105,8 @@ func (s *Service) ClearCredentials(ctx context.Context, portfolioID, id uuid.UUI
 	return s.Get(ctx, portfolioID, id)
 }
 
-// Validate runs one read-only Platform call and stores the outcome without changing enablement,
-// except that an authentication or authorization failure marks the Connection invalid.
+// Validate runs one read-only platform call and stores the outcome without changing enablement,
+// except that an authentication or authorization failure marks the connection invalid.
 func (s *Service) Validate(ctx context.Context, portfolioID, id uuid.UUID, in ActionInput) (Identity, ValidationOutcome, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
@@ -133,7 +133,7 @@ func (s *Service) Validate(ctx context.Context, portfolioID, id uuid.UUID, in Ac
 	return updated, outcome, nil
 }
 
-// Enable validates first and then marks the Connection enabled for scheduling.
+// Enable validates first and then marks the connection enabled for scheduling.
 func (s *Service) Enable(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in ActionInput) (Identity, ValidationOutcome, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
@@ -166,7 +166,7 @@ func (s *Service) Enable(ctx context.Context, portfolioID, id uuid.UUID, version
 	return updated, outcome, nil
 }
 
-// Disable stops scheduling the Connection.
+// Disable stops scheduling the connection.
 func (s *Service) Disable(ctx context.Context, portfolioID, id uuid.UUID, version uint64, in ActionInput) (Identity, error) {
 	current, err := s.Get(ctx, portfolioID, id)
 	if err != nil {
@@ -190,8 +190,8 @@ func (s *Service) Disable(ctx context.Context, portfolioID, id uuid.UUID, versio
 }
 
 // probe runs one read-only validation of the stored credentials. Besides the adapter's own
-// checks it refuses a key that reaches another Platform account than the one the Identity is
-// bound to (its external reference), and a Margin Mode that does not belong to the structure.
+// checks it refuses a key that reaches another platform account than the one the identity is
+// bound to (its external reference), and a margin mode that does not belong to the structure.
 func (s *Service) probe(ctx context.Context, current *Identity) (ValidationOutcome, error) {
 	creds, err := s.credentials(ctx, current.PortfolioID, current.ID)
 	if err != nil {
@@ -216,11 +216,11 @@ func (s *Service) probe(ctx context.Context, current *Identity) (ValidationOutco
 		return failed(err), nil
 	}
 	if result.ExternalRef == "" {
-		return failed(adapters.NewError(adapters.ClassNormalization, "The Platform returned no stable login reference.")), nil
+		return failed(adapters.NewError(adapters.ClassNormalization, "The platform returned no stable login reference.")), nil
 	}
 	if bound := current.ExternalRef; bound != nil && result.ExternalRef != "" && result.ExternalRef != *bound {
 		return failed(adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
-			"This key belongs to %s account %s, but this Identity is account %s; create a new Identity for the other account.",
+			"This key belongs to %s account %s, but this identity is account %s; create a new identity for the other account.",
 			adapters.PlatformName(current.Platform), result.ExternalRef, *bound))), nil
 	}
 	if !adapters.ValidMarginMode(current.AccountStructure, result.MarginMode) {

@@ -1,7 +1,9 @@
-import type { AccountValuation } from "@/api";
+import type { AccountValuation, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatRatio } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
+import { capitalize, NO_ACCOUNT_REPORT } from "@/shared/lib/text";
+import { isAccountReportMissing } from "@/shared/lib/valuationRows";
 import { AccountHealthBadges } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { Codes, IssueList } from "@/shared/ui/IssueList";
@@ -16,7 +18,7 @@ import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-/** One Account's current Account Report: valuation metrics, balances, and positions. */
+/** One account's current account report: valuation metrics, balances, and positions. */
 export function AccountDetail({
   portfolioId,
   account,
@@ -34,48 +36,49 @@ export function AccountDetail({
 }) {
   const { balances, positions, dualPositions, earnPositions, isManual, isDual, isEarn } =
     useAccountReport(portfolioId, account, cycleId, valuationRevision);
-  const issues = [
-    ...(balances.data?.issues ?? []),
-    ...(isDual
-      ? (dualPositions.data?.issues ?? [])
-      : isEarn
-        ? (earnPositions.data?.issues ?? [])
-        : (positions.data?.issues ?? [])),
-  ];
-
+  const missingReport = isAccountReportMissing(account);
   const showEarn =
     isEarn &&
     (!earnPositions.isSuccess ||
       (earnPositions.data?.items.length ?? 0) > 0 ||
+      (earnPositions.data?.issues.length ?? 0) > 0 ||
       earnPositions.isError);
   const showDual =
     isDual &&
     (!dualPositions.isSuccess ||
       (dualPositions.data?.items.length ?? 0) > 0 ||
+      (dualPositions.data?.issues.length ?? 0) > 0 ||
       dualPositions.isError);
   const showFutures =
     !isDual &&
     !isEarn &&
     !isManual &&
-    (!positions.isSuccess || (positions.data?.items.length ?? 0) > 0 || positions.isError);
+    (!positions.isSuccess ||
+      (positions.data?.items.length ?? 0) > 0 ||
+      (positions.data?.issues.length ?? 0) > 0 ||
+      positions.isError);
 
   return (
     <div className={styles.accountDetail}>
       <AccountMetrics account={account} />
       {!isManual || account.reportId ? (
-        <AccountFeedback account={account} timezone={timezone} />
+        <AccountFeedback account={account} timezone={timezone} missingReport={missingReport} />
       ) : null}
-      <QueryRecovery query={balances} fallback="Account balances could not be loaded." />
-      <BalancesTable
-        account={account}
-        data={balances.data}
-        isPending={balances.isPending}
-        isError={balances.isError}
-        timezone={timezone}
-        onManual={onManual}
-      />
+      <section className={styles.accountDetail} aria-label="Balances">
+        <QueryRecovery query={balances} fallback="Account balances could not be loaded." />
+        <BalancesTable
+          account={account}
+          data={balances.data}
+          isPending={balances.isPending}
+          isError={balances.isError}
+          timezone={timezone}
+          onManual={onManual}
+          missingReport={missingReport}
+        />
+        <HoldingIssues issues={balances.data?.issues} timezone={timezone} />
+      </section>
       {showEarn ? (
-        <>
+        <section className={styles.accountDetail} aria-label="Earn">
           <QueryRecovery query={earnPositions} fallback="Earn positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Earn</h3>
           <EarnPositionsTable
@@ -83,28 +86,35 @@ export function AccountDetail({
             timezone={earnPositions.data?.context.timezone}
             loading={earnPositions.isPending}
             empty={
-              earnPositions.isError ? "Earn positions could not be loaded. Retry above." : undefined
+              earnPositions.isError
+                ? "Earn positions could not be loaded. Retry above."
+                : missingReport
+                  ? NO_ACCOUNT_REPORT
+                  : undefined
             }
           />
-        </>
+          <HoldingIssues issues={earnPositions.data?.issues} timezone={timezone} />
+        </section>
       ) : null}
       {showDual ? (
-        <>
+        <section className={styles.accountDetail} aria-label="Dual investment">
           <QueryRecovery query={dualPositions} fallback="Dual positions could not be loaded." />
-          <h3 className={styles.accountSectionTitle}>Dual Investment</h3>
+          <h3 className={styles.accountSectionTitle}>Dual investment</h3>
           {dualPositions.isError && !dualPositions.data ? (
-            <p className={shared.muted}>Dual Investment could not be loaded. Retry above.</p>
+            <p className={shared.muted}>Dual investment could not be loaded. Retry above.</p>
           ) : (
             <DualPositionsTable
               items={dualPositions.data?.items ?? []}
               timezone={dualPositions.data?.context.timezone}
               loading={dualPositions.isPending}
+              empty={missingReport ? NO_ACCOUNT_REPORT : undefined}
             />
           )}
-        </>
+          <HoldingIssues issues={dualPositions.data?.issues} timezone={timezone} />
+        </section>
       ) : null}
       {showFutures ? (
-        <>
+        <section className={styles.accountDetail} aria-label="Futures">
           <QueryRecovery query={positions} fallback="Account positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Futures</h3>
           <DataTable
@@ -118,27 +128,24 @@ export function AccountDetail({
                 ? "Loading positions."
                 : positions.isError && !positions.data
                   ? "Futures could not be loaded. Retry above."
-                  : "No open positions in the current Account Report for this account."
+                  : missingReport
+                    ? NO_ACCOUNT_REPORT
+                    : "No open positions in the current account report for this account."
             }
           />
-        </>
-      ) : null}
-      {issues.length > 0 ? (
-        <>
-          <h3 className={styles.accountSectionTitle}>Issues</h3>
-          <IssueList issues={issues} />
-        </>
+          <HoldingIssues issues={positions.data?.issues} timezone={timezone} />
+        </section>
       ) : null}
       <details className={shared.reportDetails}>
         <summary>Report details</summary>
         <dl className={shared.metaList}>
           <div>
-            <dt>Account Report</dt>
+            <dt>Account report</dt>
             <dd title={account.reportId ?? undefined}>{shortId(account.reportId)}</dd>
           </div>
           <div>
             <dt>Valuation method</dt>
-            <dd>{account.method}</dd>
+            <dd>{capitalize(account.method)}</dd>
           </div>
           <div>
             <dt>Report observed</dt>
@@ -147,13 +154,23 @@ export function AccountDetail({
         </dl>
         <p className={shared.muted}>
           {account.method === "reported"
-            ? "Account value uses equity reported by the Platform."
+            ? "Account value uses equity reported by the platform."
             : account.method === "calculated"
-              ? "Account value is calculated from Balance equity and prices."
-              : "Account value is unknown because no compatible successful Account Report is available."}
+              ? "Account value is calculated from balance equity and prices."
+              : "Account value is unknown because no compatible successful account report is available."}
         </p>
       </details>
     </div>
+  );
+}
+
+function HoldingIssues({ issues, timezone }: { issues?: Issue[]; timezone?: string }) {
+  if (!issues?.length) return null;
+  return (
+    <>
+      <h4 className={styles.accountSectionTitle}>Issues</h4>
+      <IssueList issues={issues} timezone={timezone} />
+    </>
   );
 }
 
@@ -214,7 +231,15 @@ function marginRatioLabel(account: AccountValuation) {
   return "Margin ratio";
 }
 
-function AccountFeedback({ account, timezone }: { account: AccountValuation; timezone?: string }) {
+function AccountFeedback({
+  account,
+  timezone,
+  missingReport,
+}: {
+  account: AccountValuation;
+  timezone?: string;
+  missingReport: boolean;
+}) {
   const exceptional =
     account.status === "failed" ||
     account.freshness === "stale" ||
@@ -225,20 +250,20 @@ function AccountFeedback({ account, timezone }: { account: AccountValuation; tim
         <div className={shared.statusGroup}>
           <AccountHealthBadges
             status={account.status}
-            freshness={account.freshness}
+            freshness={missingReport ? undefined : account.freshness}
             completeness={account.completeness}
             errorClass={account.errorClass}
             errorDetail={account.errorDetail}
           />
-          {account.freshness === "stale" ? (
+          {missingReport ? (
             <span className={shared.muted}>
-              Earlier successful Account Report retained, observed{" "}
+              No compatible successful account report; holdings and value are unknown.
+            </span>
+          ) : account.freshness === "stale" ? (
+            <span className={shared.muted}>
+              Earlier successful account report retained, observed{" "}
               {formatInstant(account.reportObservedAt, timezone)}
               {timezone ? ` · ${timezone}` : ""}.
-            </span>
-          ) : account.method === "missing" ? (
-            <span className={shared.muted}>
-              No compatible successful Account Report; value is unknown.
             </span>
           ) : null}
         </div>

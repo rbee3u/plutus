@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/valuation"
 )
 
-// PortfolioContext is what reads need to know about the Portfolio.
+// PortfolioContext is what reads need to know about the portfolio.
 type PortfolioContext struct {
 	ID       uuid.UUID
 	Timezone string
@@ -42,7 +42,7 @@ func (s *Service) latestContext(ctx context.Context, p PortfolioContext) (Contex
 	return c, &point, accounts, nil
 }
 
-// indexAccounts shares the loaded Accounts for one read operation.
+// indexAccounts shares the loaded accounts for one read operation.
 func indexAccounts(accounts []valuation.AccountValuation) map[uuid.UUID]*valuation.AccountValuation {
 	byID := make(map[uuid.UUID]*valuation.AccountValuation, len(accounts))
 	for i := range accounts {

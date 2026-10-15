@@ -36,7 +36,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	csrf := httptest.NewRecorder()
 	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if csrf.Code != http.StatusOK {
-		t.Fatalf("csrf %d %s", csrf.Code, csrf.Body.String())
+		t.Fatalf("CSRF %d %s", csrf.Code, csrf.Body.String())
 	}
 	var csrfBody struct {
 		Token string `json:"token"`
@@ -46,7 +46,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	}
 	csrfCookie := cookieValue(csrf, auth.CSRFCookieName)
 	if csrfCookie == "" || csrfBody.Token == "" {
-		t.Fatal("missing csrf cookie or token")
+		t.Fatal("missing CSRF cookie or token")
 	}
 
 	missing := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	loginReq.Header.Set("Content-Type", "application/json")
 	engine.ServeHTTP(missingCSRF, loginReq)
 	if missingCSRF.Code != http.StatusForbidden {
-		t.Fatalf("missing csrf %d %s", missingCSRF.Code, missingCSRF.Body.String())
+		t.Fatalf("missing CSRF %d %s", missingCSRF.Code, missingCSRF.Body.String())
 	}
 
 	login := httptest.NewRecorder()
@@ -163,7 +163,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	csrf := httptest.NewRecorder()
 	engine.ServeHTTP(csrf, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/csrf", nil))
 	if cookieValue(csrf, auth.CSRFCookieName) != "" {
-		t.Fatal("default csrf cookie should be absent")
+		t.Fatal("default CSRF cookie should be absent")
 	}
 	csrfCookie := cookieValue(csrf, "plutus_csrf_agent")
 	var csrfBody struct {

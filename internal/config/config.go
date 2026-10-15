@@ -112,17 +112,17 @@ func (a *Auth) cookieName(base string) string {
 	return base + "_" + a.CookieSuffix
 }
 
-// Collection holds Connection validation settings and the adapter selection.
+// Collection holds connection validation settings and the adapter selection.
 type Collection struct {
-	// ConnectionValidationTimeout bounds one synchronous Connection validation call.
+	// ConnectionValidationTimeout bounds one synchronous connection validation call.
 	ConnectionValidationTimeout time.Duration
-	// FakeAdapter registers the deterministic offline adapter for every Platform.
+	// FakeAdapter registers the deterministic offline adapter for every platform.
 	FakeAdapter bool
-	// Proxy controls all runtime Platform HTTP and WebSocket requests.
+	// Proxy controls all runtime platform HTTP and WebSocket requests.
 	Proxy Proxy
 }
 
-// Proxy holds the instance-wide runtime Platform proxy policy.
+// Proxy holds the instance-wide runtime platform proxy policy.
 type Proxy struct {
 	Mode string
 	URL  string

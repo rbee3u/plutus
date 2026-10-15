@@ -13,7 +13,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// accountRanks preserves the hierarchy already established by Accounts for all
+// accountRanks preserves the hierarchy already established by accounts for all
 // flat holdings reads. Rows are sorted before totals are grouped or pages sliced.
 func accountRanks(accounts []valuation.AccountValuation) map[uuid.UUID]int {
 	ranks := make(map[uuid.UUID]int, len(accounts))
@@ -64,7 +64,7 @@ func comparePositions(a, b *PositionRow) int {
 	if c := strings.Compare(ab, bb); c != 0 {
 		return c
 	}
-	// Missing Base metadata falls back to the native Symbol without guessing an Asset.
+	// Missing base metadata falls back to the native symbol without guessing an asset.
 	if ab != "" {
 		if c := cmp.Compare(positionKindRank(a.Kind), positionKindRank(b.Kind)); c != 0 {
 			return c

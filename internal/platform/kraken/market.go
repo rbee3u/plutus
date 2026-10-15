@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// priceQuotes are the Spot quotes a Balance is priced in, in order of
+// priceQuotes are the Spot quotes a balance is priced in, in order of
 // preference: USD, then the two stablecoins ADR 0003 values at 1 USD.
 var priceQuotes = []string{"USD", "USDT", "USDC"}
 
@@ -25,7 +25,7 @@ func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapte
 	return adapters.SymbolPrices(symbols, priceQuotes, prices.lookup, a.now()), ctx.Err()
 }
 
-// assetNames maps Kraken asset codes such as XXBT and ZUSD to the public names Assets lists for
+// assetNames maps Kraken asset codes such as XXBT and ZUSD to the public names assets lists for
 // them (XBT, USD).
 type assetNames map[string]string
 
@@ -48,7 +48,7 @@ func readAssetNames(ctx context.Context, c *client) (assetNames, error) {
 	return out, nil
 }
 
-// symbol normalizes a Kraken asset code: its public name when Assets lists the code, then the
+// symbol normalizes a Kraken asset code: its public name when assets lists the code, then the
 // aliases above. Genuine suffixes such as .T (tokenized assets) are kept.
 func (n assetNames) symbol(where, code string) (string, error) {
 	code = strings.TrimSpace(code)
@@ -65,7 +65,7 @@ func (n assetNames) symbol(where, code string) (string, error) {
 	return code, nil
 }
 
-// mainSymbol normalizes a BalanceEx code and reports whether the row belongs to Main.
+// mainSymbol normalizes a BalanceEx code and reports whether the row belongs to main.
 func (n assetNames) mainSymbol(where, code string) (string, bool, error) {
 	for _, suffix := range allocatedSuffixes {
 		if strings.HasSuffix(code, suffix) {

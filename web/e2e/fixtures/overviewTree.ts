@@ -1,6 +1,6 @@
 import type { HoldingsTree, Overview } from "../../src/api/generated/types.gen";
 
-/** A single-Platform ownership tree for the existing summary/scroll fixtures. */
+/** A single-platform ownership tree for the existing summary/scroll fixtures. */
 export function overviewTreeFixture(overview: Overview): HoldingsTree {
   const group = overview.byPlatform[0];
   return {

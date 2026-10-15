@@ -25,12 +25,12 @@ func TestCatalogCredentialForms(t *testing.T) {
 	structures := map[AccountStructure]bool{}
 	for _, platform := range NewRegistry().Platforms() {
 		if seen[platform.ID] {
-			t.Fatalf("duplicate Platform %s", platform.ID)
+			t.Fatalf("duplicate platform %s", platform.ID)
 		}
 		seen[platform.ID] = true
 		for _, structure := range platform.Structures {
 			if structures[structure.ID] || !ValidStructure(platform.ID, structure.ID) {
-				t.Fatalf("invalid Structure %s", structure.ID)
+				t.Fatalf("invalid structure %s", structure.ID)
 			}
 			structures[structure.ID] = true
 			if ValidAccountType(structure.ID, TypeManual) {

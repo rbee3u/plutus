@@ -43,16 +43,16 @@ WHERE valuation_points.portfolio_id = sqlc.arg(portfolio_id) AND valuation_point
   AND NOT EXISTS(SELECT 1 FROM account_valuations v WHERE v.portfolio_id = valuation_points.portfolio_id AND v.cycle_id = valuation_points.cycle_id);
 
 -- name: ListReportRetentionCandidates :many
--- Seek the cursor range instead of rescanning the Portfolio's index prefix.
+-- Seek the cursor range instead of rescanning the portfolio's index prefix.
 SELECT id, recorded_at AS at FROM account_reports FORCE INDEX (idx_account_reports_retention)
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND recorded_at < sqlc.arg(before)
   AND (recorded_at > sqlc.arg(after_at) OR (recorded_at = sqlc.arg(after_at) AND id > sqlc.arg(after_id)))
 ORDER BY recorded_at, id LIMIT 64;
 
 -- A report stays while a retained valuation references it, as its own cycle's
--- report, or while it is the Account's last successful report.
+-- report, or while it is the account's last successful report.
 -- The complete fallback-index order makes the correlated last-success lookup
--- a reverse one-row read instead of scanning and sorting the Account history.
+-- a reverse one-row read instead of scanning and sorting the account history.
 -- name: ListPinnedReportIDs :many
 SELECT r.id FROM account_reports r
 WHERE r.portfolio_id = sqlc.arg(portfolio_id) AND r.id IN (sqlc.slice('ids')) AND (
@@ -76,7 +76,7 @@ DELETE FROM earn_positions WHERE portfolio_id = sqlc.arg(portfolio_id) AND repor
 -- name: PruneReportDualPositions :execrows
 DELETE FROM dual_positions WHERE portfolio_id = sqlc.arg(portfolio_id) AND report_id IN (sqlc.slice('ids')) LIMIT 1000;
 
--- The page is already pin-checked under the Portfolio lock. A large report can
+-- The page is already pin-checked under the portfolio lock. A large report can
 -- need several visits, so remove only parents whose children are all gone.
 -- name: DeleteEmptyAccountReports :exec
 DELETE FROM account_reports
@@ -125,11 +125,11 @@ SELECT candidates.id, candidates.at FROM (
      ORDER BY p.retrieved_at, p.id LIMIT 64)
 ) candidates ORDER BY candidates.at, candidates.id LIMIT 64;
 
--- Preserve adopted prices and the source-time quote window of every Account's
+-- Preserve adopted prices and the source-time quote window of every account's
 -- last successful report, even outside the boundary: future stale valuation
 -- can adopt a new mapping. Grouping by the full fallback-index prefix lets
--- MySQL skip-scan one entry per Account; a correlated latest-report lookup
--- rescans each Account's report history for every candidate.
+-- MySQL skip-scan one entry per account; a correlated latest-report lookup
+-- rescans each account's report history for every candidate.
 -- name: DeleteUnpinnedPriceObservations :exec
 DELETE FROM price_observations
 WHERE price_observations.portfolio_id = sqlc.arg(portfolio_id) AND price_observations.id IN (sqlc.slice('ids')) AND (price_observations.daily_anchor = FALSE OR price_observations.retrieved_at < sqlc.arg(history_before))
@@ -170,7 +170,7 @@ JOIN collection_cycles c ON c.portfolio_id = p.portfolio_id AND c.id = p.cycle_i
 WHERE p.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at < sqlc.arg(before)
 ORDER BY p.evaluated_at DESC, p.cycle_id DESC LIMIT 1;
 
--- A retained Cycle can start before the window and finish inside it.
+-- A retained cycle can start before the window and finish inside it.
 -- name: ListEarlierRetainedPolicyBoundaries :many
 SELECT c.created_at FROM collection_cycles c
 WHERE c.portfolio_id = sqlc.arg(portfolio_id) AND c.created_at < sqlc.arg(before)
@@ -265,7 +265,7 @@ WHERE futures_contracts.portfolio_id = sqlc.arg(portfolio_id) AND last_observed_
 LIMIT 64;
 
 -- Default catalog entries may expire; explicit mappings and policy versions
--- are current configuration, even when the Asset is not currently held.
+-- are current configuration, even when the asset is not currently held.
 -- name: ListUnusedHistoricalAssets :many
 SELECT a.id FROM assets a
 WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.last_observed_at < sqlc.arg(before) AND a.mapping_version = 1

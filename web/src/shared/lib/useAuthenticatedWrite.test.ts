@@ -55,7 +55,7 @@ describe("Authenticated write boundary", () => {
       authenticatedWrite(
         () =>
           Promise.resolve({
-            error: { code: "unauthenticated" },
+            error: { code: "Unauthenticated." },
             response: new Response(null, { status: 401 }),
           }),
         expire,
@@ -73,7 +73,7 @@ describe("Authenticated write boundary", () => {
     expect(expire).not.toHaveBeenCalled();
   });
 
-  it("retains a same-User replacement session when an old write returns 401", async () => {
+  it("retains a same-user replacement session when an old write returns 401", async () => {
     const client = new QueryClient();
     const user = { id: "alice", username: "alice", status: "active" };
     client.setQueryData(keys.authMe(), user);

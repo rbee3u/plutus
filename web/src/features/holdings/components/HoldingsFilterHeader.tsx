@@ -41,8 +41,12 @@ export function HoldingsFilterHeader({
       selectedValue={value}
       onSelect={(val) => filters.change({ [filterKey]: val })}
       searchDraft={filters.symbolDraft}
-      searchPlaceholder="Contains, e.g. BTC"
-      searchHelp={`Matches part of ${/^[aeiou]/i.test(label) ? "an" : "a"} ${label.toLowerCase()}, ignoring case.`}
+      searchPlaceholder={label === "Pair" ? "Contains, e.g. BTC or USDT" : "Contains, e.g. BTC"}
+      searchHelp={
+        label === "Pair"
+          ? "Matches part of an asset code, ignoring case."
+          : `Matches part of ${/^[aeiou]/i.test(label) ? "an" : "a"} ${label.toLowerCase()}, ignoring case.`
+      }
       onSearchChange={filters.editSymbol}
       onCompositionStart={filters.beginComposition}
       onCompositionEnd={filters.endComposition}

@@ -35,7 +35,7 @@ func TestRuntimeAdaptersUseConfiguredProxy(t *testing.T) {
 		t.Run(string(tc.platform), func(t *testing.T) {
 			adapter, ok := registry.Lookup(tc.platform)
 			if !ok {
-				t.Fatal("missing runtime Adapter")
+				t.Fatal("missing runtime adapter")
 			}
 			before := requests.Load()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -82,7 +82,7 @@ func TestRuntimeProxyPolicyAndFake(t *testing.T) {
 	for _, platform := range registry.Platforms() {
 		adapter, ok := registry.Lookup(platform.ID)
 		if !ok {
-			t.Fatal("missing fake Adapter")
+			t.Fatal("missing fake adapter")
 		}
 		if _, err := adapter.Validate(context.Background(), adapters.Credentials{APIKey: "synthetic"}, platform.Structures[0].ID); err != nil {
 			t.Fatal(err)

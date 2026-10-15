@@ -1,37 +1,37 @@
 # Kraken verification
 
 Current evidence and pending exchange-app checks. See the
-[Adapter mapping](./mapping.md) for field semantics,
+[adapter mapping](./mapping.md) for field semantics,
 [evidence workflow](../evidence-workflow.md) for recording and promotion, and
-[Earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
+[earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
 
 ## Current evidence
 
 **11 reviewed responses**, recorded and owner-reviewed on 2026-10-01. The owner
-declares Unified Wallet; WS independently confirms `unified_balances=true`.
-Cross and isolated wallet settings are not Identity Margin Modes. Spot
-`query-funds` and Futures `READ_ONLY` / `NO_ACCESS` permissions are directly
+declares unified wallet; WS independently confirms `unified_balances=true`.
+Cross and isolated wallet settings are not identity margin modes. Spot
+`query-funds` and futures `READ_ONLY` / `NO_ACCESS` permissions are directly
 observed; separately masked references do not prove shared credential ownership.
 
-Samples cover nonzero Unified Main, Coin-M, and Holding wallets; linear
+Samples cover nonzero unified main, Coin-M, and Holding wallets; linear
 perpetual/delivery and inverse perpetual positions; and instant, bonded, and
-timed USDT Earn. They are interface evidence, not a complete Account Report or
-an atomic asset-total proof. Plutus does not collect Kraken Dual Investment; the
+timed USDT earn. They are interface evidence, not a complete account report or
+an atomic asset-total proof. Plutus does not collect Kraken dual investment; the
 public API contract gap is described below.
 
-## Dual Investment contract review
+## Dual investment contract review
 
 Reviewed on 2026-10-05. Kraken offers
 [Dual Investments](https://support.kraken.com/articles/kraken-pro-dual-investments)
 on Kraken Pro. Its product guide describes invested principal, an alternate
-payout Asset, a trigger price, a fixed APR, and settlement to the Spot balance.
+payout asset, a trigger price, a fixed APR, and settlement to the Spot balance.
 Product availability does not establish an API contract.
 
 The published
 [Spot REST OpenAPI](https://docs.kraken.com/openapi/spot-rest.yaml) and
 [Futures REST OpenAPI](https://docs.kraken.com/openapi/futures-rest.yaml),
 together with the [developer index](https://docs.kraken.com/llms.txt) and
-[sitemap](https://docs.kraken.com/sitemap.xml), did not expose a Dual Investment
+[sitemap](https://docs.kraken.com/sitemap.xml), did not expose a dual investment
 subscription or holdings contract in this review. This is a finding about the
 reviewed public documentation, not a claim that no private interface exists.
 
@@ -41,34 +41,34 @@ The adjacent interfaces do not establish a substitute:
   and
   [Earn Allocations](https://docs.kraken.com/api-reference/earn/list-earn-allocations)
   describe strategies and allocated amounts. Their published contracts do not
-  identify Dual subscriptions or their paired Assets and trigger prices. A
-  `timed` strategy alone does not identify a Dual Investment.
+  identify dual subscriptions or their paired assets and trigger prices. A
+  `timed` strategy alone does not identify a dual investment.
 - [BalanceEx](https://docs.kraken.com/api-reference/account-data/get-extended-balance)
   documents held amounts for Spot non-margin orders; `hold_trade` is not a
-  documented Dual principal source.
+  documented dual principal source.
 - [List Wallet Accounts](https://docs.kraken.com/api-reference/account-data/list-wallet-accounts)
-  lists wallet identifiers. It does not document Dual subscription terms or
-  establish whether invested principal is included in Main or Earn.
+  lists wallet identifiers. It does not document dual subscription terms or
+  establish whether invested principal is included in main or earn.
 
 Implementation is blocked on a documented read-only contract: service and
-authentication permissions; subscription identity and principal Asset/amount;
+authentication permissions; subscription identity and principal asset/amount;
 pagination and complete-set guarantees; running, settlement, and pending-payout
-states; and overlap with Main, Earn, and any combined aggregate. Available
+states; and overlap with main, earn, and any combined aggregate. Available
 product terms must also have documented field meanings and units. These facts
 are needed to avoid omitted or double-counted principal and premature removal of
 holdings.
 
-The owner purchased a 100 USD Dual Investment. On 2026-10-05, explicit recording
+The owner purchased a 100 USD dual investment. On 2026-10-05, explicit recording
 with the existing recording credentials checked the current interfaces:
 
 | Capture (UTC) | Interface                       | Observed result                                            |
 | ------------- | ------------------------------- | ---------------------------------------------------------- |
-| 08:02:47      | Unified Main WebSocket balances | USD 33.7841; Main portfolio value 158.15 USD               |
+| 08:02:47      | Unified main WebSocket balances | USD 33.7841; main portfolio value 158.15 USD               |
 | 08:03:24      | Spot BalanceEx                  | ZUSD 33.7841; `hold_trade` 0                               |
 | 08:03:57      | Earn Allocations                | Three USDT allocations; no USD principal; null next cursor |
 
 Together with the owner's subscription confirmation, these observations show
-that Main and Earn currently omit that 100 USD principal. Main's aggregate
+that main and earn currently omit that 100 USD principal. Main's aggregate
 includes other assets and is not the subscription amount. Manual can supplement
 the omission, with user cleanup after settlement. This narrow principal-coverage
 check does not complete exchange-app totals, simultaneous wallet reconciliation,
@@ -78,13 +78,13 @@ The sanitized review groups remain under `/tmp/plutus/kraken-dual-check/kraken/`
 with group IDs `20261005T080247Z-2728805597`, `20261005T080324Z-1206188283`, and
 `20261005T080357Z-2917705898`. They have not been promoted into repository
 evidence, and do not replace or upgrade the 2026-10-01 accepted responses.
-Temporary files are not durable evidence links. No guessed Dual endpoint,
-fixture, or selectable exchange Account was added.
+Temporary files are not durable evidence links. No guessed dual endpoint,
+fixture, or selectable exchange account was added.
 
 ## Important observations
 
-- WS includes undocumented `isolated_list`. Flexible delivery belongs to Unified
-  Main rather than Coin-M; all held contracts have metadata and mark-price rows.
+- WS includes undocumented `isolated_list`. Flexible delivery belongs to unified
+  main rather than Coin-M; all held contracts have metadata and mark-price rows.
 - Position `fillTime` is an epoch placeholder, not a known entry time. Flexible
   delivery funding is null. Inverse position `pnlCurrency` is absent, so the
   mapper leaves its PnL unset rather than inventing a settlement currency.
@@ -112,13 +112,13 @@ requests.
 ## Remaining gaps
 
 - Separate-wallet WS, BalanceEx, and TradeBalance have no real samples. The
-  owner has no Separate account and defers further account preparation.
-- Nonzero Auto Earn flex allocation, bonding, ETH exit queue, and non-USDT Earn
+  owner has no separate account and defers further account preparation.
+- Nonzero Auto Earn flex allocation, bonding, ETH exit queue, and non-USDT earn
   allocation remain unobserved.
 - Inverse delivery and single-collateral vanilla positions remain unobserved;
   metadata alone does not close these gaps.
-- Spot Margin debt and its separate net result are not established by the
-  Unified sample. Null-iiban fallback, mismatched ownership, pagination
+- Spot margin debt and its separate net result are not established by the
+  unified sample. Null-iiban fallback, mismatched ownership, pagination
   boundaries, and refusal/error responses remain gaps.
 - Exchange-app comparison and complete asset-total reconciliation remain
   pending.
@@ -179,7 +179,7 @@ settings do not limit an interface's applicability.
   [unified](../../../internal/platform/kraken/testdata/ws_v1_balances_snapshot.unified.json).
 - Recorded:
   [unified](../../../internal/platform/kraken/evidence/ws_v1_balances_snapshot.unified.json);
-  unified_balances=true; nonzero Main/Coin-M/Holding; cross and isolated fields
+  unified_balances=true; nonzero main/Coin-M/Holding; cross and isolated fields
   coexist; additional isolated_list array
 
 ### [`spot: GET /0/public/AssetPairs`](https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs)
@@ -213,7 +213,7 @@ settings do not limit an interface's applicability.
 - Synthetic:
   [separate](../../../internal/platform/kraken/testdata/0_private_BalanceEx.separate.json),
   [unified](../../../internal/platform/kraken/testdata/0_private_BalanceEx.unified.json).
-- Recorded: Missing: no Separate account; not requested in the Unified round
+- Recorded: Missing: no separate account; not requested in the unified round
 
 ### [`spot: POST /0/private/Earn/Allocations`](https://docs.kraken.com/api-reference/earn/list-earn-allocations)
 
@@ -254,13 +254,13 @@ settings do not limit an interface's applicability.
 - Synthetic:
   [separate](../../../internal/platform/kraken/testdata/0_private_TradeBalance.separate.json),
   [unified](../../../internal/platform/kraken/testdata/0_private_TradeBalance.unified.json).
-- Recorded: Missing: no Separate account; not requested in the Unified round
+- Recorded: Missing: no separate account; not requested in the unified round
 
 ## Exchange-app validation checklist
 
 Status: pending. This is an acceptance procedure, not a record of completed
 checks. Recorded evidence and synthetic tests do not establish a reconciled
-Account total. Human operators execute it on the remote test environment; agent
+account total. Human operators execute it on the remote test environment; agent
 sessions remain limited to the isolated development instance.
 
 Run on the test environment against Kraken Pro on the same account, within a few
@@ -268,32 +268,32 @@ minutes of a collection:
 
 1. **Identity**: validation stores the public account ID shown in Kraken's
    account settings, without spaces.
-2. **Structure**: the Identity's structure matches the Unified Wallet setting in
-   Kraken Pro; an Identity with the other structure is refused at validation,
+2. **Structure**: the identity's structure matches the unified wallet setting in
+   Kraken Pro; an identity with the other structure is refused at validation,
    naming `unified_balances`.
-3. **Multi-collateral wallet** (Main in Unified Wallet, Multi-M in Separate
+3. **Multi-collateral wallet** (main in unified wallet, Multi-M in separate
    wallets): `Equity` equals the wallet's portfolio value in USD, `AdjEq` its
    margin equity, and `AvailEq` its available margin; the margin ratios equal
    initial and maintenance margin ÷ margin equity; each currency's quantity
    matches the wallet.
 4. **Positions**: every open flexible futures position, including delivery
-   contracts, appears under that wallet with Both and signed Base Size, entry
+   contracts, appears under that wallet with Both and signed base size, entry
    price, and mark price; inverse and vanilla contracts, perpetual or delivery,
-   appear under Coin-M with signed Quote face Size. Source quantities remain
-   contract counts. Isolated Margin excludes PnL and Cross wallet risk is not
-   assigned to individual Positions.
+   appear under Coin-M with signed quote face size. Source quantities remain
+   contract counts. Isolated margin excludes PnL and cross wallet risk is not
+   assigned to individual positions.
 5. **Coin-M**: each single-collateral wallet's balance in its own coin matches,
    and `Equity` equals their USD value with unrealized profit.
-6. **Derivatives Holding**: coin amounts match the holding wallet.
-7. **Earn**: allocated amounts per coin match the Earn page, including bonding
-   and unbonding amounts; Kraken Rewards (Auto Earn) stays in Main and does not
-   appear under Earn.
-8. **Separate wallets**: on a Separate-wallet account, Main's coins match the
-   Spot wallet, with Kraken Rewards and without Earn allocations, and its equity
-   equals those coins at their USD prices plus the open Spot Margin result;
+6. **Derivatives holding**: coin amounts match the holding wallet.
+7. **Earn**: allocated amounts per coin match the earn page, including bonding
+   and unbonding amounts; Kraken Rewards (Auto Earn) stays in main and does not
+   appear under earn.
+8. **Separate wallets**: on a separate-wallet account, main's coins match the
+   Spot wallet, with Kraken Rewards and without earn allocations, and its equity
+   equals those coins at their USD prices plus the open Spot margin result;
    repeat 3–7.
-9. **Structure switch**: after Unified Wallet is switched on or off, the next
-   cycle fails with `unsupported` naming both structures and the Accounts turn
-   stale; a new Identity with the new structure collects normally.
-10. **Failures**: revoking either key sets the Connection `invalid` at the next
+9. **Structure switch**: after unified wallet is switched on or off, the next
+   cycle fails with `unsupported` naming both structures and the accounts turn
+   stale; a new identity with the new structure collects normally.
+10. **Failures**: revoking either key sets the connection `invalid` at the next
     cycle.

@@ -1,19 +1,19 @@
-// Package fake is a deterministic offline Adapter used by seeds, tests, and local lanes.
+// Package fake is a deterministic offline adapter used by seeds, tests, and local lanes.
 //
 // Values derive from the API key and the current time so that consecutive cycles drift
-// smoothly. The Margin Mode of a structure that has one is picked by the key. Keys with special
-// prefixes reproduce failure classes and Platform-side changes:
+// smoothly. The margin mode of a structure that has one is picked by the key. Keys with special
+// prefixes reproduce failure classes and platform-side changes:
 //
-//	invalid-*        authentication error (Connection becomes invalid)
+//	invalid-*        authentication error (connection becomes invalid)
 //	forbidden-*      authorization error
 //	ratelimit-*      rate-limited error on every call
 //	flaky-*          temporary error on the first attempt of each minute, success afterwards
 //	empty-*          success with no balances or positions
-//	unpriced-*       adds a TOKENX Balance that has no price
-//	switch-*         a different Margin Mode every minute, as if the owner kept switching it
-//	restructured-*   the account reports another Account Structure (unsupported)
+//	unpriced-*       adds a TOKENX balance that has no price
+//	switch-*         a different margin mode every minute, as if the owner kept switching it
+//	restructured-*   the account reports another account structure (unsupported)
 //
-// The Platform account a key reaches is the key without its prefix: "flaky-alice" reaches the
+// The platform account a key reaches is the key without its prefix: "flaky-alice" reaches the
 // same account as "alice", and "bob" reaches another one, which validation then refuses.
 package fake
 
@@ -41,7 +41,7 @@ type Adapter struct {
 	flaky    map[string]int64
 }
 
-// New constructs a fake adapter for one Platform.
+// New constructs a fake adapter for one platform.
 func New(platform adapters.Platform) *Adapter {
 	return &Adapter{platform: platform, now: time.Now, flaky: map[string]int64{}}
 }
@@ -52,7 +52,7 @@ func (a *Adapter) WithClock(now func() time.Time) *Adapter {
 	return a
 }
 
-// Validate checks the key prefix and returns a deterministic external ref and Margin Mode.
+// Validate checks the key prefix and returns a deterministic external ref and margin mode.
 func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
 	if err := a.check(ctx, creds, structure); err != nil {
 		return adapters.ValidationResult{}, err
@@ -76,7 +76,7 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 // behaviorPrefixes are the key prefixes that select a behavior rather than an account.
 var behaviorPrefixes = []string{"invalid-", "forbidden-", "ratelimit-", "flaky-", "empty-", "unpriced-", "switch-", "restructured-"}
 
-// ExternalRef is the reference of the Platform account a key reaches: the key without its
+// ExternalRef is the reference of the platform account a key reaches: the key without its
 // behavior prefix, so one account can be tried with every behavior.
 func ExternalRef(apiKey string) string {
 	if d, _, matched, err := parseDemoKey(apiKey); matched && err == nil {
@@ -91,7 +91,7 @@ func ExternalRef(apiKey string) string {
 	return "uid-" + shortHash(apiKey)
 }
 
-// Collect produces one report per requested Account Type with drifting balances and prices.
+// Collect produces one report per requested account type with drifting balances and prices.
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
 	if err := a.check(ctx, creds, structure); err != nil {
 		return adapters.Batch{}, err
@@ -129,7 +129,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 	return batch, nil
 }
 
-// check refuses a structure of another Platform, reproduces a changed structure, and applies the
+// check refuses a structure of another platform, reproduces a changed structure, and applies the
 // key's failure class.
 func (a *Adapter) check(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) error {
 	if err := ctx.Err(); err != nil {
@@ -147,7 +147,7 @@ func (a *Adapter) check(ctx context.Context, creds adapters.Credentials, structu
 	return nil
 }
 
-// MarginMode is the Margin Mode the fake reports for a key within an Account Structure: one of the
+// MarginMode is the margin mode the fake reports for a key within an account structure: one of the
 // structure's modes picked by the key, a different one every minute for "switch-" keys, and empty
 // for structures that have none.
 func MarginMode(structure adapters.AccountStructure, apiKey string, at time.Time) adapters.MarginMode {
@@ -187,7 +187,7 @@ func (a *Adapter) keyError(apiKey string) error {
 type ScenarioValues struct {
 	seed uint64
 	at   time.Time
-	// unpriced adds a TOKENX Balance with no market price to spot reports (keys prefixed "unpriced-").
+	// unpriced adds a TOKENX balance with no market price to spot reports (keys prefixed "unpriced-").
 	unpriced bool
 }
 
@@ -208,8 +208,8 @@ func (s ScenarioValues) Price(symbol string) string {
 	return fmt.Sprintf("%.2f", base*drift)
 }
 
-// Report builds the deterministic report for one Account Type under a Margin Mode (empty for
-// structures without one). Like the live adapters, a Margin Mode that does not report a figure
+// Report builds the deterministic report for one account type under a margin mode (empty for
+// structures without one). Like the live adapters, a margin mode that does not report a figure
 // leaves it unknown instead of zero.
 func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.AccountType, at time.Time, empty bool) adapters.AccountReport {
 	report := s.report(accountType, at, empty)
@@ -221,17 +221,17 @@ func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.Ac
 		// Futures mode reports total equity but no account-level margin figures.
 		report.AdjustedEquity, report.AvailableEquity, report.ReportedInitialMarginRatio, report.ReportedMaintenanceMarginRatio, report.ReportedMarginRatio = nil, nil, nil, nil, nil
 	case adapters.MarginBybitIsolated:
-		// Isolated Margin has no account-wide figures; the value is calculated from Balances.
+		// Isolated margin has no account-wide figures; the value is calculated from balances.
 		report.Equity, report.AdjustedEquity, report.AvailableEquity, report.ReportedInitialMarginRatio, report.ReportedMaintenanceMarginRatio, report.ReportedMarginRatio = nil, nil, nil, nil, nil, nil
 	case adapters.MarginBybitPM, adapters.MarginOKXPM:
-		// Portfolio Margin positions carry no leverage, position margin, or liquidation price.
+		// Portfolio margin positions carry no leverage, position margin, or liquidation price.
 		for i := range report.Positions {
 			report.Positions[i].Leverage, report.Positions[i].Margin, report.Positions[i].LiquidationPrice = nil, nil, nil
 		}
 	case adapters.MarginOKXSpot, adapters.MarginOKXMCM, adapters.MarginBybitCross:
-		// These Margin Modes report every figure.
+		// These margin modes report every figure.
 	default:
-		// Structures without a Margin Mode keep the base report.
+		// Structures without a margin mode keep the base report.
 	}
 	for i := range report.Positions {
 		position := &report.Positions[i]
@@ -263,7 +263,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	eth := round(4, 2.5*f)
 	btcPrice := floatValue(s.Price("BTC"))
 	ethPrice := floatValue(s.Price("ETH"))
-	//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
+	//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 	switch accountType {
 	case "portfolio_margin", "trading", "unified", "main", "multi_m", "coin_m":
 		equity := round(2, usdt+btc*btcPrice+eth*ethPrice-1200*f)
@@ -306,20 +306,20 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			Margin:             amountPtr(round(2, 4*f*ethPrice/2)),
 		}}
 	case "cross_margin":
-		// Binance Classic Cross Margin: net assets per coin, a BTC loan, and the Margin Level.
+		// Binance classic cross margin: net assets per coin, a BTC loan, and the margin level.
 		report.ReportedMarginRatio = amountPtr(round(4, 4.2+0.5*math.Sin(hours/9+f)))
 		report.Balances = []adapters.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 3000*f*wave)), AvailableToWithdraw: amountPtr(round(2, 2000*f)), AvailableToTrade: amountPtr(round(2, 3000*f))},
 			{AssetSymbol: "BTC", Equity: amountString(round(6, 0.02*f)), Liability: amountPtr(round(6, 0.01*f)), Interest: amountPtr(round(8, 0.00001*f))},
 		}
 	case "isolated_margin":
-		// Binance Classic Isolated Margin: coins summed across pairs, with the pair's loan.
+		// Binance classic isolated margin: coins summed across pairs, with the pair's loan.
 		report.Balances = []adapters.Balance{
 			{AssetSymbol: "SOL", Equity: amountString(round(3, 8*f)), Liability: amountPtr(round(3, 2*f)), Interest: amountPtr(round(6, 0.001*f))},
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 400*f))},
 		}
 	case "um_futures":
-		// Binance Classic USDⓈ-M Futures in Multi-Assets Mode: margin balance and account figures.
+		// Binance classic USDⓈ-M futures in Multi-Assets Mode: margin balance and account figures.
 		short := round(3, 0.2*f)
 		entry := round(2, btcPrice*1.01)
 		margin := round(2, 4000*f*wave)
@@ -344,7 +344,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			Margin:             amountPtr(round(2, short*btcPrice/5)),
 		}}
 	case "cm_futures":
-		// Binance Classic COIN-M Futures: BTC margin and an inverse perpetual in contracts.
+		// Binance classic COIN-M futures: BTC margin and an inverse perpetual in contracts.
 		contracts := math.Round(20 * f)
 		entry := round(1, btcPrice*0.99)
 		report.Balances = []adapters.Balance{
@@ -396,7 +396,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		for i, kind := range []string{"flexible", "fixed"} {
 			p := adapters.NewEarnPosition(fmt.Sprintf("earn-%d", i+1), kind, "position", "principal")
 			p.ProductRef = adapters.OptionalText(fmt.Sprintf("ETH-%s", kind))
-			p.ProductName = adapters.OptionalText("Demo Earn " + kind)
+			p.ProductName = adapters.OptionalText("Demo earn " + kind)
 			p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(report.Balances[0].Equity), big.NewRat(2, 1)))})
 			p.AddRate("0.045", "apr", "estimated", "Estimated APR", nil)
 			p.AddReward("ETH", amountString(round(6, 0.00155*f)), "cumulative")
@@ -419,7 +419,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	return report
 }
 
-// UnpricedBalance is the TOKENX Balance the fake never prices; seeds use it for the no-price case.
+// UnpricedBalance is the TOKENX balance the fake never prices; seeds use it for the no-price case.
 func UnpricedBalance(factor float64) adapters.Balance {
 	return adapters.Balance{AssetSymbol: "TOKENX", Equity: amountString(round(2, 1500*factor))}
 }

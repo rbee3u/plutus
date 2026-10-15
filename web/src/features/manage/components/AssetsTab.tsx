@@ -211,7 +211,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
           ) : (
             <TableEmptyState
               title="No assets recorded yet"
-              help="Assets will appear automatically once platform identities are connected and sync."
+              help="Assets are recorded from account reports and manual entries."
             />
           )
         }
@@ -272,7 +272,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
 
 const EXCLUSION_REASON_PRESETS = [
   "Dust balance",
-  "Spam / Airdrop",
+  "Spam or airdrop",
   "Delisted asset",
   "Duplicate asset",
 ];
@@ -323,7 +323,7 @@ function ExclusionForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} ${excluding ? "will be excluded" : "will be included"} from the next Collection Cycle. Use Collect now on Overview to update the latest value sooner.`,
+        `${platform} ${result.data.symbol} ${excluding ? "will be excluded" : "will be included"} from the next collection cycle. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The asset status could not be saved."));
@@ -336,8 +336,8 @@ function ExclusionForm({
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
         {excluding
-          ? `Exclude ${platform} · ${item.symbol} from portfolio balances and valuations starting from the next cycle.`
-          : `Include ${platform} · ${item.symbol} in portfolio balances and valuations starting from the next cycle.`}
+          ? `Exclude ${platform} · ${item.symbol} from future calculated valuations.`
+          : `Include ${platform} · ${item.symbol} in future calculated valuations.`}
       </p>
       {item.excluded && item.exclusionReason ? (
         <div className={manageStyles.reasonCallout}>
@@ -417,7 +417,7 @@ function MappingForm({
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!trimmedSymbol) {
-      setError("Enter the Canonical Asset symbol this Asset maps to.");
+      setError("Enter the canonical asset symbol this asset maps to.");
       return;
     }
     if (
@@ -446,7 +446,7 @@ function MappingForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} now maps to ${result.data.canonicalAssetSymbol}. Valuations use it from the next Collection Cycle.`,
+        `${platform} ${result.data.symbol} now maps to ${result.data.canonicalAssetSymbol}. Valuations use it from the next collection cycle.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The mapping could not be saved."));
@@ -458,7 +458,7 @@ function MappingForm({
   return (
     <form className={shared.form} onSubmit={(event) => void onSubmit(event)}>
       <p className={shared.lead}>
-        Map {platform} · {item.symbol} to a Canonical Asset symbol across Platforms.
+        Map {platform} · {item.symbol} to a canonical asset symbol across platforms.
       </p>
       <div className={manageStyles.mappingFlowCard}>
         <div className={manageStyles.mappingFlowSource}>
@@ -470,7 +470,7 @@ function MappingForm({
           ➔
         </div>
         <div className={manageStyles.mappingFlowTarget}>
-          <span className={manageStyles.mappingFlowLabel}>Canonical Asset</span>
+          <span className={manageStyles.mappingFlowLabel}>Canonical asset</span>
           <span className={manageStyles.mappingFlowSymbol}>{trimmedSymbol || "—"}</span>
           <span className={manageStyles.mappingFlowPlatform}>
             {isCustomMapped && trimmedSymbol !== item.symbol
@@ -487,7 +487,7 @@ function MappingForm({
         </p>
       ) : null}
       <label className={shared.field}>
-        <span>Canonical Asset</span>
+        <span>Canonical asset</span>
         <TextInput
           value={canonicalAssetSymbol}
           onChange={(event) => setCanonicalAssetSymbol(event.target.value.toUpperCase())}

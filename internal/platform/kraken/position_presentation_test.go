@@ -31,6 +31,6 @@ func TestIsolatedAllocationExcludesOrdersAndProfit(t *testing.T) {
 	r.snapshot.Flex.Isolated = nil
 	positions, err = r.positions(context.Background(), true)
 	if err != nil || positions[0].MarginSetting != "" {
-		t.Fatal("absent isolated map was guessed Cross")
+		t.Fatal("absent isolated map was guessed cross")
 	}
 }

@@ -31,7 +31,7 @@ type tradingBalance struct {
 
 // trading maps the trading account: its USD equity and margin figures, its
 // per-coin equities, and its open positions. One mapping serves all four
-// Margin Modes: OKX returns "" for every field that does not apply to the
+// margin modes: OKX returns "" for every field that does not apply to the
 // account's level (docs/platform/okx/mapping.md lists them per mode), and an
 // empty field stays unknown rather than becoming zero.
 func (a *Adapter) trading(ctx context.Context, c *client, mode adapters.MarginMode) (adapters.AccountReport, error) {
@@ -85,8 +85,8 @@ func mapTradingAccount(in *tradingAccount) (adapters.AccountReport, error) {
 
 // mapTradingBalances maps details[] rows. Equity is OKX's own `eq`, never recomputed: the sum of
 // the rows' USD equities is exactly the account's totalEq, while the composition of `eq` is not
-// documented. An empty `eq` is unknown and fails the Account; read as zero, it would drop the coin
-// under the Complete Set rule. Liabilities are reported positive and stored positive.
+// documented. An empty `eq` is unknown and fails the account; read as zero, it would drop the coin
+// under the complete set rule. Liabilities are reported positive and stored positive.
 func mapTradingBalances(rows []tradingBalance) ([]adapters.Balance, error) {
 	where := epBalance.String()
 	out := make([]adapters.Balance, 0, len(rows))
@@ -153,7 +153,7 @@ type fundingBalance struct {
 }
 
 // funding maps the funding account, which OKX reports without any USD valuation. Like `eq`, an
-// empty `bal` fails the Account instead of reading as zero.
+// empty `bal` fails the account instead of reading as zero.
 func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var rows []fundingBalance
 	if err := c.call(ctx, epFunding, &rows); err != nil {

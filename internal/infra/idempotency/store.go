@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	ErrConflict   = apperr.Conflict("idempotency key conflict")
+	ErrConflict   = apperr.Conflict("Idempotency key conflict.")
 	ErrInvalidKey = apperr.Invalid("Idempotency-Key must contain at most 255 visible ASCII characters.")
 )
 
@@ -38,7 +38,7 @@ func NewStore(db *sql.DB) *Store { return &Store{db: db, now: time.Now, ttl: 24 
 
 func Hash(body []byte) []byte { hash := sha256.Sum256(body); return hash[:] }
 
-// Run serializes creation per User. The lock covers missing and expired keys,
+// Run serializes creation per user. The lock covers missing and expired keys,
 // so a failed attempt leaves neither business rows nor a durable pending record.
 // Authorization and CSRF precede this call; resource lookup belongs in create.
 func (s *Store) Run(ctx context.Context, userID uuid.UUID, method, path, key string, body []byte, create func(context.Context) (Record, error)) (Record, error) {
@@ -109,7 +109,7 @@ func (s *Store) Run(ctx context.Context, userID uuid.UUID, method, path, key str
 }
 
 // PruneExpired retains successful responses for their full retry window,
-// independently of the lifetime of any Portfolio referenced by the response.
+// independently of the lifetime of any portfolio referenced by the response.
 func (s *Store) PruneExpired(ctx context.Context) error {
 	_, err := sqlcgen.New(s.db).DeleteExpiredIdempotencyRecords(ctx, s.now().UTC())
 	return err

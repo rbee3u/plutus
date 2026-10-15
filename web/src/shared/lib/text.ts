@@ -20,7 +20,13 @@ export function reasonText(code: string): string {
   return rest.length > 0 ? `${text}: ${rest.join(": ")}` : text;
 }
 
-/** "Chrome on macOS" from a browser User-Agent; anything else is returned as is. */
+export function boundaryEventCountText(count: number): string {
+  return count === 0
+    ? "No boundary events"
+    : `${formatCount(count)} boundary ${count === 1 ? "event" : "events"}`;
+}
+
+/** "Chrome on macOS" from a browser `User-Agent`; anything else is returned as is. */
 export function clientSummary(userAgent: string): string {
   const os = /iPhone|iPad/.test(userAgent)
     ? "iOS"
@@ -52,13 +58,16 @@ export function clientSummary(userAgent: string): string {
   return [browser, os].filter(Boolean).join(" on ");
 }
 
-/** "6", or "6 · 1 Stale · 2 Incomplete" when something is off. */
+/** "6", or "6 · 1 stale · 2 incomplete" when something is off. */
 export function accountSummary(total: number, stale: number, incomplete: number): string {
   const parts = [formatCount(total)];
-  if (stale > 0) parts.push(`${formatCount(stale)} Stale`);
-  if (incomplete > 0) parts.push(`${formatCount(incomplete)} Incomplete`);
+  if (stale > 0) parts.push(`${formatCount(stale)} stale`);
+  if (incomplete > 0) parts.push(`${formatCount(incomplete)} incomplete`);
   return parts.join(" · ");
 }
 
-/** Shown wherever a read needs a Valuation Point and the Portfolio has none yet. */
-export const NO_POINT = "No Valuation Point yet. Run a Collection Cycle to create the first point.";
+/** Shown wherever a read needs a valuation point and the portfolio has none yet. */
+export const NO_POINT = "No valuation point yet. Run a collection cycle to create the first point.";
+
+export const NO_ACCOUNT_REPORT =
+  "No compatible successful account report is available; holdings are unknown.";

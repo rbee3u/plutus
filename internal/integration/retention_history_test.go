@@ -89,7 +89,7 @@ func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 	exec("INSERT INTO audit_events(portfolio_id,id,action,resource_type,resource_id,before_json,after_json,occurred_at) VALUES(?,?,'catalog.asset.exclude','asset',?,'{\"version\":2}','{\"version\":3}',?)", h.portfolioID[:], auditID[:], asset[:], cutoff.Add(time.Hour))
 	staleAudit := uuid.New()
 	exec("INSERT INTO audit_events(portfolio_id,id,action,resource_type,resource_id,occurred_at) VALUES(?,?,'manual.balance.update','identity',?,?)", h.portfolioID[:], staleAudit[:], item.ID[:], cutoff.Add(-time.Hour))
-	// Dormant Manual state is applied, even after the owning Point expires.
+	// Dormant manual state is applied, even after the owning point expires.
 	for v := 2; v <= 3; v++ {
 		exec("INSERT INTO manual_revisions(portfolio_id,account_id,revision_number,changed_at) VALUES(?,?,?,?)", h.portfolioID[:], manualID[:], v, cutoff.AddDate(0, 0, -100+v))
 	}
@@ -172,7 +172,7 @@ func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 
 	applied, err := sqlcgen.New(h.db).GetAppliedManualRevision(h.ctx, sqlcgen.GetAppliedManualRevisionParams{PortfolioID: h.portfolioID[:], AccountID: manualID[:]})
 	if err != nil || applied != (sql.NullInt64{Int64: 2, Valid: true}) {
-		t.Fatalf("lost applied Manual state: %+v %v", applied, err)
+		t.Fatalf("lost applied manual state: %+v %v", applied, err)
 	}
 	page, err := h.services.Audit.List(h.ctx, h.portfolioID, &audit.ListFilter{Action: "catalog.asset.exclude"})
 	if err != nil || len(page.Items) != 1 {

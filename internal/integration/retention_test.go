@@ -193,7 +193,7 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 		t.Fatal("pinned source deleted")
 	}
 	// A settled service does not rescan pinned history: each of the eleven phases
-	// visits the one Portfolio and wraps. The next cutoff day starts new sweeps.
+	// visits the one portfolio and wraps. The next cutoff day starts new sweeps.
 	if steps := settle(func() {}); steps != 11*2 {
 		t.Fatalf("idle round took %d steps", steps)
 	}
@@ -235,7 +235,7 @@ func TestRetentionResumesManualRevisionsAfterCutoffAndReportRelease(t *testing.T
 		exec("INSERT INTO account_valuations(portfolio_id,cycle_id,account_id,source_report_id,valuation_method,value_usd) VALUES(?,?,?,?,'calculated',0)", h.portfolioID[:], cycle[:], account[:], report[:])
 	}
 	// More than two candidate pages stay pinned permanently. The expiring
-	// report is reached after Manual cleanup has found no eligible revisions.
+	// report is reached after manual cleanup has found no eligible revisions.
 	for day := range 130 {
 		addPoint(at.AddDate(0, 0, day-200), 1, "daily")
 	}
@@ -302,7 +302,7 @@ func TestRetentionBatchesReportsAndResumesOversizedChildren(t *testing.T) {
 	}
 	at := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	now := at.AddDate(0, 0, 60)
-	// One Report exceeds the per-table budget; the others are small enough to
+	// One report exceeds the per-table budget; the others are small enough to
 	// share a visit. All four child families exercise parent deletion guards.
 	for start := 0; start < 1201; start += 200 {
 		var rows []string
@@ -384,7 +384,7 @@ func TestRetentionBatchesReportsAndResumesOversizedChildren(t *testing.T) {
 		} else if removed > 0 && valuations > 5 {
 			var state string
 			if err := h.db.QueryRowContext(h.ctx, "SELECT detail_state FROM valuation_points WHERE portfolio_id=? ORDER BY evaluated_at LIMIT 1", h.portfolioID[:]).Scan(&state); err != nil || state != "pruning" {
-				t.Fatalf("partial Point expired: state=%s err=%v", state, err)
+				t.Fatalf("partial point expired: state=%s err=%v", state, err)
 			}
 		}
 		prices := count("price_observations")
@@ -408,6 +408,6 @@ func TestRetentionBatchesReportsAndResumesOversizedChildren(t *testing.T) {
 	}
 	var remaining []byte
 	if err := h.db.QueryRowContext(h.ctx, "SELECT id FROM account_reports WHERE portfolio_id=?", h.portfolioID[:]).Scan(&remaining); err != nil || !bytes.Equal(remaining, latest[:]) {
-		t.Fatalf("last successful Report pin lost: %x %v", remaining, err)
+		t.Fatalf("last successful report pin lost: %x %v", remaining, err)
 	}
 }

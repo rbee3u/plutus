@@ -45,7 +45,7 @@ export function PositionsPage() {
       {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
-          label="Total Notional"
+          label="Total notional"
           value={
             <>
               {data.totalNotionalUsd ? (
@@ -58,7 +58,7 @@ export function PositionsPage() {
         />
       ) : null}
       <DataTable
-        caption="Positions at the latest Valuation Point"
+        caption="Positions at the latest valuation point"
         columns={[
           ...holdingsAccountColumns(filters),
           { key: "accountName", header: "Account", nowrap: true, width: "140px" },
@@ -89,8 +89,8 @@ export function PositionsPage() {
             />
           ) : !data?.context.cycleId ? (
             <TableEmptyState
-              title="No Valuation Point yet"
-              help="Run a Collection Cycle to create the first point."
+              title="No valuation point yet"
+              help="Run a collection cycle to create the first point."
             />
           ) : filters.hasFilters ? (
             <TableEmptyState
@@ -99,14 +99,16 @@ export function PositionsPage() {
             />
           ) : (
             <TableEmptyState
-              title="No positions recorded yet"
-              help="Futures positions will appear automatically once platform identities are connected and sync."
+              title="No futures positions to display"
+              help="Only positions reported by selected accounts are shown."
             />
           )
         }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
+      {data?.context.cycleId ? (
+        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+      ) : null}
     </section>
   );
 }

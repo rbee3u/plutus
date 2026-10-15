@@ -27,7 +27,7 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db, now: time.Now}
 }
 
-// WritePoint values every Account Report of a cycle and commits its immutable Valuation Point.
+// WritePoint values every account report of a cycle and commits its immutable valuation point.
 // evaluatedAt is the instant recorded for the point; zero means now.
 func (s *Service) WritePoint(ctx context.Context, portfolioID, cycleID uuid.UUID, evaluatedAt time.Time, claim ...*cycles.Claim) (Point, error) {
 	return mysql.WithWriteContext(ctx, s.db, func(ctx context.Context) (Point, error) {

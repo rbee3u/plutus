@@ -25,7 +25,7 @@ allow_reset = false
 cookie_suffix = "prod"
 
 [collection]
-# Dev uses the deterministic offline Adapter; test and prod use live Adapters.
+# Dev uses the deterministic offline adapter; test and prod use live adapters.
 fake_adapter = false
 
 [collection.proxy]

@@ -17,6 +17,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 )
 
 type manualTestAdapter struct {
@@ -138,10 +139,19 @@ func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 	if err != nil || noOp.Version != next.Version {
 		t.Fatalf("no-op %+v %v", noOp, err)
 	}
-	for _, qty := range []string{"1e3", "0.0000000000000000000000000000001", "999999999999999999999999999999999999"} {
-		in.Quantity = qty
-		if _, err := s.Update(h.ctx, h.portfolioID, item.ID, in); err == nil {
-			t.Fatalf("accepted %s", qty)
+	for _, tc := range []struct{ quantity, message string }{
+		{"abc", "Enter a valid quantity."},
+		{"", "Enter a valid quantity."},
+		{"1e3", "Use a plain decimal quantity with up to 35 integer digits and 30 decimal places."},
+		{"1/2", "Use a plain decimal quantity with up to 35 integer digits and 30 decimal places."},
+		{"0.0000000000000000000000000000001", "Use a plain decimal quantity with up to 35 integer digits and 30 decimal places."},
+		{"999999999999999999999999999999999999", "Use a plain decimal quantity with up to 35 integer digits and 30 decimal places."},
+	} {
+		in.Quantity = tc.quantity
+		for _, mutate := range []func(context.Context, uuid.UUID, uuid.UUID, manual.Input) (manual.State, error){s.Create, s.Update} {
+			if _, err := mutate(h.ctx, h.portfolioID, item.ID, in); apperr.KindOf(err) != apperr.KindInvalid || err.Error() != tc.message {
+				t.Fatalf("quantity %q: got %v, want validation error %q", tc.quantity, err, tc.message)
+			}
 		}
 	}
 	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
@@ -184,7 +194,7 @@ func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 		t.Fatalf("revisions=%d audits=%d", revisions, audits)
 	}
 	// Revision 3 was never collected and can expire. Its audit must still name
-	// the changed Asset and both quantities without consulting that revision.
+	// the changed asset and both quantities without consulting that revision.
 	q := sqlcgen.New(h.db)
 	if _, err := q.PruneManualRevisionBalances(h.ctx, sqlcgen.PruneManualRevisionBalancesParams{PortfolioID: h.portfolioID[:], AccountID: initial.AccountID[:], RevisionNumber: 3}); err != nil {
 		t.Fatal(err)
@@ -456,7 +466,7 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 		t.Fatal(err)
 	}
 	if len(tree.Platforms[0].Identities[0].Accounts) != 2 {
-		t.Fatal("excluded nonzero holdings or failed Account was hidden")
+		t.Fatal("excluded nonzero holdings or failed account was hidden")
 	}
 	old, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || old.TotalUSD != "10000" {

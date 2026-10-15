@@ -275,7 +275,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 	if batch.MarginMode != adapters.MarginBybitPM || len(batch.Reports) != len(allTypes()) {
-		t.Fatalf("batch Margin Mode %q with %d reports", batch.MarginMode, len(batch.Reports))
+		t.Fatalf("batch margin mode %q with %d reports", batch.MarginMode, len(batch.Reports))
 	}
 	for _, report := range batch.Reports {
 		if report.Status != adapters.StatusSucceeded {
@@ -292,7 +292,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	if text(unified.Equity) != "10000" || text(unified.AvailableEquity) != "8000" ||
 		text(unified.ReportedInitialMarginRatio) != "0.1" || text(unified.ReportedMaintenanceMarginRatio) != "0.01" ||
 		unified.AdjustedEquity != nil || unified.ReportedMarginRatio != nil {
-		t.Fatalf("Portfolio Margin account figures = %+v", unified)
+		t.Fatalf("Portfolio margin account figures = %+v", unified)
 	}
 	wantBalances := map[string]adapters.Balance{
 		"BTC":  {AssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
@@ -300,12 +300,12 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		"ETH":  {AssetSymbol: "ETH", Equity: "0", Interest: new("0.02")},
 	}
 	if len(unified.Balances) != len(wantBalances) {
-		t.Fatalf("PM Balances = %+v", unified.Balances)
+		t.Fatalf("PM balances = %+v", unified.Balances)
 	}
 	for _, got := range unified.Balances {
 		want, exists := wantBalances[got.AssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
-			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
+			t.Fatalf("PM balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
 		delete(wantBalances, got.AssetSymbol)
 	}
@@ -315,7 +315,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	for i := range unified.Positions {
 		position := &unified.Positions[i]
 		if position.Leverage != nil || position.LiquidationPrice != nil || position.Margin != nil {
-			t.Fatalf("%s: a Portfolio Margin position has no leverage, liquidation price, or margin of its own", position.PositionKey)
+			t.Fatalf("%s: a portfolio margin position has no leverage, liquidation price, or margin of its own", position.PositionKey)
 		}
 		if position.EntryPrice == nil || position.MarkPrice == nil ||
 			(position.FuturesContract.Kind == adapters.KindLinearPerpetual && position.SourceQuantityUnit != adapters.UnitBase) ||
@@ -327,7 +327,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	funding := reportOf(t, &batch, TypeFunding)
 	wantFunding := []adapters.Balance{{AssetSymbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
 	if funding.Equity != nil || !reflect.DeepEqual(funding.Balances, wantFunding) {
-		t.Fatalf("Funding = %+v, want calculated Balances %+v", funding, wantFunding)
+		t.Fatalf("Funding = %+v, want calculated balances %+v", funding, wantFunding)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
 	wantEarn := []adapters.Balance{{AssetSymbol: "USDT", Equity: "20"}}
@@ -352,7 +352,7 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 		t.Fatalf("batch = %+v", batch)
 	}
 	if unified.Equity != nil || unified.AvailableEquity != nil || unified.ReportedInitialMarginRatio != nil || unified.ReportedMaintenanceMarginRatio != nil {
-		t.Fatal("Bybit documents the account-wide figures as not applicable to Isolated Margin")
+		t.Fatal("Bybit documents the account-wide figures as not applicable to isolated margin")
 	}
 	if len(unified.Balances) != 1 || unified.Balances[0].AssetSymbol != "BTC" || unified.Balances[0].Equity != "0.00990587" ||
 		text(unified.Balances[0].UnrealizedPnl) != "-0.00029413" || text(unified.Balances[0].Liability) != "0" {
@@ -383,7 +383,7 @@ func TestCrossMarginMapsAccountFigures(t *testing.T) {
 	}
 	if text(unified.Equity) != "3.31216591" || text(unified.AvailableEquity) != "3.00326056" ||
 		text(unified.ReportedInitialMarginRatio) != "0" || text(unified.ReportedMaintenanceMarginRatio) != "0" || unified.AdjustedEquity != nil {
-		t.Fatalf("Cross Margin account figures = %+v", unified)
+		t.Fatalf("Cross margin account figures = %+v", unified)
 	}
 	if len(unified.Balances) != 0 {
 		t.Fatalf("a coin whose figures are all zero is dropped: %+v", unified.Balances)
@@ -416,13 +416,13 @@ func TestOtherAccountStructuresStopEveryRead(t *testing.T) {
 
 	other := newReplay(t, "", nil)
 	if _, err := other.adapter.Validate(ctx, testCreds, adapters.StructureOKXUnified); err == nil {
-		t.Fatal("another Platform's structure must be refused")
+		t.Fatal("another platform's structure must be refused")
 	}
 	if _, err := other.adapter.Collect(ctx, testCreds, adapters.StructureKrakenUnified, allTypes()); err == nil {
-		t.Fatal("another Platform's structure must be refused")
+		t.Fatal("another platform's structure must be refused")
 	}
 	if len(other.paths()) != 0 {
-		t.Fatalf("another Platform's structure must be refused before any request: %v", other.paths())
+		t.Fatalf("another platform's structure must be refused before any request: %v", other.paths())
 	}
 }
 
@@ -446,7 +446,7 @@ func TestMarginModeMustBeKnown(t *testing.T) {
 	}
 }
 
-// earnAnswers are invented Earn answers, so a test controls every product.
+// earnAnswers are invented earn answers, so a test controls every product.
 func earnAnswers(flexible, overviewUSD string) map[string]string {
 	return map[string]string{
 		epFlexible.path:      `{"retCode":0,"result":{"list":[` + flexible + `]}}`,
@@ -464,7 +464,7 @@ func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
-		t.Fatalf("Earn = %+v: only the synthetic 20 USDT Dual Asset principal", earn)
+		t.Fatalf("Earn = %+v: only the synthetic 20 USDT dual asset principal", earn)
 	}
 }
 
@@ -505,7 +505,7 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 				t.Fatal(err)
 			}
 			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
-				t.Fatalf("only Earn fails with normalization: %+v", batch.Reports)
+				t.Fatalf("only earn fails with normalization: %+v", batch.Reports)
 			}
 		})
 	}
@@ -523,7 +523,7 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 	}
 	for _, path := range r.paths() {
 		if path == epWallet.path || path == epPositions.path {
-			t.Fatal("an unselected Account was collected")
+			t.Fatal("an unselected account was collected")
 		}
 	}
 }
@@ -541,7 +541,7 @@ func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 		t.Fatalf("Earn = %+v: Bybit's valuation exceeds the itemized principal", earn)
 	}
 	if reportOf(t, &batch, TypeUnified).Status != adapters.StatusSucceeded || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
-		t.Fatal("the Earn check fails only Earn")
+		t.Fatal("the earn check fails only earn")
 	}
 
 	for name, answers := range map[string]map[string]string{
@@ -591,7 +591,7 @@ func TestMalformedAccountsFailOnlyThemselves(t *testing.T) {
 				wantFailed = 2
 			}
 			if failed != wantFailed {
-				t.Fatalf("the malformed Account and any dependent Earn/Dual report fail: %+v", batch.Reports)
+				t.Fatalf("the malformed account and any dependent earn/dual report fail: %+v", batch.Reports)
 			}
 		})
 	}
@@ -602,7 +602,7 @@ func TestAuthenticationFailureStopsTheBatch(t *testing.T) {
 	r.always(epWallet.path, r.failure(scenarioInvalidKey))
 	_, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
 	if class, _ := adapters.Classify(err); class != adapters.ClassAuthentication {
-		t.Fatalf("error = %v: an authentication failure of one Account fails the whole batch", err)
+		t.Fatalf("error = %v: an authentication failure of one account fails the whole batch", err)
 	}
 }
 
@@ -610,7 +610,7 @@ func TestEveryRetryableFailureFailsTheBatch(t *testing.T) {
 	r := newReplay(t, "rate_limited", nil)
 	_, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeUnified, TypeFunding})
 	if class, _ := adapters.Classify(err); class != adapters.ClassRateLimited {
-		t.Fatalf("error = %v: the collection service retries a run whose every Account was rate limited", err)
+		t.Fatalf("error = %v: the collection service retries a run whose every account was rate limited", err)
 	}
 }
 
@@ -709,7 +709,7 @@ func TestPositionMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	if pm.Leverage != nil || pm.Margin != nil || pm.LiquidationPrice != nil {
-		t.Fatal("a Portfolio Margin position has no leverage, margin, or liquidation price of its own")
+		t.Fatal("a portfolio margin position has no leverage, margin, or liquidation price of its own")
 	}
 
 	for name, broken := range map[string]func(*openPosition, *nativeInstrument){

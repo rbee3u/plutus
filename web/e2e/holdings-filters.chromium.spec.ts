@@ -72,7 +72,7 @@ test("Earn keeps multiasset products and accessible details on mobile", async ({
       .getByRole("table", { name: "Earn positions", exact: true })
       .getByText("1 ETH", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Canonical Asset: AETH", { exact: true })).toBeVisible();
+  await expect(page.getByText("Canonical asset: AETH", { exact: true })).toBeVisible();
   const details = page.getByRole("button", { name: /Product details for ETH.*multi/ });
   await details.tap();
   await expect(page.getByRole("tooltip")).toContainText("Example pool");
@@ -88,7 +88,7 @@ test("Earn keeps multiasset products and accessible details on mobile", async ({
   expect(state.mutations).toHaveLength(0);
 });
 
-test("Earn remembers its own Asset search", async ({ page }) => {
+test("Earn remembers its own asset search", async ({ page }) => {
   const state = await fixture(page);
   state.earns = [earn];
   await page.goto(`/p/${portfolioId}/holdings/earn?symbol=eth`);
@@ -97,7 +97,7 @@ test("Earn remembers its own Asset search", async ({ page }) => {
   await page.getByRole("link", { name: "Earn", exact: true }).click();
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/earn?symbol=eth`);
   await page.reload();
-  await expect(page.getByRole("button", { name: "Filter Asset: eth" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter asset: eth" })).toBeVisible();
 });
 
 async function fixture(page: Page) {
@@ -211,14 +211,14 @@ async function fixture(page: Page) {
   return state;
 }
 
-test("reload preserves mobile holdings filters and pagination without collection", async ({
+test("Reload preserves mobile holdings filters and pagination without collection", async ({
   page,
 }) => {
   const state = await fixture(page);
   await page.setViewportSize({ width: 390, height: 844 });
   const path = `/p/${portfolioId}/holdings/balances?platform=binance&identityId=${bn}&symbol=btc&offset=50`;
   await page.goto(path);
-  await expect(page.getByRole("button", { name: "Filter Asset: btc" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter asset: btc" })).toBeVisible();
   await expect.poll(() => state.requests.length).toBeGreaterThan(0);
   state.requests.length = 0;
   await page.reload();
@@ -237,7 +237,7 @@ test("reload preserves mobile holdings filters and pagination without collection
   expect(state.mutations).toHaveLength(0);
 });
 
-test("balance Asset search keeps symbol queries and Observed discloses the correct stale reason", async ({
+test("Balance asset search keeps symbol queries and Observed discloses the correct stale reason", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -277,7 +277,7 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
     "Unrealized PnL",
     "Issues",
   ]);
-  await expect(page.getByRole("cell", { name: "XBT Canonical Asset: BTC" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "XBT canonical asset: BTC" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Stale" })).toBeVisible();
   const stale = page.getByRole("button", { name: "Stale report for XBT" });
   await stale.focus();
@@ -286,28 +286,28 @@ test("balance Asset search keeps symbol queries and Observed discloses the corre
   );
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toBeHidden();
-  await page.getByRole("button", { name: "Search Asset" }).click();
-  await page.getByRole("textbox", { name: "Search Asset" }).fill("btc");
+  await page.getByRole("button", { name: "Search asset" }).click();
+  await page.getByRole("textbox", { name: "Search asset" }).fill("btc");
   await expect
     .poll(() => state.requests.some((url) => url.searchParams.get("symbol") === "btc"))
     .toBe(true);
-  await page.getByRole("button", { name: "Clear Asset filter" }).click();
+  await page.getByRole("button", { name: "Clear asset filter" }).click();
   await expect(page).not.toHaveURL(/symbol=/);
 
   state.balanceIssues = [];
   await page.reload();
   await stale.click();
   await expect(page.getByRole("tooltip")).toContainText(
-    "An earlier successful Account Report is carried forward.",
+    "An earlier successful account report is carried forward.",
   );
   expect(state.mutations).toHaveLength(0);
 });
 
-test("column filters link configured candidates and clear independently", async ({ page }) => {
+test("Column filters link configured candidates and clear independently", async ({ page }) => {
   await fixture(page);
   await page.goto(`/p/${portfolioId}/holdings/futures`);
-  const platform = page.getByRole("button", { name: "Filter Platform: All", exact: true });
-  const identity = page.getByRole("button", { name: "Filter Identity: All", exact: true });
+  const platform = page.getByRole("button", { name: "Filter platform: All", exact: true });
+  const identity = page.getByRole("button", { name: "Filter identity: All", exact: true });
   await identity.click();
   await page.getByRole("option", { name: "bn-main", exact: true }).click();
   await expect(platform).toBeVisible();
@@ -315,12 +315,12 @@ test("column filters link configured candidates and clear independently", async 
   await platform.click();
   await expect(page.getByRole("option")).toHaveText(["All", "Binance"]);
   await page.getByRole("option", { name: "Binance", exact: true }).click();
-  await page.getByRole("button", { name: "Filter Platform: Binance" }).click();
-  await page.getByRole("button", { name: "Clear Platform filter" }).click();
-  const identityActive = page.getByRole("button", { name: "Filter Identity: bn-main" });
+  await page.getByRole("button", { name: "Filter platform: Binance" }).click();
+  await page.getByRole("button", { name: "Clear platform filter" }).click();
+  const identityActive = page.getByRole("button", { name: "Filter identity: bn-main" });
   await expect(identityActive).toBeVisible();
   await identityActive.click();
-  await page.getByRole("button", { name: "Clear Identity filter" }).click();
+  await page.getByRole("button", { name: "Clear identity filter" }).click();
   await platform.focus();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("option")).toHaveText(["All", "Binance", "OKX"]);
@@ -336,7 +336,7 @@ test("column filters link configured candidates and clear independently", async 
   await expect(page.getByRole("button", { name: /^Filter Account/ })).toHaveCount(0);
 });
 
-test("search debounces, respects composition, and keeps its input through loading", async ({
+test("Search debounces, respects composition, and keeps its input through loading", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -347,8 +347,8 @@ test("search debounces, respects composition, and keeps its input through loadin
   const searches = () => state.requests.flatMap((url) => url.searchParams.get("symbol") ?? []);
   try {
     await page.goto(`/p/${portfolioId}/holdings/futures?offset=50`);
-    await page.getByRole("button", { name: "Search Symbol" }).click();
-    const input = page.getByRole("textbox", { name: "Search Symbol" });
+    await page.getByRole("button", { name: "Search symbol" }).click();
+    const input = page.getByRole("textbox", { name: "Search symbol" });
     await page.clock.install({ time: new Date("2026-10-08T00:00:00Z") });
     await page.clock.pauseAt(new Date("2026-10-08T00:00:01Z"));
     await input.fill("b");
@@ -380,16 +380,16 @@ test("search debounces, respects composition, and keeps its input through loadin
     await input.press("Home");
     await expect(input).toBeFocused();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("button", { name: "Filter Symbol: 牛来" })).toBeFocused();
+    await expect(page.getByRole("button", { name: "Filter symbol: 牛来" })).toBeFocused();
     await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Clear Symbol filter" }).click();
+    await page.getByRole("button", { name: "Clear symbol filter" }).click();
     await expect(page).not.toHaveURL(/symbol=/);
   } finally {
     releaseResponse();
   }
 });
 
-test("pending search stays with its own top-level tab and reset cancels it", async ({ page }) => {
+test("Pending search stays with its own top-level tab and reset cancels it", async ({ page }) => {
   const state = await fixture(page);
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const tabs = page.getByRole("navigation", { name: "Holdings views" });
@@ -397,40 +397,40 @@ test("pending search stays with its own top-level tab and reset cancels it", asy
     "Balances",
     "Futures",
     "Earn",
-    "Dual Investment",
+    "Dual investment",
   ]);
   await expect(page.getByRole("tablist")).toHaveCount(0);
-  await page.getByRole("button", { name: "Search Symbol" }).click();
+  await page.getByRole("button", { name: "Search symbol" }).click();
   await page.clock.install({ time: new Date("2026-10-08T00:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-08T00:00:01Z"));
-  await page.getByRole("textbox", { name: "Search Symbol" }).fill("eth");
-  await tabs.getByRole("link", { name: "Dual Investment", exact: true }).click();
+  await page.getByRole("textbox", { name: "Search symbol" }).fill("eth");
+  await tabs.getByRole("link", { name: "Dual investment", exact: true }).click();
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/dual-investment`);
-  await expect(page.getByRole("button", { name: "Search Pair" })).toBeVisible();
-  await page.getByRole("button", { name: "Search Pair" }).click();
-  await page.getByRole("textbox", { name: "Search Pair" }).fill("btc");
+  await expect(page.getByRole("button", { name: "Search pair" })).toBeVisible();
+  await page.getByRole("button", { name: "Search pair" }).click();
+  await page.getByRole("textbox", { name: "Search pair" }).fill("btc");
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await page.clock.runFor(1000);
   expect(state.requests.some((url) => url.searchParams.get("symbol") === "btc")).toBe(false);
   await expect(page).not.toHaveURL(/symbol=/);
   await tabs.getByRole("link", { name: "Futures", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Filter Symbol: eth" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter symbol: eth" })).toBeVisible();
   await expect(page).toHaveURL(/futures\?symbol=eth$/);
   await tabs.getByRole("link", { name: "Balances", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Search Asset" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Search asset" })).toBeVisible();
 });
 
-test("each tab restores its filters and page; history and explicit URLs win", async ({ page }) => {
+test("Each tab restores its filters and page; history and explicit URLs win", async ({ page }) => {
   await fixture(page);
   await page.goto(
     `/p/${portfolioId}/holdings/futures?platform=binance&identityId=${bn}&symbol=eth&offset=50`,
   );
   const tabs = page.getByRole("navigation", { name: "Holdings views" });
-  await expect(page.getByRole("button", { name: "Filter Symbol: eth" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter symbol: eth" })).toBeVisible();
   await tabs.getByRole("link", { name: "Balances", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Filter Platform: All" })).toBeVisible();
-  await page.getByRole("button", { name: "Search Asset" }).click();
-  await page.getByRole("textbox", { name: "Search Asset" }).fill("btc");
+  await expect(page.getByRole("button", { name: "Filter platform: All" })).toBeVisible();
+  await page.getByRole("button", { name: "Search asset" }).click();
+  await page.getByRole("textbox", { name: "Search asset" }).fill("btc");
   await tabs.getByRole("link", { name: "Futures", exact: true }).click();
   await expect(page).toHaveURL(
     new RegExp(`futures\\?platform=binance&identityId=${bn}&symbol=eth&offset=50$`),
@@ -445,7 +445,7 @@ test("each tab restores its filters and page; history and explicit URLs win", as
   await expect(page).toHaveURL(`/p/${portfolioId}/holdings/balances`);
 });
 
-test("unsupported parameters are excluded and invalid selections normalize after candidates load", async ({
+test("Unsupported parameters are excluded and invalid selections normalize after candidates load", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -475,14 +475,14 @@ test("unsupported parameters are excluded and invalid selections normalize after
   );
 });
 
-test("headers survive errors/no point and popovers fit narrow viewports", async ({ page }) => {
+test("Headers survive errors/no point and popovers fit narrow viewports", async ({ page }) => {
   const state = await fixture(page);
   state.noPoint = true;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/p/${portfolioId}/holdings/futures`);
-  const identity = page.getByRole("button", { name: "Filter Identity: All" });
+  const identity = page.getByRole("button", { name: "Filter identity: All" });
   await identity.click();
-  const choices = page.getByRole("listbox", { name: "Choose Identity" });
+  const choices = page.getByRole("listbox", { name: "Choose identity" });
   await expect(choices).toBeVisible();
   const bounds = await choices.boundingBox();
   expect(bounds!.x).toBeGreaterThanOrEqual(8);
@@ -503,13 +503,13 @@ test("headers survive errors/no point and popovers fit narrow viewports", async 
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);
   state.failRows = true;
-  await page.getByRole("button", { name: "Search Symbol" }).click();
-  await page.getByRole("textbox", { name: "Search Symbol" }).fill("no-match");
+  await page.getByRole("button", { name: "Search symbol" }).click();
+  await page.getByRole("textbox", { name: "Search symbol" }).fill("no-match");
   await expect(page.getByRole("alert")).toContainText("Rows unavailable");
-  await expect(page.getByRole("textbox", { name: "Search Symbol" })).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Search symbol" })).toBeFocused();
 });
 
-test("candidate failure keeps URL conditions until a successful retry", async ({ page }) => {
+test("Candidate failure keeps URL conditions until a successful retry", async ({ page }) => {
   const state = await fixture(page);
   state.failCandidates = true;
   await page.goto(`/p/${portfolioId}/holdings/futures?identityId=${bn}`);
@@ -518,6 +518,6 @@ test("candidate failure keeps URL conditions until a successful retry", async ({
   expect(state.requests).toHaveLength(0);
   state.failCandidates = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Filter Identity: bn-main" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Filter identity: bn-main" })).toBeEnabled();
   await expect.poll(() => state.requests.length).toBeGreaterThan(0);
 });

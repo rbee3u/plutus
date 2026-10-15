@@ -129,11 +129,11 @@ func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sq
 	return input, nil
 }
 
-// previousAccounts returns the Account values of the point immediately before evaluatedAt.
+// previousAccounts returns the account values of the point immediately before evaluatedAt.
 func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, evaluatedAt time.Time, cycleID uuid.UUID) (map[uuid.UUID]previousAccount, error) {
 	prev, err := mysql.Queries(ctx, s.db).GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: evaluatedAt, CycleID: cycleID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil //nolint:nilnil // a nil map means "no previous point", which disables Boundary Event derivation.
+		return nil, nil //nolint:nilnil // a nil map means "no previous point", which disables boundary event derivation.
 	}
 	if err != nil {
 		return nil, err

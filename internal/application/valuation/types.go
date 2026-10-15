@@ -1,4 +1,4 @@
-// Package valuation calculates, and stores immutable Valuation Points from Account Reports.
+// Package valuation calculates, and stores immutable valuation points from account reports.
 package valuation
 
 import (
@@ -33,12 +33,14 @@ type Issue struct {
 	Detail      string     `json:"detail"`
 	AccountID   *uuid.UUID `json:"accountId,omitempty"`
 	AccountName string     `json:"-"`
-	// AssetID is stored; Symbol is its display form.
-	AssetID *uuid.UUID `json:"-"`
-	Symbol  string     `json:"symbol,omitempty"`
+	// AssetID is stored; symbol is its display form.
+	AssetID          *uuid.UUID `json:"-"`
+	Symbol           string     `json:"symbol,omitempty"`
+	OmittedBalance   *Omitted   `json:"omittedBalance,omitempty"`
+	ReportObservedAt *time.Time `json:"reportObservedAt,omitempty"`
 }
 
-// Omitted names one Balance excluded from an Account Valuation.
+// Omitted names one balance excluded from an account valuation.
 type Omitted struct {
 	AssetID     uuid.UUID `json:"-"`
 	AssetSymbol string    `json:"assetSymbol"`
@@ -48,7 +50,7 @@ type Omitted struct {
 	Reason               string `json:"reason"`
 }
 
-// BoundaryEvent is an Account entering or leaving the Portfolio Boundary.
+// BoundaryEvent is an account entering or leaving the portfolio boundary.
 type BoundaryEvent struct {
 	CycleID           uuid.UUID `json:"-"`
 	EvaluatedAt       time.Time `json:"-"`
@@ -64,7 +66,7 @@ type BoundaryEvent struct {
 	valueRat          *big.Rat
 }
 
-// Point is one stored Valuation Point.
+// Point is one stored valuation point.
 type Point struct {
 	CalculationVersion     uint64
 	PortfolioID            uuid.UUID
@@ -74,7 +76,7 @@ type Point struct {
 	AccountCount           int
 	StaleAccountCount      int
 	IncompleteAccountCount int
-	// Boundary totals are derived from the point's Boundary Events on read.
+	// Boundary totals are derived from the point's boundary events on read.
 	BoundaryContributionUSD string
 	BoundaryWithdrawalUSD   string
 	BoundaryEvents          []BoundaryEvent
@@ -91,7 +93,7 @@ func (p *Point) Completeness() string {
 	return CompletenessComplete
 }
 
-// AccountValuation is one Account's report and value at a point.
+// AccountValuation is one account's report and value at a point.
 type AccountValuation struct {
 	BalanceValuations      []BalanceValuation
 	ManualModifiedAt       *time.Time
@@ -158,7 +160,7 @@ func (p *Point) Revision() string {
 }
 
 // ManualBalanceChange identifies an effective quantity change within an existing
-// Identity. It is frozen at first commit, independently of issue text.
+// identity. It is frozen at first commit, independently of issue text.
 type ManualBalanceChange struct {
 	AccountID   uuid.UUID
 	AccountName string

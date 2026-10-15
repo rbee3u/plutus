@@ -111,7 +111,7 @@ func TestSQLDisabledAndStartupFailure(t *testing.T) {
 		t.Fatal("disabled SQL logger exists")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "sql.log")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("sql file exists: %v", err)
+		t.Fatalf("SQL file exists: %v", err)
 	}
 	if err := logs.Close(); err != nil {
 		t.Fatal(err)

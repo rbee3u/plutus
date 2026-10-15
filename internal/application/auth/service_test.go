@@ -27,14 +27,14 @@ func TestNewPortfolioIntervals(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(initial) != 1 || initial[0].CollectionIntervalSeconds != 1800 {
-		t.Fatalf("User's first Portfolio must start at 30 minutes: %+v", initial)
+		t.Fatalf("User's first portfolio must start at 30 minutes: %+v", initial)
 	}
 	secondary, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{Name: "secondary", Timezone: "UTC"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if secondary.CollectionIntervalSeconds != 1800 {
-		t.Fatalf("subsequent Portfolio must also start at 30 minutes: %+v", secondary)
+		t.Fatalf("subsequent portfolio must also start at 30 minutes: %+v", secondary)
 	}
 	interval := 1800
 	custom, err := portfolios.Create(ctx, user.ID, portfolio.CreateInput{
@@ -44,7 +44,7 @@ func TestNewPortfolioIntervals(t *testing.T) {
 		t.Fatal(err)
 	}
 	if custom.CollectionIntervalSeconds != interval {
-		t.Fatal("each Portfolio must retain its own selectable interval")
+		t.Fatal("each portfolio must retain its own selectable interval")
 	}
 }
 
@@ -111,7 +111,7 @@ func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 		}
 	}
 	if got, _, err := svc.Authenticate(ctx, otherSession.Token); err != nil || got.ID != other.ID {
-		t.Fatalf("another User's session changed: user=%+v err=%v", got, err)
+		t.Fatalf("another user's session changed: user=%+v err=%v", got, err)
 	}
 
 	_, newSession, err := svc.Login(ctx, username, newPassword, "127.0.0.1", "new-agent")

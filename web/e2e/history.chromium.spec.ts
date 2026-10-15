@@ -188,7 +188,7 @@ async function fixture(page: Page) {
 }
 
 const rawTable = (page: Page) =>
-  page.getByRole("table", { name: "Raw Valuation Points", exact: true });
+  page.getByRole("table", { name: "Raw valuation points", exact: true });
 const pager = (page: Page, label: string) =>
   page.getByLabel(`${label} pagination`, { exact: true });
 
@@ -205,9 +205,9 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-27T12:16:44");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   await expect(rawTable(page).locator("tbody > tr").first()).toContainText("100,560");
-  await expect(pager(page, "Raw Valuation Points")).toContainText("1–20 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("1–20 of 561");
   const headings = await page.getByRole("heading", { level: 2 }).allTextContents();
-  expect(headings).toEqual(["Portfolio value", "Period closes", "Raw Valuation Points"]);
+  expect(headings).toEqual(["Portfolio value", "Period closes", "Raw valuation points"]);
   const chartRequests = state.requests.filter(
     (url) => url.pathname === `${base}/valuation-points`,
   ).length;
@@ -215,34 +215,34 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   const closes = state.requests.find((url) => url.pathname === `${base}/period-closes`)!;
   expect(closes.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(resolved.searchParams.get("granularity")).toBe("hour");
-  await pager(page, "Raw Valuation Points")
+  await pager(page, "Raw valuation points")
     .getByRole("button", { name: "Next", exact: true })
     .click();
-  await expect(pager(page, "Raw Valuation Points")).toContainText("21–40 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
   await rawTable(page)
-    .getByRole("button", { name: /Expand the Valuation Point/ })
+    .getByRole("button", { name: /Expand the valuation point/ })
     .first()
     .click();
   await expect(page).toHaveURL(/pointsOffset=20/);
   await expect(rawTable(page)).toContainText("No accounts were inside the boundary at this point.");
   await pager(page, "Period closes").getByRole("button", { name: "Next", exact: true }).click();
   await expect(pager(page, "Period closes")).toContainText("21–40 of 42");
-  await expect(pager(page, "Raw Valuation Points")).toContainText("21–40 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
   expect(state.requests.filter((url) => url.pathname === `${base}/valuation-points`)).toHaveLength(
     chartRequests,
   );
   await page.getByRole("combobox", { name: "Period", exact: true }).selectOption("week");
   await expect(pager(page, "Period closes")).toContainText("1–20 of 42");
-  await expect(pager(page, "Raw Valuation Points")).toContainText("21–40 of 561");
-  await page.getByLabel("Raw Valuation Points rows per page").selectOption("10");
+  await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
+  await page.getByLabel("Raw valuation points rows per page").selectOption("10");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(10);
-  await expect(pager(page, "Raw Valuation Points")).toContainText("1–10 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("1–10 of 561");
   await page.getByRole("button", { name: "3M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("month");
   await expect(page.getByText(/day granularity/)).toBeVisible();
 });
 
-test("date drafts apply once; custom endpoints survive reload, presets reanchor", async ({
+test("Date drafts apply once; custom endpoints survive reload, presets reanchor", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -275,7 +275,7 @@ test("date drafts apply once; custom endpoints survive reload, presets reanchor"
   );
 });
 
-test("Value Changes pages its table, keeps its chart, and leaves custom comparison independent", async ({
+test("Value changes pages its table, keeps its chart, and leaves custom comparison independent", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -284,8 +284,8 @@ test("Value Changes pages its table, keeps its chart, and leaves custom comparis
   await expect(table.locator("tbody > tr")).toHaveCount(20);
   await expect(table.locator("tbody > tr").first()).toContainText("change-41");
   const reads = state.requests.filter((url) => url.pathname === `${base}/value-changes`).length;
-  await pager(page, "Value Changes").getByRole("button", { name: "Next", exact: true }).click();
-  await expect(pager(page, "Value Changes")).toContainText("21–40 of 42");
+  await pager(page, "Value changes").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(pager(page, "Value changes")).toContainText("21–40 of 42");
   expect(state.requests.filter((url) => url.pathname === `${base}/value-changes`)).toHaveLength(
     reads,
   );
@@ -293,44 +293,44 @@ test("Value Changes pages its table, keeps its chart, and leaves custom comparis
   await page.getByRole("button", { name: "1M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("week");
   await expect(page.getByLabel("From", { exact: true }).last()).toHaveValue("2026-08-01T12:00");
-  await expect(pager(page, "Value Changes")).toContainText("1–20 of 42");
+  await expect(pager(page, "Value changes")).toContainText("1–20 of 42");
 });
 
-test("empty, single-point and last-page URL states stay usable", async ({ page }) => {
+test("Empty, single-point and last-page URL states stay usable", async ({ page }) => {
   const state = await fixture(page);
   state.count = 0;
   await page.goto(historyPath);
   await expect(
     page
       .getByText(
-        "No Valuation Point in this window. Enable a connection and run a Collection Cycle.",
+        "No valuation point in this window. Enable a connection and run a collection cycle.",
         { exact: true },
       )
       .first(),
   ).toBeVisible();
-  await expect(pager(page, "Raw Valuation Points")).toContainText("0 rows");
+  await expect(pager(page, "Raw valuation points")).toContainText("0 rows");
   state.count = 1;
   await page.reload();
   await expect(
-    page.getByText("Only one Valuation Point in this window; the chart needs two."),
+    page.getByText("Only one valuation point in this window; the chart needs two."),
   ).toBeVisible();
   state.count = 561;
   await page.goto(`${historyPath}?pointsOffset=560`);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(1);
   await expect(
-    pager(page, "Raw Valuation Points").getByRole("button", { name: "Next", exact: true }),
+    pager(page, "Raw valuation points").getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
   await page.goto(`${historyPath}?pointsOffset=900`);
-  await expect(pager(page, "Raw Valuation Points")).toContainText("561–561 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("561–561 of 561");
 });
 
-test("a failed raw page retries the same applied window", async ({ page }) => {
+test("A failed raw page retries the same applied window", async ({ page }) => {
   const state = await fixture(page);
   await page.goto(historyPath);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   const resolved = state.requests.find((url) => url.pathname === `${base}/valuation-points`)!;
   state.failPage = true;
-  await pager(page, "Raw Valuation Points")
+  await pager(page, "Raw valuation points")
     .getByRole("button", { name: "Next", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("Page temporarily unavailable.", {
@@ -339,7 +339,7 @@ test("a failed raw page retries the same applied window", async ({ page }) => {
   state.failPage = false;
   state.now = "2026-10-05T04:16:44Z";
   await page.getByRole("alert").getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(pager(page, "Raw Valuation Points")).toContainText("21–40 of 561");
+  await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
   const retried = state.requests
     .filter((url) => url.pathname === `${base}/valuation-points/page`)
     .at(-1)!;
@@ -362,12 +362,12 @@ for (const theme of ["light", "dark"]) {
       375,
     );
     await expect(
-      pager(page, "Raw Valuation Points").getByRole("button", { name: "Next", exact: true }),
+      pager(page, "Raw valuation points").getByRole("button", { name: "Next", exact: true }),
     ).toBeEnabled();
   });
 }
 
-test("a token mismatch between list and detail refreshes the entire read family", async ({
+test("A token mismatch between list and detail refreshes the entire read family", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -378,7 +378,7 @@ test("a token mismatch between list and detail refreshes the entire read family"
   ).length;
   state.mismatchOnDetail = true;
   await rawTable(page)
-    .getByRole("button", { name: /Expand the Valuation Point/ })
+    .getByRole("button", { name: /Expand the valuation point/ })
     .first()
     .click();
   await expect

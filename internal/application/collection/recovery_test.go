@@ -100,7 +100,7 @@ func TestCycleResumesCommittedIdentityAfterLeaseExpiry(t *testing.T) {
 	h.collection.stagger = time.Second
 	h.collection.sleep = func(context.Context, time.Duration) error { return context.Canceled }
 	if _, err := h.collection.RunCycle(h.ctx, h.portfolioID, claimed.ID); !errors.Is(err, context.Canceled) {
-		t.Fatalf("expected interruption after first Identity: %v", err)
+		t.Fatalf("expected interruption after first identity: %v", err)
 	}
 	if _, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, claimed.ID); !errors.Is(err, valuation.ErrNotFound) {
 		t.Fatalf("interrupted cycle has a point: %v", err)
@@ -150,7 +150,7 @@ func TestCycleResumesCommittedIdentityAfterLeaseExpiry(t *testing.T) {
 		t.Fatalf("recovered cycle: %+v %v", summary, err)
 	}
 	if len(first.calls) != 1 || len(second.calls) != 1 {
-		t.Fatalf("completed Identity was recollected: %d %d", len(first.calls), len(second.calls))
+		t.Fatalf("completed identity was recollected: %d %d", len(first.calls), len(second.calls))
 	}
 	for _, r := range rows {
 		after, err := h.collection.q.GetReport(h.ctx, sqlcgen.GetReportParams{PortfolioID: h.portfolioID[:], ID: r.ID})
@@ -176,7 +176,7 @@ func TestCycleReusesPointBeforeFinish(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Boundary changes after the point was committed must not reopen its Cycle.
+	// Boundary changes after the point was committed must not reopen its cycle.
 	enableRecoveryIdentity(h, "Later", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
 	reclaimed := reclaimRecoveryCycle(h, claimed.ID)
 	after, err := h.collection.RunCycle(h.ctx, h.portfolioID, reclaimed.ID)
@@ -270,7 +270,7 @@ func TestCycleResumesPartialAccountReports(t *testing.T) {
 					t.Fatalf("skipped recovery: %+v calls=%v", summary, adapter.calls)
 				}
 			} else if !reflect.DeepEqual(adapter.calls, [][]adapters.AccountType{{adapters.TypeDualInvestment}}) {
-				t.Fatalf("recollected a committed Account: %v", adapter.calls)
+				t.Fatalf("recollected a committed account: %v", adapter.calls)
 			}
 			if _, err := h.collection.db.ExecContext(h.ctx, "UPDATE collection_cycles SET collection_finished_at=UTC_TIMESTAMP(6) WHERE id=?", reclaimed.ID[:]); err != nil {
 				t.Fatal(err)

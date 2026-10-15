@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dev (local): rebuild the SPA and serve the existing plutus_local data on :8080 without resetting it.
+# Dev (local): Rebuild the SPA and serve the existing plutus_local data on :8080 without resetting it.
 # Use local-wipe-and-serve.sh for a fresh seed.
 set -euo pipefail
 

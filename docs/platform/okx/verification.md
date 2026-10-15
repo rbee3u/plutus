@@ -1,18 +1,18 @@
 # OKX verification
 
 Current evidence and pending exchange-app checks. See the
-[Adapter mapping](./mapping.md) for field semantics,
+[adapter mapping](./mapping.md) for field semantics,
 [evidence workflow](../evidence-workflow.md) for recording and promotion, and
-[Earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
+[earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
 
 ## Current evidence
 
 **20 reviewed responses**, recorded and owner-reviewed on 2026-10-01: 12
-PM/shared, three MCM, three Futures, and two borrowing-enabled Spot responses.
+PM/shared, three MCM, three futures, and two borrowing-enabled Spot responses.
 Configuration directly observes `acctLv` 4, 3, 2, and 1 respectively and
 read-only permissions. Main-account ownership remains owner-declared.
 
-PM/MCM observe `net_mode`; Futures observes `long_short_mode`,
+PM/MCM observe `net_mode`; futures observes `long_short_mode`,
 `mgnIsoMode=auto_transfers_ccy`, and `ctIsoMode=automatic`. PM/MCM include
 linear/inverse perpetual/delivery cross positions. Futures includes isolated
 same-contract Hedge, cross inverse perpetual, and isolated MARGIN borrowing.
@@ -28,18 +28,18 @@ not proof of all account/mode combinations.
 - Public time uses a numeric `code`; other responses use strings. Futures Hedge
   sizes are positive on both sides, so `posSide` supplies direction.
   Inapplicable account and currency fields are blank, not zero. Runtime
-  deliberately omits MARGIN rows from contract Positions.
+  deliberately omits MARGIN rows from contract positions.
 - PM cross leverage is zero with blank liquidation price; MCM has populated
   leverage and both blank and populated liquidation fields.
-- Savings has USDT/USDC; Dual history includes both LIVE directions and SETTLED
-  fields. On-chain Earn observes only `state=8`. Funding includes BETH, which
-  does not imply another ETH staking Balance.
+- Savings has USDT/USDC; dual history includes both LIVE directions and SETTLED
+  fields. On-chain earn observes only `state=8`. Funding includes BETH, which
+  does not imply another ETH staking balance.
 
 ## Sanitation and replacements
 
 Configuration UID, mainUID, IP, and label are masked. Market trimming preserves
 whole rows, original counts, and held futures contracts. No accepted evidence
-was replaced. Corrected Futures positions replaced a temporary candidate missing
+was replaced. Corrected futures positions replaced a temporary candidate missing
 SHORT before promotion; the accepted balance predates the added SHORT and is not
 a matching snapshot. Responses from separate requests are not an atomic
 aggregate proof.
@@ -51,7 +51,7 @@ aggregate proof.
   universal default.
 - Nonzero accrued interest, other spot-margin collateral/mode settings, and
   unobserved contract settings remain gaps.
-- On-chain Earn lifecycle states beyond the observed state and difficult
+- On-chain earn lifecycle states beyond the observed state and difficult
   pagination, transient, and refusal responses remain gaps.
 - Futures mode's perpetual samples do not imply observed delivery positions in
   that mode. Exchange-app comparison and complete asset-total reconciliation
@@ -78,7 +78,7 @@ settings do not limit an interface's applicability.
   [mcm](../../../internal/platform/okx/evidence/api_v5_account_balance.mcm.json),
   MCM; delta fields empty, nonzero HYPE/USDC liabilities, interest zero;
   [futures](../../../internal/platform/okx/evidence/api_v5_account_balance.futures.json),
-  Futures; nonzero equity/isoEq, account margin and currency liability fields
+  futures; nonzero equity/isoEq, account margin and currency liability fields
   empty;
   [spot](../../../internal/platform/okx/evidence/api_v5_account_balance.spot.json),
   Spot with USDT/ETH balances and HYPE liab=0.2; cash/equity distinct, optional
@@ -101,7 +101,7 @@ settings do not limit an interface's applicability.
   [mcm](../../../internal/platform/okx/evidence/api_v5_account_config.mcm.json),
   MCM acctLv=3, net_mode, read_only;
   [futures](../../../internal/platform/okx/evidence/api_v5_account_config.futures.json),
-  Futures acctLv=2, long_short_mode, auto_transfers_ccy;
+  futures acctLv=2, long_short_mode, auto_transfers_ccy;
   [spot](../../../internal/platform/okx/evidence/api_v5_account_config.spot.json),
   Spot acctLv=1, enableSpotBorrow=true, read_only
 
@@ -120,7 +120,7 @@ settings do not limit an interface's applicability.
   MCM; five cross/net positions, lever=3; liqPx populated on three rows and
   empty on two;
   [futures](../../../internal/platform/okx/evidence/api_v5_account_positions.futures.json),
-  Futures; same-contract isolated LONG/SHORT, cross inverse SHORT, isolated
+  futures; same-contract isolated LONG/SHORT, cross inverse SHORT, isolated
   MARGIN HYPE liability
 
 ### [`v5: GET /api/v5/asset/asset-valuation`](https://www.okx.com/docs-v5/en/#funding-account-rest-api-get-account-asset-valuation)
@@ -129,7 +129,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/okx/testdata/api_v5_asset_asset_valuation.json).
 - Recorded:
   [sample](../../../internal/platform/okx/evidence/api_v5_asset_asset_valuation.json);
-  ccy=USDT; Earn/Funding/Trading totals, no aggregate reconciliation
+  ccy=USDT; earn/funding/trading totals, no aggregate reconciliation
 
 ### [`v5: GET /api/v5/asset/balances`](https://www.okx.com/docs-v5/en/#funding-account-rest-api-get-balance)
 
@@ -194,58 +194,58 @@ settings do not limit an interface's applicability.
 
 Status: pending. This is an acceptance procedure, not a record of completed
 checks. Recorded evidence and synthetic tests do not establish a reconciled
-Account total. Human operators execute it on the remote test environment; agent
+account total. Human operators execute it on the remote test environment; agent
 sessions remain limited to the isolated development instance.
 
 Run on the test environment against the OKX app on the same account, within a
 few minutes of a collection.
 
-**Every Margin Mode:**
+**Every margin mode:**
 
 1. **Identity**: validation stores the UID shown under the app's profile, and
-   the Identity shows the Margin Mode that matches the app's account mode.
+   the identity shows the margin mode that matches the app's account mode.
 2. **Trading equity**: `Equity` equals the trading account's total equity in
    USD.
 3. **Trading balances**: each coin's equity matches the app's per-coin equity in
    the trading account, including unrealized PnL.
 4. **Positions**: every open swap and futures position appears with the same
    direction, size in contracts, entry price, and mark price.
-5. **Funding**: coin amounts match the Funding account.
-6. **Earn and Dual Investment**: ordinary Earn contains Simple Earn and on-chain
-   earn. Dual Investment contains each outstanding subscription at its invested
-   principal, with a separate Position showing target, expiry, rate, and state.
-   Their combined value matches the platform Earn aggregate. BETH and OKSOL
+5. **Funding**: coin amounts match the funding account.
+6. **Earn and dual investment**: ordinary earn contains Simple Earn and on-chain
+   earn. Dual investment contains each outstanding subscription at its invested
+   principal, with a separate position showing target, expiry, rate, and state.
+   Their combined value matches the platform earn aggregate. BETH and OKSOL
    appear under `trading` or `funding`, not `earn`.
 7. **Account values**: the calculated USD values of `funding` and `earn` are
    within about 0.1% of the app's USD valuation of each account.
 
-**Per Margin Mode:**
+**Per margin mode:**
 
 8. **Portfolio margin and Multi-currency margin**: `AdjEq` equals the adjusted
    equity and `Margin ratio` the margin ratio the app shows, possibly as a
-   percentage. In Portfolio margin, cross positions show no leverage and no
+   percentage. In portfolio margin, cross positions show no leverage and no
    liquidation price.
 9. **Spot mode**: with spot borrowing on, `AdjEq` and `Margin ratio` match the
    app. Each borrowed coin shows its borrowing, interest included, and its
    interest alone. Without borrowing, the margin figures may stay empty.
 10. **Futures mode**: account-level margin figures stay empty. Spot margin
-    borrowings appear neither as Balances' liabilities nor as positions, but the
+    borrowings appear neither as balances' liabilities nor as positions, but the
     coin equities still add up to the total equity.
 
 **Changes and failures:**
 
 11. **Mode switch**: after switching the account mode in the app, the next cycle
-    reports the new Margin Mode with no failed Account, and the audit log
+    reports the new margin mode with no failed account, and the audit log
     records the change.
 12. **Dual investment across a settlement**: if an order settles during
     acceptance, note whether its principal dips or counts twice between the
-    settlement and the Funding payout. Confirm the next cycle is correct.
-13. **Earn check**: holding an Earn product Plutus does not itemize, such as
+    settlement and the funding payout. Confirm the next cycle is correct.
+13. **Earn check**: holding an earn product Plutus does not itemize, such as
     Shark Fin, turns `earn` stale with an `unsupported` detail naming OKX's and
-    Plutus's amounts, provided OKX counts the product in its Earn valuation.
+    Plutus's amounts, provided OKX counts the product in its earn valuation.
 14. **Failures**: removing the server IP from the key's whitelist sets the
-    Connection `invalid` with a `50110` detail at the next cycle. Restoring it
+    connection `invalid` with a `50110` detail at the next cycle. Restoring it
     and validating again resumes collection.
-15. **Other modes**: once sub-accounts in Spot mode, Futures mode, and
+15. **Other modes**: once sub-accounts in Spot mode, futures mode, and
     Multi-currency margin have their own read-only keys, enter each as an
-    Identity and repeat 1–10.
+    identity and repeat 1–10.

@@ -1,4 +1,4 @@
-// Package portfolio owns Portfolio ownership, settings, and cascade deletion.
+// Package portfolio owns portfolio ownership, settings, and cascade deletion.
 package portfolio
 
 import (
@@ -22,7 +22,7 @@ const (
 	DefaultName = "default"
 	// DefaultTimezone is the IANA zone used when none is given.
 	DefaultTimezone = "Asia/Shanghai"
-	// DefaultCollectionInterval is the initial Collection Cycle interval for new Portfolios.
+	// DefaultCollectionInterval is the initial collection cycle interval for new portfolios.
 	DefaultCollectionInterval = 30 * time.Minute
 	maxNameLength             = 120
 	minInterval               = 900
@@ -59,7 +59,7 @@ func (p *Portfolio) ETag() string {
 	return etag.Format("portfolio", p.Version)
 }
 
-// Location returns the Portfolio's time zone, falling back to UTC.
+// Location returns the portfolio's time zone, falling back to UTC.
 func (p *Portfolio) Location() *time.Location {
 	loc, err := time.LoadLocation(p.Timezone)
 	if err != nil {

@@ -1,5 +1,5 @@
 /**
- * The one place the Console decides how large an icon is.
+ * The one place the console decides how large an icon is.
  *
  * Lucide takes a numeric prop, so a CSS token can never reach an icon; a
  * stylesheet-only scale is why the previous one went unused while every call

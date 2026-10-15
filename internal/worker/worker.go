@@ -1,4 +1,4 @@
-// Package worker claims Collection Cycles, drains Portfolio deletions, and schedules cycles.
+// Package worker claims collection cycles, drains portfolio deletions, and schedules cycles.
 package worker
 
 import (
@@ -65,7 +65,7 @@ type Options struct {
 	Lease       time.Duration
 	Logger      *slog.Logger
 	ID          string
-	// Scheduler enables the per-Portfolio Collection Cycle scheduler.
+	// Scheduler enables the per-portfolio collection cycle scheduler.
 	Scheduler bool
 }
 
@@ -138,7 +138,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	}
 }
 
-// Schedule enqueues one Collection Cycle for every Portfolio whose interval elapsed.
+// Schedule enqueues one collection cycle for every portfolio whose interval elapsed.
 func (w *Worker) Schedule(ctx context.Context) error {
 	if w.cycles == nil {
 		return nil
@@ -193,7 +193,7 @@ func (w *Worker) beat() {
 	w.lastBeat.Store(time.Now().UnixNano())
 }
 
-// ProcessOnce runs at most one cycle attempt or one Portfolio deletion batch.
+// ProcessOnce runs at most one cycle attempt or one portfolio deletion batch.
 // Cycles take precedence so deletions never delay collection.
 func (w *Worker) ProcessOnce(ctx context.Context) (bool, error) {
 	if w.cycles != nil {

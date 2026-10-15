@@ -17,7 +17,7 @@ var (
 	ErrSchemaMismatch = errors.New("schema_mismatch")
 	// ErrMySQLIncompatible means version, sql_mode, charset, or timezone is wrong.
 	ErrMySQLIncompatible = errors.New("mysql_incompatible")
-	// ErrMasterKeyRequired means encrypted Identity credentials exist without a configured master key.
+	// ErrMasterKeyRequired means encrypted identity credentials exist without a configured master key.
 	ErrMasterKeyRequired = errors.New("master_key_required")
 )
 
@@ -82,7 +82,7 @@ func CheckEnvironment(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// CheckEncryptedCredentials requires a master key when any Identity credential ciphertext exists.
+// CheckEncryptedCredentials requires a master key when any identity credential ciphertext exists.
 func CheckEncryptedCredentials(ctx context.Context, db *sql.DB, hasMasterKey bool) error {
 	if hasMasterKey {
 		return nil

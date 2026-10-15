@@ -16,7 +16,7 @@ import (
 
 func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	h := newHarness(t)
-	// Creation order deliberately disagrees with Platform and Identity display order.
+	// Creation order deliberately disagrees with platform and identity display order.
 	created := []identity.Identity{
 		h.createIdentity("Alpha", adapters.PlatformKraken, adapters.StructureKrakenSeparate, adapters.AccountTypeIDs(adapters.StructureKrakenSeparate)...),
 		h.createIdentity("Alpha", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.AccountTypeIDs(adapters.StructureBybitUTA2)...),
@@ -77,14 +77,14 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	ranks := map[uuid.UUID]int{}
 	for i := range accounts {
 		if accounts[i].AccountID != wantAccounts[i] {
-			t.Fatalf("report Account %d differs from management", i)
+			t.Fatalf("report account %d differs from management", i)
 		}
 		ranks[accounts[i].AccountID] = i
 	}
 	checkHierarchy := func(name string, ids []uuid.UUID) {
 		t.Helper()
 		if !slices.IsSortedFunc(ids, func(a, b uuid.UUID) int { return ranks[a] - ranks[b] }) {
-			t.Fatalf("%s did not preserve Platform / Identity / Account: %v", name, ids)
+			t.Fatalf("%s did not preserve platform / identity / account: %v", name, ids)
 		}
 	}
 	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
@@ -115,7 +115,7 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	}
 	for i, platform := range []string{"binance", "okx", "bybit", "kraken"} {
 		if overview.ByPlatform[i].Platform != platform {
-			t.Fatal("Overview changed the Platform order")
+			t.Fatal("Overview changed the platform order")
 		}
 	}
 	balances, err := h.financial.FlatBalances(h.ctx, pctx, &financial.ListFilter{Limit: 500})
@@ -155,12 +155,12 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 			detailRefs = append(detailRefs, row.PositionKey)
 		}
 		if !slices.Equal(flatRefs, detailRefs) {
-			t.Fatalf("Account-detail and flat Position order disagree: %v / %v", detailRefs, flatRefs)
+			t.Fatalf("Account-detail and flat position order disagree: %v / %v", detailRefs, flatRefs)
 		}
 	}
 	duals, err := h.financial.FlatDualPositions(h.ctx, pctx, &financial.ListFilter{Limit: 500})
 	if err != nil || duals.Total == 0 {
-		t.Fatalf("Dual Positions: %+v %v", duals, err)
+		t.Fatalf("Dual positions: %+v %v", duals, err)
 	}
 	var dualAccounts []uuid.UUID
 	for _, row := range duals.Items {

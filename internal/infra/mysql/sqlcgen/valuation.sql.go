@@ -444,10 +444,10 @@ type ListAssetMappingChangesByCyclesRow struct {
 	Symbol  string
 }
 
-// A mapping change is an included Asset whose previous change was included
-// under another Canonical Asset. Only a mapping update changes an Asset's
-// Canonical Asset, and it advances the mapping version, so the join starts from
-// remapped Assets; otherwise every change in a range read walks its Asset's
+// A mapping change is an included asset whose previous change was included
+// under another canonical asset. Only a mapping update changes an asset's
+// canonical asset, and it advances the mapping version, so the join starts from
+// remapped assets; otherwise every change in a range read walks its asset's
 // later history.
 func (q *Queries) ListAssetMappingChangesByCycles(ctx context.Context, arg ListAssetMappingChangesByCyclesParams) ([]ListAssetMappingChangesByCyclesRow, error) {
 	query := listAssetMappingChangesByCycles
@@ -766,8 +766,8 @@ type ListComparisonPointHeadersBetweenRow struct {
 	EvaluatedAt time.Time
 }
 
-// Read only Points that can contribute comparison evidence. The version window
-// includes one predecessor, so A -> B -> A and equal-time Cycle ordering survive.
+// Read only points that can contribute comparison evidence. The version window
+// includes one predecessor, so A -> B -> A and equal-time cycle ordering survive.
 func (q *Queries) ListComparisonPointHeadersBetween(ctx context.Context, arg ListComparisonPointHeadersBetweenParams) ([]ListComparisonPointHeadersBetweenRow, error) {
 	rows, err := q.db.QueryContext(ctx, listComparisonPointHeadersBetween,
 		arg.PortfolioID,
@@ -819,9 +819,9 @@ JOIN calculated_asset_changes s ON s.portfolio_id = latest.portfolio_id AND s.as
 `
 
 // Correlated latest-change lookups name the full primary-key prefix in ORDER
-// BY; otherwise MySQL sorts each Asset's whole history instead of reading its
+// BY; otherwise MySQL sorts each asset's whole history instead of reading its
 // newest row backward. Outer-row bounds never seek, so a bounded lookup walks
-// back over the Asset's later changes.
+// back over the asset's later changes.
 func (q *Queries) ListLatestCalculatedAssetChanges(ctx context.Context, portfolioID []byte) ([]CalculatedAssetChange, error) {
 	rows, err := q.db.QueryContext(ctx, listLatestCalculatedAssetChanges, portfolioID)
 	if err != nil {
@@ -930,7 +930,7 @@ type ListManualComparisonInputsByCyclesRow struct {
 	Quantity             sql.NullString
 }
 
-// Account Reports establish Identity membership even before its first Manual
+// Account reports establish identity membership even before its first manual
 // report. Quantities follow the adopted source, never a newer pending input.
 func (q *Queries) ListManualComparisonInputsByCycles(ctx context.Context, arg ListManualComparisonInputsByCyclesParams) ([]ListManualComparisonInputsByCyclesRow, error) {
 	query := listManualComparisonInputsByCycles
@@ -1051,8 +1051,8 @@ type ListPointComparisonTimelineRow struct {
 }
 
 // One earlier anchor supplies the first predecessor without scanning old
-// history once per requested point. Equal timestamps remain ordered by Cycle ID.
-// The covering timeline prevents a Portfolio-wide primary-key scan after imports.
+// history once per requested point. Equal timestamps remain ordered by cycle ID.
+// The covering timeline prevents a portfolio-wide primary-key scan after imports.
 func (q *Queries) ListPointComparisonTimeline(ctx context.Context, arg ListPointComparisonTimelineParams) ([]ListPointComparisonTimelineRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPointComparisonTimeline,
 		arg.PortfolioID,

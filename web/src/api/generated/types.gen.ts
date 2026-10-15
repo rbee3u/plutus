@@ -118,20 +118,20 @@ export type CredentialGroup = {
 export type CredentialRequirement = {
     mode: 'always' | 'selected' | 'selected_except';
     /**
-     * Selected Accounts matching this list (selected) or outside it (selected_except); ignored for always.
+     * Selected accounts matching this list (selected) or outside it (selected_except); ignored for always.
      */
     accountTypes: Array<string>;
 };
 
 /**
- * How the Platform arranges an Identity's Accounts. It decides the Account Types, is chosen when the Identity is created, and cannot be changed afterwards.
+ * How the platform arranges an identity's accounts. It decides the account types, is chosen when the identity is created, and cannot be changed afterwards.
  */
 export type AccountStructure = {
     id: string;
     name: string;
     accountTypes: Array<AccountTypeInfo>;
     /**
-     * Margin Modes the Platform may report within this structure; empty when it has none.
+     * Margin modes the platform may report within this structure; empty when it has none.
      */
     marginModes: Array<MarginModeInfo>;
 };
@@ -175,7 +175,7 @@ export type Identity = {
     displayName: string;
     accountStructure: string;
     /**
-     * The Margin Mode the Platform last reported. Null before the first successful validation and for Account Structures that have none.
+     * The margin mode the platform last reported. Null before the first successful validation and for account structures that have none.
      */
     marginMode?: string | null;
     externalRef?: string | null;
@@ -212,12 +212,12 @@ export type PatchIdentityRequest = {
 export type PutCredentialsRequest = {
     apiKey: string;
     /**
-     * For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other Platforms use their ordinary API secret.
+     * For Binance, an HMAC secret or an unencrypted PKCS#8 Ed25519 private key PEM; the server detects PEM automatically. Other platforms use their ordinary API secret.
      */
     apiSecret: string;
     passphrase?: string;
     /**
-     * Kraken Futures API key; required for Main and derivatives Accounts.
+     * Kraken Futures API key; required for main and derivatives accounts.
      */
     futuresApiKey?: string;
     /**
@@ -271,7 +271,7 @@ export type CollectionCycleDetail = {
 
 export type ReadContext = {
     /**
-     * Identity of the immutable valuation result, equal to its Collection Cycle ID.
+     * Identity of the immutable valuation result, equal to its collection cycle ID.
      */
     valuationRevision?: string | null;
     portfolioId: Uuid;
@@ -286,12 +286,14 @@ export type Issue = {
     accountId?: string | null;
     accountName?: string | null;
     symbol?: string | null;
+    omittedBalance?: OmittedBalance;
+    reportObservedAt?: string;
 };
 
 export type OmittedBalance = {
     assetSymbol: string;
     /**
-     * The Canonical Asset Symbol the Asset is mapped to, present only when it differs from assetSymbol.
+     * The canonical asset symbol the asset is mapped to, present only when it differs from assetSymbol.
      */
     canonicalAssetSymbol?: string;
     equity: Decimal;
@@ -310,7 +312,7 @@ export type GroupTotal = {
 
 export type ValuationPointSummary = {
     /**
-     * Identity of the immutable valuation result, equal to its Collection Cycle ID.
+     * Identity of the immutable valuation result, equal to its collection cycle ID.
      */
     valuationRevision: string;
     calculationVersion: number;
@@ -365,7 +367,7 @@ export type AccountValuation = {
     initialMarginRatio?: NullableDecimal;
     maintenanceMarginRatio?: NullableDecimal;
     /**
-     * Platform-reported, unscaled Account margin ratio. Its label and denominator depend on the immutable Platform and Account scope.
+     * Platform-reported, unscaled account margin ratio. Its label and denominator depend on the immutable platform and account scope.
      */
     marginRatio?: NullableDecimal;
     omitted: Array<OmittedBalance>;
@@ -487,7 +489,7 @@ export type PositionRow = {
     marginBasis?: 'initial' | 'allocated' | null;
     portfolioMargin?: boolean | null;
     /**
-     * Base quantity for linear contracts or Quote face amount for inverse contracts; signed for known one-way positions.
+     * Base quantity for linear contracts or quote face amount for inverse contracts; signed for known one-way positions.
      */
     size?: NullableDecimal;
     sizeSymbol?: string | null;
@@ -496,11 +498,11 @@ export type PositionRow = {
      */
     settleMargin?: NullableDecimal;
     /**
-     * Provenance of the displayed settlement Margin; source amounts remain unchanged.
+     * Provenance of the displayed settlement margin; source amounts remain unchanged.
      */
     marginSource?: 'reported' | 'calculated' | null;
     /**
-     * Why settlement Margin is unknown; optional Margin omissions do not affect notional completeness.
+     * Why settlement margin is unknown; optional margin omissions do not affect notional completeness.
      */
     marginUnavailableReason?: string | null;
     issues: Array<Issue>;
@@ -942,7 +944,7 @@ export type SessionId = Uuid;
 export type AssetId = Uuid;
 
 /**
- * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+ * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
  */
 export type TimeFrom = string;
 
@@ -2066,7 +2068,7 @@ export type ListAccountPositionsData = {
     };
     query?: {
         /**
-         * Historical Valuation Point; omitted for the latest point.
+         * Historical valuation point; omitted for the latest point.
          */
         cycleId?: Uuid;
     };
@@ -2168,7 +2170,7 @@ export type ListBalancesData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the Asset Symbol or Canonical Asset Symbol.
+         * Case-insensitive literal substring of the asset symbol or canonical asset symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2212,7 +2214,7 @@ export type ListPositionsData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the native contract Symbol.
+         * Case-insensitive literal substring of the native contract symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2256,7 +2258,7 @@ export type ListDualPositionsData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of the invested, Base, or Quote Asset Symbol.
+         * Case-insensitive literal substring of the invested, base, or quote asset symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2300,7 +2302,7 @@ export type ListEarnPositionsData = {
         platform?: string;
         identityId?: string;
         /**
-         * Case-insensitive literal substring of any invested Asset Symbol or Canonical Asset Symbol.
+         * Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
          */
         symbol?: string;
         offset?: number;
@@ -2381,7 +2383,7 @@ export type ListValuationPointPageData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2424,7 +2426,7 @@ export type ListValuationPointsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2466,7 +2468,7 @@ export type GetValuationSnapshotData = {
     };
     query: {
         /**
-         * Calendar date in the current Portfolio timezone; may fall back to an earlier day.
+         * Calendar date in the current portfolio timezone; may fall back to an earlier day.
          */
         day: string;
     };
@@ -2539,7 +2541,7 @@ export type ListPeriodClosesData = {
     query?: {
         periodKind?: PeriodKind;
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2581,7 +2583,7 @@ export type ListValueChangesData = {
     query?: {
         periodKind?: PeriodKind;
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2660,7 +2662,7 @@ export type ListCapitalFlowsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2863,7 +2865,7 @@ export type ListBoundaryEventsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first Valuation Point.
+         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
          */
         from?: string;
         to?: string;
@@ -2931,7 +2933,7 @@ export type ListAssetsError = ListAssetsErrors[keyof ListAssetsErrors];
 
 export type ListAssetsResponses = {
     /**
-     * Assets and their Canonical Asset mappings.
+     * Assets and their canonical asset mappings.
      */
     200: AssetList;
 };
@@ -3019,7 +3021,7 @@ export type PutAssetExclusionError = PutAssetExclusionErrors[keyof PutAssetExclu
 
 export type PutAssetExclusionResponses = {
     /**
-     * Updated Portfolio asset rule.
+     * Updated portfolio asset rule.
      */
     200: Asset;
 };

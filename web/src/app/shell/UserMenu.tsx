@@ -36,7 +36,7 @@ export function UserMenu({
           icon={<ShieldCheck size={iconSize.sm} />}
           onClick={() => menu.close()}
         >
-          Account & Security
+          Account & security
         </MenuItem>
         <MenuSeparator />
         <MenuItem

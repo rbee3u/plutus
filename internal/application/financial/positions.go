@@ -14,14 +14,14 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// AccountPositions returns the Positions of an Account's current report with USD notionals.
+// AccountPositions returns the positions of an account's current report with USD notionals.
 func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
 		return s.AccountPositionsAt(ctx, p, accountID, nil)
 	})
 }
 
-// AccountPositionsAt reads the selected point, retaining its compatible source Report.
+// AccountPositionsAt reads the selected point, retaining its compatible source report.
 func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
 		view, source, err := s.positionView(ctx, p, accountID, cycleID)
@@ -97,7 +97,7 @@ func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositi
 		return row, nil
 	}
 	if inverseKind(source.Kind) {
-		// Inverse Size is already the Quote face value; no Mark is required.
+		// Inverse size is already the quote face value; no mark is required.
 		row.NotionalUSD = decimal.FormatPtr(decimal.Abs(qty))
 	} else if source.MarkPrice.Valid {
 		if price, valid := decimal.Parse(source.MarkPrice.String); valid && price.Sign() > 0 {
@@ -107,7 +107,7 @@ func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositi
 	return row, nil
 }
 
-// FlatPositions lists every Position in the boundary at the latest point.
+// FlatPositions lists every position in the boundary at the latest point.
 func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[PositionRow], error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (FlatList[PositionRow], error) {
 		limit, offset, err := normalizePage(f.Limit, f.Offset)
@@ -120,7 +120,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		}
 		out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		if point == nil {
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
 		}
 		out.Completeness = valuation.CompletenessComplete
@@ -194,7 +194,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 	})
 }
 
-// inverseKind identifies contracts whose size is a Quote face amount.
+// inverseKind identifies contracts whose size is a quote face amount.
 func inverseKind(kind string) bool {
 	return kind == adapters.KindInversePerpetual || kind == adapters.KindInverseDelivery
 }

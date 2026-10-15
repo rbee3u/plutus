@@ -11,8 +11,8 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// market is a Binance futures market, traded in the portfolio_margin Account under Portfolio Margin
-// and in the um_futures and cm_futures Accounts under Classic Trading.
+// market is a Binance futures market, traded in the portfolio_margin account under portfolio margin
+// and in the um_futures and cm_futures accounts under classic trading.
 type market string
 
 const (
@@ -56,7 +56,7 @@ func newFuturesContractCache(now func() time.Time) *futuresContractCache {
 	return &futuresContractCache{now: now, sets: map[market]*futuresContractSet{}}
 }
 
-// lookup returns the Futures Contract of a position symbol. A symbol missing from a fresh exchangeInfo
+// lookup returns the futures contract of a position symbol. A symbol missing from a fresh exchangeInfo
 // is a normalization failure, so the position is never dropped silently.
 func (ic *futuresContractCache) lookup(ctx context.Context, c *client, m market, symbol string) (adapters.FuturesContract, error) {
 	ic.mu.Lock()

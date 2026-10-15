@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { TableFilterHeader } from "./TableFilterHeader";
 
 describe("TableFilterHeader", () => {
-  it("renders trigger button with label and aria-label", () => {
+  it.each([
+    ["Platform", "platform"],
+    ["API key", "API key"],
+  ])("uses sentence case for %s without changing abbreviations", (label, field) => {
     const html = renderToStaticMarkup(
       <TableFilterHeader
-        label="Platform"
+        label={label}
         display="All"
         active={false}
         open={false}
@@ -15,8 +18,8 @@ describe("TableFilterHeader", () => {
         onClear={() => {}}
       />,
     );
-    expect(html).toContain('aria-label="Filter Platform: All"');
-    expect(html).toContain("Platform");
+    expect(html).toContain(`aria-label="Filter ${field}: All"`);
+    expect(html).toContain(label);
     expect(html).toContain("All");
   });
 
@@ -32,7 +35,7 @@ describe("TableFilterHeader", () => {
         onClear={() => {}}
       />,
     );
-    expect(html).toContain('aria-label="Filter Platform: Binance"');
+    expect(html).toContain('aria-label="Filter platform: Binance"');
     expect(html).toContain("Platform");
     expect(html).toContain("Binance");
   });
@@ -50,7 +53,7 @@ describe("TableFilterHeader", () => {
         onClear={() => {}}
       />,
     );
-    expect(html).toContain('aria-label="Search Asset"');
+    expect(html).toContain('aria-label="Search asset"');
     expect(html).toContain("Asset");
   });
 
@@ -68,7 +71,7 @@ describe("TableFilterHeader", () => {
       />,
     );
     expect(html).toContain('aria-haspopup="dialog"');
-    expect(html).toContain('aria-label="Filter Asset: BTC"');
+    expect(html).toContain('aria-label="Filter asset: BTC"');
     expect(html).toContain("BTC");
   });
 });

@@ -11,7 +11,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
-// Apply commits source facts and their initial Valuation Points together.
+// Apply commits source facts and their initial valuation points together.
 // Connection activation follows this transaction and can be retried separately.
 func Apply(ctx context.Context, db *sql.DB, seed Seed) error {
 	tx, err := db.BeginTx(ctx, nil)
@@ -32,7 +32,7 @@ func initializePoints(ctx context.Context, db *sql.DB, portfolios []uuid.UUID) e
 	v := valuation.NewService(db)
 	for _, portfolioID := range portfolios {
 		if err := v.InitializeHistory(ctx, portfolioID); err != nil {
-			return fmt.Errorf("initialize seed Portfolio %s: %w", portfolioID, err)
+			return fmt.Errorf("initialize seed portfolio %s: %w", portfolioID, err)
 		}
 	}
 	return nil

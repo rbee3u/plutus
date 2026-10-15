@@ -24,7 +24,7 @@ func (s *Service) Overview(ctx context.Context, p PortfolioContext) (Overview, e
 		out := Overview{Context: c, Completeness: valuation.CompletenessComplete, Issues: []valuation.Issue{}, ByPlatform: []GroupTotal{}, ByIdentity: []GroupTotal{}, Sparkline: []valuation.Point{}}
 		if point == nil {
 			out.Completeness = valuation.CompletenessIncomplete
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
 		}
 		out.Point = point

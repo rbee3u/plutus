@@ -4,6 +4,7 @@
 
 - Write code, comments, documentation, and application text in English. Wrap
   Markdown prose near 80 columns; preserve tables, code blocks, and links.
+  Follow the shared [capitalization guide](./docs/capitalization.md).
 - Prefer deletion or reuse to new files and abstractions. Keep one source per
   rule; link instead of repeating it. Document constraints, non-obvious intent,
   trade-offs, and evidence gaps; omit common knowledge and code paraphrases.
@@ -28,13 +29,13 @@
 ## Domain and data safeguards
 
 - Unknown value is never zero or silently omitted. Sum known value, mark
-  affected totals incomplete, and name omissions. Only a successful Account
-  Report removes holdings; failures use compatible successful history as stale.
-- Account Structure and Margin Mode are distinct. Earn and Dual Investment are
-  separate selected Accounts with shared completeness reads and scope-aware
+  affected totals incomplete, and name omissions. Only a successful account
+  report removes holdings; failures use compatible successful history as stale.
+- Account structure and margin mode are distinct. Earn and dual investment are
+  separate selected accounts with shared completeness reads and scope-aware
   stale fallback. Follow the [domain rules](./docs/domain-rules.md).
 - Adapters call only read-only balance, position, account, and market-data
-  endpoints. Runtime raw Platform payloads never cross the Adapter boundary,
+  endpoints. Runtime raw platform payloads never cross the adapter boundary,
   enter logs, or reach storage. Only explicit `plutus adapter record` may write
   sanitized responses to `/tmp/plutus/` for review.
 - Follow [migration safeguards](./docs/deployment.md#upgrades-and-resets):
@@ -66,13 +67,13 @@
   [validation gates](./docs/testing.md#validation-gates). Tests allow only
   loopback replay and temporary MySQL, never external requests, live keys, or
   pre-created databases.
-- New or expanded real Adapter deliveries also require a Linux amd64 build and
-  an [Adapter delivery report](./docs/testing.md#adapter-delivery-reports).
+- New or expanded real adapter deliveries also require a Linux amd64 build and
+  an [adapter delivery report](./docs/testing.md#adapter-delivery-reports).
   Synthetic `testdata/` and recorded `evidence/` are independent; follow the
   [evidence workflow](./docs/platform/evidence-workflow.md).
 - Changes affecting `serve`, the JSON API, or the UI require
   [agent runtime verification](./docs/testing.md#agent-runtime-verification) on
-  :8081. Changes confined to Adapters, tests, or fixtures use offline
+  :8081. Changes confined to adapters, tests, or fixtures use offline
   verification and evidence review.
 - Markdown-only changes require
   [documentation verification](./docs/testing.md#documentation-verification).

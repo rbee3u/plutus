@@ -1,4 +1,4 @@
-// Package okx implements read-only OKX access for the Unified account. Field
+// Package okx implements read-only OKX access for the unified account. Field
 // mappings: docs/platform/okx/mapping.md. Runtime responses stay private;
 // RecordRequest is the explicit recording path.
 package okx
@@ -14,7 +14,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
-// Account Types of the okx_unified Account Structure, the same in every Margin Mode.
+// Account types of the okx_unified account structure, the same in every margin mode.
 const (
 	TypeDualInvestment                      = adapters.TypeDualInvestment
 	TypeTrading        adapters.AccountType = "trading"
@@ -22,8 +22,8 @@ const (
 	TypeEarn           adapters.AccountType = "earn"
 )
 
-// marginModes maps OKX's account level, the acctLv of account/config, to its Margin Mode. OKX
-// calls the levels account modes; all four are the same Unified account with the same Accounts.
+// marginModes maps OKX's account level, the acctLv of account/config, to its margin mode. OKX
+// calls the levels account modes; all four are the same unified account with the same accounts.
 var marginModes = map[string]adapters.MarginMode{
 	"1": adapters.MarginOKXSpot,
 	"2": adapters.MarginOKXFutures,
@@ -34,12 +34,12 @@ var marginModes = map[string]adapters.MarginMode{
 // pageInterval spaces two pages of an endpoint OKX limits to one request per second.
 const pageInterval = 1100 * time.Millisecond
 
-// Options configures an Adapter. Zero values select production defaults.
+// Options configures an adapter. Zero values select production defaults.
 type Options struct {
 	Host string
 	HTTP *http.Client
 	Now  func() time.Time
-	// HTTPFactory creates a client with the Adapter timeout when HTTP is nil.
+	// HTTPFactory creates a client with the adapter timeout when HTTP is nil.
 	HTTPFactory func(time.Duration) *http.Client
 }
 
@@ -107,9 +107,9 @@ type accountConfig struct {
 	AcctLv  string `json:"acctLv"`
 }
 
-// readAccountConfig reads the account configuration: the account's own UID and its Margin
-// Mode. The User can switch the level inside OKX at any time, so every
-// validation and every Collection Run reads it afresh (ADR 0001).
+// readAccountConfig reads the account configuration: the account's own UID and its margin
+// mode. The user can switch the level inside OKX at any time, so every
+// validation and every collection run reads it afresh (ADR 0001).
 func readAccountConfig(ctx context.Context, c *client) (accountConfig, adapters.MarginMode, error) {
 	var rows []accountConfig
 	if err := c.call(ctx, epConfig, &rows); err != nil {
@@ -139,7 +139,7 @@ func marginModeOf(level string) (adapters.MarginMode, error) {
 	return mode, nil
 }
 
-// Validate accepts sub-account keys and returns their own UID and Margin Mode.
+// Validate accepts sub-account keys and returns their own UID and margin mode.
 func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
 	if structure != adapters.StructureOKXUnified {
 		return adapters.ValidationResult{}, adapters.UnsupportedStructure(adapters.PlatformOKX, structure)
@@ -156,7 +156,7 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 }
 
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
-	// Market terms are reused only within this Collection Run.
+	// Market terms are reused only within this collection run.
 	run := *a
 	run.futuresContracts = newFuturesContractCache(a.now)
 	a = &run
@@ -176,7 +176,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		return a.earn(ctx, c, usdPrice)
 	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
-		//nolint:exhaustive // Manual is application-owned and outside the private Adapter report fixture.
+		//nolint:exhaustive // manual is application-owned and outside the private adapter report fixture.
 		switch accountType {
 		case TypeTrading:
 			return a.trading(ctx, c, mode)

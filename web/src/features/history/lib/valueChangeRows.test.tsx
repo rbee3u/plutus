@@ -23,11 +23,11 @@ describe("valueChangeRows", () => {
   it("formats valueChangeCell with percentage when startAmount is available", () => {
     const htmlPositive = renderToStaticMarkup(valueChangeCell("497.46", "131558.05"));
     expect(htmlPositive).toContain("+$497.46");
-    expect(htmlPositive).toContain("(+0.38%)");
+    expect(htmlPositive).toContain("(+0.3781%)");
 
     const htmlNegative = renderToStaticMarkup(valueChangeCell("-661.05", "131975.42"));
     expect(htmlNegative).toContain("-$661.05");
-    expect(htmlNegative).toContain("(-0.50%)");
+    expect(htmlNegative).toContain("(-0.5009%)");
 
     const htmlBlank = renderToStaticMarkup(valueChangeCell(null));
     expect(htmlBlank).toContain("—");
@@ -66,8 +66,8 @@ describe("valueChangeRows", () => {
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(combinedFlowsCell(item));
-    expect(html).toContain("+$1,000.00 Cap");
-    expect(html).toContain("-$250.00 Bnd");
+    expect(html).toContain("+$1,000 Cap");
+    expect(html).toContain("-$250 Bnd");
   });
 
   it("renders quiet issues cell when healthy", () => {

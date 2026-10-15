@@ -21,7 +21,7 @@ type Querier interface {
 	CountIdentitiesWithCiphertext(ctx context.Context) (int64, error)
 	CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error)
 	DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowParams) (int64, error)
-	// The page is already pin-checked under the Portfolio lock. A large report can
+	// The page is already pin-checked under the portfolio lock. A large report can
 	// need several visits, so remove only parents whose children are all gone.
 	DeleteEmptyAccountReports(ctx context.Context, arg DeleteEmptyAccountReportsParams) error
 	DeleteEmptyHistoricalPoints(ctx context.Context, arg DeleteEmptyHistoricalPointsParams) (int64, error)
@@ -58,11 +58,11 @@ type Querier interface {
 	DeletePortfolioPositions(ctx context.Context, portfolioID []byte) (int64, error)
 	DeletePortfolioPriceObservations(ctx context.Context, portfolioID []byte) (int64, error)
 	DeletePortfolioValuationPoints(ctx context.Context, portfolioID []byte) (int64, error)
-	// Preserve adopted prices and the source-time quote window of every Account's
+	// Preserve adopted prices and the source-time quote window of every account's
 	// last successful report, even outside the boundary: future stale valuation
 	// can adopt a new mapping. Grouping by the full fallback-index prefix lets
-	// MySQL skip-scan one entry per Account; a correlated latest-report lookup
-	// rescans each Account's report history for every candidate.
+	// MySQL skip-scan one entry per account; a correlated latest-report lookup
+	// rescans each account's report history for every candidate.
 	DeleteUnpinnedPriceObservations(ctx context.Context, arg DeleteUnpinnedPriceObservationsParams) error
 	DeleteUnreferencedHistoricalCycles(ctx context.Context, arg DeleteUnreferencedHistoricalCyclesParams) (int64, error)
 	DeleteUnusedAssetChanges(ctx context.Context, arg DeleteUnusedAssetChangesParams) (int64, error)
@@ -70,14 +70,14 @@ type Querier interface {
 	DeleteUnusedHistoricalContracts(ctx context.Context, arg DeleteUnusedHistoricalContractsParams) (int64, error)
 	ExpireEmptyPoint(ctx context.Context, arg ExpireEmptyPointParams) error
 	// Ends the active cycle without a lease check: retry exhaustion after a lost
-	// worker, and Portfolio deletion requests.
+	// worker, and portfolio deletion requests.
 	FailActiveCollectionCycle(ctx context.Context, arg FailActiveCollectionCycleParams) (int64, error)
 	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
 	// The applied revision is the latest one whose own cycle has committed, even after its point expires.
-	// Serialized cycles make report time follow point order. The Account's
+	// Serialized cycles make report time follow point order. The account's
 	// fallback range stops at its latest committed report; the optimizer can
-	// prefer a Portfolio-wide time scan that walks every newer report of other
-	// Accounts, so the fallback index is forced.
+	// prefer a portfolio-wide time scan that walks every newer report of other
+	// accounts, so the fallback index is forced.
 	GetAppliedManualRevision(ctx context.Context, arg GetAppliedManualRevisionParams) (sql.NullInt64, error)
 	GetAsset(ctx context.Context, arg GetAssetParams) (Asset, error)
 	GetAssetByPlatformSymbol(ctx context.Context, arg GetAssetByPlatformSymbolParams) (Asset, error)
@@ -98,7 +98,7 @@ type Querier interface {
 	GetLatestSucceededReportForAccount(ctx context.Context, arg GetLatestSucceededReportForAccountParams) (AccountReport, error)
 	GetLatestValuationPoint(ctx context.Context, portfolioID []byte) (ValuationPoint, error)
 	GetManualAccount(ctx context.Context, arg GetManualAccountParams) (GetManualAccountRow, error)
-	// A consistent read avoids locking every scanned Portfolio row; the caller
+	// A consistent read avoids locking every scanned portfolio row; the caller
 	// then locks the chosen row by primary key.
 	GetNextDeletingPortfolioID(ctx context.Context) ([]byte, error)
 	GetNextPruningPoint(ctx context.Context, portfolioID []byte) ([]byte, error)
@@ -149,10 +149,10 @@ type Querier interface {
 	ListAccountsByIdentity(ctx context.Context, arg ListAccountsByIdentityParams) ([]Account, error)
 	ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error)
 	ListAssetExclusionsBefore(ctx context.Context, arg ListAssetExclusionsBeforeParams) ([]ListAssetExclusionsBeforeRow, error)
-	// A mapping change is an included Asset whose previous change was included
-	// under another Canonical Asset. Only a mapping update changes an Asset's
-	// Canonical Asset, and it advances the mapping version, so the join starts from
-	// remapped Assets; otherwise every change in a range read walks its Asset's
+	// A mapping change is an included asset whose previous change was included
+	// under another canonical asset. Only a mapping update changes an asset's
+	// canonical asset, and it advances the mapping version, so the join starts from
+	// remapped assets; otherwise every change in a range read walks its asset's
 	// later history.
 	ListAssetMappingChangesByCycles(ctx context.Context, arg ListAssetMappingChangesByCyclesParams) ([]ListAssetMappingChangesByCyclesRow, error)
 	ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset, error)
@@ -170,20 +170,20 @@ type Querier interface {
 	ListBoundaryEventsByCycles(ctx context.Context, arg ListBoundaryEventsByCyclesParams) ([]ListBoundaryEventsByCyclesRow, error)
 	ListBoundaryPointHeadersBetween(ctx context.Context, arg ListBoundaryPointHeadersBetweenParams) ([]ListBoundaryPointHeadersBetweenRow, error)
 	ListBoundaryValuesBetween(ctx context.Context, arg ListBoundaryValuesBetweenParams) ([]ListBoundaryValuesBetweenRow, error)
-	// One backward primary-key walk per Asset and endpoint reads only the Asset's
+	// One backward primary-key walk per asset and endpoint reads only the asset's
 	// changes after that endpoint; see ListLatestCalculatedAssetChanges for the
 	// ORDER BY constraint.
 	ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalculatedAssetsAtCyclesParams) ([]ListCalculatedAssetsAtCyclesRow, error)
 	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
 	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
-	// Read only Points that can contribute comparison evidence. The version window
-	// includes one predecessor, so A -> B -> A and equal-time Cycle ordering survive.
+	// Read only points that can contribute comparison evidence. The version window
+	// includes one predecessor, so A -> B -> A and equal-time cycle ordering survive.
 	ListComparisonPointHeadersBetween(ctx context.Context, arg ListComparisonPointHeadersBetweenParams) ([]ListComparisonPointHeadersBetweenRow, error)
 	ListCurrentAssetExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentAssetExclusionsRow, error)
 	ListCyclesWithPoints(ctx context.Context, arg ListCyclesWithPointsParams) ([]ListCyclesWithPointsRow, error)
 	ListDualPositionsByCycle(ctx context.Context, arg ListDualPositionsByCycleParams) ([]ListDualPositionsByCycleRow, error)
 	ListDualPositionsByReport(ctx context.Context, arg ListDualPositionsByReportParams) ([]DualPosition, error)
-	// A retained Cycle can start before the window and finish inside it.
+	// A retained cycle can start before the window and finish inside it.
 	ListEarlierRetainedPolicyBoundaries(ctx context.Context, arg ListEarlierRetainedPolicyBoundariesParams) ([]time.Time, error)
 	ListEarnPositionsByReport(ctx context.Context, arg ListEarnPositionsByReportParams) ([]EarnPosition, error)
 	// Cycles also remain while a stale report still needs its owning cycle.
@@ -195,32 +195,32 @@ type Querier interface {
 	ListFuturesContracts(ctx context.Context, arg ListFuturesContractsParams) ([]ListFuturesContractsRow, error)
 	ListIdentitiesByPortfolio(ctx context.Context, portfolioID []byte) ([]ListIdentitiesByPortfolioRow, error)
 	// Correlated latest-change lookups name the full primary-key prefix in ORDER
-	// BY; otherwise MySQL sorts each Asset's whole history instead of reading its
+	// BY; otherwise MySQL sorts each asset's whole history instead of reading its
 	// newest row backward. Outer-row bounds never seek, so a bounded lookup walks
-	// back over the Asset's later changes.
+	// back over the asset's later changes.
 	ListLatestCalculatedAssetChanges(ctx context.Context, portfolioID []byte) ([]CalculatedAssetChange, error)
 	// Rank only the 24-hour window inside the covering selection index, then read
 	// the winners; a correlated per-row lookup rescans each symbol's history.
-	// Bulk imports can leave stale statistics favoring a Portfolio-only scan, so
+	// Bulk imports can leave stale statistics favoring a portfolio-only scan, so
 	// the window scan forces the selection index.
 	ListLatestPricesByPlatformAt(ctx context.Context, arg ListLatestPricesByPlatformAtParams) ([]PriceObservation, error)
 	ListManualBalanceChangesByCycles(ctx context.Context, arg ListManualBalanceChangesByCyclesParams) ([]ListManualBalanceChangesByCyclesRow, error)
 	ListManualBoundary(ctx context.Context, portfolioID []byte) ([]ListManualBoundaryRow, error)
-	// Account Reports establish Identity membership even before its first Manual
+	// Account reports establish identity membership even before its first manual
 	// report. Quantities follow the adopted source, never a newer pending input.
 	ListManualComparisonInputsByCycles(ctx context.Context, arg ListManualComparisonInputsByCyclesParams) ([]ListManualComparisonInputsByCyclesRow, error)
 	ListManualRevisionBalances(ctx context.Context, arg ListManualRevisionBalancesParams) ([]ListManualRevisionBalancesRow, error)
 	ListMappingsForSymbols(ctx context.Context, arg ListMappingsForSymbolsParams) ([]ListMappingsForSymbolsRow, error)
 	ListPinnedHistoricalPoints(ctx context.Context, arg ListPinnedHistoricalPointsParams) ([][]byte, error)
 	// A report stays while a retained valuation references it, as its own cycle's
-	// report, or while it is the Account's last successful report.
+	// report, or while it is the account's last successful report.
 	// The complete fallback-index order makes the correlated last-success lookup
-	// a reverse one-row read instead of scanning and sorting the Account history.
+	// a reverse one-row read instead of scanning and sorting the account history.
 	ListPinnedReportIDs(ctx context.Context, arg ListPinnedReportIDsParams) ([][]byte, error)
 	ListPointCalculatedAssets(ctx context.Context, arg ListPointCalculatedAssetsParams) ([]ListPointCalculatedAssetsRow, error)
 	// One earlier anchor supplies the first predecessor without scanning old
-	// history once per requested point. Equal timestamps remain ordered by Cycle ID.
-	// The covering timeline prevents a Portfolio-wide primary-key scan after imports.
+	// history once per requested point. Equal timestamps remain ordered by cycle ID.
+	// The covering timeline prevents a portfolio-wide primary-key scan after imports.
 	ListPointComparisonTimeline(ctx context.Context, arg ListPointComparisonTimelineParams) ([]ListPointComparisonTimelineRow, error)
 	ListPortfolioManualRevisions(ctx context.Context, portfolioID []byte) ([]ListPortfolioManualRevisionsRow, error)
 	ListPortfoliosByUser(ctx context.Context, userID []byte) ([]ListPortfoliosByUserRow, error)
@@ -233,18 +233,18 @@ type Querier interface {
 	ListPriceRetentionCandidates(ctx context.Context, arg ListPriceRetentionCandidatesParams) ([]ListPriceRetentionCandidatesRow, error)
 	ListRemainingHistoricalPoints(ctx context.Context, arg ListRemainingHistoricalPointsParams) ([]ListRemainingHistoricalPointsRow, error)
 	ListRemainingReportIDs(ctx context.Context, arg ListRemainingReportIDsParams) ([][]byte, error)
-	// Seek the cursor range instead of rescanning the Portfolio's index prefix.
+	// Seek the cursor range instead of rescanning the portfolio's index prefix.
 	ListReportRetentionCandidates(ctx context.Context, arg ListReportRetentionCandidatesParams) ([]ListReportRetentionCandidatesRow, error)
 	ListReportsByCycle(ctx context.Context, arg ListReportsByCycleParams) ([]ListReportsByCycleRow, error)
 	ListReportsByCycles(ctx context.Context, arg ListReportsByCyclesParams) ([]ListReportsByCyclesRow, error)
 	ListSeedHistoryExclusions(ctx context.Context, portfolioID []byte) ([]AssetExclusionVersion, error)
-	// Seed initialization owns an empty Portfolio and loads its finite source
+	// Seed initialization owns an empty portfolio and loads its finite source
 	// history in one transaction. Runtime collection uses bounded point reads.
 	ListSeedHistoryPrices(ctx context.Context, portfolioID []byte) ([]PriceObservation, error)
 	ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error)
 	ListSucceededCycles(ctx context.Context, portfolioID []byte) ([]ListSucceededCyclesRow, error)
 	// Default catalog entries may expire; explicit mappings and policy versions
-	// are current configuration, even when the Asset is not currently held.
+	// are current configuration, even when the asset is not currently held.
 	ListUnusedHistoricalAssets(ctx context.Context, arg ListUnusedHistoricalAssetsParams) ([][]byte, error)
 	ListValuationPointHeadersBetween(ctx context.Context, arg ListValuationPointHeadersBetweenParams) ([]ListValuationPointHeadersBetweenRow, error)
 	ListValuationPointPage(ctx context.Context, arg ListValuationPointPageParams) ([]ValuationPoint, error)
@@ -253,7 +253,7 @@ type Querier interface {
 	ListValuationPointsBetween(ctx context.Context, arg ListValuationPointsBetweenParams) ([]ValuationPoint, error)
 	LockActiveCollectionCycle(ctx context.Context, activePortfolioID []byte) (CollectionCycle, error)
 	// Only active cycles have a non-NULL active_portfolio_id, so the unique key
-	// bounds the scan by the number of Portfolios.
+	// bounds the scan by the number of portfolios.
 	LockClaimableCollectionCycle(ctx context.Context, arg LockClaimableCollectionCycleParams) (CollectionCycle, error)
 	LockCycleManualReportedAt(ctx context.Context, arg LockCycleManualReportedAtParams) (sql.NullTime, error)
 	LockDeletingPortfolio(ctx context.Context, id []byte) (Portfolio, error)

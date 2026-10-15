@@ -21,7 +21,7 @@ const sampleAccounts: AccountValuation[] = [
   },
   {
     accountId: "acc-2",
-    accountName: "Portfolio Margin",
+    accountName: "Portfolio margin",
     accountType: "portfolio_margin",
     selected: true,
     identityId: "id-1",
@@ -54,7 +54,7 @@ const sampleAccounts: AccountValuation[] = [
 ];
 
 describe("AccountValuationsGrouped", () => {
-  it("groups accounts by Platform and Identity into distinct cards with subtotals", () => {
+  it("groups accounts by platform and identity into distinct cards with subtotals", () => {
     const html = renderToStaticMarkup(
       <AccountValuationsGrouped accounts={sampleAccounts} timezone="Asia/Shanghai" />,
     );
@@ -64,19 +64,39 @@ describe("AccountValuationsGrouped", () => {
     expect(html).toContain("OKX");
     expect(html).toContain("OKX main desk");
 
-    // Subtotal of acc-1 ($6,268.18) + acc-2 ($6,363.92) = $12,632.10
-    expect(html).toContain("12,632.10");
+    // Subtotal of acc-1 ($6,268.18) + acc-2 ($6,363.92) = $12,632.1
+    expect(html).toContain("12,632.1");
 
     // Healthy accounts show quiet dash
     expect(html).toContain("Spot");
-    expect(html).toContain("Portfolio Margin");
+    expect(html).toContain("Portfolio margin");
 
     // Unhealthy account shows issues badge
     expect(html).toContain("Failed");
-    expect(html).toContain("Stale");
+    expect(html).toContain("Missing report");
+    expect(html).not.toContain("Stale");
     expect(html).toContain("Incomplete");
-    expect(html).toContain("1 Issue");
+    expect(html).toContain("1 issue");
   });
+
+  it.each(["calculated", "missing"] as const)(
+    "keeps stale feedback for a successful source with %s valuation",
+    (method) => {
+      const html = renderToStaticMarkup(
+        <AccountValuationsGrouped
+          accounts={[
+            {
+              ...sampleAccounts[2],
+              method,
+              reportObservedAt: "2026-10-13T02:59:02Z",
+            },
+          ]}
+        />,
+      );
+      expect(html).toContain("Stale report for Spot");
+      expect(html).not.toContain("Missing report");
+    },
+  );
 
   it("renders empty state when no accounts exist", () => {
     const html = renderToStaticMarkup(

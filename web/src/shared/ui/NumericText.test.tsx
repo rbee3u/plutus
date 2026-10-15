@@ -6,9 +6,9 @@ import { formatDecimal, formatUsd } from "@/shared/lib/amount";
 describe("accessible zero-count notation", () => {
   it("reads the rounded value without source precision or an interactive control", () => {
     const html = renderToStaticMarkup(<NumericText>{formatUsd("-0.000000004444567")}</NumericText>);
-    expect(html).toContain('aria-hidden="true">-0.0<sub class="');
-    expect(html).toContain(">8</sub>4445 USD");
-    expect(html).toContain("-0.000000004445 USD");
+    expect(html).toContain('aria-hidden="true">-$0.0<sub class="');
+    expect(html).toContain(">8</sub>4445");
+    expect(html).toContain("-$0.000000004445");
     expect(html).not.toContain("4444567");
     expect(html).not.toContain("button");
   });

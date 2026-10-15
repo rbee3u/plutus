@@ -61,7 +61,7 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	newcomer := h.createIdentity(name+" manual", adapters.PlatformBinance, adapters.StructureBinancePM)
 	manualSave(t, h, newcomer, "USD", "1")
 	// Replacing credentials disables private collection; previous reports carry
-	// forward while the Manual Account continues to produce fresh reports.
+	// forward while the manual account continues to produce fresh reports.
 	h.storeCredentials(item, name)
 	summary, _ := h.runCycle()
 	if summary.Point.StaleAccountCount == 0 {
@@ -131,7 +131,7 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 			t.Fatalf("fixture did not populate %s", table)
 		}
 	}
-	// Idempotency records belong to the User and retain their retry lifetime.
+	// Idempotency records belong to the user and retain their retry lifetime.
 	if _, err := h.services.Idempotency.Run(h.ctx, h.userID, "POST", "/lifecycle", "global", nil, func(context.Context) (idempotency.Record, error) {
 		return idempotency.Record{Status: 201, Body: []byte(`{}`)}, nil
 	}); err != nil {
@@ -165,10 +165,10 @@ func TestPortfolioDeletionOwnsCompleteLifetime(t *testing.T) {
 		}
 	}
 	if _, err := h.services.Portfolios.Get(h.ctx, h.userID, p.ID); !errors.Is(err, portfolio.ErrNotFound) {
-		t.Fatalf("deleted Portfolio: %v", err)
+		t.Fatalf("deleted portfolio: %v", err)
 	}
 	if !reflect.DeepEqual(beforeOther, scopedCounts(t, h, other.ID)) {
-		t.Fatal("another Portfolio changed")
+		t.Fatal("another portfolio changed")
 	}
 	if !reflect.DeepEqual(beforeShared, sharedCounts()) {
 		t.Fatal("shared data changed")
@@ -191,7 +191,7 @@ func TestSchemaRejectsCrossPortfolioPointEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO manual_balance_changes (portfolio_id,cycle_id,account_id) VALUES (?,?,?)", other.ID[:], cycleID[:], accountID); err == nil {
-		t.Fatal("cross-Portfolio point reference accepted")
+		t.Fatal("cross-portfolio point reference accepted")
 	}
 }
 
@@ -211,7 +211,7 @@ func TestCatalogMappingRemainsPortfolioScoped(t *testing.T) {
 
 	otherAssets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: b.ID, Platform: "binance", Query: "BTC", Limit: 50})
 	if err != nil || len(otherAssets.Items) != 1 || otherAssets.Items[0].ID == asset.ID || otherAssets.Items[0].CanonicalAssetSymbol != "BTC" {
-		t.Fatalf("cross-Portfolio mapping: %+v %v", otherAssets, err)
+		t.Fatalf("cross-portfolio mapping: %+v %v", otherAssets, err)
 	}
 }
 

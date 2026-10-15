@@ -465,8 +465,8 @@ function SettingsForms({
         >
           <h2>Delete portfolio</h2>
           <p className={shared.muted}>
-            Permanently deletes this portfolio and every Identity, Collection Cycle, Valuation
-            Point, and Capital Flow scoped to it. Type the current name to confirm.
+            Permanently deletes this portfolio and every identity, collection cycle, valuation
+            point, and capital flow scoped to it. Type the current name to confirm.
           </p>
           {deleteError ? (
             <p className={shared.alert} role="alert">

@@ -1,4 +1,4 @@
--- Seed initialization owns an empty Portfolio and loads its finite source
+-- Seed initialization owns an empty portfolio and loads its finite source
 -- history in one transaction. Runtime collection uses bounded point reads.
 -- name: ListSeedHistoryPrices :many
 SELECT * FROM price_observations

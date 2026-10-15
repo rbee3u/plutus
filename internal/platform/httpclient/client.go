@@ -1,4 +1,4 @@
-// Package httpclient provides the default HTTP client for live Platform adapters.
+// Package httpclient provides the default HTTP client for live platform adapters.
 package httpclient
 
 import (

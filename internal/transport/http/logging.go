@@ -43,7 +43,7 @@ func recoveryLog(app *slog.Logger) gin.HandlerFunc {
 		c.Set(appLoggerKey, app)
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				logger.ErrorContext(c.Request.Context(), "http request panic", slog.Any("panic", recovered), slog.String("stack", string(debug.Stack())))
+				logger.ErrorContext(c.Request.Context(), "HTTP request panic", slog.Any("panic", recovered), slog.String("stack", string(debug.Stack())))
 				if err, ok := recovered.(error); ok && (errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, http.ErrAbortHandler)) {
 					_ = c.Error(err)
 					c.Abort()
@@ -63,5 +63,5 @@ func logHandlerError(c *gin.Context, err error) {
 			logger = app
 		}
 	}
-	logger.ErrorContext(c.Request.Context(), "http handler failed", slog.Any("err", err))
+	logger.ErrorContext(c.Request.Context(), "HTTP handler failed", slog.Any("err", err))
 }

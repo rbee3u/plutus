@@ -11,7 +11,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// Calendar years follow the Portfolio's local day, clamping February 29 to the
+// Calendar years follow the portfolio's local day, clamping February 29 to the
 // last day of February. Detail retention independently guarantees 14 full days.
 func historyCutoff(now time.Time, loc *time.Location) time.Time {
 	local := now.In(loc)
@@ -29,8 +29,8 @@ func historyBoundary(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff 
 	return boundary, err
 }
 
-// A page protects the opening snapshot and each Asset's state at that snapshot.
-// Other old Points lose their children before their parent. In-memory cursors
+// A page protects the opening snapshot and each asset's state at that snapshot.
+// Other old points lose their children before their parent. In-memory cursors
 // are only an optimization: every deletion can safely be retried after restart.
 func (s *Service) pruneHistory(ctx context.Context, q *sqlcgen.Queries, id []byte, cutoff time.Time) (bool, error) {
 	pass := s.pass(id, "valuation_points")
@@ -93,7 +93,7 @@ func (s *Service) pruneHistory(ctx context.Context, q *sqlcgen.Queries, id []byt
 	}
 	blocked := map[string]bool{}
 	for _, row := range remaining {
-		// The opening snapshot remains complete, including for a dormant Portfolio.
+		// The opening snapshot remains complete, including for a dormant portfolio.
 		if bytes.Equal(row.CycleID, boundary.CycleID) {
 			continue
 		}

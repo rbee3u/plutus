@@ -16,7 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// Collectable is an enabled Identity with decrypted credentials and its selected Accounts.
+// Collectable is an enabled identity with decrypted credentials and its selected accounts.
 type Collectable struct {
 	Identity    Identity
 	Credentials adapters.Credentials
@@ -24,7 +24,7 @@ type Collectable struct {
 	OpenError   error
 }
 
-// ListCollectable returns enabled Identities with an enabled Connection and their selected Accounts.
+// ListCollectable returns enabled identities with an enabled connection and their selected accounts.
 // Credentials that cannot be opened are reported through OpenError instead of failing the cycle.
 func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([]Collectable, error) {
 	rows, err := mysql.Queries(ctx, s.db).ListCollectableIdentities(ctx, portfolioID[:])
@@ -66,7 +66,7 @@ func (s *Service) ListCollectable(ctx context.Context, portfolioID uuid.UUID) ([
 	return out, nil
 }
 
-// RecordCollection stores an Identity's outcome in the report transaction.
+// RecordCollection stores an identity's outcome in the report transaction.
 func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, version uint64, at time.Time, errorClass, errorDetail string, invalidate bool) error {
 	params := sqlcgen.RecordIdentityCollectionParams{
 		LastCollectionFinishedAt: sql.NullTime{Time: at.UTC(), Valid: true},
@@ -85,9 +85,9 @@ func (s *Service) RecordCollection(ctx context.Context, q *sqlcgen.Queries, port
 	return q.RecordIdentityCollection(ctx, params)
 }
 
-// RecordMarginMode stores the Margin Mode a Collection Run observed. A change
+// RecordMarginMode stores the margin mode a collection run observed. A change
 // is written to the audit log with the system as the actor, because nobody
-// changed it in Plutus: the owner switched it on the Platform (ADR 0001). It uses
+// changed it in Plutus: the owner switched it on the platform (ADR 0001). It uses
 // the report transaction. An empty mode from structures without one is ignored.
 func (s *Service) RecordMarginMode(ctx context.Context, q *sqlcgen.Queries, portfolioID, id uuid.UUID, version uint64, mode adapters.MarginMode) error {
 	if mode == "" {
@@ -126,7 +126,7 @@ func nullableMode(mode adapters.MarginMode) any {
 	return string(mode)
 }
 
-// BoundaryAccount is one selected Account of an enabled Identity.
+// BoundaryAccount is one selected account of an enabled identity.
 type BoundaryAccount struct {
 	Account
 	Platform         adapters.Platform
@@ -135,7 +135,7 @@ type BoundaryAccount struct {
 	accountStructure adapters.AccountStructure
 }
 
-// ListBoundary returns every selected Account of enabled Identities.
+// ListBoundary returns every selected account of enabled identities.
 func (s *Service) ListBoundary(ctx context.Context, portfolioID uuid.UUID) ([]BoundaryAccount, error) {
 	rows, err := mysql.Queries(ctx, s.db).ListBoundaryAccounts(ctx, portfolioID[:])
 	if err != nil {

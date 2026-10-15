@@ -7,12 +7,12 @@ import { StatusBadge } from "@/shared/ui/Badge";
 import { isTerminalStatus } from "../hooks/useCollectNow";
 import shared from "@/shared/styles/page.module.css";
 
-/** The banner of the Collection Cycle started from this page. */
+/** The banner of the collection cycle started from this page. */
 export function CycleNotice({ cycle, timezone }: { cycle: CollectionCycle; timezone?: string }) {
   const finished = isTerminalStatus(cycle.status);
   return (
     <p className={cycle.status === "failed" ? shared.alert : shared.notice} role="status">
-      Collection Cycle {shortId(cycle.id)} <StatusBadge value={cycle.status} />{" "}
+      Collection cycle {shortId(cycle.id)} <StatusBadge value={cycle.status} />{" "}
       {finished
         ? `at ${formatInstant(cycle.finishedAt, timezone)}.`
         : "· this page refreshes when it finishes."}

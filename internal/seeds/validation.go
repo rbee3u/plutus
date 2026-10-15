@@ -14,7 +14,7 @@ func validateReport(r *adapters.AccountReport) error {
 	seen := map[string]bool{}
 	for _, v := range r.Balances {
 		if v.AssetSymbol == "" || seen[v.AssetSymbol] || !decimal.Valid(v.Equity) {
-			return fmt.Errorf("invalid or duplicate Balance")
+			return fmt.Errorf("invalid or duplicate balance")
 		}
 		seen[v.AssetSymbol] = true
 	}
@@ -23,11 +23,11 @@ func validateReport(r *adapters.AccountReport) error {
 			return err
 		}
 	} else if len(r.EarnPositions) != 0 {
-		return fmt.Errorf("Earn descriptions require an Earn Account")
+		return fmt.Errorf("earn descriptions require an earn account")
 	}
 	for _, p := range r.Positions {
 		if p.PositionKey == "" || p.FuturesContract.Symbol == "" || !decimal.Valid(p.SourceQuantity) || decimal.ParseOrZero(p.SourceQuantity).Sign() <= 0 {
-			return fmt.Errorf("invalid Position identity or quantity")
+			return fmt.Errorf("invalid position identity or quantity")
 		}
 		if (p.FuturesContract.Kind == adapters.KindLinearDelivery || p.FuturesContract.Kind == adapters.KindInverseDelivery) && p.FuturesContract.ExpiryAt == nil {
 			return fmt.Errorf("delivery FuturesContract requires expiry")
@@ -35,7 +35,7 @@ func validateReport(r *adapters.AccountReport) error {
 	}
 	for _, p := range r.DualPositions {
 		if p.PositionKey == "" || !decimal.Valid(p.Principal) || decimal.ParseOrZero(p.Principal).Sign() <= 0 {
-			return fmt.Errorf("invalid Dual subscription")
+			return fmt.Errorf("invalid dual subscription")
 		}
 	}
 	return nil

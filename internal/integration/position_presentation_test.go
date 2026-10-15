@@ -45,6 +45,6 @@ func TestPositionCompletenessSeparatesBalanceOmissionsAndMissingSources(t *testi
 		}
 	}
 	if !found {
-		t.Fatal("missing Account without position rows was not named")
+		t.Fatal("missing account without position rows was not named")
 	}
 }

@@ -1,4 +1,4 @@
-// Package identity owns Identities, their Accounts, and the Connection embedded in each Identity.
+// Package identity owns identities, their accounts, and the connection embedded in each identity.
 package identity
 
 import (
@@ -34,7 +34,7 @@ const (
 	ConnectionInvalid      = "invalid"
 )
 
-// Service owns Identity use cases.
+// Service owns identity use cases.
 type Service struct {
 	db              *sql.DB
 	q               *sqlcgen.Queries
@@ -67,7 +67,7 @@ func NewService(db *sql.DB, opts Options) (*Service, error) {
 	return s, nil
 }
 
-// Identity is one Platform login and its Accounts.
+// Identity is one platform login and its accounts.
 type Identity struct {
 	ID          uuid.UUID
 	PortfolioID uuid.UUID
@@ -75,7 +75,7 @@ type Identity struct {
 	DisplayName string
 	// AccountStructure is declared at creation and never changes (ADR 0001).
 	AccountStructure adapters.AccountStructure
-	// MarginMode is the last Margin Mode the Platform reported; empty before the first successful
+	// MarginMode is the last margin mode the platform reported; empty before the first successful
 	// validation and for structures that have none.
 	MarginMode  adapters.MarginMode
 	ExternalRef *string
@@ -98,7 +98,7 @@ func ParseETag(value string) (uint64, bool) {
 	return etag.Parse("identity", value)
 }
 
-// Connection is the credential and scheduling state embedded in an Identity.
+// Connection is the credential and scheduling state embedded in an identity.
 type Connection struct {
 	Status                    string
 	CredentialsConfigured     bool
@@ -109,7 +109,7 @@ type Connection struct {
 	LastErrorDetail           *string
 }
 
-// Account is one collectable Account Type of an Identity.
+// Account is one collectable account type of an identity.
 type Account struct {
 	ID          uuid.UUID
 	IdentityID  uuid.UUID
@@ -118,7 +118,7 @@ type Account struct {
 	Selected    bool
 }
 
-// CreateInput creates an Identity with its Accounts.
+// CreateInput creates an identity with its accounts.
 type CreateInput struct {
 	ActorUserID          uuid.UUID
 	RequestID            string
@@ -128,13 +128,13 @@ type CreateInput struct {
 	SelectedAccountTypes []adapters.AccountType
 }
 
-// AccountPatch changes one Account.
+// AccountPatch changes one account.
 type AccountPatch struct {
 	ID       uuid.UUID
 	Selected *bool
 }
 
-// PatchInput renames an Identity or toggles its Accounts.
+// PatchInput renames an identity or toggles its accounts.
 type PatchInput struct {
 	ActorUserID uuid.UUID
 	RequestID   string
@@ -158,7 +158,7 @@ type ValidationOutcome struct {
 	ValidatedAt time.Time
 }
 
-// List returns every Identity of a Portfolio with its Accounts.
+// List returns every identity of a portfolio with its accounts.
 func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, error) {
 	rows, err := mysql.Queries(ctx, s.db).ListIdentitiesByPortfolio(ctx, portfolioID[:])
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID) ([]Identity, 
 	return out, nil
 }
 
-// Get returns one Identity with its Accounts.
+// Get returns one identity with its accounts.
 func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Identity, error) {
 	r, err := mysql.Queries(ctx, s.db).GetIdentity(ctx, sqlcgen.GetIdentityParams{PortfolioID: portfolioID[:], ID: id[:]})
 	if errors.Is(err, sql.ErrNoRows) {

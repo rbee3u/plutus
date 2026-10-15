@@ -36,7 +36,7 @@ func TestBuild(t *testing.T) {
 		t.Fatal("only Alice must be seeded")
 	}
 	if len(seed.Portfolios) != 2 {
-		t.Fatal("expected two walkthrough Portfolios")
+		t.Fatal("expected two walkthrough portfolios")
 	}
 	if strings.Contains(seed.SQL, "INSERT INTO valuation_points") {
 		t.Fatal("seeds must not write derived points")
@@ -72,11 +72,11 @@ func TestDefinitionFailures(t *testing.T) {
 	b = newBuilder()
 	b.accounts(uuid.New(), nil, nil, time.Now())
 	if b.err == nil {
-		t.Fatal("unknown Identity accepted")
+		t.Fatal("unknown identity accepted")
 	}
 	r := adapters.AccountReport{Status: adapters.StatusSucceeded, CollectedAt: time.Now(), Balances: []adapters.Balance{{AssetSymbol: "BTC", Equity: ""}}}
 	if validateReport(&r) == nil {
-		t.Fatal("unknown Balance equity accepted")
+		t.Fatal("unknown balance equity accepted")
 	}
 }
 
@@ -181,7 +181,7 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 			t.Fatal(err)
 		}
 		if stored.Connection.Status != d.Connection {
-			t.Fatalf("%s Connection: %s instead of %s", d.ID, stored.Connection.Status, d.Connection)
+			t.Fatalf("%s connection: %s instead of %s", d.ID, stored.Connection.Status, d.Connection)
 		}
 	}
 }
@@ -214,7 +214,7 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	}
 	dual, err := v.FlatDualPositions(ctx, main, &financial.ListFilter{Limit: 200})
 	if err != nil || dual.Total != 2 {
-		t.Fatalf("healthy Dual concentration: %d %v", dual.Total, err)
+		t.Fatalf("healthy dual concentration: %d %v", dual.Total, err)
 	}
 	closes, err := v.PeriodCloses(ctx, edge, financial.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
 	if err != nil {

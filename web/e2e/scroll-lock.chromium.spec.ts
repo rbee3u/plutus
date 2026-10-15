@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("overlapping dialogs retain the lock until final close and restore existing styles", async ({
+test("Overlapping dialogs retain the lock until final close and restore existing styles", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -55,7 +55,7 @@ test("overlapping dialogs retain the lock until final close and restore existing
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(500);
 });
 
-test("an open dialog releases and reacquires its lock across the mobile breakpoint", async ({
+test("An open dialog releases and reacquires its lock across the mobile breakpoint", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });

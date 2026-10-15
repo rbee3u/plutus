@@ -4,7 +4,7 @@ status: accepted
 
 # Independent synthetic tests and recorded evidence
 
-Keep automated Adapter fixtures independent from owner-reviewed recorded
+Keep automated adapter fixtures independent from owner-reviewed recorded
 responses. Tests never read recordings. Documented support, observed response
 coverage, and exchange-app reconciliation are distinct claims; none substitutes
 for the others.

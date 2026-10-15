@@ -5,8 +5,9 @@ import type { ValueChange } from "@/api";
 import { combinedFlowsCell, valueChangeCell } from "../lib/valueChangeRows";
 import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import { formatUsd } from "@/shared/lib/amount";
+import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
-import { reasonText } from "@/shared/lib/text";
+import { boundaryEventCountText, reasonText } from "@/shared/lib/text";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -21,7 +22,6 @@ interface CustomRange {
   to: string;
 }
 
-/** Custom Period Comparison: two arbitrary local times isolate capital flows and boundary events. */
 export function CustomPeriodPanel({
   portfolioId,
   redirect,
@@ -67,10 +67,10 @@ export function CustomPeriodPanel({
     <section className={styles.customCalcPanel}>
       <div className={styles.customCalcHeader}>
         <div>
-          <h2 className={styles.customCalcTitle}>Custom Period Comparison</h2>
+          <h2 className={styles.customCalcTitle}>Custom range comparison</h2>
           <p className={styles.customCalcDesc}>
-            Compare arbitrary valuation points and isolate capital flows and boundary events between
-            them. Dates use {timezone ?? "the Portfolio timezone"}.
+            Calculate value change for a custom time range, adjusted for capital flows and boundary
+            events. Times use {timezone ?? "the portfolio timezone"}.
           </p>
         </div>
       </div>
@@ -111,7 +111,7 @@ export function CustomPeriodPanel({
           {customError}
         </p>
       ) : null}
-      <QueryRecovery query={custom} fallback="The custom Value Change could not be computed." />
+      <QueryRecovery query={custom} fallback="The custom value change could not be computed." />
       {range && custom.isPending ? <p className={shared.muted}>Computing comparison.</p> : null}
       {custom.data ? <CustomResult change={custom.data} timezone={timezone} /> : null}
     </section>
@@ -119,11 +119,12 @@ export function CustomPeriodPanel({
 }
 
 function CustomResult({ change, timezone }: { change: ValueChange; timezone?: string }) {
+  const platforms = usePlatforms();
   return (
     <div className={styles.detailPanel}>
       <div className={styles.pointStatsGrid}>
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>Value Change</span>
+          <span className={styles.pointStatLabel}>Value change</span>
           <div className={styles.pointStatValue}>
             {valueChangeCell(change.amountUsd, change.startPoint?.totalUsd)}
           </div>
@@ -134,7 +135,7 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
 
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>Start Point</span>
+          <span className={styles.pointStatLabel}>Start point</span>
           <div className={styles.pointStatValue}>
             {change.startPoint?.totalUsd ? (
               <NumericText>{formatUsd(change.startPoint.totalUsd)}</NumericText>
@@ -150,7 +151,7 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
         </div>
 
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>End Point</span>
+          <span className={styles.pointStatLabel}>End point</span>
           <div className={styles.pointStatValue}>
             {change.endPoint?.totalUsd ? (
               <NumericText>{formatUsd(change.endPoint.totalUsd)}</NumericText>
@@ -169,9 +170,9 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
           <span className={styles.pointStatLabel}>Flows</span>
           <div className={styles.pointStatValue}>{combinedFlowsCell(change)}</div>
           <span className={styles.pointStatMeta}>
-            {change.boundaryEvents.length === 0
-              ? "No boundary events"
-              : `${change.boundaryEvents.length} boundary event(s)`}
+            {!change.startPoint || !change.endPoint
+              ? "Boundary events unavailable"
+              : boundaryEventCountText(change.boundaryEvents.length)}
           </span>
         </div>
       </div>
@@ -196,11 +197,13 @@ function CustomResult({ change, timezone }: { change: ValueChange; timezone?: st
 
       {change.boundaryEvents.length > 0 ? (
         <>
-          <h3>Boundary Events</h3>
+          <h3>Boundary events</h3>
           <DataTable
-            caption="Boundary Events in the range"
+            caption="Boundary events in the range"
             columns={BOUNDARY_COLUMNS}
-            rows={change.boundaryEvents.map((item) => boundaryEventRow(item, timezone))}
+            rows={change.boundaryEvents.map((item) =>
+              boundaryEventRow(item, timezone, platforms.data?.items),
+            )}
             empty="No account entered or left the boundary in this range."
           />
         </>

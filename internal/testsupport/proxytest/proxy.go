@@ -1,4 +1,4 @@
-// Package proxytest provides loopback-only proxy servers for synthetic Adapter tests.
+// Package proxytest provides loopback-only proxy servers for synthetic adapter tests.
 package proxytest
 
 import (

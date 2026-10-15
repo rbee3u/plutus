@@ -154,7 +154,7 @@ func TestCalendarListsStartAtRetainedHistoryAndPreserveGaps(t *testing.T) {
 		at := day.AddDate(0, 0, offset).Add(30 * time.Minute).UTC()
 		incomplete := 0
 		if offset == 0 {
-			incomplete = 1 // An incomplete first Point still establishes history.
+			incomplete = 1 // An incomplete first point still establishes history.
 		}
 		exec("INSERT INTO collection_cycles(portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES(?,?,'succeeded','schedule',?,?,?,?)", p.ID[:], cycle[:], at, at, at, at)
 		exec("INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version,detail_state) VALUES(?,?,?,100,1,0,?,1,'expired')", p.ID[:], cycle[:], at, incomplete)
@@ -162,7 +162,7 @@ func TestCalendarListsStartAtRetainedHistoryAndPreserveGaps(t *testing.T) {
 	// The two-year leading blank range must not consume the 400-period limit.
 	assertLabels(day.AddDate(-2, 0, 0), day.AddDate(0, 0, 4), []string{"2025-01-12", "2025-01-13", "2025-01-14", "2025-01-15"})
 	assertLabels(day.AddDate(0, 0, -7), day, nil)
-	// No Point in this query: the gap remains because earlier history exists.
+	// No point in this query: the gap remains because earlier history exists.
 	assertLabels(day.AddDate(0, 0, 1), day.AddDate(0, 0, 2), []string{"2025-01-13"})
 	assertLabels(day.AddDate(0, 0, 1), day.AddDate(0, 0, 3), []string{"2025-01-13", "2025-01-14"})
 	// Whole periods remain intact, but pre-history days are not missing coverage.
@@ -175,7 +175,7 @@ func TestCalendarListsStartAtRetainedHistoryAndPreserveGaps(t *testing.T) {
 	}
 	weekly, err := service.PeriodCloses(ctx, p, PeriodWeek, day.AddDate(0, 0, -7), day.AddDate(0, 0, 1))
 	if err != nil || len(weekly) != 1 || weekly[0].Completeness != valuation.CompletenessIncomplete || strings.Contains(strings.Join(weekly[0].Reasons, ";"), "days_without_points") {
-		t.Fatalf("first incomplete Point or pre-history weekly coverage lost: %+v %v", weekly, err)
+		t.Fatalf("first incomplete point or pre-history weekly coverage lost: %+v %v", weekly, err)
 	}
 	// Retention can leave older physical rows while its read boundary advances.
 	exec("UPDATE portfolios SET history_before=? WHERE id=?", day.AddDate(0, 0, 2).UTC(), p.ID[:])

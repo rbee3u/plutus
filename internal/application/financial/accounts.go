@@ -85,7 +85,7 @@ func (s *Service) positionView(ctx context.Context, p PortfolioContext, accountI
 	}
 	detail, err := s.Detail(ctx, p, *cycleID)
 	if errors.Is(err, valuation.ErrNotFound) {
-		// Current holdings survive a dormant Portfolio's history window.
+		// Current holdings survive a dormant portfolio's history window.
 		latest, latestErr := s.valuation.Latest(ctx, p.ID)
 		if latestErr == nil && latest.CycleID == *cycleID {
 			return s.accountView(ctx, p, accountID)
@@ -116,5 +116,5 @@ func staleAccountIssue(account *valuation.AccountValuation) valuation.Issue {
 			return issue
 		}
 	}
-	return valuation.Issue{Code: "stale", AccountID: &account.AccountID, AccountName: account.AccountName, Detail: "An earlier successful Account Report is carried forward."}
+	return valuation.Issue{Code: "stale", AccountID: &account.AccountID, AccountName: account.AccountName, Detail: "An earlier successful account report is carried forward."}
 }

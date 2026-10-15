@@ -38,7 +38,7 @@ describe("Security session data", () => {
         title: "Unauthorized",
         status: 401,
         detail: "Expired",
-        code: "unauthenticated",
+        code: "Unauthenticated.",
       },
       response: new Response(null, { status: 401 }),
     });

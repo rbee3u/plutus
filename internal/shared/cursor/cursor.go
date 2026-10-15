@@ -1,5 +1,5 @@
 // Package cursor encodes and decodes the opaque keyset cursors used by
-// Portfolio-scoped list endpoints.
+// portfolio-scoped list endpoints.
 package cursor
 
 import (
@@ -13,10 +13,10 @@ import (
 )
 
 // ErrInvalid reports a malformed cursor, a version or signature mismatch, or a
-// cursor bound to another Portfolio.
+// cursor bound to another portfolio.
 var ErrInvalid = errors.New("cursor is invalid")
 
-// payloadSize is one version byte, 16 Portfolio bytes, 8 timestamp bytes,
+// payloadSize is one version byte, 16 portfolio bytes, 8 timestamp bytes,
 // 16 ID bytes, and a 32-byte HMAC-SHA256 tag.
 const payloadSize = 73
 
@@ -48,7 +48,7 @@ func (c Codec) Encode(cur Cursor) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(payload), nil
 }
 
-// Decode parses a cursor and verifies its signature and Portfolio binding.
+// Decode parses a cursor and verifies its signature and portfolio binding.
 func (c Codec) Decode(raw string, portfolioID uuid.UUID) (Cursor, error) {
 	data, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil || len(data) != payloadSize || data[0] != c.Version {

@@ -14,7 +14,7 @@ export interface HoldingsFilterValues {
 }
 type FilterIdentity = Pick<Identity, "id" | "platform" | "displayName" | "status">;
 
-/** Reconcile configured candidates without silently assigning a Platform. */
+/** Reconcile configured candidates without silently assigning a platform. */
 export function normalizeHoldingsSelection(
   values: HoldingsFilterValues,
   identities: FilterIdentity[],

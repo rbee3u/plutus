@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// EarnPosition describes value already represented in Earn Balances. References
+// EarnPosition describes value already represented in earn balances. References
 // identify a source product aggregate, strategy, or individual position.
 type EarnPosition struct {
 	PositionKey  string       `json:"positionKey"`
@@ -29,7 +29,7 @@ type EarnPosition struct {
 	Problems     []string     `json:"problems"`
 }
 
-// Earn amounts, rates, and rewards use explicit Asset Symbols in typed details.
+// Earn amounts, rates, and rewards use explicit asset symbols in typed details.
 type EarnAmount struct {
 	AssetSymbol          string  `json:"assetSymbol"`
 	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
@@ -198,12 +198,12 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 	}
 	known := totals.Balances()
 	if len(known) != len(balances) {
-		return NewError(ClassNormalization, "Earn details do not match the reported Balances.")
+		return NewError(ClassNormalization, "Earn details do not match the reported balances.")
 	}
 	for _, b := range balances {
 		amount, ok := decimal.Parse(b.Equity)
 		if !decimal.Valid(b.Equity) || !ok {
-			return NewError(ClassNormalization, "Earn Balance has an invalid amount.")
+			return NewError(ClassNormalization, "Earn balance has an invalid amount.")
 		}
 		found := false
 		for i, k := range known {
@@ -214,13 +214,13 @@ func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
 			}
 		}
 		if !found {
-			return NewError(ClassNormalization, fmt.Sprintf("Earn details do not match the %s Balance.", b.AssetSymbol))
+			return NewError(ClassNormalization, fmt.Sprintf("Earn details do not match the %s balance.", b.AssetSymbol))
 		}
 	}
 	return nil
 }
 
-// EarnDetails is the normalized variable-width portion of one Earn position.
+// EarnDetails is the normalized variable-width portion of one earn position.
 type EarnDetails struct {
 	Assets  []EarnAmount `json:"assets"`
 	Rates   []EarnRate   `json:"rates"`

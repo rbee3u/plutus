@@ -19,6 +19,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 	"github.com/rbee3u/plutus/internal/shared/etag"
 )
@@ -79,7 +80,7 @@ func sameQuantities(a, b []Balance) bool {
 	return lerr == nil && rerr == nil && string(left) == string(right)
 }
 
-// Hydrate reads immutable quantities and current Portfolio-local asset labels.
+// Hydrate reads immutable quantities and current portfolio-local asset labels.
 func Hydrate(ctx context.Context, q *sqlcgen.Queries, portfolioID, accountID []byte, revision uint64) ([]Balance, error) {
 	rows, err := q.ListManualRevisionBalances(ctx, sqlcgen.ListManualRevisionBalancesParams{PortfolioID: portfolioID, AccountID: accountID, RevisionNumber: revision})
 	if err != nil {
@@ -154,8 +155,11 @@ func (s *Service) mutate(ctx context.Context, portfolioID, identityID uuid.UUID,
 		return State{}, err
 	}
 	amount, ok := decimal.Parse(in.Quantity)
-	if !ok || !decimal.Valid(in.Quantity) {
-		return State{}, catalog.ErrInvalid
+	if !ok {
+		return State{}, apperr.Invalid("Enter a valid quantity.")
+	}
+	if !decimal.Valid(in.Quantity) {
+		return State{}, apperr.Invalid("Use a plain decimal quantity with up to 35 integer digits and 30 decimal places.")
 	}
 	quantity := decimal.Compact(decimal.Format(amount))
 	err = mysql.ExecTx(ctx, s.db, func(q *sqlcgen.Queries) error {
@@ -241,7 +245,7 @@ type CycleAccount struct {
 	Items          []Balance
 }
 
-// CycleInputs reads the current revision of every boundary Manual Account.
+// CycleInputs reads the current revision of every boundary manual account.
 // Revisions are immutable, so the caller may price them before reporting.
 func (s *Service) CycleInputs(ctx context.Context, portfolioID uuid.UUID) ([]CycleAccount, error) {
 	return mysql.WithReadTx(ctx, s.db, func(q *sqlcgen.Queries) ([]CycleAccount, error) {

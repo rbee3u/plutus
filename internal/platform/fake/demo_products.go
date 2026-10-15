@@ -179,10 +179,10 @@ func demoDual(r *adapters.AccountReport, d DemoIdentity, anchor, at time.Time) {
 }
 
 // DemoValidate checks the simulated credential outcome independently of later
-// Account-level collection failures.
+// account-level collection failures.
 func demoValidate(d DemoIdentity, anchor, at time.Time) error {
 	if d.Profile == "invalid" && !at.Before(DemoEventTime(anchor, -2)) {
-		return adapters.NewError(adapters.ClassAuthentication, "The Platform rejected the revoked read-only key.")
+		return adapters.NewError(adapters.ClassAuthentication, "The platform rejected the revoked read-only key.")
 	}
 	return nil
 }

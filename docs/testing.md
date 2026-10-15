@@ -32,7 +32,7 @@ allowlist and exclusions live in [`.golangci.yml`](../.golangci.yml) and
 speculative micro-optimizations are outside these gates. Rule-specific
 suppressions must explain their bounds or exception; unused suppressions fail.
 Review discarded errors: default errcheck settings allow `_` assignments.
-Platform-specific `exhaustive` exceptions do not expand supported Accounts.
+Platform-specific `exhaustive` exceptions do not expand supported accounts.
 
 The optional Chromium check uses a loopback-only Vite server and mocked API
 responses, so it needs no database. It covers mobile navigation behavior that
@@ -48,7 +48,7 @@ This is separate from `make test`. Put output under `/tmp/plutus`, for example
 
 Mobile cases cover page and overlay scrolling, orientation changes, URL-backed
 reloads, and return to desktop layout. Vite-only fixtures exercise overlapping
-Dialogs and cleanup; they are excluded from the SPA.
+dialogs and cleanup; they are excluded from the SPA.
 
 Chromium cannot establish native Safari or Android Chrome pull-to-refresh. Check
 ordinary tabs on actual devices with short/long pages, expanded/collapsed
@@ -77,7 +77,7 @@ commands; edits to Go comments still follow the Go validation gates.
 After changes affecting `serve`, the JSON API, or the UI, exercise the changed
 flow in the agent dev instance in addition to the validation gates. This
 includes seed data, valuation reads, the embedded SPA, and history defaults.
-Changes confined to Adapter packages, their tests, or fixtures use offline tests
+Changes confined to adapter packages, their tests, or fixtures use offline tests
 and evidence review instead.
 
 1. Confirm `config/agent.toml`, `config/agent.env`, and `plutus_agent` exist. If
@@ -95,19 +95,19 @@ and evidence review instead.
 
 ## Adapter delivery reports
 
-For a new or expanded real Platform Adapter delivery, also run
+For a new or expanded real platform adapter delivery, also run
 `make build GOOS=linux GOARCH=amd64` after `make web`. Report four items:
 recorded evidence with dates and gaps; independent synthetic test results per
-affected Platform; agent-environment coverage when applicable; and what was not
+affected platform; agent-environment coverage when applicable; and what was not
 covered. Documented or synthetic scenarios must remain distinct from observed
 real coverage.
 
 ## Test ownership
 
 - Package-local tests own local rules and private implementation seams.
-- `internal/integration` owns Adapter-to-report-to-read workflows, cross-module
+- `internal/integration` owns adapter-to-report-to-read workflows, cross-module
   presentation, and migration continuity. Its harness shares collaborators from
-  `app.New`; fast retry scenarios explicitly replace only the Collection runner.
+  `app.New`; fast retry scenarios explicitly replace only the collection runner.
 - `internal/testsupport` contains reusable database and offline network helpers.
   Do not import it from runtime code or move CLI-used fake/recording code there.
 - `web/e2e/support` contains common API routing and generated-type-checked
@@ -117,13 +117,13 @@ real coverage.
 
 Pure helper tests stay with their implementation. MySQL infrastructure tests use
 an external test package to avoid a cycle through `mysqltest`. Browser tests
-cover session/cache lifetimes, Collection invalidation, and raw write results
+cover session/cache lifetimes, collection invalidation, and raw write results
 without duplicating generated schemas.
 
 Give each scenario one owner and retain its assertions when moving it. Do not
 export private production methods to relocate tests. Each database-backed
 package needs `mysqltest.RunTestMain`; install `offline.Install` first when
-exercising Platform clients.
+exercising platform clients.
 
 ## Test configuration
 
@@ -142,7 +142,7 @@ developer configuration source.
   hour are dropped on the next run. Without the variable, database tests skip
   and `make test` can pass without database coverage. Do not edit `gotest.env`
   to fit tests.
-- Real Adapter tests select synthetic response files and replay them through
+- Real adapter tests select synthetic response files and replay them through
   loopback servers; higher-level application tests can use the deterministic
   fake. The network guard fails forbidden HTTP/HTTPS/WebSocket, proxy and
   redirect attempts independently of report error mapping. Local replay and
@@ -153,5 +153,5 @@ developer configuration source.
 Recorded responses are reviewed interface evidence, separate from automated
 tests. The [evidence workflow](./platform/evidence-workflow.md) owns recording
 credentials, exact requests, capture guarantees, sanitation, and promotion. Each
-Platform's verification document tracks dates and outstanding real gaps;
+platform's verification document tracks dates and outstanding real gaps;
 exchange-app reconciliation remains a separate check.

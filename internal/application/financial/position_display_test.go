@@ -78,7 +78,7 @@ func TestSettleMarginBasisConversionAndPortfolio(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			row := PositionRow{Margin: new("100"), MarginSetting: new(tc.mode), MarginBasis: new(tc.basis), MarginAssetSymbol: new(tc.from), SettlementAssetSymbol: new(tc.to), BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USD"), MarkPrice: nullDecimal(nullString(tc.mark)), PortfolioMargin: tc.portfolio}
 			if got := stringValue(settlePositionMargin(&row)); got != tc.want {
-				t.Fatalf("settle Margin=%q, want %q", got, tc.want)
+				t.Fatalf("settle margin=%q, want %q", got, tc.want)
 			}
 		})
 	}
@@ -87,7 +87,7 @@ func TestSettleMarginBasisConversionAndPortfolio(t *testing.T) {
 func TestPortfolioUsesSourceReportMode(t *testing.T) {
 	account := &valuation.AccountValuation{AccountStructure: string(adapters.StructureBybitUTA2), SourceMarginMode: new(string(adapters.MarginBybitPM))}
 	if value := portfolioMargin(account); value == nil || !*value {
-		t.Fatal("source Portfolio mode lost")
+		t.Fatal("source portfolio mode lost")
 	}
 	account.SourceMarginMode = nil
 	if portfolioMargin(account) != nil {
@@ -97,10 +97,10 @@ func TestPortfolioUsesSourceReportMode(t *testing.T) {
 
 func TestBinanceCrossMarginCalculationAndSourcePreference(t *testing.T) {
 	for _, tc := range []struct{ name, kind, unit, quantity, factor, settle, want string }{
-		{"linear perpetual Base", adapters.KindLinearPerpetual, "base", "-0.5", "100", "USDT", "250"},
+		{"linear perpetual base", adapters.KindLinearPerpetual, "base", "-0.5", "100", "USDT", "250"},
 		{"linear delivery contracts", adapters.KindLinearDelivery, "contracts", "5", "0.1", "USDT", "250"},
 		{"inverse perpetual contracts", adapters.KindInversePerpetual, "contracts", "5", "100", "BTC", "0.25"},
-		{"inverse delivery Quote", adapters.KindInverseDelivery, "quote", "500", "100", "BTC", "0.25"},
+		{"inverse delivery quote", adapters.KindInverseDelivery, "quote", "500", "100", "BTC", "0.25"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			row := PositionRow{
@@ -131,10 +131,10 @@ func TestBinanceCrossMarginCalculationAndSourcePreference(t *testing.T) {
 	if got := stringValue(settlePositionMargin(&row)); got != "219.635" {
 		t.Fatalf("Binance example %q", got)
 	}
-	// A missing report amount in Classic Cross may use the same formula.
+	// A missing report amount in classic cross may use the same formula.
 	row.AccountType, row.PortfolioMargin = "um_futures", new(false)
 	if stringValue(settlePositionMargin(&row)) != "219.635" {
-		t.Fatal("Classic Cross fallback unavailable")
+		t.Fatal("Classic cross fallback unavailable")
 	}
 }
 
@@ -152,10 +152,10 @@ func TestCalculatedMarginUnknownsAndPlatformLimits(t *testing.T) {
 		{"missing factor", func(r *PositionRow) { r.ContractSize = nil }},
 		{"zero leverage", func(r *PositionRow) { r.Leverage = new("0") }},
 		{"missing leverage", func(r *PositionRow) { r.Leverage = nil }},
-		{"missing Mark", func(r *PositionRow) { r.MarkPrice = nil }},
-		{"negative Mark", func(r *PositionRow) { r.MarkPrice = new("-1") }},
+		{"missing mark", func(r *PositionRow) { r.MarkPrice = nil }},
+		{"negative mark", func(r *PositionRow) { r.MarkPrice = new("-1") }},
 		{"unknown currency", func(r *PositionRow) { r.QuoteAssetSymbol = nil }},
-		{"incompatible inverse Settle", func(r *PositionRow) { r.SettlementAssetSymbol = new("USDT") }},
+		{"incompatible inverse settle", func(r *PositionRow) { r.SettlementAssetSymbol = new("USDT") }},
 		{"Isolated is never calculated", func(r *PositionRow) { r.MarginSetting = new("isolated"); r.MarginBasis = new("initial") }},
 		{"Bybit PM risk not allocated", func(r *PositionRow) { r.Platform = "bybit"; r.AccountType = "unified" }},
 		{"OKX PM risk not allocated", func(r *PositionRow) { r.Platform = "okx"; r.AccountType = "trading" }},

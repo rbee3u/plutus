@@ -12,7 +12,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// Tree answers the Platform → Identity → Account view from the latest point.
+// Tree answers the platform → identity → account view from the latest point.
 func (s *Service) Tree(ctx context.Context, p PortfolioContext) (Tree, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Tree, error) {
 		c, point, accounts, err := s.latestContext(ctx, p)
@@ -21,7 +21,7 @@ func (s *Service) Tree(ctx context.Context, p PortfolioContext) (Tree, error) {
 		}
 		out := Tree{Context: c, Completeness: valuation.CompletenessIncomplete, Platforms: []TreePlatform{}, Issues: []valuation.Issue{}}
 		if point == nil {
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 		} else {
 			total := point.TotalUSD
 			out.TotalUSD = &total

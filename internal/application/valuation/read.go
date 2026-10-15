@@ -20,7 +20,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// PointByCycle returns the point written by one durable Collection Cycle.
+// PointByCycle returns the point written by one durable collection cycle.
 func (s *Service) PointByCycle(ctx context.Context, portfolioID, cycleID uuid.UUID) (Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
 		row, err := mysql.Queries(ctx, s.db).GetValuationPointByCycle(ctx, sqlcgen.GetValuationPointByCycleParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
@@ -34,7 +34,7 @@ func (s *Service) PointByCycle(ctx context.Context, portfolioID, cycleID uuid.UU
 	})
 }
 
-// Latest returns the newest point of a Portfolio.
+// Latest returns the newest point of a portfolio.
 func (s *Service) Latest(ctx context.Context, portfolioID uuid.UUID) (Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
 		row, err := mysql.Queries(ctx, s.db).GetLatestValuationPoint(ctx, portfolioID[:])
@@ -48,7 +48,7 @@ func (s *Service) Latest(ctx context.Context, portfolioID uuid.UUID) (Point, err
 	})
 }
 
-// First returns the earliest point of the Portfolio.
+// First returns the earliest point of the portfolio.
 func (s *Service) First(ctx context.Context, portfolioID uuid.UUID) (Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
 		row, err := mysql.Queries(ctx, s.db).GetFirstValuationPoint(ctx, sqlcgen.GetFirstValuationPointParams{PortfolioID: portfolioID[:]})
@@ -62,7 +62,7 @@ func (s *Service) First(ctx context.Context, portfolioID uuid.UUID) (Point, erro
 	})
 }
 
-// Get returns one point by its Collection Cycle ID.
+// Get returns one point by its collection cycle ID.
 func (s *Service) Get(ctx context.Context, portfolioID, cycleID uuid.UUID) (Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
 		row, err := mysql.Queries(ctx, s.db).GetValuationPoint(ctx, sqlcgen.GetValuationPointParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
@@ -76,7 +76,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, cycleID uuid.UUID) (Poin
 	})
 }
 
-// Accounts returns the stored Account Valuations of a point.
+// Accounts returns the stored account valuations of a point.
 func (s *Service) Accounts(ctx context.Context, portfolioID, cycleID uuid.UUID) ([]AccountValuation, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]AccountValuation, error) {
 		point, err := mysql.Queries(ctx, s.db).GetValuationPoint(ctx, sqlcgen.GetValuationPointParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
@@ -143,7 +143,7 @@ func (s *Service) accountsByCycles(ctx context.Context, portfolioID uuid.UUID, c
 		}
 		index, ok := indices[key{cycle, account}]
 		if !ok {
-			return nil, errors.New("balance valuation has no Account Report")
+			return nil, errors.New("balance valuation has no account report")
 		}
 		if err := appendStoredBalance(&out[cycle][index], line); err != nil {
 			return nil, err
@@ -196,8 +196,8 @@ func (s *Service) PointWithEvents(ctx context.Context, row *sqlcgen.ValuationPoi
 	return points[0], nil
 }
 
-// PointsWithEvents adds Boundary Events and comparison markers in bounded
-// batches. Period comparisons do not need every Account's Balance evidence.
+// PointsWithEvents adds boundary events and comparison markers in bounded
+// batches. Period comparisons do not need every account's balance evidence.
 func (s *Service) PointsWithEvents(ctx context.Context, rows []sqlcgen.ValuationPoint) ([]Point, error) {
 	return s.pointsWithEvents(ctx, rows, false)
 }
@@ -229,8 +229,8 @@ func (s *Service) pointsWithEvents(ctx context.Context, rows []sqlcgen.Valuation
 	})
 }
 
-// hydratePointDetails derives every comparison marker except Manual
-// adjustments from retained facts. Named Account omissions follow detail
+// hydratePointDetails derives every comparison marker except manual
+// adjustments from retained facts. Named account omissions follow detail
 // retention; an expired point keeps only its counts.
 func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previous map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, includeAccountIssues bool) error {
 	portfolio := points[0].PortfolioID
@@ -240,7 +240,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 	for i := range points {
 		point := &points[i]
 		if point.PortfolioID != portfolio {
-			return errors.New("point batch crosses Portfolios")
+			return errors.New("point batch crosses portfolios")
 		}
 		cycles = append(cycles, point.CycleID[:])
 		if point.DetailState == "full" || point.DetailState == "daily" {
@@ -342,7 +342,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 	return nil
 }
 
-// boundaryTotals sums known Boundary Event values per point and direction;
+// boundaryTotals sums known boundary event values per point and direction;
 // an unvalued event contributes nothing.
 type boundaryTotals map[uuid.UUID]*[2]*big.Rat
 
@@ -371,8 +371,8 @@ func (t boundaryTotals) of(cycle uuid.UUID) (contribution, withdrawal string) {
 	return decimal.Format(sums[0]), decimal.Format(sums[1])
 }
 
-// WithBoundaryTotals fills the Boundary totals of summary points without
-// reading their events' Account labels.
+// WithBoundaryTotals fills the boundary totals of summary points without
+// reading their events' account labels.
 func (s *Service) WithBoundaryTotals(ctx context.Context, points []Point) error {
 	if len(points) == 0 {
 		return nil
@@ -425,7 +425,7 @@ func maxTime(a, b time.Time) time.Time {
 	return a
 }
 
-// predecessors maps each point to its immediate predecessor in the Portfolio's
+// predecessors maps each point to its immediate predecessor in the portfolio's
 // timeline, which may fall outside the requested points.
 func (s *Service) predecessors(ctx context.Context, portfolio uuid.UUID, points []Point) (map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, error) {
 	from, to := points[0].EvaluatedAt, points[0].EvaluatedAt
@@ -453,7 +453,7 @@ func (s *Service) predecessors(ctx context.Context, portfolio uuid.UUID, points 
 
 // manualBalanceChangesByPoints compares adopted quantities with each point's actual
 // predecessor, which may fall outside the requested batch. Set comparison stays
-// in Go to avoid nested correlated semijoins across the Portfolio's history.
+// in Go to avoid nested correlated semijoins across the portfolio's history.
 func (s *Service) manualBalanceChangesByPoints(ctx context.Context, portfolio uuid.UUID, points []Point) (map[uuid.UUID][]ManualBalanceChange, error) {
 	q := mysql.Queries(ctx, s.db)
 	predecessors, err := s.predecessors(ctx, portfolio, points)

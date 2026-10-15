@@ -146,7 +146,7 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 			},
 		}
 		if point == nil {
-			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No Collection Cycle has produced a Valuation Point yet."})
+			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
 		}
 		out.Completeness = point.Completeness()

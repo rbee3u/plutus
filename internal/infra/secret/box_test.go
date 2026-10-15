@@ -81,10 +81,10 @@ func TestSealRejectsEmptyFields(t *testing.T) {
 	box := testBox(t)
 	id := uuid.Must(uuid.NewV7())
 	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: " ", APISecret: "secret"}); !errors.Is(err, ErrInvalidCredentials) {
-		t.Fatalf("empty api key: %v", err)
+		t.Fatalf("empty API key: %v", err)
 	}
 	if _, _, err := box.Seal(id, id, CurrentKeyVersion(), Credentials{APIKey: "key", APISecret: ""}); !errors.Is(err, ErrInvalidCredentials) {
-		t.Fatalf("empty api secret: %v", err)
+		t.Fatalf("empty API secret: %v", err)
 	}
 }
 

@@ -23,7 +23,7 @@ const (
 	defaultLimit = 50
 )
 
-// Service reads Portfolio audit events.
+// Service reads portfolio audit events.
 type Service struct {
 	db *sql.DB
 }
@@ -64,7 +64,7 @@ type ListFilter struct {
 	Cursor       string
 }
 
-// List returns audit events for a Portfolio using authenticated cursor pagination.
+// List returns audit events for a portfolio using authenticated cursor pagination.
 func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, in *ListFilter) (Page, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Page, error) {
 		return s.list(ctx, portfolioID, in)

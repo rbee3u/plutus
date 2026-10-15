@@ -4,7 +4,7 @@ import "github.com/rbee3u/plutus/internal/shared/apperr"
 
 var (
 	// ErrInvalidCursor is returned when a list cursor is malformed.
-	ErrInvalidCursor = apperr.Invalid("audit cursor is invalid")
+	ErrInvalidCursor = apperr.Invalid("Audit cursor is invalid.")
 	// ErrInvalidPage is returned when a list limit is out of range.
-	ErrInvalidPage = apperr.Invalid("page is invalid")
+	ErrInvalidPage = apperr.Invalid("Page is invalid.")
 )

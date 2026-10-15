@@ -80,7 +80,7 @@ func mergeManualBalances(collected, current []BalanceRow, account *valuation.Acc
 	return collected
 }
 
-// Include Manual Accounts before their first report so current records remain reachable.
+// Include manual accounts before their first report so current records remain reachable.
 func (s *Service) withManualAccounts(ctx context.Context, p PortfolioContext, accounts []valuation.AccountValuation) ([]valuation.AccountValuation, error) {
 	boundary, err := mysql.Queries(ctx, s.db).ListBoundaryAccounts(ctx, p.ID[:])
 	if err != nil {

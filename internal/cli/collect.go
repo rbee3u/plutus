@@ -20,7 +20,7 @@ func newCollectCommand() *cobra.Command {
 	var portfolioFlag string
 	cmd := &cobra.Command{
 		Use:   "collect",
-		Short: "Run one Collection Cycle for a Portfolio synchronously and write its Valuation Point",
+		Short: "Run one collection cycle for a portfolio synchronously and write its valuation point",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			portfolioID, err := uuid.Parse(portfolioFlag)
@@ -54,7 +54,7 @@ func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UU
 		return err
 	}
 	if !created {
-		_, _ = fmt.Fprintf(out, "reusing active cycle %s (%s)\n", cycle.ID, cycle.Status)
+		_, _ = fmt.Fprintf(out, "Reusing active cycle %s (%s)\n", cycle.ID, cycle.Status)
 	}
 	loop := worker.New(&worker.Options{Cycles: services.Cycles, Collection: services.Collection, Logger: logger, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
 	deadline := time.Now().Add(10 * time.Minute)
@@ -67,7 +67,7 @@ func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UU
 			return err
 		}
 		if !current.Active() {
-			_, _ = fmt.Fprintf(out, "cycle %s %s", current.ID, current.Status)
+			_, _ = fmt.Fprintf(out, "Cycle %s %s", current.ID, current.Status)
 			if current.Status != cycles.StatusSucceeded {
 				if current.ErrorDetail != nil {
 					_, _ = fmt.Fprintf(out, ": %s", *current.ErrorDetail)

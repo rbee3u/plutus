@@ -64,7 +64,7 @@ build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 		-trimpath -ldflags "-s -w -X main.version=$(VERSION)" \
 		-o ./dist/plutus-$(GOOS)-$(GOARCH) ./cmd/plutus
-	@echo "built dist/plutus-$(GOOS)-$(GOARCH) ($(VERSION))"
+	@echo "Built dist/plutus-$(GOOS)-$(GOARCH) ($(VERSION))"
 
 test:
 	go test -count 1 ./...

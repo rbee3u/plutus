@@ -18,7 +18,7 @@ type KeyPair struct {
 	APISecret string
 }
 
-// FuturesKey returns the configured Futures key, or empty when that group is absent.
+// FuturesKey returns the configured futures key, or empty when that group is absent.
 func (c Credentials) FuturesKey() string {
 	if c.Futures == nil {
 		return ""
@@ -26,7 +26,7 @@ func (c Credentials) FuturesKey() string {
 	return c.Futures.APIKey
 }
 
-// FuturesSecret returns the configured Futures secret, or empty when that group is absent.
+// FuturesSecret returns the configured futures secret, or empty when that group is absent.
 func (c Credentials) FuturesSecret() string {
 	if c.Futures == nil {
 		return ""
@@ -34,7 +34,7 @@ func (c Credentials) FuturesSecret() string {
 	return c.Futures.APISecret
 }
 
-// CheckCredentials enforces complete key pairs and the selected Accounts' requirements.
+// CheckCredentials enforces complete key pairs and the selected accounts' requirements.
 func CheckCredentials(platform Platform, structure AccountStructure, accounts []AccountType, creds Credentials) error {
 	spotKey, spotSecret := strings.TrimSpace(creds.APIKey), strings.TrimSpace(creds.APISecret)
 	futuresKey, futuresSecret := strings.TrimSpace(creds.FuturesKey()), strings.TrimSpace(creds.FuturesSecret())
@@ -53,17 +53,17 @@ func CheckCredentials(platform Platform, structure AccountStructure, accounts []
 		return nil
 	}
 	if !ValidStructure(platform, structure) {
-		return NewError(ClassUnsupported, "The Kraken Account Structure is not supported.")
+		return NewError(ClassUnsupported, "The Kraken account structure is not supported.")
 	}
 	if spotKey == "" && futuresKey == "" {
 		return NewError(ClassAuthentication, "Supply at least one Kraken credential group.")
 	}
 	for _, account := range accounts {
 		if (account == "main" || account == "earn") && spotKey == "" {
-			return NewError(ClassAuthentication, "Selected Main and Earn Accounts require Kraken Spot credentials.")
+			return NewError(ClassAuthentication, "Selected main and earn accounts require Kraken spot credentials.")
 		}
 		if account != "earn" && futuresKey == "" {
-			return NewError(ClassAuthentication, "Selected Main and derivatives Accounts require Kraken Futures credentials; Main uses them to verify the wallet structure.")
+			return NewError(ClassAuthentication, "Selected main and derivatives accounts require Kraken futures credentials; main uses them to verify the wallet structure.")
 		}
 	}
 	return nil

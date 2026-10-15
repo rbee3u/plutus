@@ -23,6 +23,38 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
+func TestIssueJSONPreservesSourceValues(t *testing.T) {
+	observed := time.Date(2026, 10, 13, 2, 59, 2, 123456000, time.UTC)
+	account := valuation.AccountValuation{
+		AccountID: uuid.New(), Method: valuation.MethodCalculated,
+		Freshness: valuation.FreshnessStale, ReportObservedAt: &observed,
+		Omitted: []valuation.Omitted{
+			{AssetSymbol: "DEMO", CanonicalAssetSymbol: "BTC", Equity: "1000.123456789", Reason: "no_price"},
+			{AssetSymbol: "DUST", Equity: "0.000000000123456789", Reason: "no_price"},
+		},
+	}
+	data, err := json.Marshal(toAPIIssues(valuation.AccountIssues(&account)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var issues []api.Issue
+	if err := json.Unmarshal(data, &issues); err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 3 || issues[0].ReportObservedAt == nil || !issues[0].ReportObservedAt.Equal(observed) {
+		t.Fatalf("observation time lost: %s", data)
+	}
+	for i, want := range account.Omitted {
+		got := issues[i+1].OmittedBalance
+		if got == nil || got.Equity != want.Equity || got.AssetSymbol != want.AssetSymbol || got.Reason != want.Reason || issues[i+1].Code != want.Reason {
+			t.Fatalf("omission precision or identity lost: %s", data)
+		}
+	}
+	if got := issues[1].OmittedBalance.CanonicalAssetSymbol; got == nil || *got != "BTC" {
+		t.Fatalf("mapping lost: %s", data)
+	}
+}
+
 func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 	db := mysqltest.OpenTestDB(t)
 	ctx := t.Context()

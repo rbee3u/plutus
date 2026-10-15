@@ -1,4 +1,4 @@
-// Package ordering defines the shared Platform, Identity, and Account display order.
+// Package ordering defines the shared platform, identity, and account display order.
 package ordering
 
 import (
@@ -11,14 +11,14 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// Identity is the stable display key of one Platform Identity.
+// Identity is the stable display key of one platform identity.
 type Identity struct {
 	Platform string
 	Name     string
 	ID       uuid.UUID
 }
 
-// Account extends an Identity key with its Account Type's business order.
+// Account extends an identity key with its account type's business order.
 type Account struct {
 	Identity
 	Structure adapters.AccountStructure
@@ -36,7 +36,7 @@ func PlatformsCSV() string {
 	return strings.Join(codes, ",")
 }
 
-// ComparePlatforms orders offered Platforms first, followed by unknown codes.
+// ComparePlatforms orders offered platforms first, followed by unknown codes.
 func ComparePlatforms(a, b string) int {
 	platforms := adapters.OfferedPlatforms()
 	rank := func(code string) int {
@@ -64,7 +64,7 @@ func CompareIdentities(a, b Identity) int {
 	return bytes.Compare(a.ID[:], b.ID[:])
 }
 
-// CompareAccounts ignores editable Account names and financial measures.
+// CompareAccounts ignores editable account names and financial measures.
 func CompareAccounts(a, b Account) int {
 	if c := CompareIdentities(a.Identity, b.Identity); c != 0 {
 		return c

@@ -62,7 +62,7 @@ func NewService(db *sql.DB) *Service {
 
 // Step never loops until the backlog is drained. Collection gets another chance
 // to run between units, including while years of old details are being pruned.
-// It reports idle once a full round of every phase over every Portfolio changed
+// It reports idle once a full round of every phase over every portfolio changed
 // and scanned nothing.
 func (s *Service) Step(ctx context.Context, now time.Time) (bool, error) {
 	id, err := sqlcgen.New(s.db).GetNextRetentionPortfolioID(ctx, nonNil(s.portfolio))
@@ -296,7 +296,7 @@ func (s *Service) pruneReport(ctx context.Context, q *sqlcgen.Queries, id []byte
 			remaining[string(report)] = true
 		}
 		if len(remaining) < len(ids) {
-			// Deleted Manual reports can release revisions after their sweep
+			// Deleted manual reports can release revisions after their sweep
 			// already found nothing eligible in this epoch.
 			delete(s.sweeps, fmt.Sprintf("%x/manual_revisions", id))
 			delete(s.sweeps, fmt.Sprintf("%x/collection_cycles", id))

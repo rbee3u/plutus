@@ -34,7 +34,7 @@ func TestCatalogOffersEachPlatformsStructures(t *testing.T) {
 			structures[info.ID] = append(structures[info.ID], structure.ID)
 			modes[structure.ID] = len(structure.MarginModes)
 			if len(structure.AccountTypes) == 0 {
-				t.Fatalf("%s offers no Account Types", structure.ID)
+				t.Fatalf("%s offers no account types", structure.ID)
 			}
 		}
 	}
@@ -55,11 +55,11 @@ func TestCatalogOffersEachPlatformsStructures(t *testing.T) {
 	}
 	for structure, want := range wantModes {
 		if modes[structure] != want {
-			t.Fatalf("%s has %d Margin Modes, want %d", structure, modes[structure], want)
+			t.Fatalf("%s has %d margin modes, want %d", structure, modes[structure], want)
 		}
 	}
 	if got := AccountTypeIDs(StructureBinanceClassic); len(got) != 8 || got[0] != "spot" || got[6] != "earn" || got[7] != TypeDualInvestment {
-		t.Fatalf("Binance Classic Account Types = %v", got)
+		t.Fatalf("Binance classic account types = %v", got)
 	}
 }
 
@@ -75,13 +75,13 @@ func TestStructureAndMarginModeValidation(t *testing.T) {
 	t.Parallel()
 
 	if !ValidStructure(PlatformBinance, StructureBinanceClassic) || ValidStructure(PlatformBinance, StructureOKXUnified) || ValidStructure(PlatformKraken, "") {
-		t.Fatal("a structure is valid only for its own Platform")
+		t.Fatal("a structure is valid only for its own platform")
 	}
 	if !ValidAccountType(StructureBinanceClassic, "um_futures") || ValidAccountType(StructureBinancePM, "um_futures") {
-		t.Fatal("Account Types belong to one structure")
+		t.Fatal("Account types belong to one structure")
 	}
 	if ValidAccountType(StructureKrakenUnified, "multi_m") || !ValidAccountType(StructureKrakenSeparate, "multi_m") {
-		t.Fatal("Multi-M exists only with Separate wallets")
+		t.Fatal("Multi-M exists only with separate wallets")
 	}
 	cases := []struct {
 		structure AccountStructure
@@ -101,7 +101,7 @@ func TestStructureAndMarginModeValidation(t *testing.T) {
 			t.Fatalf("ValidMarginMode(%s, %q) = %v, want %v", tc.structure, tc.mode, got, tc.valid)
 		}
 	}
-	if MarginModeName(MarginBybitCross) != "Cross Margin" || StructureName(StructureKrakenSeparate) != "Separate wallets" {
+	if MarginModeName(MarginBybitCross) != "Cross margin" || StructureName(StructureKrakenSeparate) != "Separate wallets" {
 		t.Fatal("display names")
 	}
 }
@@ -115,10 +115,10 @@ func TestCheckCredentialsKrakenGroups(t *testing.T) {
 		t.Fatalf("Earn needs only the Spot group: %v", err)
 	}
 	if err := CheckCredentials(PlatformKraken, StructureKrakenUnified, []AccountType{"main"}, spot); err == nil {
-		t.Fatal("Main also needs the Futures group to verify the structure")
+		t.Fatal("Main also needs the futures group to verify the structure")
 	}
 	if err := CheckCredentials(PlatformKraken, StructureOKXUnified, []AccountType{"main"}, both); err == nil {
-		t.Fatal("another Platform's structure must be refused")
+		t.Fatal("another platform's structure must be refused")
 	}
 	if err := CheckCredentials(PlatformBinance, StructureBinanceClassic, nil, both); err == nil {
 		t.Fatal("Binance takes one key pair")
@@ -144,7 +144,7 @@ func TestCollectAccountsFailsOnlyTheFailingAccount(t *testing.T) {
 		return AccountReport{}, NewError(ClassTemporary, "down")
 	})
 	if class, _ := Classify(err); class != ClassTemporary {
-		t.Fatalf("every Account failing retryably must fail the batch, got %v", err)
+		t.Fatalf("every account failing retryably must fail the batch, got %v", err)
 	}
 
 	calls := 0

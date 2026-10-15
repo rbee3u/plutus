@@ -103,7 +103,7 @@ async function mockShell(page: Page, long = false) {
   });
 }
 
-test("mobile navigation manages visibility and focus across viewport changes", async ({ page }) => {
+test("Mobile navigation manages visibility and focus across viewport changes", async ({ page }) => {
   await mockShell(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/p/${portfolioId}/overview`);
@@ -143,13 +143,13 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 812, height: 375 },
 ]) {
-  test(`mobile document scrolling and overlays preserve position at ${viewport.width}x${viewport.height}`, async ({
+  test(`Mobile document scrolling and overlays preserve position at ${viewport.width}x${viewport.height}`, async ({
     page,
   }) => {
     await mockShell(page, true);
     await page.setViewportSize(viewport);
     await page.goto(`/p/${portfolioId}/overview`);
-    const tree = page.getByRole("list", { name: "Holdings tree at the latest Valuation Point" });
+    const tree = page.getByRole("list", { name: "Holdings tree at the latest valuation point" });
     await expect(tree.getByRole("button", { name: /^(Expand|Collapse) / })).toHaveCount(41);
     await expect(tree.getByRole("button", { name: /^Add manual balance for / })).toHaveCount(40);
     await page.mouse.move(viewport.width - 20, viewport.height - 40);
@@ -215,7 +215,7 @@ for (const viewport of [
     await page.evaluate(() => window.scrollBy(0, 100));
     await expect(menu).toBeHidden();
 
-    // Long Identity names reflow in the Tree instead of creating a wide outer table.
+    // Long identity names reflow in the tree instead of creating a wide outer table.
     expect(await tree.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -234,7 +234,7 @@ for (const viewport of [
   });
 }
 
-test("short mobile pages fill the viewport and login remains scrollable in landscape", async ({
+test("Short mobile pages fill the viewport and login remains scrollable in landscape", async ({
   page,
 }) => {
   await mockShell(page);

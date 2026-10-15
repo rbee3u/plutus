@@ -16,8 +16,8 @@ const (
 	ClassNormalization  = "normalization"
 )
 
-// ErrNoAdapter is returned when no adapter is registered for a Platform.
-var ErrNoAdapter = errors.New("no adapter is registered for the platform")
+// ErrNoAdapter is returned when no adapter is registered for a platform.
+var ErrNoAdapter = errors.New("No adapter is registered for the platform.")
 
 // Error is a classified adapter failure. Detail never contains raw payloads or credentials.
 type Error struct {
@@ -52,7 +52,7 @@ func Classify(err error) (class, detail string) {
 	return ClassTemporary, "The platform call failed."
 }
 
-// StopsScheduling reports whether an error class must set the Connection invalid.
+// StopsScheduling reports whether an error class must set the connection invalid.
 func StopsScheduling(class string) bool {
 	return class == ClassAuthentication || class == ClassAuthorization
 }

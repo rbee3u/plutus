@@ -24,7 +24,7 @@ type walletAsset struct {
 
 // wallet maps the spot (getUserAsset) and funding (get-funding-asset) wallets. getUserAsset does
 // not list Simple Earn flexible receipts (LD* assets), so flexible positions are counted only in
-// the earn Account and real LD-prefixed coins such as LDO are kept.
+// the earn account and real LD-prefixed coins such as LDO are kept.
 func (a *Adapter) wallet(ctx context.Context, c *client, accountType adapters.AccountType, ep endpoint) (adapters.AccountReport, error) {
 	var rows []walletAsset
 	if err := c.call(ctx, ep, nil, &rows); err != nil {
@@ -64,13 +64,13 @@ func mapWallet(ep endpoint, rows []walletAsset) ([]adapters.Balance, error) {
 	return out, nil
 }
 
-// earnWallet is the walletName of the Earn wallet in /sapi/v1/asset/wallet/balance.
+// earnWallet is the walletName of the earn wallet in /sapi/v1/asset/wallet/balance.
 const earnWallet = "Earn"
 
 // dualInvestmentStates says, for every purchaseStatus Binance documents,
-// whether the position is running, its principal still held in Dual Investment
+// whether the position is running, its principal still held in dual investment
 // (ADR 0005). Only running states are queried; an undocumented status fails
-// the selected Earn and Dual Accounts instead of being guessed.
+// the selected earn and dual accounts instead of being guessed.
 var dualInvestmentStates = map[string]bool{
 	"PENDING":          true,  // subscribed, awaiting the purchase result
 	"PURCHASE_SUCCESS": true,  // running until the settlement date
@@ -93,7 +93,7 @@ func runningDualInvestmentStates() []string {
 }
 
 // simpleEarnQuery and dualInvestmentQuery are the queries of one page of the
-// paged Earn endpoints; walletValueQuery asks for wallet values in USDT, which
+// paged earn endpoints; walletValueQuery asks for wallet values in USDT, which
 // values at 1 USD (ADR 0003). The recorder sends the same queries.
 func simpleEarnQuery(current int) url.Values {
 	return url.Values{"current": {strconv.Itoa(current)}, "size": {strconv.Itoa(pageSize)}}
@@ -131,8 +131,8 @@ type dualInvestmentPosition struct {
 	SubscriptionTime   json.RawMessage `json:"subscriptionTime"`
 }
 
-// earn returns separate savings and Dual reports, then checks their combined
-// principal against Binance's Earn wallet valuation (ADR 0005).
+// earn returns separate savings and dual reports, then checks their combined
+// principal against Binance's earn wallet valuation (ADR 0005).
 func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	earnPositions, err := simpleEarn(ctx, c, totals)
@@ -147,7 +147,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices lastPrices) (adapt
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -294,8 +294,8 @@ func mapDualPosition(row *dualInvestmentPosition) (adapters.DualPosition, error)
 	return adapters.NormalizeDualPosition(where, &p)
 }
 
-// checkEarn compares combined Earn and Dual Balances with Binance's Earn wallet valuation. A
-// wallet list without the Earn wallet is a normalization failure.
+// checkEarn compares combined earn and dual balances with Binance's earn wallet valuation. A
+// wallet list without the earn wallet is a normalization failure.
 func checkEarn(ctx context.Context, c *client, balances []adapters.Balance, prices lastPrices) error {
 	var wallets []struct {
 		Balance    string `json:"balance"`

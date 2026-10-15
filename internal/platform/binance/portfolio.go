@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// Portfolio Margin merges Cross Margin, USDⓈ-M Futures, and COIN-M Futures into one Account that
+// Portfolio margin merges cross margin, USDⓈ-M futures, and COIN-M futures into one account that
 // Binance values itself: /papi/v1/account reports its USD equity and margin figures.
 
 type pmAccount struct {
@@ -130,8 +130,8 @@ func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
 }
 
 // positionRisk is one row of a position endpoint: /papi/v1/um/positionRisk and
-// /papi/v1/cm/positionRisk in Portfolio Margin, /fapi/v3/positionRisk and /dapi/v1/positionRisk in
-// Classic Trading. /fapi/v3/positionRisk has no leverage; withLeverage fills it in.
+// /papi/v1/cm/positionRisk in portfolio margin, /fapi/v3/positionRisk and /dapi/v1/positionRisk in
+// classic trading. /fapi/v3/positionRisk has no leverage; withLeverage fills it in.
 type positionRisk struct {
 	Symbol                string `json:"symbol"`
 	PositionAmt           string `json:"positionAmt"`
@@ -155,7 +155,7 @@ type positionSource struct {
 }
 
 // positions maps every open position. A zero position is omitted; an open one whose contract is
-// unknown fails the Account instead of being dropped.
+// unknown fails the account instead of being dropped.
 func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionSource) ([]adapters.Position, error) {
 	out := make([]adapters.Position, 0)
 	for _, source := range sources {
@@ -240,7 +240,7 @@ func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futu
 			out.MarginAssetSymbol = futuresContract.SettlementAssetSymbol
 		}
 	} else if ep == epPMUMPositionRisk || ep == epPMCMPositionRisk {
-		// Retail Portfolio Margin futures use Cross and retain initial leverage.
+		// Retail portfolio margin futures use cross and retain initial leverage.
 		// These risk responses do not provide a position margin amount; the read
 		// model may derive its initial requirement without allocating collateral.
 		out.MarginSetting = "cross"

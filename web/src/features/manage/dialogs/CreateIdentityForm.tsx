@@ -9,7 +9,7 @@ import { Select, TextInput, Toggle } from "@/shared/ui/FormControls";
 import styles from "@/features/manage/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-/** The Account Structure to preselect: default to the platform's first structure. */
+/** The account structure to preselect: default to the platform's first structure. */
 function defaultStructure(platform: Platform | undefined): AccountStructure | undefined {
   return platform?.accountStructures[0];
 }
@@ -90,7 +90,7 @@ export function CreateIdentityForm({
       }
       createKey.current = newIdempotencyKey();
       await onSaved(
-        `Identity ${result.data.displayName} created. Manual balances are available; add credentials to collect Platform accounts.`,
+        `Identity ${result.data.displayName} created. Manual balances are available; add credentials to collect platform accounts.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The identity could not be created."));
@@ -100,7 +100,7 @@ export function CreateIdentityForm({
   }
 
   if (platforms.length === 0) {
-    return <p className={shared.notice}>No Platforms are available on this server.</p>;
+    return <p className={shared.notice}>No platforms are available on this server.</p>;
   }
 
   return (

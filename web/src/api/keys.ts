@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-/** Keep each family identity, typed arguments, and Collection policy together. */
+/** Keep each family identity, typed arguments, and collection policy together. */
 function family<Args extends readonly unknown[]>(name: string, refreshOnCollection: boolean) {
   return {
     key: (userId: string | undefined, portfolioId: string, ...args: Args) =>
@@ -118,7 +118,7 @@ export const keys = {
   ...portfolioKeys,
 };
 
-/** Preserve the existing Collection-dependent set; editable resources are separate. */
+/** Preserve the existing collection-dependent set; editable resources are separate. */
 export async function invalidatePortfolioReads(
   queryClient: QueryClient,
   userId: string | undefined,

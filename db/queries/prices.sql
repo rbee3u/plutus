@@ -4,7 +4,7 @@ VALUES (sqlc.arg(portfolio_id), sqlc.arg(id), sqlc.arg(platform), sqlc.arg(reque
 
 -- Rank only the 24-hour window inside the covering selection index, then read
 -- the winners; a correlated per-row lookup rescans each symbol's history.
--- Bulk imports can leave stale statistics favoring a Portfolio-only scan, so
+-- Bulk imports can leave stale statistics favoring a portfolio-only scan, so
 -- the window scan forces the selection index.
 -- name: ListLatestPricesByPlatformAt :many
 SELECT p.* FROM (

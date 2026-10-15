@@ -100,17 +100,17 @@ export function IdentitiesPage() {
         </div>
       </div>
       <DataTable
-        caption="Identities of this Portfolio"
+        caption="Identities of this portfolio"
         columns={[
           { key: "platform", header: "Platform", nowrap: true, width: "130px" },
           { key: "name", header: "Identity", nowrap: true, width: "160px" },
           { key: "uid", header: "UID", nowrap: true, width: "150px" },
           { key: "structure", header: "Structure", nowrap: true, width: "140px" },
-          { key: "accounts", header: "Accounts", nowrap: true, width: "110px" },
+          { key: "Accounts", header: "Accounts", nowrap: true, width: "110px" },
           { key: "status", header: "Status", width: "140px" },
           {
-            key: "lastSynced",
-            header: "Last synced",
+            key: "lastCollection",
+            header: "Last collection",
             nowrap: true,
             width: "170px",
           },
@@ -208,7 +208,7 @@ export function IdentitiesPage() {
                 ) : null}
               </span>
             ),
-            lastSynced: (
+            lastCollection: (
               <span
                 className={shared.tabularDate}
                 title={
@@ -216,7 +216,7 @@ export function IdentitiesPage() {
                     ? `Validated: ${formatInstant(connection.lastValidationSucceededAt, timezone)}`
                     : connection.lastValidationSucceededAt
                       ? `Never collected (Validated: ${formatInstant(connection.lastValidationSucceededAt, timezone)})`
-                      : "Never synced"
+                      : "Never collected"
                 }
               >
                 {formatInstant(connection.lastCollectionFinishedAt, timezone)}
@@ -294,9 +294,8 @@ export function IdentitiesPage() {
         }}
       >
         <p className={shared.lead}>
-          Archive {actions.archiveTarget?.displayName ?? "this identity"}? Active data collection
-          will stop immediately. Historical balances, transactions, and valuations remain fully
-          preserved.
+          Archive {actions.archiveTarget?.displayName ?? "this identity"}? Its accounts will leave
+          the portfolio boundary. Existing history is unchanged.
         </p>
         {actions.archiveTarget?.connection.status === "enabled" ? (
           <p className={shared.notice}>

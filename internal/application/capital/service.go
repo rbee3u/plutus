@@ -1,4 +1,4 @@
-// Package capital owns manual Capital Flows (ADR 0004).
+// Package capital owns manual capital flows (ADR 0004).
 package capital
 
 import (
@@ -30,7 +30,7 @@ const (
 	maxNote = 500
 )
 
-// Service owns Capital Flow use cases.
+// Service owns capital flow use cases.
 type Service struct {
 	db  *sql.DB
 	now func() time.Time
@@ -41,7 +41,7 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db, now: time.Now}
 }
 
-// Flow is one manual Capital Flow.
+// Flow is one manual capital flow.
 type Flow struct {
 	ID                   uuid.UUID
 	PortfolioID          uuid.UUID
@@ -86,7 +86,7 @@ type Input struct {
 	AccountID            *uuid.UUID
 	PricingPlatform      *string
 	Note                 *string
-	// ClearAccount detaches the flow from its Account; ClearValue drops a manual USD value.
+	// ClearAccount detaches the flow from its account; ClearValue drops a manual USD value.
 	ClearAccount         bool
 	ClearValue           bool
 	ClearPricingPlatform bool
@@ -128,7 +128,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Flow, err
 	return s.fromRow(ctx, &row)
 }
 
-// Create inserts a flow, valuing it in USD from the nearest Platform price when no value is given.
+// Create inserts a flow, valuing it in USD from the nearest platform price when no value is given.
 func (s *Service) Create(ctx context.Context, portfolioID uuid.UUID, in *Input) (Flow, error) {
 	if in.Direction == nil || in.CanonicalAssetSymbol == nil || in.Quantity == nil || in.EffectiveAt == nil {
 		return Flow{}, ErrInvalid

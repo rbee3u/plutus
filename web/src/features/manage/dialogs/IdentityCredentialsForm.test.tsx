@@ -27,7 +27,7 @@ const item: Identity = {
 function render(form: FormDescription, selected: string[] = []) {
   const platform: Platform = {
     id: "new-platform",
-    name: "New Platform",
+    name: "New platform",
     adapterAvailable: true,
     accountStructures: [],
     credentialForm: form,
@@ -59,7 +59,7 @@ function field(html: string, label: string) {
 }
 
 describe("credential descriptor rendering", () => {
-  it("renders a PEM-capable primary input without recognizing a Platform name", () => {
+  it("renders a PEM-capable primary input without recognizing a platform name", () => {
     const html = render({
       primary: {
         ...primary,

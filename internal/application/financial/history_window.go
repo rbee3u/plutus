@@ -3,14 +3,16 @@ package financial
 import (
 	"fmt"
 	"time"
+
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 )
 
-// ResolveHistoryWindow resolves one preset or two wall times in the Portfolio timezone.
+// ResolveHistoryWindow resolves one preset or two wall times in the portfolio timezone.
 // Relative windows are anchored once by the caller, never during pagination.
 func ResolveHistoryWindow(timezone, preset, fromLocal, toLocal string, now time.Time) (time.Time, time.Time, error) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("%w: invalid Portfolio timezone", ErrInvalid)
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: invalid portfolio timezone", ErrInvalid)
 	}
 	if fromLocal != "" || toLocal != "" {
 		if preset != "" || fromLocal == "" || toLocal == "" {
@@ -25,7 +27,7 @@ func ResolveHistoryWindow(timezone, preset, fromLocal, toLocal string, now time.
 			return time.Time{}, time.Time{}, err
 		}
 		if !to.After(from) {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: the end must be after the start", ErrInvalid)
+			return time.Time{}, time.Time{}, apperr.Invalid("End time must be after start time.")
 		}
 		return from, to, nil
 	}
@@ -68,7 +70,7 @@ func parseHistoryLocal(value string, loc *time.Location) (time.Time, error) {
 		wall, err = time.Parse("2006-01-02T15:04:05", value)
 	}
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: enter a valid Portfolio-local date and time", ErrInvalid)
+		return time.Time{}, fmt.Errorf("%w: enter a valid portfolio-local date and time", ErrInvalid)
 	}
 	offsets := map[int]bool{}
 	for h := -48; h <= 48; h++ {

@@ -18,7 +18,7 @@ func commonSamples() []string {
 const (
 	RedactedUID = 123456789
 	RedactedIP  = "203.0.113.1"
-	// 2 USDT Flexible + 0.01 ETH Locked + 10 USDT PUT + 0.1 SOL CALL,
+	// 2 USDT flexible + 0.01 ETH locked + 10 USDT PUT + 0.1 SOL CALL,
 	// at synthetic ETH=2000 and SOL=20. This is a synthetic mapping aggregate.
 	mappingEarnWallet = `[{"walletName":"Earn","balance":"34"}]`
 )

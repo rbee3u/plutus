@@ -11,16 +11,16 @@ Plutus runs in three environments
 Automated tests are not an environment; they create their own throwaway
 databases.
 
-| Environment                          | Where                            | Adapter                                | Port and database              | Data                           |
-| ------------------------------------ | -------------------------------- | -------------------------------------- | ------------------------------ | ------------------------------ |
-| dev, `local` instance (you)          | your machine, `go run`           | deterministic fake, seeded             | `0.0.0.0:8080`, `plutus_local` | reset whenever you like        |
-| dev, `agent` instance (the AI agent) | your machine, `go run`           | deterministic fake, seeded             | `0.0.0.0:8081`, `plutus_agent` | reset whenever the agent likes |
-| test                                 | a remote server, deployed binary | live Adapters with real read-only keys | `0.0.0.0:8082`, `plutus_test`  | reset by hand, never seeded    |
-| prod                                 | a remote server, deployed binary | live Adapters with real read-only keys | `0.0.0.0:8083`, `plutus_prod`  | never reset                    |
+| Environment                            | Where                            | Adapter                                | Port and database              | Data                           |
+| -------------------------------------- | -------------------------------- | -------------------------------------- | ------------------------------ | ------------------------------ |
+| `dev`, `local` instance (you)          | Your machine, `go run`           | Deterministic fake, seeded             | `0.0.0.0:8080`, `plutus_local` | Reset whenever you like        |
+| `dev`, `agent` instance (the AI agent) | Your machine, `go run`           | Deterministic fake, seeded             | `0.0.0.0:8081`, `plutus_agent` | Reset whenever the agent likes |
+| `test`                                 | A remote server, deployed binary | Live adapters with real read-only keys | `0.0.0.0:8082`, `plutus_test`  | Reset by hand, never seeded    |
+| `prod`                                 | A remote server, deployed binary | Live adapters with real read-only keys | `0.0.0.0:8083`, `plutus_prod`  | Never reset                    |
 
 Each environment has its own `PLUTUS_MASTER_KEY` (`openssl rand -base64 32`),
 its own database, and its own session cookie name. Dev instances never hold a
-real Platform key; test and prod never register the fake. The test environment
+real platform key; test and prod never register the fake. The test environment
 is where collected numbers are compared with the exchange apps by hand; the
 `local` instance is where the UI is walked through on fake data.
 
@@ -34,8 +34,8 @@ ensure the Go tool installation directory is on `PATH`.
 The two dev instances live in gitignored files under [`config/`](../config).
 Create only the database for the instance you are setting up. Every dev example
 TOML sets `[collection] fake_adapter = true`, which registers the deterministic
-offline Adapter for every offered Platform. With `fake_adapter = false`, all
-four live Adapters are registered instead.
+offline adapter for every offered platform. With `fake_adapter = false`, all
+four live adapters are registered instead.
 
 ### Local setup
 
@@ -85,7 +85,7 @@ commands require a master key.
 
 The environment examples contain deployment differences and explicit environment
 permissions, rather than every default. Keep their listener, port, cookie
-suffix, fake Adapter selection, and reset permission explicit when comparing
+suffix, fake adapter selection, and reset permission explicit when comparing
 files. Comments belong on separate lines above settings.
 
 ### Optional settings and defaults
@@ -110,15 +110,15 @@ than reverting to defaults. Durations use Go notation such as `15s`, `2m`, and
 | `logging.max_size_mb`                      | `100`       | Independent active-file size limit in MiB; must be positive                            |
 | `logging.max_backups`                      | `5`         | Backup count per channel; zero removes the count limit                                 |
 | `logging.max_age_days`                     | `0`         | Backup age limit in 24-hour days; zero removes the age limit                           |
-| `logging.compress`                         | `true`      | gzip rotated files                                                                     |
+| `logging.compress`                         | `true`      | Compress rotated files with `gzip`                                                     |
 | `logging.sql_enabled`                      | `true`      | Record all project SQL executions and transaction boundaries                           |
 | `database.allow_reset`                     | `false`     | Permit the explicit destructive `db reset` command, subject to database-name checks    |
 | `auth.cookie_suffix`                       | `"prod"`    | Shared suffix for session and CSRF cookie names                                        |
 | `auth.session_idle_lifetime`               | `"168h"`    | Session expiry after inactivity; 1 minute to 90 days                                   |
-| `auth.session_absolute_lifetime`           | `"720h"`    | Maximum Session lifetime; 1 hour to 365 days, at least the idle lifetime               |
-| `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous Connection validation; 1 second to 2 minutes          |
-| `collection.fake_adapter`                  | `false`     | Register fake Adapters for dev rather than live Adapters                               |
-| `collection.proxy.mode`                    | `"direct"`  | Runtime Platform proxy policy: direct or proxy                                         |
+| `auth.session_absolute_lifetime`           | `"720h"`    | Maximum session lifetime; 1 hour to 365 days, at least the idle lifetime               |
+| `collection.connection_validation_timeout` | `"15s"`     | Total budget for one synchronous connection validation; 1 second to 2 minutes          |
+| `collection.fake_adapter`                  | `false`     | Register fake adapters for dev rather than live adapters                               |
+| `collection.proxy.mode`                    | `"direct"`  | Runtime platform proxy policy: direct or proxy                                         |
 | `collection.proxy.url`                     | `""`        | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
 
 The three TLS settings are paths to PEM files and belong in TOML, including the
@@ -148,17 +148,17 @@ key_file = "/etc/plutus/server-key.pem"
 # client_ca_file = "/etc/plutus/client-ca.pem"
 ```
 
-Collection Cycles, financial summaries, and detailed snapshots follow the
+Collection cycles, financial summaries, and detailed snapshots follow the
 [retention policy](./domain-rules.md#historical-detail-retention). Referenced
-Cycles remain available for their retained Account Reports and Valuation Points.
+cycles remain available for their retained account reports and valuation points.
 
 ### Platform proxies
 
-One `[collection.proxy]` policy applies to all live runtime Adapters, including
-Connection validation, Collection, market data, and Kraken WebSocket reads.
-Restart the process after changing it. Each Adapter retains its own request
+One `[collection.proxy]` policy applies to all live runtime adapters, including
+connection validation, collection, market data, and Kraken WebSocket reads.
+Restart the process after changing it. Each adapter retains its own request
 budget; direct connections and proxy first hops use IPv4. An external proxy
-chooses the address family and public IP used to reach the Platform.
+chooses the address family and public IP used to reach the platform.
 
 ```toml
 [collection.proxy]
@@ -167,9 +167,9 @@ url = "http://127.0.0.1:7890"
 ```
 
 - `direct` is the default and connects without a proxy.
-- `proxy` forces the configured URL for every runtime Platform request. An
+- `proxy` forces the configured URL for every runtime platform request. An
   unavailable proxy fails the request; it never triggers automatic direct
-  fallback. Temporary failures retain compatible earlier Account Reports as
+  fallback. Temporary failures retain compatible earlier account reports as
   stale under the normal collection rules.
 
 Neither mode reads `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, or `NO_PROXY`,
@@ -183,10 +183,10 @@ fragments are rejected. TLS certificate verification remains enabled.
 
 For a Shadowsocks exit on another server, run sing-box separately. Plutus
 connects to its loopback HTTP/SOCKS entry point, sing-box connects over SS to
-the exit server, and that server reaches the Platform. Bind the local entry
+the exit server, and that server reaches the platform. Bind the local entry
 point only to `127.0.0.1`, keep SS credentials in sing-box, and configure its
 routes without direct fallback. Ensure the exit uses the IPv4 address
-allowlisted for the Platform API keys. Plutus does not accept `ss://` or manage
+allowlisted for the platform API keys. Plutus does not accept `ss://` or manage
 the tunnel.
 
 The deterministic fake stays offline and does not create proxy clients. Explicit
@@ -203,14 +203,14 @@ synthetic and agent verification coverage and remaining deployment gaps.
 
 Runtime commands write `app.log`, `access.log`, and enabled `sql.log` under
 `logging.directory`; application records also go to stderr. `logging.level`
-affects only application records. Help, version, and Adapter recording do not
+affects only application records. Help, version, and adapter recording do not
 initialize logging; command results stay on stdout.
 
 Access logs include request ID, method, path, status, and duration for normal,
 rejected, and recovered requests, including health checks and static files.
 Valid `X-Request-Id` values are reused; otherwise an ID is generated under the
 [middleware rules](../internal/transport/http/middleware.go). Request context
-correlates application and SQL records. Collection Cycles use Portfolio and
+correlates application and SQL records. Collection cycles use portfolio and
 cycle IDs rather than retaining the originating request ID.
 
 SQL logs include full parameter values, duration, errors, transactions,
@@ -246,17 +246,17 @@ migration.
 | `server.tls.mtls_ca_path`                             | `server.tls.client_ca_file`                                                             |
 | `server.tls.https_enabled`, `server.tls.mtls_enabled` | Remove; transport mode follows the configured certificate and CA files                  |
 | `auth.session_cookie_name`, `auth.csrf_cookie_name`   | `auth.cookie_suffix`; use `local`, `agent`, `test`, or `prod` for the supplied examples |
-| `jobs.completed_retention`, `jobs.finished_retention` | Remove; Collection Cycles follow the history retention policy                           |
+| `jobs.completed_retention`, `jobs.finished_retention` | Remove; collection cycles follow the history retention policy                           |
 | `collection.validate_timeout`                         | `collection.connection_validation_timeout`                                              |
 | `database.dsn`                                        | `PLUTUS_DSN` or `PLUTUS_DSN_FILE` outside TOML                                          |
 | `jobs.worker_poll_interval`                           | Remove; the serving worker polls an idle queue every 1 second                           |
 | `jobs.lease_duration`                                 | Remove; the worker lease is 2 minutes and renews during long cycles                     |
-| `collection.default_interval`                         | Remove; new Portfolios start at 30 minutes; edit each Portfolio's interval in settings  |
-| `collection.stagger`                                  | Remove; Collection Cycles wait 3 seconds between Identities                             |
+| `collection.default_interval`                         | Remove; new portfolios start at 30 minutes; edit each portfolio's interval in settings  |
+| `collection.stagger`                                  | Remove; collection cycles wait 3 seconds between identities                             |
 
-Existing Portfolio intervals and financial history are unaffected. Both CLI User
-creation and subsequent Portfolio creation use the same 30-minute initial
-interval. Worker polling, leases, and the Identity delay are internal
+Existing portfolio intervals and financial history are unaffected. Both CLI user
+creation and subsequent portfolio creation use the same 30-minute initial
+interval. Worker polling, leases, and the identity delay are internal
 mechanisms, not deployment policies.
 
 ## Seeds and collection
@@ -266,12 +266,12 @@ leaves an empty migrated database. It requires `[database].allow_reset = true`
 in the selected TOML and a database name matching `plutus` or `plutus_<suffix>`
 that does not contain `prod`. `serve` never migrates or seeds automatically.
 
-The single Alice dataset has healthy and representative edge-case Portfolios.
-Dedicated tests own large-list coverage; create a Portfolio to inspect empty
+The single Alice dataset has healthy and representative edge-case portfolios.
+Dedicated tests own large-list coverage; create a portfolio to inspect empty
 state. See [seeds](./seeds.md) for scenarios, history windows, expected results,
 and measured reset times.
 
-Seeding requires the fake Adapter and a master key. It writes source facts and
+Seeding requires the fake adapter and a master key. It writes source facts and
 uses real valuation code to initialize immutable points. Continued fake
 collection shares the original anchor. `db seed` requires an empty migrated
 database; replace old dev data with the wipe script or `db reset --seed`. The
@@ -290,12 +290,12 @@ go run ./cmd/plutus --config config/local.toml --env-file config/local.env colle
 
 Sign in with the [seed login](./seeds.md).
 
-Alice's `default` Portfolio is undeletable. Once `serve` runs, the scheduler
-collects enabled Connections every 30 minutes. `Collect now` on Overview and
+Alice's `default` portfolio is undeletable. Once `serve` runs, the scheduler
+collects enabled connections every 30 minutes. `Collect now` on Overview and
 `plutus collect --portfolio <uuid>` trigger a cycle immediately. The empty
-Portfolio has no enabled Connection and is not scheduled.
+portfolio has no enabled connection and is not scheduled.
 
-Public registration is not offered. Create Users with `plutus user create`.
+Public registration is not offered. Create users with `plutus user create`.
 Passwords must be 8 to 128 characters.
 
 ## Embedded frontend

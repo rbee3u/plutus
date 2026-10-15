@@ -1,174 +1,177 @@
 # Plutus
 
-Plutus observes a User's selected exchange Accounts and compares their value
+Plutus observes a user's selected exchange accounts and compares their value
 over time. This glossary defines its shared language;
 [domain rules](./docs/domain-rules.md) define behavior and
 [product scope](./docs/product-scope.md) defines coverage.
+
+Term definitions identify concepts; case follows the shared
+[capitalization guide](./docs/capitalization.md).
 
 ## Language
 
 ### Ownership and access
 
-**User**: A person authenticated by Plutus who owns independent Portfolios.
-_Avoid_: Identity, Account, exchange login.
+**user**: A person authenticated by Plutus who owns independent portfolios.
+_Avoid_: identity, account, exchange login.
 
-**Platform**: An exchange or financial service providing Accounts and market
+**platform**: An exchange or financial service providing accounts and market
 prices, such as Binance, OKX, Bybit, or Kraken.
 
-**Portfolio**: One User's ledger of selected Accounts and Capital Flows,
-organized by Platform, Identity, and Account.
+**portfolio**: One user's ledger of selected accounts and capital flows,
+organized by platform, identity, and account.
 
-**Identity**: One Platform login belonging to exactly one Platform and
-Portfolio. Main and sub-account logins are separate Identities. _Avoid_: User,
-Account, API key, Connection.
+**identity**: One platform login belonging to exactly one platform and
+portfolio. Main and sub-account logins are separate identities. _Avoid_: user,
+account, API key, connection.
 
-**Account Type**: A kind of wallet, trading account, or product account
-available within an Account Structure, or the application-owned Manual type.
+**account type**: A kind of wallet, trading account, or product account
+available within an account structure, or the application-owned manual type.
 
-**Account**: One Account Type selected for an Identity, including its fixed
-Manual Account. _Avoid_: Identity, Connection.
+**account**: One account type selected for an identity, including its fixed
+manual account. _Avoid_: identity, connection.
 
-**Portfolio Boundary**: The selected Accounts under enabled Identities whose
-value belongs to a Portfolio.
+**portfolio boundary**: The selected accounts under enabled identities whose
+value belongs to a portfolio.
 
-**Account Structure**: A Platform's arrangement of an Identity's Accounts,
-determining which Account Types exist. _Avoid_: Account Mode, account level,
-Margin Mode.
+**account structure**: A platform's arrangement of an identity's accounts,
+determining which account types exist. _Avoid_: account mode, account level,
+margin mode.
 
-**Margin Mode**: A Platform's observed margin regime for a whole trading Account
-within an Account Structure. _Avoid_: Account Structure, Position Margin
-Setting.
+**margin mode**: A platform's observed margin regime for a whole trading account
+within an account structure. _Avoid_: account structure, position margin
+setting.
 
-**Reported Margin Ratio**: An Account-level margin ratio supplied by its
-Platform, with the meaning specific to that Platform and Account Type. _Avoid_:
-a universal risk ratio across Platforms.
+**reported margin ratio**: An account-level margin ratio supplied by its
+platform, with the meaning specific to that platform and account type. _Avoid_:
+a universal risk ratio across platforms.
 
-**Connection**: An Identity's read-only Platform credentials, bound to an
-external login after successful validation. _Avoid_: Identity, Account.
+**connection**: An identity's read-only platform credentials, bound to an
+external login after successful validation. _Avoid_: identity, account.
 
-**Manual Account**: An Identity's always-selected Account for user-entered
-signed quantities missing from the Platform API.
+**manual account**: An identity's always-selected account for user-entered
+signed quantities missing from the platform API.
 
 ### Collection and holdings
 
-**Collection Cycle**: One scheduled or manual pass over a Portfolio's enabled
-Identities, ending in one Valuation Point after collection and valuation.
+**collection cycle**: One scheduled or manual pass over a portfolio's enabled
+identities, ending in one valuation point after collection and valuation.
 _Avoid_: refresh, sync, snapshot.
 
-**Collection Run**: The work for one Connection within a Collection Cycle.
+**collection run**: The work for one connection within a collection cycle.
 
-**Observation**: A normalized Platform fact obtained during a Collection Run,
-with its Platform observation time. _Avoid_: raw response, derived value.
+**observation**: A normalized platform fact obtained during a collection run,
+with its platform observation time. _Avoid_: raw response, derived value.
 
-**Account Report**: One Account's aligned collection facts: outcome, reported
-equity and account measures when available, Balances, Positions, Earn Positions,
-and Dual Positions. _Avoid_: equity, snapshot.
+**account report**: One account's aligned collection facts: outcome, reported
+equity and account measures when available, balances, positions, earn positions,
+and dual positions. _Avoid_: equity, snapshot.
 
-**Balance**: An Asset's equity in an Account Report, accompanied by
+**balance**: An asset's equity in an account report, accompanied by
 availability, liability, and unrealized-profit measures where known. _Avoid_:
 quantity, holding as synonyms for its equity measure.
 
-**Price Observation**: One stored market quote, retaining the requested
-Canonical Asset, actual source market, retrieval time, and optional source time.
-A cycle attempt stores one per Platform and Canonical Asset; retrievals in other
+**price observation**: One stored market quote, retaining the requested
+canonical asset, actual source market, retrieval time, and optional source time.
+A cycle attempt stores one per platform and canonical asset; retrievals in other
 cycles remain separate observations.
 
-**Position**: An open directional contract holding with side, size, prices, and
-margin measures in an Account Report. _Avoid_: Balance, Earn Position, Dual
-Position.
+**position**: An open directional contract holding with side, size, prices, and
+margin measures in an account report. _Avoid_: balance, earn position, dual
+position.
 
-**Position Mode**: Whether a contract Position is one-way, with opposing trades
+**position mode**: Whether a contract position is one-way, with opposing trades
 netted, or hedged, with separate long and short holdings. _Avoid_: direction,
-Margin Mode.
+margin mode.
 
-**Position Margin Setting**: Whether a Position uses cross collateral or
-isolated funds. _Avoid_: Account Margin Mode, Portfolio Margin.
+**position margin setting**: Whether a position uses cross collateral or
+isolated funds. _Avoid_: account margin mode, portfolio margin.
 
-**Position Size**: Base quantity for a linear contract or Quote face amount for
+**position size**: Base quantity for a linear contract or quote face amount for
 an inverse contract. _Avoid_: contract count, mark-derived settlement amount.
 
-**Position Margin**: The initial requirement excluding orders for a cross
-Position, or allocated funds excluding unrealized PnL for an isolated Position.
-_Avoid_: shared collateral allocation, Account margin requirement.
+**position margin**: The initial requirement excluding orders for a cross
+position, or allocated funds excluding unrealized PnL for an isolated position.
+_Avoid_: shared collateral allocation, account margin requirement.
 
-**Complete Set**: All Balances, Positions, Earn Positions, and Dual Positions
-held by one Account according to a successful Account Report.
+**complete set**: All balances, positions, earn positions, and dual positions
+held by one account according to a successful account report.
 
-**Stale**: Value carried from an earlier successful Account Report with
+**stale**: Value carried from an earlier successful account report with
 compatible scope after collection fails. _Avoid_: missing, incomplete as
 synonyms for freshness.
 
-**Earn Position**: A descriptive holding in a selected Earn Account, at the
-Platform's supplied product, strategy, or individual-position granularity.
+**earn position**: A descriptive holding in a selected earn account, at the
+platform's supplied product, strategy, or individual-position granularity.
 
-**Dual Investment**: A product accepting principal in one Asset and settling in
-that Asset or its paired Asset according to target price and expiry.
+**dual investment**: A product accepting principal in one asset and settling in
+that asset or its paired asset according to target price and expiry.
 
-**Dual Position**: One outstanding Dual Investment subscription with its
-principal and available product terms. _Avoid_: Balance, futures Position.
+**dual position**: One outstanding dual investment subscription with its
+principal and available product terms. _Avoid_: balance, futures position.
 
 ### Assets and valuation
 
-**Asset**: A unit of financial value recognized within one Portfolio and
-Platform under its own symbol and mapped to a Canonical Asset. Assets on
-different Platforms remain distinct even when their symbols match. _Avoid_:
-Platform Asset, Asset Listing, Listing.
+**asset**: A unit of financial value recognized within one portfolio and
+platform under its own symbol and mapped to a canonical asset. Assets on
+different platforms remain distinct even when their symbols match. _Avoid_:
+platform asset, asset listing, listing.
 
-**Canonical Asset**: A financial identity across Platforms within one Portfolio,
-identified by a normalized symbol, such as BTC or USDT. _Avoid_: Asset as a
+**canonical asset**: A financial identity across platforms within one portfolio,
+identified by a normalized symbol, such as BTC or USDT. _Avoid_: asset as a
 synonym.
 
-**Futures Contract**: A Portfolio-owned, Platform-specific perpetual or delivery
+**futures contract**: A portfolio-owned, platform-specific perpetual or delivery
 contract: one symbol with one immutable set of observed terms, including
-settlement Asset, expiry, and contract size. Changed terms record another
-Futures Contract under the same symbol; identical terms reuse it, including A →
-B → A. Observation times do not establish when the Platform made those terms
-effective. _Avoid_: Instrument, Asset, trading pair, contract version.
+settlement asset, expiry, and contract size. Changed terms record another
+futures contract under the same symbol; identical terms reuse it, including A →
+B → A. Observation times do not establish when the platform made those terms
+effective. _Avoid_: instrument, asset, trading pair, contract version.
 
-**Asset Symbol**: An Asset's code within its Platform, which may differ from its
-Canonical Asset Symbol.
+**asset symbol**: An asset's code within its platform, which may differ from its
+canonical asset symbol.
 
-**Canonical Asset Symbol**: The normalized code identifying a Canonical Asset
-across Platforms.
+**canonical asset symbol**: The normalized code identifying a canonical asset
+across platforms.
 
-**Futures Symbol**: A Futures Contract's code within its Platform. Contracts
-with different terms can share it; it identifies neither an open Position nor a
-Base/Quote pair.
+**futures symbol**: A futures contract's code within its platform. Contracts
+with different terms can share it; it identifies neither an open position nor a
+base/quote pair.
 
-**Valuation Asset**: USD, the Canonical Asset used as the unit of all derived
+**valuation asset**: USD, the canonical asset used as the unit of all derived
 financial values in Plutus.
 
-**Account Valuation**: One Account's USD value at a Valuation Point, qualified
+**account valuation**: One account's USD value at a valuation point, qualified
 by valuation method, freshness, and completeness. _Avoid_: unqualified equity,
-Balance total.
+balance total.
 
-**Valuation Point**: A Portfolio's total of Account Valuations at the end of one
-Collection Cycle. _Avoid_: snapshot, projection, generation.
+**valuation point**: A portfolio's total of account valuations at the end of one
+collection cycle. _Avoid_: snapshot, projection, generation.
 
-**Incomplete**: A valuation or comparison for which required, non-excluded value
+**incomplete**: A valuation or comparison for which required, non-excluded value
 or another required input cannot be determined. _Avoid_: zero, stale as synonyms
 for completeness.
 
-**Asset Exclusion**: A reviewed, reversible Portfolio rule excluding an Asset's
-Balances from future calculated Account Valuations.
+**asset exclusion**: A reviewed, reversible portfolio rule excluding an asset's
+balances from future calculated account valuations.
 
 ### Flows and periods
 
-**Capital Flow**: A User-recorded contribution or withdrawal crossing the
-Portfolio Boundary, expressed as Canonical Asset quantity at an effective time,
-with an optional Account. _Avoid_: internal transfer, balance change, Manual
+**capital flow**: A user-recorded contribution or withdrawal crossing the
+portfolio boundary, expressed as canonical asset quantity at an effective time,
+with an optional account. _Avoid_: internal transfer, balance change, manual
 adjustment.
 
-**Boundary Event**: An Account entering or leaving the Portfolio Boundary
-through selection, deselection, or Identity archive.
+**boundary event**: An account entering or leaving the portfolio boundary
+through selection, deselection, or identity archive.
 
-**Value Change**: The absolute USD difference between observed Valuation Points
-after accounting for Capital Flows and Boundary Events. _Avoid_: profit, P&L,
+**value change**: The absolute USD difference between observed valuation points
+after accounting for capital flows and boundary events. _Avoid_: profit, P&L,
 return, performance.
 
-**Period Close**: The last Valuation Point within a calendar day, ISO week,
-month, quarter, or year in the Portfolio's timezone.
+**period close**: The last valuation point within a calendar day, ISO week,
+month, quarter, or year in the portfolio's timezone.
 
-**Daily Snapshot**: The final whole Valuation Point retained for an older local
+**daily snapshot**: The final whole valuation point retained for an older local
 day when detail cleanup runs. Its cycle, timestamp, total, and source evidence
 remain unchanged; timezone edits do not replace it.

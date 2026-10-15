@@ -16,7 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
-// Account Types of the bybit_uta_2_0 Account Structure.
+// Account types of the bybit_uta_2_0 account structure.
 const (
 	TypeDualInvestment                      = adapters.TypeDualInvestment
 	TypeUnified        adapters.AccountType = "unified"
@@ -39,12 +39,12 @@ var marginModes = map[string]adapters.MarginMode{
 	"PORTFOLIO_MARGIN": adapters.MarginBybitPM,
 }
 
-// Options configures an Adapter. Zero values select production defaults.
+// Options configures an adapter. Zero values select production defaults.
 type Options struct {
 	Host string
 	HTTP *http.Client
 	Now  func() time.Time
-	// HTTPFactory creates a client with the Adapter timeout when HTTP is nil.
+	// HTTPFactory creates a client with the adapter timeout when HTTP is nil.
 	HTTPFactory func(time.Duration) *http.Client
 }
 
@@ -102,7 +102,7 @@ func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, stru
 	return adapters.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
 }
 
-// Recheck on validation and every run: Platform settings can change externally.
+// Recheck on validation and every run: platform settings can change externally.
 func readMarginMode(ctx context.Context, c *client, structure adapters.AccountStructure) (adapters.MarginMode, error) {
 	if structure != adapters.StructureBybitUTA2 {
 		return "", adapters.UnsupportedStructure(adapters.PlatformBybit, structure)
@@ -147,7 +147,7 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		return a.earn(ctx, c, prices, slices.Contains(accounts, TypeEarn))
 	})
 	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
-		//nolint:exhaustive // Manual is application-owned and never enters private Adapter collection.
+		//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 		switch accountType {
 		case TypeUnified:
 			return a.unified(ctx, c, mode)

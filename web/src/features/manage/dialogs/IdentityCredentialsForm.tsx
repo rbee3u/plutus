@@ -131,6 +131,7 @@ export function IdentityCredentialsForm({
           {form.futures ? ` (${spotRequired ? "required" : "optional"})` : null}
         </span>
         <PasswordInput
+          fieldName={form.primary.keyLabel}
           autoComplete="off"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
@@ -154,6 +155,7 @@ export function IdentityCredentialsForm({
           />
         ) : (
           <PasswordInput
+            fieldName={form.primary.secretLabel}
             autoComplete="off"
             value={apiSecret}
             onChange={(event) => setApiSecret(event.target.value)}
@@ -181,7 +183,7 @@ export function IdentityCredentialsForm({
       {form.futures ? (
         <div className={styles.credentialsGroup}>
           <span className={styles.credentialsGroupTitle}>
-            {form.primary.keyLabel.includes("Spot") ? "Spot Credentials" : "Primary Credentials"}
+            {form.primary.keyLabel.includes("Spot") ? "Spot credentials" : "Primary credentials"}
           </span>
           {primaryFields}
         </div>
@@ -191,12 +193,13 @@ export function IdentityCredentialsForm({
       {form.help ? <p className={shared.muted}>{form.help}</p> : null}
       {form.futures ? (
         <div className={styles.credentialsGroup}>
-          <span className={styles.credentialsGroupTitle}>Futures Credentials</span>
+          <span className={styles.credentialsGroupTitle}>Futures credentials</span>
           <label className={shared.field}>
             <span>
               {form.futures.keyLabel} ({futuresRequired ? "required" : "optional"})
             </span>
             <PasswordInput
+              fieldName={form.futures.keyLabel}
               autoComplete="off"
               value={futuresApiKey}
               onChange={(event) => setFuturesApiKey(event.target.value)}
@@ -208,6 +211,7 @@ export function IdentityCredentialsForm({
               {form.futures.secretLabel} ({futuresRequired ? "required" : "optional"})
             </span>
             <PasswordInput
+              fieldName={form.futures.secretLabel}
               autoComplete="off"
               value={futuresApiSecret}
               onChange={(event) => setFuturesApiSecret(event.target.value)}
@@ -220,6 +224,7 @@ export function IdentityCredentialsForm({
         <label className={shared.field}>
           <span>{passphraseRequired ? "Passphrase" : "Passphrase (optional)"}</span>
           <PasswordInput
+            fieldName="Passphrase"
             autoComplete="off"
             value={passphrase}
             onChange={(event) => setPassphrase(event.target.value)}
@@ -230,8 +235,7 @@ export function IdentityCredentialsForm({
       {confirmRemove ? (
         <div className={styles.credentialsConfirmCard}>
           <span className={styles.credentialsConfirmText}>
-            Remove stored credentials? Connection sync will be disabled until new credentials are
-            provided.
+            Remove credentials? Add new ones and enable the connection to resume.
           </span>
           <div className={shared.dialogActions}>
             <ActionButton

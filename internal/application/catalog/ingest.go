@@ -16,7 +16,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// EnsureAsset upserts an asset inside q and returns its ID and current Canonical Asset Symbol.
+// EnsureAsset upserts an asset inside q and returns its ID and current canonical asset symbol.
 func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, symbol string, observedAt time.Time) (uuid.UUID, string, error) {
 	normalized, err := NormalizeSymbol(symbol)
 	if err != nil {
@@ -47,7 +47,7 @@ func (s *Service) EnsureAsset(ctx context.Context, q *sqlcgen.Queries, portfolio
 	return stored, row.CanonicalAssetSymbol, nil
 }
 
-// EnsureFuturesContract returns the Futures Contract whose terms this position
+// EnsureFuturesContract returns the futures contract whose terms this position
 // observed. A -> B -> A reuses A; observation bounds are metadata, not
 // effective dates.
 func (s *Service) EnsureFuturesContract(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.UUID, platform adapters.Platform, in *adapters.FuturesContract, observedAt time.Time) (uuid.UUID, error) {

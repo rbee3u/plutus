@@ -44,7 +44,7 @@ type Overview struct {
 	Sparkline              []valuation.Point
 }
 
-// TreeIdentity groups Accounts of one Identity.
+// TreeIdentity groups accounts of one identity.
 type TreeIdentity struct {
 	ID               uuid.UUID
 	DisplayName      string
@@ -55,7 +55,7 @@ type TreeIdentity struct {
 	Accounts         []valuation.AccountValuation
 }
 
-// TreePlatform groups Identities of one Platform.
+// TreePlatform groups identities of one platform.
 type TreePlatform struct {
 	Platform     string
 	Label        string
@@ -64,7 +64,7 @@ type TreePlatform struct {
 	Identities   []TreeIdentity
 }
 
-// Tree is the Platform → Identity → Account read model.
+// Tree is the platform → identity → account read model.
 type Tree struct {
 	Context      Context
 	TotalUSD     *string
@@ -73,7 +73,7 @@ type Tree struct {
 	Issues       []valuation.Issue
 }
 
-// BalanceRow is one Balance with its USD value.
+// BalanceRow is one balance with its USD value.
 type BalanceRow struct {
 	ManualChange         string
 	ManualQuantity       *string
@@ -102,7 +102,7 @@ type BalanceRow struct {
 	equityUSDRat         *big.Rat
 }
 
-// PositionRow is one Position with its USD notional.
+// PositionRow is one position with its USD notional.
 type PositionRow struct {
 	AccountID               uuid.UUID
 	AccountName             string
@@ -144,7 +144,7 @@ type PositionRow struct {
 	ReportObservedAt        *time.Time
 }
 
-// AccountView is one Account's current report with its Balances or Positions.
+// AccountView is one account's current report with its balances or positions.
 type AccountView struct {
 	Context       Context
 	Account       valuation.AccountValuation
@@ -155,7 +155,7 @@ type AccountView struct {
 	Issues        []valuation.Issue
 }
 
-// ListFilter selects flat Balance or Position rows.
+// ListFilter selects flat balance or position rows.
 type ListFilter struct {
 	Platform   string
 	IdentityID *uuid.UUID
@@ -176,7 +176,7 @@ type FlatList[T any] struct {
 	Issues       []valuation.Issue
 }
 
-// PointDetail is one point with its Account Valuations.
+// PointDetail is one point with its account valuations.
 type PointDetail struct {
 	Point    valuation.Point
 	Accounts []valuation.AccountValuation

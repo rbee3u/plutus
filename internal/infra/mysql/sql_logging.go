@@ -247,7 +247,7 @@ func recordSQL(ctx context.Context, logger *slog.Logger, operation, query string
 		level = slog.LevelError
 		attrs = append(attrs, slog.Any("err", err))
 	}
-	logger.LogAttrs(ctx, level, "sql execution", attrs...)
+	logger.LogAttrs(ctx, level, "SQL execution", attrs...)
 }
 
 type driverLogger struct{ logger *slog.Logger }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dev (local): rebuild the embedded SPA, reset plutus_local with the walkthrough seed, then serve on :8080.
+# Dev (local): Rebuild the embedded SPA, reset plutus_local with the walkthrough seed, then serve on :8080.
 # Use local-serve.sh to keep the existing data. Does not touch plutus_agent.
 set -euo pipefail
 

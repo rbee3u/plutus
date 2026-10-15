@@ -37,7 +37,7 @@ import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 const NO_POINT =
-  "No Valuation Point in this window. Enable a connection and run a Collection Cycle.";
+  "No valuation point in this window. Enable a connection and run a collection cycle.";
 
 export function ValuationPointsPage() {
   const history = useHistoryWindow();
@@ -123,9 +123,9 @@ export function ValuationPointsPage() {
   return (
     <section className={shared.wide}>
       <HistoryFilters state={history} />
-      <QueryRecovery query={points} fallback="Valuation Points could not be loaded." />
+      <QueryRecovery query={points} fallback="Valuation points could not be loaded." />
       {points.isPending && !series ? (
-        <p className={shared.muted}>Loading Valuation Points.</p>
+        <p className={shared.muted}>Loading valuation points.</p>
       ) : null}
       {series ? (
         <ChartBlock
@@ -135,7 +135,7 @@ export function ValuationPointsPage() {
           empty={
             series.items.length === 0
               ? NO_POINT
-              : "Only one Valuation Point in this window; the chart needs two."
+              : "Only one valuation point in this window; the chart needs two."
           }
         />
       ) : null}
@@ -171,7 +171,7 @@ export function ValuationPointsPage() {
           empty={
             closes.isPending
               ? "Loading period closes."
-              : "No periods yet. Periods appear once the Portfolio has a Valuation Point."
+              : "No periods yet. Periods appear once the portfolio has a valuation point."
           }
         />
         <HistoryPager
@@ -182,18 +182,18 @@ export function ValuationPointsPage() {
         />
       </section>
       <section className={shared.panel} aria-labelledby="raw-points-heading">
-        <h2 id="raw-points-heading">Raw Valuation Points</h2>
-        <QueryRecovery query={records} fallback="Raw Valuation Points could not be loaded." />
+        <h2 id="raw-points-heading">Raw valuation points</h2>
+        <QueryRecovery query={records} fallback="Raw valuation points could not be loaded." />
         <DataTable
-          caption="Raw Valuation Points"
-          empty={records.isPending ? "Loading raw Valuation Points." : NO_POINT}
+          caption="Raw valuation points"
+          empty={records.isPending ? "Loading raw valuation points." : NO_POINT}
           rowClassName={(row) => (row.id === cycleId ? shared.openRow : undefined)}
           openKey={cycleId}
           onRowClick={(key) => update({ point: key === cycleId ? "" : key })}
           detailId={POINT_DETAIL_ID}
           renderDetail={() => (
             <>
-              <QueryRecovery query={detail} fallback="The Valuation Point could not be loaded." />
+              <QueryRecovery query={detail} fallback="The valuation point could not be loaded." />
               {detailMatches && detail.data ? (
                 <PointDetail detail={detail.data} timezone={timezone} />
               ) : null}
@@ -207,7 +207,7 @@ export function ValuationPointsPage() {
           })}
         />
         <HistoryPager
-          label="Raw Valuation Points"
+          label="Raw valuation points"
           pager={pointPager}
           total={records.data?.page.total ?? 0}
           busy={records.isFetching}

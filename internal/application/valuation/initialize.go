@@ -22,10 +22,10 @@ import (
 
 const historyBatch = 64
 
-// InitializeHistory writes a point for every succeeded cycle of a Portfolio
+// InitializeHistory writes a point for every succeeded cycle of a portfolio
 // that has none yet, in completion order. It shares WritePoint's calculation
 // but loads sources in batches, carries the previous point in memory, and skips
-// the per-Account evidence rereads. Only development seeds use it; their tests
+// the per-account evidence rereads. Only development seeds use it; their tests
 // compare every edge-case point with WritePoint on the same source facts.
 func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) error {
 	_, err := mysql.WithWriteContext(ctx, s.db, func(ctx context.Context) (struct{}, error) {
@@ -35,7 +35,7 @@ func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) 
 		}
 		if _, err := q.GetLatestValuationPoint(ctx, portfolioID[:]); !errors.Is(err, sql.ErrNoRows) {
 			if err == nil {
-				err = errors.New("history initialization requires a Portfolio without Valuation Points")
+				err = errors.New("history initialization requires a portfolio without valuation points")
 			}
 			return struct{}{}, err
 		}
@@ -78,12 +78,12 @@ func (s *Service) InitializeHistory(ctx context.Context, portfolioID uuid.UUID) 
 				}
 				accounts, err := s.valueHistoryCycle(ctx, prices, excluded, reports[cycleID], inputs)
 				if err != nil {
-					return struct{}{}, fmt.Errorf("initialize Valuation Point %s: %w", cycleID, err)
+					return struct{}{}, fmt.Errorf("initialize valuation point %s: %w", cycleID, err)
 				}
 				evaluatedAt := cycle.CollectionFinishedAt.Time.UTC().Truncate(time.Microsecond)
 				point := buildPoint(portfolioID, cycleID, evaluatedAt, accounts, previous)
 				if err := s.insertHistoryPoint(ctx, q, &point, accounts); err != nil {
-					return struct{}{}, fmt.Errorf("initialize Valuation Point %s: %w", cycleID, err)
+					return struct{}{}, fmt.Errorf("initialize valuation point %s: %w", cycleID, err)
 				}
 				previous = previousFromAccounts(accounts)
 				points = append(points, point)
@@ -182,7 +182,7 @@ func (s *Service) valueHistoryCycle(ctx context.Context, book priceResolver, exc
 
 // Seed inputs are immutable and finite. Retain the ordinary price selection's
 // source-time ordering, retrieval cutoff, and staleness window without issuing
-// the same historical lookup for each Account.
+// the same historical lookup for each account.
 type historyPrices struct {
 	observations map[[2]string][]sqlcgen.PriceObservation
 	cache        map[priceKey]map[string]PriceSelection
@@ -262,9 +262,9 @@ func (s *Service) insertHistoryPoint(ctx context.Context, q *sqlcgen.Queries, po
 		CycleID:                point.CycleID[:],
 		EvaluatedAt:            point.EvaluatedAt,
 		TotalUsd:               point.TotalUSD,
-		AccountCount:           uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
-		StaleAccountCount:      uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
-		IncompleteAccountCount: uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory Account slice.
+		AccountCount:           uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory account slice, far below 2^32.
+		StaleAccountCount:      uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory account slice.
+		IncompleteAccountCount: uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory account slice.
 		CalculationVersion:     CalculationVersion,
 	}); err != nil {
 		return err

@@ -37,7 +37,7 @@ export function DualPositionsPage() {
       {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
-          label="Active Subscriptions"
+          label="Subscriptions"
           value={data.page.total ?? data.items.length}
         />
       ) : null}
@@ -50,24 +50,26 @@ export function DualPositionsPage() {
         empty={
           query.isError && !data ? (
             <TableEmptyState
-              title="Dual Investment subscriptions could not be loaded"
+              title="Dual investment subscriptions could not be loaded"
               help="Check the notice above to retry the request."
             />
           ) : !data?.context.cycleId ? (
             <TableEmptyState
-              title="No Valuation Point yet"
-              help="Run a Collection Cycle to create the first point."
+              title="No valuation point yet"
+              help="Run a collection cycle to create the first point."
             />
           ) : filters.hasFilters ? (
             <TableEmptyState
-              title="No Dual Investment subscriptions match these filters"
+              title="No dual investment subscriptions match these filters"
               help="Try adjusting your platform, identity, or pair filter."
             />
           ) : undefined
         }
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
-      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
+      {data?.context.cycleId ? (
+        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+      ) : null}
     </section>
   );
 }

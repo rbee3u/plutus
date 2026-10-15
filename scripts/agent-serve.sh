@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dev (agent): rebuild the SPA and serve the existing plutus_agent data on :8081 without resetting it.
+# Dev (agent): Rebuild the SPA and serve the existing plutus_agent data on :8081 without resetting it.
 # Use agent-wipe-and-serve.sh for a fresh seeded database. Does not touch plutus_local.
 set -euo pipefail
 

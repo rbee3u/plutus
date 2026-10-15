@@ -51,7 +51,7 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 	earn := reportOf(t, batch, TypeEarn)
 	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 ||
 		balanceOf(t, earn, "USDT").Equity != "2" || balanceOf(t, earn, "ETH").Equity != "0.01" {
-		t.Fatalf("Dual principal must not enter ordinary Earn: %+v", earn)
+		t.Fatalf("Dual principal must not enter ordinary earn: %+v", earn)
 	}
 }
 
@@ -94,7 +94,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 					t.Fatalf("report: %+v", report)
 				}
 				if report.AccountType == TypeEarn && len(report.Balances) != 0 {
-					t.Fatal("dual principal leaked into Earn")
+					t.Fatal("dual principal leaked into earn")
 				}
 				if report.AccountType == TypeDualInvestment {
 					if len(report.DualPositions) != 2 {

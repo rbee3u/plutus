@@ -19,7 +19,7 @@ allow_reset = true
 cookie_suffix = "agent"
 
 [collection]
-# Dev uses the deterministic offline Adapter; test and prod use live Adapters.
+# Dev uses the deterministic offline adapter; test and prod use live adapters.
 fake_adapter = true
 
 [collection.proxy]

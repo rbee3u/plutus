@@ -115,7 +115,7 @@ func TestIdempotencyCommitsBusinessAndResponseTogether(t *testing.T) {
 	if record, err := store.Run(h.ctx, h.userID, "POST", "/portfolios", "same-key", []byte(`{"name":"atomic-create"}`), create); err != nil || !equalJSON(record.Body, body) || calls.Load() != 1 {
 		t.Fatalf("replay after delete: %v", err)
 	}
-	// Invalid success serialization must roll back the Portfolio and the key.
+	// Invalid success serialization must roll back the portfolio and the key.
 	_, err := store.Run(h.ctx, h.userID, "POST", "/portfolios", "rollback", nil, func(ctx context.Context) (idempotency.Record, error) {
 		_, err := h.services.Portfolios.Create(ctx, h.userID, portfolio.CreateInput{Name: "must-rollback"})
 		return idempotency.Record{Status: 201, Body: []byte(`invalid-json`)}, err
@@ -262,7 +262,7 @@ func TestActiveLoginBindingIsLocalAndReleasedOnlyByArchive(t *testing.T) {
 	third := copyHarness.createIdentity("third", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
 	third = copyHarness.storeCredentials(third, "same-login")
 	if _, _, err := h.identities.Enable(h.ctx, other.ID, third.ID, third.Version, action); err != nil {
-		t.Fatalf("same login across Portfolios: %v", err)
+		t.Fatalf("same login across portfolios: %v", err)
 	}
 	if _, err := h.identities.Archive(h.ctx, h.portfolioID, first.ID, first.Version, action); err != nil {
 		t.Fatal(err)

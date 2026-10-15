@@ -1,24 +1,24 @@
 # Binance verification
 
 Current evidence and pending exchange-app checks. See the
-[Adapter mapping](./mapping.md) for field semantics,
+[adapter mapping](./mapping.md) for field semantics,
 [evidence workflow](../evidence-workflow.md) for recording and promotion, and
-[Earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
+[earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
 
 ## Current evidence
 
 **34 reviewed responses**, recorded on 2026-09-30 UTC and owner-reviewed on
-2026-10-01 Asia/Shanghai. They cover Portfolio Margin One-way/Hedge, shared
-wallets and products, Classic Single-Asset One-way/Hedge, and Classic
-Multi-Assets. These are separate interface observations, not an atomic Account
+2026-10-01 Asia/Shanghai. They cover portfolio margin One-way/Hedge, shared
+wallets and products, classic Single-Asset One-way/Hedge, and classic
+Multi-Assets. These are separate interface observations, not an atomic account
 snapshot or a reconciled total.
 
-The initial account flags directly confirm PM and Classic respectively; the
-Classic mode response confirms Single-Asset. Later Classic Hedge structure and
+The initial account flags directly confirm PM and classic respectively; the
+classic mode response confirms Single-Asset. Later classic Hedge structure and
 Single-Asset settings are owner-declared, with earlier flag/mode captures as
 separate observations. Same-contract isolated LONG/SHORT sides are directly
 observed. Multi-Assets is directly confirmed by `multiAssetsMargin=true`; its
-Classic structure is owner-declared and cross settings are consistent with zero
+classic structure is owner-declared and cross settings are consistent with zero
 isolated fields, not separately verified through symbolConfig. PM Hedge
 structure is owner-declared; nonempty PAPI LONG/SHORT rows directly establish
 Hedge positions.
@@ -26,11 +26,11 @@ Hedge positions.
 ## Important observations
 
 - PM/shared samples include borrowing and interest, UM/CM perpetuals, flexible
-  and locked Savings, and both Dual directions. Classic One-way includes funded
+  and locked savings, and both dual directions. Classic One-way includes funded
   isolated pairs sharing USDT and cross/isolated perpetual/delivery positions.
   Multi-Assets includes USDT/ETH collateral and same-contract Hedge rows.
 - Dual `orderId` is integer in recorded responses; compact synthetic examples
-  use strings. Runtime accepts either. Real Cross Margin has
+  use strings. Runtime accepts either. Real cross margin has
   `totalCollateralValueInUSDT`, unlike the uppercase
   `TotalCollateralValueInUSDT` in documentation and synthetic examples; the
   field is not mapped.
@@ -50,7 +50,7 @@ Market lists retain representative contracts; configuration responses were not
 pruned by a new selection rule. Multi-Assets and PM Hedge responses retain all
 returned business rows.
 
-No accepted evidence was replaced. Four corrected Classic candidates closed
+No accepted evidence was replaced. Four corrected classic candidates closed
 funded-isolated-pair and isolated-delivery preparation gaps before promotion;
 the earlier candidates were never accepted evidence. Future accepted
 replacements follow the
@@ -58,7 +58,7 @@ replacements follow the
 
 ## Remaining gaps
 
-- PM delivery-specific observations, Classic CM cross Hedge positions, and
+- PM delivery-specific observations, classic CM cross Hedge positions, and
   unobserved product/settings combinations remain unverified.
 - Frozen representative UM metadata lacks the exact ETHUSDT and ETHUSDT_261225
   rows. Observed positions do not imply complete runtime metadata coverage;
@@ -188,7 +188,7 @@ settings do not limit an interface's applicability.
   [pm](../../../internal/platform/binance/evidence/sapi_v1_account_info.pm.json)
   — PM flag true; owner-declared PM main account.
   [classic](../../../internal/platform/binance/evidence/sapi_v1_account_info.classic.json)
-  — Classic flag false; margin/futures enabled.
+  — classic flag false; margin/futures enabled.
 
 ### [`spot: GET /sapi/v1/asset/wallet/balance`](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
 
@@ -197,7 +197,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/binance/testdata/sapi_v1_asset_wallet_balance.json).
 - Recorded:
   [sample](../../../internal/platform/binance/evidence/sapi_v1_asset_wallet_balance.json)
-  — Wallet totals retained; no cross-interface total acceptance.
+  — wallet totals retained; no cross-interface total acceptance.
 
 ### [`spot: GET /sapi/v1/dci/product/positions`](https://developers.binance.com/en/docs/catalog/investment-and-services-dual-investment/api/rest-api/trade#get-dual-investment-positions)
 
@@ -255,7 +255,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/binance/testdata/sapi_v1_asset_get_funding_asset.json).
 - Recorded:
   [sample](../../../internal/platform/binance/evidence/sapi_v1_asset_get_funding_asset.json)
-  — Nonempty Funding wallet.
+  — Nonempty funding wallet.
 
 ### [`spot: POST /sapi/v3/asset/getUserAsset`](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/asset)
 
@@ -292,7 +292,7 @@ settings do not limit an interface's applicability.
   [sample](../../../internal/platform/binance/testdata/fapi_v1_symbolConfig.json).
 - Recorded:
   [one_way](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.one_way.json)
-  — Cross/isolated settings and integer leverage; all 919 rows retained.
+  — cross/isolated settings and integer leverage; all 919 rows retained.
   [hedge](../../../internal/platform/binance/evidence/fapi_v1_symbolConfig.hedge.json)
   — ETHUSDT ISOLATED, integer leverage 20; one symbol-level entry for both
   sides; all 919 rows retained.
@@ -334,46 +334,46 @@ settings do not limit an interface's applicability.
 
 Status: pending. This is an acceptance procedure, not a record of completed
 checks. Recorded evidence and synthetic tests do not establish a reconciled
-Account total. Human operators execute it on the remote test environment; agent
+account total. Human operators execute it on the remote test environment; agent
 sessions remain limited to the isolated development instance.
 
 Run these on the test environment against the Binance app on the same account,
-within a few minutes of a collection. Items 5 and 6 need a Classic Trading
+within a few minutes of a collection. Items 5 and 6 need a classic trading
 account.
 
 1. **Identity and structure**: validation stores the UID shown under the app's
    profile. Validating the account as the other structure fails with
    `unsupported`, naming both. After switching structure in the app, the next
-   Collection Run fails the same way without reading any Account.
-2. **Portfolio Margin equity**: `Equity` equals the app's Portfolio Margin
+   collection run fails the same way without reading any account.
+2. **Portfolio margin equity**: `Equity` equals the app's portfolio margin
    "Total equity" (actual equity) in USD. `AdjEq` equals the adjusted,
-   collateral-rate equity. `UniMMR` equals the uniMMR on the Portfolio Margin
+   collateral-rate equity. `UniMMR` equals the uniMMR on the portfolio margin
    page.
-3. **Portfolio Margin balances**: each coin's equity matches the app's per-asset
+3. **Portfolio margin balances**: each coin's equity matches the app's per-asset
    balance including unrealized PnL. A coin with a COIN-M loss can be negative.
 4. **Positions**: every open USDⓈ-M and COIN-M position appears with the same
-   direction, normalized Size (USDⓈ-M in Base coins, COIN-M in Quote face
+   direction, normalized size (USDⓈ-M in base coins, COIN-M in quote face
    currency), entry price, and leverage. Liquidation prices agree within
    rounding.
-5. **Classic margin**: each Cross Margin coin's equity equals its net asset and
+5. **Classic margin**: each cross margin coin's equity equals its net asset and
    its liability equals its borrowed amount, and the margin level matches the
-   app's. Isolated Margin shows each coin once, summed over its pairs. A User
-   without margin sees both Accounts ok and empty.
+   app's. Isolated margin shows each coin once, summed over its pairs. A user
+   without margin sees both accounts ok and empty.
 6. **Classic futures**: USDⓈ-M per-asset margin balances match the futures
    wallet. In Multi-Assets Mode, `AdjEq` equals the margin balance and the
-   maintenance margin ratio equals the Margin Ratio of the futures page. In
+   maintenance margin ratio equals the margin ratio of the futures page. In
    Single-Asset Mode, those figures are empty. COIN-M balances are per coin, and
-   source position quantities are in contracts; displayed Size is Quote face
+   source position quantities are in contracts; displayed size is quote face
    amount.
-7. **Spot, funding, and Earn**: coin amounts match the Spot and Funding wallets,
+7. **Spot, funding, and earn**: coin amounts match the Spot and funding wallets,
    and flexible-earn receipts do not appear under spot. Simple Earn flexible and
-   locked amounts match the Earn page. Each running dual investment position
-   appears in the separate Dual Investment Account at its subscription amount in
+   locked amounts match the earn page. Each running dual investment position
+   appears in the separate dual investment account at its subscription amount in
    the deposit coin until it is paid out, and a settled one no longer appears.
-   The Earn Account succeeds. Holding an Earn product Plutus does not read makes
-   it Stale with both USD amounts.
-8. **Account values**: the calculated USD value of every Account without
+   The earn account succeeds. Holding an earn product Plutus does not read makes
+   it stale with both USD amounts.
+8. **Account values**: the calculated USD value of every account without
    reported equity is within about 0.1% of the app's USD value of that wallet.
 9. **Failures**: removing the server IP from the key's whitelist sets the
-   Connection `invalid` with a `-2015` detail at the next cycle. Restoring it
+   connection `invalid` with a `-2015` detail at the next cycle. Restoring it
    and validating again resumes collection.

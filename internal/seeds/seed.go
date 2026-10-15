@@ -10,7 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/fake"
 )
 
-// Seed contains source SQL and the ownership needed to initialize valuations and Connections.
+// Seed contains source SQL and the ownership needed to initialize valuations and connections.
 type Seed struct {
 	SQL        string
 	Live       []LiveIdentity
@@ -29,7 +29,7 @@ func BuildAt(now time.Time) (Seed, error) {
 	b := newBuilder()
 	b.comment("Deterministic offline walkthrough; synthetic values, not recorded market history")
 	b.comment("Scratch login: alice / Alice=123456")
-	b.comment("Apply initializes Valuation Points from normalized Account Reports before commit.")
+	b.comment("Apply initializes valuation points from normalized account reports before commit.")
 	created := anchor.AddDate(0, -3, -10)
 	b.user(userSpec{ID: UserAlice, Username: "alice", Hash: alicePasswordHash, CreatedAt: created})
 	portfolios := []portfolioSpec{

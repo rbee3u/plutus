@@ -9,10 +9,10 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// earnBucket is the asset-overview account type that carries Bybit's own valuation of Earn.
+// earnBucket is the asset-overview account type that carries Bybit's own valuation of earn.
 const earnBucket = "Earn"
 
-// dualAssetStatuses are the Dual Asset position states Bybit documents. Both
+// dualAssetStatuses are the dual asset position states Bybit documents. Both
 // hold principal that has not been settled yet, so both count (ADR 0005).
 var dualAssetStatuses = map[string]bool{"Active": true, "Redeeming": true}
 
@@ -33,8 +33,8 @@ type dualAssetPosition struct {
 	YieldStartAt   string `json:"yieldStartAt"`
 }
 
-// earn returns separate savings and Dual reports. Their combined principal is checked
-// against Bybit's Earn valuation so unsupported holdings fail selected dependent Accounts.
+// earn returns separate savings and dual reports. Their combined principal is checked
+// against Bybit's earn valuation so unsupported holdings fail selected dependent accounts.
 func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich bool) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	earnPositions := []adapters.EarnPosition{}
@@ -58,7 +58,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -72,7 +72,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, prices spotPrices, enrich
 
 // savings adds the principal of one savings category to totals. `amount` is the principal,
 // pending and early redemptions included. Flexible `claimableYield` is not part of the holding:
-// on the recorded account Bybit's own Earn value matched the summed amounts, not amounts plus
+// on the recorded account Bybit's own earn value matched the summed amounts, not amounts plus
 // yield. Fixed-term `effectiveAmount` lags the principal by a day and is not used either. Neither
 // endpoint pages, so a page cursor means a list Plutus cannot read to its end.
 func savings(ctx context.Context, c *client, ep endpoint, category string, totals adapters.Totals, positions *[]adapters.EarnPosition) error {
@@ -107,9 +107,9 @@ func savings(ctx context.Context, c *client, ep endpoint, category string, total
 	return nil
 }
 
-// dualAssets preserves each open Dual Asset position and its principal in the coin invested:
+// dualAssets preserves each open dual asset position and its principal in the coin invested:
 // the quote coin of a BuyLow position and the base coin of a SellHigh one. A state Bybit does not
-// document fails the Account instead of guessing whether its principal is still held.
+// document fails the account instead of guessing whether its principal is still held.
 func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error) {
 	rows, err := pages[dualAssetPosition](ctx, c, epDualAssets, nil)
 	if err != nil {
@@ -124,7 +124,7 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 			return nil, adapters.Malformed(where, "dual category")
 		}
 		if !dualAssetStatuses[row.Status] {
-			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: undocumented Dual Asset status %q.", where, row.Status))
+			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: undocumented dual asset status %q.", where, row.Status))
 		}
 		expiry, err := adapters.DualExpiry(where, row.SettlementTime)
 		if err != nil {
@@ -169,10 +169,10 @@ func dualAssets(ctx context.Context, c *client) ([]adapters.DualPosition, error)
 	return out, nil
 }
 
-// checkEarn compares combined Earn and Dual Balances with Bybit's own USD
-// valuation of Earn in asset-overview (ADR 0005). A list without an Earn entry
-// counts as zero: the check only ever fails when Bybit values Earn higher than
-// the Balances.
+// checkEarn compares combined earn and dual balances with Bybit's own USD
+// valuation of earn in asset-overview (ADR 0005). A list without an earn entry
+// counts as zero: the check only ever fails when Bybit values earn higher than
+// the balances.
 func checkEarn(ctx context.Context, c *client, balances []adapters.Balance, prices spotPrices) error {
 	var overview struct {
 		List []struct {
@@ -194,9 +194,9 @@ func checkEarn(ctx context.Context, c *client, balances []adapters.Balance, pric
 			continue
 		}
 		if bucket.ValuationCurrency != "USD" {
-			return adapters.Malformed(where, "the USD valuation of Earn")
+			return adapters.Malformed(where, "the USD valuation of earn")
 		}
-		equity, err := adapters.Decimal(where, "totalEquity of Earn", bucket.TotalEquity)
+		equity, err := adapters.Decimal(where, "totalEquity of earn", bucket.TotalEquity)
 		if err != nil {
 			return err
 		}

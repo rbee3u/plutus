@@ -23,7 +23,7 @@ allowlisted exit IPs, or exchange-app reconciliation.
 | Bybit    | [19 responses](./bybit/verification.md), recorded and reviewed 2026-10-01                                | No real proxy or SS exit verified |
 | Kraken   | [11 responses](./kraken/verification.md), recorded and reviewed 2026-10-01                               | No real proxy or SS exit verified |
 
-The linked Platform notes retain their product, response-shape, and exchange-app
+The linked platform notes retain their product, response-shape, and exchange-app
 validation gaps. No integration status was upgraded by this work.
 
 ## Independent synthetic tests and builds
@@ -50,7 +50,7 @@ precedence, modes, malformed URLs, unsupported schemes, forbidden credentials,
 and errors that do not reveal rejected URL credentials.
 
 The runtime wiring tests install the offline network guard before constructing
-Adapters with production hosts. Proxy helpers only forward explicitly expected
+adapters with production hosts. Proxy helpers only forward explicitly expected
 targets to fixed loopback origins. Tests use synthetic `testdata`, not recorded
 `evidence`, external requests, or live credentials. Recording list/dry-run tests
 confirm that runtime proxy configuration and runtime config file flags do not
@@ -65,12 +65,12 @@ fake collection remained independent of proxy availability. Temporary runtime
 configuration and logs stayed under `/tmp/plutus/`; the normal agent config
 files were not changed.
 
-Verified login, Portfolio reads, 12 Account valuations, the holdings tree, 25
-Balance rows, eight Position rows, five Dual Position rows, populated raw
+Verified login, portfolio reads, 12 account valuations, the holdings tree, 25
+balance rows, eight position rows, five dual position rows, populated raw
 history with the default seven-day window, point detail, default daily closes
-and Value Changes, and empty history for the unvalued trading Portfolio. The
-embedded SPA and its JavaScript asset were served by :8081. A manual Collection
-Cycle succeeded and produced the point returned by the overview. All
+and value changes, and empty history for the unvalued trading portfolio. The
+embedded SPA and its JavaScript asset were served by :8081. A manual collection
+cycle succeeded and produced the point returned by the overview. All
 session-started server processes were stopped, and :8081 was released. The
 human's :8080 instance was not used.
 
@@ -79,8 +79,8 @@ human's :8080 instance was not used.
 No real Shadowsocks server, sing-box process, remote server migration, actual
 exit IPv4, exchange IP allowlist, or live credential was exercised. No live
 latency or long-running proxy reliability claim is made. The agent fake does not
-establish real Adapter collection through a proxy. The deployment owner must
-separately verify the exit IP and successful Account Reports; readiness alone
+establish real adapter collection through a proxy. The deployment owner must
+separately verify the exit IP and successful account reports; readiness alone
 does not establish either. UI interaction was not changed or exercised; this
 runtime configuration change was verified through the JSON API and embedded
 asset responses.
@@ -110,7 +110,7 @@ Listing and dry-run still skip configuration and credentials.
 For each of Binance, OKX, Bybit, and Kraken, synthetic CLI recording requests
 reached a loopback CONNECT proxy selected from both the default and explicit
 recording TOML paths. Invalid runtime and credential files were not loaded for
-these public requests. The existing runtime Adapter routing and Kraken WebSocket
+these public requests. The existing runtime adapter routing and Kraken WebSocket
 CONNECT tests passed. Shared transport tests verify direct defaults without
 inherited proxy callbacks, upper/lowercase proxy variables having no effect,
 explicit HTTP/HTTPS/SOCKS routing despite `NO_PROXY`, cancellation, and proxy
@@ -122,8 +122,8 @@ The host binary ran against existing seeded `plutus_agent` on `127.0.0.1:8081`
 with the deterministic fake and no proxy section. Invalid ordinary configuration
 variables and unavailable process proxy URLs did not prevent startup or alter
 the TOML listener/cookie settings. Liveness, readiness, the embedded SPA and its
-assets, seed login/logout, Portfolio listing, Overview, Tree, Balances, the
-default History window, and paginated Valuation Points all succeeded.
+assets, seed login/logout, portfolio listing, Overview, tree, balances, the
+default History window, and paginated valuation points all succeeded.
 
 Verification used a temporary copy of agent TOML with logs under `/tmp/plutus`;
 agent configuration and the human's :8080 instance were unchanged. The server

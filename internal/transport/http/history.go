@@ -26,7 +26,7 @@ func timeRange(from, to *time.Time, defaultSpan time.Duration) (time.Time, time.
 }
 
 // periodWindow is timeRange for period lists: an omitted from starts no earlier
-// than the Portfolio's first Valuation Point, so the list does not open with
+// than the portfolio's first valuation point, so the list does not open with
 // periods from before there was anything to value. Without any point the
 // window is empty.
 func (a *API) periodWindow(ctx context.Context, portfolioID uuid.UUID, from, to *time.Time, kind string) (time.Time, time.Time, bool, error) {

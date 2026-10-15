@@ -44,9 +44,9 @@ func (s *Service) persistPointRows(ctx context.Context, point Point, accounts []
 		CycleID:                point.CycleID[:],
 		EvaluatedAt:            point.EvaluatedAt,
 		TotalUsd:               point.TotalUSD,
-		AccountCount:           uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory Account slice, far below 2^32.
-		StaleAccountCount:      uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory Account slice.
-		IncompleteAccountCount: uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory Account slice.
+		AccountCount:           uint32(point.AccountCount),           // #nosec G115 -- The count is bounded by the in-memory account slice, far below 2^32.
+		StaleAccountCount:      uint32(point.StaleAccountCount),      // #nosec G115 -- The count is a subset of the in-memory account slice.
+		IncompleteAccountCount: uint32(point.IncompleteAccountCount), // #nosec G115 -- The count is a subset of the in-memory account slice.
 		CalculationVersion:     CalculationVersion,
 	}); err != nil {
 		return err

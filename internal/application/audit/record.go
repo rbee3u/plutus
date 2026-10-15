@@ -16,8 +16,8 @@ import (
 type Entry struct {
 	PortfolioID uuid.UUID
 	ActorUserID uuid.UUID
-	// System records the event with no actor: a change Plutus observed on a Platform rather than
-	// one a user made, such as a Margin Mode switch.
+	// System records the event with no actor: a change Plutus observed on a platform rather than
+	// one a user made, such as a margin mode switch.
 	System       bool
 	Action       string
 	ResourceType string

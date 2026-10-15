@@ -6,13 +6,14 @@ import { NumericText } from "@/shared/ui/NumericText";
 import type { AccountBalanceList, AccountValuation, BalanceRow, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
+import { NO_ACCOUNT_REPORT } from "@/shared/lib/text";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { ObservedCell } from "./ObservedCell";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-/** The Balance table of one Account, with row actions for manual accounts. */
+/** The balance table of one account, with row actions for manual accounts. */
 export function BalancesTable({
   account,
   data,
@@ -20,6 +21,7 @@ export function BalancesTable({
   isError,
   timezone,
   onManual,
+  missingReport,
 }: {
   account: AccountValuation;
   data?: AccountBalanceList;
@@ -27,6 +29,7 @@ export function BalancesTable({
   isError: boolean;
   timezone?: string;
   onManual?: (target: ManualTarget) => void;
+  missingReport: boolean;
 }) {
   const isManual = account.accountType === "manual";
   return (
@@ -74,7 +77,11 @@ export function BalancesTable({
             ? "Loading balances."
             : isError && !data
               ? "Balances could not be loaded. Retry above."
-              : "No balances in the current Account Report for this account."
+              : isManual && !account.reportId
+                ? "No manual balances entered."
+                : missingReport
+                  ? NO_ACCOUNT_REPORT
+                  : "No balances in the current account report for this account."
         }
       />
     </>
@@ -114,7 +121,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       item.canonicalAssetSymbol && item.canonicalAssetSymbol !== item.assetSymbol ? (
         <span className={shared.cellStack}>
           <span>{item.assetSymbol}</span>
-          <span className={shared.cellMeta}>Canonical Asset: {item.canonicalAssetSymbol}</span>
+          <span className={shared.cellMeta}>Canonical asset: {item.canonicalAssetSymbol}</span>
         </span>
       ) : (
         item.assetSymbol
@@ -147,7 +154,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
     liability: formatDecimal(item.liability),
     unrealizedPnl: balancePnl(item.unrealizedPnl),
     priceUsd: item.noPrice ? (
-      <span className={shared.cellMeta}>no price</span>
+      <span className={shared.cellMeta}>Missing price</span>
     ) : (
       formatPrice(item.priceUsd)
     ),

@@ -54,7 +54,7 @@ func applyExclusion(asset *Asset, state exclusionState) {
 	}
 }
 
-// withExclusion adds a Portfolio's current rule to one local catalog Asset.
+// withExclusion adds a portfolio's current rule to one local catalog asset.
 func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, asset *Asset) error {
 	states, err := s.currentExclusions(ctx, portfolioID)
 	if err != nil {
@@ -64,17 +64,17 @@ func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, asse
 	return nil
 }
 
-// ExclusionETag is the policy validator, separate from the Asset mapping's ETag.
+// ExclusionETag is the policy validator, separate from the asset mapping's ETag.
 func (asset *Asset) ExclusionETag() string {
 	return etag.Format("asset-exclusion", asset.ExclusionVersion)
 }
 
-// ParseExclusionETag extracts the Portfolio-specific version.
+// ParseExclusionETag extracts the portfolio-specific version.
 func ParseExclusionETag(value string) (uint64, bool) {
 	return etag.ParseAllowZero("asset-exclusion", value)
 }
 
-// ExclusionInput changes one Portfolio's treatment of an Asset.
+// ExclusionInput changes one portfolio's treatment of an asset.
 type ExclusionInput struct {
 	PortfolioID uuid.UUID
 	ActorUserID uuid.UUID

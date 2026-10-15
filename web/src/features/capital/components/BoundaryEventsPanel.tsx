@@ -35,7 +35,7 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
 
   return (
     <>
-      <QueryRecovery query={events} fallback="Boundary Events could not be loaded." />
+      <QueryRecovery query={events} fallback="Boundary events could not be loaded." />
       <TimeWindowFilters state={timeWindow} ariaLabel="Boundary event time range" />
       <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
         <div className={`${shared.summaryBar} ${styles.summaryBar}`}>
@@ -45,15 +45,15 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
         </div>
       </div>
       <DataTable
-        caption="Boundary Events in the window"
+        caption="Boundary events in the window"
         columns={BOUNDARY_COLUMNS}
         rows={items.map((item) => boundaryEventRow(item, timezone, platforms.data?.items))}
         empty={
           events.isPending || timeWindow.busy ? (
-            <TableEmptyState title="Loading Boundary Events..." />
+            <TableEmptyState title="Loading boundary events..." />
           ) : (
             <TableEmptyState
-              title={`No Boundary Events in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
+              title={`No boundary events in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
               help="Try expanding your time window."
               action={
                 <ActionButton

@@ -67,14 +67,14 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	}
 	foreign := otherUserSession(t, authentication)
 	if res := request(base+"/earn-positions", foreign.Token); res.Code != 404 {
-		t.Fatalf("another User read an existing Portfolio: %d %s", res.Code, res.Body.String())
+		t.Fatalf("another user read an existing portfolio: %d %s", res.Code, res.Body.String())
 	}
 	if res := request(base+"/accounts/"+uuid.NewString()+"/earn-positions", session.Token); res.Code != 404 {
-		t.Fatal("unknown Account read")
+		t.Fatal("unknown account read")
 	}
 }
 
-// Typed Earn details retain explicit source symbols across the API boundary.
+// Typed earn details retain explicit source symbols across the API boundary.
 func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
 	var details adapters.EarnDetails
 	raw := []byte(`{"assets":[{"assetSymbol":"XBT","canonicalAssetSymbol":"BTC","amount":"1"}],"rates":[{"assetSymbol":"XBT","value":"0.02","kind":"apr","qualifier":"estimated","label":"APR"}],"rewards":[{"assetSymbol":"XBT","amount":"0.1","kind":"cumulative"}]}`)

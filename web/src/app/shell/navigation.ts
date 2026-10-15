@@ -64,7 +64,7 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
       { label: "Balances", pathSuffix: "/holdings/balances" },
       { label: "Futures", pathSuffix: "/holdings/futures" },
       { label: "Earn", pathSuffix: "/holdings/earn" },
-      { label: "Dual Investment", pathSuffix: "/holdings/dual-investment" },
+      { label: "Dual investment", pathSuffix: "/holdings/dual-investment" },
     ],
   },
   {
@@ -75,8 +75,8 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Portfolio",
     defaultPathSuffix: "/history",
     subviews: [
-      { label: "Valuation Points", pathSuffix: "/history" },
-      { label: "Value Changes", pathSuffix: "/history/value-changes" },
+      { label: "Valuation points", pathSuffix: "/history" },
+      { label: "Value changes", pathSuffix: "/history/value-changes" },
     ],
   },
   {
@@ -87,8 +87,8 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Portfolio",
     defaultPathSuffix: "/capital",
     subviews: [
-      { label: "Capital Flows", pathSuffix: "/capital", tab: CAPITAL_TABS[0] },
-      { label: "Boundary Events", pathSuffix: "/capital", tab: CAPITAL_TABS[1] },
+      { label: "Capital flows", pathSuffix: "/capital", tab: CAPITAL_TABS[0] },
+      { label: "Boundary events", pathSuffix: "/capital", tab: CAPITAL_TABS[1] },
     ],
   },
   {
@@ -120,7 +120,7 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     groupLabel: "Manage",
     defaultPathSuffix: "/data/activity",
     subviews: [
-      { label: "Collection Cycles", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[0] },
+      { label: "Collection cycles", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[0] },
       { label: "Audit", pathSuffix: "/data/activity", tab: ACTIVITY_TABS[1] },
     ],
   },
@@ -171,7 +171,7 @@ export interface PageHeading {
 
 export function pageHeading(pathname: string, search = ""): PageHeading {
   if (isAccountPath(pathname)) {
-    return { title: "Account & Security", documentTitle: "Account & Security", tabs: [] };
+    return { title: "Account & security", documentTitle: "Account & security", tabs: [] };
   }
   const route = portfolioRoute(pathname);
   const module = route

@@ -13,8 +13,8 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-// collectManual writes every boundary Manual Account's report and the cycle's
-// marker in one transaction, so a retry never captures Manual Accounts added
+// collectManual writes every boundary manual account's report and the cycle's
+// marker in one transaction, so a retry never captures manual accounts added
 // after the reports committed.
 func (s *Service) collectManual(ctx context.Context, portfolioID, cycleID uuid.UUID, reported map[uuid.UUID]bool, recorded recordedPrices) error {
 	accounts, err := s.manual.CycleInputs(ctx, portfolioID)

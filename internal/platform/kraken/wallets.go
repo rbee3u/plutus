@@ -11,7 +11,7 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// snapshot is the balances_snapshot message of the Futures balances feed.
+// snapshot is the balances_snapshot message of the futures balances feed.
 type snapshot struct {
 	Timestamp int64                   `json:"timestamp"`
 	Holding   map[string]number       `json:"holding"`
@@ -31,7 +31,7 @@ func (s *snapshot) observedAt() *time.Time {
 	return &at
 }
 
-// multiWallet is the multi-collateral wallet: Multi-M in Separate wallets, Main in Unified Wallet.
+// multiWallet is the multi-collateral wallet: Multi-M in separate wallets, main in unified wallet.
 type multiWallet struct {
 	Isolated          map[string]isolatedWallet     `json:"isolated"`
 	UnifiedBalances   *bool                         `json:"unified_balances"`
@@ -59,10 +59,10 @@ type singleWallet struct {
 	PortfolioValue number `json:"portfolio_value"`
 }
 
-// multiCollateral maps the multi-collateral wallet: Main in Unified Wallet, Multi-M in Separate
+// multiCollateral maps the multi-collateral wallet: main in unified wallet, Multi-M in separate
 // wallets. Its equity is portfolio_value, which already holds unrealized profit and funding;
 // margin_equity is the haircut-adjusted collateral Kraken margins against. Each currency is a
-// Balance in coin units; the wallet's derivative profit is not split among currencies.
+// balance in coin units; the wallet's derivative profit is not split among currencies.
 func (r *run) multiCollateral(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
 	where := "Kraken " + epBalancesSnapshot.String()
 	wallet := &r.snapshot.Flex
@@ -118,7 +118,7 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapters.AccountT
 	return report, nil
 }
 
-// coinM maps the single-collateral wallets: one Balance per settlement unit in coin units, and
+// coinM maps the single-collateral wallets: one balance per settlement unit in coin units, and
 // futures_upnl_cash_value, already in USD with unrealized profit, as the equity.
 func (r *run) coinM(ctx context.Context) (adapters.AccountReport, error) {
 	where := "Kraken " + epBalancesSnapshot.String()
@@ -194,15 +194,15 @@ type extendedBalance struct {
 	CreditUsed number `json:"credit_used"`
 }
 
-// allocatedSuffixes mark BalanceEx rows of funds allocated to Earn: .B yield-bearing products,
-// .S staking, .M opt-in rewards. Earn reports them, so Main leaves them out. .F (Kraken Rewards,
-// shown as Auto Earn) earns on Main balances and stays in Main.
+// allocatedSuffixes mark BalanceEx rows of funds allocated to earn: .B yield-bearing products,
+// .S staking, .M opt-in rewards. Earn reports them, so main leaves them out. .F (Kraken Rewards,
+// shown as Auto Earn) earns on main balances and stays in main.
 var allocatedSuffixes = []string{".B", ".S", ".M"}
 
-// separateMain maps Main in Separate wallets: its BalanceEx coins, and an equity that adds the
-// net result of open Spot Margin positions (TradeBalance `n`) to the coins valued at their USD
+// separateMain maps main in separate wallets: its BalanceEx coins, and an equity that adds the
+// net result of open Spot margin positions (TradeBalance `n`) to the coins valued at their USD
 // prices. TradeBalance `e` is never used, because it values the whole balance with Kraken's own
-// rules. Spot Margin positions are not itemized, as with OKX.
+// rules. Spot margin positions are not itemized, as with OKX.
 func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) {
 	where := "Kraken " + epBalanceEx.String()
 	var rows map[string]extendedBalance
@@ -220,7 +220,7 @@ func (r *run) separateMain(ctx context.Context) (adapters.AccountReport, error) 
 			return adapters.AccountReport{}, err
 		}
 		if used.Sign() != 0 {
-			return adapters.AccountReport{}, adapters.NewError(adapters.ClassUnsupported, "Kraken Main uses credit, which Plutus does not support.")
+			return adapters.AccountReport{}, adapters.NewError(adapters.ClassUnsupported, "The Kraken main account uses credit, which Plutus does not support.")
 		}
 		amount, err := adapters.Decimal(where, "balance of "+code, string(row.Balance))
 		if err != nil {

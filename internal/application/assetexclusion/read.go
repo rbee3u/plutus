@@ -1,4 +1,4 @@
-// Package assetexclusion reads the Portfolio policy that was effective when a Collection Cycle began.
+// Package assetexclusion reads the portfolio policy that was effective when a collection cycle began.
 package assetexclusion
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
-// ActiveForCycle returns the Assets excluded at the start of a Collection Cycle.
+// ActiveForCycle returns the assets excluded at the start of a collection cycle.
 // A rule saved while a cycle is running first applies to the following cycle.
 func ActiveForCycle(ctx context.Context, db *sql.DB, portfolioID, cycleID uuid.UUID) (map[uuid.UUID]bool, error) {
 	q := mysql.Queries(ctx, db)

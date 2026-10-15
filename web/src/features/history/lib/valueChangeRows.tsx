@@ -1,6 +1,6 @@
 import { NumericText } from "@/shared/ui/NumericText";
 import type { ValueChange } from "@/api";
-import { formatAmount, formatUsd, parseDecimal } from "@/shared/lib/amount";
+import { formatAmount, formatPercent, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { reasonText } from "@/shared/lib/text";
 import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
@@ -33,9 +33,9 @@ export function valueChangeCell(amount: string | null | undefined, startAmount?:
   const start = parseDecimal(startAmount);
   let pctText = "";
   if (start && !start.isZero()) {
-    const pct = parsed.dividedBy(start.abs()).times(100);
+    const pct = parsed.dividedBy(start.abs());
     const pctSign = pct.gt(0) ? "+" : pct.lt(0) ? "" : "";
-    pctText = ` (${pctSign}${pct.toFixed(2)}%)`;
+    pctText = ` (${pctSign}${formatPercent(pct.toFixed())})`;
   }
 
   return (
@@ -140,7 +140,7 @@ export function valueChangeRow(item: ValueChange, timezone?: string): DataRow {
     end: (
       <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
         {item.endPoint?.totalUsd ? (
-          <NumericText>{formatUsd(item.endPoint.totalUsd)}</NumericText>
+          <NumericText>{formatAmount(item.endPoint.totalUsd)}</NumericText>
         ) : (
           <span className={shared.muted}>—</span>
         )}

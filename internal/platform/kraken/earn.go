@@ -10,15 +10,15 @@ import (
 )
 
 // earnInMain lists the lock types Kraken documents. flex strategies are Kraken Rewards, which earn
-// on Main balances and stay in Main; the other lock types hold funds allocated to Earn.
+// on main balances and stay in main; the other lock types hold funds allocated to earn.
 var earnInMain = map[string]bool{"flex": true, "instant": false, "bonded": false, "timed": false}
 
 // maxStrategyPages bounds the strategy pages one collection follows.
 const maxStrategyPages = 1000
 
-// earn maps allocated Earn: every allocation of an instant, bonded, or timed strategy, one Balance
+// earn maps allocated earn: every allocation of an instant, bonded, or timed strategy, one balance
 // per coin. A nonzero allocation whose strategy is unknown or has an undocumented lock type fails
-// Earn: dropping it would erase real holdings under the Complete Set rule.
+// earn: dropping it would erase real holdings under the complete set rule.
 func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 	strategies, err := r.earnStrategies(ctx)
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *run) earn(ctx context.Context) (adapters.AccountReport, error) {
 }
 
 // earnStrategies returns the lock type of every strategy, following next_cursor until Kraken
-// stops returning one. A repeated cursor would loop forever and fails Earn instead.
+// stops returning one. A repeated cursor would loop forever and fails earn instead.
 func (r *run) earnStrategies(ctx context.Context) (map[string]string, error) {
 	where := "Kraken " + epEarnStrategies.String()
 	out := map[string]string{}

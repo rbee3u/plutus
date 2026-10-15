@@ -34,7 +34,7 @@ func TestCatalogHTTPStatusFilter(t *testing.T) {
 	portfolios := portfolio.NewService(db)
 	owned, err := portfolios.List(ctx, user.ID)
 	if err != nil || len(owned) != 1 {
-		t.Fatalf("owned Portfolios: %+v %v", owned, err)
+		t.Fatalf("owned portfolios: %+v %v", owned, err)
 	}
 	portfolioID := owned[0].ID
 	service := catalog.NewService(db)

@@ -97,8 +97,8 @@ JOIN valuation_points p ON p.portfolio_id = e.portfolio_id AND p.cycle_id = e.cy
 WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at);
 
 -- One earlier anchor supplies the first predecessor without scanning old
--- history once per requested point. Equal timestamps remain ordered by Cycle ID.
--- The covering timeline prevents a Portfolio-wide primary-key scan after imports.
+-- history once per requested point. Equal timestamps remain ordered by cycle ID.
+-- The covering timeline prevents a portfolio-wide primary-key scan after imports.
 -- name: ListPointComparisonTimeline :many
 SELECT p.cycle_id, p.evaluated_at, p.calculation_version FROM valuation_points p FORCE INDEX (idx_valuation_points_timeline)
 WHERE p.portfolio_id = sqlc.arg(portfolio_id)
@@ -111,7 +111,7 @@ SELECT anchor.cycle_id, anchor.evaluated_at, anchor.calculation_version FROM (
 ) anchor
 ORDER BY evaluated_at, cycle_id;
 
--- Account Reports establish Identity membership even before its first Manual
+-- Account reports establish identity membership even before its first manual
 -- report. Quantities follow the adopted source, never a newer pending input.
 -- name: ListManualComparisonInputsByCycles :many
 SELECT r.cycle_id, r.account_id, a.identity_id, a.account_type,
@@ -137,9 +137,9 @@ INSERT INTO calculated_asset_changes (portfolio_id, asset_id, evaluated_at, cycl
 VALUES (?, ?, ?, ?, ?, ?);
 
 -- Correlated latest-change lookups name the full primary-key prefix in ORDER
--- BY; otherwise MySQL sorts each Asset's whole history instead of reading its
+-- BY; otherwise MySQL sorts each asset's whole history instead of reading its
 -- newest row backward. Outer-row bounds never seek, so a bounded lookup walks
--- back over the Asset's later changes.
+-- back over the asset's later changes.
 -- name: ListLatestCalculatedAssetChanges :many
 SELECT s.* FROM (
     SELECT a.portfolio_id, a.id AS asset_id, (
@@ -151,10 +151,10 @@ SELECT s.* FROM (
 ) latest
 JOIN calculated_asset_changes s ON s.portfolio_id = latest.portfolio_id AND s.asset_id = latest.asset_id AND s.cycle_id = latest.cycle_id;
 
--- A mapping change is an included Asset whose previous change was included
--- under another Canonical Asset. Only a mapping update changes an Asset's
--- Canonical Asset, and it advances the mapping version, so the join starts from
--- remapped Assets; otherwise every change in a range read walks its Asset's
+-- A mapping change is an included asset whose previous change was included
+-- under another canonical asset. Only a mapping update changes an asset's
+-- canonical asset, and it advances the mapping version, so the join starts from
+-- remapped assets; otherwise every change in a range read walks its asset's
 -- later history.
 -- name: ListAssetMappingChangesByCycles :many
 SELECT c.cycle_id, c.asset_id, a.symbol
@@ -184,8 +184,8 @@ ORDER BY b.asset_id;
 SELECT * FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at < sqlc.arg(evaluated_at) AND detail_state IN ('full','daily')
 ORDER BY evaluated_at DESC, cycle_id DESC LIMIT 1;
 
--- Read only Points that can contribute comparison evidence. The version window
--- includes one predecessor, so A -> B -> A and equal-time Cycle ordering survive.
+-- Read only points that can contribute comparison evidence. The version window
+-- includes one predecessor, so A -> B -> A and equal-time cycle ordering survive.
 -- name: ListComparisonPointHeadersBetween :many
 SELECT p.cycle_id, p.evaluated_at
 FROM manual_balance_changes m

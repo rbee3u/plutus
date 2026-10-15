@@ -112,11 +112,11 @@ const unavailable: PositionRow = {
   settleMargin: null,
   marginSource: null,
   marginUnavailableReason:
-    "This Portfolio Margin regime does not provide an independent position initial requirement.",
+    "This portfolio margin regime does not provide an independent position initial requirement.",
   portfolioMargin: true,
 };
 
-test("position details work with hover, keyboard, click, scroll, and narrow tables", async ({
+test("Position details work with hover, keyboard, click, scroll, and narrow tables", async ({
   page,
 }) => {
   await mockApi(
@@ -160,9 +160,9 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
     "Symbol",
     "Side",
     "Size",
-    "Entry Price",
-    "Mark Price",
-    "Liq. Price",
+    "Entry price",
+    "Mark price",
+    "Liq. price",
     "Unrealized PnL",
     "Margin",
     "Notional (USD)",
@@ -216,7 +216,7 @@ test("position details work with hover, keyboard, click, scroll, and narrow tabl
     "0.002 BTC",
   );
   await expect(page.getByRole("button", { name: "Margin details for BTCUSDT" })).toHaveText("—");
-  // The Margin column needs only its longest amount and the table's cell padding.
+  // The margin column needs only its longest amount and the table's cell padding.
   // This catches both an empty tag track and spare-width auto-layout expansion.
   for (const width of [1280, 1920]) {
     await page.setViewportSize({ width, height: 800 });

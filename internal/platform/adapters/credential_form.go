@@ -17,8 +17,8 @@ type CredentialGroup struct {
 	Requirement CredentialRequirement
 }
 
-// CredentialRequirement supports only the current Account selection predicates.
-// selected_except intentionally includes selected application-owned Accounts;
+// CredentialRequirement supports only the current account selection predicates.
+// selected_except intentionally includes selected application-owned accounts;
 // form requirements and server validation are separate policies.
 type CredentialRequirement struct {
 	Mode         string
@@ -50,7 +50,7 @@ func krakenCredentialForm() CredentialForm {
 		// #nosec G101 -- Public field labels and input metadata, never credential material.
 		Futures:    &CredentialGroup{KeyLabel: "Futures API key", SecretLabel: "Futures API secret", SecretInput: "password", Requirement: CredentialRequirement{Mode: "selected_except", AccountTypes: []AccountType{"earn"}}},
 		Passphrase: "hidden",
-		Help:       "Main requires both key groups to verify the wallet structure. Earn uses Spot credentials; independent derivatives accounts use Futures credentials.",
+		Help:       "Main requires both key groups to verify the wallet structure. Earn uses spot credentials; independent derivatives accounts use futures credentials.",
 	}
 }
 

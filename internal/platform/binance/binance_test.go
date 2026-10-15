@@ -141,7 +141,7 @@ func newReplay(t *testing.T, selection string) (*replay, *Adapter) {
 	return r, New(&Options{Hosts: hosts, HTTP: offline.Client(t, server)})
 }
 
-// earnUSD values coin amounts with the synthetic tickers, as Binance values its Earn wallet.
+// earnUSD values coin amounts with the synthetic tickers, as Binance values its earn wallet.
 func (r *replay) earnUSD(amounts adapters.Totals) string {
 	r.t.Helper()
 	var rows []struct {
@@ -497,7 +497,7 @@ func TestEd25519ValidateAndCollectBothStructures(t *testing.T) {
 				t.Fatal(err)
 			}
 			if len(batch.Reports) != len(adapters.AccountTypeIDs(tc.structure)) {
-				t.Fatalf("got %d Account Reports", len(batch.Reports))
+				t.Fatalf("got %d account reports", len(batch.Reports))
 			}
 			if r.count(epAccountInfo) != 2 || r.count(epSpotAccount) != 1 {
 				t.Fatalf("account info %d times, spot account %d times", r.count(epAccountInfo), r.count(epSpotAccount))
@@ -514,8 +514,8 @@ func TestStructureMismatchStopsBeforeAnyAccountRead(t *testing.T) {
 		configured adapters.AccountStructure
 		reported   string
 	}{
-		{"", adapters.StructureBinanceClassic, "Portfolio Margin"},
-		{classicSamples, adapters.StructureBinancePM, "Classic Trading"},
+		{"", adapters.StructureBinanceClassic, "Portfolio margin"},
+		{classicSamples, adapters.StructureBinancePM, "Classic trading"},
 	} {
 		t.Run(string(tc.configured), func(t *testing.T) {
 			t.Parallel()
@@ -570,7 +570,7 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
 	if batch.MarginMode != "" {
-		t.Fatalf("Binance has no Margin Mode, got %q", batch.MarginMode)
+		t.Fatalf("Binance has no margin mode, got %q", batch.MarginMode)
 	}
 	report := reportOf(t, batch, TypePortfolioMargin)
 	if report.Status != adapters.StatusSucceeded || report.CollectedAt.IsZero() {
@@ -596,12 +596,12 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 		"BTC":  {AssetSymbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
 	}
 	if len(report.Balances) != len(wantBalances) {
-		t.Fatalf("PM Balances = %+v", report.Balances)
+		t.Fatalf("PM balances = %+v", report.Balances)
 	}
 	for _, got := range report.Balances {
 		want, exists := wantBalances[got.AssetSymbol]
 		if !exists || !reflect.DeepEqual(got, want) {
-			t.Fatalf("PM Balance = %+v, want %+v (exists=%v)", got, want, exists)
+			t.Fatalf("PM balance = %+v, want %+v (exists=%v)", got, want, exists)
 		}
 		delete(wantBalances, got.AssetSymbol)
 	}
@@ -709,7 +709,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinancePM, TypeSpot, TypeFunding, TypeEarn)
 	for _, tc := range []struct {
@@ -733,7 +733,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	}
 	// The account endpoint includes a receipt token; collection must use getUserAsset instead.
 	if r.count(epSpotAccount) != 0 || r.count(epUserAsset) != 1 {
-		t.Fatal("Spot collection must use getUserAsset rather than account balances with Earn receipts")
+		t.Fatal("Spot collection must use getUserAsset rather than account balances with earn receipts")
 	}
 	spotAccount := body[struct {
 		Balances []struct {
@@ -767,7 +767,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		delete(want, got.AssetSymbol)
 	}
 	if r.count(epWalletValue) != 1 {
-		t.Fatalf("the Earn valuation was read %d times, want once", r.count(epWalletValue))
+		t.Fatalf("the earn valuation was read %d times, want once", r.count(epWalletValue))
 	}
 }
 
@@ -891,7 +891,7 @@ func TestDualInvestmentStatuses(t *testing.T) {
 				t.Fatalf("earn report %+v", earn)
 			}
 			if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
-				t.Fatal("spot must not fail with Earn")
+				t.Fatal("spot must not fail with earn")
 			}
 		})
 	}
@@ -921,7 +921,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 			t.Fatalf("earn report %+v", earn)
 		}
 		if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
-			t.Fatal("spot must not fail with Earn")
+			t.Fatal("spot must not fail with earn")
 		}
 	})
 	t.Run("the tolerance absorbs price differences", func(t *testing.T) {
@@ -959,7 +959,7 @@ func TestClassicCrossMargin(t *testing.T) {
 	r, a := newReplay(t, classicSamples)
 	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
 	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedInitialMarginRatio != nil {
-		t.Fatalf("report %+v: a Classic wallet is valued from its Balances", report)
+		t.Fatalf("report %+v: a classic wallet is valued from its balances", report)
 	}
 	account := body[crossMarginAccount](t, r, epCrossMargin, nil)
 	if deref(report.ReportedMarginRatio) != decimal.Compact(account.MarginLevel) {
@@ -1109,11 +1109,11 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, classicSamples)
-	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinanceClassic, classicTypes...)
 	if len(batch.Reports) != len(classicTypes) {
-		t.Fatalf("%d reports for %d Account Types", len(batch.Reports), len(classicTypes))
+		t.Fatalf("%d reports for %d account types", len(batch.Reports), len(classicTypes))
 	}
 	priced := map[string]bool{}
 	for _, p := range batch.Prices {
@@ -1131,7 +1131,7 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 	}
 	for _, ep := range []endpoint{epPMAccount, epPMBalance, epPMUMPositionRisk, epPMCMPositionRisk} {
 		if r.count(ep) != 0 {
-			t.Fatalf("Classic Trading read the Portfolio Margin endpoint %s", ep)
+			t.Fatalf("Classic trading read the portfolio margin endpoint %s", ep)
 		}
 	}
 }
@@ -1142,10 +1142,10 @@ func TestAccountTypeOfTheOtherStructureFailsOnlyItself(t *testing.T) {
 	r, a := newReplay(t, "")
 	batch := collect(t, a, adapters.StructureBinancePM, TypeUMFutures, TypeSpot)
 	if um := reportOf(t, batch, TypeUMFutures); um.Status != adapters.StatusFailed || um.ErrorClass != adapters.ClassUnsupported {
-		t.Fatalf("um_futures under Portfolio Margin %+v", um)
+		t.Fatalf("um_futures under portfolio margin %+v", um)
 	}
 	if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded || r.count(epUMAccount) != 0 {
-		t.Fatal("spot must still be collected and no Classic endpoint read")
+		t.Fatal("spot must still be collected and no classic endpoint read")
 	}
 }
 
@@ -1153,7 +1153,7 @@ func TestCollectPrices(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	// The synthetic aggregate matches the selected savings, Dual principal and prices.
+	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
 	batch := collect(t, a, adapters.StructureBinancePM, pmTypes...)
 	priced := map[string]adapters.Price{}

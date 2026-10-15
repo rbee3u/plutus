@@ -61,7 +61,7 @@ describe("valuationPointRows", () => {
         expect(html).toContain("(+589.69%)");
         expect(html.includes("Incomplete")).toBe(affected.length > 0);
         for (const endpoint of ["previous", "current"] as const) {
-          expect(html.includes(`The ${endpoint} Valuation Point is incomplete.`)).toBe(
+          expect(html.includes(`The ${endpoint} valuation point is incomplete.`)).toBe(
             affected.some((value) => value === endpoint),
           );
         }
@@ -81,7 +81,7 @@ describe("valuationPointRows", () => {
     },
   );
 
-  it("defines 4 high-signal columns for Period Closes", () => {
+  it("defines 4 high-signal columns for period closes", () => {
     expect(PERIOD_CLOSE_COLUMNS.map((col) => col.header)).toEqual([
       "Period",
       "Close (USD)",
@@ -90,7 +90,7 @@ describe("valuationPointRows", () => {
     ]);
   });
 
-  it("defines 5 high-signal columns for Raw Valuation Points", () => {
+  it("defines 5 high-signal columns for Raw valuation points", () => {
     expect(RAW_POINT_COLUMNS.map((col) => col.header)).toEqual([
       "Evaluated at",
       "Total (USD)",
@@ -103,14 +103,14 @@ describe("valuationPointRows", () => {
   it("formats deltaChangeCell with percentage and directional coloring", () => {
     const htmlPositive = renderToStaticMarkup(deltaChangeCell("132055.51", "131989.18"));
     expect(htmlPositive).toContain("+$66.33");
-    expect(htmlPositive).toContain("(+0.05%)");
+    expect(htmlPositive).toContain("(+0.05025%)");
 
     const htmlNegative = renderToStaticMarkup(deltaChangeCell("131314.37", "131975.42"));
     expect(htmlNegative).toContain("-$661.05");
-    expect(htmlNegative).toContain("(-0.50%)");
+    expect(htmlNegative).toContain("(-0.5009%)");
 
     const htmlZero = renderToStaticMarkup(deltaChangeCell("100.00", "100.00"));
-    expect(htmlZero).toContain("$0.00 (0.00%)");
+    expect(htmlZero).toContain("$0 (0%)");
 
     const htmlBlank = renderToStaticMarkup(deltaChangeCell("100.00", null));
     expect(htmlBlank).toContain("—");
@@ -177,8 +177,8 @@ describe("valuationPointRows", () => {
       boundaryWithdrawalUsd: "0",
     };
     const html = renderToStaticMarkup(rawPointIssuesCell(item));
-    expect(html).toContain("2 Stale");
-    expect(html).toContain("1 Incomplete");
+    expect(html).toContain("2 stale");
+    expect(html).toContain("1 incomplete");
   });
 
   it("suppresses redundant CompletenessBadge in rawPointIssuesCell when incompleteAccountCount > 0", () => {
@@ -197,7 +197,7 @@ describe("valuationPointRows", () => {
       boundaryWithdrawalUsd: "0",
     };
     const html = renderToStaticMarkup(rawPointIssuesCell(item));
-    expect(html).toContain("2 Incomplete");
+    expect(html).toContain("2 incomplete");
     expect(html).not.toContain(">Incomplete</span>");
   });
 

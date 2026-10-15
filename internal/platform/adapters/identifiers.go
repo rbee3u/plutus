@@ -3,21 +3,21 @@ package adapters
 // Platform is a supported exchange code.
 type Platform string
 
-// AccountStructure is how a Platform arranges an Identity's Accounts. It decides which Account
-// Types exist, is declared when the Identity is created, and never changes afterwards.
+// AccountStructure is how a platform arranges an identity's accounts. It decides which account
+// types exist, is declared when the identity is created, and never changes afterwards.
 type AccountStructure string
 
-// MarginMode is the margin regime a Platform applies to a whole trading account within an Account
-// Structure. Plutus observes it from the Platform; only some Account Structures have one.
+// MarginMode is the margin regime a platform applies to a whole trading account within an account
+// structure. Plutus observes it from the platform; only some account structures have one.
 type MarginMode string
 
-// AccountType is a Platform account or the application-owned Manual account.
+// AccountType is a platform account or the application-owned manual account.
 type AccountType string
 
-// TypeManual is managed by Plutus and must never be passed to an Adapter.
+// TypeManual is managed by Plutus and must never be passed to an adapter.
 const TypeManual AccountType = "manual"
 
-// Supported Platforms.
+// Supported platforms.
 const (
 	PlatformBinance Platform = "binance"
 	PlatformOKX     Platform = "okx"
@@ -25,7 +25,7 @@ const (
 	PlatformKraken  Platform = "kraken"
 )
 
-// Supported Account Structures.
+// Supported account structures.
 const (
 	StructureBinanceClassic AccountStructure = "binance_classic"
 	StructureBinancePM      AccountStructure = "binance_pm"
@@ -35,7 +35,7 @@ const (
 	StructureKrakenUnified  AccountStructure = "kraken_unified"
 )
 
-// Supported Margin Modes. Binance and Kraken structures have none.
+// Supported margin modes. Binance and Kraken structures have none.
 const (
 	MarginOKXSpot       MarginMode = "okx_spot"
 	MarginOKXFutures    MarginMode = "okx_futures"

@@ -1,5 +1,5 @@
-// Package binance implements read-only Binance access for Classic Trading and
-// Portfolio Margin. Field mappings: docs/platform/binance/mapping.md. Runtime
+// Package binance implements read-only Binance access for classic trading and
+// portfolio margin. Field mappings: docs/platform/binance/mapping.md. Runtime
 // responses stay private; RecordRequest is the explicit recording path.
 package binance
 
@@ -16,8 +16,8 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
-// Account Types. Spot, Funding, and Earn belong to both Account Structures; Portfolio Margin
-// replaces the four Classic margin and futures wallets with portfolio_margin.
+// Account types. Spot, funding, and earn belong to both account structures; portfolio margin
+// replaces the four classic margin and futures wallets with portfolio_margin.
 const (
 	TypeDualInvestment                       = adapters.TypeDualInvestment
 	TypeSpot            adapters.AccountType = "spot"
@@ -33,12 +33,12 @@ const (
 // pageSize is the largest page the Simple Earn and dual investment position endpoints accept.
 const pageSize = 100
 
-// Options configures an Adapter. Zero values select production defaults.
+// Options configures an adapter. Zero values select production defaults.
 type Options struct {
 	Hosts Hosts
 	HTTP  *http.Client
 	Now   func() time.Time
-	// HTTPFactory creates a client with the Adapter timeout when HTTP is nil.
+	// HTTPFactory creates a client with the adapter timeout when HTTP is nil.
 	HTTPFactory func(time.Duration) *http.Client
 }
 
@@ -110,7 +110,7 @@ func spotAccountQuery() url.Values {
 }
 
 func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
-	// Market terms are reused only within this Collection Run.
+	// Market terms are reused only within this collection run.
 	run := *a
 	run.futuresContracts = newFuturesContractCache(a.now)
 	a = &run
@@ -144,8 +144,8 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 	if !adapters.ValidAccountType(structure, accountType) {
 		return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBinance, structure, accountType)
 	}
-	// Earn and Dual Investment are collected together before this helper is called.
-	switch accountType { //nolint:exhaustive // Shared product Accounts are handled by earnPair.
+	// Earn and dual investment are collected together before this helper is called.
+	switch accountType { //nolint:exhaustive // Shared product accounts are handled by earnPair.
 	case TypeSpot:
 		return a.wallet(ctx, c, TypeSpot, epUserAsset)
 	case TypeFunding:
@@ -173,13 +173,13 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 	}
 }
 
-// closed is the report of a Classic wallet Binance says is not opened: it cannot hold anything,
-// so the Account is reported empty instead of failing on an endpoint that refuses it.
+// closed is the report of a classic wallet Binance says is not opened: it cannot hold anything,
+// so the account is reported empty instead of failing on an endpoint that refuses it.
 func (a *Adapter) closed(accountType adapters.AccountType) adapters.AccountReport {
 	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
 }
 
-// accountInfo is /sapi/v1/account/info: the account's Account Structure and whether its Classic
+// accountInfo is /sapi/v1/account/info: the account's account structure and whether its classic
 // margin and futures wallets are opened.
 type accountInfo struct {
 	MarginEnabled   *bool `json:"isMarginEnabled"`
@@ -187,8 +187,8 @@ type accountInfo struct {
 	PortfolioMargin *bool `json:"isPortfolioMarginRetailEnabled"`
 }
 
-// structure maps isPortfolioMarginRetailEnabled, Binance's Portfolio Margin enable status: true is
-// Portfolio Margin, false is Classic Trading. Portfolio Margin Pro is institutional only and not
+// structure maps isPortfolioMarginRetailEnabled, Binance's portfolio margin enable status: true is
+// portfolio margin, false is classic trading. Portfolio Margin Pro is institutional only and not
 // offered.
 func (info *accountInfo) structure() (adapters.AccountStructure, error) {
 	if info.PortfolioMargin == nil {
@@ -200,7 +200,7 @@ func (info *accountInfo) structure() (adapters.AccountStructure, error) {
 	return adapters.StructureBinanceClassic, nil
 }
 
-// marginClosed and futuresClosed report a Classic wallet Binance says is not opened. An absent
+// marginClosed and futuresClosed report a classic wallet Binance says is not opened. An absent
 // flag counts as opened, so the wallet is read instead of being reported empty on a guess.
 func (info *accountInfo) marginClosed() bool {
 	return info.MarginEnabled != nil && !*info.MarginEnabled
@@ -210,9 +210,9 @@ func (info *accountInfo) futuresClosed() bool {
 	return info.FuturesEnabled != nil && !*info.FuturesEnabled
 }
 
-// checkStructure reads the account's Account Structure. The User can switch
-// between Classic Trading and Portfolio Margin inside Binance at any time, so
-// every validation and every Collection Run checks it first (ADR 0001); a
+// checkStructure reads the account's account structure. The user can switch
+// between classic trading and portfolio margin inside Binance at any time, so
+// every validation and every collection run checks it first (ADR 0001); a
 // different structure fails before any account is read.
 func checkStructure(ctx context.Context, c *client, configured adapters.AccountStructure) (accountInfo, error) {
 	var info accountInfo

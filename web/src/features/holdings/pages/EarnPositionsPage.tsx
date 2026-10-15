@@ -40,21 +40,21 @@ export function EarnPositionsPage() {
   } else if (!data?.context.cycleId) {
     empty = (
       <TableEmptyState
-        title="No Valuation Point yet"
-        help="No Collection Cycle has produced a Valuation Point yet."
+        title="No valuation point yet"
+        help="No collection cycle has produced a valuation point yet."
       />
     );
   } else if (!data.detailsComplete) {
     empty = (
       <TableEmptyState
-        title="Some Earn Accounts have no compatible report"
-        help="Detailed Earn positions could not be resolved. See Issues below."
+        title="Some earn accounts have no compatible report"
+        help="Detailed earn positions could not be resolved. See Issues below."
       />
     );
   } else if (filters.hasFilters) {
     empty = (
       <TableEmptyState
-        title="No Earn positions match these filters"
+        title="No earn positions match these filters"
         help="Try adjusting your platform, identity, or asset filter."
       />
     );
@@ -85,7 +85,9 @@ export function EarnPositionsPage() {
         filters={filters}
         page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
       />
-      {data?.context.cycleId ? <IssuesPanel issues={data.issues} /> : null}
+      {data?.context.cycleId ? (
+        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+      ) : null}
     </section>
   );
 }

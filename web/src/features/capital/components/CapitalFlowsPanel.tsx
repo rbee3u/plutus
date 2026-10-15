@@ -91,7 +91,7 @@ export function CapitalFlowsPanel({
         item: latest,
       });
     } catch (cause) {
-      setError(problemMessage(cause, "The Capital Flow could not be loaded."));
+      setError(problemMessage(cause, "The capital flow could not be loaded."));
     } finally {
       setBusy(false);
     }
@@ -121,14 +121,14 @@ export function CapitalFlowsPanel({
         return;
       }
       if (result.error) {
-        setError(problemMessage(result.error, "The Capital Flow could not be deleted."));
+        setError(problemMessage(result.error, "The capital flow could not be deleted."));
         return;
       }
       setDeleteTarget(null);
-      setNotice("Capital Flow deleted.");
+      setNotice("Capital flow deleted.");
       await invalidate();
     } catch (cause) {
-      setError(problemMessage(cause, "The Capital Flow could not be deleted."));
+      setError(problemMessage(cause, "The capital flow could not be deleted."));
     } finally {
       setBusy(false);
     }
@@ -148,7 +148,7 @@ export function CapitalFlowsPanel({
           {notice}
         </p>
       ) : null}
-      <QueryRecovery query={flows} fallback="Capital Flows could not be loaded." />
+      <QueryRecovery query={flows} fallback="Capital flows could not be loaded." />
       <TimeWindowFilters state={timeWindow} ariaLabel="Capital flow time range" />
       <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
         <div className={`${shared.summaryBar} ${styles.summaryBar}`}>
@@ -170,11 +170,11 @@ export function CapitalFlowsPanel({
         </div>
       </div>
       <DataTable
-        caption="Manual Capital Flows, newest first"
+        caption="Manual capital flows, newest first"
         columns={[
           { key: "effectiveAt", header: "Effective at", nowrap: true, width: "170px" },
           { key: "direction", header: "Direction", width: "110px" },
-          { key: "canonicalAssetSymbol", header: "Asset", width: "120px" },
+          { key: "canonicalAssetSymbol", header: "Canonical asset", width: "120px" },
           { key: "quantity", header: "Quantity", numeric: true, width: "130px" },
           { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
           { key: "account", header: "Account", width: "150px" },
@@ -214,11 +214,11 @@ export function CapitalFlowsPanel({
         })}
         empty={
           flows.isPending || timeWindow.busy ? (
-            <TableEmptyState title="Loading Capital Flows..." />
+            <TableEmptyState title="Loading capital flows..." />
           ) : (
             <TableEmptyState
-              title={`No Capital Flows in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
-              help="Try expanding your time window or record a new capital flow."
+              title={`No capital flows in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
+              help="Expand the time window or record a capital flow."
               action={
                 <div className={styles.emptyActions}>
                   <ActionButton
@@ -251,7 +251,7 @@ export function CapitalFlowsPanel({
       />
       <Dialog
         open={deleteTarget !== null}
-        title="Delete Capital Flow"
+        title="Delete capital flow"
         onClose={() => {
           if (!busy) setDeleteTarget(null);
         }}

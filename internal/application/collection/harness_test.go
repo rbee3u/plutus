@@ -36,7 +36,7 @@ type harness struct {
 	registry    *adapters.Registry
 }
 
-// newHarness creates a fresh User and Portfolio in the shared test database and wires the
+// newHarness creates a fresh user and portfolio in the shared test database and wires the
 // services around fake adapters with an instant retry policy.
 func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	t.Helper()

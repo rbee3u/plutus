@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 )
 
 func TestHistoryWindowPresets(t *testing.T) {
@@ -55,7 +56,7 @@ func TestHistoryLocalTimeValidation(t *testing.T) {
 		{"America/New_York", "2026-03-08T02:30", "2026-03-08T04:00", "does not exist"},
 		{"America/New_York", "2026-11-01T01:30", "2026-11-01T03:00", "ambiguous"},
 		{"Australia/Lord_Howe", "2026-04-05T01:45", "2026-04-05T03:00", "ambiguous"},
-		{"UTC", "2026-10-04T13:00", "2026-10-04T12:00", "end must"},
+		{"UTC", "2026-10-04T13:00", "2026-10-04T12:00", "End time must be after start time."},
 		{"UTC", "garbage", "2026-10-04T12:00", "valid"},
 		{"UTC", "2026-02-30T12:00", "2026-10-04T12:00", "valid"},
 		{"UTC", "2026-10-04T12:00", "", "both"},
@@ -63,7 +64,7 @@ func TestHistoryLocalTimeValidation(t *testing.T) {
 		t.Run(tc.zone+tc.from, func(t *testing.T) {
 			from, _, err := ResolveHistoryWindow(tc.zone, "", tc.from, tc.to, time.Now())
 			if tc.reason != "" {
-				if !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), tc.reason) {
+				if apperr.KindOf(err) != apperr.KindInvalid || !strings.Contains(err.Error(), tc.reason) {
 					t.Fatalf("%v", err)
 				}
 				return
@@ -144,7 +145,7 @@ func FuzzHistorySamplingKeepsFinalPoints(f *testing.F) {
 			}
 			got := sample(points, kind, time.UTC)
 			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("%s: got %+v, want final actual Points %+v", kind, got, want)
+				t.Fatalf("%s: got %+v, want final actual points %+v", kind, got, want)
 			}
 			if again := sample(got, kind, time.UTC); !reflect.DeepEqual(again, got) {
 				t.Fatalf("%s sampling is not idempotent", kind)

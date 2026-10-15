@@ -26,7 +26,7 @@ func validateEvidence(ctx context.Context, q *sqlcgen.Queries, portfolioID uuid.
 		return err
 	}
 	if source.Status != adapters.StatusSucceeded || !bytes.Equal(source.AccountID, account.AccountID[:]) {
-		return errors.New("valuation source must be a successful report of the same Account")
+		return errors.New("valuation source must be a successful report of the same account")
 	}
 	if (account.Method == MethodReported) != source.ReportedEquityUsd.Valid || account.Method == MethodMissing {
 		return errors.New("valuation method contradicts source equity")

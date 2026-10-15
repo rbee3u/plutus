@@ -25,10 +25,10 @@ type GetAppliedManualRevisionParams struct {
 }
 
 // The applied revision is the latest one whose own cycle has committed, even after its point expires.
-// Serialized cycles make report time follow point order. The Account's
+// Serialized cycles make report time follow point order. The account's
 // fallback range stops at its latest committed report; the optimizer can
-// prefer a Portfolio-wide time scan that walks every newer report of other
-// Accounts, so the fallback index is forced.
+// prefer a portfolio-wide time scan that walks every newer report of other
+// accounts, so the fallback index is forced.
 func (q *Queries) GetAppliedManualRevision(ctx context.Context, arg GetAppliedManualRevisionParams) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getAppliedManualRevision, arg.PortfolioID, arg.AccountID)
 	var manual_revision_number sql.NullInt64

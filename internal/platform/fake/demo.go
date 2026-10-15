@@ -11,7 +11,7 @@ import (
 
 const demoPrefix = "plutus-demo-v1:"
 
-// DemoIdentity describes one offline Platform login. Definitions contain no
+// DemoIdentity describes one offline platform login. Definitions contain no
 // database IDs, credentials, or derived valuation fields.
 type DemoIdentity struct {
 	ID         string
@@ -98,8 +98,8 @@ func DemoEventTime(anchor time.Time, days int) time.Time {
 	return anchor.UTC().AddDate(0, 0, days)
 }
 
-// DemoAccounts returns the historical Portfolio Boundary for one login. Only
-// seeds use this timeline; runtime always honors the owner's requested Accounts.
+// DemoAccounts returns the historical portfolio boundary for one login. Only
+// seeds use this timeline; runtime always honors the owner's requested accounts.
 func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
 	switch d.Profile {
 	case "daily", "large":
@@ -149,7 +149,7 @@ func demoMode(d DemoIdentity, anchor, at time.Time) adapters.MarginMode {
 	return d.Mode
 }
 
-// DemoBatch is shared by history seeding and the fake Adapter. It emits only
+// DemoBatch is shared by history seeding and the fake adapter. It emits only
 // normalized observations; it never mutates application configuration or flows.
 func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.AccountType) (adapters.Batch, error) {
 	if err := ValidateDemoIdentity(d); err != nil {

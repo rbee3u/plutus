@@ -7,6 +7,7 @@ import { ActionButton } from "@/shared/ui/ActionButton";
 import { formatBoundaryFlows, formatUsd } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
+import { boundaryEventCountText } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { HistoricalPositions } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -17,7 +18,7 @@ import styles from "@/features/history/styles.module.css";
 
 export const POINT_DETAIL_ID = "valuation-point-detail";
 
-/** The expanded row of a Raw Valuation Point: flows, accounts, boundary events, and issues. */
+/** The expanded row of a raw valuation point: flows, accounts, boundary events, and issues. */
 export function PointDetail({
   detail,
   timezone,
@@ -40,14 +41,14 @@ export function PointDetail({
           <span className={styles.pointStatMeta}>
             {accountsHealthy
               ? "All healthy"
-              : `${point.staleAccountCount > 0 ? `${point.staleAccountCount} Stale` : ""}${
+              : `${point.staleAccountCount > 0 ? `${point.staleAccountCount} stale` : ""}${
                   point.staleAccountCount > 0 && point.incompleteAccountCount > 0 ? " · " : ""
-                }${point.incompleteAccountCount > 0 ? `${point.incompleteAccountCount} Incomplete` : ""}`}
+                }${point.incompleteAccountCount > 0 ? `${point.incompleteAccountCount} incomplete` : ""}`}
           </span>
         </div>
 
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>Valuation Point</span>
+          <span className={styles.pointStatLabel}>Valuation point</span>
           <div className={styles.pointStatValue}>
             <NumericText>{formatUsd(point.totalUsd)}</NumericText>
           </div>
@@ -57,19 +58,17 @@ export function PointDetail({
         </div>
 
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>Boundary Flows</span>
+          <span className={styles.pointStatLabel}>Boundary flows</span>
           <div className={styles.pointStatValue}>
             <NumericText>{formatBoundaryFlows(point)}</NumericText>
           </div>
           <span className={styles.pointStatMeta}>
-            {detail.boundaryEvents.length === 0
-              ? "No boundary events"
-              : `${detail.boundaryEvents.length} event(s)`}
+            {boundaryEventCountText(detail.boundaryEvents.length)}
           </span>
         </div>
 
         <div className={styles.pointStatCard}>
-          <span className={styles.pointStatLabel}>Collection Cycle</span>
+          <span className={styles.pointStatLabel}>Collection cycle</span>
           <div className={styles.pointStatValue} title={point.cycleId}>
             {shortId(point.cycleId)}
           </div>
@@ -116,9 +115,9 @@ export function PointDetail({
 
       {detail.boundaryEvents.length > 0 ? (
         <>
-          <h3>Boundary Events</h3>
+          <h3>Boundary events</h3>
           <DataTable
-            caption="Boundary Events at this point"
+            caption="Boundary events at this point"
             columns={BOUNDARY_COLUMNS}
             rows={detail.boundaryEvents.map((item) =>
               boundaryEventRow(item, timezone, platforms.data?.items),
@@ -131,7 +130,7 @@ export function PointDetail({
       {detail.issues.length > 0 ? (
         <>
           <h3>Issues</h3>
-          <IssueList issues={detail.issues} />
+          <IssueList issues={detail.issues} timezone={timezone} />
         </>
       ) : null}
     </>

@@ -153,7 +153,6 @@
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
   letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .metaList dd {
@@ -219,7 +218,7 @@
   height: 260px;
 }
 
-/* Table and List Toolbars */
+/* Table and list toolbars */
 .tableToolbar {
   display: flex;
   justify-content: space-between;

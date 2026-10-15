@@ -52,7 +52,7 @@ export function AccountValuationsGrouped({
             <div className={styles.identityGroupMeta}>
               {group.issuesCount > 0 ? (
                 <Badge tone="warn">
-                  {group.issuesCount} {group.issuesCount === 1 ? "Issue" : "Issues"}
+                  {group.issuesCount} {group.issuesCount === 1 ? "issue" : "issues"}
                 </Badge>
               ) : null}
               {group.totalUsd ? (

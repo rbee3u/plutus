@@ -7,7 +7,7 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { HISTORY_PRESETS, type HistoryPreset } from "@/features/history/timeWindow";
 import styles from "@/features/overview/styles.module.css";
 
-/** The recent valuation trend of the Hero card, with its time-range presets. */
+/** The recent valuation trend of the hero card, with its time-range presets. */
 export function HeroChart({
   points,
   timezone,
@@ -100,10 +100,12 @@ export function HeroChart({
           ref={chartHostRef}
           className={styles.heroChart}
           role="img"
-          aria-label="Recent Valuation Points"
+          aria-label="Recent valuation points"
         />
       ) : (
-        <div className={styles.heroChartEmpty}>No valuation points recorded for this period.</div>
+        <div className={styles.heroChartEmpty}>
+          At least two valuation points are needed to show a trend.
+        </div>
       )}
     </div>
   );

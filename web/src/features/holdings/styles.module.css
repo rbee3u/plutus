@@ -24,7 +24,6 @@
   color: var(--faint);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
@@ -66,14 +65,15 @@
 }
 
 /* Sub-sections of an expanded row: a quiet label sitting close to its table. */
-.accountDetail h3 {
+.accountDetail h3,
+.accountDetail h4 {
   margin: var(--space-xs) 0 calc(-1 * var(--space-sm));
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   line-height: var(--line-height-sm);
 }
 
-/* Ownership disclosures keep Account details inside the same hierarchy. */
+/* Ownership disclosures keep account details inside the same hierarchy. */
 .holdingsTree,
 .treeChildren {
   min-width: 0;
@@ -159,7 +159,6 @@
   color: var(--muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: var(--line-height-xs);
 }

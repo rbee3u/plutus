@@ -67,7 +67,7 @@ func dcdPage(before string) endpoint {
 // dualInvestmentOrders reads the whole dual investment order history, newest first, one page per
 // second as OKX allows. The history cannot be filtered to every state that still holds principal,
 // so no page is skipped: the walk ends at a short page, and a history longer than dcdMaxPages
-// pages fails the selected Earn and Dual Accounts instead of dropping an older order that is still invested.
+// pages fails the selected earn and dual accounts instead of dropping an older order that is still invested.
 func (a *Adapter) dualInvestmentOrders(ctx context.Context, c *client) ([]dcdOrder, error) {
 	var orders []dcdOrder
 	before := ""
@@ -92,7 +92,7 @@ func (a *Adapter) dualInvestmentOrders(ctx context.Context, c *client) ([]dcdOrd
 		before = oldest
 	}
 	return nil, adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
-		"The OKX dual investment order history reaches the %d orders Plutus reads, so selected Earn and Dual Accounts are kept stale instead of missing an older order that is still invested.",
+		"The OKX dual investment order history reaches the %d orders Plutus reads, so selected earn and dual accounts are kept stale instead of missing an older order that is still invested.",
 		dcdMaxPages*dcdPageSize))
 }
 
@@ -121,8 +121,8 @@ func dcdCursor(rows []dcdOrder, before string) (string, error) {
 }
 
 // dualPositions preserves every order that is still invested: notionalSz of
-// notionalCcy, the amount and coin the User put in. The yield is counted only once OKX pays it out
-// at settlement. A state OKX has not documented fails selected Earn and Dual Accounts instead of being guessed.
+// notionalCcy, the amount and coin the user put in. The yield is counted only once OKX pays it out
+// at settlement. A state OKX has not documented fails selected earn and dual accounts instead of being guessed.
 func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
 	where := epDCD.String()
 	var out []adapters.DualPosition

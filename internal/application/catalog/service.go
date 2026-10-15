@@ -1,4 +1,4 @@
-// Package catalog owns Assets, Futures Contracts, and Platform prices.
+// Package catalog owns assets, futures contracts, and platform prices.
 package catalog
 
 import (
@@ -24,9 +24,9 @@ const (
 	defaultLimit = 50
 	maxSymbol    = 64
 
-	// MappingAuto means the Canonical Asset Symbol equals the normalized Asset Symbol.
+	// MappingAuto means the canonical asset symbol equals the normalized asset symbol.
 	MappingAuto = "auto"
-	// MappingManual means a User overrode the Canonical Asset Symbol.
+	// MappingManual means a user overrode the canonical asset symbol.
 	MappingManual = "manual"
 )
 
@@ -34,7 +34,7 @@ const (
 // kept; maxSymbol bounds the byte length, which keeps it within the VARCHAR(64) columns.
 var symbolPattern = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._-]*$`)
 
-// Service reads and writes the Platform catalog.
+// Service reads and writes the platform catalog.
 type Service struct {
 	db  *sql.DB
 	q   *sqlcgen.Queries
@@ -46,7 +46,7 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db, q: sqlcgen.New(db), now: time.Now}
 }
 
-// Asset is an asset available on a Platform, with its own Symbol and a mapping to a Canonical Asset.
+// Asset is an asset available on a platform, with its own symbol and a mapping to a canonical asset.
 type Asset struct {
 	ID                   uuid.UUID
 	Platform             string
@@ -72,7 +72,7 @@ func ParseAssetETag(value string) (uint64, bool) {
 	return etag.Parse("asset", value)
 }
 
-// FuturesContract is one Platform symbol with one immutable set of observed terms.
+// FuturesContract is one platform symbol with one immutable set of observed terms.
 type FuturesContract struct {
 	ID                    uuid.UUID
 	Platform              string

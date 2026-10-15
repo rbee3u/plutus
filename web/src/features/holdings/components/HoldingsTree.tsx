@@ -5,7 +5,7 @@ import { type ManualTarget } from "../dialogs/manual";
 import { ManualDialog } from "../dialogs/ManualBalances";
 import { IconButton } from "@/shared/ui/IconButton";
 import { AccountDetail } from "@/features/holdings/components/AccountDetail";
-import { formatAmount, parseDecimal } from "@/shared/lib/amount";
+import { formatAmount, formatPercent, parseDecimal } from "@/shared/lib/amount";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/features/holdings/styles.module.css";
@@ -34,21 +34,18 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
         </h2>
       </div>
       {tree.platforms.length === 0 ? (
-        <p className={shared.muted}>
-          No accounts inside the boundary yet. Add an Identity, select its account types, enable the
-          connection, and run a Collection Cycle.
-        </p>
+        <p className={shared.muted}>No accounts in the portfolio boundary. Add an identity.</p>
       ) : (
         <ul
           className={styles.holdingsTree}
-          aria-label="Holdings tree at the latest Valuation Point"
+          aria-label="Holdings tree at the latest valuation point"
         >
           {tree.platforms.map((platform) => {
             const platformUsdDecimal = parseDecimal(platform.valueUsd);
             const percent =
               totalUsdDecimal && platformUsdDecimal && !totalUsdDecimal.isZero()
-                ? platformUsdDecimal.dividedBy(totalUsdDecimal).times(100).toNumber()
-                : 0;
+                ? platformUsdDecimal.dividedBy(totalUsdDecimal).toFixed()
+                : null;
             return (
               <TreeNode
                 key={platform.platform}
@@ -64,8 +61,8 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                     const identityUsdDecimal = parseDecimal(identity.valueUsd);
                     const identityPercent =
                       totalUsdDecimal && identityUsdDecimal && !totalUsdDecimal.isZero()
-                        ? identityUsdDecimal.dividedBy(totalUsdDecimal).times(100).toNumber()
-                        : 0;
+                        ? identityUsdDecimal.dividedBy(totalUsdDecimal).toFixed()
+                        : null;
                     return (
                       <TreeNode
                         key={identity.id}
@@ -141,7 +138,7 @@ function TreeNode({
   name: string;
   actionName?: string;
   value: string | null | undefined;
-  percent?: number;
+  percent?: string | null;
   level: "platform" | "identity" | "account";
   open: boolean;
   onToggle: () => void;
@@ -151,7 +148,7 @@ function TreeNode({
   const contentId = useId();
   const amount = formatAmount(value);
   const showPercent =
-    (level === "platform" || level === "identity") && percent !== undefined && percent > 0;
+    (level === "platform" || level === "identity") && parseDecimal(percent)?.gt(0);
 
   return (
     <li className={styles.treeNode}>
@@ -179,7 +176,9 @@ function TreeNode({
                 <NumericText>{amount === "—" ? amount : `$${amount}`}</NumericText>
               </span>
               {showPercent ? (
-                <span className={styles.treeNodeBadge}>{percent.toFixed(1)}%</span>
+                <span className={styles.treeNodeBadge}>
+                  <NumericText>{formatPercent(percent)}</NumericText>
+                </span>
               ) : null}
             </span>
           </span>

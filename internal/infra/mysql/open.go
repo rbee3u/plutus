@@ -63,7 +63,7 @@ func (c *utcConnector) Connect(ctx context.Context) (driver.Conn, error) {
 	execer, ok := conn.(driver.ExecerContext)
 	if !ok {
 		_ = conn.Close()
-		return nil, errors.New("mysql connection does not support ExecContext")
+		return nil, errors.New("MySQL connection does not support ExecContext")
 	}
 	if _, err := execer.ExecContext(ctx, "SET time_zone = '+00:00'", nil); err != nil {
 		_ = conn.Close()

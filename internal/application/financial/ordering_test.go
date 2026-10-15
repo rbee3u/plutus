@@ -47,7 +47,7 @@ func TestPositionsGroupBaseBeforeContractKindAndExpiry(t *testing.T) {
 	sortPositions(got, nil)
 	for i := range want {
 		if got[i].PositionKey != want[i].PositionKey {
-			t.Fatalf("financial changes moved Position %d", i)
+			t.Fatalf("financial changes moved position %d", i)
 		}
 	}
 }
@@ -58,7 +58,7 @@ func TestHoldingsHierarchyPrecedesAssetAndExpiry(t *testing.T) {
 	balances := []BalanceRow{{AccountID: second, CanonicalAssetSymbol: "AAA"}, {AccountID: first, CanonicalAssetSymbol: "ZZZ"}}
 	sortBalances(balances, ranks)
 	if balances[0].AccountID != first {
-		t.Fatal("Asset sort crossed the Account hierarchy")
+		t.Fatal("Asset sort crossed the account hierarchy")
 	}
 	near := time.Now()
 	far := near.Add(time.Hour)
@@ -69,12 +69,12 @@ func TestHoldingsHierarchyPrecedesAssetAndExpiry(t *testing.T) {
 	}
 	sortDualPositions(duals, ranks)
 	if duals[0].PositionKey != "far" || duals[1].PositionKey != "missing" || duals[2].PositionKey != "second" {
-		t.Fatalf("Dual Positions crossed hierarchy or lost missing-expiry order: %+v", duals)
+		t.Fatalf("Dual positions crossed hierarchy or lost missing-expiry order: %+v", duals)
 	}
 	positions := []PositionRow{{AccountID: second, FuturesSymbol: "AAA"}, {AccountID: first, FuturesSymbol: "ZZZ"}}
 	sortPositions(positions, ranks)
 	if positions[0].AccountID != first {
-		t.Fatal("Position Symbol sort crossed the Account hierarchy")
+		t.Fatal("Position symbol sort crossed the account hierarchy")
 	}
 }
 
@@ -85,7 +85,7 @@ func TestHoldingsOrderUsesAssetBeforeCanonicalAsset(t *testing.T) {
 	}
 	sortBalances(balances, nil)
 	if balances[0].AssetSymbol != "AAA" {
-		t.Fatal("Canonical Asset displaced the displayed Asset")
+		t.Fatal("Canonical asset displaced the displayed asset")
 	}
 	rows := []EarnPositionRow{
 		{EarnPosition: adapters.EarnPosition{PositionKey: "z", Assets: []adapters.EarnAmount{{AssetSymbol: "ZZZ", CanonicalAssetSymbol: new("AAA")}}}},
@@ -93,6 +93,6 @@ func TestHoldingsOrderUsesAssetBeforeCanonicalAsset(t *testing.T) {
 	}
 	sortEarnPositions(rows, nil)
 	if rows[0].PositionKey != "a" || len(rows[0].Assets) != 2 {
-		t.Fatal("Earn ordering lost Asset priority or split a multi-Asset Position")
+		t.Fatal("Earn ordering lost asset priority or split a multi-asset position")
 	}
 }

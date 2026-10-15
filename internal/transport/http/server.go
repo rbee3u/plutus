@@ -124,7 +124,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 	server.TLSConfig = tlsServerConfig(cfg)
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", server.Addr)
 	if err != nil {
-		return fmt.Errorf("http listen: %w", err)
+		return fmt.Errorf("HTTP listen: %w", err)
 	}
 
 	errCh := make(chan error, 1)
@@ -138,7 +138,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 		errCh <- err
 	}()
 
-	logger.Info("http server started",
+	logger.Info("HTTP server started",
 		slog.String("addr", cfg.Server.Addr()),
 		slog.Bool("https", cfg.Server.TLS.HTTPSEnabled()),
 		slog.Bool("mtls", cfg.Server.TLS.MTLSEnabled()),
@@ -151,7 +151,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, handler h
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("http shutdown: %w", err)
+			return fmt.Errorf("HTTP shutdown: %w", err)
 		}
 		err := <-errCh
 		if err == nil || errors.Is(err, http.ErrServerClosed) {

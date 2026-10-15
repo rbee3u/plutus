@@ -60,7 +60,7 @@ export function IdentityDialog({ portfolioId, request, platforms, onClose, onSav
       ) : null}
       {request?.kind === "credentials" && !credentialPlatform ? (
         <p role="alert">
-          Platform information is unavailable. Close this dialog and retry loading Platforms.
+          Platform information is unavailable. Close this dialog and retry loading platforms.
         </p>
       ) : null}
     </Dialog>

@@ -26,7 +26,7 @@ type walletCoin struct {
 	UnrealisedPnl   string `json:"unrealisedPnl"`
 }
 
-// unified maps the Unified Trading Account: its account-wide figures, its per-coin equities, and
+// unified maps the unified trading account: its account-wide figures, its per-coin equities, and
 // its open contract positions.
 func (a *Adapter) unified(ctx context.Context, c *client, mode adapters.MarginMode) (adapters.AccountReport, error) {
 	var result struct {
@@ -54,8 +54,8 @@ func (a *Adapter) unified(ctx context.Context, c *client, mode adapters.MarginMo
 }
 
 // mapUnifiedAccount reads the account-wide figures, all in USD. Bybit documents them as not
-// applicable to Isolated Margin, so there they are ignored and the value is calculated from the
-// Balances. In Cross and Portfolio Margin an empty field stays unknown rather than becoming zero.
+// applicable to isolated margin, so there they are ignored and the value is calculated from the
+// balances. In cross and portfolio margin an empty field stays unknown rather than becoming zero.
 // totalMarginBalance is not haircut-adjusted equity and is not mapped.
 func mapUnifiedAccount(in *walletAccount, mode adapters.MarginMode) (adapters.AccountReport, error) {
 	report := adapters.AccountReport{AccountType: TypeUnified, Status: adapters.StatusSucceeded}
@@ -81,7 +81,7 @@ func mapUnifiedAccount(in *walletAccount, mode adapters.MarginMode) (adapters.Ac
 
 // mapUnifiedBalances maps coin[] rows. Equity is Bybit's own per-coin `equity`, which already
 // nets spot borrowing and includes unrealized PnL, so neither is added or subtracted again. An
-// empty `equity` fails the Account: read as zero, it would drop the coin under the Complete Set
+// empty `equity` fails the account: read as zero, it would drop the coin under the complete set
 // rule. Bybit reports no full coin name, so Name stays empty.
 func mapUnifiedBalances(rows []walletCoin) ([]adapters.Balance, error) {
 	where := epWallet.String()
@@ -130,8 +130,8 @@ type fundingCoin struct {
 	TransferBalance string `json:"transferBalance"`
 }
 
-// funding maps the Funding account, which Bybit reports without any USD valuation, so the value
-// is calculated from the Balances. Like `equity`, an empty `walletBalance` fails the Account
+// funding maps the funding account, which Bybit reports without any USD valuation, so the value
+// is calculated from the balances. Like `equity`, an empty `walletBalance` fails the account
 // instead of reading as zero.
 func (a *Adapter) funding(ctx context.Context, c *client) (adapters.AccountReport, error) {
 	var result struct {

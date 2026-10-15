@@ -20,7 +20,7 @@ func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapte
 
 // tickers returns a lookup of every spot last price and the time it was read. A failure yields
 // no prices rather than failing the batch: valuation falls back to the latest price within 24
-// hours, and the Earn check is skipped.
+// hours, and the earn check is skipped.
 func (a *Adapter) tickers(ctx context.Context, c *client) (adapters.QuoteLookup, time.Time) {
 	var rows []struct {
 		InstID string `json:"instId"`

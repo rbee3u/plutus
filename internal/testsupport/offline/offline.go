@@ -12,7 +12,7 @@ import (
 )
 
 // Install must run before tests, including before mysqltest.RunTestMain. A panic cannot be swallowed
-// as an ordinary failed Account Report. No proxy or alternate TLS dialer can bypass this guard.
+// as an ordinary failed account report. No proxy or alternate TLS dialer can bypass this guard.
 func Install() {
 	http.DefaultTransport = &http.Transport{DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, _, err := net.SplitHostPort(address)

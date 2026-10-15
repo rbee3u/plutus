@@ -10,7 +10,7 @@ const identities = [
 const all = { platform: "", identityId: "", symbol: "no-matches" };
 
 describe("Holdings selection", () => {
-  it("uses configured candidates regardless of search and omits archived Platforms", () => {
+  it("uses configured candidates regardless of search and omits archived platforms", () => {
     const candidates = holdingsCandidates(all, identities);
     expect([...candidates.platforms]).toEqual(["binance", "okx"]);
     expect(candidates.identities.map((item) => item.id)).toEqual(["bn", "bn-sub", "ok"]);
@@ -23,18 +23,18 @@ describe("Holdings selection", () => {
     expect([...candidates.platforms]).toEqual(["binance"]);
     expect(candidates.identities.map((item) => item.id)).toEqual(["bn", "bn-sub"]);
   });
-  it("preserves Platform All when selecting an Identity", () => {
+  it("preserves platform All when selecting an identity", () => {
     expect(normalizeHoldingsSelection({ ...all, identityId: "bn" }, identities)).toEqual({
       ...all,
       identityId: "bn",
     });
   });
-  it("clears a conflicting Platform and retains a valid Identity", () => {
+  it("clears a conflicting platform and retains a valid identity", () => {
     expect(
       normalizeHoldingsSelection({ ...all, platform: "okx", identityId: "bn" }, identities),
     ).toEqual({ ...all, identityId: "bn" });
   });
-  it("clears unknown or archived choices while retaining a compatible Platform", () => {
+  it("clears unknown or archived choices while retaining a compatible platform", () => {
     expect(
       normalizeHoldingsSelection({ ...all, platform: "binance", identityId: "old" }, identities),
     ).toEqual({ ...all, platform: "binance" });

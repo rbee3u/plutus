@@ -56,8 +56,8 @@ func periodsBetween(kind string, from, to time.Time, loc *time.Location) ([]peri
 	return out, nil
 }
 
-// Calendar rows start with the first retained Point's whole local period.
-// Use Portfolio history rather than the query's first Point to preserve gaps.
+// Calendar rows start with the first retained point's whole local period.
+// Use portfolio history rather than the query's first point to preserve gaps.
 func (s *Service) periodsInHistory(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]period, time.Time, error) {
 	loc := p.location()
 	if !to.After(from) || periodStart(kind, from.In(loc)).IsZero() {
@@ -132,7 +132,7 @@ func periodLabel(kind string, start time.Time) string {
 	}
 }
 
-// PeriodCloses returns the Period Close of every period of kind between two instants.
+// PeriodCloses returns the period close of every period of kind between two instants.
 func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]PeriodClose, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]PeriodClose, error) {
 		loc := p.location()
@@ -202,7 +202,7 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 	})
 }
 
-// ValueChanges returns the Value Change of every period of kind between two instants.
+// ValueChanges returns the value change of every period of kind between two instants.
 func (s *Service) ValueChanges(ctx context.Context, p PortfolioContext, kind string, from, to time.Time) ([]ValueChange, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]ValueChange, error) {
 		periods, _, err := s.periodsInHistory(ctx, p, kind, from, to)
@@ -224,7 +224,7 @@ func (s *Service) ValueChanges(ctx context.Context, p PortfolioContext, kind str
 	})
 }
 
-// CustomValueChange returns one Value Change between the last points at or before two instants.
+// CustomValueChange returns one value change between the last points at or before two instants.
 func (s *Service) CustomValueChange(ctx context.Context, p PortfolioContext, from, to time.Time) (ValueChange, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (ValueChange, error) {
 		if !to.After(from) {
@@ -407,8 +407,8 @@ func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at
 	return &point, nil
 }
 
-// Only sparse evidence-bearing Points need hydration for a comparison. Ordinary
-// unchanged Points contribute neither flows nor completeness markers.
+// Only sparse evidence-bearing points need hydration for a comparison. Ordinary
+// unchanged points contribute neither flows nor completeness markers.
 func (s *Service) comparisonPointsBetween(ctx context.Context, portfolioID uuid.UUID, from, to time.Time) ([]valuation.Point, error) {
 	headers, err := mysql.Queries(ctx, s.db).ListComparisonPointHeadersBetween(ctx, sqlcgen.ListComparisonPointHeadersBetweenParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 	if err != nil {

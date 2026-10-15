@@ -40,7 +40,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 				}
 			}
 			if r.AccountType == TypeEarn && (len(r.Balances) != 1 || r.Balances[0].Equity != "20") {
-				t.Fatal("dual principal in Earn")
+				t.Fatal("dual principal in earn")
 			}
 		}
 	}
@@ -52,7 +52,7 @@ func TestDocumentedDualPosition(t *testing.T) {
 	}
 	sampleBody(t, "v5_earn_advance_position.sell_high", &synthetic)
 	if len(synthetic.List) != 1 || synthetic.List[0].Status != "Active" || synthetic.List[0].Direction != "SellHigh" {
-		t.Fatal("the synthetic Dual Asset answer must contain one active SellHigh subscription")
+		t.Fatal("the synthetic dual asset answer must contain one active SellHigh subscription")
 	}
 
 	r := newReplay(t, "", nil)
@@ -63,7 +63,7 @@ func TestDocumentedDualPosition(t *testing.T) {
 	earn := reportOf(t, &batch, TypeEarn)
 	dual := reportOf(t, &batch, TypeDualInvestment)
 	if earn.Status != adapters.StatusSucceeded || dual.Status != adapters.StatusSucceeded || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
-		t.Fatalf("synthetic Earn and Dual reports: %+v", batch.Reports)
+		t.Fatalf("synthetic earn and dual reports: %+v", batch.Reports)
 	}
 	row := synthetic.List[0]
 	p := dual.DualPositions[0]
@@ -73,13 +73,13 @@ func TestDocumentedDualPosition(t *testing.T) {
 		p.TargetPrice == nil || *p.TargetPrice != row.TargetPrice || p.ExpiryAt == nil || p.ExpiryAt.UnixMilli() != 1700600000000 ||
 		p.SubscribedAt == nil || p.SubscribedAt.UnixMilli() != 1700000000000 ||
 		p.AnnualizedRate == nil || *p.AnnualizedRate != "0.1" || p.RateKind == nil || *p.RateKind != "apy" || p.Status != "active" {
-		t.Fatalf("synthetic Dual Asset terms: %+v", p)
+		t.Fatalf("synthetic dual asset terms: %+v", p)
 	}
 	if dual.Balances[0].AssetSymbol != row.InvestCoin || dual.Balances[0].Equity != row.Amount {
-		t.Fatalf("synthetic Dual Asset principal: %+v", dual.Balances)
+		t.Fatalf("synthetic dual asset principal: %+v", dual.Balances)
 	}
 	if len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
-		t.Fatalf("ordinary Earn must exclude Dual Asset principal: %+v", earn.Balances)
+		t.Fatalf("ordinary earn must exclude dual asset principal: %+v", earn.Balances)
 	}
 }
 

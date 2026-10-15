@@ -3,6 +3,7 @@
 .formRow2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: start;
   gap: var(--space-md);
 }
 
@@ -94,7 +95,6 @@
 
 .flowSummaryLabel {
   font-size: var(--text-xs);
-  text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
 }

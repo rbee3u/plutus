@@ -201,7 +201,7 @@ export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Op
 });
 
 /**
- * List supported platforms with their Account Structures, Account Types, and Margin Modes
+ * List supported platforms with their account structures, account types, and margin modes
  */
 export const listPlatforms = <ThrowOnError extends boolean = false>(options?: Options<ListPlatformsData, ThrowOnError>): RequestResult<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError> => (options?.client ?? client).get<ListPlatformsResponses, ListPlatformsErrors, ThrowOnError>({
     security: [{
@@ -434,7 +434,7 @@ export const listAccountBalances = <ThrowOnError extends boolean = false>(option
 });
 
 /**
- * Positions of an account at the latest or a specified Valuation Point
+ * Positions of an account at the latest or a specified valuation point
  */
 export const listAccountPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountPositionsData, ThrowOnError>): RequestResult<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError>({
     security: [{
@@ -512,7 +512,7 @@ export const listDualPositions = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * Flat Earn position list across the boundary at the latest point
+ * Flat earn position list across the boundary at the latest point
  */
 export const listEarnPositions = <ThrowOnError extends boolean = false>(options: Options<ListEarnPositionsData, ThrowOnError>): RequestResult<ListEarnPositionsResponses, ListEarnPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListEarnPositionsResponses, ListEarnPositionsErrors, ThrowOnError>({
     security: [{
@@ -525,9 +525,9 @@ export const listEarnPositions = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * Resolve a relative or Portfolio-local history window
+ * Resolve a relative or portfolio-local history window
  *
- * Use a preset (default 1w), or both local endpoints without a preset. Local endpoints use the Portfolio timezone; nonexistent and ambiguous times are rejected.
+ * Use a preset (default 1w), or both local endpoints without a preset. Local endpoints use the portfolio timezone; nonexistent and ambiguous times are rejected.
  */
 export const getHistoryWindow = <ThrowOnError extends boolean = false>(options: Options<GetHistoryWindowData, ThrowOnError>): RequestResult<GetHistoryWindowResponses, GetHistoryWindowErrors, ThrowOnError> => (options.client ?? client).get<GetHistoryWindowResponses, GetHistoryWindowErrors, ThrowOnError>({
     security: [{
@@ -540,7 +540,7 @@ export const getHistoryWindow = <ThrowOnError extends boolean = false>(options: 
 });
 
 /**
- * Raw Valuation Points, newest first
+ * Raw valuation points, newest first
  */
 export const listValuationPointPage = <ThrowOnError extends boolean = false>(options: Options<ListValuationPointPageData, ThrowOnError>): RequestResult<ListValuationPointPageResponses, ListValuationPointPageErrors, ThrowOnError> => (options.client ?? client).get<ListValuationPointPageResponses, ListValuationPointPageErrors, ThrowOnError>({
     security: [{
@@ -717,7 +717,7 @@ export const listBoundaryEvents = <ThrowOnError extends boolean = false>(options
 });
 
 /**
- * List Assets and their Canonical Asset mappings
+ * List assets and their canonical asset mappings
  */
 export const listAssets = <ThrowOnError extends boolean = false>(options: Options<ListAssetsData, ThrowOnError>): RequestResult<ListAssetsResponses, ListAssetsErrors, ThrowOnError> => (options.client ?? client).get<ListAssetsResponses, ListAssetsErrors, ThrowOnError>({
     security: [{
@@ -730,7 +730,7 @@ export const listAssets = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Override the Canonical Asset mapping for future Valuation Points
+ * Override the canonical asset mapping for future valuation points
  */
 export const putAssetMapping = <ThrowOnError extends boolean = false>(options: Options<PutAssetMappingData, ThrowOnError>): RequestResult<PutAssetMappingResponses, PutAssetMappingErrors, ThrowOnError> => (options.client ?? client).put<PutAssetMappingResponses, PutAssetMappingErrors, ThrowOnError>({
     security: [{
@@ -747,7 +747,7 @@ export const putAssetMapping = <ThrowOnError extends boolean = false>(options: O
 });
 
 /**
- * Ignore or restore an Asset for future Collection Cycles in one Portfolio
+ * Ignore or restore an asset for future collection cycles in one portfolio
  */
 export const putAssetExclusion = <ThrowOnError extends boolean = false>(options: Options<PutAssetExclusionData, ThrowOnError>): RequestResult<PutAssetExclusionResponses, PutAssetExclusionErrors, ThrowOnError> => (options.client ?? client).put<PutAssetExclusionResponses, PutAssetExclusionErrors, ThrowOnError>({
     security: [{

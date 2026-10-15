@@ -30,7 +30,7 @@ export function DualPositionsTable({
   const platforms = usePlatforms();
   return (
     <DataTable
-      caption="Dual Investment positions"
+      caption="Dual investment positions"
       columns={[
         ...(showAccount ? holdingsAccountColumns(filters) : []),
         {
@@ -63,9 +63,9 @@ export function DualPositionsTable({
             : `${formatPrice(item.targetPrice)} ${item.quoteAssetSymbol ?? ""}`.trim(),
         direction:
           item.direction === "buy_low" ? (
-            <Badge tone="good">Buy Low</Badge>
+            <Badge tone="good">Buy low</Badge>
           ) : item.direction === "sell_high" ? (
-            <Badge tone="info">Sell High</Badge>
+            <Badge tone="info">Sell high</Badge>
           ) : item.direction ? (
             <Badge tone="neutral">{capitalize(item.direction)}</Badge>
           ) : (
@@ -93,12 +93,12 @@ export function DualPositionsTable({
       }))}
       empty={
         loading ? (
-          <TableEmptyState title="Loading Dual Investment subscriptions..." />
+          <TableEmptyState title="Loading dual investment subscriptions..." />
         ) : (
           (empty ?? (
             <TableEmptyState
-              title="No Dual Investment subscriptions recorded yet"
-              help="Dual Investment subscriptions will appear automatically once platform identities are connected and sync."
+              title="No dual investment subscriptions to display"
+              help="Only subscriptions reported by selected dual investment accounts are shown."
             />
           ))
         )

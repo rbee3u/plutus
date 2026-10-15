@@ -55,8 +55,8 @@ describe("shared balance cells", () => {
     expect(row.unrealizedPnl).toBe("—");
     const symbol = renderToStaticMarkup(<>{row.symbol}</>);
     expect(symbol).toContain("XBT");
-    expect(symbol.indexOf("XBT")).toBeLessThan(symbol.indexOf("Canonical Asset: BTC"));
-    expect(symbol).toContain("Canonical Asset: BTC");
+    expect(symbol.indexOf("XBT")).toBeLessThan(symbol.indexOf("Canonical asset: BTC"));
+    expect(symbol).toContain("Canonical asset: BTC");
     const issues = renderToStaticMarkup(<>{row.issues}</>);
     expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
     expect(issues).not.toContain("Stale");
@@ -65,7 +65,7 @@ describe("shared balance cells", () => {
     expect(render(balance)).toContain("6,172.84");
   });
 
-  it("exposes a Stale disclosure in Issues for carried-forward reports", () => {
+  it("exposes a stale disclosure in Issues for carried-forward reports", () => {
     const row = balanceRow({ ...balance, freshness: "stale" }, "Asia/Shanghai");
     const html = renderToStaticMarkup(<>{row.issues}</>);
     expect(html).toContain('aria-label="Stale report for XBT"');
@@ -85,7 +85,7 @@ describe("shared balance cells", () => {
     );
     expect(row.equity).toBe("0.123457");
     expect(row.equityUsd).toBe("—");
-    expect(renderToStaticMarkup(<>{row.priceUsd}</>)).toContain("no price");
+    expect(renderToStaticMarkup(<>{row.priceUsd}</>)).toContain("Missing price");
     const issues = renderToStaticMarkup(<>{row.issues}</>);
     expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
   });

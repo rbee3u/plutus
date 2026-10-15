@@ -14,7 +14,13 @@ export const ACCOUNT_VALUATION_COLUMNS = [
   { key: "issues", header: "Issues", nowrap: true, width: "120px" },
 ];
 
+export function isAccountReportMissing(item: AccountValuation): boolean {
+  // Successful sources retain an observation time, even outside the valuation boundary.
+  return item.method === "missing" && !item.reportObservedAt;
+}
+
 export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
+  const missingReport = isAccountReportMissing(item);
   const isHealthy =
     item.status === "succeeded" &&
     item.freshness === "fresh" &&
@@ -39,12 +45,19 @@ export function accountValuationRow(item: AccountValuation, timezone?: string): 
             {item.errorDetail ? <p className={styles.cellMeta}>{item.errorDetail}</p> : null}
           </HoverDetails>
         ) : null}
-        {item.freshness === "stale" ? (
+        {missingReport ? (
+          <HoverDetails
+            label={<Badge tone="warn">Missing report</Badge>}
+            name={`Missing report for ${item.accountName}`}
+          >
+            <p>No compatible successful account report; holdings and value are unknown.</p>
+          </HoverDetails>
+        ) : item.freshness === "stale" ? (
           <HoverDetails
             label={<Badge tone="warn">Stale</Badge>}
             name={`Stale report for ${item.accountName}`}
           >
-            <p>Earlier successful Account Report carried forward.</p>
+            <p>Earlier successful account report carried forward.</p>
             {item.reportObservedAt ? (
               <p className={styles.cellMeta}>
                 Observed {formatInstant(item.reportObservedAt, timezone)}
@@ -63,7 +76,7 @@ export function accountValuationRow(item: AccountValuation, timezone?: string): 
         ) : null}
         {item.omitted.length > 0 ? (
           <HoverDetails
-            label={<Badge tone="warn">{formatCount(item.omitted.length)} Omitted</Badge>}
+            label={<Badge tone="warn">{formatCount(item.omitted.length)} omitted</Badge>}
             name={`Omitted balances for ${item.accountName}`}
           >
             {item.omitted.map((om) => (

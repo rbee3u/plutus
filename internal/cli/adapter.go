@@ -61,7 +61,7 @@ func recordablePlatforms() string {
 }
 
 func newAdapterCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "adapter", Short: "Developer tools for Platform adapters", Args: cobra.NoArgs}
+	cmd := &cobra.Command{Use: "adapter", Short: "Developer tools for platform adapters", Args: cobra.NoArgs}
 	cmd.AddCommand(newAdapterRecordCommand())
 	return cmd
 }
@@ -74,7 +74,7 @@ func newAdapterRecordCommand() *cobra.Command {
 		platform := adapters.Platform(strings.ToLower(platformFlag))
 		spec, ok := recorders[platform]
 		if !ok {
-			return fmt.Errorf("unsupported recording Platform %q; choose %s", platformFlag, recordablePlatforms())
+			return fmt.Errorf("unsupported recording platform %q; choose %s", platformFlag, recordablePlatforms())
 		}
 		catalogue := spec.requests()
 		if list {
@@ -146,14 +146,14 @@ func newAdapterRecordCommand() *cobra.Command {
 		return nil
 	}}
 	cmd.Flags().StringVar(&platformFlag, "platform", "", "Platform to record")
-	cmd.Flags().StringSliceVar(&only, "only", nil, "one read-only interface identifier")
-	cmd.Flags().StringVar(&variant, "variant", "", "semantic filename suffix; does not change account configuration")
-	cmd.Flags().StringArrayVar(&query, "query", nil, "business query key=value; repeat for multiple values")
-	cmd.Flags().StringArrayVar(&form, "form", nil, "business form key=value; repeat for multiple values")
-	cmd.Flags().BoolVar(&list, "list-requests", false, "list read-only interfaces and required parameters without keys or network")
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the exact request and filename without keys or network")
-	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "retain a prepared futures contract in local market trimming; never sent to the exchange")
-	cmd.Flags().StringVar(&outFlag, "out", recordingDirectory+"/evidence", "output parent inside /tmp/plutus")
+	cmd.Flags().StringSliceVar(&only, "only", nil, "One read-only interface identifier")
+	cmd.Flags().StringVar(&variant, "variant", "", "Semantic filename suffix; does not change account configuration")
+	cmd.Flags().StringArrayVar(&query, "query", nil, "Business query key=value; repeat for multiple values")
+	cmd.Flags().StringArrayVar(&form, "form", nil, "Business form key=value; repeat for multiple values")
+	cmd.Flags().BoolVar(&list, "list-requests", false, "List read-only interfaces and required parameters without keys or network")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show the exact request and filename without keys or network")
+	cmd.Flags().StringArrayVar(&keepSymbols, "keep-symbol", nil, "Retain a prepared futures contract in local market trimming; never sent to the exchange")
+	cmd.Flags().StringVar(&outFlag, "out", recordingDirectory+"/evidence", "Output parent inside /tmp/plutus")
 	_ = cmd.MarkFlagRequired("platform")
 	return cmd
 }

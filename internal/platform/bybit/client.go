@@ -278,10 +278,10 @@ func statusClass(status int, fallback string) string {
 	}
 }
 
-// Bound reads even when the Platform keeps returning new cursors.
+// Bound reads even when the platform keeps returning new cursors.
 const maxPages = 1000
 
-// Pagination failures discard partial results to preserve Complete Set semantics.
+// Pagination failures discard partial results to preserve complete set semantics.
 // Missing lists, repeated cursors, and exceeding maxPages are failures.
 func pages[T any](ctx context.Context, c *client, ep endpoint, params url.Values) ([]T, error) {
 	query := url.Values{}

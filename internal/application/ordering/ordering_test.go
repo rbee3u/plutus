@@ -27,7 +27,7 @@ func TestIdentityOrder(t *testing.T) {
 		t.Fatalf("Identities = %v, want %v", got, want)
 	}
 	if got := PlatformsCSV(); got != "binance,okx,bybit,kraken" {
-		t.Fatalf("SQL Platform order = %q", got)
+		t.Fatalf("SQL platform order = %q", got)
 	}
 }
 

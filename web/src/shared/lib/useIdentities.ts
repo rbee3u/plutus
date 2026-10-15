@@ -6,7 +6,7 @@ export function identityEtag(item: Identity): string {
   return `"identity:${String(item.version)}"`;
 }
 
-/** Identities of the Portfolio with their embedded Connection and Accounts. */
+/** Identities of the portfolio with their embedded connection and accounts. */
 export function useIdentities(portfolioId: string) {
   return usePortfolioQuery<IdentityList>({
     key: (userId, portfolioId) => keys.identities(userId, portfolioId),
@@ -23,7 +23,7 @@ export interface AccountOption {
   selected: boolean;
 }
 
-/** Every Account of the non-archived Identities, labelled "identity · account". */
+/** Every account of the non-archived identities, labelled "identity · account". */
 export function accountOptions(identities: Identity[] | undefined): AccountOption[] {
   return (identities ?? [])
     .filter((identity) => identity.status !== "archived")

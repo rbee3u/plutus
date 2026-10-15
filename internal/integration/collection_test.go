@@ -68,7 +68,7 @@ func TestExclusionAuditPreservesHistoricalReasons(t *testing.T) {
 	other := newHarness(t)
 	otherPage, err := s.List(h.ctx, other.portfolioID, &audit.ListFilter{ResourceType: "asset"})
 	if err != nil || len(otherPage.Items) != 0 {
-		t.Fatalf("cross-Portfolio audit: %+v %v", otherPage, err)
+		t.Fatalf("cross-portfolio audit: %+v %v", otherPage, err)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("first point should be complete and fresh: %+v", summary.Point)
 	}
 
-	// The spot Account has no reported equity: it is calculated from USDC (1 USD, no price row) and SOL (priced).
+	// The spot account has no reported equity: it is calculated from USDC (1 USD, no price row) and SOL (priced).
 	accounts := h.accountsByType(cycleID, good.ID)
 	spot := accounts["spot"]
 	if spot.Method != valuation.MethodCalculated || spot.Freshness != valuation.FreshnessFresh || len(spot.Omitted) != 0 || spot.ValueUSD == nil {
@@ -178,7 +178,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("point total %s, want sum of accounts %s", summary.Point.TotalUSD, decimal.Format(total))
 	}
 
-	// USDT on a second Platform maps to the same Canonical Asset Symbol automatically
+	// USDT on a second platform maps to the same canonical asset symbol automatically
 	// (ADR 0003).
 	assets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Query: "USDT", Limit: 50})
 	if err != nil {
@@ -197,8 +197,8 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("USDT should be listed on both platforms: %v", platforms)
 	}
 
-	// Break the good key in place: the next cycle must fail with authentication, set the Connection
-	// invalid, and carry the Accounts forward as stale.
+	// Break the good key in place: the next cycle must fail with authentication, set the connection
+	// invalid, and carry the accounts forward as stale.
 	broken := h.storeCredentials(enabled, "invalid-rotated-key")
 	if _, err := h.db.ExecContext(h.ctx, "UPDATE identities SET connection_status = 'enabled', platform_login_ref = 'rate-limited-login' WHERE id = ?", broken.ID[:]); err != nil {
 		t.Fatal(err)
@@ -229,7 +229,7 @@ func TestCycleValuesStablecoinsAtOneAndCarriesFailuresAsStale(t *testing.T) {
 		t.Fatalf("stale carry-forward must keep the total positive: %s", summary.Point.TotalUSD)
 	}
 
-	// The invalid Identity is skipped by the scheduler-facing list and by the next cycle.
+	// The invalid identity is skipped by the scheduler-facing list and by the next cycle.
 	collectable, err := h.identities.ListCollectable(h.ctx, h.portfolioID)
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +300,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	otherAssets, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: other.ID, Query: "TOKENX", Limit: 50})
 	if err != nil || len(otherAssets.Items) != 0 {
-		t.Fatalf("exclusion leaked to another Portfolio: %+v %v", otherAssets, err)
+		t.Fatalf("exclusion leaked to another portfolio: %+v %v", otherAssets, err)
 	}
 	oldPoint, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
 	if err != nil || oldPoint.Completeness() != valuation.CompletenessIncomplete {
@@ -319,7 +319,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	for _, row := range flat.Items {
 		if row.AssetSymbol == "TOKENX" {
-			t.Fatal("excluded TOKENX appeared in ordinary Balances")
+			t.Fatal("excluded TOKENX appeared in ordinary balances")
 		}
 	}
 	view, err := h.financial.AccountBalances(h.ctx, pctx, spot.AccountID)
@@ -328,7 +328,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	for _, row := range view.Balances {
 		if row.AssetSymbol == "TOKENX" {
-			t.Fatal("excluded TOKENX appeared in Account Balances")
+			t.Fatal("excluded TOKENX appeared in account balances")
 		}
 	}
 	oldPoint, err = h.valuation.PointByCycle(h.ctx, h.portfolioID, firstCycle)
@@ -359,7 +359,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	change, err := h.financial.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, thirdPoint.EvaluatedAt.Add(time.Microsecond))
 	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "asset_exclusion_changed") {
-		t.Fatalf("treatment change must limit Value Change: %+v %v", change, err)
+		t.Fatalf("treatment change must limit value change: %+v %v", change, err)
 	}
 	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: false, Version: 1})
 	if err != nil {
@@ -372,7 +372,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 	}
 	change, err = h.financial.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, restoredPricedPoint.EvaluatedAt.Add(time.Microsecond))
 	if err != nil || change.Completeness != valuation.CompletenessComplete {
-		t.Fatalf("matching endpoint rules should allow Value Change: %+v %v", change, err)
+		t.Fatalf("matching endpoint rules should allow value change: %+v %v", change, err)
 	}
 
 	btc, err := h.catalog.ListAssets(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: "binance", Query: "BTC", Limit: 50})
@@ -397,7 +397,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		foundBTC = foundBTC || row.AssetSymbol == "BTC"
 	}
 	if !foundBTC {
-		t.Fatal("reported-equity Account hid BTC")
+		t.Fatal("reported-equity account hid BTC")
 	}
 
 	_, err = h.catalog.PutExclusion(h.ctx, token.ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: false, Version: excluded.ExclusionVersion})
@@ -469,7 +469,7 @@ func TestMarginModeIsStoredAtValidationAndAuditedWhenItChanges(t *testing.T) {
 	h.fakes[adapters.PlatformOKX].WithClock(func() time.Time { return clock })
 	item := h.createIdentity("OKX switching", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
 	if item.MarginMode != "" {
-		t.Fatalf("a new Identity has no Margin Mode before validation, got %q", item.MarginMode)
+		t.Fatalf("a new identity has no margin mode before validation, got %q", item.MarginMode)
 	}
 	item = h.storeCredentials(item, "switch-okx")
 	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
@@ -487,10 +487,10 @@ func TestMarginModeIsStoredAtValidationAndAuditedWhenItChanges(t *testing.T) {
 		return n
 	}
 	if changes() != 0 {
-		t.Fatal("validation observed the first Margin Mode; that is not a change")
+		t.Fatal("validation observed the first margin mode; that is not a change")
 	}
 
-	// A cycle a minute later observes the next Margin Mode, as if the owner switched it on OKX.
+	// A cycle a minute later observes the next margin mode, as if the owner switched it on OKX.
 	clock = start.Add(time.Minute)
 	if summary, _ := h.runCycle(); summary.ReportFailed != 0 {
 		t.Fatalf("cycle summary: %+v", summary)
@@ -501,14 +501,14 @@ func TestMarginModeIsStoredAtValidationAndAuditedWhenItChanges(t *testing.T) {
 	}
 	second := fake.MarginMode(adapters.StructureOKXUnified, "switch-okx", clock)
 	if second == first || after.MarginMode != second {
-		t.Fatalf("stored Margin Mode %q after the switch from %q, want %q", after.MarginMode, first, second)
+		t.Fatalf("stored margin mode %q after the switch from %q, want %q", after.MarginMode, first, second)
 	}
 	if changes() != 1 {
 		t.Fatal("the switch must be audited once, with the system as the actor")
 	}
 	h.runCycle()
 	if changes() != 1 {
-		t.Fatal("an unchanged Margin Mode must not be audited again")
+		t.Fatal("an unchanged margin mode must not be audited again")
 	}
 }
 
@@ -528,7 +528,7 @@ func TestValidationRefusesAKeyOfAnotherPlatformAccount(t *testing.T) {
 		t.Fatalf("a key of another account must be refused: err=%v outcome=%+v", err, outcome)
 	}
 	if refused.Connection.Status != identity.ConnectionDisabled || refused.ExternalRef == nil || *refused.ExternalRef != bound {
-		t.Fatalf("the refused key must leave the Connection disabled and the binding unchanged: %+v", refused)
+		t.Fatalf("the refused key must leave the connection disabled and the binding unchanged: %+v", refused)
 	}
 
 	restored := h.storeCredentials(refused, "key-first-account")
@@ -537,8 +537,8 @@ func TestValidationRefusesAKeyOfAnotherPlatformAccount(t *testing.T) {
 	}
 }
 
-// foreignModeAdapter validates with a proper OKX Margin Mode but reports mode in a Collection
-// Run, as a broken adapter would: another Platform's Margin Mode, or none.
+// foreignModeAdapter validates with a proper OKX margin mode but reports mode in a collection
+// run, as a broken adapter would: another platform's margin mode, or none.
 type foreignModeAdapter struct{ mode adapters.MarginMode }
 
 func (foreignModeAdapter) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
@@ -572,7 +572,7 @@ func TestAForeignOrMissingMarginModeFailsTheRun(t *testing.T) {
 			}
 			after, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)
 			if err != nil || after.MarginMode != adapters.MarginOKXPM || after.Connection.Status != identity.ConnectionEnabled {
-				t.Fatalf("the stored Margin Mode and the Connection must be kept: err=%v identity=%+v", err, after)
+				t.Fatalf("the stored margin mode and the connection must be kept: err=%v identity=%+v", err, after)
 			}
 		})
 	}

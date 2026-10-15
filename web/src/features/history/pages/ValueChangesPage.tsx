@@ -90,8 +90,8 @@ export function ValueChangesPage() {
   return (
     <section className={shared.wide}>
       <HistoryFilters state={history} />
-      <QueryRecovery query={changes} fallback="Value Changes could not be loaded." />
-      {changes.isPending && !data ? <p className={shared.muted}>Loading Value Changes.</p> : null}
+      <QueryRecovery query={changes} fallback="Value changes could not be loaded." />
+      {changes.isPending && !data ? <p className={shared.muted}>Loading value changes.</p> : null}
       {data ? (
         <>
           <ChartBlock
@@ -115,15 +115,15 @@ export function ValueChangesPage() {
               </label>
             }
             option={chartOption}
-            empty="No comparable period yet. A bar appears once a period has a Valuation Point at both ends."
-            emptyRows="No periods yet. Periods appear once the Portfolio has Valuation Points."
+            empty="No comparable period yet. A bar appears once a period has a valuation point at both ends."
+            emptyRows="No periods yet. Periods appear once the portfolio has valuation points."
             columns={VALUE_CHANGE_COLUMNS}
             rows={changeItems
               .slice(pager.offset, pager.offset + pager.limit)
               .map((item) => valueChangeRow(item, timezone))}
           />
           <HistoryPager
-            label="Value Changes"
+            label="Value changes"
             pager={pager}
             total={changeItems.length}
             busy={changes.isFetching}

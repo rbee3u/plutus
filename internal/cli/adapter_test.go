@@ -110,7 +110,7 @@ func TestRecorderUsesRecordingNamespaceAndSelectedKeyGroup(t *testing.T) {
 			}
 			if tc.request == "ws_v1_balances_snapshot" {
 				if creds.Futures == nil || creds.Futures.APIKey != "synthetic-recording-value" || creds.Futures.APISecret != "synthetic-recording-value" || creds.APIKey != "" {
-					t.Fatal("wrong Futures credential group")
+					t.Fatal("wrong futures credential group")
 				}
 			} else if creds.APIKey != "synthetic-recording-value" || creds.APISecret != "synthetic-recording-value" || creds.Futures != nil {
 				t.Fatal("wrong Spot credential group")

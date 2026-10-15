@@ -10,8 +10,8 @@ import (
 )
 
 // cycleSummary includes reports committed by earlier attempts, even when their
-// Connections are no longer collectable. Skipped reports count as Account
-// failures but do not represent an attempted Identity collection.
+// connections are no longer collectable. Skipped reports count as account
+// failures but do not represent an attempted identity collection.
 func (s *Service) cycleSummary(ctx context.Context, point valuation.Point) (Summary, error) {
 	rows, err := s.q.ListReportsByCycle(ctx, sqlcgen.ListReportsByCycleParams{PortfolioID: point.PortfolioID[:], CycleID: point.CycleID[:]})
 	if err != nil {

@@ -29,7 +29,7 @@ func TestCollectIsDeterministic(t *testing.T) {
 		t.Fatalf("prices=%d", len(first.Prices))
 	}
 	if first.MarginMode != "" {
-		t.Fatalf("Binance has no Margin Mode, got %q", first.MarginMode)
+		t.Fatalf("Binance has no margin mode, got %q", first.MarginMode)
 	}
 }
 
@@ -45,7 +45,7 @@ func TestEveryAccountTypeOfEveryStructureReports(t *testing.T) {
 				t.Fatalf("%s: %v", structure.ID, err)
 			}
 			if !adapters.ValidMarginMode(structure.ID, batch.MarginMode) {
-				t.Fatalf("%s: Margin Mode %q does not belong to the structure", structure.ID, batch.MarginMode)
+				t.Fatalf("%s: margin mode %q does not belong to the structure", structure.ID, batch.MarginMode)
 			}
 			for _, report := range batch.Reports {
 				if report.Status != adapters.StatusSucceeded || len(report.Balances) == 0 {
@@ -60,18 +60,18 @@ func TestMarginModeFollowsTheKey(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 9, 20, 8, 0, 0, 0, time.UTC)
 	if MarginMode(adapters.StructureOKXUnified, "k", at) != MarginMode(adapters.StructureOKXUnified, "k", at.Add(time.Hour)) {
-		t.Fatal("an ordinary key keeps its Margin Mode")
+		t.Fatal("an ordinary key keeps its margin mode")
 	}
 	if MarginMode(adapters.StructureBybitUTA2, "switch-k", at) == MarginMode(adapters.StructureBybitUTA2, "switch-k", at.Add(time.Minute)) {
-		t.Fatal("a switch- key changes its Margin Mode every minute")
+		t.Fatal("a switch- key changes its margin mode every minute")
 	}
 	isolated := Scenario("k", at).Report(adapters.MarginBybitIsolated, "unified", at, false)
 	if isolated.Equity != nil || isolated.ReportedMarginRatio != nil || len(isolated.Balances) == 0 {
-		t.Fatal("Isolated Margin reports no account-wide figures")
+		t.Fatal("Isolated margin reports no account-wide figures")
 	}
 	pm := Scenario("k", at).Report(adapters.MarginBybitPM, "unified", at, false)
 	if pm.Positions[0].Leverage != nil || pm.Positions[0].LiquidationPrice != nil || pm.Equity == nil {
-		t.Fatal("Portfolio Margin positions carry no leverage or liquidation price")
+		t.Fatal("Portfolio margin positions carry no leverage or liquidation price")
 	}
 }
 
@@ -103,6 +103,6 @@ func TestKeyPrefixesReproduceFailureClasses(t *testing.T) {
 	}
 	batch, err := a.Collect(context.Background(), adapters.Credentials{APIKey: "k", APISecret: "s"}, adapters.StructureOKXUnified, []adapters.AccountType{"trading", "spot"})
 	if err != nil || batch.Reports[1].Status != adapters.StatusFailed || batch.Reports[1].ErrorClass != adapters.ClassUnsupported {
-		t.Fatalf("an Account Type outside the structure fails only its report: %+v %v", batch.Reports, err)
+		t.Fatalf("an account type outside the structure fails only its report: %+v %v", batch.Reports, err)
 	}
 }

@@ -49,7 +49,7 @@ export function ManualEditor({
         <label className={styles.field}>
           <span>Identity</span>
           <Select value={identityId} onChange={(event) => setIdentityId(event.target.value)}>
-            <option value="">Choose an Identity</option>
+            <option value="">Choose an identity</option>
             {identities.data?.items
               .filter((item) => item.status !== "archived")
               .map((item) => (
@@ -164,7 +164,7 @@ function ManualForm({
       const latest = await onSave(symbol.trim().toUpperCase(), quantity, action, baseline.version);
       setBaseline(latest);
       setSaved(true);
-      setMessage("Saved. The next Collection Cycle will apply this quantity.");
+      setMessage("Saved. The next collection cycle will apply this quantity.");
       onClose?.();
     } catch (error) {
       setMessage(problemMessage(error, "The manual record could not be saved."));

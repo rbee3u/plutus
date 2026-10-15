@@ -109,14 +109,14 @@ async function fixture(page: Page) {
   return () => submitted;
 }
 
-test("cards, tables and source-based chart tooltips share rounding and readable subscripts", async ({
+test("Cards, tables and source-based chart tooltips share rounding and readable subscripts", async ({
   page,
 }, testInfo) => {
   await fixture(page);
   await page.goto(`/p/${portfolioId}/overview`);
   const total = page
     .getByRole("article")
-    .filter({ has: page.getByRole("heading", { name: "Total Net Worth", exact: true }) });
+    .filter({ has: page.getByRole("heading", { name: "Total net worth", exact: true }) });
   await expect(total.locator('span[aria-hidden="true"]').first()).toHaveText("0.05444");
   await expect(total).toContainText("0.00000444");
   await expect(
@@ -128,7 +128,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
     page.getByRole("button", { name: "Collapse OKX", exact: true }),
   ).toHaveAccessibleDescription("$0.00000444");
   await expect(total).toContainText("1,234 accounts");
-  const chart = page.getByRole("img", { name: "Recent Valuation Points" });
+  const chart = page.getByRole("img", { name: "Recent valuation points" });
   await chart.scrollIntoViewIfNeeded();
   const bounds = await chart.boundingBox();
   if (!bounds) throw new Error("Chart has no bounds");
@@ -157,7 +157,7 @@ test("cards, tables and source-based chart tooltips share rounding and readable 
   }
 });
 
-test("Capital Flow editing and submission retain source precision while display is rounded", async ({
+test("Capital flow editing and submission retain source precision while display is rounded", async ({
   page,
 }) => {
   const submitted = await fixture(page);

@@ -42,7 +42,7 @@ function render(value: React.ReactNode) {
 }
 
 describe("Earn presentation", () => {
-  it("keeps one multiasset product row, distinct reward scopes and Portfolio times", () => {
+  it("keeps one multiasset product row, distinct reward scopes and portfolio times", () => {
     const html = render(<EarnPositionsTable items={[item]} showAccount timezone="Asia/Shanghai" />);
     const headers = [...html.matchAll(/<th\b[^>]*>(.*?)<\/th>/g)].map((m) => m[1]);
     expect(headers).toEqual([
@@ -60,9 +60,9 @@ describe("Earn presentation", () => {
     ]);
     expect(html.match(/<tr>/g)).toHaveLength(2);
     expect(html).toContain("1 ZETH");
-    expect(html).toContain("Canonical Asset: ETH");
+    expect(html).toContain("Canonical asset: ETH");
     expect(html).not.toContain("1 ETH");
-    expect(html).not.toContain("Canonical Asset: USDT");
+    expect(html).not.toContain("Canonical asset: USDT");
     expect(html).toContain("2 USDT");
     expect(html).toContain("Est. 4% APY");
     expect(html).toContain("Cumulative");
@@ -70,14 +70,14 @@ describe("Earn presentation", () => {
     expect(html).toContain("—");
     expect(html).not.toContain("1 issue");
   });
-  it("omits ownership in Account details and does not alarm on ordinary missing terms", () => {
+  it("omits ownership in account details and does not alarm on ordinary missing terms", () => {
     const html = render(
       <EarnPositionsTable
         items={[{ ...item, type: "flexible", rates: [], rewards: [], status: null }]}
       />,
     );
-    expect(html).not.toContain(">Platform</th>");
-    expect(html).not.toContain(">Identity</th>");
+    expect(html).not.toContain(">platform</th>");
+    expect(html).not.toContain(">identity</th>");
     expect(html).not.toContain("issue");
   });
   it("keeps stale and metadata indicators in Issues", () => {
@@ -104,9 +104,9 @@ describe("Earn presentation", () => {
     expect(status).not.toContain("Stale");
     expect(status).not.toContain("issue");
     expect(issues).toContain("Stale");
-    expect(issues).toContain("1 Issue");
+    expect(issues).toContain("1 issue");
   });
-  it("labels Dual APR accurately and retains product status independently", () => {
+  it("labels dual APR accurately and retains product status independently", () => {
     const html = render(
       <DualPositionsTable
         timezone="Asia/Shanghai"
@@ -136,6 +136,6 @@ describe("Earn presentation", () => {
     expect(html).toContain("18% APR");
     expect(html).toContain("Active");
     expect(html).toContain("Stale");
-    expect(html).toContain("1 Issue");
+    expect(html).toContain("1 issue");
   });
 });

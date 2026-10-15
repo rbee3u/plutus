@@ -113,7 +113,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	unchanged := request("GET", base, "", "", true, false)
 	var after api.ManualBalanceState
 	if unchanged.Code != 200 || json.Unmarshal(unchanged.Body.Bytes(), &after) != nil || !reflect.DeepEqual(state, after) || unchanged.Header().Get("ETag") != next {
-		t.Fatalf("rejected writes changed Manual balances: %d %s", unchanged.Code, unchanged.Body.String())
+		t.Fatalf("rejected writes changed manual balances: %d %s", unchanged.Code, unchanged.Body.String())
 	}
 	if res := request("POST", base, `{"assetSymbol":"USD","quantity":"10"}`, next, true, true); res.Code != 409 {
 		t.Fatalf("duplicate %d %s", res.Code, res.Body.String())

@@ -159,7 +159,7 @@ export function FuturesTab({ filters, timezone }: TabProps) {
           ) : (
             <TableEmptyState
               title="No futures contracts recorded yet"
-              help="Market contracts will appear automatically once platform identities are connected and sync."
+              help="Futures contracts are discovered from reported positions."
             />
           )
         }

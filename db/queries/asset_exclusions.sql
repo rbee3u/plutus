@@ -23,7 +23,7 @@ FROM asset_exclusion_versions
 WHERE portfolio_id = ? AND effective_at < ?
 ORDER BY asset_id, version DESC;
 
--- One backward primary-key walk per Asset and endpoint reads only the Asset's
+-- One backward primary-key walk per asset and endpoint reads only the asset's
 -- changes after that endpoint; see ListLatestCalculatedAssetChanges for the
 -- ORDER BY constraint.
 -- name: ListCalculatedAssetsAtCycles :many

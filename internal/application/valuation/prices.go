@@ -29,7 +29,7 @@ type priceKey struct {
 	at       time.Time
 }
 
-// PriceBook caches only eligible observations from the requested Platform.
+// PriceBook caches only eligible observations from the requested platform.
 type PriceBook struct {
 	q            *sqlcgen.Queries
 	portfolioID  uuid.UUID

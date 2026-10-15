@@ -9,14 +9,14 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-// earn maps the Earn bucket, one Balance per coin: Simple Earn flexible
+// earn maps the earn bucket, one balance per coin: Simple Earn flexible
 // balances, the principal of active on-chain earn orders, and the principal of
-// dual investment orders still invested. An empty amount fails the Account.
+// dual investment orders still invested. An empty amount fails the account.
 // ETH and SOL staking are deliberately not collected: OKX reports those
 // balances account-wide, and the BETH and OKSOL coins they produce are already
-// held in the trading or funding account. Last, the Earn check compares the
-// Balances with OKX's own valuation of Earn (ADR 0005), so unitemized value
-// fails selected Earn and Dual Accounts instead of vanishing.
+// held in the trading or funding account. Last, the earn check compares the
+// balances with OKX's own valuation of earn (ADR 0005), so unitemized value
+// fails selected earn and dual accounts instead of vanishing.
 func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, adapters.AccountReport, error) {
 	totals := adapters.Totals{}
 	earnPositions := []adapters.EarnPosition{}
@@ -73,7 +73,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	dualTotals := adapters.Totals{}
 	for i := range positions {
 		p := &positions[i]
-		if err := dualTotals.Add("Dual Investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
+		if err := dualTotals.Add("Dual investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
 			return adapters.AccountReport{}, adapters.AccountReport{}, err
 		}
 	}
@@ -89,7 +89,7 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
-// readEarnValuation reads OKX's own valuation of the Earn bucket in USDT, which Plutus counts as USD.
+// readEarnValuation reads OKX's own valuation of the earn bucket in USDT, which Plutus counts as USD.
 func readEarnValuation(ctx context.Context, c *client) (*big.Rat, error) {
 	var rows []struct {
 		Details struct {

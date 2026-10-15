@@ -27,8 +27,8 @@ type openPosition struct {
 }
 
 // positions maps the open contract positions of the trading account. MARGIN rows are skipped:
-// they are borrow-backed spot exposure whose value is already in the Balances' equity. An
-// contract kind Plutus cannot store fails the Account instead of disappearing.
+// they are borrow-backed spot exposure whose value is already in the balances' equity. An
+// contract kind Plutus cannot store fails the account instead of disappearing.
 func (a *Adapter) positions(ctx context.Context, c *client, mode adapters.MarginMode) ([]adapters.Position, error) {
 	var rows []openPosition
 	if err := c.call(ctx, epPositions, &rows); err != nil {

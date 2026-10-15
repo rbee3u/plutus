@@ -44,12 +44,22 @@ function amountLines(assets: EarnAmount[]) {
       ))
     : "—";
 }
-function rateText(rate: EarnRate): string {
+function rateText(rate: EarnRate, label = ""): string {
+  const labelWords = new Set(label.toLowerCase().match(/[a-z]+/g));
   const range =
     rate.upper && rate.upper !== rate.value
       ? `${formatPercent(rate.value)}–${formatPercent(rate.upper)}`
       : formatPercent(rate.value);
-  return `${rate.qualifier === "estimated" ? "Est. " : ""}${range} ${rate.kind.toUpperCase()}${rate.assetSymbol ? ` ${rate.assetSymbol}` : ""}`;
+  return [
+    rate.qualifier === "estimated" && !labelWords.has("estimated") && !labelWords.has("est")
+      ? "Est."
+      : undefined,
+    range,
+    labelWords.has(rate.kind.toLowerCase()) ? undefined : rate.kind.toUpperCase(),
+    rate.assetSymbol,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 function rewardLine(reward: EarnReward, index: number) {
   return (
@@ -116,7 +126,7 @@ export function EarnPositionsTable({
               <span>{assetLabel(asset)}</span>
               {asset.canonicalAssetSymbol && asset.canonicalAssetSymbol !== asset.assetSymbol ? (
                 <span className={shared.cellMeta}>
-                  Canonical Asset: {asset.canonicalAssetSymbol}
+                  Canonical asset: {asset.canonicalAssetSymbol}
                 </span>
               ) : null}
             </div>
@@ -181,11 +191,11 @@ export function EarnPositionsTable({
               {item.rates.length ? (
                 item.rates.map((rate, index) => (
                   <p key={index}>
-                    {rate.label}: <NumericText>{rateText(rate)}</NumericText>
+                    {rate.label}: <NumericText>{rateText(rate, rate.label)}</NumericText>
                   </p>
                 ))
               ) : (
-                <p>The Platform did not supply a comparable return rate.</p>
+                <p>The platform did not supply a comparable return rate.</p>
               )}
               {item.details
                 .filter((detail) => detail.label === "Rate convention")
@@ -202,7 +212,7 @@ export function EarnPositionsTable({
                   : item.amountBasis === "allocated"
                     ? "Total allocated amount"
                     : "Total holding amount"}
-                . Already represented in Balance equity.
+                . Already represented in balance equity.
               </p>
             </HoverDetails>
           ),
@@ -217,7 +227,7 @@ export function EarnPositionsTable({
                 <p>Reward amounts were not supplied.</p>
               )}
               <p>
-                Reward measures have separate scopes and are not added together or added to Account
+                Reward measures have separate scopes and are not added together or added to account
                 value.
               </p>
               {item.details
@@ -242,12 +252,12 @@ export function EarnPositionsTable({
       })}
       empty={
         loading ? (
-          <TableEmptyState title="Loading Earn positions..." />
+          <TableEmptyState title="Loading earn positions..." />
         ) : (
           (empty ?? (
             <TableEmptyState
-              title="No Earn positions recorded yet"
-              help="Earn products will appear automatically once platform identities are connected and sync."
+              title="No earn positions to display"
+              help="Only positions reported by selected earn accounts are shown."
             />
           ))
         )

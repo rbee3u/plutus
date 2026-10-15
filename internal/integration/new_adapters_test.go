@@ -38,7 +38,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 			"manual":  {valuation.MethodCalculated, "0"},
 		}, "10120"},
 		// Main uses portfolio_value; Coin-M uses futures_upnl_cash_value.
-		// Holding = 0.01 BTC at 30000. Earn excludes the flex reward held in Main.
+		// Holding = 0.01 BTC at 30000. Earn excludes the flex reward held in main.
 		{adapters.PlatformKraken, map[string]fixtureAccountValue{
 			"main":                {valuation.MethodReported, "1000"},
 			"coin_m":              {valuation.MethodReported, "10"},
@@ -154,7 +154,7 @@ func TestKrakenSelectionRequiresCredentialGroups(t *testing.T) {
 	}
 	_, err = h.identities.Patch(h.ctx, h.portfolioID, item.ID, item.Version, identity.PatchInput{ActorUserID: h.userID, Accounts: []identity.AccountPatch{patch}})
 	if !errors.Is(err, identity.ErrInvalid) {
-		t.Fatalf("enabled selection missing Futures credentials: %v", err)
+		t.Fatalf("enabled selection missing futures credentials: %v", err)
 	}
 	current, err := h.identities.Get(h.ctx, h.portfolioID, item.ID)
 	if err != nil {
@@ -175,15 +175,15 @@ func TestKrakenSelectionRequiresCredentialGroups(t *testing.T) {
 	}
 	item, _, err = h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
 	if !errors.Is(err, identity.ErrValidationFailed) {
-		t.Fatal("enabled newly selected Main without Futures key")
+		t.Fatal("enabled newly selected main without futures key")
 	}
-	// The same Spot key with a Futures key added reaches the same Kraken account.
+	// The same Spot key with a futures key added reaches the same Kraken account.
 	item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, adapters.Credentials{APIKey: "spot-only", APISecret: "fake", Futures: &adapters.KeyPair{APIKey: "futures", APISecret: "fake"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if item.Connection.Status != identity.ConnectionDisabled {
-		t.Fatal("replacement did not disable Connection")
+		t.Fatal("replacement did not disable connection")
 	}
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("both groups cannot enable: %v", err)

@@ -218,7 +218,7 @@ func TestWriteRetryPreservesPreparedInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(before[cycleID], after) {
-			t.Fatalf("rebuilt Accounts differ for %s:\nbefore: %+v\nafter: %+v", cycleID, before[cycleID], after)
+			t.Fatalf("rebuilt accounts differ for %s:\nbefore: %+v\nafter: %+v", cycleID, before[cycleID], after)
 		}
 		point, err := f.service.PointByCycle(f.ctx, f.portfolio, cycleID)
 		if err != nil || decimal.ParseOrZero(point.TotalUSD).Cmp(big.NewRat(15, 8)) != 0 || point.IncompleteAccountCount != 2 {

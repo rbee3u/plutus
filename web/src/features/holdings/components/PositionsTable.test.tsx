@@ -56,9 +56,9 @@ describe("shared position cells", () => {
       ["symbol", "Symbol"],
       ["side", "Side"],
       ["size", "Size"],
-      ["entryPrice", "Entry Price"],
-      ["markPrice", "Mark Price"],
-      ["liquidationPrice", "Liq. Price"],
+      ["entryPrice", "Entry price"],
+      ["markPrice", "Mark price"],
+      ["liquidationPrice", "Liq. price"],
       ["unrealizedPnl", "Unrealized PnL"],
       ["margin", "Margin"],
       ["notionalUsd", "Notional (USD)"],
@@ -73,7 +73,7 @@ describe("shared position cells", () => {
       liquidationPrice: "—",
       unrealizedPnl: "+0.000123457 BTC",
       margin: "0.002 BTC",
-      notionalUsd: "200.00",
+      notionalUsd: "200",
       issues: "—",
     })) {
       const html = renderToStaticMarkup(<>{row[key]}</>);
@@ -107,7 +107,7 @@ describe("shared position cells", () => {
     expect(renderToStaticMarkup(<>{longRow.side}</>)).toContain("Long");
     const html = renderToStaticMarkup(<>{shortRow.issues}</>);
     expect(html).toContain("Stale");
-    expect(html).toContain("1 Issue");
+    expect(html).toContain("1 issue");
   });
   it.each([
     ["cross", position, "0.002 BTC"],
@@ -126,7 +126,7 @@ describe("shared position cells", () => {
 });
 
 describe("Margin mode and leverage", () => {
-  it("shows configured Cross leverage and only the Portfolio regime", () => {
+  it("shows configured cross leverage and only the portfolio regime", () => {
     expect(positionMarginDescription(position)).toBe("3x cross");
     expect(positionMarginDescription({ ...position, portfolioMargin: true })).toBe(
       "portfolio margin",
@@ -162,7 +162,7 @@ describe("Margin mode and leverage", () => {
     }
   });
 
-  it("converts Base-settled isolated margin to the same unit as USD notional", () => {
+  it("converts base-settled isolated margin to the same unit as USD notional", () => {
     const isolated: PositionRow = {
       ...position,
       marginSetting: "isolated",

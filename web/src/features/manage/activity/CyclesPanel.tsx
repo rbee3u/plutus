@@ -145,10 +145,10 @@ function cycleRow(
           <CompletenessBadge value={point.completeness} />
         ) : null}
         {point?.staleAccountCount && point.staleAccountCount > 0 ? (
-          <Badge tone="warn">{formatCount(point.staleAccountCount)} Stale</Badge>
+          <Badge tone="warn">{formatCount(point.staleAccountCount)} stale</Badge>
         ) : null}
         {point?.incompleteAccountCount && point.incompleteAccountCount > 0 ? (
-          <Badge tone="warn">{formatCount(point.incompleteAccountCount)} Incomplete</Badge>
+          <Badge tone="warn">{formatCount(point.incompleteAccountCount)} incomplete</Badge>
         ) : null}
       </span>
     ),
@@ -231,11 +231,11 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
                 (cycle.point.staleAccountCount > 0 || cycle.point.incompleteAccountCount > 0) ? (
                   <span className={shared.statusGroup}>
                     {cycle.point.staleAccountCount > 0 ? (
-                      <Badge tone="warn">{formatCount(cycle.point.staleAccountCount)} Stale</Badge>
+                      <Badge tone="warn">{formatCount(cycle.point.staleAccountCount)} stale</Badge>
                     ) : null}
                     {cycle.point.incompleteAccountCount > 0 ? (
                       <Badge tone="warn">
-                        {formatCount(cycle.point.incompleteAccountCount)} Incomplete
+                        {formatCount(cycle.point.incompleteAccountCount)} incomplete
                       </Badge>
                     ) : null}
                   </span>
@@ -286,6 +286,7 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
               </div>
               <IssueList
                 issues={detail.issues}
+                timezone={timezone}
                 resolveScope={(issue) => {
                   const identityName = issue.accountId
                     ? accountMap.get(issue.accountId)

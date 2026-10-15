@@ -39,7 +39,7 @@ func requestLog(logger *slog.Logger) gin.HandlerFunc {
 		c.Request = c.Request.WithContext(logging.WithFields(c.Request.Context(), slog.String("trace_id", traceID)))
 		c.Writer.Header().Set("X-Request-ID", traceID)
 		c.Next()
-		logger.InfoContext(c.Request.Context(), "http request",
+		logger.InfoContext(c.Request.Context(), "HTTP request",
 			slog.String("trace_id", traceID),
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),

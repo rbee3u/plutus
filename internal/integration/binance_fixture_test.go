@@ -41,8 +41,8 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 		t.Fatalf("summary %+v", summary)
 	}
 	accounts := h.accountsByType(cycleID, item.ID)
-	// Spot = 110 USDT + 0.2 ETH at 2000; Earn = 2 USDT + 0.01 ETH.
-	// PM uses actualEquity (979), not accountEquity (950) or Position notionals.
+	// Spot = 110 USDT + 0.2 ETH at 2000; earn = 2 USDT + 0.01 ETH.
+	// PM uses actualEquity (979), not accountEquity (950) or position notionals.
 	assertFixtureAccountValues(t, accounts, map[string]fixtureAccountValue{
 		"portfolio_margin": {valuation.MethodReported, "979"},
 		"spot":             {valuation.MethodCalculated, "510"},
@@ -65,10 +65,10 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	assertSyntheticDualPositions(t, h, accounts[string(binance.TypeDualInvestment)])
 }
 
-// TestBinanceClassicScenarioStoresAndValues runs one cycle of a Classic
-// Trading Identity with all supported Account Types: synthetic answers
-// selected explicitly from the flat library (ADR 0009). Every Classic Account
-// is valued from its Balances, and the COIN-M position keeps its inverse
+// TestBinanceClassicScenarioStoresAndValues runs one cycle of a classic
+// trading identity with all supported account types: synthetic answers
+// selected explicitly from the flat library (ADR 0009). Every classic account
+// is valued from its balances, and the COIN-M position keeps its inverse
 // notional.
 func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 	h := newHarness(t)
@@ -211,7 +211,7 @@ func assertSyntheticDualPositions(t *testing.T, h *harness, account valuation.Ac
 		t.Fatal(err)
 	}
 	if len(view.DualPositions) != 2 || len(view.Issues) != 0 {
-		t.Fatalf("stored Dual view %+v", view)
+		t.Fatalf("stored dual view %+v", view)
 	}
 	want := map[string]struct{ symbol, principal, direction string }{
 		"1001": {"USDT", "10", "buy_low"},
@@ -221,7 +221,7 @@ func assertSyntheticDualPositions(t *testing.T, h *harness, account valuation.Ac
 		expected, ok := want[position.PositionKey]
 		if !ok || position.PrincipalAssetSymbol != expected.symbol || decimal.Format(decimal.ParseOrZero(position.Principal)) != expected.principal ||
 			position.Direction == nil || *position.Direction != expected.direction || len(position.MissingFields()) != 0 {
-			t.Fatalf("stored Dual principal or terms %+v", position)
+			t.Fatalf("stored dual principal or terms %+v", position)
 		}
 		delete(want, position.PositionKey)
 	}

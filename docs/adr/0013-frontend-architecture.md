@@ -10,17 +10,17 @@ entrypoints; shared code does not depend on features or app. API consumers use
 its public entrypoint. Keep styles beside their owner and common styles shared;
 compound selectors and cascade-sensitive rules stay within one CSS module.
 
-QueryClient owns the authenticated User and Portfolio list. Shared mechanics
+`QueryClient` owns the authenticated user and portfolio list. Shared mechanics
 handle authentication, CSRF, cache keys, invalidation, and navigation; features
 retain SDK results and their conflict, validation, idempotency, and editor
-state. Holdings owns view memory; Settings owns Portfolio creation; Shell owns
-selection and navigation. Password business rejections do not end Sessions.
+state. Holdings owns view memory; settings owns portfolio creation; `Shell` owns
+selection and navigation. Password business rejections do not end sessions.
 Session lists load on entry and revocation without background refresh.
 
 Split components by responsibility, not line count. Holdings shares filters,
 recovery, summaries, pagination, and report reads while product pages retain
 columns, calls, totals, and empty states. Manage uses finite credential metadata
-from the Platform catalog without a general form engine; absent catalog data
+from the platform catalog without a general form engine; absent catalog data
 requires recovery. Browser tests share session routing and typed fixtures while
 owning their financial state and assertions; unknown mock requests fail.
 

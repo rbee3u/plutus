@@ -45,8 +45,8 @@ test("Catalog status filters reset pagination, survive reload, and clear indepen
 
   const base = `/p/${portfolioId}/data/catalog`;
   await page.goto(`${base}?platform=binance&q=TOKEN&offset=50`);
-  await expect(page.getByRole("button", { name: "Filter Status: All" })).toBeVisible();
-  await page.getByRole("button", { name: "Filter Status: All" }).click();
+  await expect(page.getByRole("button", { name: "Filter status: All" })).toBeVisible();
+  await page.getByRole("button", { name: "Filter status: All" }).click();
   await page.getByRole("option", { name: "Active", exact: true }).click();
   await expect(page).toHaveURL(`${base}?platform=binance&q=TOKEN&status=active`);
   await expect(page.getByRole("cell", { name: "TOKEN-A", exact: true })).toBeVisible();
@@ -54,23 +54,23 @@ test("Catalog status filters reset pagination, survive reload, and clear indepen
   expect(reads.at(-1)?.searchParams.get("status")).toBe("active");
   expect(reads.at(-1)?.searchParams.get("offset")).toBe("0");
 
-  await page.getByRole("button", { name: "Filter Status: Active" }).click();
+  await page.getByRole("button", { name: "Filter status: Active" }).click();
   await page.getByRole("option", { name: "Excluded", exact: true }).click();
   await expect(page.getByRole("cell", { name: "TOKEN-X", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "TOKEN-A", exact: true })).toHaveCount(0);
   expect(reads.at(-1)?.searchParams.get("status")).toBe("excluded");
   await page.reload();
-  await expect(page.getByRole("button", { name: "Filter Status: Excluded" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter status: Excluded" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "TOKEN-X", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Filter Status: Excluded" }).click();
-  await page.getByRole("button", { name: "Clear Status filter", exact: true }).click();
+  await page.getByRole("button", { name: "Filter status: Excluded" }).click();
+  await page.getByRole("button", { name: "Clear status filter", exact: true }).click();
   await expect(page).toHaveURL(`${base}?platform=binance&q=TOKEN`);
   await expect(page.getByRole("cell", { name: "TOKEN-A", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "TOKEN-X", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await expect(page).toHaveURL(base);
-  await expect(page.getByRole("button", { name: "Filter Platform: All" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search Asset", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Filter Status: All" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter platform: All" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Search asset", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Filter status: All" })).toBeVisible();
 });

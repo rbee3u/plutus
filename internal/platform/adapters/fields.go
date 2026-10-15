@@ -80,7 +80,7 @@ func NonZero(value string) *string {
 	return out
 }
 
-// Reported formats a parsed value only when the Platform actually reported the field.
+// Reported formats a parsed value only when the platform actually reported the field.
 func Reported(raw string, value *big.Rat) *string {
 	if strings.TrimSpace(raw) == "" {
 		return nil
@@ -97,7 +97,7 @@ func Ratio(numerator, denominator *big.Rat) *string {
 	return new(decimal.Compact(new(big.Rat).Quo(numerator, denominator).FloatString(8)))
 }
 
-// Totals sums coin amounts by symbol, for Accounts that report one coin across several rows.
+// Totals sums coin amounts by symbol, for accounts that report one coin across several rows.
 type Totals map[string]*big.Rat
 
 // Add aggregates by symbol and rejects nonzero amounts without a symbol.
@@ -113,7 +113,7 @@ func (t Totals) Add(where, symbol string, amount *big.Rat) error {
 	return nil
 }
 
-// Balances returns one Balance per nonzero total, ordered by symbol, with only its equity.
+// Balances returns one balance per nonzero total, ordered by symbol, with only its equity.
 func (t Totals) Balances() []Balance {
 	out := make([]Balance, 0, len(t))
 	for _, symbol := range slices.Sorted(maps.Keys(t)) {
@@ -136,7 +136,7 @@ func USDEquivalent(symbol string) bool {
 	}
 }
 
-// QuoteLookup returns the Platform's last price of symbol in quote, if it has one.
+// QuoteLookup returns the platform's last price of symbol in quote, if it has one.
 type Quote struct {
 	Price            string
 	SourceMarketRef  string
@@ -146,7 +146,7 @@ type Quote struct {
 // QuoteLookup preserves the source market reference while resolving normalized symbols.
 type QuoteLookup func(symbol, quote string) (Quote, bool)
 
-// QuotePrices selects the first available quote per Balance symbol. USD
+// QuotePrices selects the first available quote per balance symbol. USD
 // equivalents and unpriced symbols emit no row; the latter remain unvalued.
 func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, at time.Time) []Price {
 	var symbols []string
@@ -158,8 +158,8 @@ func QuotePrices(reports []AccountReport, quotes []string, lookup QuoteLookup, a
 	return SymbolPrices(symbols, quotes, lookup, at)
 }
 
-// SymbolPrices chooses public prices for supplied symbols, including Manual Canonical Asset Symbols.
-// Adapter normalization is retained; this function does not resolve Catalog mappings.
+// SymbolPrices chooses public prices for supplied symbols, including manual canonical asset symbols.
+// Adapter normalization is retained; this function does not resolve catalog mappings.
 func SymbolPrices(symbols []string, quotes []string, lookup QuoteLookup, at time.Time) []Price {
 	if lookup == nil {
 		return nil

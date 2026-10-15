@@ -48,7 +48,7 @@ func newMigrateUpCommand() *cobra.Command {
 			if err := mysql.Up(db); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "migrations applied")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Migrations applied")
 			return nil
 		},
 	}

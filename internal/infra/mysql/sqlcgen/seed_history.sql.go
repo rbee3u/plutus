@@ -51,7 +51,7 @@ WHERE portfolio_id = ?
 ORDER BY platform, requested_canonical_asset_symbol, price_at DESC, retrieved_at DESC, id DESC
 `
 
-// Seed initialization owns an empty Portfolio and loads its finite source
+// Seed initialization owns an empty portfolio and loads its finite source
 // history in one transaction. Runtime collection uses bounded point reads.
 func (q *Queries) ListSeedHistoryPrices(ctx context.Context, portfolioID []byte) ([]PriceObservation, error) {
 	rows, err := q.db.QueryContext(ctx, listSeedHistoryPrices, portfolioID)

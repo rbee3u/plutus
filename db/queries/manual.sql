@@ -32,10 +32,10 @@ WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.account_type = 'manual' AND 
 ORDER BY a.id;
 
 -- The applied revision is the latest one whose own cycle has committed, even after its point expires.
--- Serialized cycles make report time follow point order. The Account's
+-- Serialized cycles make report time follow point order. The account's
 -- fallback range stops at its latest committed report; the optimizer can
--- prefer a Portfolio-wide time scan that walks every newer report of other
--- Accounts, so the fallback index is forced.
+-- prefer a portfolio-wide time scan that walks every newer report of other
+-- accounts, so the fallback index is forced.
 -- name: GetAppliedManualRevision :one
 SELECT r.manual_revision_number
 FROM account_reports r FORCE INDEX (idx_account_reports_fallback)

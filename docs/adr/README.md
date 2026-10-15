@@ -11,14 +11,14 @@ own setup, validation, and deployment procedures.
 
 | ADR                                                | Decision                                                |
 | -------------------------------------------------- | ------------------------------------------------------- |
-| [0001](./0001-ownership-and-account-boundaries.md) | Ownership and Account boundaries                        |
+| [0001](./0001-ownership-and-account-boundaries.md) | Ownership and account boundaries                        |
 | [0002](./0002-reports-and-compatible-history.md)   | Aligned reports and compatible history                  |
-| [0003](./0003-valuation-and-asset-policy.md)       | USD valuation and Asset policy                          |
-| [0004](./0004-value-change-and-boundary-flows.md)  | Absolute Value Change and boundary flows                |
-| [0005](./0005-earn-and-dual-products.md)           | Earn and Dual product boundaries and descriptions       |
-| [0006](./0006-manual-balances.md)                  | Manual quantities within exchange Identities            |
+| [0003](./0003-valuation-and-asset-policy.md)       | USD valuation and asset policy                          |
+| [0004](./0004-value-change-and-boundary-flows.md)  | Absolute value change and boundary flows                |
+| [0005](./0005-earn-and-dual-products.md)           | Earn and dual product boundaries and descriptions       |
+| [0006](./0006-manual-balances.md)                  | Manual quantities within exchange identities            |
 | [0007](./0007-backend-architecture.md)             | Contract-first monolith and explicit backend boundaries |
-| [0008](./0008-authentication-and-credentials.md)   | CLI-provisioned Users and write-only credentials        |
+| [0008](./0008-authentication-and-credentials.md)   | CLI-provisioned users and write-only credentials        |
 | [0009](./0009-adapter-verification.md)             | Independent synthetic tests and recorded evidence       |
 | [0010](./0010-environments-and-configuration.md)   | Isolated environments and explicit configuration        |
 | [0011](./0011-retained-data-and-upgrades.md)       | Retained source facts and populated-database upgrades   |

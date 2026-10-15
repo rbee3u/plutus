@@ -16,7 +16,7 @@ func nullString(value string) sql.NullString {
 }
 
 // TestPositionNotionalPerContractKind pins the contract-size convention: a linear contract's face
-// value is a quantity of the base Asset and needs the mark price, while an inverse contract's face
+// value is a quantity of the base asset and needs the mark price, while an inverse contract's face
 // value is already the USD notional of one contract.
 func TestPositionNotionalPerContractKind(t *testing.T) {
 	t.Parallel()
