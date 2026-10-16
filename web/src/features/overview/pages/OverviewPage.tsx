@@ -16,7 +16,9 @@ import {
   parseDecimal,
 } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
+import { accountIssueScope } from "@/shared/lib/valuationRows";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { identitySetupGuidance, useIdentities } from "@/shared/lib/useIdentities";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { IssuesPanel } from "@/shared/ui/IssueList";
@@ -32,11 +34,28 @@ import shared from "@/shared/styles/page.module.css";
 export function OverviewPage() {
   const { portfolioId = "" } = useParams();
   const query = useOverview(portfolioId);
+  const identities = useIdentities(portfolioId);
+  const noIdentities = identities.isSuccess && identities.data.items.length === 0;
+  const setup = identities.isSuccess ? identitySetupGuidance(identities.data.items) : null;
   const collect = useCollectNow(portfolioId);
   const collecting =
     collect.busy || Boolean(collect.cycle && !isTerminalStatus(collect.cycle.status));
   const overview = query.data;
   const timezone = overview?.context.timezone;
+
+  const resolveIssueScope = useMemo(
+    () =>
+      accountIssueScope(
+        overview?.tree.platforms.flatMap((platform) =>
+          platform.identities.flatMap((identity) => identity.accounts),
+        ),
+        overview?.tree.platforms.map((platform) => ({
+          id: platform.platform,
+          name: platform.label,
+        })),
+      ),
+    [overview?.tree],
+  );
 
   const [selectedRange, setSelectedRange] = useState<HistoryPreset>("1W");
 
@@ -114,6 +133,7 @@ export function OverviewPage() {
       ) : null}
       {collect.cycle ? <CycleNotice cycle={collect.cycle} timezone={timezone} /> : null}
       <QueryRecovery query={query} fallback="Overview could not be loaded." />
+      <QueryRecovery query={identities} fallback="Identities could not be loaded." />
       {query.isFetching && overview ? (
         <p className={shared.muted} role="status">
           Updating the latest valuation point.
@@ -121,7 +141,7 @@ export function OverviewPage() {
       ) : null}
       {overview ? (
         <>
-          {point ? (
+          {point && !noIdentities ? (
             <div className={styles.heroContainer}>
               <article className={styles.heroCard}>
                 <div className={styles.heroHeader}>
@@ -224,27 +244,36 @@ export function OverviewPage() {
               <div className={styles.emptyHeroIcon}>
                 <Layers size={iconSize.lg} aria-hidden="true" />
               </div>
-              <h2 className={styles.emptyHeroTitle}>No valuation point yet</h2>
+              <h2 className={styles.emptyHeroTitle}>{setup?.title ?? "No valuation point yet"}</h2>
               <p className={styles.emptyHeroText}>
-                Add an identity to track accounts, or run a collection cycle to create the first
-                point.
+                {setup?.help ??
+                  (identities.isSuccess
+                    ? "Run a collection cycle to create the first valuation point."
+                    : identities.isPending
+                      ? "Loading identities."
+                      : "Check the notice above to retry loading identities.")}
               </p>
               <div className={styles.emptyHeroActions}>
-                <ActionButton
-                  type="button"
-                  tone="primary"
-                  disabled={collecting}
-                  onClick={() => void collect.start()}
-                  className={styles.syncButton}
+                {!setup ? (
+                  <ActionButton
+                    type="button"
+                    tone="primary"
+                    disabled={collecting || !identities.isSuccess}
+                    onClick={() => void collect.start()}
+                    className={styles.syncButton}
+                  >
+                    <RefreshCw
+                      size={iconSize.xs}
+                      aria-hidden="true"
+                      className={collecting ? styles.spin : ""}
+                    />
+                    Collect now
+                  </ActionButton>
+                ) : null}
+                <Link
+                  to={`/p/${portfolioId}/data/identities`}
+                  className={`${styles.emptyHeroLink} ${setup ? styles.emptyHeroPrimaryLink : ""}`}
                 >
-                  <RefreshCw
-                    size={iconSize.xs}
-                    aria-hidden="true"
-                    className={collecting ? styles.spin : ""}
-                  />
-                  Collect now
-                </ActionButton>
-                <Link to={`/p/${portfolioId}/data/identities`} className={styles.emptyHeroLink}>
                   Manage identities
                   <ArrowRight size={iconSize.xs} aria-hidden="true" />
                 </Link>
@@ -252,7 +281,13 @@ export function OverviewPage() {
             </div>
           )}
           <HoldingsTree portfolioId={portfolioId} tree={overview.tree} />
-          {point ? <IssuesPanel issues={overview.tree.issues} timezone={timezone} /> : null}
+          {point ? (
+            <IssuesPanel
+              issues={overview.tree.issues}
+              timezone={timezone}
+              resolveScope={resolveIssueScope}
+            />
+          ) : null}
         </>
       ) : null}
     </section>

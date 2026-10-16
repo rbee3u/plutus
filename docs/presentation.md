@@ -45,11 +45,13 @@ Catalog asset filters provide `Platform`, `Search asset`, and `Status` (`All`,
 `Active`, and `Excluded`) options.
 
 Catalog, balances, and earn display asset symbol first. When its canonical asset
-symbol differs, show a secondary `Canonical asset: ...` hint; omit redundant
-hints. Earn amount units use asset symbol. Catalog and mapping dialogs omit full
-names. Mapping dialogs label the source `Asset` and the target
-`Canonical asset`. Capital flow inputs and columns also use `Asset`; the stored
-symbol still identifies the cross-platform canonical asset.
+symbol differs, Catalog shows `asset → canonical asset` on one line to keep the
+list compact and avoid adding height to mapped rows. Balances and earn show a
+secondary `Canonical asset: ...` hint. Omit redundant mapping hints. Earn amount
+units use asset symbol. Catalog and mapping dialogs omit full names. Mapping
+dialogs label the source `Asset` and the target `Canonical asset`. Capital flow
+inputs and columns also use `Asset`; the stored symbol still identifies the
+cross-platform canonical asset.
 
 Catalog futures contract size uses native base units for linear contracts and
 quote face amounts for inverse contracts. Binance linear quantities already use
@@ -161,6 +163,13 @@ are precedents for individual conventions, not this combined policy.
 
 ## Overview and navigation
 
+Overview guides portfolios without identities to add one, even when an empty
+valuation point already exists. Before the first valuation point, Overview and
+all Holdings views guide portfolios with only archived identities to add one,
+and portfolios with a non-archived identity to collect. These setup prompts use
+a successful identity read, not an empty holdings tree or failed request.
+Archiving identities does not replace retained valuations with setup prompts.
+
 Overview shows metric cards, a recent-point chart, then the platform → identity
 → account tree. Each node shows its name and adjacent USD valuation; unknown
 value is `—`. The nested disclosure list has no table headers or node counts.
@@ -176,7 +185,9 @@ values; method, report ID, and source time remain in an initially collapsed
 report details disclosure.
 
 Account details contain failed, stale, and incomplete states with source times
-and omissions. Page-level Issues remain visible when nodes are collapsed; normal
+and omissions. Cross-account Issues identify platform, identity, account, and
+asset or contract where available, using metadata from the displayed view.
+Overview's page-level Issues remain visible when nodes are collapsed; normal
 connection labels and repeated ancestor badges do not occupy the tree. Balances
 always appear in details. Futures, earn, and dual sections hide only after a
 successful empty read; loading, failed reads, and stale holdings stay explicit.

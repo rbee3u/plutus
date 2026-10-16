@@ -17,6 +17,7 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 	"github.com/rbee3u/plutus/internal/shared/etag"
 )
@@ -264,7 +265,7 @@ func (s *Service) apply(ctx context.Context, draft *Flow, in *Input) error {
 	if in.CanonicalAssetSymbol != nil {
 		canonicalAssetSymbol, err := catalog.NormalizeSymbol(*in.CanonicalAssetSymbol)
 		if err != nil {
-			return ErrInvalid
+			return apperr.Invalid("Start the asset symbol with a letter or number. Use letters, numbers, dots, underscores or hyphens, up to 64 UTF-8 bytes.")
 		}
 		if canonicalAssetSymbol != draft.CanonicalAssetSymbol {
 			revalue = true

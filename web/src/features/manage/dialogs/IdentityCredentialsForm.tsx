@@ -1,5 +1,5 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { deleteIdentityCredentials, problemMessage, putIdentityCredentials } from "@/api";
 import type { Identity, Platform } from "@/api";
 import { credentialRequired } from "../lib/credentialRequirements";
@@ -25,6 +25,11 @@ export function IdentityCredentialsForm({
   onSaved: (message: string) => Promise<void>;
 }) {
   const write = useAuthenticatedWrite();
+  const apiKeyId = useId();
+  const apiSecretId = useId();
+  const futuresApiKeyId = useId();
+  const futuresApiSecretId = useId();
+  const passphraseId = useId();
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [passphrase, setPassphrase] = useState("");
@@ -125,26 +130,28 @@ export function IdentityCredentialsForm({
 
   const primaryFields = (
     <>
-      <label className={shared.field}>
-        <span>
+      <div className={shared.field}>
+        <label htmlFor={apiKeyId}>
           {form.primary.keyLabel}
           {form.futures ? ` (${spotRequired ? "required" : "optional"})` : null}
-        </span>
+        </label>
         <PasswordInput
+          id={apiKeyId}
           fieldName={form.primary.keyLabel}
           autoComplete="off"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
           required={spotRequired || apiSecret.trim() !== ""}
         />
-      </label>
-      <label className={shared.field}>
-        <span>
+      </div>
+      <div className={shared.field}>
+        <label htmlFor={apiSecretId}>
           {form.primary.secretLabel}
           {form.futures ? ` (${spotRequired ? "required" : "optional"})` : null}
-        </span>
+        </label>
         {form.primary.secretInput === "multiline" ? (
           <TextArea
+            id={apiSecretId}
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -155,6 +162,7 @@ export function IdentityCredentialsForm({
           />
         ) : (
           <PasswordInput
+            id={apiSecretId}
             fieldName={form.primary.secretLabel}
             autoComplete="off"
             value={apiSecret}
@@ -162,7 +170,7 @@ export function IdentityCredentialsForm({
             required={spotRequired || apiKey.trim() !== ""}
           />
         )}
-      </label>
+      </div>
     </>
   );
 
@@ -194,43 +202,48 @@ export function IdentityCredentialsForm({
       {form.futures ? (
         <div className={styles.credentialsGroup}>
           <span className={styles.credentialsGroupTitle}>Futures credentials</span>
-          <label className={shared.field}>
-            <span>
+          <div className={shared.field}>
+            <label htmlFor={futuresApiKeyId}>
               {form.futures.keyLabel} ({futuresRequired ? "required" : "optional"})
-            </span>
+            </label>
             <PasswordInput
+              id={futuresApiKeyId}
               fieldName={form.futures.keyLabel}
               autoComplete="off"
               value={futuresApiKey}
               onChange={(event) => setFuturesApiKey(event.target.value)}
               required={futuresRequired || futuresApiSecret.trim() !== ""}
             />
-          </label>
-          <label className={shared.field}>
-            <span>
+          </div>
+          <div className={shared.field}>
+            <label htmlFor={futuresApiSecretId}>
               {form.futures.secretLabel} ({futuresRequired ? "required" : "optional"})
-            </span>
+            </label>
             <PasswordInput
+              id={futuresApiSecretId}
               fieldName={form.futures.secretLabel}
               autoComplete="off"
               value={futuresApiSecret}
               onChange={(event) => setFuturesApiSecret(event.target.value)}
               required={futuresRequired || futuresApiKey.trim() !== ""}
             />
-          </label>
+          </div>
         </div>
       ) : null}
       {form.passphrase !== "hidden" ? (
-        <label className={shared.field}>
-          <span>{passphraseRequired ? "Passphrase" : "Passphrase (optional)"}</span>
+        <div className={shared.field}>
+          <label htmlFor={passphraseId}>
+            {passphraseRequired ? "Passphrase" : "Passphrase (optional)"}
+          </label>
           <PasswordInput
-            fieldName="Passphrase"
+            id={passphraseId}
+            fieldName="passphrase"
             autoComplete="off"
             value={passphrase}
             onChange={(event) => setPassphrase(event.target.value)}
             required={passphraseRequired}
           />
-        </label>
+        </div>
       ) : null}
       {confirmRemove ? (
         <div className={styles.credentialsConfirmCard}>

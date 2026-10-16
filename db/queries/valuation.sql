@@ -83,7 +83,7 @@ WHERE v.portfolio_id = sqlc.arg(portfolio_id) AND v.cycle_id IN (sqlc.slice('cyc
 ORDER BY v.cycle_id, v.account_id, a.symbol, v.asset_id;
 
 -- name: ListBoundaryEventsByCycles :many
-SELECT e.*, a.identity_id, a.account_type, i.display_name AS identity_name, i.platform
+SELECT e.*, a.identity_id, a.account_type, i.account_structure, i.display_name AS identity_name, i.platform
 FROM boundary_events e
 JOIN accounts a ON a.portfolio_id = e.portfolio_id AND a.id = e.account_id
 JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id

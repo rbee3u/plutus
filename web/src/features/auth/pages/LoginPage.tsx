@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { clearSession, useCurrentUser } from "@/shared/lib/session";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { keys, postAuthLogin, problemMessage, executeWrite } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/shared/lib/preferences";
@@ -14,6 +14,7 @@ import styles from "@/features/auth/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 export function LoginPage() {
+  const passwordId = useId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -83,16 +84,17 @@ export function LoginPage() {
             required
           />
         </label>
-        <label className={shared.field}>
-          <span>Password</span>
+        <div className={shared.field}>
+          <label htmlFor={passwordId}>Password</label>
           <PasswordInput
+            id={passwordId}
             value={password}
             placeholder="Enter password"
             autoComplete="current-password"
             onChange={(event) => setPassword(event.target.value)}
             required
           />
-        </label>
+        </div>
         <div className={styles.authActions}>
           <ActionButton type="submit" tone="primary" disabled={busy} className={styles.authSubmit}>
             {busy ? "Signing in..." : "Sign in"}

@@ -104,6 +104,7 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
         </label>
         <PasswordInput
           id={currentPasswordId}
+          fieldName="current password"
           ref={currentPasswordRef}
           value={currentPassword}
           autoComplete="current-password"
@@ -135,6 +136,7 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
         </label>
         <PasswordInput
           id={newPasswordId}
+          fieldName="new password"
           value={newPassword}
           autoComplete="new-password"
           minLength={8}
@@ -159,7 +161,7 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
             className={`${passwordStyles.ruleBadge} ${isLengthValid ? passwordStyles.ruleBadgeMet : ""}`}
           >
             {isLengthValid ? <Check size={iconSize.xs} aria-hidden="true" /> : null}
-            8+ chars
+            8–128 characters
           </span>
           <span
             className={`${passwordStyles.ruleBadge} ${hasUppercase ? passwordStyles.ruleBadgeMet : ""}`}
@@ -188,6 +190,7 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
         </label>
         <PasswordInput
           id={confirmPasswordId}
+          fieldName="password confirmation"
           value={confirmPassword}
           autoComplete="new-password"
           onChange={(event) => setConfirmPassword(event.target.value)}

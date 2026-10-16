@@ -10,6 +10,7 @@ import type {
   Overview,
   PositionRow,
   HoldingsTree,
+  IdentityList,
 } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
@@ -24,6 +25,8 @@ async function fixture(page: Page) {
     failPositions: false,
     positionsReady: Promise.resolve(),
     emptyTree: false,
+    hasIdentities: true,
+    archivedIdentity: false,
     stale: false,
     unknown: false,
     ownerName: "Owner",
@@ -257,7 +260,27 @@ async function fixture(page: Page) {
           },
         });
       if (path === `/api/v1/portfolios/${portfolioId}/identities`)
-        return route.fulfill({ json: { items: [] } });
+        return route.fulfill({
+          json: {
+            items: state.hasIdentities
+              ? [
+                  {
+                    id: "owner",
+                    portfolioId,
+                    platform: "binance",
+                    displayName: state.ownerName,
+                    accountStructure: "classic_trading",
+                    status: state.archivedIdentity ? "archived" : "enabled",
+                    connection: { status: "enabled", credentialsConfigured: true },
+                    accounts: [],
+                    version: 1,
+                    createdAt: observed,
+                    updatedAt: observed,
+                  },
+                ]
+              : [],
+          } satisfies IdentityList,
+        });
       if (path === `/api/v1/portfolios/${portfolioId}/balances`)
         return route.fulfill({
           json: {
@@ -413,10 +436,41 @@ for (const noPoint of [false, true]) {
       await expect(page.getByRole("article")).toHaveCount(0);
     } else
       await expect(page.getByRole("region", { name: "Holdings tree", exact: true })).toContainText(
-        "No accounts in the portfolio boundary. Add an identity.",
+        "No accounts to display.",
       );
   });
+
+  test(`Overview guides a portfolio without identities ${noPoint ? "before" : "after"} an empty collection`, async ({
+    page,
+  }) => {
+    const state = await fixture(page);
+    state.hasIdentities = false;
+    state.emptyTree = true;
+    state.value = "0";
+    if (noPoint) state.point = null;
+    await page.goto(`/p/${portfolioId}/overview`);
+    await expect(page.getByRole("heading", { name: "No identities yet" })).toBeVisible();
+    await expect(page.getByText("Add an identity to start tracking account values.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collect now" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Manage identities" }).click();
+    await expect(page).toHaveURL(`/p/${portfolioId}/data/identities`);
+  });
 }
+
+test("Overview guides archived-only setup without hiding retained valuations", async ({ page }) => {
+  const state = await fixture(page);
+  state.archivedIdentity = true;
+  state.emptyTree = true;
+  state.point = null;
+  await page.goto(`/p/${portfolioId}/overview`);
+  await expect(page.getByRole("heading", { name: "No active identities" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Collect now" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Manage identities" })).toBeVisible();
+  state.point = "retained-point";
+  await page.reload();
+  await expect(page.getByRole("article").first()).toContainText("100");
+  await expect(page.getByRole("heading", { name: "No active identities" })).toHaveCount(0);
+});
 
 test("Activity cycles list does not poll", async ({ page }) => {
   const state = await fixture(page);

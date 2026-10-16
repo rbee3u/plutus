@@ -1,10 +1,14 @@
 import { keys, listBoundaryEvents } from "@/api";
-import type { BoundaryEvent, BoundaryEventList } from "@/api";
+import type { BoundaryEventList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { useTimeWindow } from "@/shared/lib/useTimeWindow";
-import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
+import {
+  BOUNDARY_COLUMNS,
+  boundaryEventRow,
+  newestBoundaryEvents,
+} from "@/shared/lib/valuationRows";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
@@ -31,14 +35,7 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
       }),
   });
 
-  // API cycles are chronological; keep each cycle's account order intact.
-  const batches = new Map<string, BoundaryEvent[]>();
-  for (const item of events.data?.items ?? []) {
-    const batch = batches.get(item.cycleId) ?? [];
-    batch.push(item);
-    batches.set(item.cycleId, batch);
-  }
-  const items = [...batches.values()].reverse().flat();
+  const items = newestBoundaryEvents(events.data?.items ?? []);
 
   return (
     <>

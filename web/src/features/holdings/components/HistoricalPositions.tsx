@@ -27,10 +27,10 @@ export function HistoricalPositions({
   const data = matches ? query.data : undefined;
   return (
     <>
-      <h4>Contract positions</h4>
+      <h4>Futures</h4>
       <QueryRecovery query={query} fallback="Historical positions could not be loaded." />
       <DataTable
-        caption="Contract positions at this historical point"
+        caption="Futures positions at this valuation point"
         columns={POSITION_COLUMNS}
         rows={(data?.items ?? []).map((item) => positionRow(item, data?.context.timezone))}
         empty={

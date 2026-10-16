@@ -9,7 +9,11 @@ import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
-import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import {
+  HoldingsFilterFooter,
+  HoldingsListRecovery,
+  HoldingsNoPoint,
+} from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
@@ -88,10 +92,7 @@ export function PositionsPage() {
               help="Check the notice above to retry the request."
             />
           ) : !data?.context.cycleId ? (
-            <TableEmptyState
-              title="No valuation point yet"
-              help="Run a collection cycle to create the first point."
-            />
+            <HoldingsNoPoint filters={filters} />
           ) : holdingsScopeHasMissingReport(
               data.issues,
               filters.values,
@@ -116,7 +117,11 @@ export function PositionsPage() {
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
       {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+        <IssuesPanel
+          issues={data.issues}
+          timezone={data.context.timezone}
+          resolveScope={filters.resolveIssueScope}
+        />
       ) : null}
     </section>
   );

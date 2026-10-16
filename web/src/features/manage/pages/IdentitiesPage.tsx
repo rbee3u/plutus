@@ -106,7 +106,7 @@ export function IdentitiesPage() {
           { key: "name", header: "Identity", nowrap: true, width: "160px" },
           { key: "uid", header: "UID", nowrap: true, width: "150px" },
           { key: "structure", header: "Structure", nowrap: true, width: "140px" },
-          { key: "Accounts", header: "Accounts", nowrap: true, width: "110px" },
+          { key: "accounts", header: "Accounts", nowrap: true, width: "110px" },
           { key: "status", header: "Status", width: "140px" },
           {
             key: "lastCollection",

@@ -14,12 +14,16 @@ import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { BALANCE_COLUMNS, balanceRow } from "../components/BalancesTable";
-import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import {
+  HoldingsFilterFooter,
+  HoldingsListRecovery,
+  HoldingsNoPoint,
+} from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { ManualDialog } from "../dialogs/ManualBalances";
 import { ManualActions, type ManualTarget } from "../dialogs/manual";
-import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { holdingsScopeHasMissingReport, useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -115,9 +119,15 @@ export function BalancesPage() {
               help="Check the notice above to retry the request."
             />
           ) : !data?.context.cycleId ? (
+            <HoldingsNoPoint filters={filters} />
+          ) : holdingsScopeHasMissingReport(
+              data.issues,
+              filters.values,
+              filters.identities.data?.items ?? [],
+            ) ? (
             <TableEmptyState
-              title="No valuation point yet"
-              help="Run a collection cycle to create the first point."
+              title="Balance data is incomplete"
+              help="Some accounts have no compatible successful report."
             />
           ) : filters.hasFilters ? (
             <TableEmptyState
@@ -140,7 +150,11 @@ export function BalancesPage() {
         onClose={() => setManualTarget(null)}
       />
       {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+        <IssuesPanel
+          issues={data.issues}
+          timezone={data.context.timezone}
+          resolveScope={filters.resolveIssueScope}
+        />
       ) : null}
     </section>
   );

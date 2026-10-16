@@ -53,9 +53,12 @@ function render(form: FormDescription, selected: string[] = []) {
   );
 }
 function field(html: string, label: string) {
-  return [...html.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/g)].find((match) =>
-    match[1].includes(label),
+  const id = [...html.matchAll(/<label\b[^>]*for="([^"]+)"[^>]*>([\s\S]*?)<\/label>/g)].find(
+    (match) => match[2].includes(label),
   )?.[1];
+  return [...html.matchAll(/<(?:input|textarea)\b[^>]*>/g)].find((match) =>
+    match[0].includes(`id="${id}"`),
+  )?.[0];
 }
 
 describe("credential descriptor rendering", () => {

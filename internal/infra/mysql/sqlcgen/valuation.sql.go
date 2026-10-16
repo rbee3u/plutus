@@ -558,7 +558,7 @@ func (q *Queries) ListBalanceValuationsByCycles(ctx context.Context, arg ListBal
 }
 
 const listBoundaryEventsByCycles = `-- name: ListBoundaryEventsByCycles :many
-SELECT e.portfolio_id, e.cycle_id, e.account_id, e.direction, e.valuation_method, e.value_usd, e.valuation_complete, a.identity_id, a.account_type, i.display_name AS identity_name, i.platform
+SELECT e.portfolio_id, e.cycle_id, e.account_id, e.direction, e.valuation_method, e.value_usd, e.valuation_complete, a.identity_id, a.account_type, i.account_structure, i.display_name AS identity_name, i.platform
 FROM boundary_events e
 JOIN accounts a ON a.portfolio_id = e.portfolio_id AND a.id = e.account_id
 JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -581,6 +581,7 @@ type ListBoundaryEventsByCyclesRow struct {
 	ValuationComplete bool
 	IdentityID        []byte
 	AccountType       string
+	AccountStructure  string
 	IdentityName      string
 	Platform          string
 }
@@ -615,6 +616,7 @@ func (q *Queries) ListBoundaryEventsByCycles(ctx context.Context, arg ListBounda
 			&i.ValuationComplete,
 			&i.IdentityID,
 			&i.AccountType,
+			&i.AccountStructure,
 			&i.IdentityName,
 			&i.Platform,
 		); err != nil {

@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 import {
   invalidatePortfolioReads,
   keys,
@@ -288,6 +288,7 @@ function ExclusionForm({
   onClose: () => void;
   onDone: (message: string) => Promise<void>;
 }) {
+  const reasonId = useId();
   const write = useAuthenticatedWrite();
   const platforms = usePlatforms();
   const platform = platformLabel(platforms.data?.items, item.platform);
@@ -299,7 +300,7 @@ function ExclusionForm({
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (excluding && !reason.trim()) {
-      setError("Explain why this balance can be excluded.");
+      setError("Explain why this asset should be excluded.");
       return;
     }
     setBusy(true);
@@ -323,7 +324,7 @@ function ExclusionForm({
         return;
       }
       await onDone(
-        `${platform} ${result.data.symbol} ${excluding ? "will be excluded" : "will be included"} from the next collection cycle. Use Collect now on Overview to update the latest value sooner.`,
+        `${platform} ${result.data.symbol} ${excluding ? "will be excluded from" : "will be included in"} future calculated valuations. Use Collect now on Overview to update the latest value sooner.`,
       );
     } catch (cause) {
       setError(problemMessage(cause, "The asset status could not be saved."));
@@ -352,7 +353,7 @@ function ExclusionForm({
       ) : null}
       {excluding ? (
         <div className={shared.field}>
-          <span>Review reason</span>
+          <label htmlFor={reasonId}>Review reason</label>
           <div className={manageStyles.presetChips}>
             <span className={manageStyles.presetLabel}>Quick reasons:</span>
             {EXCLUSION_REASON_PRESETS.map((preset) => (
@@ -370,6 +371,7 @@ function ExclusionForm({
             ))}
           </div>
           <TextArea
+            id={reasonId}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Select a quick reason above or enter custom review notes..."
@@ -424,7 +426,9 @@ function MappingForm({
       new TextEncoder().encode(trimmedSymbol).length > 64 ||
       !/^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(trimmedSymbol)
     ) {
-      setError("Use letters, numbers, dots, underscores or hyphens, up to 64 UTF-8 bytes.");
+      setError(
+        "Start with a letter or number. Use letters, numbers, dots, underscores or hyphens, up to 64 UTF-8 bytes.",
+      );
       return;
     }
     setBusy(true);

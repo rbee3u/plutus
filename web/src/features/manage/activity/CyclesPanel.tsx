@@ -8,6 +8,7 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { capitalize } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
+import { accountIssueScope } from "@/shared/lib/valuationRows";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
 import { Badge, CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
@@ -185,15 +186,10 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
   const detail = query.data;
   const cycle = detail?.cycle;
   const duration = cycle ? cycleDuration(cycle) : null;
-  const accountMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const acc of detail?.accounts ?? []) {
-      if (acc.accountId && acc.identityName) {
-        map.set(acc.accountId, acc.identityName);
-      }
-    }
-    return map;
-  }, [detail?.accounts]);
+  const resolveIssueScope = useMemo(
+    () => accountIssueScope(detail?.accounts, platforms.data?.items),
+    [detail?.accounts, platforms.data],
+  );
 
   return (
     <>
@@ -287,20 +283,15 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
               <IssueList
                 issues={detail.issues}
                 timezone={timezone}
-                resolveScope={(issue) => {
-                  const identityName = issue.accountId
-                    ? accountMap.get(issue.accountId)
-                    : undefined;
-                  return [identityName, issue.accountName, issue.symbol]
-                    .filter(Boolean)
-                    .join(" · ");
-                }}
+                resolveScope={resolveIssueScope}
               />
             </>
           ) : null}
           <div className={manageStyles.cycleSectionHeader}>
             <h3 className={manageStyles.cycleSectionTitle}>
-              Accounts ({formatCount(detail?.accounts.length ?? 0)})
+              {cycle.point?.detailState === "expired"
+                ? "Accounts"
+                : `Accounts (${formatCount(detail?.accounts.length ?? 0)})`}
             </h3>
           </div>
           <AccountValuationsGrouped
@@ -311,7 +302,7 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
               cycle.status === "queued" || cycle.status === "running"
                 ? "The cycle is still running; account valuations appear when it finishes."
                 : cycle.point?.detailState === "expired"
-                  ? "Detailed account valuations for this cycle have expired. Its total and issues remain available."
+                  ? "Detailed account valuations and account issues for this cycle have expired. Its total remains available."
                   : "No account was valued in this cycle. No connection was enabled, or the cycle failed before collecting."
             }
           />

@@ -37,7 +37,7 @@ import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
-const NO_POINT = "No valuation points in this range. Adjust the range or run a collection cycle.";
+const NO_POINT = "No valuation points in this range.";
 const GRANULARITY_LABELS: Record<TimeGranularity, string> = {
   raw: "All points",
   hour: "Hourly",
@@ -173,11 +173,7 @@ export function ValuationPointsPage() {
               const prevItem = closeItems[globalIndex + 1];
               return periodCloseRow(item, prevItem, timezone);
             })}
-          empty={
-            closes.isPending
-              ? "Loading period closes."
-              : "No periods yet. Periods appear once the portfolio has a valuation point."
-          }
+          empty={closes.isPending ? "Loading period closes." : "No periods in this range."}
         />
         <HistoryPager
           label="Period closes"

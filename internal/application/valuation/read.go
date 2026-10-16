@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/application/ordering"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
@@ -303,6 +304,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		return err
 	}
 	totals := boundaryTotals{}
+	accountOrder := make(map[uuid.UUID]ordering.Account, len(events))
 	for _, row := range events {
 		cycle, err := uuid.FromBytes(row.CycleID)
 		if err != nil {
@@ -316,6 +318,10 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		identity, err := uuid.FromBytes(row.IdentityID)
 		if err != nil {
 			return err
+		}
+		accountOrder[account] = ordering.Account{
+			Identity:  ordering.Identity{Platform: row.Platform, Name: row.IdentityName, ID: identity},
+			Structure: adapters.AccountStructure(row.AccountStructure), Type: adapters.AccountType(row.AccountType), ID: account,
 		}
 		event := BoundaryEvent{
 			CycleID: cycle, EvaluatedAt: point.EvaluatedAt,
@@ -337,6 +343,9 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		}
 	}
 	for i := range points {
+		slices.SortFunc(points[i].BoundaryEvents, func(a, b BoundaryEvent) int {
+			return ordering.CompareAccounts(accountOrder[a.AccountID], accountOrder[b.AccountID])
+		})
 		points[i].BoundaryContributionUSD, points[i].BoundaryWithdrawalUSD = totals.of(points[i].CycleID)
 	}
 	return nil

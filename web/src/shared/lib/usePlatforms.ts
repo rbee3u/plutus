@@ -52,7 +52,10 @@ export function usePlatforms() {
   });
 }
 
-export function platformLabel(platforms: PlatformLabels[] | undefined, id: string): string {
+export function platformLabel(
+  platforms: Pick<Platform, "id" | "name">[] | undefined,
+  id: string,
+): string {
   return platforms?.find((item) => item.id === id)?.name ?? id;
 }
 

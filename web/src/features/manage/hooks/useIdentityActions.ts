@@ -31,7 +31,7 @@ function sentence(text: string): string {
 
 function outcomeText(outcome: ValidationOutcome): string {
   if (outcome.ok) {
-    return `ok${outcome.externalRef ? ` (account ${outcome.externalRef})` : ""}`;
+    return `ok${outcome.externalRef ? ` (UID ${outcome.externalRef})` : ""}`;
   }
   return `${outcome.errorClass ?? "failed"}${outcome.errorDetail ? `: ${outcome.errorDetail}` : ""}`;
 }

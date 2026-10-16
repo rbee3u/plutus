@@ -12,11 +12,11 @@ import (
 func ResolveHistoryWindow(timezone, preset, fromLocal, toLocal string, now time.Time) (time.Time, time.Time, error) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("%w: invalid portfolio timezone", ErrInvalid)
+		return time.Time{}, time.Time{}, apperr.Invalid("The portfolio timezone is invalid.")
 	}
 	if fromLocal != "" || toLocal != "" {
 		if preset != "" || fromLocal == "" || toLocal == "" {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: supply both local endpoints without a preset", ErrInvalid)
+			return time.Time{}, time.Time{}, apperr.Invalid("Choose a range preset or enter both start and end times.")
 		}
 		from, err := parseHistoryLocal(fromLocal, loc)
 		if err != nil {
@@ -51,7 +51,7 @@ func ResolveHistoryWindow(timezone, preset, fromLocal, toLocal string, now time.
 	case "1Year", "1y", "1Y":
 		from = subtractHistoryMonths(to.In(loc), 12)
 	default:
-		return time.Time{}, time.Time{}, fmt.Errorf("%w: unsupported history preset", ErrInvalid)
+		return time.Time{}, time.Time{}, apperr.Invalid("Choose a supported time range preset.")
 	}
 	return from.UTC(), to, nil
 }
@@ -70,7 +70,7 @@ func parseHistoryLocal(value string, loc *time.Location) (time.Time, error) {
 		wall, err = time.Parse("2006-01-02T15:04:05", value)
 	}
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: enter a valid portfolio-local date and time", ErrInvalid)
+		return time.Time{}, apperr.Invalid("Enter a valid date and time in the portfolio timezone.")
 	}
 	offsets := map[int]bool{}
 	for h := -48; h <= 48; h++ {
@@ -87,10 +87,10 @@ func parseHistoryLocal(value string, loc *time.Location) (time.Time, error) {
 	}
 	switch len(matches) {
 	case 0:
-		return time.Time{}, fmt.Errorf("%w: this local time does not exist in %s; choose another time", ErrInvalid, loc.String())
+		return time.Time{}, apperr.Invalid(fmt.Sprintf("This local time does not exist in %s. Choose another time.", loc.String()))
 	case 1:
 		return matches[0].UTC(), nil
 	default:
-		return time.Time{}, fmt.Errorf("%w: this local time is ambiguous in %s; choose a time outside the clock transition", ErrInvalid, loc.String())
+		return time.Time{}, apperr.Invalid(fmt.Sprintf("This local time is ambiguous in %s. Choose a time outside the clock transition.", loc.String()))
 	}
 }

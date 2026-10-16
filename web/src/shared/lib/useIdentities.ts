@@ -15,6 +15,15 @@ export function useIdentities(portfolioId: string) {
   });
 }
 
+/** Call only after a successful identity read, independently of holdings. */
+export function identitySetupGuidance(identities: Pick<Identity, "status">[]) {
+  if (identities.some((identity) => identity.status !== "archived")) return null;
+  return {
+    title: identities.length === 0 ? "No identities yet" : "No active identities",
+    help: "Add an identity to start tracking account values.",
+  };
+}
+
 export interface AccountOption {
   id: string;
   identityId: string;

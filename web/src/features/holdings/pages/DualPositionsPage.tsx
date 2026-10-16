@@ -5,7 +5,11 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { DualPositionsTable } from "../components/DualPositionsTable";
-import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import {
+  HoldingsFilterFooter,
+  HoldingsListRecovery,
+  HoldingsNoPoint,
+} from "../components/HoldingsFilterControls";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
@@ -54,10 +58,7 @@ export function DualPositionsPage() {
               help="Check the notice above to retry the request."
             />
           ) : !data?.context.cycleId ? (
-            <TableEmptyState
-              title="No valuation point yet"
-              help="Run a collection cycle to create the first point."
-            />
+            <HoldingsNoPoint filters={filters} />
           ) : filters.hasFilters ? (
             <TableEmptyState
               title="No dual investment subscriptions match these filters"
@@ -68,7 +69,11 @@ export function DualPositionsPage() {
       />
       <HoldingsFilterFooter filters={filters} page={data?.page} />
       {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+        <IssuesPanel
+          issues={data.issues}
+          timezone={data.context.timezone}
+          resolveScope={filters.resolveIssueScope}
+        />
       ) : null}
     </section>
   );

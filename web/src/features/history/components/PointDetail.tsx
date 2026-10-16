@@ -1,5 +1,5 @@
 import { NumericText } from "@/shared/ui/NumericText";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getValuationSnapshot, keys, type ValuationPointDetail } from "@/api";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
@@ -13,7 +13,7 @@ import { HistoricalPositions } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
 import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
-import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
+import { accountIssueScope, BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import styles from "@/features/history/styles.module.css";
 
 export const POINT_DETAIL_ID = "valuation-point-detail";
@@ -29,6 +29,10 @@ export function PointDetail({
   const [openAccount, setOpenAccount] = useState<string | undefined>();
   const platforms = usePlatforms();
   const point = detail.point;
+  const resolveIssueScope = useMemo(
+    () => accountIssueScope(detail.accounts, platforms.data?.items),
+    [detail.accounts, platforms.data],
+  );
 
   const accountsHealthy = point.staleAccountCount === 0 && point.incompleteAccountCount === 0;
 
@@ -130,7 +134,7 @@ export function PointDetail({
       {detail.issues.length > 0 ? (
         <>
           <h3>Issues</h3>
-          <IssueList issues={detail.issues} timezone={timezone} />
+          <IssueList issues={detail.issues} timezone={timezone} resolveScope={resolveIssueScope} />
         </>
       ) : null}
     </>
@@ -160,8 +164,8 @@ function SnapshotFallback({ at, timezone }: { at: string; timezone?: string }) {
   return (
     <>
       <p>
-        Detailed holdings for this point have expired. Its total, issues and boundary events remain
-        available.
+        Detailed holdings and account issues for this point have expired. Its total and boundary
+        events remain available.
       </p>
       <ActionButton onClick={() => setOpen(true)} disabled={open}>
         Show retained snapshot for {day}

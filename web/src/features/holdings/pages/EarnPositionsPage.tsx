@@ -7,7 +7,11 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { EarnPositionsTable } from "../components/EarnPositionsTable";
-import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/HoldingsFilterControls";
+import {
+  HoldingsFilterFooter,
+  HoldingsListRecovery,
+  HoldingsNoPoint,
+} from "../components/HoldingsFilterControls";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
@@ -38,12 +42,7 @@ export function EarnPositionsPage() {
       />
     );
   } else if (!data?.context.cycleId) {
-    empty = (
-      <TableEmptyState
-        title="No valuation point yet"
-        help="Run a collection cycle to create the first point."
-      />
-    );
+    empty = <HoldingsNoPoint filters={filters} />;
   } else if (!data.detailsComplete) {
     empty = (
       <TableEmptyState
@@ -86,7 +85,11 @@ export function EarnPositionsPage() {
         page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
       />
       {data?.context.cycleId ? (
-        <IssuesPanel issues={data.issues} timezone={data.context.timezone} />
+        <IssuesPanel
+          issues={data.issues}
+          timezone={data.context.timezone}
+          resolveScope={filters.resolveIssueScope}
+        />
       ) : null}
     </section>
   );

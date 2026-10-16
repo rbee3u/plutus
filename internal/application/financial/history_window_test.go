@@ -1,10 +1,8 @@
 package financial
 
 import (
-	"errors"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -51,20 +49,21 @@ func TestHistoryWindowPresets(t *testing.T) {
 }
 
 func TestHistoryLocalTimeValidation(t *testing.T) {
-	for _, tc := range []struct{ zone, from, to, reason string }{
+	for _, tc := range []struct{ zone, from, to, wantError string }{
 		{"Asia/Shanghai", "2026-10-04T12:00", "2026-10-04T13:00", ""},
-		{"America/New_York", "2026-03-08T02:30", "2026-03-08T04:00", "does not exist"},
-		{"America/New_York", "2026-11-01T01:30", "2026-11-01T03:00", "ambiguous"},
-		{"Australia/Lord_Howe", "2026-04-05T01:45", "2026-04-05T03:00", "ambiguous"},
+		{"America/New_York", "2026-03-08T02:30", "2026-03-08T04:00", "This local time does not exist in America/New_York. Choose another time."},
+		{"America/New_York", "2026-11-01T01:30", "2026-11-01T03:00", "This local time is ambiguous in America/New_York. Choose a time outside the clock transition."},
+		{"Australia/Lord_Howe", "2026-04-05T01:45", "2026-04-05T03:00", "This local time is ambiguous in Australia/Lord_Howe. Choose a time outside the clock transition."},
 		{"UTC", "2026-10-04T13:00", "2026-10-04T12:00", "End time must be after start time."},
-		{"UTC", "garbage", "2026-10-04T12:00", "valid"},
-		{"UTC", "2026-02-30T12:00", "2026-10-04T12:00", "valid"},
-		{"UTC", "2026-10-04T12:00", "", "both"},
+		{"UTC", "garbage", "2026-10-04T12:00", "Enter a valid date and time in the portfolio timezone."},
+		{"UTC", "2026-02-30T12:00", "2026-10-04T12:00", "Enter a valid date and time in the portfolio timezone."},
+		{"UTC", "2026-10-04T12:00", "", "Choose a range preset or enter both start and end times."},
+		{"Not/AZone", "", "", "The portfolio timezone is invalid."},
 	} {
 		t.Run(tc.zone+tc.from, func(t *testing.T) {
 			from, _, err := ResolveHistoryWindow(tc.zone, "", tc.from, tc.to, time.Now())
-			if tc.reason != "" {
-				if apperr.KindOf(err) != apperr.KindInvalid || !strings.Contains(err.Error(), tc.reason) {
+			if tc.wantError != "" {
+				if apperr.KindOf(err) != apperr.KindInvalid || err.Error() != tc.wantError {
 					t.Fatalf("%v", err)
 				}
 				return
@@ -74,10 +73,10 @@ func TestHistoryLocalTimeValidation(t *testing.T) {
 			}
 		})
 	}
-	if _, _, err := ResolveHistoryWindow("UTC", "1w", "2026-10-01T00:00", "2026-10-04T00:00", time.Now()); !errors.Is(err, ErrInvalid) {
+	if _, _, err := ResolveHistoryWindow("UTC", "1w", "2026-10-01T00:00", "2026-10-04T00:00", time.Now()); apperr.KindOf(err) != apperr.KindInvalid || err.Error() != "Choose a range preset or enter both start and end times." {
 		t.Fatal(err)
 	}
-	if _, _, err := ResolveHistoryWindow("UTC", "all", "", "", time.Now()); !errors.Is(err, ErrInvalid) {
+	if _, _, err := ResolveHistoryWindow("UTC", "all", "", "", time.Now()); apperr.KindOf(err) != apperr.KindInvalid || err.Error() != "Choose a supported time range preset." {
 		t.Fatal(err)
 	}
 }

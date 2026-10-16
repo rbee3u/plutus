@@ -107,6 +107,7 @@ async function fixture(page: Page) {
     failCandidates: false,
     failRows: false,
     noPoint: false,
+    identityScope: "active" as "active" | "none" | "archived",
     searchResponse: null as Promise<void> | null,
     balances: [] as BalanceRow[],
     balanceIssues: [] as Issue[],
@@ -158,7 +159,11 @@ async function fixture(page: Page) {
               ),
               identity(ok, "okx", "ok-main"),
               identity(archived, "kraken", "old", "archived"),
-            ],
+            ]
+              .filter(() => state.identityScope !== "none")
+              .map((item) =>
+                state.identityScope === "archived" ? { ...item, status: "archived" } : item,
+              ),
           },
         });
       }
@@ -521,3 +526,54 @@ test("Candidate failure keeps URL conditions until a successful retry", async ({
   await expect(page.getByRole("button", { name: "Filter identity: bn-main" })).toBeEnabled();
   await expect.poll(() => state.requests.length).toBeGreaterThan(0);
 });
+
+for (const view of ["balances", "futures", "earn", "dual-investment"]) {
+  for (const scope of ["none", "archived", "active"] as const) {
+    test(`${view} guides ${scope} identities before the first point`, async ({ page }) => {
+      const state = await fixture(page);
+      state.noPoint = true;
+      state.identityScope = scope;
+      await page.goto(`/p/${portfolioId}/holdings/${view}`);
+      if (scope === "active") {
+        await expect(
+          page.getByText("Run a collection cycle to create the first valuation point."),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("main").getByRole("link", { name: "Overview", exact: true }),
+        ).toHaveAttribute("href", `/p/${portfolioId}/overview`);
+      } else {
+        await expect(
+          page.getByText(scope === "none" ? "No identities yet" : "No active identities", {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          page.getByText("Add an identity to start tracking account values."),
+        ).toBeVisible();
+        await page.getByRole("link", { name: "Manage identities", exact: true }).click();
+        await expect(page).toHaveURL(`/p/${portfolioId}/data/identities`);
+      }
+      expect(state.mutations).toHaveLength(0);
+    });
+  }
+
+  test(`${view} does not infer setup state from a failed identity read`, async ({ page }) => {
+    const state = await fixture(page);
+    state.noPoint = true;
+    state.failCandidates = true;
+    await page.goto(`/p/${portfolioId}/holdings/${view}`);
+    await expect(page.getByRole("alert")).toContainText("Candidates unavailable");
+    await expect(
+      page.getByText("Check the notice above to retry loading identities."),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Manage identities" })).toHaveCount(0);
+    await expect(
+      page.getByText("Run a collection cycle to create the first valuation point."),
+    ).toHaveCount(0);
+    state.failCandidates = false;
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect(
+      page.getByText("Run a collection cycle to create the first valuation point."),
+    ).toBeVisible();
+  });
+}

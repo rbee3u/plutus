@@ -352,6 +352,18 @@
   border-color: var(--line-strong);
 }
 
+.emptyHeroPrimaryLink {
+  border-color: transparent;
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.emptyHeroPrimaryLink:hover {
+  border-color: transparent;
+  color: var(--accent-contrast);
+  background: var(--accent-strong);
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);

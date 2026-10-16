@@ -439,6 +439,40 @@ test("Range summary retains known incomplete results and expands limitations and
   await expect(events).toContainText("Entered account");
 });
 
+test("Range boundary events reverse cycles while retaining each cycle's account order", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.summary = {
+    boundaryEvents: ["older", "newer"].flatMap((cycleId) =>
+      ["Spot", "Funding", "Manual"].map((accountName) => ({
+        cycleId,
+        evaluatedAt: initialEnd,
+        accountId: `${cycleId}-${accountName}`,
+        accountName: `${cycleId} ${accountName}`,
+        direction: "withdrawal" as const,
+        valueUsd: "10",
+        completeness: "complete" as const,
+        method: "calculated" as const,
+      })),
+    ),
+  };
+  await page.goto(`${historyPath}/value-changes`);
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await summary.getByText("Boundary events (6)", { exact: true }).click();
+  const rows = summary
+    .getByRole("table", { name: "Boundary events in the range" })
+    .getByRole("row");
+  await expect(rows.locator("td:nth-child(3)")).toHaveText([
+    "newer Spot",
+    "newer Funding",
+    "newer Manual",
+    "older Spot",
+    "older Funding",
+    "older Manual",
+  ]);
+});
+
 test("A failed range summary retries its applied window while calendar details remain available", async ({
   page,
 }) => {

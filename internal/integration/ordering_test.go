@@ -10,6 +10,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/catalog"
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/identity"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
@@ -167,6 +168,58 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 		dualAccounts = append(dualAccounts, row.AccountID)
 	}
 	checkHierarchy("Dual Positions", dualAccounts)
+
+	beforeExit, err := h.valuation.Get(h.ctx, h.portfolioID, cycleID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err = h.identities.List(h.ctx, h.portfolioID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items {
+		item, err = h.identities.Disable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.identities.Archive(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, exitCycle := h.runCycle()
+	exitPoint, err := h.valuation.Get(h.ctx, h.portfolioID, exitCycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkEvents := func(name string, events []valuation.BoundaryEvent) {
+		t.Helper()
+		ids := make([]uuid.UUID, len(events))
+		for i, event := range events {
+			ids[i] = event.AccountID
+		}
+		if !slices.Equal(ids, wantAccounts) {
+			t.Fatalf("%s boundary account order = %v, want %v", name, ids, wantAccounts)
+		}
+	}
+	checkEvents("point", exitPoint.BoundaryEvents)
+	detail, err := h.financial.Detail(h.ctx, pctx, exitCycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkEvents("detail", detail.Point.BoundaryEvents)
+	change, err := h.financial.CustomValueChange(h.ctx, pctx, beforeExit.EvaluatedAt, exitPoint.EvaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkEvents("range", change.BoundaryEvents)
+	if change.AmountUSD == nil || *change.AmountUSD != "0" {
+		t.Fatalf("boundary exits changed the adjusted value change: %+v", change)
+	}
+	events, err := h.financial.BoundaryEvents(h.ctx, pctx, beforeExit.EvaluatedAt, exitPoint.EvaluatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkEvents("timeline", events)
 }
 
 func TestCatalogBusinessOrderBeforePagination(t *testing.T) {

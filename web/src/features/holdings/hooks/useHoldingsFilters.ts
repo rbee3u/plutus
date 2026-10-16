@@ -1,9 +1,10 @@
 import { useLocation } from "react-router";
 import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Identity, Issue } from "@/api";
 import { useIdentities } from "@/shared/lib/useIdentities";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
+import { accountIssueScope } from "@/shared/lib/valuationRows";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
 
 export type HoldingsFilterKey = "platform" | "identityId" | "symbol";
@@ -69,6 +70,21 @@ export function useHoldingsFilters(portfolioId: string) {
   const navigation = useSessionNavigation();
   const identities = useIdentities(portfolioId);
   const platforms = usePlatforms();
+  const resolveIssueScope = useMemo(
+    () =>
+      accountIssueScope(
+        identities.data?.items.flatMap((identity) =>
+          identity.accounts.map((account) => ({
+            accountId: account.id,
+            accountName: account.displayName,
+            identityName: identity.displayName,
+            platform: identity.platform,
+          })),
+        ),
+        platforms.data?.items,
+      ),
+    [identities.data, platforms.data],
+  );
   const values: HoldingsFilterValues = {
     platform: params.get("platform") ?? "",
     identityId: params.get("identityId") ?? "",
@@ -195,6 +211,7 @@ export function useHoldingsFilters(portfolioId: string) {
       });
     },
     candidatesReady: Boolean(identities.data),
+    resolveIssueScope,
     identities,
     platforms,
     platformOptions: [...candidates.platforms].map((id) => ({

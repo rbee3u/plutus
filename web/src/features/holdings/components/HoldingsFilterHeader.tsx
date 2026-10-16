@@ -42,7 +42,11 @@ export function HoldingsFilterHeader({
       onSelect={(val) => filters.change({ [filterKey]: val })}
       searchDraft={filters.symbolDraft}
       searchPlaceholder={label === "Pair" ? "Contains, e.g. BTC or USDT" : "Contains, e.g. BTC"}
-      searchHelp="Search supports partial matches and ignores case."
+      searchHelp={
+        label === "Pair"
+          ? "Search by asset symbol; partial matches are case-insensitive."
+          : "Search supports partial matches and ignores case."
+      }
       onSearchChange={filters.editSymbol}
       onCompositionStart={filters.beginComposition}
       onCompositionEnd={filters.endComposition}

@@ -1,4 +1,4 @@
-import type { AccountValuation, BoundaryEvent, Platform } from "@/api";
+import type { AccountValuation, BoundaryEvent, Issue, Platform } from "@/api";
 import { formatAmount, formatCount, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { platformLabel } from "@/shared/lib/usePlatforms";
@@ -17,6 +17,26 @@ export const ACCOUNT_VALUATION_COLUMNS = [
 export function isAccountReportMissing(item: AccountValuation): boolean {
   // Successful sources retain an observation time, even outside the valuation boundary.
   return item.method === "missing" && !item.reportObservedAt;
+}
+
+/** Resolve cross-account issues from the metadata belonging to the displayed view. */
+export function accountIssueScope(
+  accounts:
+    Pick<AccountValuation, "accountId" | "accountName" | "identityName" | "platform">[] | undefined,
+  platforms: Pick<Platform, "id" | "name">[] | undefined,
+) {
+  const scopes = new Map(
+    (accounts ?? []).map((account) => [
+      account.accountId,
+      [platformLabel(platforms, account.platform), account.identityName, account.accountName]
+        .filter(Boolean)
+        .join(" · "),
+    ]),
+  );
+  return (issue: Issue): string | undefined => {
+    const scope = issue.accountId ? scopes.get(issue.accountId) : undefined;
+    return scope ? [scope, issue.symbol].filter(Boolean).join(" · ") : undefined;
+  };
 }
 
 export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
@@ -164,6 +184,17 @@ export const BOUNDARY_COLUMNS = [
   { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
   { key: "method", header: "Method", width: "120px" },
 ];
+
+/** API cycles are chronological; reverse batches without reversing their accounts. */
+export function newestBoundaryEvents(items: BoundaryEvent[]): BoundaryEvent[] {
+  const batches = new Map<string, BoundaryEvent[]>();
+  for (const item of items) {
+    const batch = batches.get(item.cycleId) ?? [];
+    batch.push(item);
+    batches.set(item.cycleId, batch);
+  }
+  return [...batches.values()].reverse().flat();
+}
 
 export function boundaryEventRow(
   item: BoundaryEvent,

@@ -120,8 +120,12 @@ export function ValueChangesPage() {
               </label>
             }
             option={chartOption}
-            empty="No comparable periods in this range. Adjust the range or run a collection cycle."
-            emptyRows="No periods yet. Periods appear once the portfolio has valuation points."
+            empty={
+              changeItems.length > 0
+                ? "No comparable periods in this range. Try a different range or period."
+                : "No comparable periods in this range."
+            }
+            emptyRows="No periods in this range."
             columns={VALUE_CHANGE_COLUMNS}
             rows={changeItems
               .slice(pager.offset, pager.offset + pager.limit)

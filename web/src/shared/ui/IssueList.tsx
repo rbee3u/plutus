@@ -21,14 +21,22 @@ export function Codes({ values }: { values: string[] }) {
 }
 
 /** A page section for issues: a heading and list when there are any, hidden when empty. */
-export function IssuesPanel({ issues, timezone }: { issues: Issue[]; timezone?: string }) {
+export function IssuesPanel({
+  issues,
+  timezone,
+  resolveScope,
+}: {
+  issues: Issue[];
+  timezone?: string;
+  resolveScope?: (issue: Issue) => string | undefined;
+}) {
   if (issues.length === 0) {
     return null;
   }
   return (
     <section className={styles.panel}>
       <h2>Issues</h2>
-      <IssueList issues={issues} timezone={timezone} />
+      <IssueList issues={issues} timezone={timezone} resolveScope={resolveScope} />
     </section>
   );
 }

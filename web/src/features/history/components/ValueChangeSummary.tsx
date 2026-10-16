@@ -2,7 +2,11 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { getCustomValueChange, keys } from "@/api";
 import type { HistoryWindow, ValueChange } from "@/api";
 import { combinedFlowsCell, valueChangeCell } from "../lib/valueChangeRows";
-import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
+import {
+  BOUNDARY_COLUMNS,
+  boundaryEventRow,
+  newestBoundaryEvents,
+} from "@/shared/lib/valuationRows";
 import { formatUsd } from "@/shared/lib/amount";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
@@ -145,7 +149,7 @@ function RangeResult({ change, timezone }: { change: ValueChange; timezone?: str
           <DataTable
             caption="Boundary events in the range"
             columns={BOUNDARY_COLUMNS}
-            rows={change.boundaryEvents.map((item) =>
+            rows={newestBoundaryEvents(change.boundaryEvents).map((item) =>
               boundaryEventRow(item, timezone, platforms.data?.items),
             )}
             empty="No account entered or left the boundary in this range."
