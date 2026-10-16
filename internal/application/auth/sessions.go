@@ -98,8 +98,11 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, Session
 		return User{}, Session{}, ErrUnauthenticated
 	}
 	userRow, err := s.q.GetUserByID(ctx, row.UserID)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, Session{}, ErrUnauthenticated
+	}
+	if err != nil {
+		return User{}, Session{}, err
 	}
 	if userRow.Status != "active" {
 		return User{}, Session{}, ErrUserDisabled

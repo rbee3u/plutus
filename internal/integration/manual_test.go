@@ -21,6 +21,8 @@ import (
 )
 
 type manualTestAdapter struct {
+	reported  *string
+	unpriced  bool
 	usd       string
 	btc       string
 	failed    bool
@@ -42,9 +44,12 @@ func (a *manualTestAdapter) Collect(_ context.Context, _ adapters.Credentials, _
 		if typ == adapters.TypeManual {
 			panic("Manual must not reach a private Adapter")
 		}
-		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusSucceeded, CollectedAt: at}
+		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusSucceeded, CollectedAt: at, Equity: a.reported}
 		if a.usd != "0" {
 			report.Balances = []adapters.Balance{{AssetSymbol: "USD", Equity: a.usd}}
+		}
+		if a.unpriced {
+			report.Balances = append(report.Balances, adapters.Balance{AssetSymbol: "MYSTERY", Equity: "2"})
 		}
 		if a.positions {
 			report.Positions = []adapters.Position{{PositionKey: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", PositionMode: "one_way", SourceQuantity: "1", SourceQuantityUnit: "base"}}
@@ -302,7 +307,7 @@ func TestManualDebtPricesMissingValuesAndTree(t *testing.T) {
 	if point.Point.TotalUSD != "0" {
 		t.Fatalf("debt %+v", point)
 	}
-	tree, err := h.financial.Tree(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
+	tree, err := h.financial.Overview(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
 	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 2 {
 		t.Fatalf("net zero holdings %v %v", tree, err)
 	}
@@ -328,13 +333,13 @@ func TestManualDebtPricesMissingValuesAndTree(t *testing.T) {
 	manualSave(t, h, item, "BTC", "0")
 	a.usd = "0"
 	empty, _ := h.runCycle()
-	tree, err = h.financial.Tree(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
+	tree, err = h.financial.Overview(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
 	if err != nil || empty.Point.AccountCount != 2 || len(tree.Platforms[0].Identities[0].Accounts) != 0 {
 		t.Fatalf("empty %v %+v %v", tree, empty, err)
 	}
 	a.positions = true
 	h.runCycle()
-	tree, err = h.financial.Tree(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
+	tree, err = h.financial.Overview(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
 	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 1 {
 		t.Fatalf("position retained %v %v", tree, err)
 	}
@@ -461,7 +466,7 @@ func TestManualExcludedRecordsStayEditableAndInvalidConnectionsDoNotBlock(t *tes
 	if view, err := h.financial.AccountBalances(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}, account.AccountID); err != nil || len(view.Balances) != 1 || !view.Balances[0].Excluded || view.Balances[0].Equity != "1" || view.Balances[0].ManualChange != "updated" || view.Balances[0].EquityUSD != nil {
 		t.Fatalf("excluded read %+v %v", view, err)
 	}
-	tree, err := h.financial.Tree(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
+	tree, err := h.financial.Overview(h.ctx, financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,7 +484,7 @@ func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
 	item := manualEnabled(t, h, &manualTestAdapter{usd: "0"})
 	p := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
 	state := manualSave(t, h, item, "USD", "100")
-	list, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	list, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IncludePendingManual: true, Limit: 50})
 	if err != nil || len(list.Items) != 1 || list.Items[0].ManualChange != "added" || list.Items[0].PriceUSD != nil || list.TotalUSD != nil {
 		t.Fatalf("before first collection: %+v %v", list, err)
 	}
@@ -487,18 +492,35 @@ func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
 	if err != nil || len(view.Balances) != 1 || view.Balances[0].Equity != "100" {
 		t.Fatalf("account before collection: %+v %v", view, err)
 	}
-	tree, err := h.financial.Tree(h.ctx, p)
-	if err != nil || len(tree.Platforms) != 1 || len(tree.Platforms[0].Identities[0].Accounts) != 1 || tree.TotalUSD != nil {
+	tree, err := h.financial.Overview(h.ctx, p)
+	if err != nil || len(tree.Platforms) != 1 || len(tree.Platforms[0].Identities[0].Accounts) != 1 || tree.Point != nil {
 		t.Fatalf("tree before collection: %+v %v", tree, err)
 	}
-	first, _ := h.runCycle()
+	first, firstID := h.runCycle()
 	manualSave(t, h, item, "USD", "150")
 	manualSave(t, h, item, "BTC", "-0.000000000000000000000000000001")
-	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 1, Offset: 1})
+	collected, err := h.financial.AccountReport(h.ctx, p, state.AccountID, &firstID, false)
+	if err != nil || len(collected.Balances) != 1 || collected.Balances[0].Equity != "100" || collected.Balances[0].ManualChange != "" {
+		t.Fatalf("historical report admitted pending edits: %+v %v", collected, err)
+	}
+	pending, err := h.financial.AccountReport(h.ctx, p, state.AccountID, &firstID, true)
+	if err != nil || len(pending.Balances) != 2 || *pending.Account.SourceReportID != *collected.Account.SourceReportID || pending.Balances[0].ManualChange != "added" || pending.Balances[0].Freshness != "" {
+		t.Fatalf("explicit pending overlay: %+v %v", pending, err)
+	}
+
+	if collected.ManualOverlay != nil || pending.ManualOverlay == nil || len(pending.ManualOverlay.Versions) != 1 || pending.ManualOverlay.Versions[0].AccountID != state.AccountID || pending.ManualOverlay.Versions[0].Version <= state.Version {
+		t.Fatalf("overlay versions: %+v", pending.ManualOverlay)
+	}
+	frozen, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{CycleID: &firstID})
+	if err != nil || frozen.ManualOverlay != nil || len(frozen.Items) != 1 || frozen.Items[0].Equity != "100" || frozen.Items[0].ManualChange != "" {
+		t.Fatalf("flat collected-only read: %+v %v", frozen, err)
+	}
+
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IncludePendingManual: true, Limit: 1, Offset: 1})
 	if err != nil || list.Total != 2 || len(list.Items) != 1 || list.Items[0].AssetSymbol != "USD" || list.Items[0].Equity != "100" || list.Items[0].ManualChange != "updated" || *list.Items[0].ManualQuantity != "150" || *list.TotalUSD != "100" {
 		t.Fatalf("updated and paginated: %+v %v", list, err)
 	}
-	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Symbol: " btc ", Limit: 50})
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IncludePendingManual: true, Symbol: " btc ", Limit: 50})
 	if err != nil || list.Total != 1 || list.Items[0].AssetSymbol != "BTC" || list.Items[0].ManualChange != "added" || *list.TotalUSD != "0" {
 		t.Fatalf("pending search: %+v %v", list, err)
 	}
@@ -509,18 +531,18 @@ func TestManualBalancePresentationBeforeAndBetweenCollections(t *testing.T) {
 	}
 	manualSave(t, h, item, "USD", "0")
 	manualSave(t, h, item, "BTC", "0")
-	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IncludePendingManual: true, Limit: 50})
 	if err != nil || list.Total != 1 || list.Items[0].ManualChange != "deleted" || list.Items[0].Equity != "100" || *list.TotalUSD != "100" {
 		t.Fatalf("pending deletion: %+v %v", list, err)
 	}
 	h.runCycle()
-	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{Limit: 50})
+	list, err = h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IncludePendingManual: true, Limit: 50})
 	if err != nil || list.Total != 0 || *list.TotalUSD != "0" {
 		t.Fatalf("applied deletion: %+v %v", list, err)
 	}
 	manualSave(t, h, item, "USD", "200")
-	tree, err = h.financial.Tree(h.ctx, p)
-	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 1 || *tree.TotalUSD != "0" {
+	tree, err = h.financial.Overview(h.ctx, p)
+	if err != nil || len(tree.Platforms[0].Identities[0].Accounts) != 1 || tree.Point.TotalUSD != "0" {
 		t.Fatalf("pending account hidden: %+v %v", tree, err)
 	}
 	old, err := h.valuation.Get(h.ctx, h.portfolioID, first.Point.CycleID)
@@ -557,5 +579,29 @@ func TestManualMappingAffectsNextPointAndPreservesHistory(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("missing durable mapping marker")
+	}
+}
+
+func TestPendingNewManualAccountDoesNotQualifyCollectedTotal(t *testing.T) {
+	h := newHarness(t)
+	item := manualEnabled(t, h, &manualTestAdapter{usd: "0"})
+	for _, account := range item.Accounts {
+		if account.AccountType == "funding" {
+			var err error
+			item, err = h.identities.Patch(h.ctx, h.portfolioID, item.ID, item.Version, identity.PatchInput{ActorUserID: h.userID, Accounts: []identity.AccountPatch{{ID: account.ID, Selected: new(true)}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+	}
+	manualSave(t, h, item, "USD", "100")
+	_, point := h.runCycle()
+	pending := h.createIdentity("Pending identity", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	state := manualSave(t, h, pending, "USD", "200")
+	p := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
+	out, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{CycleID: &point, IncludePendingManual: true, IdentityID: &pending.ID})
+	if err != nil || out.TotalUSD == nil || *out.TotalUSD != "0" || out.TotalCompleteness != valuation.CompletenessComplete || !out.Coverage.Complete || len(out.TotalIssues) != 0 || len(out.Items) != 1 || out.Items[0].ManualChange != "added" || out.ManualOverlay == nil || len(out.ManualOverlay.Versions) != 1 || out.ManualOverlay.Versions[0].Version != state.Version {
+		t.Fatalf("pending account contaminated collected coverage or total: %+v %v", out, err)
 	}
 }

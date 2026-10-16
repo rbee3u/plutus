@@ -50,6 +50,14 @@ WHERE r.portfolio_id = sqlc.arg(portfolio_id)
 AND r.revision_number = (SELECT MAX(v.revision_number) FROM manual_revisions v WHERE v.portfolio_id = r.portfolio_id AND v.account_id = r.account_id)
 ORDER BY r.account_id;
 
+-- name: ListCurrentManualBalancesByAccounts :many
+SELECT b.account_id, b.asset_id, b.quantity, b.changed_at, a.symbol AS asset_symbol, a.canonical_asset_symbol
+FROM manual_revision_balances b
+JOIN assets a ON a.portfolio_id = b.portfolio_id AND a.id = b.asset_id
+WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.account_id IN (sqlc.slice('account_ids'))
+AND b.revision_number = (SELECT MAX(r.revision_number) FROM manual_revisions r WHERE r.portfolio_id = b.portfolio_id AND r.account_id = b.account_id)
+ORDER BY b.account_id, a.symbol, b.asset_id;
+
 -- name: ReportHasHoldings :one
 SELECT (
     EXISTS(SELECT 1 FROM balances b WHERE b.portfolio_id = sqlc.arg(portfolio_id) AND b.report_id = sqlc.arg(source_id) AND (b.equity IS NULL OR b.equity <> 0 OR COALESCE(b.liability, 0) <> 0 OR COALESCE(b.interest, 0) <> 0 OR COALESCE(b.unrealized_pnl, 0) <> 0 OR COALESCE(b.available_to_trade, 0) <> 0 OR COALESCE(b.available_to_withdraw, 0) <> 0))

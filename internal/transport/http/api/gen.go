@@ -79,6 +79,27 @@ func (e AssetMappingSource) Valid() bool {
 	}
 }
 
+// Defines values for BalanceRowFreshness.
+const (
+	BalanceRowFreshnessFresh       BalanceRowFreshness = "fresh"
+	BalanceRowFreshnessLessThannil BalanceRowFreshness = "<nil>"
+	BalanceRowFreshnessStale       BalanceRowFreshness = "stale"
+)
+
+// Valid indicates whether the value is a known member of the BalanceRowFreshness enum.
+func (e BalanceRowFreshness) Valid() bool {
+	switch e {
+	case BalanceRowFreshnessFresh:
+		return true
+	case BalanceRowFreshnessLessThannil:
+		return true
+	case BalanceRowFreshnessStale:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BalanceRowManualChange.
 const (
 	Added   BalanceRowManualChange = "added"
@@ -339,16 +360,16 @@ func (e CursorPageKind) Valid() bool {
 
 // Defines values for Freshness.
 const (
-	Fresh Freshness = "fresh"
-	Stale Freshness = "stale"
+	FreshnessFresh Freshness = "fresh"
+	FreshnessStale Freshness = "stale"
 )
 
 // Valid indicates whether the value is a known member of the Freshness enum.
 func (e Freshness) Valid() bool {
 	switch e {
-	case Fresh:
+	case FreshnessFresh:
 		return true
-	case Stale:
+	case FreshnessStale:
 		return true
 	default:
 		return false
@@ -541,6 +562,63 @@ func (e PositionRowMarginSource) Valid() bool {
 	}
 }
 
+// Defines values for PositionRowMarginUnavailableCode.
+const (
+	PositionRowMarginUnavailableCodeAccountModeUnknown         PositionRowMarginUnavailableCode = "account_mode_unknown"
+	PositionRowMarginUnavailableCodeAllocatedMarginUnavailable PositionRowMarginUnavailableCode = "allocated_margin_unavailable"
+	PositionRowMarginUnavailableCodeContractKindUnsupported    PositionRowMarginUnavailableCode = "contract_kind_unsupported"
+	PositionRowMarginUnavailableCodeConversionUnavailable      PositionRowMarginUnavailableCode = "conversion_unavailable"
+	PositionRowMarginUnavailableCodeCurrencyUnknown            PositionRowMarginUnavailableCode = "currency_unknown"
+	PositionRowMarginUnavailableCodeInitialMarginUnavailable   PositionRowMarginUnavailableCode = "initial_margin_unavailable"
+	PositionRowMarginUnavailableCodeLessThannil                PositionRowMarginUnavailableCode = "<nil>"
+	PositionRowMarginUnavailableCodeMarkOrLeverageUnavailable  PositionRowMarginUnavailableCode = "mark_or_leverage_unavailable"
+	PositionRowMarginUnavailableCodeReportedMarginInvalid      PositionRowMarginUnavailableCode = "reported_margin_invalid"
+	PositionRowMarginUnavailableCodeReportedMarginUnavailable  PositionRowMarginUnavailableCode = "reported_margin_unavailable"
+	PositionRowMarginUnavailableCodeSettingUnknown             PositionRowMarginUnavailableCode = "setting_unknown"
+	PositionRowMarginUnavailableCodeSettingUnsupported         PositionRowMarginUnavailableCode = "setting_unsupported"
+	PositionRowMarginUnavailableCodeSettlementMismatch         PositionRowMarginUnavailableCode = "settlement_mismatch"
+	PositionRowMarginUnavailableCodeSharedPortfolioMargin      PositionRowMarginUnavailableCode = "shared_portfolio_margin"
+	PositionRowMarginUnavailableCodeSizeOrQuoteUnavailable     PositionRowMarginUnavailableCode = "size_or_quote_unavailable"
+)
+
+// Valid indicates whether the value is a known member of the PositionRowMarginUnavailableCode enum.
+func (e PositionRowMarginUnavailableCode) Valid() bool {
+	switch e {
+	case PositionRowMarginUnavailableCodeAccountModeUnknown:
+		return true
+	case PositionRowMarginUnavailableCodeAllocatedMarginUnavailable:
+		return true
+	case PositionRowMarginUnavailableCodeContractKindUnsupported:
+		return true
+	case PositionRowMarginUnavailableCodeConversionUnavailable:
+		return true
+	case PositionRowMarginUnavailableCodeCurrencyUnknown:
+		return true
+	case PositionRowMarginUnavailableCodeInitialMarginUnavailable:
+		return true
+	case PositionRowMarginUnavailableCodeLessThannil:
+		return true
+	case PositionRowMarginUnavailableCodeMarkOrLeverageUnavailable:
+		return true
+	case PositionRowMarginUnavailableCodeReportedMarginInvalid:
+		return true
+	case PositionRowMarginUnavailableCodeReportedMarginUnavailable:
+		return true
+	case PositionRowMarginUnavailableCodeSettingUnknown:
+		return true
+	case PositionRowMarginUnavailableCodeSettingUnsupported:
+		return true
+	case PositionRowMarginUnavailableCodeSettlementMismatch:
+		return true
+	case PositionRowMarginUnavailableCodeSharedPortfolioMargin:
+		return true
+	case PositionRowMarginUnavailableCodeSizeOrQuoteUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PositionRowPositionMode.
 const (
 	PositionRowPositionModeHedged      PositionRowPositionMode = "hedged"
@@ -688,15 +766,20 @@ const (
 	N1M     GetHistoryWindowParamsPreset = "1M"
 	N1Month GetHistoryWindowParamsPreset = "1Month"
 	N1W     GetHistoryWindowParamsPreset = "1W"
+	N1Y     GetHistoryWindowParamsPreset = "1Y"
 	N1Year  GetHistoryWindowParamsPreset = "1Year"
 	N1d     GetHistoryWindowParamsPreset = "1d"
+	N1m     GetHistoryWindowParamsPreset = "1m"
 	N1w     GetHistoryWindowParamsPreset = "1w"
+	N1y     GetHistoryWindowParamsPreset = "1y"
 	N2W     GetHistoryWindowParamsPreset = "2W"
 	N2w     GetHistoryWindowParamsPreset = "2w"
 	N3D     GetHistoryWindowParamsPreset = "3D"
 	N3M     GetHistoryWindowParamsPreset = "3M"
 	N3d     GetHistoryWindowParamsPreset = "3d"
+	N3m     GetHistoryWindowParamsPreset = "3m"
 	N6M     GetHistoryWindowParamsPreset = "6M"
+	N6m     GetHistoryWindowParamsPreset = "6m"
 )
 
 // Valid indicates whether the value is a known member of the GetHistoryWindowParamsPreset enum.
@@ -710,11 +793,17 @@ func (e GetHistoryWindowParamsPreset) Valid() bool {
 		return true
 	case N1W:
 		return true
+	case N1Y:
+		return true
 	case N1Year:
 		return true
 	case N1d:
 		return true
+	case N1m:
+		return true
 	case N1w:
+		return true
+	case N1y:
 		return true
 	case N2W:
 		return true
@@ -726,7 +815,11 @@ func (e GetHistoryWindowParamsPreset) Valid() bool {
 		return true
 	case N3d:
 		return true
+	case N3m:
+		return true
 	case N6M:
+		return true
+	case N6m:
 		return true
 	default:
 		return false
@@ -763,42 +856,24 @@ type Account struct {
 	Selected    bool   `json:"selected"`
 }
 
-// AccountBalanceList defines model for AccountBalanceList.
-type AccountBalanceList struct {
-	Account AccountValuation `json:"account"`
-	Context ReadContext      `json:"context"`
-	Issues  []Issue          `json:"issues"`
-	Items   []BalanceRow     `json:"items"`
-}
-
-// AccountDualPositionList defines model for AccountDualPositionList.
-type AccountDualPositionList struct {
-	Account AccountValuation  `json:"account"`
-	Context ReadContext       `json:"context"`
-	Issues  []Issue           `json:"issues"`
-	Items   []DualPositionRow `json:"items"`
-}
-
-// AccountEarnPositionList defines model for AccountEarnPositionList.
-type AccountEarnPositionList struct {
-	Account AccountValuation  `json:"account"`
-	Context ReadContext       `json:"context"`
-	Issues  []Issue           `json:"issues"`
-	Items   []EarnPositionRow `json:"items"`
-}
-
 // AccountPatch defines model for AccountPatch.
 type AccountPatch struct {
 	Id       UUID  `json:"id"`
 	Selected *bool `json:"selected,omitempty"`
 }
 
-// AccountPositionList defines model for AccountPositionList.
-type AccountPositionList struct {
-	Account AccountValuation `json:"account"`
-	Context ReadContext      `json:"context"`
-	Issues  []Issue          `json:"issues"`
-	Items   []PositionRow    `json:"items"`
+// AccountReport defines model for AccountReport.
+type AccountReport struct {
+	Account  AccountValuation `json:"account"`
+	Balances []BalanceRow     `json:"balances"`
+
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context       ReadContext       `json:"context"`
+	DualPositions []DualPositionRow `json:"dualPositions"`
+	EarnPositions []EarnPositionRow `json:"earnPositions"`
+	Issues        []Issue           `json:"issues"`
+	ManualOverlay *ManualOverlay    `json:"manualOverlay"`
+	Positions     []PositionRow     `json:"positions"`
 }
 
 // AccountStructure How the platform arranges an identity's accounts. It decides the account types, is chosen when the identity is created, and cannot be changed afterwards.
@@ -822,33 +897,40 @@ type AccountValuation struct {
 	AccountId              UUID             `json:"accountId"`
 	AccountName            string           `json:"accountName"`
 	AccountType            string           `json:"accountType"`
-	AdjustedEquity         *NullableDecimal `json:"adjustedEquity,omitempty"`
-	AvailableEquity        *NullableDecimal `json:"availableEquity,omitempty"`
+	AdjustedEquityUsd      *NullableDecimal `json:"adjustedEquityUsd"`
+	AvailableEquityUsd     *NullableDecimal `json:"availableEquityUsd"`
 	Completeness           Completeness     `json:"completeness"`
 	ConnectionStatus       *string          `json:"connectionStatus,omitempty"`
-	Equity                 *NullableDecimal `json:"equity,omitempty"`
 	ErrorClass             *string          `json:"errorClass,omitempty"`
 	ErrorDetail            *string          `json:"errorDetail,omitempty"`
 	Freshness              Freshness        `json:"freshness"`
 	IdentityId             UUID             `json:"identityId"`
 	IdentityName           string           `json:"identityName"`
 	IdentityStatus         *string          `json:"identityStatus,omitempty"`
-	InitialMarginRatio     *NullableDecimal `json:"initialMarginRatio,omitempty"`
-	MaintenanceMarginRatio *NullableDecimal `json:"maintenanceMarginRatio,omitempty"`
+	InitialMarginRatio     *NullableDecimal `json:"initialMarginRatio"`
+	MaintenanceMarginRatio *NullableDecimal `json:"maintenanceMarginRatio"`
 
 	// ManualModifiedAt Last user quantity adjustment, distinct from report observation time.
 	ManualModifiedAt *time.Time `json:"manualModifiedAt,omitempty"`
 
 	// MarginRatio Platform-reported, unscaled account margin ratio. Its label and denominator depend on the immutable platform and account scope.
-	MarginRatio      *NullableDecimal       `json:"marginRatio,omitempty"`
-	Method           AccountValuationMethod `json:"method"`
-	Omitted          []OmittedBalance       `json:"omitted"`
-	Platform         string                 `json:"platform"`
-	ReportId         *openapi_types.UUID    `json:"reportId,omitempty"`
-	ReportObservedAt *time.Time             `json:"reportObservedAt,omitempty"`
-	Selected         bool                   `json:"selected"`
-	Status           AccountValuationStatus `json:"status"`
-	ValueUsd         *NullableDecimal       `json:"valueUsd,omitempty"`
+	MarginRatio *NullableDecimal       `json:"marginRatio"`
+	Method      AccountValuationMethod `json:"method"`
+	Omitted     []OmittedBalance       `json:"omitted"`
+	Platform    string                 `json:"platform"`
+
+	// ReportId Account report for the requested collection cycle; may be a failed report.
+	ReportId *openapi_types.UUID `json:"reportId"`
+
+	// ReportObservedAt Effective observation time of sourceReportId, not the failed attempt.
+	ReportObservedAt  *time.Time       `json:"reportObservedAt"`
+	ReportedEquityUsd *NullableDecimal `json:"reportedEquityUsd"`
+	Selected          bool             `json:"selected"`
+
+	// SourceReportId Successful report supplying the displayed holdings and account measures, including stale fallback.
+	SourceReportId *openapi_types.UUID    `json:"sourceReportId"`
+	Status         AccountValuationStatus `json:"status"`
+	ValueUsd       *NullableDecimal       `json:"valueUsd"`
 }
 
 // AccountValuationMethod defines model for AccountValuation.Method.
@@ -910,12 +992,29 @@ type AuthSession struct {
 
 // BalanceList defines model for BalanceList.
 type BalanceList struct {
-	Completeness Completeness     `json:"completeness"`
-	Context      ReadContext      `json:"context"`
-	Issues       []Issue          `json:"issues"`
-	Items        []BalanceRow     `json:"items"`
-	Page         OffsetPage       `json:"page"`
-	TotalUsd     *NullableDecimal `json:"totalUsd"`
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context ReadContext `json:"context"`
+
+	// Coverage Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+	Coverage ReportCoverage `json:"coverage"`
+
+	// FilteredTotalCompleteness Completeness of filtered collected balance value before pagination. Missing reports qualify this total even when symbol search cannot determine their contents. Independent of portfolio valuation completeness.
+	FilteredTotalCompleteness Completeness `json:"filteredTotalCompleteness"`
+
+	// FilteredTotalIssues Omissions affecting the filtered balance total, including unpriced descriptive balances in reported-equity accounts. Pending manual additions and exclusions do not count as missing collected value.
+	FilteredTotalIssues []Issue `json:"filteredTotalIssues"`
+
+	// FilteredTotalUsd Sum of known USD values of filtered collected balances before pagination. Pending manual additions have no collected value.
+	FilteredTotalUsd *NullableDecimal `json:"filteredTotalUsd"`
+
+	// Issues Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+	Issues        []Issue        `json:"issues"`
+	Items         []BalanceRow   `json:"items"`
+	ManualOverlay *ManualOverlay `json:"manualOverlay"`
+	Page          OffsetPage     `json:"page"`
+
+	// ValuationCompleteness Completeness of the entire valuation point, independent of row filters and pagination.
+	ValuationCompleteness Completeness `json:"valuationCompleteness"`
 }
 
 // BalanceRow defines model for BalanceRow.
@@ -925,19 +1024,23 @@ type BalanceRow struct {
 	AccountType          string           `json:"accountType"`
 	AssetId              UUID             `json:"assetId"`
 	AssetSymbol          string           `json:"assetSymbol"`
-	AvailableToTrade     *NullableDecimal `json:"availableToTrade,omitempty"`
-	AvailableToWithdraw  *NullableDecimal `json:"availableToWithdraw,omitempty"`
+	AvailableToTrade     *NullableDecimal `json:"availableToTrade"`
+	AvailableToWithdraw  *NullableDecimal `json:"availableToWithdraw"`
 	CanonicalAssetSymbol string           `json:"canonicalAssetSymbol"`
-	Equity               Decimal          `json:"equity"`
-	EquityUsd            *NullableDecimal `json:"equityUsd,omitempty"`
+
+	// Equity Collected equity; null for a pending manual addition. Its current quantity is manualQuantity.
+	Equity    *NullableDecimal `json:"equity"`
+	EquityUsd *NullableDecimal `json:"equityUsd"`
 
 	// Excluded Manual balance retained for editing but excluded from the displayed valuation.
-	Excluded     *bool            `json:"excluded,omitempty"`
-	Freshness    Freshness        `json:"freshness"`
-	IdentityId   UUID             `json:"identityId"`
-	IdentityName string           `json:"identityName"`
-	Interest     *NullableDecimal `json:"interest,omitempty"`
-	Liability    *NullableDecimal `json:"liability,omitempty"`
+	Excluded *bool `json:"excluded,omitempty"`
+
+	// Freshness Source report freshness; null for a pending manual addition.
+	Freshness    *BalanceRowFreshness `json:"freshness"`
+	IdentityId   UUID                 `json:"identityId"`
+	IdentityName string               `json:"identityName"`
+	Interest     *NullableDecimal     `json:"interest"`
+	Liability    *NullableDecimal     `json:"liability"`
 
 	// ManualChange Current manual changes relative to this displayed report; never changes its valuation.
 	ManualChange *BalanceRowManualChange `json:"manualChange,omitempty"`
@@ -947,10 +1050,13 @@ type BalanceRow struct {
 	ManualQuantity   *Decimal         `json:"manualQuantity,omitempty"`
 	NoPrice          bool             `json:"noPrice"`
 	Platform         string           `json:"platform"`
-	PriceUsd         *NullableDecimal `json:"priceUsd,omitempty"`
+	PriceUsd         *NullableDecimal `json:"priceUsd"`
 	ReportObservedAt *time.Time       `json:"reportObservedAt,omitempty"`
-	UnrealizedPnl    *NullableDecimal `json:"unrealizedPnl,omitempty"`
+	UnrealizedPnl    *NullableDecimal `json:"unrealizedPnl"`
 }
+
+// BalanceRowFreshness Source report freshness; null for a pending manual addition.
+type BalanceRowFreshness string
 
 // BalanceRowManualChange Current manual changes relative to this displayed report; never changes its valuation.
 type BalanceRowManualChange string
@@ -967,7 +1073,7 @@ type BoundaryEvent struct {
 	IdentityName *string                `json:"identityName,omitempty"`
 	Method       string                 `json:"method"`
 	Platform     *string                `json:"platform,omitempty"`
-	ValueUsd     *NullableDecimal       `json:"valueUsd,omitempty"`
+	ValueUsd     *NullableDecimal       `json:"valueUsd"`
 }
 
 // BoundaryEventDirection defines model for BoundaryEvent.Direction.
@@ -975,7 +1081,11 @@ type BoundaryEventDirection string
 
 // BoundaryEventList defines model for BoundaryEventList.
 type BoundaryEventList struct {
-	Items []BoundaryEvent `json:"items"`
+	Context PortfolioReadContext `json:"context"`
+	From    time.Time            `json:"from"`
+	Items   []BoundaryEvent      `json:"items"`
+	Page    OffsetPage           `json:"page"`
+	To      time.Time            `json:"to"`
 }
 
 // CapitalFlow defines model for CapitalFlow.
@@ -998,7 +1108,7 @@ type CapitalFlow struct {
 	PricingPlatform    *string                  `json:"pricingPlatform,omitempty"`
 	Quantity           Decimal                  `json:"quantity"`
 	UpdatedAt          time.Time                `json:"updatedAt"`
-	ValueUsd           *NullableDecimal         `json:"valueUsd,omitempty"`
+	ValueUsd           *NullableDecimal         `json:"valueUsd"`
 	Version            int                      `json:"version"`
 }
 
@@ -1010,7 +1120,11 @@ type CapitalFlowPricingMethod string
 
 // CapitalFlowList defines model for CapitalFlowList.
 type CapitalFlowList struct {
-	Items []CapitalFlow `json:"items"`
+	Context PortfolioReadContext `json:"context"`
+	From    time.Time            `json:"from"`
+	Items   []CapitalFlow        `json:"items"`
+	Page    OffsetPage           `json:"page"`
+	To      time.Time            `json:"to"`
 }
 
 // ChangePasswordRequest defines model for ChangePasswordRequest.
@@ -1072,10 +1186,10 @@ type Connection struct {
 	Status                    ConnectionStatus `json:"status"`
 }
 
-// ConnectionStatus defines model for Connection.Status.
+// ConnectionStatus defines model for ConnectionStatus.
 type ConnectionStatus string
 
-// CreateCapitalFlowRequest defines model for CreateCapitalFlowRequest.
+// CreateCapitalFlowRequest Positive canonical asset quantity. An explicit nonnegative valueUsd fixes the USD amount. Otherwise pricing uses the account platform or pricingPlatform; unavailable automatic pricing returns a null USD value with its provenance.
 type CreateCapitalFlowRequest struct {
 	AccountId            *UUID                             `json:"accountId,omitempty"`
 	CanonicalAssetSymbol string                            `json:"canonicalAssetSymbol"`
@@ -1083,8 +1197,12 @@ type CreateCapitalFlowRequest struct {
 	EffectiveAt          time.Time                         `json:"effectiveAt"`
 	Note                 *string                           `json:"note,omitempty"`
 	PricingPlatform      *string                           `json:"pricingPlatform,omitempty"`
-	Quantity             Decimal                           `json:"quantity"`
-	ValueUsd             *Decimal                          `json:"valueUsd,omitempty"`
+
+	// Quantity Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+	Quantity InputDecimal `json:"quantity"`
+
+	// ValueUsd Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+	ValueUsd *InputDecimal `json:"valueUsd,omitempty"`
 }
 
 // CreateCapitalFlowRequestDirection defines model for CreateCapitalFlowRequest.Direction.
@@ -1100,8 +1218,10 @@ type CreateIdentityRequest struct {
 
 // CreateManualBalance defines model for CreateManualBalance.
 type CreateManualBalance struct {
-	AssetSymbol string  `json:"assetSymbol"`
-	Quantity    Decimal `json:"quantity"`
+	AssetSymbol string `json:"assetSymbol"`
+
+	// Quantity Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+	Quantity InputDecimal `json:"quantity"`
 }
 
 // CreatePortfolioRequest defines model for CreatePortfolioRequest.
@@ -1170,11 +1290,19 @@ type Decimal = string
 
 // DualPositionList defines model for DualPositionList.
 type DualPositionList struct {
-	Completeness Completeness      `json:"completeness"`
-	Context      ReadContext       `json:"context"`
-	Issues       []Issue           `json:"issues"`
-	Items        []DualPositionRow `json:"items"`
-	Page         OffsetPage        `json:"page"`
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context ReadContext `json:"context"`
+
+	// Coverage Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+	Coverage ReportCoverage `json:"coverage"`
+
+	// Issues Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+	Issues []Issue           `json:"issues"`
+	Items  []DualPositionRow `json:"items"`
+	Page   OffsetPage        `json:"page"`
+
+	// ValuationCompleteness Completeness of the entire valuation point, independent of row filters and pagination.
+	ValuationCompleteness Completeness `json:"valuationCompleteness"`
 }
 
 // DualPositionRow defines model for DualPositionRow.
@@ -1182,7 +1310,7 @@ type DualPositionRow struct {
 	AccountId            UUID             `json:"accountId"`
 	AccountName          string           `json:"accountName"`
 	AccountType          string           `json:"accountType"`
-	AnnualizedRate       *NullableDecimal `json:"annualizedRate,omitempty"`
+	AnnualizedRate       *NullableDecimal `json:"annualizedRate"`
 	BaseAssetSymbol      *string          `json:"baseAssetSymbol,omitempty"`
 	Direction            *string          `json:"direction,omitempty"`
 	ExpiryAt             *time.Time       `json:"expiryAt,omitempty"`
@@ -1201,7 +1329,7 @@ type DualPositionRow struct {
 	ReportObservedAt     *time.Time       `json:"reportObservedAt,omitempty"`
 	Status               string           `json:"status"`
 	SubscribedAt         *time.Time       `json:"subscribedAt,omitempty"`
-	TargetPrice          *NullableDecimal `json:"targetPrice,omitempty"`
+	TargetPrice          *NullableDecimal `json:"targetPrice"`
 }
 
 // EarnAmount defines model for EarnAmount.
@@ -1220,12 +1348,19 @@ type EarnDetail struct {
 
 // EarnPositionList defines model for EarnPositionList.
 type EarnPositionList struct {
-	Completeness    Completeness      `json:"completeness"`
-	Context         ReadContext       `json:"context"`
-	DetailsComplete bool              `json:"detailsComplete"`
-	Issues          []Issue           `json:"issues"`
-	Items           []EarnPositionRow `json:"items"`
-	Page            OffsetPage        `json:"page"`
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context ReadContext `json:"context"`
+
+	// Coverage Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+	Coverage ReportCoverage `json:"coverage"`
+
+	// Issues Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+	Issues []Issue           `json:"issues"`
+	Items  []EarnPositionRow `json:"items"`
+	Page   OffsetPage        `json:"page"`
+
+	// ValuationCompleteness Completeness of the entire valuation point, independent of row filters and pagination.
+	ValuationCompleteness Completeness `json:"valuationCompleteness"`
 }
 
 // EarnPositionRow defines model for EarnPositionRow.
@@ -1260,7 +1395,7 @@ type EarnRate struct {
 	Kind        string           `json:"kind"`
 	Label       string           `json:"label"`
 	Qualifier   string           `json:"qualifier"`
-	Upper       *NullableDecimal `json:"upper,omitempty"`
+	Upper       *NullableDecimal `json:"upper"`
 	Value       Decimal          `json:"value"`
 }
 
@@ -1284,7 +1419,7 @@ type Freshness string
 // FuturesContract defines model for FuturesContract.
 type FuturesContract struct {
 	BaseAssetSymbol       *string          `json:"baseAssetSymbol,omitempty"`
-	ContractSize          *NullableDecimal `json:"contractSize,omitempty"`
+	ContractSize          *NullableDecimal `json:"contractSize"`
 	ExpiryAt              *time.Time       `json:"expiryAt,omitempty"`
 	FirstObservedAt       time.Time        `json:"firstObservedAt"`
 	Id                    UUID             `json:"id"`
@@ -1300,17 +1435,6 @@ type FuturesContract struct {
 type FuturesContractList struct {
 	Items []FuturesContract `json:"items"`
 	Page  OffsetPage        `json:"page"`
-}
-
-// GroupTotal defines model for GroupTotal.
-type GroupTotal struct {
-	AccountCount int              `json:"accountCount"`
-	Completeness Completeness     `json:"completeness"`
-	Key          string           `json:"key"`
-	Label        string           `json:"label"`
-	Platform     *string          `json:"platform,omitempty"`
-	RowCount     int              `json:"rowCount"`
-	ValueUsd     *NullableDecimal `json:"valueUsd"`
 }
 
 // HealthLive defines model for HealthLive.
@@ -1340,18 +1464,9 @@ type HealthReadyStatus string
 
 // HistoryWindow defines model for HistoryWindow.
 type HistoryWindow struct {
-	Context ReadContext `json:"context"`
-	From    time.Time   `json:"from"`
-	To      time.Time   `json:"to"`
-}
-
-// HoldingsTree defines model for HoldingsTree.
-type HoldingsTree struct {
-	Completeness Completeness     `json:"completeness"`
-	Context      ReadContext      `json:"context"`
-	Issues       []Issue          `json:"issues"`
-	Platforms    []TreePlatform   `json:"platforms"`
-	TotalUsd     *NullableDecimal `json:"totalUsd"`
+	Context PortfolioReadContext `json:"context"`
+	From    time.Time            `json:"from"`
+	To      time.Time            `json:"to"`
 }
 
 // Identity defines model for Identity.
@@ -1374,13 +1489,16 @@ type Identity struct {
 	Version     int            `json:"version"`
 }
 
-// IdentityStatus defines model for Identity.Status.
-type IdentityStatus string
-
 // IdentityList defines model for IdentityList.
 type IdentityList struct {
 	Items []Identity `json:"items"`
 }
+
+// IdentityStatus defines model for IdentityStatus.
+type IdentityStatus string
+
+// InputDecimal Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+type InputDecimal = string
 
 // Issue defines model for Issue.
 type Issue struct {
@@ -1388,6 +1506,7 @@ type Issue struct {
 	AccountName      *string             `json:"accountName,omitempty"`
 	Code             string              `json:"code"`
 	Detail           string              `json:"detail"`
+	FlowId           *openapi_types.UUID `json:"flowId,omitempty"`
 	OmittedBalance   *OmittedBalance     `json:"omittedBalance,omitempty"`
 	ReportObservedAt *time.Time          `json:"reportObservedAt,omitempty"`
 	Symbol           *string             `json:"symbol,omitempty"`
@@ -1419,6 +1538,17 @@ type ManualBalanceState struct {
 	Version        uint64          `json:"version"`
 }
 
+// ManualLedgerVersion defines model for ManualLedgerVersion.
+type ManualLedgerVersion struct {
+	AccountId UUID   `json:"accountId"`
+	Version   uint64 `json:"version"`
+}
+
+// ManualOverlay Current ledger versions read with this response. Null means the overlay was not requested or the account is not manual. Versions are independent of cycleId and do not act as pagination snapshot tokens.
+type ManualOverlay struct {
+	Versions []ManualLedgerVersion `json:"versions"`
+}
+
 // MarginModeInfo defines model for MarginModeInfo.
 type MarginModeInfo struct {
 	Id   string `json:"id"`
@@ -1428,12 +1558,17 @@ type MarginModeInfo struct {
 // NullableDecimal defines model for NullableDecimal.
 type NullableDecimal = string
 
+// NullableInputDecimal defines model for NullableInputDecimal.
+type NullableInputDecimal = string
+
 // OffsetPage defines model for OffsetPage.
 type OffsetPage struct {
 	Kind   OffsetPageKind `json:"kind"`
 	Limit  int            `json:"limit"`
 	Offset int            `json:"offset"`
-	Total  int            `json:"total"`
+
+	// Total Number of records after filtering and before pagination.
+	Total int `json:"total"`
 }
 
 // OffsetPageKind defines model for OffsetPage.Kind.
@@ -1451,20 +1586,14 @@ type OmittedBalance struct {
 
 // Overview defines model for Overview.
 type Overview struct {
-	AccountCount           int                     `json:"accountCount"`
-	ByIdentity             []GroupTotal            `json:"byIdentity"`
-	ByPlatform             []GroupTotal            `json:"byPlatform"`
-	Completeness           Completeness            `json:"completeness"`
-	Context                ReadContext             `json:"context"`
-	IncompleteAccountCount int                     `json:"incompleteAccountCount"`
-	Issues                 []Issue                 `json:"issues"`
-	Point                  *ValuationPointSummary  `json:"point,omitempty"`
-	Sparkline              []ValuationPointSummary `json:"sparkline"`
-	StaleAccountCount      int                     `json:"staleAccountCount"`
-	TotalUsd               *NullableDecimal        `json:"totalUsd,omitempty"`
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context   ReadContext            `json:"context"`
+	Issues    []Issue                `json:"issues"`
+	Platforms []TreePlatform         `json:"platforms"`
+	Point     *ValuationPointSummary `json:"point"`
 }
 
-// PatchCapitalFlowRequest defines model for PatchCapitalFlowRequest.
+// PatchCapitalFlowRequest Omitted fields preserve their values. Null clears note or accountId; valueUsd null clears an explicit amount and attempts automatic pricing using the resulting inputs. Explicit valueUsd survives other edits until cleared or replaced. Null pricingPlatform clears the chosen platform; an attached account still determines the platform for automatic pricing. Note-only edits preserve pricing provenance. Quantity must be positive; an explicit USD amount must be nonnegative.
 type PatchCapitalFlowRequest struct {
 	AccountId            *openapi_types.UUID               `json:"accountId,omitempty"`
 	CanonicalAssetSymbol *string                           `json:"canonicalAssetSymbol,omitempty"`
@@ -1472,8 +1601,10 @@ type PatchCapitalFlowRequest struct {
 	EffectiveAt          *time.Time                        `json:"effectiveAt,omitempty"`
 	Note                 *string                           `json:"note,omitempty"`
 	PricingPlatform      *string                           `json:"pricingPlatform,omitempty"`
-	Quantity             *Decimal                          `json:"quantity,omitempty"`
-	ValueUsd             *NullableDecimal                  `json:"valueUsd,omitempty"`
+
+	// Quantity Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+	Quantity *InputDecimal         `json:"quantity,omitempty"`
+	ValueUsd *NullableInputDecimal `json:"valueUsd,omitempty"`
 }
 
 // PatchCapitalFlowRequestDirection defines model for PatchCapitalFlowRequest.Direction.
@@ -1495,19 +1626,19 @@ type PatchPortfolioRequest struct {
 // PeriodClose defines model for PeriodClose.
 type PeriodClose struct {
 	Completeness Completeness           `json:"completeness"`
+	Issues       []Issue                `json:"issues"`
 	Label        string                 `json:"label"`
 	PeriodEnd    time.Time              `json:"periodEnd"`
 	PeriodKind   PeriodKind             `json:"periodKind"`
 	PeriodStart  time.Time              `json:"periodStart"`
 	Point        *ValuationPointSummary `json:"point,omitempty"`
-	Reasons      []string               `json:"reasons"`
 }
 
 // PeriodCloseList defines model for PeriodCloseList.
 type PeriodCloseList struct {
-	Context    ReadContext   `json:"context"`
-	Items      []PeriodClose `json:"items"`
-	PeriodKind PeriodKind    `json:"periodKind"`
+	Context    PortfolioReadContext `json:"context"`
+	Items      []PeriodClose        `json:"items"`
+	PeriodKind PeriodKind           `json:"periodKind"`
 }
 
 // PeriodKind defines model for PeriodKind.
@@ -1547,26 +1678,43 @@ type PortfolioList struct {
 	Items []Portfolio `json:"items"`
 }
 
+// PortfolioReadContext defines model for PortfolioReadContext.
+type PortfolioReadContext struct {
+	PortfolioId UUID   `json:"portfolioId"`
+	Timezone    string `json:"timezone"`
+}
+
 // PositionList defines model for PositionList.
 type PositionList struct {
-	Completeness Completeness  `json:"completeness"`
-	Context      ReadContext   `json:"context"`
-	Issues       []Issue       `json:"issues"`
-	Items        []PositionRow `json:"items"`
-	Page         OffsetPage    `json:"page"`
+	// BoundaryNotionalUsd Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
+	BoundaryNotionalUsd *NullableDecimal `json:"boundaryNotionalUsd"`
 
-	// TotalNotionalUsd Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
-	TotalNotionalUsd *NullableDecimal `json:"totalNotionalUsd"`
+	// Context The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+	Context ReadContext `json:"context"`
+
+	// Coverage Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+	Coverage ReportCoverage `json:"coverage"`
+
+	// Issues Futures account and notional issues across the boundary before row filtering and pagination.
+	Issues []Issue       `json:"issues"`
+	Items  []PositionRow `json:"items"`
+
+	// NotionalCompleteness Completeness of absolute notional for all futures accounts in the boundary, independent of filters and pagination.
+	NotionalCompleteness Completeness `json:"notionalCompleteness"`
+	Page                 OffsetPage   `json:"page"`
 }
 
 // PositionRow defines model for PositionRow.
 type PositionRow struct {
-	AccountId         UUID                      `json:"accountId"`
-	AccountName       string                    `json:"accountName"`
-	AccountType       string                    `json:"accountType"`
-	BaseAssetSymbol   *string                   `json:"baseAssetSymbol,omitempty"`
-	ContractSize      *NullableDecimal          `json:"contractSize,omitempty"`
-	EntryPrice        *NullableDecimal          `json:"entryPrice,omitempty"`
+	AccountId       UUID             `json:"accountId"`
+	AccountName     string           `json:"accountName"`
+	AccountType     string           `json:"accountType"`
+	BaseAssetSymbol *string          `json:"baseAssetSymbol,omitempty"`
+	ContractSize    *NullableDecimal `json:"contractSize"`
+
+	// DisplayLeverage Display-only multiplier retaining up to 200 fractional digits to avoid double rounding at display midpoints. Source financial values remain unchanged. Cross uses positive reported leverage; isolated uses absolute USD notional divided by allocated margin in USD. Portfolio margin has no multiplier except actual isolated positions. Missing inputs return null.
+	DisplayLeverage   *string                   `json:"displayLeverage"`
+	EntryPrice        *NullableDecimal          `json:"entryPrice"`
 	ExpiryAt          *time.Time                `json:"expiryAt,omitempty"`
 	Freshness         Freshness                 `json:"freshness"`
 	FuturesContractId UUID                      `json:"futuresContractId"`
@@ -1575,9 +1723,7 @@ type PositionRow struct {
 	IdentityName      string                    `json:"identityName"`
 	Issues            []Issue                   `json:"issues"`
 	Kind              string                    `json:"kind"`
-	Leverage          *NullableDecimal          `json:"leverage,omitempty"`
-	LiquidationPrice  *NullableDecimal          `json:"liquidationPrice,omitempty"`
-	Margin            *NullableDecimal          `json:"margin,omitempty"`
+	LiquidationPrice  *NullableDecimal          `json:"liquidationPrice"`
 	MarginAssetSymbol *string                   `json:"marginAssetSymbol,omitempty"`
 	MarginBasis       *PositionRowMarginBasis   `json:"marginBasis,omitempty"`
 	MarginSetting     *PositionRowMarginSetting `json:"marginSetting,omitempty"`
@@ -1585,10 +1731,13 @@ type PositionRow struct {
 	// MarginSource Provenance of the displayed settlement margin; source amounts remain unchanged.
 	MarginSource *PositionRowMarginSource `json:"marginSource,omitempty"`
 
+	// MarginUnavailableCode Stable reason for unavailable settlementMargin; null when known. marginUnavailableReason supplies descriptive context.
+	MarginUnavailableCode *PositionRowMarginUnavailableCode `json:"marginUnavailableCode"`
+
 	// MarginUnavailableReason Why settlement margin is unknown; optional margin omissions do not affect notional completeness.
 	MarginUnavailableReason *string                  `json:"marginUnavailableReason,omitempty"`
-	MarkPrice               *NullableDecimal         `json:"markPrice,omitempty"`
-	NotionalUsd             *NullableDecimal         `json:"notionalUsd,omitempty"`
+	MarkPrice               *NullableDecimal         `json:"markPrice"`
+	NotionalUsd             *NullableDecimal         `json:"notionalUsd"`
 	Platform                string                   `json:"platform"`
 	PortfolioMargin         *bool                    `json:"portfolioMargin,omitempty"`
 	PositionKey             string                   `json:"positionKey"`
@@ -1596,19 +1745,25 @@ type PositionRow struct {
 	QuoteAssetSymbol        *string                  `json:"quoteAssetSymbol,omitempty"`
 	ReportObservedAt        *time.Time               `json:"reportObservedAt,omitempty"`
 
-	// SettleMargin Margin in settlement currency, using the position's cross or isolated display basis.
-	SettleMargin          *NullableDecimal `json:"settleMargin,omitempty"`
+	// ReportedLeverage Source position leverage, independent of the displayed isolated leverage.
+	ReportedLeverage *NullableDecimal `json:"reportedLeverage"`
+
+	// ReportedMargin Retained source margin amount in marginAssetSymbol, qualified by marginBasis.
+	ReportedMargin        *NullableDecimal `json:"reportedMargin"`
 	SettlementAssetSymbol *string          `json:"settlementAssetSymbol,omitempty"`
-	Side                  PositionRowSide  `json:"side"`
+
+	// SettlementMargin Margin in settlement currency, using the position's cross or isolated display basis.
+	SettlementMargin *NullableDecimal `json:"settlementMargin"`
+	Side             PositionRowSide  `json:"side"`
 
 	// Size Base quantity for linear contracts or quote face amount for inverse contracts; signed for known one-way positions.
-	Size       *NullableDecimal `json:"size,omitempty"`
+	Size       *NullableDecimal `json:"size"`
 	SizeSymbol *string          `json:"sizeSymbol,omitempty"`
 
 	// SourceQuantity Positive source quantity magnitude, retaining the source unit; direction is stored separately.
 	SourceQuantity     Decimal                       `json:"sourceQuantity"`
 	SourceQuantityUnit PositionRowSourceQuantityUnit `json:"sourceQuantityUnit"`
-	UnrealizedPnl      *NullableDecimal              `json:"unrealizedPnl,omitempty"`
+	UnrealizedPnl      *NullableDecimal              `json:"unrealizedPnl"`
 }
 
 // PositionRowMarginBasis defines model for PositionRow.MarginBasis.
@@ -1619,6 +1774,9 @@ type PositionRowMarginSetting string
 
 // PositionRowMarginSource Provenance of the displayed settlement margin; source amounts remain unchanged.
 type PositionRowMarginSource string
+
+// PositionRowMarginUnavailableCode Stable reason for unavailable settlementMargin; null when known. marginUnavailableReason supplies descriptive context.
+type PositionRowMarginUnavailableCode string
 
 // PositionRowPositionMode defines model for PositionRow.PositionMode.
 type PositionRowPositionMode string
@@ -1631,17 +1789,18 @@ type PositionRowSourceQuantityUnit string
 
 // Problem defines model for Problem.
 type Problem struct {
-	Code        string        `json:"code"`
-	Detail      string        `json:"detail"`
-	FieldErrors *[]FieldError `json:"fieldErrors,omitempty"`
-	Instance    *string       `json:"instance,omitempty"`
-	Status      int           `json:"status"`
-	Title       string        `json:"title"`
-	TraceId     *string       `json:"traceId,omitempty"`
-	Type        string        `json:"type"`
+	Code              string             `json:"code"`
+	Detail            string             `json:"detail"`
+	FieldErrors       *[]FieldError      `json:"fieldErrors,omitempty"`
+	Instance          *string            `json:"instance,omitempty"`
+	Status            int                `json:"status"`
+	Title             string             `json:"title"`
+	TraceId           *string            `json:"traceId,omitempty"`
+	Type              string             `json:"type"`
+	ValidationOutcome *ValidationOutcome `json:"validationOutcome,omitempty"`
 }
 
-// PutAssetExclusionRequest defines model for PutAssetExclusionRequest.
+// PutAssetExclusionRequest Excluding requires a nonempty reason after trimming whitespace. Restoring accepts only an omitted or whitespace-only reason. A no-op preserves the current rule and version.
 type PutAssetExclusionRequest struct {
 	Excluded bool    `json:"excluded"`
 	Reason   *string `json:"reason,omitempty"`
@@ -1667,15 +1826,18 @@ type PutCredentialsRequest struct {
 	Passphrase       *string `json:"passphrase,omitempty"`
 }
 
-// ReadContext defines model for ReadContext.
+// ReadContext The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
 type ReadContext struct {
-	CycleId     *openapi_types.UUID `json:"cycleId,omitempty"`
-	EvaluatedAt *time.Time          `json:"evaluatedAt,omitempty"`
+	CycleId     *openapi_types.UUID `json:"cycleId"`
+	EvaluatedAt *time.Time          `json:"evaluatedAt"`
 	PortfolioId UUID                `json:"portfolioId"`
 	Timezone    string              `json:"timezone"`
+}
 
-	// ValuationRevision Identity of the immutable valuation result, equal to its collection cycle ID.
-	ValuationRevision *string `json:"valuationRevision,omitempty"`
+// ReportCoverage Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+type ReportCoverage struct {
+	Complete          bool   `json:"complete"`
+	MissingAccountIds []UUID `json:"missingAccountIds"`
 }
 
 // Session defines model for Session.
@@ -1701,10 +1863,10 @@ type TimeGranularity string
 type TreeIdentity struct {
 	Accounts         []AccountValuation `json:"accounts"`
 	Completeness     Completeness       `json:"completeness"`
-	ConnectionStatus string             `json:"connectionStatus"`
+	ConnectionStatus ConnectionStatus   `json:"connectionStatus"`
 	DisplayName      string             `json:"displayName"`
 	Id               UUID               `json:"id"`
-	Status           string             `json:"status"`
+	Status           IdentityStatus     `json:"status"`
 	ValueUsd         *NullableDecimal   `json:"valueUsd"`
 }
 
@@ -1722,7 +1884,8 @@ type UUID = openapi_types.UUID
 
 // UpdateManualBalance defines model for UpdateManualBalance.
 type UpdateManualBalance struct {
-	Quantity Decimal `json:"quantity"`
+	// Quantity Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+	Quantity InputDecimal `json:"quantity"`
 }
 
 // User defines model for User.
@@ -1755,20 +1918,24 @@ type ValuationPointDetail struct {
 
 // ValuationPointList defines model for ValuationPointList.
 type ValuationPointList struct {
-	Context     ReadContext             `json:"context"`
-	From        time.Time               `json:"from"`
-	Granularity TimeGranularity         `json:"granularity"`
-	Items       []ValuationPointSummary `json:"items"`
-	To          time.Time               `json:"to"`
+	Context     PortfolioReadContext   `json:"context"`
+	From        time.Time              `json:"from"`
+	Granularity TimeGranularity        `json:"granularity"`
+	Items       []ValuationSeriesPoint `json:"items"`
+	MaxPoints   int                    `json:"maxPoints"`
+	To          time.Time              `json:"to"`
 }
 
 // ValuationPointPage defines model for ValuationPointPage.
 type ValuationPointPage struct {
-	Context ReadContext             `json:"context"`
+	Context PortfolioReadContext    `json:"context"`
 	From    time.Time               `json:"from"`
 	Items   []ValuationPointSummary `json:"items"`
 	Page    OffsetPage              `json:"page"`
-	To      time.Time               `json:"to"`
+
+	// PrecedingPoint Point immediately before the oldest item, within the same query window; null for an empty page or no predecessor.
+	PrecedingPoint *ValuationPointSummary `json:"precedingPoint"`
+	To             time.Time              `json:"to"`
 }
 
 // ValuationPointSummary defines model for ValuationPointSummary.
@@ -1784,37 +1951,49 @@ type ValuationPointSummary struct {
 	IncompleteAccountCount  int                              `json:"incompleteAccountCount"`
 	StaleAccountCount       int                              `json:"staleAccountCount"`
 	TotalUsd                Decimal                          `json:"totalUsd"`
-
-	// ValuationRevision Identity of the immutable valuation result, equal to its collection cycle ID.
-	ValuationRevision string `json:"valuationRevision"`
 }
 
 // ValuationPointSummaryDetailState defines model for ValuationPointSummary.DetailState.
 type ValuationPointSummaryDetailState string
 
-// ValueChange defines model for ValueChange.
+// ValuationSeriesPoint defines model for ValuationSeriesPoint.
+type ValuationSeriesPoint struct {
+	Completeness Completeness `json:"completeness"`
+	CycleId      UUID         `json:"cycleId"`
+	EvaluatedAt  time.Time    `json:"evaluatedAt"`
+	TotalUsd     Decimal      `json:"totalUsd"`
+}
+
+// ValueChange When comparable is false, amountUsd and all four flow amounts are null. Otherwise amounts sum known inputs, including zero, even when incomplete.
 type ValueChange struct {
-	AmountUsd                *NullableDecimal       `json:"amountUsd,omitempty"`
-	BoundaryContributionsUsd Decimal                `json:"boundaryContributionsUsd"`
-	BoundaryEvents           []BoundaryEvent        `json:"boundaryEvents"`
-	BoundaryWithdrawalsUsd   Decimal                `json:"boundaryWithdrawalsUsd"`
-	Completeness             Completeness           `json:"completeness"`
-	ContributionsUsd         Decimal                `json:"contributionsUsd"`
-	EndPoint                 *ValuationPointSummary `json:"endPoint,omitempty"`
-	From                     time.Time              `json:"from"`
-	Label                    string                 `json:"label"`
-	PeriodKind               string                 `json:"periodKind"`
-	Reasons                  []string               `json:"reasons"`
-	StartPoint               *ValuationPointSummary `json:"startPoint,omitempty"`
-	To                       time.Time              `json:"to"`
-	WithdrawalsUsd           Decimal                `json:"withdrawalsUsd"`
+	// AmountUsd Known adjusted difference when comparable, including incomplete results; null when comparison is unavailable. Zero is a known result.
+	AmountUsd                *NullableDecimal `json:"amountUsd"`
+	BoundaryContributionsUsd *NullableDecimal `json:"boundaryContributionsUsd"`
+	BoundaryEvents           []BoundaryEvent  `json:"boundaryEvents"`
+	BoundaryWithdrawalsUsd   *NullableDecimal `json:"boundaryWithdrawalsUsd"`
+
+	// Comparable Both endpoints exist and resolve to distinct, ordered valuation points.
+	Comparable       bool                   `json:"comparable"`
+	Completeness     Completeness           `json:"completeness"`
+	ContributionsUsd *NullableDecimal       `json:"contributionsUsd"`
+	EndPoint         *ValuationPointSummary `json:"endPoint,omitempty"`
+
+	// FlowsCompleteness Completeness of capital and boundary flow amounts. Incomplete when comparison is unavailable, a flow is unvalued, or a boundary value is only partially known. Independent of endpoint valuation completeness.
+	FlowsCompleteness Completeness           `json:"flowsCompleteness"`
+	From              time.Time              `json:"from"`
+	Issues            []Issue                `json:"issues"`
+	Label             string                 `json:"label"`
+	PeriodKind        string                 `json:"periodKind"`
+	StartPoint        *ValuationPointSummary `json:"startPoint,omitempty"`
+	To                time.Time              `json:"to"`
+	WithdrawalsUsd    *NullableDecimal       `json:"withdrawalsUsd"`
 }
 
 // ValueChangeList defines model for ValueChangeList.
 type ValueChangeList struct {
-	Context    ReadContext   `json:"context"`
-	Items      []ValueChange `json:"items"`
-	PeriodKind PeriodKind    `json:"periodKind"`
+	Context    PortfolioReadContext `json:"context"`
+	Items      []ValueChange        `json:"items"`
+	PeriodKind PeriodKind           `json:"periodKind"`
 }
 
 // AccountID defines model for AccountID.
@@ -1829,6 +2008,9 @@ type CSRFToken = string
 // CycleID defines model for CycleID.
 type CycleID = UUID
 
+// EditVersion defines model for EditVersion.
+type EditVersion = string
+
 // FlowID defines model for FlowID.
 type FlowID = UUID
 
@@ -1838,11 +2020,20 @@ type IdempotencyKey = string
 // IdentityID defines model for IdentityID.
 type IdentityID = UUID
 
-// IfMatch defines model for IfMatch.
-type IfMatch = string
+// IncludePendingManual defines model for IncludePendingManual.
+type IncludePendingManual = bool
+
+// ListLimit defines model for ListLimit.
+type ListLimit = int
+
+// ListOffset defines model for ListOffset.
+type ListOffset = int
 
 // PortfolioID defines model for PortfolioID.
 type PortfolioID = UUID
+
+// ReadCycleID defines model for ReadCycleID.
+type ReadCycleID = UUID
 
 // SessionID defines model for SessionID.
 type SessionID = UUID
@@ -1855,52 +2046,68 @@ type TimeTo = time.Time
 
 // PostAuthLoginParams defines parameters for PostAuthLogin.
 type PostAuthLoginParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PostAuthLogoutParams defines parameters for PostAuthLogout.
 type PostAuthLogoutParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PostAuthLogoutAllParams defines parameters for PostAuthLogoutAll.
 type PostAuthLogoutAllParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PutAuthPasswordParams defines parameters for PutAuthPassword.
 type PutAuthPasswordParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteAuthSessionParams defines parameters for DeleteAuthSession.
 type DeleteAuthSessionParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // CreatePortfolioParams defines parameters for CreatePortfolio.
 type CreatePortfolioParams struct {
-	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
+	// IdempotencyKey Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeletePortfolioParams defines parameters for DeletePortfolio.
 type DeletePortfolioParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PatchPortfolioParams defines parameters for PatchPortfolio.
 type PatchPortfolioParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
-// ListAccountPositionsParams defines parameters for ListAccountPositions.
-type ListAccountPositionsParams struct {
-	// CycleId Historical valuation point; omitted for the latest point.
-	CycleId *UUID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
+// GetAccountReportParams defines parameters for GetAccountReport.
+type GetAccountReportParams struct {
+	// CycleId Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+	CycleId *ReadCycleID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
+
+	// IncludePendingManual Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+	IncludePendingManual *IncludePendingManual `form:"includePendingManual,omitempty" json:"includePendingManual,omitempty"`
 }
 
 // ListAuditEventsParams defines parameters for ListAuditEvents.
@@ -1916,42 +2123,64 @@ type ListBalancesParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of the asset symbol or canonical asset symbol.
-	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
+	// Q Case-insensitive literal substring of the asset symbol or canonical asset symbol.
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// CycleId Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+	CycleId *ReadCycleID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
+
+	// IncludePendingManual Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+	IncludePendingManual *IncludePendingManual `form:"includePendingManual,omitempty" json:"includePendingManual,omitempty"`
 }
 
 // ListBoundaryEventsParams defines parameters for ListBoundaryEvents.
 type ListBoundaryEventsParams struct {
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
 	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
-	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+	To     *TimeTo     `form:"to,omitempty" json:"to,omitempty"`
+	Offset *ListOffset `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *ListLimit  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // ListCapitalFlowsParams defines parameters for ListCapitalFlows.
 type ListCapitalFlowsParams struct {
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
 	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
-	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+	To     *TimeTo     `form:"to,omitempty" json:"to,omitempty"`
+	Offset *ListOffset `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *ListLimit  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // CreateCapitalFlowParams defines parameters for CreateCapitalFlow.
 type CreateCapitalFlowParams struct {
-	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
+	// IdempotencyKey Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteCapitalFlowParams defines parameters for DeleteCapitalFlow.
 type DeleteCapitalFlowParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PatchCapitalFlowParams defines parameters for PatchCapitalFlow.
 type PatchCapitalFlowParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
@@ -1969,13 +2198,19 @@ type ListAssetsParamsStatus string
 
 // PutAssetExclusionParams defines parameters for PutAssetExclusion.
 type PutAssetExclusionParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PutAssetMappingParams defines parameters for PutAssetMapping.
 type PutAssetMappingParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
@@ -1995,9 +2230,11 @@ type ListCollectionCyclesParams struct {
 
 // CreateCollectionCycleParams defines parameters for CreateCollectionCycle.
 type CreateCollectionCycleParams struct {
-	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
+	// IdempotencyKey Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // ListDualPositionsParams defines parameters for ListDualPositions.
@@ -2005,10 +2242,13 @@ type ListDualPositionsParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of the invested, base, or quote asset symbol.
-	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
+	// Q Case-insensitive literal substring of the invested, base, or quote asset symbol.
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// CycleId Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+	CycleId *ReadCycleID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
 }
 
 // ListEarnPositionsParams defines parameters for ListEarnPositions.
@@ -2016,10 +2256,13 @@ type ListEarnPositionsParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
-	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
+	// Q Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// CycleId Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+	CycleId *ReadCycleID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
 }
 
 // GetHistoryWindowParams defines parameters for GetHistoryWindow.
@@ -2034,67 +2277,97 @@ type GetHistoryWindowParamsPreset string
 
 // CreateIdentityParams defines parameters for CreateIdentity.
 type CreateIdentityParams struct {
-	// IdempotencyKey An opaque token of at most 255 visible ASCII characters.
+	// IdempotencyKey Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
-	XCSRFToken     *CSRFToken      `json:"X-CSRF-Token,omitempty"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PatchIdentityParams defines parameters for PatchIdentity.
 type PatchIdentityParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // ArchiveIdentityParams defines parameters for ArchiveIdentity.
 type ArchiveIdentityParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // DeleteIdentityCredentialsParams defines parameters for DeleteIdentityCredentials.
 type DeleteIdentityCredentialsParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // PutIdentityCredentialsParams defines parameters for PutIdentityCredentials.
 type PutIdentityCredentialsParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // DisableIdentityConnectionParams defines parameters for DisableIdentityConnection.
 type DisableIdentityConnectionParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // EnableIdentityConnectionParams defines parameters for EnableIdentityConnection.
 type EnableIdentityConnectionParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
 
-// CreateManualBalanceParams defines parameters for CreateManualBalance.
-type CreateManualBalanceParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// DeleteManualBalanceParams defines parameters for DeleteManualBalance.
-type DeleteManualBalanceParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
-	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
-}
-
-// UpdateManualBalanceParams defines parameters for UpdateManualBalance.
-type UpdateManualBalanceParams struct {
-	IfMatch    IfMatch    `json:"If-Match"`
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
 // ValidateIdentityConnectionParams defines parameters for ValidateIdentityConnection.
 type ValidateIdentityConnectionParams struct {
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// CreateManualBalanceParams defines parameters for CreateManualBalance.
+type CreateManualBalanceParams struct {
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// DeleteManualBalanceParams defines parameters for DeleteManualBalance.
+type DeleteManualBalanceParams struct {
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
+}
+
+// UpdateManualBalanceParams defines parameters for UpdateManualBalance.
+type UpdateManualBalanceParams struct {
+	// IfEditVersion Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+	IfEditVersion EditVersion `json:"If-Edit-Version"`
+
+	// XCSRFToken Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
 	XCSRFToken *CSRFToken `json:"X-CSRF-Token,omitempty"`
 }
 
@@ -2102,9 +2375,11 @@ type ValidateIdentityConnectionParams struct {
 type ListPeriodClosesParams struct {
 	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
 
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
 	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
-	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+	To *TimeTo `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // ListPositionsParams defines parameters for ListPositions.
@@ -2112,24 +2387,21 @@ type ListPositionsParams struct {
 	Platform   *string             `form:"platform,omitempty" json:"platform,omitempty"`
 	IdentityId *openapi_types.UUID `form:"identityId,omitempty" json:"identityId,omitempty"`
 
-	// Symbol Case-insensitive literal substring of the native contract symbol.
-	Symbol *string `form:"symbol,omitempty" json:"symbol,omitempty"`
+	// Q Case-insensitive literal substring of the native contract symbol.
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
-}
 
-// ListValuationPointsParams defines parameters for ListValuationPoints.
-type ListValuationPointsParams struct {
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
-	From        *TimeFrom        `form:"from,omitempty" json:"from,omitempty"`
-	To          *TimeTo          `form:"to,omitempty" json:"to,omitempty"`
-	Granularity *TimeGranularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+	// CycleId Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+	CycleId *ReadCycleID `form:"cycleId,omitempty" json:"cycleId,omitempty"`
 }
 
 // ListValuationPointPageParams defines parameters for ListValuationPointPage.
 type ListValuationPointPageParams struct {
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
-	From   *TimeFrom                          `form:"from,omitempty" json:"from,omitempty"`
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
 	To     *TimeTo                            `form:"to,omitempty" json:"to,omitempty"`
 	Offset *int                               `form:"offset,omitempty" json:"offset,omitempty"`
 	Limit  *ListValuationPointPageParamsLimit `form:"limit,omitempty" json:"limit,omitempty"`
@@ -2137,6 +2409,19 @@ type ListValuationPointPageParams struct {
 
 // ListValuationPointPageParamsLimit defines parameters for ListValuationPointPage.
 type ListValuationPointPageParamsLimit int
+
+// ListValuationPointsParams defines parameters for ListValuationPoints.
+type ListValuationPointsParams struct {
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
+	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+	To          *TimeTo          `form:"to,omitempty" json:"to,omitempty"`
+	Granularity *TimeGranularity `form:"granularity,omitempty" json:"granularity,omitempty"`
+
+	// MaxPoints Maximum returned points, checked after the requested granularity. Excess returns 422 series_limit_exceeded without truncation. Use valuation-points pagination for complete raw access.
+	MaxPoints *int `form:"maxPoints,omitempty" json:"maxPoints,omitempty"`
+}
 
 // GetValuationSnapshotParams defines parameters for GetValuationSnapshot.
 type GetValuationSnapshotParams struct {
@@ -2148,9 +2433,11 @@ type GetValuationSnapshotParams struct {
 type ListValueChangesParams struct {
 	PeriodKind *PeriodKind `form:"periodKind,omitempty" json:"periodKind,omitempty"`
 
-	// From Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+	// From Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
 	From *TimeFrom `form:"from,omitempty" json:"from,omitempty"`
-	To   *TimeTo   `form:"to,omitempty" json:"to,omitempty"`
+
+	// To End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+	To *TimeTo `form:"to,omitempty" json:"to,omitempty"`
 }
 
 // GetCustomValueChangeParams defines parameters for GetCustomValueChange.
@@ -2242,22 +2529,13 @@ type ServerInterface interface {
 	// PatchPortfolio Update portfolio settings
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(c *gin.Context, portfolioId PortfolioID, params PatchPortfolioParams)
-	// ListAccountBalances Balances of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances)
-	ListAccountBalances(c *gin.Context, portfolioId PortfolioID, accountId AccountID)
-	// ListAccountDualPositions Dual positions of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions)
-	ListAccountDualPositions(c *gin.Context, portfolioId PortfolioID, accountId AccountID)
-	// ListAccountEarnPositions Earn positions of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions)
-	ListAccountEarnPositions(c *gin.Context, portfolioId PortfolioID, accountId AccountID)
-	// ListAccountPositions Positions of an account at the latest or a specified valuation point
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions)
-	ListAccountPositions(c *gin.Context, portfolioId PortfolioID, accountId AccountID, params ListAccountPositionsParams)
+	// GetAccountReport Read one aligned account report and its holdings
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/report)
+	GetAccountReport(c *gin.Context, portfolioId PortfolioID, accountId AccountID, params GetAccountReportParams)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(c *gin.Context, portfolioId PortfolioID, params ListAuditEventsParams)
-	// ListBalances Flat balance list across the boundary at the latest point
+	// ListBalances Flat balance list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(c *gin.Context, portfolioId PortfolioID, params ListBalancesParams)
 	// ListBoundaryEvents Derived boundary events between two instants
@@ -2299,10 +2577,10 @@ type ServerInterface interface {
 	// GetCollectionCycle Get one cycle with its per-account outcomes
 	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId})
 	GetCollectionCycle(c *gin.Context, portfolioId PortfolioID, cycleId CycleID)
-	// ListDualPositions Flat dual position list across the boundary at the latest point
+	// ListDualPositions Flat dual position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/dual-positions)
 	ListDualPositions(c *gin.Context, portfolioId PortfolioID, params ListDualPositionsParams)
-	// ListEarnPositions Flat earn position list across the boundary at the latest point
+	// ListEarnPositions Flat earn position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/earn-positions)
 	ListEarnPositions(c *gin.Context, portfolioId PortfolioID, params ListEarnPositionsParams)
 	// GetHistoryWindow Resolve a relative or portfolio-local history window
@@ -2324,17 +2602,20 @@ type ServerInterface interface {
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive)
 	ArchiveIdentity(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ArchiveIdentityParams)
 	// DeleteIdentityCredentials Remove stored credentials
-	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials)
 	DeleteIdentityCredentials(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DeleteIdentityCredentialsParams)
 	// PutIdentityCredentials Store read-only API credentials (write-only)
-	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials)
 	PutIdentityCredentials(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params PutIdentityCredentialsParams)
 	// DisableIdentityConnection Stop scheduling the connection
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/disable)
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/disable)
 	DisableIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params DisableIdentityConnectionParams)
 	// EnableIdentityConnection Validate and enable the connection for scheduling
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/enable)
 	EnableIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params EnableIdentityConnectionParams)
+	// ValidateIdentityConnection Run one read-only validation call and store the outcome
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/validate)
+	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
 	// GetManualBalances Read editable manual balances and last applied quantities
 	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
 	GetManualBalances(c *gin.Context, portfolioId PortfolioID, identityId IdentityID)
@@ -2347,27 +2628,21 @@ type ServerInterface interface {
 	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
 	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
 	UpdateManualBalance(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, assetSymbol string, params UpdateManualBalanceParams)
-	// ValidateIdentityConnection Run one read-only validation call and store the outcome
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
-	ValidateIdentityConnection(c *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams)
-	// GetOverview Latest valuation point with platform and identity totals
+	// GetOverview Latest valuation point and ownership tree in one consistent read
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(c *gin.Context, portfolioId PortfolioID)
 	// ListPeriodCloses Period closes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/period-closes)
 	ListPeriodCloses(c *gin.Context, portfolioId PortfolioID, params ListPeriodClosesParams)
-	// ListPositions Flat position list across the boundary at the latest point
+	// ListPositions Flat position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(c *gin.Context, portfolioId PortfolioID, params ListPositionsParams)
-	// GetHoldingsTree Platform → identity → account tree at the latest point
-	// (GET /api/v1/portfolios/{portfolioId}/tree)
-	GetHoldingsTree(c *gin.Context, portfolioId PortfolioID)
-	// ListValuationPoints Valuation point series
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
-	ListValuationPoints(c *gin.Context, portfolioId PortfolioID, params ListValuationPointsParams)
 	// ListValuationPointPage Raw valuation points, newest first
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/page)
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
 	ListValuationPointPage(c *gin.Context, portfolioId PortfolioID, params ListValuationPointPageParams)
+	// ListValuationPoints Valuation point series
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/series)
+	ListValuationPoints(c *gin.Context, portfolioId PortfolioID, params ListValuationPointsParams)
 	// GetValuationPoint One valuation point with its account valuations
 	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId})
 	GetValuationPoint(c *gin.Context, portfolioId PortfolioID, cycleId CycleID)
@@ -2378,7 +2653,7 @@ type ServerInterface interface {
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(c *gin.Context, portfolioId PortfolioID, params ListValueChangesParams)
 	// GetCustomValueChange One value change between the last points at or before two instants
-	// (GET /api/v1/portfolios/{portfolioId}/value-changes/custom)
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes/range)
 	GetCustomValueChange(c *gin.Context, portfolioId PortfolioID, params GetCustomValueChangeParams)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
@@ -2750,25 +3025,25 @@ func (siw *ServerInterfaceWrapper) DeletePortfolio(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -2846,25 +3121,25 @@ func (siw *ServerInterfaceWrapper) PatchPortfolio(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -2897,110 +3172,8 @@ func (siw *ServerInterfaceWrapper) PatchPortfolio(c *gin.Context) {
 	siw.Handler.PatchPortfolio(c, portfolioId, params)
 }
 
-// ListAccountBalances operation middleware
-func (siw *ServerInterfaceWrapper) ListAccountBalances(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "accountId" -------------
-	var accountId AccountID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "accountId", c.Param("accountId"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListAccountBalances(c, portfolioId, accountId)
-}
-
-// ListAccountDualPositions operation middleware
-func (siw *ServerInterfaceWrapper) ListAccountDualPositions(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "accountId" -------------
-	var accountId AccountID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "accountId", c.Param("accountId"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListAccountDualPositions(c, portfolioId, accountId)
-}
-
-// ListAccountEarnPositions operation middleware
-func (siw *ServerInterfaceWrapper) ListAccountEarnPositions(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "accountId" -------------
-	var accountId AccountID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "accountId", c.Param("accountId"), &accountId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter accountId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListAccountEarnPositions(c, portfolioId, accountId)
-}
-
-// ListAccountPositions operation middleware
-func (siw *ServerInterfaceWrapper) ListAccountPositions(c *gin.Context) {
+// GetAccountReport operation middleware
+func (siw *ServerInterfaceWrapper) GetAccountReport(c *gin.Context) {
 
 	var err error
 	_ = err
@@ -3024,13 +3197,21 @@ func (siw *ServerInterfaceWrapper) ListAccountPositions(c *gin.Context) {
 	}
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params ListAccountPositionsParams
+	var params GetAccountReportParams
 
 	// ------------- Optional query parameter "cycleId" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "includePendingManual" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includePendingManual", c.Request.URL.Query(), &params.IncludePendingManual, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includePendingManual: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3041,7 +3222,7 @@ func (siw *ServerInterfaceWrapper) ListAccountPositions(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ListAccountPositions(c, portfolioId, accountId, params)
+	siw.Handler.GetAccountReport(c, portfolioId, accountId, params)
 }
 
 // ListAuditEvents operation middleware
@@ -3138,11 +3319,11 @@ func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "symbol" -------------
+	// ------------- Optional query parameter "q" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3159,6 +3340,22 @@ func (siw *ServerInterfaceWrapper) ListBalances(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cycleId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "includePendingManual" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includePendingManual", c.Request.URL.Query(), &params.IncludePendingManual, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter includePendingManual: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3206,6 +3403,22 @@ func (siw *ServerInterfaceWrapper) ListBoundaryEvents(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -3247,6 +3460,22 @@ func (siw *ServerInterfaceWrapper) ListCapitalFlows(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -3357,25 +3586,25 @@ func (siw *ServerInterfaceWrapper) DeleteCapitalFlow(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -3471,25 +3700,25 @@ func (siw *ServerInterfaceWrapper) PatchCapitalFlow(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -3619,25 +3848,25 @@ func (siw *ServerInterfaceWrapper) PutAssetExclusion(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -3699,25 +3928,25 @@ func (siw *ServerInterfaceWrapper) PutAssetMapping(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -3990,11 +4219,11 @@ func (siw *ServerInterfaceWrapper) ListDualPositions(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "symbol" -------------
+	// ------------- Optional query parameter "q" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4011,6 +4240,14 @@ func (siw *ServerInterfaceWrapper) ListDualPositions(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cycleId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4058,11 +4295,11 @@ func (siw *ServerInterfaceWrapper) ListEarnPositions(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "symbol" -------------
+	// ------------- Optional query parameter "q" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4079,6 +4316,14 @@ func (siw *ServerInterfaceWrapper) ListEarnPositions(c *gin.Context) {
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
 	if err != nil {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "cycleId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -4300,25 +4545,25 @@ func (siw *ServerInterfaceWrapper) PatchIdentity(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4380,25 +4625,25 @@ func (siw *ServerInterfaceWrapper) ArchiveIdentity(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4460,25 +4705,25 @@ func (siw *ServerInterfaceWrapper) DeleteIdentityCredentials(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4540,25 +4785,25 @@ func (siw *ServerInterfaceWrapper) PutIdentityCredentials(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4620,25 +4865,25 @@ func (siw *ServerInterfaceWrapper) DisableIdentityConnection(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4700,25 +4945,25 @@ func (siw *ServerInterfaceWrapper) EnableIdentityConnection(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4749,6 +4994,64 @@ func (siw *ServerInterfaceWrapper) EnableIdentityConnection(c *gin.Context) {
 	}
 
 	siw.Handler.EnableIdentityConnection(c, portfolioId, identityId, params)
+}
+
+// ValidateIdentityConnection operation middleware
+func (siw *ServerInterfaceWrapper) ValidateIdentityConnection(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId IdentityID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ValidateIdentityConnectionParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-CSRF-Token" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
+		var XCSRFToken CSRFToken
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XCSRFToken = &XCSRFToken
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ValidateIdentityConnection(c, portfolioId, identityId, params)
 }
 
 // GetManualBalances operation middleware
@@ -4814,25 +5117,25 @@ func (siw *ServerInterfaceWrapper) CreateManualBalance(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4903,25 +5206,25 @@ func (siw *ServerInterfaceWrapper) DeleteManualBalance(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -4992,25 +5295,25 @@ func (siw *ServerInterfaceWrapper) UpdateManualBalance(c *gin.Context) {
 
 	headers := c.Request.Header
 
-	// ------------- Required header parameter "If-Match" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
-		var IfMatch IfMatch
+	// ------------- Required header parameter "If-Edit-Version" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Edit-Version")]; found {
+		var IfEditVersion EditVersion
 		n := len(valueList)
 		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Match, got %d", n), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-Edit-Version, got %d", n), http.StatusBadRequest)
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Edit-Version", valueList[0], &IfEditVersion, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
 		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Match: %w", err), http.StatusBadRequest)
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-Edit-Version: %w", err), http.StatusBadRequest)
 			return
 		}
 
-		params.IfMatch = IfMatch
+		params.IfEditVersion = IfEditVersion
 
 	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Match is required, but not found"), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Header parameter If-Edit-Version is required, but not found"), http.StatusBadRequest)
 		return
 	}
 
@@ -5041,64 +5344,6 @@ func (siw *ServerInterfaceWrapper) UpdateManualBalance(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateManualBalance(c, portfolioId, identityId, assetSymbol, params)
-}
-
-// ValidateIdentityConnection operation middleware
-func (siw *ServerInterfaceWrapper) ValidateIdentityConnection(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Path parameter "identityId" -------------
-	var identityId IdentityID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "identityId", c.Param("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter identityId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ValidateIdentityConnectionParams
-
-	headers := c.Request.Header
-
-	// ------------- Optional header parameter "X-CSRF-Token" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-CSRF-Token")]; found {
-		var XCSRFToken CSRFToken
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-CSRF-Token, got %d", n), http.StatusBadRequest)
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-CSRF-Token", valueList[0], &XCSRFToken, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-CSRF-Token: %w", err), http.StatusBadRequest)
-			return
-		}
-
-		params.XCSRFToken = &XCSRFToken
-
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ValidateIdentityConnection(c, portfolioId, identityId, params)
 }
 
 // GetOverview operation middleware
@@ -5212,11 +5457,11 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 		return
 	}
 
-	// ------------- Optional query parameter "symbol" -------------
+	// ------------- Optional query parameter "q" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "symbol", c.Request.URL.Query(), &params.Symbol, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", c.Request.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter symbol: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter q: %w", err), http.StatusBadRequest)
 		return
 	}
 
@@ -5236,6 +5481,14 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "cycleId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cycleId", c.Request.URL.Query(), &params.CycleId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter cycleId: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -5244,83 +5497,6 @@ func (siw *ServerInterfaceWrapper) ListPositions(c *gin.Context) {
 	}
 
 	siw.Handler.ListPositions(c, portfolioId, params)
-}
-
-// GetHoldingsTree operation middleware
-func (siw *ServerInterfaceWrapper) GetHoldingsTree(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetHoldingsTree(c, portfolioId)
-}
-
-// ListValuationPoints operation middleware
-func (siw *ServerInterfaceWrapper) ListValuationPoints(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "portfolioId" -------------
-	var portfolioId PortfolioID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListValuationPointsParams
-
-	// ------------- Optional query parameter "from" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "to" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "granularity" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", c.Request.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter granularity: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListValuationPoints(c, portfolioId, params)
 }
 
 // ListValuationPointPage operation middleware
@@ -5381,6 +5557,66 @@ func (siw *ServerInterfaceWrapper) ListValuationPointPage(c *gin.Context) {
 	}
 
 	siw.Handler.ListValuationPointPage(c, portfolioId, params)
+}
+
+// ListValuationPoints operation middleware
+func (siw *ServerInterfaceWrapper) ListValuationPoints(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "portfolioId" -------------
+	var portfolioId PortfolioID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "portfolioId", c.Param("portfolioId"), &portfolioId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter portfolioId: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListValuationPointsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", c.Request.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter from: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", c.Request.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter to: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "granularity" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "granularity", c.Request.URL.Query(), &params.Granularity, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter granularity: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "maxPoints" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "maxPoints", c.Request.URL.Query(), &params.MaxPoints, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter maxPoints: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListValuationPoints(c, portfolioId, params)
 }
 
 // GetValuationPoint operation middleware
@@ -5623,32 +5859,27 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId", wrapper.GetIdentity)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId", wrapper.PatchIdentity)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/archive", wrapper.ArchiveIdentity)
-	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/credentials", wrapper.DeleteIdentityCredentials)
-	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/credentials", wrapper.PutIdentityCredentials)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/validate", wrapper.ValidateIdentityConnection)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/enable", wrapper.EnableIdentityConnection)
-	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/disable", wrapper.DisableIdentityConnection)
+	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/connection/credentials", wrapper.DeleteIdentityCredentials)
+	router.PUT(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/connection/credentials", wrapper.PutIdentityCredentials)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/connection/validate", wrapper.ValidateIdentityConnection)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/connection/enable", wrapper.EnableIdentityConnection)
+	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/connection/disable", wrapper.DisableIdentityConnection)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles", wrapper.ListCollectionCycles)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles", wrapper.CreateCollectionCycle)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/collection-cycles/:cycleId", wrapper.GetCollectionCycle)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/overview", wrapper.GetOverview)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/tree", wrapper.GetHoldingsTree)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/balances", wrapper.ListAccountBalances)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/positions", wrapper.ListAccountPositions)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/dual-positions", wrapper.ListAccountDualPositions)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/earn-positions", wrapper.ListAccountEarnPositions)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/balances", wrapper.ListBalances)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/positions", wrapper.ListPositions)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/dual-positions", wrapper.ListDualPositions)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/earn-positions", wrapper.ListEarnPositions)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/history-window", wrapper.GetHistoryWindow)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/page", wrapper.ListValuationPointPage)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points", wrapper.ListValuationPoints)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points", wrapper.ListValuationPointPage)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/series", wrapper.ListValuationPoints)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-snapshot", wrapper.GetValuationSnapshot)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/valuation-points/:cycleId", wrapper.GetValuationPoint)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/period-closes", wrapper.ListPeriodCloses)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes", wrapper.ListValueChanges)
-	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes/custom", wrapper.GetCustomValueChange)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/value-changes/range", wrapper.GetCustomValueChange)
 	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.ListCapitalFlows)
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows", wrapper.CreateCapitalFlow)
 	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/capital-flows/:flowId", wrapper.DeleteCapitalFlow)
@@ -5664,6 +5895,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances", wrapper.CreateManualBalance)
 	router.DELETE(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:assetSymbol", wrapper.DeleteManualBalance)
 	router.PATCH(options.BaseURL+"/api/v1/portfolios/:portfolioId/identities/:identityId/manual-balances/:assetSymbol", wrapper.UpdateManualBalance)
+	router.GET(options.BaseURL+"/api/v1/portfolios/:portfolioId/accounts/:accountId/report", wrapper.GetAccountReport)
 }
 
 type ProblemApplicationProblemPlusJSONResponse Problem
@@ -5685,6 +5917,67 @@ func (response GetAuthCsrf200JSONResponse) VisitGetAuthCsrfResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthCsrf400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetAuthCsrf400ApplicationProblemPlusJSONResponse) VisitGetAuthCsrfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthCsrf403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthCsrf403ApplicationProblemPlusJSONResponse) VisitGetAuthCsrfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthCsrf500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthCsrf500ApplicationProblemPlusJSONResponse) VisitGetAuthCsrfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthCsrfdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetAuthCsrfdefaultApplicationProblemPlusJSONResponse) VisitGetAuthCsrfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5742,6 +6035,20 @@ func (response PostAuthLogin401ApplicationProblemPlusJSONResponse) VisitPostAuth
 	return err
 }
 
+type PostAuthLogin403ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogin403ApplicationProblemPlusJSONResponse) VisitPostAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PostAuthLogin429ApplicationProblemPlusJSONResponse Problem
 
 func (response PostAuthLogin429ApplicationProblemPlusJSONResponse) VisitPostAuthLoginResponse(w http.ResponseWriter) error {
@@ -5752,6 +6059,37 @@ func (response PostAuthLogin429ApplicationProblemPlusJSONResponse) VisitPostAuth
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogin500ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogin500ApplicationProblemPlusJSONResponse) VisitPostAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogindefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PostAuthLogindefaultApplicationProblemPlusJSONResponse) VisitPostAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5772,9 +6110,23 @@ func (response PostAuthLogout204Response) VisitPostAuthLogoutResponse(w http.Res
 	return nil
 }
 
-type PostAuthLogout401ApplicationProblemPlusJSONResponse struct {
+type PostAuthLogout400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response PostAuthLogout400ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogout401ApplicationProblemPlusJSONResponse Problem
 
 func (response PostAuthLogout401ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutResponse(w http.ResponseWriter) error {
 
@@ -5784,6 +6136,51 @@ func (response PostAuthLogout401ApplicationProblemPlusJSONResponse) VisitPostAut
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogout403ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogout403ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogout500ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogout500ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogoutdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PostAuthLogoutdefaultApplicationProblemPlusJSONResponse) VisitPostAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5804,9 +6201,23 @@ func (response PostAuthLogoutAll204Response) VisitPostAuthLogoutAllResponse(w ht
 	return nil
 }
 
-type PostAuthLogoutAll401ApplicationProblemPlusJSONResponse struct {
+type PostAuthLogoutAll400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response PostAuthLogoutAll400ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutAllResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogoutAll401ApplicationProblemPlusJSONResponse Problem
 
 func (response PostAuthLogoutAll401ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutAllResponse(w http.ResponseWriter) error {
 
@@ -5816,6 +6227,51 @@ func (response PostAuthLogoutAll401ApplicationProblemPlusJSONResponse) VisitPost
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogoutAll403ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogoutAll403ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutAllResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogoutAll500ApplicationProblemPlusJSONResponse Problem
+
+func (response PostAuthLogoutAll500ApplicationProblemPlusJSONResponse) VisitPostAuthLogoutAllResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostAuthLogoutAlldefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PostAuthLogoutAlldefaultApplicationProblemPlusJSONResponse) VisitPostAuthLogoutAllResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5841,9 +6297,23 @@ func (response GetAuthMe200JSONResponse) VisitGetAuthMeResponse(w http.ResponseW
 	return err
 }
 
-type GetAuthMe401ApplicationProblemPlusJSONResponse struct {
+type GetAuthMe400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetAuthMe400ApplicationProblemPlusJSONResponse) VisitGetAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthMe401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetAuthMe401ApplicationProblemPlusJSONResponse) VisitGetAuthMeResponse(w http.ResponseWriter) error {
 
@@ -5853,6 +6323,51 @@ func (response GetAuthMe401ApplicationProblemPlusJSONResponse) VisitGetAuthMeRes
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthMe403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthMe403ApplicationProblemPlusJSONResponse) VisitGetAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthMe500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthMe500ApplicationProblemPlusJSONResponse) VisitGetAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthMedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetAuthMedefaultApplicationProblemPlusJSONResponse) VisitGetAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5904,6 +6419,65 @@ func (response PutAuthPassword401ApplicationProblemPlusJSONResponse) VisitPutAut
 	return err
 }
 
+type PutAuthPassword403ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAuthPassword403ApplicationProblemPlusJSONResponse) VisitPutAuthPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAuthPassword422ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAuthPassword422ApplicationProblemPlusJSONResponse) VisitPutAuthPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAuthPassword500ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAuthPassword500ApplicationProblemPlusJSONResponse) VisitPutAuthPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAuthPassworddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PutAuthPassworddefaultApplicationProblemPlusJSONResponse) VisitPutAuthPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetAuthSessionsRequestObject struct {
 }
 
@@ -5925,9 +6499,23 @@ func (response GetAuthSessions200JSONResponse) VisitGetAuthSessionsResponse(w ht
 	return err
 }
 
-type GetAuthSessions401ApplicationProblemPlusJSONResponse struct {
+type GetAuthSessions400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetAuthSessions400ApplicationProblemPlusJSONResponse) VisitGetAuthSessionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthSessions401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetAuthSessions401ApplicationProblemPlusJSONResponse) VisitGetAuthSessionsResponse(w http.ResponseWriter) error {
 
@@ -5937,6 +6525,51 @@ func (response GetAuthSessions401ApplicationProblemPlusJSONResponse) VisitGetAut
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthSessions403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthSessions403ApplicationProblemPlusJSONResponse) VisitGetAuthSessionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthSessions500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAuthSessions500ApplicationProblemPlusJSONResponse) VisitGetAuthSessionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthSessionsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetAuthSessionsdefaultApplicationProblemPlusJSONResponse) VisitGetAuthSessionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5958,9 +6591,23 @@ func (response DeleteAuthSession204Response) VisitDeleteAuthSessionResponse(w ht
 	return nil
 }
 
-type DeleteAuthSession401ApplicationProblemPlusJSONResponse struct {
+type DeleteAuthSession400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response DeleteAuthSession400ApplicationProblemPlusJSONResponse) VisitDeleteAuthSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthSession401ApplicationProblemPlusJSONResponse Problem
 
 func (response DeleteAuthSession401ApplicationProblemPlusJSONResponse) VisitDeleteAuthSessionResponse(w http.ResponseWriter) error {
 
@@ -5970,6 +6617,20 @@ func (response DeleteAuthSession401ApplicationProblemPlusJSONResponse) VisitDele
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthSession403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteAuthSession403ApplicationProblemPlusJSONResponse) VisitDeleteAuthSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5984,6 +6645,37 @@ func (response DeleteAuthSession404ApplicationProblemPlusJSONResponse) VisitDele
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthSession500ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteAuthSession500ApplicationProblemPlusJSONResponse) VisitDeleteAuthSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthSessiondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteAuthSessiondefaultApplicationProblemPlusJSONResponse) VisitDeleteAuthSessionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6009,9 +6701,23 @@ func (response ListPlatforms200JSONResponse) VisitListPlatformsResponse(w http.R
 	return err
 }
 
-type ListPlatforms401ApplicationProblemPlusJSONResponse struct {
+type ListPlatforms400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ListPlatforms400ApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatforms401ApplicationProblemPlusJSONResponse Problem
 
 func (response ListPlatforms401ApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
 
@@ -6021,6 +6727,51 @@ func (response ListPlatforms401ApplicationProblemPlusJSONResponse) VisitListPlat
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatforms403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPlatforms403ApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatforms500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPlatforms500ApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPlatformsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListPlatformsdefaultApplicationProblemPlusJSONResponse) VisitListPlatformsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6046,9 +6797,23 @@ func (response ListPortfolios200JSONResponse) VisitListPortfoliosResponse(w http
 	return err
 }
 
-type ListPortfolios401ApplicationProblemPlusJSONResponse struct {
+type ListPortfolios400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ListPortfolios400ApplicationProblemPlusJSONResponse) VisitListPortfoliosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPortfolios401ApplicationProblemPlusJSONResponse Problem
 
 func (response ListPortfolios401ApplicationProblemPlusJSONResponse) VisitListPortfoliosResponse(w http.ResponseWriter) error {
 
@@ -6062,6 +6827,51 @@ func (response ListPortfolios401ApplicationProblemPlusJSONResponse) VisitListPor
 	return err
 }
 
+type ListPortfolios403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPortfolios403ApplicationProblemPlusJSONResponse) VisitListPortfoliosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPortfolios500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPortfolios500ApplicationProblemPlusJSONResponse) VisitListPortfoliosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPortfoliosdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListPortfoliosdefaultApplicationProblemPlusJSONResponse) VisitListPortfoliosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreatePortfolioRequestObject struct {
 	Params CreatePortfolioParams
 	Body   *CreatePortfolioJSONRequestBody
@@ -6071,25 +6881,15 @@ type CreatePortfolioResponseObject interface {
 	VisitCreatePortfolioResponse(w http.ResponseWriter) error
 }
 
-type CreatePortfolio201ResponseHeaders struct {
-	ETag *string
-}
-
-type CreatePortfolio201JSONResponse struct {
-	Body    Portfolio
-	Headers CreatePortfolio201ResponseHeaders
-}
+type CreatePortfolio201JSONResponse Portfolio
 
 func (response CreatePortfolio201JSONResponse) VisitCreatePortfolioResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(201)
 	_, err := buf.WriteTo(w)
 	return err
@@ -6125,6 +6925,20 @@ func (response CreatePortfolio401ApplicationProblemPlusJSONResponse) VisitCreate
 	return err
 }
 
+type CreatePortfolio403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePortfolio403ApplicationProblemPlusJSONResponse) VisitCreatePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreatePortfolio409ApplicationProblemPlusJSONResponse Problem
 
 func (response CreatePortfolio409ApplicationProblemPlusJSONResponse) VisitCreatePortfolioResponse(w http.ResponseWriter) error {
@@ -6135,6 +6949,37 @@ func (response CreatePortfolio409ApplicationProblemPlusJSONResponse) VisitCreate
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePortfolio500ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePortfolio500ApplicationProblemPlusJSONResponse) VisitCreatePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePortfoliodefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreatePortfoliodefaultApplicationProblemPlusJSONResponse) VisitCreatePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6156,9 +7001,23 @@ func (response DeletePortfolio202Response) VisitDeletePortfolioResponse(w http.R
 	return nil
 }
 
-type DeletePortfolio401ApplicationProblemPlusJSONResponse struct {
+type DeletePortfolio400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response DeletePortfolio400ApplicationProblemPlusJSONResponse) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePortfolio401ApplicationProblemPlusJSONResponse Problem
 
 func (response DeletePortfolio401ApplicationProblemPlusJSONResponse) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
 
@@ -6168,6 +7027,20 @@ func (response DeletePortfolio401ApplicationProblemPlusJSONResponse) VisitDelete
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePortfolio403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeletePortfolio403ApplicationProblemPlusJSONResponse) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6214,6 +7087,37 @@ func (response DeletePortfolio412ApplicationProblemPlusJSONResponse) VisitDelete
 	return err
 }
 
+type DeletePortfolio500ApplicationProblemPlusJSONResponse Problem
+
+func (response DeletePortfolio500ApplicationProblemPlusJSONResponse) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePortfoliodefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeletePortfoliodefaultApplicationProblemPlusJSONResponse) VisitDeletePortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetPortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 }
@@ -6222,33 +7126,37 @@ type GetPortfolioResponseObject interface {
 	VisitGetPortfolioResponse(w http.ResponseWriter) error
 }
 
-type GetPortfolio200ResponseHeaders struct {
-	ETag *string
-}
-
-type GetPortfolio200JSONResponse struct {
-	Body    Portfolio
-	Headers GetPortfolio200ResponseHeaders
-}
+type GetPortfolio200JSONResponse Portfolio
 
 func (response GetPortfolio200JSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetPortfolio401ApplicationProblemPlusJSONResponse struct {
+type GetPortfolio400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetPortfolio400ApplicationProblemPlusJSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolio401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetPortfolio401ApplicationProblemPlusJSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
 
@@ -6258,6 +7166,20 @@ func (response GetPortfolio401ApplicationProblemPlusJSONResponse) VisitGetPortfo
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfolio403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetPortfolio403ApplicationProblemPlusJSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6276,6 +7198,37 @@ func (response GetPortfolio404ApplicationProblemPlusJSONResponse) VisitGetPortfo
 	return err
 }
 
+type GetPortfolio500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetPortfolio500ApplicationProblemPlusJSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPortfoliodefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetPortfoliodefaultApplicationProblemPlusJSONResponse) VisitGetPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchPortfolioRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      PatchPortfolioParams
@@ -6286,25 +7239,15 @@ type PatchPortfolioResponseObject interface {
 	VisitPatchPortfolioResponse(w http.ResponseWriter) error
 }
 
-type PatchPortfolio200ResponseHeaders struct {
-	ETag *string
-}
-
-type PatchPortfolio200JSONResponse struct {
-	Body    Portfolio
-	Headers PatchPortfolio200ResponseHeaders
-}
+type PatchPortfolio200JSONResponse Portfolio
 
 func (response PatchPortfolio200JSONResponse) VisitPatchPortfolioResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -6340,6 +7283,20 @@ func (response PatchPortfolio401ApplicationProblemPlusJSONResponse) VisitPatchPo
 	return err
 }
 
+type PatchPortfolio403ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchPortfolio403ApplicationProblemPlusJSONResponse) VisitPatchPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchPortfolio404ApplicationProblemPlusJSONResponse Problem
 
 func (response PatchPortfolio404ApplicationProblemPlusJSONResponse) VisitPatchPortfolioResponse(w http.ResponseWriter) error {
@@ -6368,18 +7325,50 @@ func (response PatchPortfolio412ApplicationProblemPlusJSONResponse) VisitPatchPo
 	return err
 }
 
-type ListAccountBalancesRequestObject struct {
+type PatchPortfolio500ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchPortfolio500ApplicationProblemPlusJSONResponse) VisitPatchPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchPortfoliodefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PatchPortfoliodefaultApplicationProblemPlusJSONResponse) VisitPatchPortfolioResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAccountReportRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	AccountId   AccountID   `json:"accountId"`
+	Params      GetAccountReportParams
 }
 
-type ListAccountBalancesResponseObject interface {
-	VisitListAccountBalancesResponse(w http.ResponseWriter) error
+type GetAccountReportResponseObject interface {
+	VisitGetAccountReportResponse(w http.ResponseWriter) error
 }
 
-type ListAccountBalances200JSONResponse AccountBalanceList
+type GetAccountReport200JSONResponse AccountReport
 
-func (response ListAccountBalances200JSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
+func (response GetAccountReport200JSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6391,11 +7380,25 @@ func (response ListAccountBalances200JSONResponse) VisitListAccountBalancesRespo
 	return err
 }
 
-type ListAccountBalances401ApplicationProblemPlusJSONResponse struct {
+type GetAccountReport400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
 
-func (response ListAccountBalances401ApplicationProblemPlusJSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
+func (response GetAccountReport400ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAccountReport401ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAccountReport401ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6407,9 +7410,23 @@ func (response ListAccountBalances401ApplicationProblemPlusJSONResponse) VisitLi
 	return err
 }
 
-type ListAccountBalances404ApplicationProblemPlusJSONResponse Problem
+type GetAccountReport403ApplicationProblemPlusJSONResponse Problem
 
-func (response ListAccountBalances404ApplicationProblemPlusJSONResponse) VisitListAccountBalancesResponse(w http.ResponseWriter) error {
+func (response GetAccountReport403ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAccountReport404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetAccountReport404ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -6421,162 +7438,47 @@ func (response ListAccountBalances404ApplicationProblemPlusJSONResponse) VisitLi
 	return err
 }
 
-type ListAccountDualPositionsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	AccountId   AccountID   `json:"accountId"`
-}
+type GetAccountReport410ApplicationProblemPlusJSONResponse Problem
 
-type ListAccountDualPositionsResponseObject interface {
-	VisitListAccountDualPositionsResponse(w http.ResponseWriter) error
-}
-
-type ListAccountDualPositions200JSONResponse AccountDualPositionList
-
-func (response ListAccountDualPositions200JSONResponse) VisitListAccountDualPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountDualPositions401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListAccountDualPositions401ApplicationProblemPlusJSONResponse) VisitListAccountDualPositionsResponse(w http.ResponseWriter) error {
+func (response GetAccountReport410ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
+	w.WriteHeader(410)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type ListAccountDualPositions404ApplicationProblemPlusJSONResponse Problem
+type GetAccountReport500ApplicationProblemPlusJSONResponse Problem
 
-func (response ListAccountDualPositions404ApplicationProblemPlusJSONResponse) VisitListAccountDualPositionsResponse(w http.ResponseWriter) error {
+func (response GetAccountReport500ApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type ListAccountEarnPositionsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	AccountId   AccountID   `json:"accountId"`
+type GetAccountReportdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
 }
 
-type ListAccountEarnPositionsResponseObject interface {
-	VisitListAccountEarnPositionsResponse(w http.ResponseWriter) error
-}
-
-type ListAccountEarnPositions200JSONResponse AccountEarnPositionList
-
-func (response ListAccountEarnPositions200JSONResponse) VisitListAccountEarnPositionsResponse(w http.ResponseWriter) error {
+func (response GetAccountReportdefaultApplicationProblemPlusJSONResponse) VisitGetAccountReportResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountEarnPositions401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListAccountEarnPositions401ApplicationProblemPlusJSONResponse) VisitListAccountEarnPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountEarnPositions404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListAccountEarnPositions404ApplicationProblemPlusJSONResponse) VisitListAccountEarnPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountPositionsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	AccountId   AccountID   `json:"accountId"`
-	Params      ListAccountPositionsParams
-}
-
-type ListAccountPositionsResponseObject interface {
-	VisitListAccountPositionsResponse(w http.ResponseWriter) error
-}
-
-type ListAccountPositions200JSONResponse AccountPositionList
-
-func (response ListAccountPositions200JSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountPositions401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListAccountPositions401ApplicationProblemPlusJSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListAccountPositions404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListAccountPositions404ApplicationProblemPlusJSONResponse) VisitListAccountPositionsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6634,6 +7536,20 @@ func (response ListAuditEvents401ApplicationProblemPlusJSONResponse) VisitListAu
 	return err
 }
 
+type ListAuditEvents403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAuditEvents403ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListAuditEvents404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListAuditEvents404ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
@@ -6644,6 +7560,20 @@ func (response ListAuditEvents404ApplicationProblemPlusJSONResponse) VisitListAu
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAuditEvents500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAuditEvents500ApplicationProblemPlusJSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6701,6 +7631,20 @@ func (response ListBalances401ApplicationProblemPlusJSONResponse) VisitListBalan
 	return err
 }
 
+type ListBalances403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBalances403ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListBalances404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListBalances404ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
@@ -6711,6 +7655,34 @@ func (response ListBalances404ApplicationProblemPlusJSONResponse) VisitListBalan
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalances410ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBalances410ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(410)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBalances500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBalances500ApplicationProblemPlusJSONResponse) VisitListBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6768,6 +7740,20 @@ func (response ListBoundaryEvents401ApplicationProblemPlusJSONResponse) VisitLis
 	return err
 }
 
+type ListBoundaryEvents403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBoundaryEvents403ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListBoundaryEvents404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListBoundaryEvents404ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
@@ -6778,6 +7764,37 @@ func (response ListBoundaryEvents404ApplicationProblemPlusJSONResponse) VisitLis
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBoundaryEvents500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBoundaryEvents500ApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBoundaryEventsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListBoundaryEventsdefaultApplicationProblemPlusJSONResponse) VisitListBoundaryEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6835,6 +7852,20 @@ func (response ListCapitalFlows401ApplicationProblemPlusJSONResponse) VisitListC
 	return err
 }
 
+type ListCapitalFlows403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCapitalFlows403ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListCapitalFlows404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListCapitalFlows404ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
@@ -6849,6 +7880,37 @@ func (response ListCapitalFlows404ApplicationProblemPlusJSONResponse) VisitListC
 	return err
 }
 
+type ListCapitalFlows500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCapitalFlows500ApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCapitalFlowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListCapitalFlowsdefaultApplicationProblemPlusJSONResponse) VisitListCapitalFlowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateCapitalFlowRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      CreateCapitalFlowParams
@@ -6859,25 +7921,15 @@ type CreateCapitalFlowResponseObject interface {
 	VisitCreateCapitalFlowResponse(w http.ResponseWriter) error
 }
 
-type CreateCapitalFlow201ResponseHeaders struct {
-	ETag *string
-}
-
-type CreateCapitalFlow201JSONResponse struct {
-	Body    CapitalFlow
-	Headers CreateCapitalFlow201ResponseHeaders
-}
+type CreateCapitalFlow201JSONResponse CapitalFlow
 
 func (response CreateCapitalFlow201JSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(201)
 	_, err := buf.WriteTo(w)
 	return err
@@ -6913,6 +7965,20 @@ func (response CreateCapitalFlow401ApplicationProblemPlusJSONResponse) VisitCrea
 	return err
 }
 
+type CreateCapitalFlow403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCapitalFlow403ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateCapitalFlow404ApplicationProblemPlusJSONResponse Problem
 
 func (response CreateCapitalFlow404ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
@@ -6941,6 +8007,37 @@ func (response CreateCapitalFlow409ApplicationProblemPlusJSONResponse) VisitCrea
 	return err
 }
 
+type CreateCapitalFlow500ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCapitalFlow500ApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCapitalFlowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateCapitalFlowdefaultApplicationProblemPlusJSONResponse) VisitCreateCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteCapitalFlowRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	FlowId      FlowID      `json:"flowId"`
@@ -6959,9 +8056,23 @@ func (response DeleteCapitalFlow204Response) VisitDeleteCapitalFlowResponse(w ht
 	return nil
 }
 
-type DeleteCapitalFlow401ApplicationProblemPlusJSONResponse struct {
+type DeleteCapitalFlow400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response DeleteCapitalFlow400ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlow401ApplicationProblemPlusJSONResponse Problem
 
 func (response DeleteCapitalFlow401ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
 
@@ -6971,6 +8082,20 @@ func (response DeleteCapitalFlow401ApplicationProblemPlusJSONResponse) VisitDele
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlow403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCapitalFlow403ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7003,6 +8128,37 @@ func (response DeleteCapitalFlow412ApplicationProblemPlusJSONResponse) VisitDele
 	return err
 }
 
+type DeleteCapitalFlow500ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteCapitalFlow500ApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCapitalFlowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteCapitalFlowdefaultApplicationProblemPlusJSONResponse) VisitDeleteCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetCapitalFlowRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	FlowId      FlowID      `json:"flowId"`
@@ -7012,33 +8168,37 @@ type GetCapitalFlowResponseObject interface {
 	VisitGetCapitalFlowResponse(w http.ResponseWriter) error
 }
 
-type GetCapitalFlow200ResponseHeaders struct {
-	ETag *string
-}
-
-type GetCapitalFlow200JSONResponse struct {
-	Body    CapitalFlow
-	Headers GetCapitalFlow200ResponseHeaders
-}
+type GetCapitalFlow200JSONResponse CapitalFlow
 
 func (response GetCapitalFlow200JSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetCapitalFlow401ApplicationProblemPlusJSONResponse struct {
+type GetCapitalFlow400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetCapitalFlow400ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlow401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetCapitalFlow401ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
 
@@ -7048,6 +8208,20 @@ func (response GetCapitalFlow401ApplicationProblemPlusJSONResponse) VisitGetCapi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlow403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCapitalFlow403ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7066,6 +8240,37 @@ func (response GetCapitalFlow404ApplicationProblemPlusJSONResponse) VisitGetCapi
 	return err
 }
 
+type GetCapitalFlow500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCapitalFlow500ApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapitalFlowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetCapitalFlowdefaultApplicationProblemPlusJSONResponse) VisitGetCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchCapitalFlowRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	FlowId      FlowID      `json:"flowId"`
@@ -7077,25 +8282,15 @@ type PatchCapitalFlowResponseObject interface {
 	VisitPatchCapitalFlowResponse(w http.ResponseWriter) error
 }
 
-type PatchCapitalFlow200ResponseHeaders struct {
-	ETag *string
-}
-
-type PatchCapitalFlow200JSONResponse struct {
-	Body    CapitalFlow
-	Headers PatchCapitalFlow200ResponseHeaders
-}
+type PatchCapitalFlow200JSONResponse CapitalFlow
 
 func (response PatchCapitalFlow200JSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -7131,6 +8326,20 @@ func (response PatchCapitalFlow401ApplicationProblemPlusJSONResponse) VisitPatch
 	return err
 }
 
+type PatchCapitalFlow403ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchCapitalFlow403ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchCapitalFlow404ApplicationProblemPlusJSONResponse Problem
 
 func (response PatchCapitalFlow404ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
@@ -7155,6 +8364,37 @@ func (response PatchCapitalFlow412ApplicationProblemPlusJSONResponse) VisitPatch
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlow500ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchCapitalFlow500ApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchCapitalFlowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PatchCapitalFlowdefaultApplicationProblemPlusJSONResponse) VisitPatchCapitalFlowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7212,6 +8452,20 @@ func (response ListAssets401ApplicationProblemPlusJSONResponse) VisitListAssetsR
 	return err
 }
 
+type ListAssets403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAssets403ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListAssets404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListAssets404ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
@@ -7222,6 +8476,20 @@ func (response ListAssets404ApplicationProblemPlusJSONResponse) VisitListAssetsR
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAssets500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListAssets500ApplicationProblemPlusJSONResponse) VisitListAssetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7237,25 +8505,15 @@ type PutAssetExclusionResponseObject interface {
 	VisitPutAssetExclusionResponse(w http.ResponseWriter) error
 }
 
-type PutAssetExclusion200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutAssetExclusion200JSONResponse struct {
-	Body    Asset
-	Headers PutAssetExclusion200ResponseHeaders
-}
+type PutAssetExclusion200JSONResponse Asset
 
 func (response PutAssetExclusion200JSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -7291,6 +8549,20 @@ func (response PutAssetExclusion401ApplicationProblemPlusJSONResponse) VisitPutA
 	return err
 }
 
+type PutAssetExclusion403ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetExclusion403ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutAssetExclusion404ApplicationProblemPlusJSONResponse Problem
 
 func (response PutAssetExclusion404ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
@@ -7319,6 +8591,37 @@ func (response PutAssetExclusion412ApplicationProblemPlusJSONResponse) VisitPutA
 	return err
 }
 
+type PutAssetExclusion500ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetExclusion500ApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetExclusiondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PutAssetExclusiondefaultApplicationProblemPlusJSONResponse) VisitPutAssetExclusionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutAssetMappingRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	AssetId     AssetID     `json:"assetId"`
@@ -7330,25 +8633,15 @@ type PutAssetMappingResponseObject interface {
 	VisitPutAssetMappingResponse(w http.ResponseWriter) error
 }
 
-type PutAssetMapping200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutAssetMapping200JSONResponse struct {
-	Body    Asset
-	Headers PutAssetMapping200ResponseHeaders
-}
+type PutAssetMapping200JSONResponse Asset
 
 func (response PutAssetMapping200JSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -7384,6 +8677,20 @@ func (response PutAssetMapping401ApplicationProblemPlusJSONResponse) VisitPutAss
 	return err
 }
 
+type PutAssetMapping403ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetMapping403ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutAssetMapping404ApplicationProblemPlusJSONResponse Problem
 
 func (response PutAssetMapping404ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
@@ -7408,6 +8715,37 @@ func (response PutAssetMapping412ApplicationProblemPlusJSONResponse) VisitPutAss
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMapping500ApplicationProblemPlusJSONResponse Problem
+
+func (response PutAssetMapping500ApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutAssetMappingdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PutAssetMappingdefaultApplicationProblemPlusJSONResponse) VisitPutAssetMappingResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7465,6 +8803,20 @@ func (response ListFuturesContracts401ApplicationProblemPlusJSONResponse) VisitL
 	return err
 }
 
+type ListFuturesContracts403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFuturesContracts403ApplicationProblemPlusJSONResponse) VisitListFuturesContractsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListFuturesContracts404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListFuturesContracts404ApplicationProblemPlusJSONResponse) VisitListFuturesContractsResponse(w http.ResponseWriter) error {
@@ -7475,6 +8827,20 @@ func (response ListFuturesContracts404ApplicationProblemPlusJSONResponse) VisitL
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFuturesContracts500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFuturesContracts500ApplicationProblemPlusJSONResponse) VisitListFuturesContractsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7532,6 +8898,20 @@ func (response ListCollectionCycles401ApplicationProblemPlusJSONResponse) VisitL
 	return err
 }
 
+type ListCollectionCycles403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCollectionCycles403ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListCollectionCycles404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListCollectionCycles404ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
@@ -7542,6 +8922,20 @@ func (response ListCollectionCycles404ApplicationProblemPlusJSONResponse) VisitL
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCollectionCycles500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListCollectionCycles500ApplicationProblemPlusJSONResponse) VisitListCollectionCyclesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7569,9 +8963,23 @@ func (response CreateCollectionCycle202JSONResponse) VisitCreateCollectionCycleR
 	return err
 }
 
-type CreateCollectionCycle401ApplicationProblemPlusJSONResponse struct {
+type CreateCollectionCycle400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response CreateCollectionCycle400ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCollectionCycle401ApplicationProblemPlusJSONResponse Problem
 
 func (response CreateCollectionCycle401ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
 
@@ -7581,6 +8989,20 @@ func (response CreateCollectionCycle401ApplicationProblemPlusJSONResponse) Visit
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCollectionCycle403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCollectionCycle403ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7595,6 +9017,37 @@ func (response CreateCollectionCycle404ApplicationProblemPlusJSONResponse) Visit
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCollectionCycle500ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCollectionCycle500ApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCollectionCycledefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateCollectionCycledefaultApplicationProblemPlusJSONResponse) VisitCreateCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7622,9 +9075,23 @@ func (response GetCollectionCycle200JSONResponse) VisitGetCollectionCycleRespons
 	return err
 }
 
-type GetCollectionCycle401ApplicationProblemPlusJSONResponse struct {
+type GetCollectionCycle400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetCollectionCycle400ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCollectionCycle401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetCollectionCycle401ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
 
@@ -7634,6 +9101,20 @@ func (response GetCollectionCycle401ApplicationProblemPlusJSONResponse) VisitGet
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCollectionCycle403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCollectionCycle403ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7648,6 +9129,37 @@ func (response GetCollectionCycle404ApplicationProblemPlusJSONResponse) VisitGet
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCollectionCycle500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCollectionCycle500ApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCollectionCycledefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetCollectionCycledefaultApplicationProblemPlusJSONResponse) VisitGetCollectionCycleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7705,6 +9217,20 @@ func (response ListDualPositions401ApplicationProblemPlusJSONResponse) VisitList
 	return err
 }
 
+type ListDualPositions403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListDualPositions403ApplicationProblemPlusJSONResponse) VisitListDualPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListDualPositions404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListDualPositions404ApplicationProblemPlusJSONResponse) VisitListDualPositionsResponse(w http.ResponseWriter) error {
@@ -7715,6 +9241,34 @@ func (response ListDualPositions404ApplicationProblemPlusJSONResponse) VisitList
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDualPositions410ApplicationProblemPlusJSONResponse Problem
+
+func (response ListDualPositions410ApplicationProblemPlusJSONResponse) VisitListDualPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(410)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDualPositions500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListDualPositions500ApplicationProblemPlusJSONResponse) VisitListDualPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7772,6 +9326,20 @@ func (response ListEarnPositions401ApplicationProblemPlusJSONResponse) VisitList
 	return err
 }
 
+type ListEarnPositions403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListEarnPositions403ApplicationProblemPlusJSONResponse) VisitListEarnPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListEarnPositions404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListEarnPositions404ApplicationProblemPlusJSONResponse) VisitListEarnPositionsResponse(w http.ResponseWriter) error {
@@ -7782,6 +9350,34 @@ func (response ListEarnPositions404ApplicationProblemPlusJSONResponse) VisitList
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEarnPositions410ApplicationProblemPlusJSONResponse Problem
+
+func (response ListEarnPositions410ApplicationProblemPlusJSONResponse) VisitListEarnPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(410)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEarnPositions500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListEarnPositions500ApplicationProblemPlusJSONResponse) VisitListEarnPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7839,6 +9435,20 @@ func (response GetHistoryWindow401ApplicationProblemPlusJSONResponse) VisitGetHi
 	return err
 }
 
+type GetHistoryWindow403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetHistoryWindow403ApplicationProblemPlusJSONResponse) VisitGetHistoryWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHistoryWindow404ApplicationProblemPlusJSONResponse Problem
 
 func (response GetHistoryWindow404ApplicationProblemPlusJSONResponse) VisitGetHistoryWindowResponse(w http.ResponseWriter) error {
@@ -7849,6 +9459,37 @@ func (response GetHistoryWindow404ApplicationProblemPlusJSONResponse) VisitGetHi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHistoryWindow500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetHistoryWindow500ApplicationProblemPlusJSONResponse) VisitGetHistoryWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHistoryWindowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetHistoryWindowdefaultApplicationProblemPlusJSONResponse) VisitGetHistoryWindowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7875,9 +9516,23 @@ func (response ListIdentities200JSONResponse) VisitListIdentitiesResponse(w http
 	return err
 }
 
-type ListIdentities401ApplicationProblemPlusJSONResponse struct {
+type ListIdentities400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ListIdentities400ApplicationProblemPlusJSONResponse) VisitListIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListIdentities401ApplicationProblemPlusJSONResponse Problem
 
 func (response ListIdentities401ApplicationProblemPlusJSONResponse) VisitListIdentitiesResponse(w http.ResponseWriter) error {
 
@@ -7887,6 +9542,20 @@ func (response ListIdentities401ApplicationProblemPlusJSONResponse) VisitListIde
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListIdentities403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListIdentities403ApplicationProblemPlusJSONResponse) VisitListIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -7905,6 +9574,37 @@ func (response ListIdentities404ApplicationProblemPlusJSONResponse) VisitListIde
 	return err
 }
 
+type ListIdentities500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListIdentities500ApplicationProblemPlusJSONResponse) VisitListIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListIdentitiesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListIdentitiesdefaultApplicationProblemPlusJSONResponse) VisitListIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateIdentityRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	Params      CreateIdentityParams
@@ -7915,25 +9615,15 @@ type CreateIdentityResponseObject interface {
 	VisitCreateIdentityResponse(w http.ResponseWriter) error
 }
 
-type CreateIdentity201ResponseHeaders struct {
-	ETag *string
-}
-
-type CreateIdentity201JSONResponse struct {
-	Body    Identity
-	Headers CreateIdentity201ResponseHeaders
-}
+type CreateIdentity201JSONResponse Identity
 
 func (response CreateIdentity201JSONResponse) VisitCreateIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(201)
 	_, err := buf.WriteTo(w)
 	return err
@@ -7969,6 +9659,20 @@ func (response CreateIdentity401ApplicationProblemPlusJSONResponse) VisitCreateI
 	return err
 }
 
+type CreateIdentity403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateIdentity403ApplicationProblemPlusJSONResponse) VisitCreateIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateIdentity404ApplicationProblemPlusJSONResponse Problem
 
 func (response CreateIdentity404ApplicationProblemPlusJSONResponse) VisitCreateIdentityResponse(w http.ResponseWriter) error {
@@ -7997,6 +9701,37 @@ func (response CreateIdentity409ApplicationProblemPlusJSONResponse) VisitCreateI
 	return err
 }
 
+type CreateIdentity500ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateIdentity500ApplicationProblemPlusJSONResponse) VisitCreateIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateIdentitydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateIdentitydefaultApplicationProblemPlusJSONResponse) VisitCreateIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetIdentityRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8006,33 +9741,37 @@ type GetIdentityResponseObject interface {
 	VisitGetIdentityResponse(w http.ResponseWriter) error
 }
 
-type GetIdentity200ResponseHeaders struct {
-	ETag *string
-}
-
-type GetIdentity200JSONResponse struct {
-	Body    Identity
-	Headers GetIdentity200ResponseHeaders
-}
+type GetIdentity200JSONResponse Identity
 
 func (response GetIdentity200JSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetIdentity401ApplicationProblemPlusJSONResponse struct {
+type GetIdentity400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetIdentity400ApplicationProblemPlusJSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetIdentity401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetIdentity401ApplicationProblemPlusJSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
 
@@ -8042,6 +9781,20 @@ func (response GetIdentity401ApplicationProblemPlusJSONResponse) VisitGetIdentit
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetIdentity403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetIdentity403ApplicationProblemPlusJSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8060,6 +9813,37 @@ func (response GetIdentity404ApplicationProblemPlusJSONResponse) VisitGetIdentit
 	return err
 }
 
+type GetIdentity500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetIdentity500ApplicationProblemPlusJSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetIdentitydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetIdentitydefaultApplicationProblemPlusJSONResponse) VisitGetIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchIdentityRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8071,25 +9855,15 @@ type PatchIdentityResponseObject interface {
 	VisitPatchIdentityResponse(w http.ResponseWriter) error
 }
 
-type PatchIdentity200ResponseHeaders struct {
-	ETag *string
-}
-
-type PatchIdentity200JSONResponse struct {
-	Body    Identity
-	Headers PatchIdentity200ResponseHeaders
-}
+type PatchIdentity200JSONResponse Identity
 
 func (response PatchIdentity200JSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8121,6 +9895,20 @@ func (response PatchIdentity401ApplicationProblemPlusJSONResponse) VisitPatchIde
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchIdentity403ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchIdentity403ApplicationProblemPlusJSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8167,6 +9955,37 @@ func (response PatchIdentity412ApplicationProblemPlusJSONResponse) VisitPatchIde
 	return err
 }
 
+type PatchIdentity500ApplicationProblemPlusJSONResponse Problem
+
+func (response PatchIdentity500ApplicationProblemPlusJSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PatchIdentitydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PatchIdentitydefaultApplicationProblemPlusJSONResponse) VisitPatchIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ArchiveIdentityRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8177,33 +9996,37 @@ type ArchiveIdentityResponseObject interface {
 	VisitArchiveIdentityResponse(w http.ResponseWriter) error
 }
 
-type ArchiveIdentity200ResponseHeaders struct {
-	ETag *string
-}
-
-type ArchiveIdentity200JSONResponse struct {
-	Body    Identity
-	Headers ArchiveIdentity200ResponseHeaders
-}
+type ArchiveIdentity200JSONResponse Identity
 
 func (response ArchiveIdentity200JSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type ArchiveIdentity401ApplicationProblemPlusJSONResponse struct {
+type ArchiveIdentity400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response ArchiveIdentity400ApplicationProblemPlusJSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveIdentity401ApplicationProblemPlusJSONResponse Problem
 
 func (response ArchiveIdentity401ApplicationProblemPlusJSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
 
@@ -8213,6 +10036,20 @@ func (response ArchiveIdentity401ApplicationProblemPlusJSONResponse) VisitArchiv
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveIdentity403ApplicationProblemPlusJSONResponse Problem
+
+func (response ArchiveIdentity403ApplicationProblemPlusJSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8259,6 +10096,37 @@ func (response ArchiveIdentity412ApplicationProblemPlusJSONResponse) VisitArchiv
 	return err
 }
 
+type ArchiveIdentity500ApplicationProblemPlusJSONResponse Problem
+
+func (response ArchiveIdentity500ApplicationProblemPlusJSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveIdentitydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ArchiveIdentitydefaultApplicationProblemPlusJSONResponse) VisitArchiveIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteIdentityCredentialsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8269,33 +10137,37 @@ type DeleteIdentityCredentialsResponseObject interface {
 	VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error
 }
 
-type DeleteIdentityCredentials200ResponseHeaders struct {
-	ETag *string
-}
-
-type DeleteIdentityCredentials200JSONResponse struct {
-	Body    Identity
-	Headers DeleteIdentityCredentials200ResponseHeaders
-}
+type DeleteIdentityCredentials200JSONResponse Identity
 
 func (response DeleteIdentityCredentials200JSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse struct {
+type DeleteIdentityCredentials400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response DeleteIdentityCredentials400ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse Problem
 
 func (response DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
 
@@ -8305,6 +10177,20 @@ func (response DeleteIdentityCredentials401ApplicationProblemPlusJSONResponse) V
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentials403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteIdentityCredentials403ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8351,6 +10237,37 @@ func (response DeleteIdentityCredentials412ApplicationProblemPlusJSONResponse) V
 	return err
 }
 
+type DeleteIdentityCredentials500ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteIdentityCredentials500ApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteIdentityCredentialsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteIdentityCredentialsdefaultApplicationProblemPlusJSONResponse) VisitDeleteIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutIdentityCredentialsRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8362,25 +10279,15 @@ type PutIdentityCredentialsResponseObject interface {
 	VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error
 }
 
-type PutIdentityCredentials200ResponseHeaders struct {
-	ETag *string
-}
-
-type PutIdentityCredentials200JSONResponse struct {
-	Body    Identity
-	Headers PutIdentityCredentials200ResponseHeaders
-}
+type PutIdentityCredentials200JSONResponse Identity
 
 func (response PutIdentityCredentials200JSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8412,6 +10319,20 @@ func (response PutIdentityCredentials401ApplicationProblemPlusJSONResponse) Visi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutIdentityCredentials403ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials403ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8458,6 +10379,20 @@ func (response PutIdentityCredentials412ApplicationProblemPlusJSONResponse) Visi
 	return err
 }
 
+type PutIdentityCredentials500ApplicationProblemPlusJSONResponse Problem
+
+func (response PutIdentityCredentials500ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutIdentityCredentials503ApplicationProblemPlusJSONResponse Problem
 
 func (response PutIdentityCredentials503ApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
@@ -8472,6 +10407,23 @@ func (response PutIdentityCredentials503ApplicationProblemPlusJSONResponse) Visi
 	return err
 }
 
+type PutIdentityCredentialsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response PutIdentityCredentialsdefaultApplicationProblemPlusJSONResponse) VisitPutIdentityCredentialsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DisableIdentityConnectionRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8482,33 +10434,37 @@ type DisableIdentityConnectionResponseObject interface {
 	VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error
 }
 
-type DisableIdentityConnection200ResponseHeaders struct {
-	ETag *string
-}
-
-type DisableIdentityConnection200JSONResponse struct {
-	Body    Identity
-	Headers DisableIdentityConnection200ResponseHeaders
-}
+type DisableIdentityConnection200JSONResponse Identity
 
 func (response DisableIdentityConnection200JSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type DisableIdentityConnection401ApplicationProblemPlusJSONResponse struct {
+type DisableIdentityConnection400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response DisableIdentityConnection400ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection401ApplicationProblemPlusJSONResponse Problem
 
 func (response DisableIdentityConnection401ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
 
@@ -8518,6 +10474,20 @@ func (response DisableIdentityConnection401ApplicationProblemPlusJSONResponse) V
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnection403ApplicationProblemPlusJSONResponse Problem
+
+func (response DisableIdentityConnection403ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8564,6 +10534,37 @@ func (response DisableIdentityConnection412ApplicationProblemPlusJSONResponse) V
 	return err
 }
 
+type DisableIdentityConnection500ApplicationProblemPlusJSONResponse Problem
+
+func (response DisableIdentityConnection500ApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableIdentityConnectiondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DisableIdentityConnectiondefaultApplicationProblemPlusJSONResponse) VisitDisableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type EnableIdentityConnectionRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8574,33 +10575,37 @@ type EnableIdentityConnectionResponseObject interface {
 	VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error
 }
 
-type EnableIdentityConnection200ResponseHeaders struct {
-	ETag *string
-}
-
-type EnableIdentityConnection200JSONResponse struct {
-	Body    ValidationOutcome
-	Headers EnableIdentityConnection200ResponseHeaders
-}
+type EnableIdentityConnection200JSONResponse ValidationOutcome
 
 func (response EnableIdentityConnection200JSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type EnableIdentityConnection401ApplicationProblemPlusJSONResponse struct {
+type EnableIdentityConnection400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response EnableIdentityConnection400ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection401ApplicationProblemPlusJSONResponse Problem
 
 func (response EnableIdentityConnection401ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
 
@@ -8610,6 +10615,20 @@ func (response EnableIdentityConnection401ApplicationProblemPlusJSONResponse) Vi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection403ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection403ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8656,26 +10675,30 @@ func (response EnableIdentityConnection412ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
-type EnableIdentityConnection422ResponseHeaders struct {
-	ETag *string
-}
+type EnableIdentityConnection422ApplicationProblemPlusJSONResponse Problem
 
-type EnableIdentityConnection422JSONResponse struct {
-	Body    ValidationOutcome
-	Headers EnableIdentityConnection422ResponseHeaders
-}
-
-func (response EnableIdentityConnection422JSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+func (response EnableIdentityConnection422ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
+	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EnableIdentityConnection500ApplicationProblemPlusJSONResponse Problem
+
+func (response EnableIdentityConnection500ApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8694,6 +10717,164 @@ func (response EnableIdentityConnection503ApplicationProblemPlusJSONResponse) Vi
 	return err
 }
 
+type EnableIdentityConnectiondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response EnableIdentityConnectiondefaultApplicationProblemPlusJSONResponse) VisitEnableIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnectionRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	IdentityId  IdentityID  `json:"identityId"`
+	Params      ValidateIdentityConnectionParams
+}
+
+type ValidateIdentityConnectionResponseObject interface {
+	VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error
+}
+
+type ValidateIdentityConnection200JSONResponse ValidationOutcome
+
+func (response ValidateIdentityConnection200JSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ValidateIdentityConnection400ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection401ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection401ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection403ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection403ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection404ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection404ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection409ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection409ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection500ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection500ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnection503ApplicationProblemPlusJSONResponse Problem
+
+func (response ValidateIdentityConnection503ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ValidateIdentityConnectiondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ValidateIdentityConnectiondefaultApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetManualBalancesRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8703,25 +10884,15 @@ type GetManualBalancesResponseObject interface {
 	VisitGetManualBalancesResponse(w http.ResponseWriter) error
 }
 
-type GetManualBalances200ResponseHeaders struct {
-	ETag *string
-}
-
-type GetManualBalances200JSONResponse struct {
-	Body    ManualBalanceState
-	Headers GetManualBalances200ResponseHeaders
-}
+type GetManualBalances200JSONResponse ManualBalanceState
 
 func (response GetManualBalances200JSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8813,6 +10984,37 @@ func (response GetManualBalances412ApplicationProblemPlusJSONResponse) VisitGetM
 	return err
 }
 
+type GetManualBalances500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetManualBalances500ApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetManualBalancesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetManualBalancesdefaultApplicationProblemPlusJSONResponse) VisitGetManualBalancesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateManualBalanceRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8824,25 +11026,15 @@ type CreateManualBalanceResponseObject interface {
 	VisitCreateManualBalanceResponse(w http.ResponseWriter) error
 }
 
-type CreateManualBalance200ResponseHeaders struct {
-	ETag *string
-}
-
-type CreateManualBalance200JSONResponse struct {
-	Body    ManualBalanceState
-	Headers CreateManualBalance200ResponseHeaders
-}
+type CreateManualBalance200JSONResponse ManualBalanceState
 
 func (response CreateManualBalance200JSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -8934,6 +11126,37 @@ func (response CreateManualBalance412ApplicationProblemPlusJSONResponse) VisitCr
 	return err
 }
 
+type CreateManualBalance500ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateManualBalance500ApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateManualBalancedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateManualBalancedefaultApplicationProblemPlusJSONResponse) VisitCreateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteManualBalanceRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -8945,25 +11168,15 @@ type DeleteManualBalanceResponseObject interface {
 	VisitDeleteManualBalanceResponse(w http.ResponseWriter) error
 }
 
-type DeleteManualBalance200ResponseHeaders struct {
-	ETag *string
-}
-
-type DeleteManualBalance200JSONResponse struct {
-	Body    ManualBalanceState
-	Headers DeleteManualBalance200ResponseHeaders
-}
+type DeleteManualBalance200JSONResponse ManualBalanceState
 
 func (response DeleteManualBalance200JSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -9055,6 +11268,37 @@ func (response DeleteManualBalance412ApplicationProblemPlusJSONResponse) VisitDe
 	return err
 }
 
+type DeleteManualBalance500ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteManualBalance500ApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteManualBalancedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteManualBalancedefaultApplicationProblemPlusJSONResponse) VisitDeleteManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateManualBalanceRequestObject struct {
 	PortfolioId PortfolioID `json:"portfolioId"`
 	IdentityId  IdentityID  `json:"identityId"`
@@ -9067,25 +11311,15 @@ type UpdateManualBalanceResponseObject interface {
 	VisitUpdateManualBalanceResponse(w http.ResponseWriter) error
 }
 
-type UpdateManualBalance200ResponseHeaders struct {
-	ETag *string
-}
-
-type UpdateManualBalance200JSONResponse struct {
-	Body    ManualBalanceState
-	Headers UpdateManualBalance200ResponseHeaders
-}
+type UpdateManualBalance200JSONResponse ManualBalanceState
 
 func (response UpdateManualBalance200JSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -9177,94 +11411,33 @@ func (response UpdateManualBalance412ApplicationProblemPlusJSONResponse) VisitUp
 	return err
 }
 
-type ValidateIdentityConnectionRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	IdentityId  IdentityID  `json:"identityId"`
-	Params      ValidateIdentityConnectionParams
+type UpdateManualBalance500ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateManualBalance500ApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-type ValidateIdentityConnectionResponseObject interface {
-	VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error
+type UpdateManualBalancedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
 }
 
-type ValidateIdentityConnection200ResponseHeaders struct {
-	ETag *string
-}
-
-type ValidateIdentityConnection200JSONResponse struct {
-	Body    ValidationOutcome
-	Headers ValidateIdentityConnection200ResponseHeaders
-}
-
-func (response ValidateIdentityConnection200JSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
+func (response UpdateManualBalancedefaultApplicationProblemPlusJSONResponse) VisitUpdateManualBalanceResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.ETag != nil {
-		w.Header().Set("ETag", fmt.Sprint(*response.Headers.ETag))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ValidateIdentityConnection401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ValidateIdentityConnection401ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ValidateIdentityConnection404ApplicationProblemPlusJSONResponse Problem
-
-func (response ValidateIdentityConnection404ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ValidateIdentityConnection409ApplicationProblemPlusJSONResponse Problem
-
-func (response ValidateIdentityConnection409ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ValidateIdentityConnection503ApplicationProblemPlusJSONResponse Problem
-
-func (response ValidateIdentityConnection503ApplicationProblemPlusJSONResponse) VisitValidateIdentityConnectionResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(503)
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9291,9 +11464,23 @@ func (response GetOverview200JSONResponse) VisitGetOverviewResponse(w http.Respo
 	return err
 }
 
-type GetOverview401ApplicationProblemPlusJSONResponse struct {
+type GetOverview400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetOverview400ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverview401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetOverview401ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
 
@@ -9303,6 +11490,20 @@ func (response GetOverview401ApplicationProblemPlusJSONResponse) VisitGetOvervie
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverview403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetOverview403ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9317,6 +11518,37 @@ func (response GetOverview404ApplicationProblemPlusJSONResponse) VisitGetOvervie
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverview500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetOverview500ApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOverviewdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetOverviewdefaultApplicationProblemPlusJSONResponse) VisitGetOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9374,6 +11606,20 @@ func (response ListPeriodCloses401ApplicationProblemPlusJSONResponse) VisitListP
 	return err
 }
 
+type ListPeriodCloses403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPeriodCloses403ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListPeriodCloses404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListPeriodCloses404ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
@@ -9384,6 +11630,37 @@ func (response ListPeriodCloses404ApplicationProblemPlusJSONResponse) VisitListP
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeriodCloses500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPeriodCloses500ApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPeriodClosesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListPeriodClosesdefaultApplicationProblemPlusJSONResponse) VisitListPeriodClosesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9441,6 +11718,20 @@ func (response ListPositions401ApplicationProblemPlusJSONResponse) VisitListPosi
 	return err
 }
 
+type ListPositions403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPositions403ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListPositions404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListPositions404ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
@@ -9455,121 +11746,30 @@ func (response ListPositions404ApplicationProblemPlusJSONResponse) VisitListPosi
 	return err
 }
 
-type GetHoldingsTreeRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-}
+type ListPositions410ApplicationProblemPlusJSONResponse Problem
 
-type GetHoldingsTreeResponseObject interface {
-	VisitGetHoldingsTreeResponse(w http.ResponseWriter) error
-}
-
-type GetHoldingsTree200JSONResponse HoldingsTree
-
-func (response GetHoldingsTree200JSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetHoldingsTree401ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response GetHoldingsTree401ApplicationProblemPlusJSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
+func (response ListPositions410ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
+	w.WriteHeader(410)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetHoldingsTree404ApplicationProblemPlusJSONResponse Problem
+type ListPositions500ApplicationProblemPlusJSONResponse Problem
 
-func (response GetHoldingsTree404ApplicationProblemPlusJSONResponse) VisitGetHoldingsTreeResponse(w http.ResponseWriter) error {
+func (response ListPositions500ApplicationProblemPlusJSONResponse) VisitListPositionsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuationPointsRequestObject struct {
-	PortfolioId PortfolioID `json:"portfolioId"`
-	Params      ListValuationPointsParams
-}
-
-type ListValuationPointsResponseObject interface {
-	VisitListValuationPointsResponse(w http.ResponseWriter) error
-}
-
-type ListValuationPoints200JSONResponse ValuationPointList
-
-func (response ListValuationPoints200JSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuationPoints400ApplicationProblemPlusJSONResponse struct {
-	ProblemApplicationProblemPlusJSONResponse
-}
-
-func (response ListValuationPoints400ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuationPoints401ApplicationProblemPlusJSONResponse Problem
-
-func (response ListValuationPoints401ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListValuationPoints404ApplicationProblemPlusJSONResponse Problem
-
-func (response ListValuationPoints404ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9627,6 +11827,20 @@ func (response ListValuationPointPage401ApplicationProblemPlusJSONResponse) Visi
 	return err
 }
 
+type ListValuationPointPage403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPointPage403ApplicationProblemPlusJSONResponse) VisitListValuationPointPageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListValuationPointPage404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListValuationPointPage404ApplicationProblemPlusJSONResponse) VisitListValuationPointPageResponse(w http.ResponseWriter) error {
@@ -9637,6 +11851,146 @@ func (response ListValuationPointPage404ApplicationProblemPlusJSONResponse) Visi
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPointPage500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPointPage500ApplicationProblemPlusJSONResponse) VisitListValuationPointPageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPointsRequestObject struct {
+	PortfolioId PortfolioID `json:"portfolioId"`
+	Params      ListValuationPointsParams
+}
+
+type ListValuationPointsResponseObject interface {
+	VisitListValuationPointsResponse(w http.ResponseWriter) error
+}
+
+type ListValuationPoints200JSONResponse ValuationPointList
+
+func (response ListValuationPoints200JSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListValuationPoints400ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints401ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints403ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints404ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints422ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints422ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPoints500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValuationPoints500ApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValuationPointsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListValuationPointsdefaultApplicationProblemPlusJSONResponse) VisitListValuationPointsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9664,9 +12018,23 @@ func (response GetValuationPoint200JSONResponse) VisitGetValuationPointResponse(
 	return err
 }
 
-type GetValuationPoint401ApplicationProblemPlusJSONResponse struct {
+type GetValuationPoint400ApplicationProblemPlusJSONResponse struct {
 	ProblemApplicationProblemPlusJSONResponse
 }
+
+func (response GetValuationPoint400ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPoint401ApplicationProblemPlusJSONResponse Problem
 
 func (response GetValuationPoint401ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
 
@@ -9676,6 +12044,20 @@ func (response GetValuationPoint401ApplicationProblemPlusJSONResponse) VisitGetV
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPoint403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationPoint403ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9690,6 +12072,37 @@ func (response GetValuationPoint404ApplicationProblemPlusJSONResponse) VisitGetV
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPoint500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationPoint500ApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationPointdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetValuationPointdefaultApplicationProblemPlusJSONResponse) VisitGetValuationPointResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9747,6 +12160,20 @@ func (response GetValuationSnapshot401ApplicationProblemPlusJSONResponse) VisitG
 	return err
 }
 
+type GetValuationSnapshot403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationSnapshot403ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetValuationSnapshot404ApplicationProblemPlusJSONResponse Problem
 
 func (response GetValuationSnapshot404ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
@@ -9757,6 +12184,37 @@ func (response GetValuationSnapshot404ApplicationProblemPlusJSONResponse) VisitG
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshot500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetValuationSnapshot500ApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetValuationSnapshotdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetValuationSnapshotdefaultApplicationProblemPlusJSONResponse) VisitGetValuationSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9814,6 +12272,20 @@ func (response ListValueChanges401ApplicationProblemPlusJSONResponse) VisitListV
 	return err
 }
 
+type ListValueChanges403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValueChanges403ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListValueChanges404ApplicationProblemPlusJSONResponse Problem
 
 func (response ListValueChanges404ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
@@ -9824,6 +12296,37 @@ func (response ListValueChanges404ApplicationProblemPlusJSONResponse) VisitListV
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChanges500ApplicationProblemPlusJSONResponse Problem
+
+func (response ListValueChanges500ApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListValueChangesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListValueChangesdefaultApplicationProblemPlusJSONResponse) VisitListValueChangesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9881,6 +12384,20 @@ func (response GetCustomValueChange401ApplicationProblemPlusJSONResponse) VisitG
 	return err
 }
 
+type GetCustomValueChange403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCustomValueChange403ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetCustomValueChange404ApplicationProblemPlusJSONResponse Problem
 
 func (response GetCustomValueChange404ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
@@ -9891,6 +12408,37 @@ func (response GetCustomValueChange404ApplicationProblemPlusJSONResponse) VisitG
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChange500ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCustomValueChange500ApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCustomValueChangedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetCustomValueChangedefaultApplicationProblemPlusJSONResponse) VisitGetCustomValueChangeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9995,22 +12543,13 @@ type StrictServerInterface interface {
 	// PatchPortfolio Update portfolio settings
 	// (PATCH /api/v1/portfolios/{portfolioId})
 	PatchPortfolio(ctx context.Context, request PatchPortfolioRequestObject) (PatchPortfolioResponseObject, error)
-	// ListAccountBalances Balances of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances)
-	ListAccountBalances(ctx context.Context, request ListAccountBalancesRequestObject) (ListAccountBalancesResponseObject, error)
-	// ListAccountDualPositions Dual positions of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions)
-	ListAccountDualPositions(ctx context.Context, request ListAccountDualPositionsRequestObject) (ListAccountDualPositionsResponseObject, error)
-	// ListAccountEarnPositions Earn positions of an account's current report
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions)
-	ListAccountEarnPositions(ctx context.Context, request ListAccountEarnPositionsRequestObject) (ListAccountEarnPositionsResponseObject, error)
-	// ListAccountPositions Positions of an account at the latest or a specified valuation point
-	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions)
-	ListAccountPositions(ctx context.Context, request ListAccountPositionsRequestObject) (ListAccountPositionsResponseObject, error)
+	// GetAccountReport Read one aligned account report and its holdings
+	// (GET /api/v1/portfolios/{portfolioId}/accounts/{accountId}/report)
+	GetAccountReport(ctx context.Context, request GetAccountReportRequestObject) (GetAccountReportResponseObject, error)
 	// ListAuditEvents List portfolio audit events
 	// (GET /api/v1/portfolios/{portfolioId}/audit-events)
 	ListAuditEvents(ctx context.Context, request ListAuditEventsRequestObject) (ListAuditEventsResponseObject, error)
-	// ListBalances Flat balance list across the boundary at the latest point
+	// ListBalances Flat balance list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/balances)
 	ListBalances(ctx context.Context, request ListBalancesRequestObject) (ListBalancesResponseObject, error)
 	// ListBoundaryEvents Derived boundary events between two instants
@@ -10052,10 +12591,10 @@ type StrictServerInterface interface {
 	// GetCollectionCycle Get one cycle with its per-account outcomes
 	// (GET /api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId})
 	GetCollectionCycle(ctx context.Context, request GetCollectionCycleRequestObject) (GetCollectionCycleResponseObject, error)
-	// ListDualPositions Flat dual position list across the boundary at the latest point
+	// ListDualPositions Flat dual position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/dual-positions)
 	ListDualPositions(ctx context.Context, request ListDualPositionsRequestObject) (ListDualPositionsResponseObject, error)
-	// ListEarnPositions Flat earn position list across the boundary at the latest point
+	// ListEarnPositions Flat earn position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/earn-positions)
 	ListEarnPositions(ctx context.Context, request ListEarnPositionsRequestObject) (ListEarnPositionsResponseObject, error)
 	// GetHistoryWindow Resolve a relative or portfolio-local history window
@@ -10077,17 +12616,20 @@ type StrictServerInterface interface {
 	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive)
 	ArchiveIdentity(ctx context.Context, request ArchiveIdentityRequestObject) (ArchiveIdentityResponseObject, error)
 	// DeleteIdentityCredentials Remove stored credentials
-	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	// (DELETE /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials)
 	DeleteIdentityCredentials(ctx context.Context, request DeleteIdentityCredentialsRequestObject) (DeleteIdentityCredentialsResponseObject, error)
 	// PutIdentityCredentials Store read-only API credentials (write-only)
-	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials)
+	// (PUT /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials)
 	PutIdentityCredentials(ctx context.Context, request PutIdentityCredentialsRequestObject) (PutIdentityCredentialsResponseObject, error)
 	// DisableIdentityConnection Stop scheduling the connection
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/disable)
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/disable)
 	DisableIdentityConnection(ctx context.Context, request DisableIdentityConnectionRequestObject) (DisableIdentityConnectionResponseObject, error)
 	// EnableIdentityConnection Validate and enable the connection for scheduling
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable)
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/enable)
 	EnableIdentityConnection(ctx context.Context, request EnableIdentityConnectionRequestObject) (EnableIdentityConnectionResponseObject, error)
+	// ValidateIdentityConnection Run one read-only validation call and store the outcome
+	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/validate)
+	ValidateIdentityConnection(ctx context.Context, request ValidateIdentityConnectionRequestObject) (ValidateIdentityConnectionResponseObject, error)
 	// GetManualBalances Read editable manual balances and last applied quantities
 	// (GET /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances)
 	GetManualBalances(ctx context.Context, request GetManualBalancesRequestObject) (GetManualBalancesResponseObject, error)
@@ -10100,27 +12642,21 @@ type StrictServerInterface interface {
 	// UpdateManualBalance Set a signed manual quantity; zero clears the balance
 	// (PATCH /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol})
 	UpdateManualBalance(ctx context.Context, request UpdateManualBalanceRequestObject) (UpdateManualBalanceResponseObject, error)
-	// ValidateIdentityConnection Run one read-only validation call and store the outcome
-	// (POST /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate)
-	ValidateIdentityConnection(ctx context.Context, request ValidateIdentityConnectionRequestObject) (ValidateIdentityConnectionResponseObject, error)
-	// GetOverview Latest valuation point with platform and identity totals
+	// GetOverview Latest valuation point and ownership tree in one consistent read
 	// (GET /api/v1/portfolios/{portfolioId}/overview)
 	GetOverview(ctx context.Context, request GetOverviewRequestObject) (GetOverviewResponseObject, error)
 	// ListPeriodCloses Period closes per period kind
 	// (GET /api/v1/portfolios/{portfolioId}/period-closes)
 	ListPeriodCloses(ctx context.Context, request ListPeriodClosesRequestObject) (ListPeriodClosesResponseObject, error)
-	// ListPositions Flat position list across the boundary at the latest point
+	// ListPositions Flat position list across the boundary at a selected valuation point
 	// (GET /api/v1/portfolios/{portfolioId}/positions)
 	ListPositions(ctx context.Context, request ListPositionsRequestObject) (ListPositionsResponseObject, error)
-	// GetHoldingsTree Platform → identity → account tree at the latest point
-	// (GET /api/v1/portfolios/{portfolioId}/tree)
-	GetHoldingsTree(ctx context.Context, request GetHoldingsTreeRequestObject) (GetHoldingsTreeResponseObject, error)
-	// ListValuationPoints Valuation point series
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
-	ListValuationPoints(ctx context.Context, request ListValuationPointsRequestObject) (ListValuationPointsResponseObject, error)
 	// ListValuationPointPage Raw valuation points, newest first
-	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/page)
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points)
 	ListValuationPointPage(ctx context.Context, request ListValuationPointPageRequestObject) (ListValuationPointPageResponseObject, error)
+	// ListValuationPoints Valuation point series
+	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/series)
+	ListValuationPoints(ctx context.Context, request ListValuationPointsRequestObject) (ListValuationPointsResponseObject, error)
 	// GetValuationPoint One valuation point with its account valuations
 	// (GET /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId})
 	GetValuationPoint(ctx context.Context, request GetValuationPointRequestObject) (GetValuationPointResponseObject, error)
@@ -10131,7 +12667,7 @@ type StrictServerInterface interface {
 	// (GET /api/v1/portfolios/{portfolioId}/value-changes)
 	ListValueChanges(ctx context.Context, request ListValueChangesRequestObject) (ListValueChangesResponseObject, error)
 	// GetCustomValueChange One value change between the last points at or before two instants
-	// (GET /api/v1/portfolios/{portfolioId}/value-changes/custom)
+	// (GET /api/v1/portfolios/{portfolioId}/value-changes/range)
 	GetCustomValueChange(ctx context.Context, request GetCustomValueChangeRequestObject) (GetCustomValueChangeResponseObject, error)
 	// GetHealthLive Process liveness
 	// (GET /health/live)
@@ -10583,108 +13119,27 @@ func (sh *strictHandler) PatchPortfolio(ctx *gin.Context, portfolioId PortfolioI
 	}
 }
 
-// ListAccountBalances operation middleware
-func (sh *strictHandler) ListAccountBalances(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID) {
-	var request ListAccountBalancesRequestObject
-
-	request.PortfolioId = portfolioId
-	request.AccountId = accountId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListAccountBalances(ctx, request.(ListAccountBalancesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListAccountBalances")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListAccountBalancesResponseObject); ok {
-		if err := validResponse.VisitListAccountBalancesResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListAccountDualPositions operation middleware
-func (sh *strictHandler) ListAccountDualPositions(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID) {
-	var request ListAccountDualPositionsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.AccountId = accountId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListAccountDualPositions(ctx, request.(ListAccountDualPositionsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListAccountDualPositions")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListAccountDualPositionsResponseObject); ok {
-		if err := validResponse.VisitListAccountDualPositionsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListAccountEarnPositions operation middleware
-func (sh *strictHandler) ListAccountEarnPositions(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID) {
-	var request ListAccountEarnPositionsRequestObject
-
-	request.PortfolioId = portfolioId
-	request.AccountId = accountId
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListAccountEarnPositions(ctx, request.(ListAccountEarnPositionsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListAccountEarnPositions")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListAccountEarnPositionsResponseObject); ok {
-		if err := validResponse.VisitListAccountEarnPositionsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListAccountPositions operation middleware
-func (sh *strictHandler) ListAccountPositions(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID, params ListAccountPositionsParams) {
-	var request ListAccountPositionsRequestObject
+// GetAccountReport operation middleware
+func (sh *strictHandler) GetAccountReport(ctx *gin.Context, portfolioId PortfolioID, accountId AccountID, params GetAccountReportParams) {
+	var request GetAccountReportRequestObject
 
 	request.PortfolioId = portfolioId
 	request.AccountId = accountId
 	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListAccountPositions(ctx, request.(ListAccountPositionsRequestObject))
+		return sh.ssi.GetAccountReport(ctx, request.(GetAccountReportRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListAccountPositions")
+		handler = middleware(handler, "GetAccountReport")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListAccountPositionsResponseObject); ok {
-		if err := validResponse.VisitListAccountPositionsResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(GetAccountReportResponseObject); ok {
+		if err := validResponse.VisitGetAccountReportResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11479,6 +13934,34 @@ func (sh *strictHandler) EnableIdentityConnection(ctx *gin.Context, portfolioId 
 	}
 }
 
+// ValidateIdentityConnection operation middleware
+func (sh *strictHandler) ValidateIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams) {
+	var request ValidateIdentityConnectionRequestObject
+
+	request.PortfolioId = portfolioId
+	request.IdentityId = identityId
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ValidateIdentityConnection(ctx, request.(ValidateIdentityConnectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ValidateIdentityConnection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(ValidateIdentityConnectionResponseObject); ok {
+		if err := validResponse.VisitValidateIdentityConnectionResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetManualBalances operation middleware
 func (sh *strictHandler) GetManualBalances(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID) {
 	var request GetManualBalancesRequestObject
@@ -11606,34 +14089,6 @@ func (sh *strictHandler) UpdateManualBalance(ctx *gin.Context, portfolioId Portf
 	}
 }
 
-// ValidateIdentityConnection operation middleware
-func (sh *strictHandler) ValidateIdentityConnection(ctx *gin.Context, portfolioId PortfolioID, identityId IdentityID, params ValidateIdentityConnectionParams) {
-	var request ValidateIdentityConnectionRequestObject
-
-	request.PortfolioId = portfolioId
-	request.IdentityId = identityId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ValidateIdentityConnection(ctx, request.(ValidateIdentityConnectionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ValidateIdentityConnection")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ValidateIdentityConnectionResponseObject); ok {
-		if err := validResponse.VisitValidateIdentityConnectionResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetOverview operation middleware
 func (sh *strictHandler) GetOverview(ctx *gin.Context, portfolioId PortfolioID) {
 	var request GetOverviewRequestObject
@@ -11714,25 +14169,26 @@ func (sh *strictHandler) ListPositions(ctx *gin.Context, portfolioId PortfolioID
 	}
 }
 
-// GetHoldingsTree operation middleware
-func (sh *strictHandler) GetHoldingsTree(ctx *gin.Context, portfolioId PortfolioID) {
-	var request GetHoldingsTreeRequestObject
+// ListValuationPointPage operation middleware
+func (sh *strictHandler) ListValuationPointPage(ctx *gin.Context, portfolioId PortfolioID, params ListValuationPointPageParams) {
+	var request ListValuationPointPageRequestObject
 
 	request.PortfolioId = portfolioId
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetHoldingsTree(ctx, request.(GetHoldingsTreeRequestObject))
+		return sh.ssi.ListValuationPointPage(ctx, request.(ListValuationPointPageRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetHoldingsTree")
+		handler = middleware(handler, "ListValuationPointPage")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetHoldingsTreeResponseObject); ok {
-		if err := validResponse.VisitGetHoldingsTreeResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(ListValuationPointPageResponseObject); ok {
+		if err := validResponse.VisitListValuationPointPageResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11760,33 +14216,6 @@ func (sh *strictHandler) ListValuationPoints(ctx *gin.Context, portfolioId Portf
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(ListValuationPointsResponseObject); ok {
 		if err := validResponse.VisitListValuationPointsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListValuationPointPage operation middleware
-func (sh *strictHandler) ListValuationPointPage(ctx *gin.Context, portfolioId PortfolioID, params ListValuationPointPageParams) {
-	var request ListValuationPointPageRequestObject
-
-	request.PortfolioId = portfolioId
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListValuationPointPage(ctx, request.(ListValuationPointPageRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListValuationPointPage")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListValuationPointPageResponseObject); ok {
-		if err := validResponse.VisitListValuationPointPageResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -11955,171 +14384,227 @@ func (sh *strictHandler) GetHealthReady(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

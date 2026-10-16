@@ -41,13 +41,6 @@ func nonNilUUIDPtr(v uuid.UUID) *uuid.UUID {
 	return &v
 }
 
-func nonNilStrings(v []string) []string {
-	if v == nil {
-		return []string{}
-	}
-	return v
-}
-
 func toCursorPage(limit int, next *string, hasMore bool) api.CursorPage {
 	return api.CursorPage{Kind: api.Cursor, Limit: limit, NextCursor: next, HasMore: hasMore}
 }

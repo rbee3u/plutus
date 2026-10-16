@@ -32,7 +32,7 @@ func toAPICyclePoint(cycleID uuid.UUID, p *cycles.Point, boundaryContributionUSD
 		completeness = api.Incomplete
 	}
 	return &api.ValuationPointSummary{
-		CycleId: cycleID, ValuationRevision: p.Revision, CalculationVersion: int64(p.CalculationVersion), // #nosec G115 -- Application algorithm versions are positive, code-owned constants far below MaxInt64.
+		CycleId: cycleID, CalculationVersion: int64(p.CalculationVersion), // #nosec G115 -- Application algorithm versions are positive, code-owned constants far below MaxInt64.
 		EvaluatedAt:             p.EvaluatedAt,
 		TotalUsd:                p.TotalUSD,
 		Completeness:            completeness,

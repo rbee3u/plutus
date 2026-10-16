@@ -31,6 +31,13 @@ async function fixture(page: Page, initialPoint = true) {
       JSON.stringify(state.applied.map((i) => [i.assetSymbol, i.quantity])),
   });
   const account = (): AccountValuation => ({
+    sourceReportId: null,
+    reportedEquityUsd: null,
+    adjustedEquityUsd: null,
+    availableEquityUsd: null,
+    initialMarginRatio: null,
+    maintenanceMarginRatio: null,
+    marginRatio: null,
     accountId: "manual",
     accountName: "Manual",
     accountType: "manual",
@@ -57,7 +64,7 @@ async function fixture(page: Page, initialPoint = true) {
     state.point
       ? {
           cycleId: "point",
-          valuationRevision: "point:1",
+
           calculationVersion: 1,
           evaluatedAt: at,
           totalUsd: state.applied[0]?.quantity ?? "0",
@@ -112,8 +119,8 @@ async function fixture(page: Page, initialPoint = true) {
         return route.fulfill({ json: { items: [], page: { offset: 0, limit: 200, total: 0 } } });
       if (path.includes("/manual-balances")) {
         if (method !== "GET") {
-          state.versions.push(req.headers()["if-match"]);
-          if (state.conflict || req.headers()["if-match"] !== `"manual:${state.version}"`) {
+          state.versions.push(req.headers()["if-edit-version"]);
+          if (state.conflict || req.headers()["if-edit-version"] !== String(state.version)) {
             state.conflict = false;
             return route.fulfill({ status: 412, json: { detail: "Concurrent update" } });
           }
@@ -139,30 +146,13 @@ async function fixture(page: Page, initialPoint = true) {
                 ];
           state.version++;
         }
-        return route.fulfill({ json: ledger(), headers: { ETag: `"manual:${state.version}"` } });
+        return route.fulfill({ json: ledger(), headers: { ETag: String(state.version) } });
       }
       if (path.endsWith("/overview"))
         return route.fulfill({
           json: {
             context: context(),
             point: point(),
-            totalUsd: point()?.totalUsd ?? null,
-            completeness: "complete",
-            accountCount: 1,
-            staleAccountCount: 0,
-            incompleteAccountCount: 0,
-            byPlatform: [],
-            byIdentity: [],
-            issues: [],
-            sparkline: [],
-          },
-        });
-      if (path.endsWith("/tree"))
-        return route.fulfill({
-          json: {
-            context: context(),
-            totalUsd: point()?.totalUsd ?? null,
-            completeness: "complete",
             issues: [],
             platforms: [
               {
@@ -185,8 +175,13 @@ async function fixture(page: Page, initialPoint = true) {
             ],
           },
         });
-      if (path.endsWith("/balances")) {
+      if (path.endsWith("/balances") || path.endsWith("/report")) {
         const items: BalanceRow[] = state.applied.map((item) => ({
+          availableToWithdraw: null,
+          availableToTrade: null,
+          liability: null,
+          interest: null,
+          unrealizedPnl: null,
           ...item,
           ...account(),
           assetSymbol: item.assetSymbol,
@@ -206,6 +201,11 @@ async function fixture(page: Page, initialPoint = true) {
         for (const item of state.items) {
           if (!state.applied.some((applied) => applied.assetSymbol === item.assetSymbol)) {
             items.push({
+              availableToWithdraw: null,
+              availableToTrade: null,
+              liability: null,
+              interest: null,
+              unrealizedPnl: null,
               ...item,
               ...account(),
               assetSymbol: item.assetSymbol,
@@ -213,20 +213,35 @@ async function fixture(page: Page, initialPoint = true) {
               priceUsd: null,
               equityUsd: null,
               noPrice: false,
-              freshness: "fresh",
+              freshness: null,
               reportObservedAt: null,
               manualChange: "added",
               manualQuantity: item.quantity,
             });
           }
         }
+        if (path.endsWith("/report"))
+          return route.fulfill({
+            json: {
+              context: context(),
+              account: account(),
+              balances: items,
+              positions: [],
+              earnPositions: [],
+              dualPositions: [],
+              issues: [],
+            },
+          });
         return route.fulfill({
           json: {
             context: context(),
-            account: account(),
             items,
-            totalUsd: point()?.totalUsd ?? null,
-            completeness: "complete",
+            filteredTotalCompleteness: "complete",
+            filteredTotalIssues: [],
+            manualOverlay: null,
+            coverage: { complete: true, missingAccountIds: [] },
+            filteredTotalUsd: point()?.totalUsd ?? null,
+            valuationCompleteness: "complete",
             groups: [],
             issues: [],
             page: { offset: 0, limit: 50, total: items.length },
@@ -264,7 +279,7 @@ async function fixture(page: Page, initialPoint = true) {
       }
       if (path.endsWith("/history-window"))
         return route.fulfill({ json: { context: context(), from: at, to: at } });
-      if (path.endsWith("/valuation-points"))
+      if (path.endsWith("/valuation-points/series"))
         return route.fulfill({
           json: { context: context(), from: at, to: at, granularity: "raw", items: [] },
         });
@@ -376,18 +391,16 @@ test("Adding recovers from a version conflict without losing the draft", async (
   await expect(dialog).toBeHidden();
 });
 
-test("Manual drafts keep their version during reconnect reads, including version zero", async ({
-  page,
-}) => {
+test("Manual drafts keep their initial revision during reconnect reads", async ({ page }) => {
   const state = await fixture(page, false);
-  state.version = 0;
+  state.version = 1;
   await page.goto(`/p/${portfolioId}/holdings/balances`);
   await page.getByRole("button", { name: "Add manual balance", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Manual balances" });
   await dialog.getByRole("combobox", { name: "Identity", exact: true }).selectOption("owner");
   await dialog.getByRole("textbox", { name: "Asset code" }).fill("USD");
   await dialog.getByRole("textbox", { name: /^Quantity/ }).fill("100");
-  state.version = 1;
+  state.version = 2;
   const read = page.waitForResponse(
     (response) =>
       response.url().endsWith("/manual-balances") && response.request().method() === "GET",
@@ -399,10 +412,10 @@ test("Manual drafts keep their version during reconnect reads, including version
   await read;
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText("changed elsewhere");
-  expect(state.versions).toEqual(['"manual:0"']);
+  expect(state.versions).toEqual(["1"]);
   await dialog.getByRole("button", { name: "Reload current records" }).click();
   await expect(dialog.getByRole("textbox", { name: /^Quantity/ })).toHaveValue("100");
   await dialog.getByRole("button", { name: "Save quantity", exact: true }).click();
   await expect(dialog).toBeHidden();
-  expect(state.versions).toEqual(['"manual:0"', '"manual:1"']);
+  expect(state.versions).toEqual(["1", "2"]);
 });

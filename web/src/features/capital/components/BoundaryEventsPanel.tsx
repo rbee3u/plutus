@@ -1,14 +1,13 @@
+import { useEffect } from "react";
+import { Pager } from "@/shared/ui/Pager";
+import { readOffset } from "@/shared/lib/searchParams";
 import { keys, listBoundaryEvents } from "@/api";
 import type { BoundaryEventList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { useTimeWindow } from "@/shared/lib/useTimeWindow";
-import {
-  BOUNDARY_COLUMNS,
-  boundaryEventRow,
-  newestBoundaryEvents,
-} from "@/shared/lib/valuationRows";
+import { BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DataTable } from "@/shared/ui/DataTable";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
@@ -18,24 +17,36 @@ import styles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
-  const timeWindow = useTimeWindow({ defaultPreset: "1W" });
+  const timeWindow = useTimeWindow({
+    defaultPreset: "1W",
+    onSelectPreset: () => ({ offset: "" }),
+    onApply: () => ({ offset: "" }),
+  });
   const window = timeWindow.window;
+  const offset = readOffset(timeWindow.params);
   const from = window?.from;
   const to = window?.to;
 
   const platforms = usePlatforms();
 
   const events = usePortfolioQuery<BoundaryEventList>({
-    key: (userId, portfolioId) => keys.boundaryEvents(userId, portfolioId, from, to),
+    key: (userId, portfolioId) => keys.boundaryEvents(userId, portfolioId, from, to, offset),
     ready: Boolean(from && to),
     load: (portfolioId) =>
       listBoundaryEvents({
         path: { portfolioId },
-        query: { from: from!, to: to! },
+        query: { from: from!, to: to!, offset, limit: 50 },
       }),
   });
 
-  const items = newestBoundaryEvents(events.data?.items ?? []);
+  useEffect(() => {
+    const total = events.data?.page.total;
+    if (total !== undefined && offset > 0 && offset >= total) {
+      timeWindow.update({ offset: String(Math.max(0, Math.ceil(total / 50) - 1) * 50) });
+    }
+  }, [events.data?.page.total, offset, timeWindow]);
+
+  const items = events.data?.items ?? [];
 
   return (
     <>
@@ -44,7 +55,8 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
       <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
         <div className={`${shared.summaryBar} ${styles.summaryBar}`}>
           <span className={shared.summaryCount}>
-            {formatCount(items.length)} {items.length === 1 ? "event" : "events"}
+            {formatCount(events.data?.page.total ?? 0)}{" "}
+            {events.data?.page.total === 1 ? "event" : "events"}
           </span>
         </div>
       </div>
@@ -74,6 +86,15 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
           )
         }
       />
+      {events.data ? (
+        <Pager
+          offset={offset}
+          limit={events.data.page.limit}
+          total={events.data.page.total}
+          busy={events.isFetching}
+          onChange={(next) => timeWindow.update({ offset: next ? String(next) : "" })}
+        />
+      ) : null}
     </>
   );
 }

@@ -22,7 +22,15 @@ const item: EarnPositionRow = {
     { assetSymbol: "ZETH", canonicalAssetSymbol: "ETH", amount: "1" },
     { assetSymbol: "USDT", amount: "2" },
   ],
-  rates: [{ value: "0.04", kind: "apy", qualifier: "estimated", label: "Estimated APY" }],
+  rates: [
+    {
+      upper: null,
+      value: "0.04",
+      kind: "apy",
+      qualifier: "estimated",
+      label: "Estimated APY",
+    },
+  ],
   rewards: [
     { assetSymbol: "USDT", amount: "0.2", kind: "cumulative" },
     { assetSymbol: "COMP", amount: "0.1", kind: "estimated" },
@@ -112,6 +120,7 @@ describe("Earn presentation", () => {
         timezone="Asia/Shanghai"
         items={[
           {
+            targetPrice: null,
             accountId: "dual",
             accountName: "Dual",
             accountType: "dual_investment",

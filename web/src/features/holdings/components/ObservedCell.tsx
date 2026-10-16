@@ -13,7 +13,7 @@ export function IssuesCell({
   timezone,
 }: {
   observedAt?: string | null;
-  freshness: string;
+  freshness: string | null;
   issues?: Issue[];
   name: string;
   timezone?: string;

@@ -5,3 +5,7 @@ VALUES (sqlc.arg(portfolio_id), sqlc.arg(report_id), sqlc.arg(position_key), sql
 -- name: ListEarnPositionsByReport :many
 SELECT * FROM earn_positions WHERE portfolio_id = sqlc.arg(portfolio_id) AND report_id = sqlc.arg(report_id)
 ORDER BY position_key;
+
+-- name: ListEarnPositionsByReports :many
+SELECT * FROM earn_positions WHERE portfolio_id = sqlc.arg(portfolio_id) AND report_id IN (sqlc.slice('report_ids'))
+ORDER BY report_id, position_key;

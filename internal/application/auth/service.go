@@ -69,7 +69,10 @@ func (s *Service) Login(ctx context.Context, username, password, ip, userAgent s
 		return User{}, Session{}, ErrUserDisabled
 	}
 	ok, rehash, err := VerifyPassword(password, row.PasswordHash)
-	if err != nil || !ok {
+	if err != nil {
+		return User{}, Session{}, err
+	}
+	if !ok {
 		return User{}, Session{}, ErrInvalidCredentials
 	}
 	var replacement string

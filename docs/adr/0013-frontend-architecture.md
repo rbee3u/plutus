@@ -13,9 +13,11 @@ compound selectors and cascade-sensitive rules stay within one CSS module.
 `QueryClient` owns the authenticated user and portfolio list. Shared mechanics
 handle authentication, CSRF, cache keys, invalidation, and navigation; features
 retain SDK results and their conflict, validation, idempotency, and editor
-state. Holdings owns view memory; settings owns portfolio creation; `Shell` owns
-selection and navigation. Password business rejections do not end sessions.
-Session lists load on entry and revocation without background refresh.
+state. Holdings pins each browsing view to one valuation point, with current
+manual edits explicitly overlaid; it owns view memory; settings owns portfolio
+creation; `Shell` owns selection and navigation. Password business rejections
+use a distinct status and do not end sessions. Session lists load on entry and
+revocation without background refresh.
 
 Split components by responsibility, not line count. Holdings shares filters,
 recovery, summaries, pagination, and report reads while product pages retain

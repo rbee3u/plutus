@@ -6,7 +6,7 @@ export function holdingsListRequest(filters: Pick<HoldingsFilters, "values" | "o
   return {
     platform: platform || undefined,
     identityId: identityId || undefined,
-    symbol: symbol || undefined,
+    q: symbol || undefined,
     offset: filters.offset,
     limit: 50,
   };

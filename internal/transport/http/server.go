@@ -79,6 +79,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 	engine.Use(limitBody(1 << 20))
 	engine.Use(captureBody())
 	engine.Use(rejectBadOrigin(opts.AllowedOrigins))
+	engine.Use(validateContract())
 	services := opts.Services
 	if services == nil {
 		services = &app.Services{}
@@ -95,7 +96,7 @@ func Engine(opts *EngineOptions) *gin.Engine {
 		HandlerErrorFunc:         handlerError,
 		ResponseErrorHandlerFunc: handlerError,
 	})
-	api.RegisterHandlers(engine, strict)
+	api.RegisterHandlersWithOptions(engine, strict, api.GinServerOptions{ErrorHandler: func(c *gin.Context, err error, _ int) { requestError(c, err) }})
 	mountWeb(engine)
 	return engine
 }

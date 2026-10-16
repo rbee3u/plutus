@@ -2,6 +2,7 @@ package financial
 
 import (
 	"encoding/binary"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -76,12 +77,12 @@ func TestSparseHistoryPreservesExpiredComparisonEvidence(t *testing.T) {
 		t.Fatalf("comparison lost amounts or incompleteness: %+v", change)
 	}
 	counts := map[string]int{}
-	for _, reason := range change.Reasons {
-		counts[strings.SplitN(reason, ":", 2)[0]]++
+	for _, reason := range change.Issues {
+		counts[reason.Code]++
 	}
 	for reason, want := range map[string]int{"calculation_version_changed": 2, "asset_mapping_changed": 2, "manual_balance_changed": 1, "boundary_incomplete": 1, "unvalued_boundary_event": 1} {
 		if counts[reason] != want {
-			t.Errorf("reason %s: got %d want %d (%v)", reason, counts[reason], want, change.Reasons)
+			t.Errorf("reason %s: got %d want %d (%v)", reason, counts[reason], want, change.Issues)
 		}
 	}
 	headers, err := sqlcgen.New(db).ListComparisonPointHeadersBetween(ctx, sqlcgen.ListComparisonPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: start.Add(time.Microsecond), ToAt: ats[599]})
@@ -100,7 +101,7 @@ func TestSparseHistoryPreservesExpiredComparisonEvidence(t *testing.T) {
 		t.Fatalf("calendar closing boundary or missing day changed: %+v", closes)
 	}
 	monthly, err := service.PeriodCloses(ctx, p, PeriodMonth, start, start.AddDate(0, 0, 1))
-	if err != nil || len(monthly) != 1 || monthly[0].Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(monthly[0].Reasons, ";"), "2025-01-05") {
+	if err != nil || len(monthly) != 1 || monthly[0].Completeness != valuation.CompletenessIncomplete || !strings.Contains(fmt.Sprint(monthly[0].Issues), "2025-01-05") {
 		t.Fatalf("calendar coverage lost missing day: %+v %v", monthly, err)
 	}
 }
@@ -170,14 +171,69 @@ func TestCalendarListsStartAtRetainedHistoryAndPreserveGaps(t *testing.T) {
 	if err != nil || len(monthly) != 1 || monthly[0].Label != "2025-01" {
 		t.Fatalf("monthly rows: %+v %v", monthly, err)
 	}
-	if !monthly[0].PeriodStart.Equal(time.Date(2025, 1, 1, 0, 0, 0, 0, loc)) || !strings.Contains(strings.Join(monthly[0].Reasons, ";"), "days_without_points: 2025-01-13, 2025-01-16") {
+	if !monthly[0].PeriodStart.Equal(time.Date(2025, 1, 1, 0, 0, 0, 0, loc)) || (len(monthly[0].Issues) != 1 || monthly[0].Issues[0].Code != "days_without_points" || !strings.HasPrefix(monthly[0].Issues[0].Detail, "2025-01-13, 2025-01-16")) {
 		t.Fatalf("monthly history coverage: %+v", monthly[0])
 	}
 	weekly, err := service.PeriodCloses(ctx, p, PeriodWeek, day.AddDate(0, 0, -7), day.AddDate(0, 0, 1))
-	if err != nil || len(weekly) != 1 || weekly[0].Completeness != valuation.CompletenessIncomplete || strings.Contains(strings.Join(weekly[0].Reasons, ";"), "days_without_points") {
+	if err != nil || len(weekly) != 1 || weekly[0].Completeness != valuation.CompletenessIncomplete || strings.Contains(fmt.Sprint(weekly[0].Issues), "days_without_points") {
 		t.Fatalf("first incomplete point or pre-history weekly coverage lost: %+v %v", weekly, err)
 	}
 	// Retention can leave older physical rows while its read boundary advances.
 	exec("UPDATE portfolios SET history_before=? WHERE id=?", day.AddDate(0, 0, 2).UTC(), p.ID[:])
 	assertLabels(day.AddDate(0, 0, -7), day.AddDate(0, 0, 4), []string{"2025-01-14", "2025-01-15"})
+}
+
+func TestComparisonAvailabilityAndKnownZero(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	ctx := t.Context()
+	user, err := auth.NewService(db, time.Hour, 24*time.Hour).CreateUser(ctx, "compare-"+uuid.NewString()[:8], "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	owned, err := portfolio.NewService(db).List(ctx, user.ID)
+	if err != nil || len(owned) != 1 {
+		t.Fatalf("portfolios: %+v %v", owned, err)
+	}
+	p := PortfolioContext{ID: owned[0].ID, Timezone: "UTC"}
+	start := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+	for i, id := range ids {
+		at := start.Add(time.Duration(i) * time.Hour)
+		if _, err := db.ExecContext(ctx, "INSERT INTO collection_cycles(portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES(?,?,'succeeded','user',?,?,?,?)", p.ID[:], id[:], at, at, at, at); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.ExecContext(ctx, "INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version) VALUES(?,?,?,100,1,0,0,1)", p.ID[:], id[:], at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	service := NewService(db, valuation.NewService(db))
+	for _, window := range [][2]time.Time{{start.Add(-time.Hour), start.Add(time.Hour)}, {start, start.Add(time.Minute)}, {start.Add(-2 * time.Hour), start.Add(-time.Hour)}} {
+		change, err := service.CustomValueChange(ctx, p, window[0], window[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if change.Comparable || change.AmountUSD != nil || change.ContributionsUSD != nil || change.WithdrawalsUSD != nil || change.BoundaryContributionsUSD != nil || change.BoundaryWithdrawalsUSD != nil || len(change.Issues) == 0 || change.FlowsCompleteness != valuation.CompletenessIncomplete {
+			t.Fatalf("unknown comparison encoded a zero: %+v", change)
+		}
+	}
+	change, err := service.CustomValueChange(ctx, p, start, start.Add(time.Hour))
+	if err != nil || !change.Comparable || change.AmountUSD == nil || *change.AmountUSD != "0" || change.ContributionsUSD == nil || *change.ContributionsUSD != "0" || change.FlowsCompleteness != valuation.CompletenessComplete {
+		t.Fatalf("known zero: %+v %v", change, err)
+	}
+	flow := uuid.New()
+	if _, err := db.ExecContext(ctx, "INSERT INTO capital_flows(portfolio_id,id,direction,canonical_asset_symbol,quantity,effective_at,pricing_method,pricing_attempted_at,calculation_version,version,created_at,updated_at) VALUES(?,?,'contribution','DEMO',2,?,'unavailable',?,1,1,?,?)", p.ID[:], flow[:], start.Add(30*time.Minute), start, start, start); err != nil {
+		t.Fatal(err)
+	}
+	change, err = service.CustomValueChange(ctx, p, start, start.Add(time.Hour))
+	if err != nil || !change.Comparable || change.AmountUSD == nil || *change.AmountUSD != "0" || change.Completeness != valuation.CompletenessIncomplete || change.FlowsCompleteness != valuation.CompletenessIncomplete || len(change.Issues) != 1 || change.Issues[0].Code != "unvalued_flow" || change.Issues[0].FlowID == nil || *change.Issues[0].FlowID != flow {
+		t.Fatalf("unknown flow lost identity or known values: %+v %v", change, err)
+	}
+	// Committed point summaries can still be incomplete without losing the known difference.
+	if _, err := db.ExecContext(ctx, "UPDATE valuation_points SET incomplete_account_count=1 WHERE portfolio_id=? AND cycle_id=?", p.ID[:], ids[1][:]); err != nil {
+		t.Fatal(err)
+	}
+	change, err = service.CustomValueChange(ctx, p, start, start.Add(time.Hour))
+	if err != nil || !change.Comparable || change.AmountUSD == nil || *change.AmountUSD != "0" || change.Completeness != valuation.CompletenessIncomplete {
+		t.Fatalf("partial comparison: %+v %v", change, err)
+	}
 }

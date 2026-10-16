@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { Pager } from "@/shared/ui/Pager";
+import { readOffset } from "@/shared/lib/searchParams";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
@@ -28,7 +31,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import { TimeWindowFilters } from "@/shared/ui/TimeWindowFilters";
 import { FlowActions } from "./FlowActions";
-import { CapitalFlowDialog, type FlowDialogRequest, flowEtag } from "../dialogs/CapitalFlowDialog";
+import { CapitalFlowDialog, type FlowDialogRequest } from "../dialogs/CapitalFlowDialog";
 import styles from "../styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
@@ -42,8 +45,13 @@ export function CapitalFlowsPanel({
   const { userId, redirect } = useSessionScope();
   const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
-  const timeWindow = useTimeWindow({ defaultPreset: "1W" });
+  const timeWindow = useTimeWindow({
+    defaultPreset: "1W",
+    onSelectPreset: () => ({ offset: "" }),
+    onApply: () => ({ offset: "" }),
+  });
   const window = timeWindow.window;
+  const offset = readOffset(timeWindow.params);
   const from = window?.from;
   const to = window?.to;
 
@@ -57,17 +65,20 @@ export function CapitalFlowsPanel({
   const [busy, setBusy] = useState(false);
 
   const flows = usePortfolioQuery<CapitalFlowList>({
-    key: (userId, portfolioId) => keys.capitalFlows(userId, portfolioId, from, to),
+    key: (userId, portfolioId) => keys.capitalFlows(userId, portfolioId, from, to, offset),
     ready: Boolean(from && to),
     load: (portfolioId) =>
       listCapitalFlows({
         path: { portfolioId },
-        query: { from: from!, to: to! },
+        query: { from: from!, to: to!, offset, limit: 50 },
       }),
   });
 
   async function invalidate() {
-    await invalidatePortfolioReads(queryClient, userId, portfolioId);
+    timeWindow.update({ offset: "" });
+    await invalidatePortfolioReads(queryClient, userId, portfolioId, {
+      preserveHistoryWindow: true,
+    });
   }
 
   function openCreate() {
@@ -109,7 +120,7 @@ export function CapitalFlowsPanel({
       const result = await write(() =>
         deleteCapitalFlow({
           path: { portfolioId, flowId },
-          headers: { "If-Match": flowEtag(deleteTarget) },
+          headers: { "If-Edit-Version": String(deleteTarget.version) },
         }),
       );
       if (result.response?.status === 412) {
@@ -134,6 +145,13 @@ export function CapitalFlowsPanel({
     }
   }
 
+  useEffect(() => {
+    const total = flows.data?.page.total;
+    if (total !== undefined && offset > 0 && offset >= total) {
+      timeWindow.update({ offset: String(Math.max(0, Math.ceil(total / 50) - 1) * 50) });
+    }
+  }, [flows.data?.page.total, offset, timeWindow]);
+
   const items = flows.data?.items ?? [];
 
   return (
@@ -153,7 +171,8 @@ export function CapitalFlowsPanel({
       <div className={`${shared.tableToolbar} ${styles.tableToolbar}`}>
         <div className={`${shared.summaryBar} ${styles.summaryBar}`}>
           <span className={shared.summaryCount}>
-            {formatCount(items.length)} {items.length === 1 ? "flow" : "flows"}
+            {formatCount(flows.data?.page.total ?? 0)}{" "}
+            {flows.data?.page.total === 1 ? "flow" : "flows"}
           </span>
         </div>
         <div className={`${shared.toolbarActions} ${styles.toolbarActions}`}>
@@ -240,6 +259,15 @@ export function CapitalFlowsPanel({
           )
         }
       />
+      {flows.data ? (
+        <Pager
+          offset={offset}
+          limit={flows.data.page.limit}
+          total={flows.data.page.total}
+          busy={flows.isFetching}
+          onChange={(next) => timeWindow.update({ offset: next ? String(next) : "" })}
+        />
+      ) : null}
       <CapitalFlowDialog
         portfolioId={portfolioId}
         timezone={timezone}

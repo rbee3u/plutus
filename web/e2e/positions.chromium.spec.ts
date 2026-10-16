@@ -5,6 +5,8 @@ import type { PositionList, PositionRow } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
 const position: PositionRow = {
+  liquidationPrice: null,
+  unrealizedPnl: null,
   accountId: "00000000-0000-7000-8000-000000000003",
   accountName: "Trading",
   accountType: "trading",
@@ -25,14 +27,16 @@ const position: PositionRow = {
   quoteAssetSymbol: "USD",
   settlementAssetSymbol: "BTC",
   contractSize: "100",
-  leverage: "3",
+  displayLeverage: "3",
+  marginUnavailableCode: null,
+  reportedLeverage: "3",
   entryPrice: "50000.123456789123456789",
   markPrice: "50000",
   marginSetting: "cross",
   marginBasis: "initial",
   marginAssetSymbol: "USD",
-  margin: "100",
-  settleMargin: "0.002",
+  reportedMargin: "100",
+  settlementMargin: "0.002",
   marginSource: "reported",
   portfolioMargin: false,
   freshness: "stale",
@@ -57,6 +61,7 @@ const delivery: PositionRow = {
 
 const calculated: PositionRow = {
   ...position,
+  displayLeverage: null,
   futuresSymbol: "ZECUSDT",
   kind: "linear_perpetual",
   platform: "binance",
@@ -72,10 +77,10 @@ const calculated: PositionRow = {
   sizeSymbol: "ZEC",
   contractSize: null,
   markPrice: "1317.81",
-  leverage: "3",
+  reportedLeverage: "3",
   portfolioMargin: true,
-  settleMargin: "219.635",
-  margin: null,
+  settlementMargin: "219.635",
+  reportedMargin: null,
   marginAssetSymbol: null,
   marginBasis: null,
   marginSource: "calculated",
@@ -85,6 +90,7 @@ const calculated: PositionRow = {
 
 const isolated: PositionRow = {
   ...position,
+  displayLeverage: "1.88",
   futuresSymbol: "ETHUSDT",
   kind: "linear_perpetual",
   baseAssetSymbol: "ETH",
@@ -92,24 +98,26 @@ const isolated: PositionRow = {
   sourceQuantityUnit: "base",
   sizeSymbol: "ETH",
   notionalUsd: "1880",
-  leverage: "10",
+  reportedLeverage: "10",
   positionKey: "um:ETHUSDT:LONG",
   futuresContractId: "00000000-0000-7000-8000-000000000009",
   marginSetting: "isolated",
   marginBasis: "allocated",
-  margin: "1000",
+  reportedMargin: "1000",
   marginAssetSymbol: "USDT",
   settlementAssetSymbol: "USDT",
-  settleMargin: "1000",
+  settlementMargin: "1000",
   portfolioMargin: true,
 };
 
 const unavailable: PositionRow = {
   ...position,
+  displayLeverage: null,
+  marginUnavailableCode: "shared_portfolio_margin",
   futuresSymbol: "BTCUSDT",
   positionKey: "BTCUSDT:0",
   futuresContractId: "00000000-0000-7000-8000-000000000010",
-  settleMargin: null,
+  settlementMargin: null,
   marginSource: null,
   marginUnavailableReason:
     "This portfolio margin regime does not provide an independent position initial requirement.",
@@ -136,13 +144,15 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
         return route.fulfill({
           json: {
             context: {
+              evaluatedAt: null,
               portfolioId,
               timezone: "Asia/Shanghai",
               cycleId: "00000000-0000-7000-8000-000000000006",
             },
             items: [position, delivery, calculated, isolated, unavailable],
-            totalNotionalUsd: "1000",
-            completeness: "complete",
+            boundaryNotionalUsd: "1000",
+            coverage: { complete: true, missingAccountIds: [] },
+            notionalCompleteness: "complete",
             issues: position.issues,
             page: { kind: "offset", limit: 50, offset: 0, total: 5 },
           } satisfies PositionList,

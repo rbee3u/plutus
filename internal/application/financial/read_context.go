@@ -2,12 +2,14 @@ package financial
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
 // PortfolioContext is what reads need to know about the portfolio.
@@ -26,7 +28,7 @@ func (p PortfolioContext) location() *time.Location {
 
 func (s *Service) latestContext(ctx context.Context, p PortfolioContext) (Context, *valuation.Point, []valuation.AccountValuation, error) {
 	c := Context{PortfolioID: p.ID, Timezone: p.Timezone}
-	point, err := s.valuation.Latest(ctx, p.ID)
+	point, accounts, err := s.valuation.LatestWithAccounts(ctx, p.ID)
 	if errors.Is(err, valuation.ErrNoPoint) {
 		return c, nil, nil, nil
 	}
@@ -34,11 +36,6 @@ func (s *Service) latestContext(ctx context.Context, p PortfolioContext) (Contex
 		return c, nil, nil, err
 	}
 	c.CycleID, c.EvaluatedAt = &point.CycleID, &point.EvaluatedAt
-	c.ValuationRevision = new(point.Revision())
-	accounts, err := s.valuation.Accounts(ctx, p.ID, point.CycleID)
-	if err != nil {
-		return c, nil, nil, err
-	}
 	return c, &point, accounts, nil
 }
 
@@ -49,4 +46,36 @@ func indexAccounts(accounts []valuation.AccountValuation) map[uuid.UUID]*valuati
 		byID[accounts[i].AccountID] = &accounts[i]
 	}
 	return byID
+}
+
+// contextAt fixes collected data while retaining current presentation overlays.
+func (s *Service) contextAt(ctx context.Context, p PortfolioContext, cycleID *uuid.UUID) (Context, *valuation.Point, []valuation.AccountValuation, error) {
+	if cycleID == nil {
+		return s.latestContext(ctx, p)
+	}
+	detail, err := s.Detail(ctx, p, *cycleID)
+	if errors.Is(err, valuation.ErrNotFound) {
+		// Current holdings survive the public history cutoff. Pinning the point
+		// returned by a latest read must retain that same access.
+		latest, readErr := mysql.Queries(ctx, s.db).GetLatestValuationPoint(ctx, p.ID[:])
+		if readErr != nil && !errors.Is(readErr, sql.ErrNoRows) {
+			return Context{}, nil, nil, readErr
+		}
+		if readErr == nil {
+			id, readErr := uuid.FromBytes(latest.CycleID)
+			if readErr != nil {
+				return Context{}, nil, nil, readErr
+			}
+			if id == *cycleID {
+				return s.latestContext(ctx, p)
+			}
+		}
+	}
+	if err != nil {
+		return Context{}, nil, nil, err
+	}
+	if detail.Point.DetailState == "expired" || detail.Point.DetailState == "pruning" {
+		return Context{}, nil, nil, valuation.ErrDetailExpired
+	}
+	return Context{PortfolioID: p.ID, Timezone: p.Timezone, CycleID: cycleID, EvaluatedAt: &detail.Point.EvaluatedAt}, &detail.Point, detail.Accounts, nil
 }

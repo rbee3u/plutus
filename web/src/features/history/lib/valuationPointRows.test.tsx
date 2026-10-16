@@ -22,7 +22,7 @@ describe("valuationPointRows", () => {
     (before, after, affected) => {
       const previous: ValuationPointSummary = {
         cycleId: "before",
-        valuationRevision: "before:1",
+
         calculationVersion: 1,
         detailState: "expired",
         evaluatedAt: "2026-10-11T10:58:00Z",
@@ -48,7 +48,7 @@ describe("valuationPointRows", () => {
         periodStart: point.evaluatedAt,
         periodEnd: point.evaluatedAt,
         completeness: point.completeness,
-        reasons: [],
+        issues: [],
         point,
       });
       const rows = [
@@ -123,7 +123,7 @@ describe("valuationPointRows", () => {
       periodStart: "2026-10-09T00:00:00Z",
       periodEnd: "2026-10-10T00:00:00Z",
       completeness: "complete",
-      reasons: [],
+      issues: [],
     };
     const html = renderToStaticMarkup(periodCloseIssuesCell(item));
     expect(html).toContain("—");
@@ -136,7 +136,7 @@ describe("valuationPointRows", () => {
       periodStart: "2026-10-09T00:00:00Z",
       periodEnd: "2026-10-10T00:00:00Z",
       completeness: "incomplete",
-      reasons: ["missing accounts"],
+      issues: [{ code: "missing accounts", detail: "missing accounts" }],
     };
     const html = renderToStaticMarkup(periodCloseIssuesCell(item));
     expect(html).toContain("Incomplete");
@@ -145,7 +145,7 @@ describe("valuationPointRows", () => {
   it("renders rawPointIssuesCell quietly when healthy", () => {
     const item: ValuationPointSummary = {
       cycleId: "pt1",
-      valuationRevision: "pt1:1",
+
       calculationVersion: 1,
       detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
@@ -164,7 +164,7 @@ describe("valuationPointRows", () => {
   it("renders rawPointIssuesCell badges when stale or incomplete accounts exist", () => {
     const item: ValuationPointSummary = {
       cycleId: "pt2",
-      valuationRevision: "pt2:1",
+
       calculationVersion: 1,
       detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
@@ -184,7 +184,7 @@ describe("valuationPointRows", () => {
   it("suppresses redundant CompletenessBadge in rawPointIssuesCell when incompleteAccountCount > 0", () => {
     const item: ValuationPointSummary = {
       cycleId: "pt3",
-      valuationRevision: "pt3:1",
+
       calculationVersion: 1,
       detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
@@ -209,7 +209,7 @@ describe("valuationPointRows", () => {
       periodEnd: "2026-10-10T00:00:00Z",
       point: {
         cycleId: "p2",
-        valuationRevision: "p2:1",
+
         calculationVersion: 1,
         detailState: "full" as const,
         evaluatedAt: "2026-10-09T14:12:00Z",
@@ -222,7 +222,7 @@ describe("valuationPointRows", () => {
         boundaryWithdrawalUsd: "0",
       },
       completeness: "complete",
-      reasons: [],
+      issues: [],
     };
     const prev: PeriodClose = {
       periodKind: "day",
@@ -231,7 +231,7 @@ describe("valuationPointRows", () => {
       periodEnd: "2026-10-09T00:00:00Z",
       point: {
         cycleId: "p1",
-        valuationRevision: "p1:1",
+
         calculationVersion: 1,
         detailState: "full" as const,
         evaluatedAt: "2026-10-08T23:37:00Z",
@@ -244,7 +244,7 @@ describe("valuationPointRows", () => {
         boundaryWithdrawalUsd: "0",
       },
       completeness: "complete",
-      reasons: [],
+      issues: [],
     };
 
     const row = periodCloseRow(item, prev, "UTC");
@@ -257,7 +257,7 @@ describe("valuationPointRows", () => {
   it("constructs rawPointRow with change from previous point", () => {
     const item: ValuationPointSummary = {
       cycleId: "pt2",
-      valuationRevision: "pt2:1",
+
       calculationVersion: 1,
       detailState: "full" as const,
       evaluatedAt: "2026-10-09T14:12:00Z",
@@ -271,7 +271,7 @@ describe("valuationPointRows", () => {
     };
     const prev: ValuationPointSummary = {
       cycleId: "pt1",
-      valuationRevision: "pt1:1",
+
       calculationVersion: 1,
       detailState: "full" as const,
       evaluatedAt: "2026-10-09T12:17:00Z",

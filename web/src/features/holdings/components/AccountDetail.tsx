@@ -23,117 +23,122 @@ export function AccountDetail({
   portfolioId,
   account,
   cycleId,
-  valuationRevision,
   timezone,
   onManual,
 }: {
   portfolioId: string;
   account: AccountValuation;
   cycleId: string;
-  valuationRevision: string | null;
   timezone?: string;
   onManual?: (target: ManualTarget) => void;
 }) {
-  const { balances, positions, dualPositions, earnPositions, isManual, isDual, isEarn } =
-    useAccountReport(portfolioId, account, cycleId, valuationRevision);
+  const { report, isManual, isDual, isEarn } = useAccountReport(portfolioId, account, cycleId);
   const missingReport = isAccountReportMissing(account);
+  const balanceIssues = report.data?.issues.filter(
+    (issue) =>
+      issue.omittedBalance ||
+      issue.code === "missing" ||
+      issue.code === "stale" ||
+      issue.code === "outside_boundary",
+  );
+  const productIssues =
+    isEarn || isDual
+      ? report.data?.issues
+      : report.data?.issues.filter((issue) => !issue.omittedBalance);
   const showEarn =
     isEarn &&
-    (!earnPositions.isSuccess ||
-      (earnPositions.data?.items.length ?? 0) > 0 ||
-      (earnPositions.data?.issues.length ?? 0) > 0 ||
-      earnPositions.isError);
+    (!report.isSuccess ||
+      (report.data?.earnPositions.length ?? 0) > 0 ||
+      (productIssues?.length ?? 0) > 0 ||
+      report.isError);
   const showDual =
     isDual &&
-    (!dualPositions.isSuccess ||
-      (dualPositions.data?.items.length ?? 0) > 0 ||
-      (dualPositions.data?.issues.length ?? 0) > 0 ||
-      dualPositions.isError);
+    (!report.isSuccess ||
+      (report.data?.dualPositions.length ?? 0) > 0 ||
+      (productIssues?.length ?? 0) > 0 ||
+      report.isError);
   const showFutures =
     !isDual &&
     !isEarn &&
     !isManual &&
-    (!positions.isSuccess ||
-      (positions.data?.items.length ?? 0) > 0 ||
-      (positions.data?.issues.length ?? 0) > 0 ||
-      positions.isError);
+    (!report.isSuccess ||
+      (report.data?.positions.length ?? 0) > 0 ||
+      (productIssues?.length ?? 0) > 0 ||
+      report.isError);
 
   return (
     <div className={styles.accountDetail}>
+      <QueryRecovery query={report} fallback="The account report could not be loaded." />
       <AccountMetrics account={account} />
       {!isManual || account.reportId ? (
         <AccountFeedback account={account} timezone={timezone} missingReport={missingReport} />
       ) : null}
       <section className={styles.accountDetail} aria-label="Balances">
-        <QueryRecovery query={balances} fallback="Account balances could not be loaded." />
         <BalancesTable
           account={account}
-          data={balances.data}
-          isPending={balances.isPending}
-          isError={balances.isError}
+          data={report.data}
+          isPending={report.isPending}
+          isError={report.isError}
           timezone={timezone}
           onManual={onManual}
           missingReport={missingReport}
         />
-        <HoldingIssues issues={balances.data?.issues} timezone={timezone} />
+        <HoldingIssues issues={balanceIssues} timezone={timezone} />
       </section>
       {showEarn ? (
         <section className={styles.accountDetail} aria-label="Earn">
-          <QueryRecovery query={earnPositions} fallback="Earn positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Earn</h3>
           <EarnPositionsTable
-            items={earnPositions.data?.items ?? []}
-            timezone={earnPositions.data?.context.timezone}
-            loading={earnPositions.isPending}
+            items={report.data?.earnPositions ?? []}
+            timezone={report.data?.context.timezone}
+            loading={report.isPending}
             empty={
-              earnPositions.isError
+              report.isError
                 ? "Earn positions could not be loaded. Retry above."
                 : missingReport
                   ? NO_ACCOUNT_REPORT
                   : undefined
             }
           />
-          <HoldingIssues issues={earnPositions.data?.issues} timezone={timezone} />
+          <HoldingIssues issues={productIssues} timezone={timezone} />
         </section>
       ) : null}
       {showDual ? (
         <section className={styles.accountDetail} aria-label="Dual investment">
-          <QueryRecovery query={dualPositions} fallback="Dual positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Dual investment</h3>
-          {dualPositions.isError && !dualPositions.data ? (
+          {report.isError && !report.data ? (
             <p className={shared.muted}>Dual investment could not be loaded. Retry above.</p>
           ) : (
             <DualPositionsTable
-              items={dualPositions.data?.items ?? []}
-              timezone={dualPositions.data?.context.timezone}
-              loading={dualPositions.isPending}
+              items={report.data?.dualPositions ?? []}
+              timezone={report.data?.context.timezone}
+              loading={report.isPending}
               empty={missingReport ? NO_ACCOUNT_REPORT : undefined}
             />
           )}
-          <HoldingIssues issues={dualPositions.data?.issues} timezone={timezone} />
+          <HoldingIssues issues={productIssues} timezone={timezone} />
         </section>
       ) : null}
       {showFutures ? (
         <section className={styles.accountDetail} aria-label="Futures">
-          <QueryRecovery query={positions} fallback="Account positions could not be loaded." />
           <h3 className={styles.accountSectionTitle}>Futures</h3>
           <DataTable
             caption={`Positions of ${account.accountName}`}
             columns={POSITION_COLUMNS}
-            rows={(positions.data?.items ?? []).map((item) =>
-              positionRow(item, positions.data?.context.timezone),
+            rows={(report.data?.positions ?? []).map((item) =>
+              positionRow(item, report.data?.context.timezone),
             )}
             empty={
-              positions.isPending
+              report.isPending
                 ? "Loading positions."
-                : positions.isError && !positions.data
+                : report.isError && !report.data
                   ? "Futures could not be loaded. Retry above."
                   : missingReport
                     ? NO_ACCOUNT_REPORT
                     : "No open positions in this account report."
             }
           />
-          <HoldingIssues issues={positions.data?.issues} timezone={timezone} />
+          <HoldingIssues issues={productIssues} timezone={timezone} />
         </section>
       ) : null}
       <details className={shared.reportDetails}>
@@ -176,15 +181,15 @@ function HoldingIssues({ issues, timezone }: { issues?: Issue[]; timezone?: stri
 
 function AccountMetrics({ account }: { account: AccountValuation }) {
   const figures = [
-    { label: "Equity", value: account.equity, format: formatAmount },
+    { label: "Equity", value: account.reportedEquityUsd, format: formatAmount },
     {
       label: "Adjusted equity",
-      value: account.adjustedEquity,
+      value: account.adjustedEquityUsd,
       format: formatAmount,
     },
     {
       label: "Available equity",
-      value: account.availableEquity,
+      value: account.availableEquityUsd,
       format: formatAmount,
     },
     {

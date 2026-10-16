@@ -1,8 +1,8 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { keys, listBalances } from "@/api";
-import type { BalanceList } from "@/api";
+import type { BalanceList, Issue } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { formatAmount } from "@/shared/lib/amount";
 import { platformLabel } from "@/shared/lib/usePlatforms";
@@ -23,7 +23,7 @@ import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/Hold
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { ManualDialog } from "../dialogs/ManualBalances";
 import { ManualActions, type ManualTarget } from "../dialogs/manual";
-import { holdingsScopeHasMissingReport, useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -35,15 +35,30 @@ export function BalancesPage() {
   const offset = filters.offset;
   const query = usePortfolioQuery<BalanceList>({
     key: (userId, portfolioId) =>
-      keys.balances(userId, portfolioId, platform, identityId, symbol, offset),
+      keys.balances(userId, portfolioId, platform, identityId, symbol, offset, filters.readId),
     ready: filters.ready,
     load: (portfolioId) =>
-      listBalances({
-        path: { portfolioId },
-        query: holdingsListRequest(filters),
-      }),
+      filters.read((cycleId) =>
+        listBalances({
+          path: { portfolioId },
+          query: { ...holdingsListRequest(filters), cycleId, includePendingManual: true },
+        }),
+      ),
   });
   const data = query.data;
+  const issues = useMemo(() => {
+    const key = (issue: Issue) => JSON.stringify([issue.code, issue.accountId, issue.symbol]);
+    const combined = [...(data?.filteredTotalIssues ?? [])];
+    const seen = new Set(combined.map(key));
+    for (const issue of data?.issues ?? []) {
+      const id = key(issue);
+      if (!seen.has(id)) {
+        seen.add(id);
+        combined.push(issue);
+      }
+    }
+    return combined;
+  }, [data]);
   const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
   const addManualButton = (
     <ActionButton tone="secondary" onClick={() => setManualTarget({ identityId })}>
@@ -64,11 +79,13 @@ export function BalancesPage() {
           label="Collected balance total"
           value={
             <>
-              {data.totalUsd ? <span className={styles.holdingsSummaryCurrency}>$</span> : null}
-              <NumericText>{formatAmount(data.totalUsd)}</NumericText>
+              {data.filteredTotalUsd ? (
+                <span className={styles.holdingsSummaryCurrency}>$</span>
+              ) : null}
+              <NumericText>{formatAmount(data.filteredTotalUsd)}</NumericText>
             </>
           }
-          badge={<CompletenessBadge value={data.completeness} />}
+          badge={<CompletenessBadge value={data.filteredTotalCompleteness} />}
           action={addManualButton}
         />
       ) : (
@@ -120,11 +137,7 @@ export function BalancesPage() {
             />
           ) : !data?.context.cycleId ? (
             <HoldingsNoPoint filters={filters} />
-          ) : holdingsScopeHasMissingReport(
-              data.issues,
-              filters.values,
-              filters.identities.data?.items ?? [],
-            ) ? (
+          ) : !data.coverage.complete ? (
             <TableEmptyState
               title="Balance data is incomplete"
               help="Some accounts have no compatible successful report."
@@ -148,10 +161,11 @@ export function BalancesPage() {
         portfolioId={portfolioId}
         target={manualTarget}
         onClose={() => setManualTarget(null)}
+        onSaved={() => filters.page(0)}
       />
       {data?.context.cycleId ? (
         <IssuesPanel
-          issues={data.issues}
+          issues={issues}
           timezone={data.context.timezone}
           resolveScope={filters.resolveIssueScope}
         />

@@ -17,10 +17,25 @@ vi.mock("../hooks/useAccountReport", () => ({
     const query = { isSuccess: true, isPending: false, isError: false };
     const context = { timezone: "UTC" };
     return {
-      balances: { ...query, data: { context, items: [], issues: report.balanceIssues } },
-      positions: { ...query, data: { context, items: [], issues: report.productIssues } },
-      dualPositions: { ...query, data: { context, items: [], issues: report.productIssues } },
-      earnPositions: { ...query, data: { context, items: [], issues: report.productIssues } },
+      report: {
+        ...query,
+        data: {
+          context,
+          balances: [],
+          positions: [],
+          dualPositions: [],
+          earnPositions: [],
+          issues: [
+            ...report.balanceIssues,
+            ...report.productIssues.filter(
+              (issue) =>
+                !report.balanceIssues.some(
+                  (existing) => existing.code === issue.code && existing.detail === issue.detail,
+                ),
+            ),
+          ],
+        },
+      },
       isManual: report.kind === "manual",
       isDual: report.kind === "dual",
       isEarn: report.kind === "earn",
@@ -35,6 +50,15 @@ beforeEach(() => {
 });
 
 const account: AccountValuation = {
+  sourceReportId: null,
+  reportId: null,
+  valueUsd: null,
+  reportObservedAt: null,
+  reportedEquityUsd: null,
+  adjustedEquityUsd: null,
+  availableEquityUsd: null,
+  initialMarginRatio: null,
+  maintenanceMarginRatio: null,
   accountId: "account",
   accountName: "Trading",
   accountType: "trading",
@@ -54,12 +78,7 @@ function markup(item: AccountValuation) {
   return renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
-        <AccountDetail
-          portfolioId="portfolio"
-          account={item}
-          cycleId="cycle"
-          valuationRevision="cycle:1"
-        />
+        <AccountDetail portfolioId="portfolio" account={item} cycleId="cycle" />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -129,7 +148,14 @@ describe("Account holding issues", () => {
   ] as const)("keeps %s issues in their own section, including empty reports", (kind, label) => {
     report.kind = kind;
     const shared = { code: "stale", detail: "Earlier report retained." };
-    report.balanceIssues = [shared, { code: "no_price", detail: "Balance price unavailable." }];
+    report.balanceIssues = [
+      shared,
+      {
+        code: "no_price",
+        detail: "Balance price unavailable.",
+        omittedBalance: { assetSymbol: "DEMO", equity: "2", reason: "no_price" },
+      },
+    ];
     report.productIssues = [
       shared,
       { code: "metadata_missing", detail: "Product terms unavailable." },
@@ -146,12 +172,31 @@ describe("Account holding issues", () => {
     expect(balances).toContain("Balance price unavailable.");
     expect(balances).not.toContain("Product terms unavailable.");
     expect(product).toContain("Product terms unavailable.");
-    expect(product).not.toContain("Balance price unavailable.");
+    expect(product.includes("Balance price unavailable.")).toBe(kind !== "futures");
+  });
+
+  it("keeps balance-price omissions visible without opening an empty futures section", () => {
+    report.balanceIssues = [
+      {
+        code: "no_price",
+        detail: "Balance price unavailable.",
+        omittedBalance: { assetSymbol: "DEMO", equity: "2", reason: "no_price" },
+      },
+    ];
+    const html = markup(account);
+    expect(html).toContain("Balance price unavailable.");
+    expect(html).not.toContain('aria-label="Futures"');
   });
 
   it("keeps manual balance issues without creating a product section", () => {
     report.kind = "manual";
-    report.balanceIssues = [{ code: "no_price", detail: "Balance price unavailable." }];
+    report.balanceIssues = [
+      {
+        code: "no_price",
+        detail: "Balance price unavailable.",
+        omittedBalance: { assetSymbol: "DEMO", equity: "2", reason: "no_price" },
+      },
+    ];
     const html = markup({ ...account, accountType: "manual" });
     expect(html).toContain("Balance price unavailable.");
     for (const label of ["Futures", "Earn", "Dual investment"]) {

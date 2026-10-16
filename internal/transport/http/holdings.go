@@ -19,36 +19,9 @@ func (a *API) GetOverview(ctx context.Context, request api.GetOverviewRequestObj
 	if err != nil {
 		return nil, err
 	}
-	return api.GetOverview200JSONResponse{
-		Context:                toAPIContext(&view.Context),
-		Point:                  toAPIPointPtr(view.Point),
-		TotalUsd:               view.TotalUSD,
-		Completeness:           api.Completeness(view.Completeness),
-		AccountCount:           view.AccountCount,
-		StaleAccountCount:      view.StaleAccountCount,
-		IncompleteAccountCount: view.IncompleteAccountCount,
-		ByPlatform:             toAPIGroupTotals(view.ByPlatform),
-		ByIdentity:             toAPIGroupTotals(view.ByIdentity),
-		Issues:                 toAPIIssues(view.Issues),
-		Sparkline:              toAPIPoints(view.Sparkline),
-	}, nil
-}
-
-func (a *API) GetHoldingsTree(ctx context.Context, request api.GetHoldingsTreeRequestObject) (api.GetHoldingsTreeResponseObject, error) {
-	sc, err := a.scoped(ctx, request.PortfolioId)
-	if err != nil {
-		return nil, err
-	}
-	if a.Financial == nil {
-		return nil, ErrNotImplemented
-	}
-	tree, err := a.Financial.Tree(ctx, sc.portfolioContext())
-	if err != nil {
-		return nil, err
-	}
-	platforms := make([]api.TreePlatform, 0, len(tree.Platforms))
-	for i := range tree.Platforms {
-		p := &tree.Platforms[i]
+	platforms := make([]api.TreePlatform, 0, len(view.Platforms))
+	for i := range view.Platforms {
+		p := &view.Platforms[i]
 		identities := make([]api.TreeIdentity, 0, len(p.Identities))
 		for j := range p.Identities {
 			id := &p.Identities[j]
@@ -56,41 +29,11 @@ func (a *API) GetHoldingsTree(ctx context.Context, request api.GetHoldingsTreeRe
 			for k := range id.Accounts {
 				accounts = append(accounts, toAPIAccountValuation(&id.Accounts[k]))
 			}
-			identities = append(identities, api.TreeIdentity{Id: id.ID, DisplayName: id.DisplayName, Status: id.Status, ConnectionStatus: id.ConnectionStatus, ValueUsd: id.ValueUSD, Completeness: api.Completeness(id.Completeness), Accounts: accounts})
+			identities = append(identities, api.TreeIdentity{Id: id.ID, DisplayName: id.DisplayName, Status: api.IdentityStatus(id.Status), ConnectionStatus: api.ConnectionStatus(id.ConnectionStatus), ValueUsd: id.ValueUSD, Completeness: api.Completeness(id.Completeness), Accounts: accounts})
 		}
 		platforms = append(platforms, api.TreePlatform{Platform: p.Platform, Label: p.Label, ValueUsd: p.ValueUSD, Completeness: api.Completeness(p.Completeness), Identities: identities})
 	}
-	return api.GetHoldingsTree200JSONResponse{Context: toAPIContext(&tree.Context), TotalUsd: tree.TotalUSD, Completeness: api.Completeness(tree.Completeness), Platforms: platforms, Issues: toAPIIssues(tree.Issues)}, nil
-}
-
-func (a *API) ListAccountBalances(ctx context.Context, request api.ListAccountBalancesRequestObject) (api.ListAccountBalancesResponseObject, error) {
-	sc, err := a.scoped(ctx, request.PortfolioId)
-	if err != nil {
-		return nil, err
-	}
-	if a.Financial == nil {
-		return nil, ErrNotImplemented
-	}
-	view, err := a.Financial.AccountBalances(ctx, sc.portfolioContext(), request.AccountId)
-	if err != nil {
-		return nil, err
-	}
-	return api.ListAccountBalances200JSONResponse{Context: toAPIContext(&view.Context), Account: toAPIAccountValuation(&view.Account), Items: toAPIBalanceRows(view.Balances), Issues: toAPIIssues(view.Issues)}, nil
-}
-
-func (a *API) ListAccountPositions(ctx context.Context, request api.ListAccountPositionsRequestObject) (api.ListAccountPositionsResponseObject, error) {
-	sc, err := a.scoped(ctx, request.PortfolioId)
-	if err != nil {
-		return nil, err
-	}
-	if a.Financial == nil {
-		return nil, ErrNotImplemented
-	}
-	view, err := a.Financial.AccountPositionsAt(ctx, sc.portfolioContext(), request.AccountId, request.Params.CycleId)
-	if err != nil {
-		return nil, err
-	}
-	return api.ListAccountPositions200JSONResponse{Context: toAPIContext(&view.Context), Account: toAPIAccountValuation(&view.Account), Items: toAPIPositionRows(view.Positions), Issues: toAPIIssues(view.Issues)}, nil
+	return api.GetOverview200JSONResponse{Context: toAPIContext(&view.Context), Point: toAPIPointPtr(view.Point), Platforms: platforms, Issues: toAPIIssues(view.Issues)}, nil
 }
 
 func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestObject) (api.ListBalancesResponseObject, error) {
@@ -102,23 +45,29 @@ func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestO
 		return nil, ErrNotImplemented
 	}
 	filter := financial.ListFilter{
-		Platform:   stringValue(request.Params.Platform),
-		IdentityID: request.Params.IdentityId,
-		Symbol:     stringValue(request.Params.Symbol),
-		Offset:     intValue(request.Params.Offset),
-		Limit:      intValue(request.Params.Limit),
+		CycleID:              request.Params.CycleId,
+		IncludePendingManual: request.Params.IncludePendingManual != nil && *request.Params.IncludePendingManual,
+		Platform:             stringValue(request.Params.Platform),
+		IdentityID:           request.Params.IdentityId,
+		Symbol:               stringValue(request.Params.Q),
+		Offset:               intValue(request.Params.Offset),
+		Limit:                intValue(request.Params.Limit),
 	}
 	list, err := a.Financial.FlatBalances(ctx, sc.portfolioContext(), &filter)
 	if err != nil {
 		return nil, err
 	}
 	return api.ListBalances200JSONResponse{
-		Context:      toAPIContext(&list.Context),
-		Items:        toAPIBalanceRows(list.Items),
-		Page:         toOffsetPage(list.Offset, list.Limit, list.Total),
-		TotalUsd:     list.TotalUSD,
-		Completeness: api.Completeness(list.Completeness),
-		Issues:       toAPIIssues(list.Issues),
+		Context:                   toAPIContext(&list.Context),
+		Coverage:                  toAPIReportCoverage(list.Coverage),
+		ManualOverlay:             toAPIManualOverlay(list.ManualOverlay),
+		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
+		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
+		Items:                     toAPIBalanceRows(list.Items),
+		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
+		FilteredTotalUsd:          list.TotalUSD,
+		ValuationCompleteness:     api.Completeness(list.Completeness),
+		Issues:                    toAPIIssues(list.Issues),
 	}, nil
 }
 
@@ -131,9 +80,10 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 		return nil, ErrNotImplemented
 	}
 	filter := financial.ListFilter{
+		CycleID:    request.Params.CycleId,
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		Symbol:     stringValue(request.Params.Symbol),
+		Symbol:     stringValue(request.Params.Q),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
@@ -142,28 +92,14 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 		return nil, err
 	}
 	return api.ListPositions200JSONResponse{
-		Context:          toAPIContext(&list.Context),
-		Items:            toAPIPositionRows(list.Items),
-		Page:             toOffsetPage(list.Offset, list.Limit, list.Total),
-		TotalNotionalUsd: list.TotalUSD,
-		Completeness:     api.Completeness(list.Completeness),
-		Issues:           toAPIIssues(list.Issues),
+		Context:              toAPIContext(&list.Context),
+		Coverage:             toAPIReportCoverage(list.Coverage),
+		Items:                toAPIPositionRows(list.Items),
+		Page:                 toOffsetPage(list.Offset, list.Limit, list.Total),
+		BoundaryNotionalUsd:  list.TotalUSD,
+		NotionalCompleteness: api.Completeness(list.Completeness),
+		Issues:               toAPIIssues(list.Issues),
 	}, nil
-}
-
-func (a *API) ListAccountDualPositions(ctx context.Context, request api.ListAccountDualPositionsRequestObject) (api.ListAccountDualPositionsResponseObject, error) {
-	sc, err := a.scoped(ctx, request.PortfolioId)
-	if err != nil {
-		return nil, err
-	}
-	if a.Financial == nil {
-		return nil, ErrNotImplemented
-	}
-	view, err := a.Financial.AccountDualPositions(ctx, sc.portfolioContext(), request.AccountId)
-	if err != nil {
-		return nil, err
-	}
-	return api.ListAccountDualPositions200JSONResponse{Context: toAPIContext(&view.Context), Account: toAPIAccountValuation(&view.Account), Items: toAPIDualPositionRows(view.DualPositions), Issues: toAPIIssues(view.Issues)}, nil
 }
 
 func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositionsRequestObject) (api.ListDualPositionsResponseObject, error) {
@@ -175,9 +111,10 @@ func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositio
 		return nil, ErrNotImplemented
 	}
 	filter := financial.ListFilter{
+		CycleID:    request.Params.CycleId,
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		Symbol:     stringValue(request.Params.Symbol),
+		Symbol:     stringValue(request.Params.Q),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
@@ -186,10 +123,27 @@ func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositio
 		return nil, err
 	}
 	return api.ListDualPositions200JSONResponse{
-		Context:      toAPIContext(&list.Context),
-		Items:        toAPIDualPositionRows(list.Items),
-		Page:         toOffsetPage(list.Offset, list.Limit, list.Total),
-		Completeness: api.Completeness(list.Completeness),
-		Issues:       toAPIIssues(list.Issues),
+		Context:               toAPIContext(&list.Context),
+		Coverage:              toAPIReportCoverage(list.Coverage),
+		Items:                 toAPIDualPositionRows(list.Items),
+		Page:                  toOffsetPage(list.Offset, list.Limit, list.Total),
+		ValuationCompleteness: api.Completeness(list.Completeness),
+		Issues:                toAPIIssues(list.Issues),
 	}, nil
+}
+
+func (a *API) GetAccountReport(ctx context.Context, request api.GetAccountReportRequestObject) (api.GetAccountReportResponseObject, error) {
+	sc, err := a.scoped(ctx, request.PortfolioId)
+	if err != nil {
+		return nil, err
+	}
+	if a.Financial == nil {
+		return nil, ErrNotImplemented
+	}
+	pending := request.Params.IncludePendingManual != nil && *request.Params.IncludePendingManual
+	view, err := a.Financial.AccountReport(ctx, sc.portfolioContext(), request.AccountId, request.Params.CycleId, pending)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetAccountReport200JSONResponse{ManualOverlay: toAPIManualOverlay(view.ManualOverlay), Context: toAPIContext(&view.Context), Account: toAPIAccountValuation(&view.Account), Balances: toAPIBalanceRows(view.Balances), Positions: toAPIPositionRows(view.Positions), EarnPositions: toAPIEarnPositions(view.EarnPositions), DualPositions: toAPIDualPositionRows(view.DualPositions), Issues: toAPIIssues(view.Issues)}, nil
 }

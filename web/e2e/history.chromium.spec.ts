@@ -11,7 +11,7 @@ const historyPath = `/p/${portfolioId}/history`;
 const initialEnd = "2026-10-04T04:16:44Z";
 const point = (index: number): ValuationPointSummary => ({
   cycleId: `point-${index}`,
-  valuationRevision: `point-${index}:1`,
+
   calculationVersion: 1,
   detailState: "full" as const,
   evaluatedAt: new Date(Date.parse(initialEnd) - (560 - index) * 900_000).toISOString(),
@@ -31,8 +31,6 @@ async function fixture(page: Page) {
     requests: [] as URL[],
     failPage: false,
     failSeries: false,
-    revision: 1,
-    mismatchOnDetail: false,
     summary: {} as Partial<ValueChange>,
     failSummary: false,
   };
@@ -96,7 +94,7 @@ async function fixture(page: Page) {
           },
         });
       }
-    } else if (path === `${base}/valuation-points/page`) {
+    } else if (path === `${base}/valuation-points`) {
       if (state.failPage) {
         await route.fulfill({ status: 500, json: { detail: "Page temporarily unavailable." } });
         return;
@@ -105,7 +103,6 @@ async function fixture(page: Page) {
       const limit = Number(params.get("limit") ?? 20);
       const items = Array.from({ length: state.count }, (_, index) => ({
         ...point(index),
-        valuationRevision: `point-${index}:${state.revision}`,
       }))
         .reverse()
         .slice(offset, offset + limit);
@@ -115,10 +112,12 @@ async function fixture(page: Page) {
           from,
           to,
           items,
+          precedingPoint:
+            offset + limit < state.count ? point(state.count - offset - limit - 1) : null,
           page: { kind: "offset", offset, limit, total: state.count },
         },
       });
-    } else if (path === `${base}/valuation-points`) {
+    } else if (path === `${base}/valuation-points/series`) {
       if (state.failSeries) {
         await route.fulfill({ status: 500, json: { detail: "Series temporarily unavailable." } });
         return;
@@ -142,7 +141,7 @@ async function fixture(page: Page) {
         periodEnd: new Date(Date.parse(initialEnd) - (41 - index) * 86_400_000).toISOString(),
         point: point(index),
         completeness: "complete",
-        reasons: [],
+        issues: [],
       }));
       await route.fulfill({ json: { context, periodKind: params.get("periodKind"), items } });
     } else if (path === `${base}/value-changes`) {
@@ -152,18 +151,20 @@ async function fixture(page: Page) {
         from: point(index).evaluatedAt,
         to: point(index + 1).evaluatedAt,
         amountUsd: "1",
+        comparable: true,
+        flowsCompleteness: "complete",
         contributionsUsd: "0",
         withdrawalsUsd: "0",
         boundaryContributionsUsd: "0",
         boundaryWithdrawalsUsd: "0",
         completeness: "complete",
-        reasons: [],
+        issues: [],
         boundaryEvents: [],
         startPoint: point(index),
         endPoint: point(index + 1),
       }));
       await route.fulfill({ json: { context, periodKind: params.get("periodKind"), items } });
-    } else if (path === `${base}/value-changes/custom`) {
+    } else if (path === `${base}/value-changes/range`) {
       if (state.failSummary) {
         await route.fulfill({ status: 500, json: { detail: "Summary temporarily unavailable." } });
         return;
@@ -182,27 +183,24 @@ async function fixture(page: Page) {
           evaluatedAt: new Date(Date.parse(to) - 60_000).toISOString(),
         },
         amountUsd: "500",
+        comparable: true,
+        flowsCompleteness: "complete",
         contributionsUsd: "100",
         withdrawalsUsd: "40",
         boundaryContributionsUsd: "0",
         boundaryWithdrawalsUsd: "0",
         completeness: "complete",
-        reasons: [],
+        issues: [],
         boundaryEvents: [],
         ...state.summary,
       };
       await route.fulfill({ json: summary });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
-      if (state.mismatchOnDetail) {
-        state.revision = 2;
-        state.mismatchOnDetail = false;
-      }
       await route.fulfill({
         json: {
           context,
           point: {
             ...point(Number(path.split("point-")[1])),
-            valuationRevision: `point-${Number(path.split("point-")[1])}:${state.revision}`,
           },
           accounts: [],
           issues: [],
@@ -240,9 +238,11 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   const headings = await page.getByRole("heading", { level: 2 }).allTextContents();
   expect(headings).toEqual(["Portfolio value", "Period closes", "Raw valuation points"]);
   const chartRequests = state.requests.filter(
-    (url) => url.pathname === `${base}/valuation-points`,
+    (url) => url.pathname === `${base}/valuation-points/series`,
   ).length;
-  const resolved = state.requests.find((url) => url.pathname === `${base}/valuation-points`)!;
+  const resolved = state.requests.find(
+    (url) => url.pathname === `${base}/valuation-points/series`,
+  )!;
   const closes = state.requests.find((url) => url.pathname === `${base}/period-closes`)!;
   expect(closes.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(resolved.searchParams.get("granularity")).toBe("hour");
@@ -259,9 +259,9 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await pager(page, "Period closes").getByRole("button", { name: "Next", exact: true }).click();
   await expect(pager(page, "Period closes")).toContainText("21–40 of 42");
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
-  expect(state.requests.filter((url) => url.pathname === `${base}/valuation-points`)).toHaveLength(
-    chartRequests,
-  );
+  expect(
+    state.requests.filter((url) => url.pathname === `${base}/valuation-points/series`),
+  ).toHaveLength(chartRequests);
   await page.getByRole("combobox", { name: "Period", exact: true }).selectOption("week");
   await expect(pager(page, "Period closes")).toContainText("1–20 of 42");
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
@@ -325,9 +325,9 @@ test("Value changes shares the applied range with its summary, independently of 
   await expect(table.locator("tbody > tr")).toHaveCount(20);
   await expect(table.locator("tbody > tr").first()).toContainText("change-41");
   const reads = state.requests.filter((url) => url.pathname === `${base}/value-changes`).length;
-  const summaryReads = state.requests.filter((url) => url.pathname.endsWith("/custom")).length;
+  const summaryReads = state.requests.filter((url) => url.pathname.endsWith("/range")).length;
   const resolved = state.requests.find((url) => url.pathname === `${base}/value-changes`)!;
-  const comparison = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+  const comparison = state.requests.find((url) => url.pathname.endsWith("/range"))!;
   expect(comparison.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(comparison.searchParams.get("to")).toBe(resolved.searchParams.get("to"));
   await pager(page, "Value changes").getByRole("button", { name: "Next", exact: true }).click();
@@ -337,17 +337,17 @@ test("Value changes shares the applied range with its summary, independently of 
   );
   await page.getByRole("combobox", { name: "Period", exact: true }).selectOption("month");
   await expect(page.getByRole("table", { name: "Value change per month values" })).toBeVisible();
-  expect(state.requests.filter((url) => url.pathname.endsWith("/custom"))).toHaveLength(
+  expect(state.requests.filter((url) => url.pathname.endsWith("/range"))).toHaveLength(
     summaryReads,
   );
   await page.getByRole("button", { name: "1M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("week");
   await expect(summary).toContainText("at 2026-09-04 12:15");
   await expect(pager(page, "Value changes")).toContainText("1–20 of 42");
-  const appliedReads = state.requests.filter((url) => url.pathname.endsWith("/custom")).length;
+  const appliedReads = state.requests.filter((url) => url.pathname.endsWith("/range")).length;
   await page.getByLabel("From", { exact: true }).fill("2026-09-01T13:00");
   await page.getByLabel("To", { exact: true }).fill("2026-10-01T15:00");
-  expect(state.requests.filter((url) => url.pathname.endsWith("/custom"))).toHaveLength(
+  expect(state.requests.filter((url) => url.pathname.endsWith("/range"))).toHaveLength(
     appliedReads,
   );
   await page.getByRole("button", { name: "Apply", exact: true }).click();
@@ -368,15 +368,20 @@ for (const scenario of ["Missing start", "Missing both endpoints", "Same point"]
       startPoint: scenario === "Same point" ? point(0) : null,
       ...(scenario === "Missing both endpoints" ? { endPoint: null } : {}),
       ...(scenario === "Same point" ? { endPoint: point(0) } : {}),
-      amountUsd: scenario === "Same point" ? "0" : null,
+      amountUsd: null,
+      comparable: false,
+      flowsCompleteness: "complete",
       contributionsUsd: "0",
       withdrawalsUsd: "0",
-      reasons:
+      issues:
         scenario === "Same point"
-          ? ["no_point_in_period"]
+          ? [{ code: "no_point_in_period", detail: "no_point_in_period" }]
           : scenario === "Missing both endpoints"
-            ? ["no_start_point", "no_end_point"]
-            : ["no_start_point"],
+            ? [
+                { code: "no_start_point", detail: "no_start_point" },
+                { code: "no_end_point", detail: "no_end_point" },
+              ]
+            : [{ code: "no_start_point", detail: "no_start_point" }],
     };
     await page.goto(`${historyPath}/value-changes`);
     const summary = page.getByRole("region", { name: "Selected range summary" });
@@ -395,7 +400,7 @@ for (const scenario of ["Missing start", "Missing both endpoints", "Same point"]
     if (scenario === "Missing both endpoints") {
       await expect(summary).toContainText("No end valuation point at or before the selected end");
     }
-    const request = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+    const request = state.requests.find((url) => url.pathname.endsWith("/range"))!;
     expect(request.searchParams.get("from")).toBe("2026-09-27T04:16:44.000Z");
     await expect(page.getByRole("table", { name: "Value change per day values" })).toBeVisible();
   });
@@ -408,7 +413,11 @@ test("Range summary retains known incomplete results and expands limitations and
   state.summary = {
     amountUsd: "490",
     completeness: "incomplete",
-    reasons: ["start_point_incomplete", "unvalued_flow: DEMO 2"],
+    flowsCompleteness: "incomplete",
+    issues: [
+      { code: "start_point_incomplete", detail: "start_point_incomplete" },
+      { code: "unvalued_flow", symbol: "DEMO", detail: "2" },
+    ],
     boundaryContributionsUsd: "10",
     boundaryEvents: [
       {
@@ -430,13 +439,50 @@ test("Range summary retains known incomplete results and expands limitations and
   await expect(summary).toContainText("Known flows shown; unvalued amounts: —");
   await expect(summary).toContainText("Capital flow");
   await expect(summary).toContainText("Boundary event");
-  await expect(summary.getByText("Unvalued flow: DEMO 2", { exact: true })).toBeHidden();
+  await expect(summary.getByText("Unvalued flow", { exact: true })).toBeHidden();
   await summary.getByText("Limitations (2)", { exact: true }).click();
-  await expect(summary.getByText("Unvalued flow: DEMO 2", { exact: true })).toBeVisible();
+  await expect(summary.getByText("Unvalued flow", { exact: true })).toBeVisible();
+  await expect(summary.getByText("DEMO", { exact: true })).toBeVisible();
   const events = summary.getByRole("table", { name: "Boundary events in the range" });
   await expect(events).toBeHidden();
   await summary.getByText("Boundary events (1)", { exact: true }).click();
   await expect(events).toContainText("Entered account");
+});
+
+test("Range summary qualifies partially valued boundary flows", async ({ page }) => {
+  const state = await fixture(page);
+  state.summary = {
+    amountUsd: "490",
+    completeness: "incomplete",
+    flowsCompleteness: "incomplete",
+    issues: [
+      {
+        code: "boundary_incomplete",
+        accountName: "Funding",
+        detail: "The boundary value is incomplete.",
+      },
+    ],
+    boundaryContributionsUsd: "10",
+    boundaryEvents: [
+      {
+        cycleId: "entry",
+        evaluatedAt: initialEnd,
+        accountId: "account",
+        accountName: "Entered account",
+        direction: "contribution",
+        valueUsd: "10",
+        completeness: "incomplete",
+        method: "calculated",
+      },
+    ],
+  };
+  await page.goto(`${historyPath}/value-changes`);
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await expect(summary).toContainText("+$490");
+  await expect(summary).toContainText("+$10");
+  await expect(summary).toContainText("Known flows shown; unvalued amounts: —");
+  await summary.getByText("Limitations (1)", { exact: true }).click();
+  await expect(summary.getByText("Funding", { exact: true })).toBeVisible();
 });
 
 test("Range boundary events reverse cycles while retaining each cycle's account order", async ({
@@ -484,12 +530,12 @@ test("A failed range summary retries its applied window while calendar details r
     timeout: 15_000,
   });
   await expect(page.getByRole("table", { name: "Value change per day values" })).toBeVisible();
-  const first = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+  const first = state.requests.find((url) => url.pathname.endsWith("/range"))!;
   state.failSummary = false;
   state.now = "2026-10-05T04:16:44Z";
   await summary.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(summary).toContainText("+$500");
-  const last = state.requests.filter((url) => url.pathname.endsWith("/custom")).at(-1)!;
+  const last = state.requests.filter((url) => url.pathname.endsWith("/range")).at(-1)!;
   expect(last.search).toBe(first.search);
 });
 
@@ -497,6 +543,8 @@ test("A known zero change between distinct valuation points remains zero", async
   const state = await fixture(page);
   state.summary = {
     amountUsd: "0",
+    comparable: true,
+    flowsCompleteness: "complete",
     contributionsUsd: "0",
     withdrawalsUsd: "0",
     endPoint: { ...point(560), totalUsd: point(0).totalUsd },
@@ -515,7 +563,7 @@ test("Empty, single-point and last-page URL states stay usable", async ({ page }
   await page.goto(historyPath);
   await expect(
     page
-      .getByText("No valuation points in this range. Adjust the range or run a collection cycle.", {
+      .getByText("No valuation points in this range.", {
         exact: true,
       })
       .first(),
@@ -540,7 +588,9 @@ test("A failed raw page retries the same applied window", async ({ page }) => {
   const state = await fixture(page);
   await page.goto(historyPath);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
-  const resolved = state.requests.find((url) => url.pathname === `${base}/valuation-points`)!;
+  const resolved = state.requests.find(
+    (url) => url.pathname === `${base}/valuation-points/series`,
+  )!;
   state.failPage = true;
   await pager(page, "Raw valuation points")
     .getByRole("button", { name: "Next", exact: true })
@@ -553,7 +603,7 @@ test("A failed raw page retries the same applied window", async ({ page }) => {
   await page.getByRole("alert").getByRole("button", { name: "Retry", exact: true }).click();
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
   const retried = state.requests
-    .filter((url) => url.pathname === `${base}/valuation-points/page`)
+    .filter((url) => url.pathname === `${base}/valuation-points`)
     .at(-1)!;
   expect(retried.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(retried.searchParams.get("to")).toBe(resolved.searchParams.get("to"));
@@ -590,28 +640,17 @@ for (const theme of ["light", "dark"]) {
   });
 }
 
-test("A token mismatch between list and detail refreshes the entire read family", async ({
-  page,
-}) => {
+test("Expanding an immutable point does not refresh the raw record page", async ({ page }) => {
   const state = await fixture(page);
   await page.goto(historyPath);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
-  const before = state.requests.filter(
-    (url) => url.pathname === `${base}/valuation-points/page`,
-  ).length;
-  state.mismatchOnDetail = true;
+  const before = state.requests.filter((url) => url.pathname === `${base}/valuation-points`).length;
   await rawTable(page)
     .getByRole("button", { name: /Expand the valuation point/ })
     .first()
     .click();
-  await expect
-    .poll(
-      () => state.requests.filter((url) => url.pathname === `${base}/valuation-points/page`).length,
-    )
-    .toBeGreaterThan(before);
   await expect(rawTable(page)).toContainText("No accounts were inside the boundary at this point.");
-  expect(
-    state.requests.filter((url) => url.pathname.startsWith(`${base}/valuation-points/point-`))
-      .length,
-  ).toBeLessThan(5);
+  expect(state.requests.filter((url) => url.pathname === `${base}/valuation-points`)).toHaveLength(
+    before,
+  );
 });

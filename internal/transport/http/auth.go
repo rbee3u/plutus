@@ -16,12 +16,12 @@ func (a *API) current(ctx context.Context) (auth.User, auth.Session, error) {
 	return a.Auth.Authenticate(ctx, requestCookie(ctx, a.SessionCookieName))
 }
 
-func (a *API) currentSession(ctx context.Context) (auth.User, auth.Session, bool) {
+func (a *API) currentSession(ctx context.Context) (auth.User, auth.Session, error) {
 	user, session, err := a.current(ctx)
-	if err != nil {
-		return auth.User{}, auth.Session{}, false
+	if errors.Is(err, auth.ErrUnauthenticated) || errors.Is(err, auth.ErrUserDisabled) {
+		return auth.User{}, auth.Session{}, errUnauthenticated
 	}
-	return user, session, true
+	return user, session, err
 }
 
 func (a *API) requireCSRF(ctx context.Context, header *string, session *auth.Session) error {
@@ -39,12 +39,16 @@ func (a *API) requireCSRF(ctx context.Context, header *string, session *auth.Ses
 }
 
 func (a *API) GetAuthCsrf(ctx context.Context, _ api.GetAuthCsrfRequestObject) (api.GetAuthCsrfResponseObject, error) {
-	if _, session, err := a.current(ctx); err == nil {
+	_, session, err := a.currentSession(ctx)
+	if err == nil {
 		c := ginFrom(ctx)
 		if c != nil {
 			writeCookie(c, a.CSRFCookieName, session.CSRF, 3600, false, a.SecureCookies)
 		}
 		return api.GetAuthCsrf200JSONResponse{Token: session.CSRF}, nil
+	}
+	if !errors.Is(err, errUnauthenticated) {
+		return nil, err
 	}
 	token, err := auth.NewPreauthCSRF()
 	if err != nil {
@@ -87,9 +91,9 @@ func (a *API) loginError(ctx context.Context, err error) api.PostAuthLoginRespon
 }
 
 func (a *API) PostAuthLogout(ctx context.Context, request api.PostAuthLogoutRequestObject) (api.PostAuthLogoutResponseObject, error) {
-	_, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.PostAuthLogout401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
+	_, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
 		return nil, err
@@ -102,9 +106,9 @@ func (a *API) PostAuthLogout(ctx context.Context, request api.PostAuthLogoutRequ
 }
 
 func (a *API) PostAuthLogoutAll(ctx context.Context, request api.PostAuthLogoutAllRequestObject) (api.PostAuthLogoutAllResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.PostAuthLogoutAll401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
 		return nil, err
@@ -117,9 +121,9 @@ func (a *API) PostAuthLogoutAll(ctx context.Context, request api.PostAuthLogoutA
 }
 
 func (a *API) GetAuthMe(ctx context.Context, _ api.GetAuthMeRequestObject) (api.GetAuthMeResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.GetAuthMe401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	sessions, err := a.Auth.ListSessions(ctx, user.ID, session.ID)
 	if err != nil {
@@ -129,9 +133,9 @@ func (a *API) GetAuthMe(ctx context.Context, _ api.GetAuthMeRequestObject) (api.
 }
 
 func (a *API) PutAuthPassword(ctx context.Context, request api.PutAuthPasswordRequestObject) (api.PutAuthPasswordResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.PutAuthPassword401ApplicationProblemPlusJSONResponse(a.unauthenticated(ctx)), nil
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
 		return nil, err
@@ -143,16 +147,19 @@ func (a *API) PutAuthPassword(ctx context.Context, request api.PutAuthPasswordRe
 		if errors.Is(err, auth.ErrPasswordPolicy) || errors.Is(err, auth.ErrSamePassword) {
 			return api.PutAuthPassword400ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error()))}, nil
 		}
-		return api.PutAuthPassword401ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusUnauthorized, "invalid_credentials", "Invalid credentials", "The current password is incorrect.")), nil
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return api.PutAuthPassword422ApplicationProblemPlusJSONResponse(a.problem(ctx, http.StatusUnprocessableEntity, "invalid_current_password", "Current password is incorrect", "The current password is incorrect.")), nil
+		}
+		return nil, err
 	}
 	a.clearSessionCookies(ctx)
 	return api.PutAuthPassword204Response{}, nil
 }
 
 func (a *API) GetAuthSessions(ctx context.Context, _ api.GetAuthSessionsRequestObject) (api.GetAuthSessionsResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.GetAuthSessions401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	items, err := a.Auth.ListSessions(ctx, user.ID, session.ID)
 	if err != nil {
@@ -166,9 +173,9 @@ func (a *API) GetAuthSessions(ctx context.Context, _ api.GetAuthSessionsRequestO
 }
 
 func (a *API) DeleteAuthSession(ctx context.Context, request api.DeleteAuthSessionRequestObject) (api.DeleteAuthSessionResponseObject, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return api.DeleteAuthSession401ApplicationProblemPlusJSONResponse{ProblemApplicationProblemPlusJSONResponse: api.ProblemApplicationProblemPlusJSONResponse(a.unauthenticated(ctx))}, nil
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := a.requireCSRF(ctx, request.Params.XCSRFToken, &session); err != nil {
 		return nil, err

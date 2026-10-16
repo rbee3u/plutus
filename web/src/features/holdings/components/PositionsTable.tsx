@@ -1,5 +1,4 @@
 import type { PositionRow } from "@/api";
-import Decimal from "decimal.js";
 import {
   presentNumber,
   formatDecimal,
@@ -62,37 +61,14 @@ function pnlCell(value: string | null | undefined, currency?: string | null) {
   );
 }
 
-// Keep source-decimal multiplication and division ahead of display rounding.
-const MarginDecimal = Decimal.clone({ precision: 200 });
-
-function usdEquivalent(currency: string | null | undefined): boolean {
-  return currency === "USD" || currency === "USDT" || currency === "USDC";
-}
-
 export function positionMarginDescription(item: PositionRow): string {
+  const leverage = item.displayLeverage;
   if (item.marginSetting === "isolated") {
-    const margin = parseDecimal(item.settleMargin);
-    const notional = parseDecimal(item.notionalUsd);
-    if (!margin || margin.lte(0) || !notional || !item.settlementAssetSymbol) return "isolated";
-    let marginUsd = new MarginDecimal(margin);
-    if (!usdEquivalent(item.settlementAssetSymbol)) {
-      const mark = parseDecimal(item.markPrice);
-      if (
-        item.settlementAssetSymbol !== item.baseAssetSymbol ||
-        !usdEquivalent(item.quoteAssetSymbol) ||
-        !mark ||
-        mark.lte(0)
-      )
-        return "isolated";
-      marginUsd = marginUsd.times(mark);
-    }
-    const leverage = new MarginDecimal(notional).abs().div(marginUsd);
-    return `${formatLeverage(leverage.toString())} isolated`;
+    return leverage == null ? "isolated" : `${formatLeverage(leverage)} isolated`;
   }
   if (item.portfolioMargin) return "portfolio margin";
   if (item.marginSetting === "cross") {
-    const leverage = parseDecimal(item.leverage);
-    return leverage && leverage.gt(0) ? `${formatLeverage(item.leverage)} cross` : "cross";
+    return leverage == null ? "cross" : `${formatLeverage(leverage)} cross`;
   }
   return "margin mode unavailable";
 }
@@ -102,8 +78,8 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
   const delivery = item.kind.endsWith("_delivery");
   const factorUnit = inverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
   const marginLabel =
-    item.settleMargin != null && item.settlementAssetSymbol
-      ? `${formatDecimal(item.settleMargin)} ${item.settlementAssetSymbol}`
+    item.settlementMargin != null && item.settlementAssetSymbol
+      ? `${formatDecimal(item.settlementMargin)} ${item.settlementAssetSymbol}`
       : "—";
   return {
     id: `${item.accountId}-${item.futuresContractId}-${item.positionKey}`,

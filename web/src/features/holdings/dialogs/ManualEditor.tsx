@@ -27,10 +27,12 @@ export function ManualEditor({
   portfolioId,
   target,
   onClose,
+  onSaved,
 }: {
   portfolioId: string;
   target: ManualTarget;
   onClose?: () => void;
+  onSaved?: () => void;
 }) {
   const identities = useIdentities(portfolioId);
   const [identityId, setIdentityId] = useState(target.identityId);
@@ -98,7 +100,7 @@ export function ManualEditor({
           }}
           onSave={async (symbol, quantity, action, version) => {
             const path = { portfolioId, identityId, assetSymbol: symbol };
-            const headers = { "If-Match": `"manual:${version}"` };
+            const headers = { "If-Edit-Version": String(version) };
             const result = await write(() => {
               switch (action) {
                 case "delete":
@@ -123,10 +125,11 @@ export function ManualEditor({
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: keys.balances(userId, portfolioId) }),
               queryClient.invalidateQueries({
-                queryKey: keys.accountBalances(userId, portfolioId),
+                queryKey: keys.accountReport(userId, portfolioId),
               }),
               queryClient.invalidateQueries({ queryKey: keys.overview(userId, portfolioId) }),
             ]);
+            onSaved?.();
             return state;
           }}
         />
@@ -152,6 +155,7 @@ function ManualForm({
   ) => Promise<ManualBalanceState>;
   onReload: () => Promise<ManualBalanceState>;
   onClose?: () => void;
+  onSaved?: () => void;
 }) {
   const [baseline, setBaseline] = useState(state);
   const initial = baseline.items.find((item) => item.assetSymbol === target.symbol);

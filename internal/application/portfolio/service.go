@@ -14,7 +14,6 @@ import (
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 const (
@@ -52,11 +51,6 @@ type Portfolio struct {
 	Version                   uint64
 	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
-}
-
-// ETag returns the strong validator for this revision.
-func (p *Portfolio) ETag() string {
-	return etag.Format("portfolio", p.Version)
 }
 
 // Location returns the portfolio's time zone, falling back to UTC.
@@ -290,9 +284,4 @@ func validateInterval(seconds int) error {
 		return ErrInvalidInterval
 	}
 	return nil
-}
-
-// ParseETag extracts the version from a portfolio ETag.
-func ParseETag(value string) (uint64, bool) {
-	return etag.Parse("portfolio", value)
 }

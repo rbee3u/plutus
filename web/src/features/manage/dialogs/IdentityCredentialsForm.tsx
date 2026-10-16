@@ -4,7 +4,6 @@ import { deleteIdentityCredentials, problemMessage, putIdentityCredentials } fro
 import type { Identity, Platform } from "@/api";
 import { credentialRequired } from "../lib/credentialRequirements";
 import { CONFLICT } from "./identityCommon";
-import { identityEtag } from "@/shared/lib/useIdentities";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextArea } from "@/shared/ui/FormControls";
 import { PasswordInput } from "@/shared/ui/PasswordInput";
@@ -69,7 +68,7 @@ export function IdentityCredentialsForm({
       const result = await write(() =>
         putIdentityCredentials({
           path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
+          headers: { "If-Edit-Version": String(item.version) },
           body: {
             apiKey: apiKey.trim(),
             apiSecret: apiSecret.trim(),
@@ -107,7 +106,7 @@ export function IdentityCredentialsForm({
       const result = await write(() =>
         deleteIdentityCredentials({
           path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
+          headers: { "If-Edit-Version": String(item.version) },
         }),
       );
       if (result.response?.status === 412) {

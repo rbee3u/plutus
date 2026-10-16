@@ -45,7 +45,7 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND cycle_id = sqlc.arg(cycle_id);
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
        calculation_version, detail_state
 FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
-ORDER BY evaluated_at ASC, cycle_id ASC;
+ORDER BY evaluated_at ASC, cycle_id ASC LIMIT ?;
 
 -- name: ListValuationPointHeadersBetween :many
 SELECT cycle_id, evaluated_at FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
@@ -238,3 +238,40 @@ LIMIT 1;
 SELECT EXISTS(SELECT 1 FROM valuation_points p JOIN portfolios owner ON owner.id = p.portfolio_id
 WHERE p.portfolio_id = sqlc.arg(portfolio_id) AND p.cycle_id = sqlc.arg(cycle_id)
 AND (owner.history_before IS NULL OR p.evaluated_at >= owner.history_before)) AS available;
+
+-- name: ListAccountBalanceValuations :many
+SELECT v.*, b.equity, a.symbol AS asset_symbol
+FROM balance_valuations v
+JOIN balances b ON b.portfolio_id = v.portfolio_id AND b.report_id = v.source_report_id AND b.asset_id = v.asset_id
+JOIN assets a ON a.portfolio_id = v.portfolio_id AND a.id = v.asset_id
+WHERE v.portfolio_id = sqlc.arg(portfolio_id) AND v.cycle_id = sqlc.arg(cycle_id) AND v.account_id = sqlc.arg(account_id)
+ORDER BY v.cycle_id, v.account_id, a.symbol, v.asset_id;
+
+-- name: ListValuationPointHeaderPage :many
+SELECT cycle_id, evaluated_at FROM valuation_points
+WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6)))
+  AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
+  AND (sqlc.arg(has_cursor) = 0 OR evaluated_at > sqlc.arg(cursor_at) OR (evaluated_at = sqlc.arg(cursor_at) AND cycle_id > sqlc.arg(cursor_id)))
+ORDER BY evaluated_at, cycle_id LIMIT 1000;
+
+-- name: ListBoundaryEventPage :many
+SELECT e.*, p.evaluated_at, a.identity_id, a.account_type, i.account_structure, i.display_name AS identity_name, i.platform
+FROM valuation_points p
+JOIN boundary_events e ON e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id
+JOIN accounts a ON a.portfolio_id = e.portfolio_id AND a.id = e.account_id
+JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6)))
+  AND p.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
+ORDER BY p.evaluated_at DESC, p.cycle_id DESC,
+         FIND_IN_SET(i.platform, sqlc.arg(platform_order)) = 0,
+         FIND_IN_SET(i.platform, sqlc.arg(platform_order)), i.platform,
+         CAST(LOWER(i.display_name) AS BINARY), i.id,
+         FIND_IN_SET(CONCAT(i.account_structure, ':', a.account_type), sqlc.arg(account_order)) = 0,
+         FIND_IN_SET(CONCAT(i.account_structure, ':', a.account_type), sqlc.arg(account_order)), a.account_type, a.id
+LIMIT ? OFFSET ?;
+
+-- name: CountBoundaryEvents :one
+SELECT COUNT(*) FROM valuation_points p
+JOIN boundary_events e ON e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id
+WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6)))
+  AND p.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at);

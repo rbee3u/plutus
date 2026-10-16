@@ -3,7 +3,6 @@ import { type FormEvent, useState } from "react";
 import { patchIdentity, problemMessage } from "@/api";
 import type { Identity } from "@/api";
 import { CONFLICT } from "./identityCommon";
-import { identityEtag } from "@/shared/lib/useIdentities";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { TextInput, Toggle } from "@/shared/ui/FormControls";
 import styles from "@/features/manage/styles.module.css";
@@ -40,7 +39,7 @@ export function EditIdentityForm({
       const result = await write(() =>
         patchIdentity({
           path: { portfolioId, identityId: item.id },
-          headers: { "If-Match": identityEtag(item) },
+          headers: { "If-Edit-Version": String(item.version) },
           body: {
             displayName: displayName.trim(),
             accounts: item.accounts.map((account) => ({

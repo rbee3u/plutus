@@ -17,54 +17,65 @@ import (
 
 // AccountBalances returns the balances of an account's current report with USD values.
 func (s *Service) AccountBalances(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
+	return s.AccountBalancesAt(ctx, p, accountID, nil)
+}
+
+func (s *Service) AccountBalancesAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
-		view, source, err := s.accountView(ctx, p, accountID)
+		view, source, err := s.accountView(ctx, p, accountID, cycleID)
 		if err != nil {
 			return AccountView{}, err
 		}
-		view.Balances = []BalanceRow{}
-
-		var rows []sqlcgen.ListBalancesByReportRow
-		if source != nil {
-			rows, err = mysql.Queries(ctx, s.db).ListBalancesByReport(ctx, sqlcgen.ListBalancesByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
-			if err != nil {
-				return AccountView{}, err
-			}
-		}
-		book := valuation.NewPriceBook(mysql.Queries(ctx, s.db), p.ID)
-		if err := book.PreloadObservations(ctx, []valuation.AccountValuation{view.Account}); err != nil {
-			return AccountView{}, err
-		}
-		for i := range rows {
-			assetID, err := uuid.FromBytes(rows[i].AssetID)
-			if err != nil {
-				return AccountView{}, err
-			}
-			if balanceExcluded(&view.Account, assetID) && view.Account.AccountType != string(adapters.TypeManual) {
-				continue
-			}
-			row, err := balanceRow(ctx, book, &view.Account, &rows[i])
-			if err != nil {
-				return AccountView{}, err
-			}
-			if balanceExcluded(&view.Account, assetID) {
-				excludeManualBalance(&row)
-			}
-			view.Balances = append(view.Balances, row)
-		}
-		if view.Account.AccountType == string(adapters.TypeManual) {
-			current, err := s.currentManualBalances(ctx, p)
-			if err != nil {
-				return AccountView{}, err
-			}
-			view.Balances = mergeManualBalances(view.Balances, current[accountID], &view.Account)
-		}
-		sortBalances(view.Balances, accountRanks([]valuation.AccountValuation{view.Account}))
-		return view, nil
+		return s.readAccountBalances(ctx, p, view, source, true)
 	})
 }
 
-func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuation.AccountValuation, source *sqlcgen.ListBalancesByReportRow) (BalanceRow, error) {
+func (s *Service) readAccountBalances(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID, includePending bool) (AccountView, error) {
+	view.Balances = []BalanceRow{}
+
+	var rows []sqlcgen.ListBalancesByReportRow
+	var err error
+	if source != nil {
+		rows, err = mysql.Queries(ctx, s.db).ListBalancesByReport(ctx, sqlcgen.ListBalancesByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
+		if err != nil {
+			return AccountView{}, err
+		}
+	}
+	book := valuation.NewPriceBook(mysql.Queries(ctx, s.db), p.ID)
+	if err := book.PreloadObservations(ctx, []valuation.AccountValuation{view.Account}); err != nil {
+		return AccountView{}, err
+	}
+	decisions := balanceDecisions(&view.Account)
+	for i := range rows {
+		assetID, err := uuid.FromBytes(rows[i].AssetID)
+		if err != nil {
+			return AccountView{}, err
+		}
+		if isExcluded(decisions[assetID]) && view.Account.AccountType != string(adapters.TypeManual) {
+			continue
+		}
+		row, err := balanceRow(ctx, book, &view.Account, &rows[i], decisions[assetID])
+		if err != nil {
+			return AccountView{}, err
+		}
+		if isExcluded(decisions[assetID]) {
+			excludeManualBalance(&row)
+		}
+		view.Balances = append(view.Balances, row)
+	}
+	if includePending && view.Account.AccountType == string(adapters.TypeManual) {
+		current, overlay, err := s.manualOverlayBalances(ctx, p, map[uuid.UUID]bool{view.Account.AccountID: true})
+		if err != nil {
+			return AccountView{}, err
+		}
+		view.ManualOverlay = overlay
+		view.Balances = mergeManualBalances(view.Balances, current[view.Account.AccountID], &view.Account)
+	}
+	sortBalances(view.Balances, accountRanks([]valuation.AccountValuation{view.Account}))
+	return view, nil
+}
+
+func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuation.AccountValuation, source *sqlcgen.ListBalancesByReportRow, adopted *valuation.BalanceValuation) (BalanceRow, error) {
 	id, err := uuid.FromBytes(source.AssetID)
 	if err != nil {
 		return BalanceRow{}, err
@@ -92,13 +103,6 @@ func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuati
 	// Outside-boundary source reports have no adopted value at this point.
 	if account.Method == valuation.MethodMissing {
 		return row, nil
-	}
-	var adopted *valuation.BalanceValuation
-	for i := range account.BalanceValuations {
-		if account.BalanceValuations[i].AssetID == id {
-			adopted = &account.BalanceValuations[i]
-			break
-		}
 	}
 	if adopted == nil {
 		return BalanceRow{}, errors.New("balance lacks persisted valuation evidence")
@@ -140,14 +144,16 @@ func balanceRow(ctx context.Context, book *valuation.PriceBook, account *valuati
 	return row, nil
 }
 
-func balanceExcluded(account *valuation.AccountValuation, id uuid.UUID) bool {
-	for _, line := range account.BalanceValuations {
-		if line.AssetID == id {
-			return line.Treatment == "excluded"
-		}
+func balanceDecisions(account *valuation.AccountValuation) map[uuid.UUID]*valuation.BalanceValuation {
+	out := make(map[uuid.UUID]*valuation.BalanceValuation, len(account.BalanceValuations))
+	for i := range account.BalanceValuations {
+		v := &account.BalanceValuations[i]
+		out[v.AssetID] = v
 	}
-	return false
+	return out
 }
+
+func isExcluded(v *valuation.BalanceValuation) bool { return v != nil && v.Treatment == "excluded" }
 
 // FlatBalances lists every balance in the boundary at the latest point.
 func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[BalanceRow], error) {
@@ -156,32 +162,63 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
-		c, point, accounts, err := s.latestContext(ctx, p)
+		c, point, accounts, err := s.contextAt(ctx, p, f.CycleID)
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
-		out := FlatList[BalanceRow]{Context: c, Items: []BalanceRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
+		out := FlatList[BalanceRow]{TotalCompleteness: valuation.CompletenessIncomplete, TotalIssues: []valuation.Issue{}, Context: c, Items: []BalanceRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
+			out.TotalIssues = append(out.TotalIssues, out.Issues[0])
 		} else {
 			out.Completeness = point.Completeness()
 			out.Issues = point.Issues
 		}
-		accounts, err = s.withManualAccounts(ctx, p, accounts)
+		out.Coverage = reportCoverage(accounts, f, "", point != nil)
+		if point != nil && out.Coverage.Complete {
+			out.TotalCompleteness = valuation.CompletenessComplete
+		}
+		for i := range accounts {
+			a := &accounts[i]
+			if !matchesAccount(f, a) {
+				continue
+			}
+			if a.SourceReportID == nil {
+				id := a.AccountID
+				out.TotalIssues = append(out.TotalIssues, valuation.Issue{Code: "missing", AccountID: &id, AccountName: a.AccountName, Detail: "No compatible successful account report supplies balances for the filtered total."})
+			}
+		}
+		if f.IncludePendingManual {
+			accounts, err = s.withManualAccounts(ctx, p, accounts)
+		}
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
 		var rows []sqlcgen.ListBalancesByCycleRow
 		if point != nil {
-			rows, err = mysql.Queries(ctx, s.db).ListBalancesByCycle(ctx, sqlcgen.ListBalancesByCycleParams{PortfolioID: p.ID[:], CycleID: point.CycleID[:]})
+			rows, err = mysql.Queries(ctx, s.db).ListBalancesByCycle(ctx, sqlcgen.ListBalancesByCycleParams{PortfolioID: p.ID[:], CycleID: point.CycleID[:], Platform: f.Platform, IdentityID: optionalFilterID(f.IdentityID), Symbol: normalizedSearch(f.Symbol)})
 			if err != nil {
 				return FlatList[BalanceRow]{}, err
 			}
 		}
 		byAccount := indexAccounts(accounts)
+		decisions := make(map[uuid.UUID]map[uuid.UUID]*valuation.BalanceValuation, len(accounts))
+		selectedManual := map[uuid.UUID]bool{}
+		filteredAccounts := []valuation.AccountValuation{}
+		for i := range accounts {
+			a := &accounts[i]
+			if !matchesAccount(f, a) {
+				continue
+			}
+			decisions[a.AccountID] = balanceDecisions(a)
+			filteredAccounts = append(filteredAccounts, *a)
+			if a.AccountType == string(adapters.TypeManual) {
+				selectedManual[a.AccountID] = true
+			}
+		}
 
 		book := valuation.NewPriceBook(mysql.Queries(ctx, s.db), p.ID)
-		if err := book.PreloadObservations(ctx, accounts); err != nil {
+		if err := book.PreloadObservations(ctx, filteredAccounts); err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
 		all := make([]BalanceRow, 0, len(rows))
@@ -192,14 +229,14 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 				return FlatList[BalanceRow]{}, err
 			}
 			account, ok := byAccount[accountID]
-			if !ok {
+			if !ok || !matchesAccount(f, account) {
 				continue
 			}
 			assetID, err := uuid.FromBytes(rows[i].AssetID)
 			if err != nil {
 				return FlatList[BalanceRow]{}, err
 			}
-			if account.Method == valuation.MethodCalculated && balanceExcluded(account, assetID) && account.AccountType != string(adapters.TypeManual) {
+			if account.Method == valuation.MethodCalculated && isExcluded(decisions[accountID][assetID]) && account.AccountType != string(adapters.TypeManual) {
 				continue
 			}
 			row, err := balanceRow(ctx, book, account, &sqlcgen.ListBalancesByReportRow{
@@ -208,17 +245,12 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 				AssetSymbol:          rows[i].AssetSymbol,
 				CanonicalAssetSymbol: rows[i].CanonicalAssetSymbol,
 				Equity:               rows[i].Equity,
-				AvailableToWithdraw:  rows[i].AvailableToWithdraw,
-				AvailableToTrade:     rows[i].AvailableToTrade,
-				Liability:            rows[i].Liability,
-				Interest:             rows[i].Interest,
-				UnrealizedPnl:        rows[i].UnrealizedPnl,
-			})
+			}, decisions[accountID][assetID])
 			if err != nil {
 				return FlatList[BalanceRow]{}, err
 			}
 			if account.AccountType == string(adapters.TypeManual) {
-				if balanceExcluded(account, assetID) {
+				if isExcluded(decisions[accountID][assetID]) {
 					excludeManualBalance(&row)
 				}
 				manualRows[accountID] = append(manualRows[accountID], row)
@@ -226,14 +258,21 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 				all = append(all, row)
 			}
 		}
-		current, err := s.currentManualBalances(ctx, p)
+		current := map[uuid.UUID][]BalanceRow{}
+		if f.IncludePendingManual {
+			current, out.ManualOverlay, err = s.manualOverlayBalances(ctx, p, selectedManual)
+		}
 		if err != nil {
 			return FlatList[BalanceRow]{}, err
 		}
 		for i := range accounts {
 			account := &accounts[i]
-			if account.AccountType == string(adapters.TypeManual) {
-				all = append(all, mergeManualBalances(manualRows[account.AccountID], current[account.AccountID], account)...)
+			if account.AccountType == string(adapters.TypeManual) && matchesAccount(f, account) {
+				manual := manualRows[account.AccountID]
+				if f.IncludePendingManual {
+					manual = mergeManualBalances(manual, current[account.AccountID], account)
+				}
+				all = append(all, manual...)
 			}
 		}
 		filtered := all[:0]
@@ -243,6 +282,18 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 				continue
 			}
 			filtered = append(filtered, row)
+			if row.EquityUSD == nil && !row.Excluded && row.ManualChange != "added" {
+				out.TotalCompleteness = valuation.CompletenessIncomplete
+				code := "balance_value_unknown"
+				if row.NoPrice {
+					code = "no_price"
+				}
+				omitted := &valuation.Omitted{AssetID: row.AssetID, AssetSymbol: row.AssetSymbol, Equity: row.Equity, Reason: code}
+				if row.CanonicalAssetSymbol != row.AssetSymbol {
+					omitted.CanonicalAssetSymbol = row.CanonicalAssetSymbol
+				}
+				out.TotalIssues = append(out.TotalIssues, valuation.Issue{Code: code, AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.AssetSymbol, OmittedBalance: omitted, ReportObservedAt: row.ReportObservedAt, Detail: "The balance has no known USD value and is omitted from the filtered total."})
+			}
 			if row.equityUSDRat != nil {
 				total = decimal.Add(total, row.equityUSDRat)
 			}
@@ -253,6 +304,9 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		}
 		sortBalances(all, accountRanks(accounts))
 		out.paginate(all)
+		if err := s.balancePageDetails(ctx, p, &out, byAccount); err != nil {
+			return FlatList[BalanceRow]{}, err
+		}
 		return out, nil
 	})
 }
@@ -261,4 +315,42 @@ func excludeManualBalance(row *BalanceRow) {
 	row.Excluded = true
 	row.PriceUSD, row.EquityUSD, row.equityUSDRat = nil, nil, nil
 	row.NoPrice = false
+}
+
+func (s *Service) balancePageDetails(ctx context.Context, p PortfolioContext, out *FlatList[BalanceRow], accounts map[uuid.UUID]*valuation.AccountValuation) error {
+	reports, assets := [][]byte{}, [][]byte{}
+	type key struct{ report, asset uuid.UUID }
+	page := map[key]*BalanceRow{}
+	for i := range out.Items {
+		row := &out.Items[i]
+		a := accounts[row.AccountID]
+		if row.ManualChange == "added" || a == nil || a.SourceReportID == nil {
+			continue
+		}
+		reports = append(reports, a.SourceReportID[:])
+		assets = append(assets, row.AssetID[:])
+		page[key{*a.SourceReportID, row.AssetID}] = row
+	}
+	if len(reports) == 0 {
+		return nil
+	}
+	rows, err := mysql.Queries(ctx, s.db).ListBalanceDetailsByReportsAndAssets(ctx, sqlcgen.ListBalanceDetailsByReportsAndAssetsParams{PortfolioID: p.ID[:], ReportIds: reports, AssetIds: assets})
+	if err != nil {
+		return err
+	}
+	for _, source := range rows {
+		report, err := uuid.FromBytes(source.ReportID)
+		if err != nil {
+			return err
+		}
+		asset, err := uuid.FromBytes(source.AssetID)
+		if err != nil {
+			return err
+		}
+		if row := page[key{report, asset}]; row != nil {
+			row.AvailableToWithdraw, row.AvailableToTrade = nullDecimal(source.AvailableToWithdraw), nullDecimal(source.AvailableToTrade)
+			row.Liability, row.Interest, row.UnrealizedPnl = nullDecimal(source.Liability), nullDecimal(source.Interest), nullDecimal(source.UnrealizedPnl)
+		}
+	}
+	return nil
 }

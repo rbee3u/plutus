@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -128,6 +129,70 @@ func (q *Queries) InsertManualRevisionBalance(ctx context.Context, arg InsertMan
 		arg.ChangedAt,
 	)
 	return err
+}
+
+const listCurrentManualBalancesByAccounts = `-- name: ListCurrentManualBalancesByAccounts :many
+SELECT b.account_id, b.asset_id, b.quantity, b.changed_at, a.symbol AS asset_symbol, a.canonical_asset_symbol
+FROM manual_revision_balances b
+JOIN assets a ON a.portfolio_id = b.portfolio_id AND a.id = b.asset_id
+WHERE b.portfolio_id = ? AND b.account_id IN (/*SLICE:account_ids*/?)
+AND b.revision_number = (SELECT MAX(r.revision_number) FROM manual_revisions r WHERE r.portfolio_id = b.portfolio_id AND r.account_id = b.account_id)
+ORDER BY b.account_id, a.symbol, b.asset_id
+`
+
+type ListCurrentManualBalancesByAccountsParams struct {
+	PortfolioID []byte
+	AccountIds  [][]byte
+}
+
+type ListCurrentManualBalancesByAccountsRow struct {
+	AccountID            []byte
+	AssetID              []byte
+	Quantity             string
+	ChangedAt            time.Time
+	AssetSymbol          string
+	CanonicalAssetSymbol string
+}
+
+func (q *Queries) ListCurrentManualBalancesByAccounts(ctx context.Context, arg ListCurrentManualBalancesByAccountsParams) ([]ListCurrentManualBalancesByAccountsRow, error) {
+	query := listCurrentManualBalancesByAccounts
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.AccountIds) > 0 {
+		for _, v := range arg.AccountIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:account_ids*/?", strings.Repeat(",?", len(arg.AccountIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:account_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCurrentManualBalancesByAccountsRow{}
+	for rows.Next() {
+		var i ListCurrentManualBalancesByAccountsRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.AssetID,
+			&i.Quantity,
+			&i.ChangedAt,
+			&i.AssetSymbol,
+			&i.CanonicalAssetSymbol,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listManualBoundary = `-- name: ListManualBoundary :many

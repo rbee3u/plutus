@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -52,12 +53,12 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db, catalog.NewService(db))}})
-	request := func(method, path, body, etag string, authenticated, csrfPresent bool) *httptest.ResponseRecorder {
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{Auth: authentication, Portfolios: portfolios, Manual: manual.NewService(db, catalog.NewService(db)), Identities: identities}})
+	request := func(method, path, body, version string, authenticated, csrfPresent bool) *httptest.ResponseRecorder {
 		req := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
-		if etag != "" {
-			req.Header.Set("If-Match", etag)
+		if version != "" {
+			req.Header.Set("If-Edit-Version", version)
 		}
 		if authenticated {
 			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token, Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
@@ -72,28 +73,28 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	}
 	base := "/api/v1/portfolios/" + owned[0].ID.String() + "/identities/" + item.ID.String() + "/manual-balances"
 	read := request("GET", base, "", "", true, false)
-	if read.Code != 200 || read.Header().Get("ETag") == "" {
+	if read.Code != 200 || read.Header().Get("ETag") != "" {
 		t.Fatalf("read %d %s", read.Code, read.Body.String())
 	}
-	etag := read.Header().Get("ETag")
+	version := "1"
 	for _, tc := range []struct {
-		path, etag string
-		auth, csrf bool
-		code       int
+		path, version string
+		auth, csrf    bool
+		code          int
 	}{
-		{base, etag, false, true, 401}, {base, etag, true, false, 403}, {base, "", true, true, 400}, {base, `"identity:1"`, true, true, 400}, {"/api/v1/portfolios/" + uuid.NewString() + "/identities/" + item.ID.String() + "/manual-balances", etag, true, true, 404},
+		{base, version, false, true, 401}, {base, version, true, false, 403}, {base, "", true, true, 400}, {base, `"identity:1"`, true, true, 400}, {"/api/v1/portfolios/" + uuid.NewString() + "/identities/" + item.ID.String() + "/manual-balances", version, true, true, 404},
 	} {
-		res := request("POST", tc.path, `{"assetSymbol":"USD","quantity":"100"}`, tc.etag, tc.auth, tc.csrf)
+		res := request("POST", tc.path, `{"assetSymbol":"USD","quantity":"100"}`, tc.version, tc.auth, tc.csrf)
 		if res.Code != tc.code {
 			t.Fatalf("precondition want %d got %d %s", tc.code, res.Code, res.Body.String())
 		}
 	}
-	added := request("POST", base, `{"assetSymbol":"usd","quantity":"100"}`, etag, true, true)
+	added := request("POST", base, `{"assetSymbol":"usd","quantity":"100"}`, version, true, true)
 	var state api.ManualBalanceState
 	if added.Code != 200 || json.Unmarshal(added.Body.Bytes(), &state) != nil || !state.Pending || state.Items[0].Quantity != "100" {
 		t.Fatalf("add %d %s", added.Code, added.Body.String())
 	}
-	next := added.Header().Get("ETag")
+	next := strconv.FormatUint(state.Version, 10)
 	ownerSession := session
 	session = otherUserSession(t, authentication)
 	for _, tc := range []struct{ method, suffix, body string }{
@@ -112,21 +113,36 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	session = ownerSession
 	unchanged := request("GET", base, "", "", true, false)
 	var after api.ManualBalanceState
-	if unchanged.Code != 200 || json.Unmarshal(unchanged.Body.Bytes(), &after) != nil || !reflect.DeepEqual(state, after) || unchanged.Header().Get("ETag") != next {
+	if unchanged.Code != 200 || json.Unmarshal(unchanged.Body.Bytes(), &after) != nil || !reflect.DeepEqual(state, after) || unchanged.Header().Get("ETag") != "" {
 		t.Fatalf("rejected writes changed manual balances: %d %s", unchanged.Code, unchanged.Body.String())
 	}
 	if res := request("POST", base, `{"assetSymbol":"USD","quantity":"10"}`, next, true, true); res.Code != 409 {
 		t.Fatalf("duplicate %d %s", res.Code, res.Body.String())
 	}
-	if res := request("PATCH", base+"/USD", `{"quantity":"-100"}`, etag, true, true); res.Code != 412 {
+	if res := request("PATCH", base+"/USD", `{"quantity":"-100"}`, version, true, true); res.Code != 412 {
 		t.Fatalf("concurrent %d %s", res.Code, res.Body.String())
 	}
 	edited := request("PATCH", base+"/USD", `{"quantity":"-100"}`, next, true, true)
 	if edited.Code != 200 {
 		t.Fatalf("edit %d %s", edited.Code, edited.Body.String())
 	}
-	deleted := request("DELETE", base+"/USD", "", edited.Header().Get("ETag"), true, true)
+	deleted := request("DELETE", base+"/USD", "", "3", true, true)
 	if deleted.Code != 200 || json.Unmarshal(deleted.Body.Bytes(), &state) != nil || len(state.Items) != 0 || state.Pending {
 		t.Fatalf("delete %d %s", deleted.Code, deleted.Body.String())
+	}
+	item, err = identities.PutCredentials(ctx, owned[0].ID, item.ID, item.Version, identity.ActionInput{ActorUserID: user.ID}, adapters.Credentials{APIKey: "invalid-http", APISecret: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := "/api/v1/portfolios/" + owned[0].ID.String() + "/identities/" + item.ID.String() + "/connection"
+	rejected := request("POST", connection+"/enable", "", strconv.FormatUint(item.Version, 10), true, true)
+	var problem api.Problem
+	if rejected.Code != http.StatusUnprocessableEntity || rejected.Header().Get("Content-Type") != "application/problem+json" || json.Unmarshal(rejected.Body.Bytes(), &problem) != nil || problem.Code != "connection_validation_failed" || problem.ValidationOutcome == nil || problem.ValidationOutcome.Ok || problem.ValidationOutcome.Identity.Connection.Status != api.ConnectionStatusInvalid {
+		t.Fatalf("validation failure lost Problem Details or identity: %d %s", rejected.Code, rejected.Body.String())
+	}
+	validated := request("POST", connection+"/validate", "", "", true, true)
+	var outcome api.ValidationOutcome
+	if validated.Code != http.StatusOK || json.Unmarshal(validated.Body.Bytes(), &outcome) != nil || outcome.Ok {
+		t.Fatalf("executed validation must remain a 200 outcome: %d %s", validated.Code, validated.Body.String())
 	}
 }

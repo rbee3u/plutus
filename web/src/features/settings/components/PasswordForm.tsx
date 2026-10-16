@@ -58,14 +58,11 @@ export function PasswordForm({ onError: setError }: { onError: (error: string | 
     setCurrentPasswordError(null);
 
     try {
-      const result = await write(
-        () => putAuthPassword({ body: { currentPassword, newPassword } }),
-        { acceptUnauthorized: (error) => problemError(error, "").code === "invalid_credentials" },
-      );
+      const result = await write(() => putAuthPassword({ body: { currentPassword, newPassword } }));
 
-      if (result.response?.status === 401) {
+      if (result.response?.status === 422) {
         const err = problemError(result.error, "");
-        if (err.code === "invalid_credentials") {
+        if (err.code === "invalid_current_password") {
           setCurrentPasswordError("Current password is incorrect.");
           currentPasswordRef.current?.focus();
           return;

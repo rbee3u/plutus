@@ -67,12 +67,16 @@ func (a *API) ListValuationPoints(ctx context.Context, request api.ListValuation
 	if request.Params.Granularity != nil {
 		granularity = *request.Params.Granularity
 	}
-	points, err := a.Financial.Points(ctx, sc.portfolioContext(), from, to, string(granularity))
+	maxPoints := 10000
+	if request.Params.MaxPoints != nil {
+		maxPoints = *request.Params.MaxPoints
+	}
+	points, err := a.Financial.PointsWithLimit(ctx, sc.portfolioContext(), from, to, string(granularity), maxPoints)
 	if err != nil {
 		return nil, err
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
-	return api.ListValuationPoints200JSONResponse{Context: toAPIContext(&c), Items: toAPIPoints(points), Granularity: granularity, From: from, To: to}, nil
+	return api.ListValuationPoints200JSONResponse{MaxPoints: maxPoints, Context: toAPIPortfolioContext(&c), Items: toAPISeries(points), Granularity: granularity, From: from, To: to}, nil
 }
 
 func (a *API) GetValuationPoint(ctx context.Context, request api.GetValuationPointRequestObject) (api.GetValuationPointResponseObject, error) {
@@ -119,7 +123,7 @@ func (a *API) ListPeriodCloses(ctx context.Context, request api.ListPeriodCloses
 		items = append(items, toAPIPeriodClose(&closes[i]))
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
-	return api.ListPeriodCloses200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
+	return api.ListPeriodCloses200JSONResponse{Context: toAPIPortfolioContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
 }
 
 func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChangesRequestObject) (api.ListValueChangesResponseObject, error) {
@@ -146,7 +150,7 @@ func (a *API) ListValueChanges(ctx context.Context, request api.ListValueChanges
 		items = append(items, toAPIValueChange(&changes[i]))
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
-	return api.ListValueChanges200JSONResponse{Context: toAPIContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
+	return api.ListValueChanges200JSONResponse{Context: toAPIPortfolioContext(&c), PeriodKind: api.PeriodKind(kind), Items: items}, nil
 }
 
 func (a *API) GetCustomValueChange(ctx context.Context, request api.GetCustomValueChangeRequestObject) (api.GetCustomValueChangeResponseObject, error) {
@@ -173,11 +177,11 @@ func (a *API) ListBoundaryEvents(ctx context.Context, request api.ListBoundaryEv
 		return nil, ErrNotImplemented
 	}
 	from, to := timeRange(request.Params.From, request.Params.To, 90*24*time.Hour)
-	events, err := a.Financial.BoundaryEvents(ctx, sc.portfolioContext(), from, to)
+	events, err := a.Financial.BoundaryEventsPage(ctx, sc.portfolioContext(), from, to, intValue(request.Params.Offset), intValue(request.Params.Limit))
 	if err != nil {
 		return nil, err
 	}
-	return api.ListBoundaryEvents200JSONResponse{Items: toAPIBoundaryEvents(events)}, nil
+	return api.ListBoundaryEvents200JSONResponse{Context: toAPIPortfolioContext(&financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}), From: from, To: to, Items: toAPIBoundaryEvents(events.Items), Page: toOffsetPage(events.Offset, events.Limit, events.Total)}, nil
 }
 
 // defaultSpanFor picks a window that shows a useful number of periods.
@@ -222,7 +226,7 @@ func (a *API) GetHistoryWindow(ctx context.Context, request api.GetHistoryWindow
 		return nil, err
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
-	return api.GetHistoryWindow200JSONResponse{Context: toAPIContext(&c), From: from, To: to}, nil
+	return api.GetHistoryWindow200JSONResponse{Context: toAPIPortfolioContext(&c), From: from, To: to}, nil
 }
 
 func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuationPointPageRequestObject) (api.ListValuationPointPageResponseObject, error) {
@@ -246,7 +250,7 @@ func (a *API) ListValuationPointPage(ctx context.Context, request api.ListValuat
 		return nil, err
 	}
 	c := financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}
-	return api.ListValuationPointPage200JSONResponse{Context: toAPIContext(&c), From: from, To: to, Items: toAPIPoints(page.Items), Page: toOffsetPage(page.Offset, page.Limit, page.Total)}, nil
+	return api.ListValuationPointPage200JSONResponse{Context: toAPIPortfolioContext(&c), From: from, To: to, Items: toAPIPoints(page.Items), Page: toOffsetPage(page.Offset, page.Limit, page.Total), PrecedingPoint: toAPIPointPtr(page.PrecedingPoint)}, nil
 }
 
 func (a *API) GetValuationSnapshot(ctx context.Context, request api.GetValuationSnapshotRequestObject) (api.GetValuationSnapshotResponseObject, error) {

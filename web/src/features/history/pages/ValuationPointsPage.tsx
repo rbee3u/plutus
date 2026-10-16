@@ -1,4 +1,3 @@
-import { useValuationRevision } from "@/shared/lib/useValuationRevision";
 import type { EChartsCoreOption } from "echarts/core";
 import { useEffect, useMemo } from "react";
 import {
@@ -76,13 +75,9 @@ export function ValuationPointsPage() {
       pointPager.onChange(Math.max(0, Math.ceil(total / pointPager.limit) - 1) * pointPager.limit);
     }
   }, [records.data, pointPager]);
-  const selectedRevision = records.data?.items.find(
-    (item) => item.cycleId === cycleId,
-  )?.valuationRevision;
   const detail = usePortfolioQuery<ValuationPointDetail>({
-    key: (userId, portfolioId) =>
-      keys.valuationPoint(userId, portfolioId, cycleId, selectedRevision),
-    ready: Boolean(cycleId && selectedRevision),
+    key: (userId, portfolioId) => keys.valuationPoint(userId, portfolioId, cycleId),
+    ready: Boolean(cycleId),
     load: (portfolioId) => getValuationPoint({ path: { portfolioId, cycleId } }),
   });
   const closes = usePortfolioQuery<PeriodCloseList>({
@@ -91,10 +86,7 @@ export function ValuationPointsPage() {
     load: (portfolioId) =>
       listPeriodCloses({ path: { portfolioId }, query: { periodKind, from, to } }),
   });
-  const detailMatches = useValuationRevision(
-    selectedRevision,
-    detail.data?.point.valuationRevision,
-  );
+  const detailMatches = detail.data?.point.cycleId === cycleId;
   const series = points.data;
   const timezone = window?.context.timezone;
   const closeItems = [...(closes.data?.items ?? [])].reverse();
@@ -203,7 +195,7 @@ export function ValuationPointsPage() {
           )}
           columns={RAW_POINT_COLUMNS}
           rows={(records.data?.items ?? []).map((item, index, items) => {
-            const prevItem = items[index + 1];
+            const prevItem = items[index + 1] ?? records.data?.precedingPoint;
             return rawPointRow(item, prevItem, timezone, cycleId, update);
           })}
         />

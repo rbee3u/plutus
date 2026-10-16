@@ -3,8 +3,25 @@ package financial
 import (
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/rbee3u/plutus/internal/application/valuation"
 )
+
+func reportCoverage(accounts []valuation.AccountValuation, f *ListFilter, kind string, hasPoint bool) ReportCoverage {
+	out := ReportCoverage{Complete: hasPoint, MissingAccountIDs: []uuid.UUID{}}
+	for i := range accounts {
+		a := &accounts[i]
+		if !matchesAccount(f, a) || (kind != "" && kind != "positions" && a.AccountType != kind) || (kind == "positions" && !positionAccount(a)) {
+			continue
+		}
+		if a.SourceReportID == nil {
+			out.Complete = false
+			out.MissingAccountIDs = append(out.MissingAccountIDs, a.AccountID)
+		}
+	}
+	return out
+}
 
 func matchesAccount(f *ListFilter, a *valuation.AccountValuation) bool {
 	if f.Platform != "" && f.Platform != a.Platform {
@@ -36,3 +53,12 @@ func optionalSymbol(symbol *string) string {
 	}
 	return *symbol
 }
+
+func optionalFilterID(id *uuid.UUID) []byte {
+	if id == nil {
+		return nil
+	}
+	return id[:]
+}
+
+func normalizedSearch(q string) string { return strings.ToLower(strings.TrimSpace(q)) }

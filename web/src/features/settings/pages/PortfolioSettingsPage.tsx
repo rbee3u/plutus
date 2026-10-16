@@ -6,7 +6,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "r
 import { useNavigate, useParams } from "react-router";
 import { deletePortfolio, keys, patchPortfolio, problemMessage, type Portfolio } from "@/api";
 import { LAST_PORTFOLIO_KEY } from "@/shared/lib/preferences";
-import { portfolioEtag, usePortfolio } from "@/shared/lib/portfolio";
+import { usePortfolio } from "@/shared/lib/portfolio";
 import { storePreference } from "@/shared/lib/preferences";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
@@ -229,7 +229,7 @@ function SettingsForms({
       const result = await write(() =>
         patchPortfolio({
           path: { portfolioId },
-          headers: { "If-Match": portfolioEtag(baseline) },
+          headers: { "If-Edit-Version": String(baseline.version) },
           body: {
             name: name.trim(),
             timezone: timezone.trim(),
@@ -273,7 +273,7 @@ function SettingsForms({
       const result = await write(() =>
         deletePortfolio({
           path: { portfolioId },
-          headers: { "If-Match": portfolioEtag(baseline) },
+          headers: { "If-Edit-Version": String(baseline.version) },
         }),
       );
       if (result.response?.status === 412) {

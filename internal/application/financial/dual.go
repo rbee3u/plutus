@@ -73,26 +73,34 @@ func dualIssues(row *DualPositionRow) []valuation.Issue {
 
 // AccountDualPositions uses the same source report as AccountBalances, including stale reads.
 func (s *Service) AccountDualPositions(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, error) {
+	return s.AccountDualPositionsAt(ctx, p, accountID, nil)
+}
+
+func (s *Service) AccountDualPositionsAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
-		view, source, err := s.accountView(ctx, p, accountID)
+		view, source, err := s.accountView(ctx, p, accountID, cycleID)
 		if err != nil {
 			return AccountView{}, err
 		}
-		view.DualPositions = []DualPositionRow{}
-		if source == nil {
-			return view, nil
-		}
-		rows, err := mysql.Queries(ctx, s.db).ListDualPositionsByReport(ctx, sqlcgen.ListDualPositionsByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
-		if err != nil {
-			return AccountView{}, err
-		}
-		for i := range rows {
-			row := dualPositionRow(&view.Account, &rows[i])
-			view.DualPositions = append(view.DualPositions, row)
-			view.Issues = append(view.Issues, dualIssues(&row)...)
-		}
-		return view, nil
+		return s.readAccountDual(ctx, p, view, source)
 	})
+}
+
+func (s *Service) readAccountDual(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID) (AccountView, error) {
+	view.DualPositions = []DualPositionRow{}
+	if source == nil {
+		return view, nil
+	}
+	rows, err := mysql.Queries(ctx, s.db).ListDualPositionsByReport(ctx, sqlcgen.ListDualPositionsByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
+	if err != nil {
+		return AccountView{}, err
+	}
+	for i := range rows {
+		row := dualPositionRow(&view.Account, &rows[i])
+		view.DualPositions = append(view.DualPositions, row)
+		view.Issues = append(view.Issues, dualIssues(&row)...)
+	}
+	return view, nil
 }
 
 // FlatDualPositions lists only subscriptions in selected accounts at the latest point.
@@ -102,11 +110,12 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 		if err != nil {
 			return FlatList[DualPositionRow]{}, err
 		}
-		c, point, accounts, err := s.latestContext(ctx, p)
+		c, point, accounts, err := s.contextAt(ctx, p, f.CycleID)
 		if err != nil {
 			return FlatList[DualPositionRow]{}, err
 		}
 		out := FlatList[DualPositionRow]{Context: c, Items: []DualPositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
+		out.Coverage = reportCoverage(accounts, f, "dual_investment", point != nil)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil

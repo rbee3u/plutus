@@ -53,16 +53,16 @@ func (a *API) CreateCollectionCycle(ctx context.Context, request api.CreateColle
 	if a.Cycles == nil {
 		return nil, ErrNotImplemented
 	}
-	body, _, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), struct{}{}, http.StatusAccepted, func(ctx context.Context, _ auth.User) (api.CollectionCycle, string, error) {
+	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), struct{}{}, http.StatusAccepted, func(ctx context.Context, _ auth.User) (api.CollectionCycle, error) {
 		sc, err := a.scoped(ctx, request.PortfolioId)
 		if err != nil {
-			return api.CollectionCycle{}, "", err
+			return api.CollectionCycle{}, err
 		}
 		cycle, _, err := a.Cycles.Enqueue(ctx, sc.portfolio.ID, cycles.TriggerUser)
 		if err != nil {
-			return api.CollectionCycle{}, "", err
+			return api.CollectionCycle{}, err
 		}
-		return toAPICycle(&cycle, nil), "", nil
+		return toAPICycle(&cycle, nil), nil
 	})
 	if err != nil {
 		return nil, err

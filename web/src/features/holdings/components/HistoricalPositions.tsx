@@ -1,6 +1,5 @@
-import { useValuationRevision } from "@/shared/lib/useValuationRevision";
-import { keys, listAccountPositions } from "@/api";
-import type { AccountPositionList } from "@/api";
+import { keys, getAccountReport } from "@/api";
+import type { AccountReport } from "@/api";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
@@ -10,20 +9,18 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 export function HistoricalPositions({
   accountId,
   cycleId,
-  valuationRevision,
 }: {
   accountId: string;
   cycleId: string;
-  valuationRevision: string;
 }) {
-  const query = usePortfolioQuery<AccountPositionList>({
+  const query = usePortfolioQuery<AccountReport>({
     key: (userId, portfolioId) =>
-      keys.accountPositions(userId, portfolioId, accountId, cycleId, undefined, valuationRevision),
+      keys.accountReport(userId, portfolioId, accountId, cycleId, false),
     ready: Boolean(accountId && cycleId),
     load: (portfolioId) =>
-      listAccountPositions({ path: { portfolioId, accountId }, query: { cycleId } }),
+      getAccountReport({ path: { portfolioId, accountId }, query: { cycleId } }),
   });
-  const matches = useValuationRevision(valuationRevision, query.data?.context.valuationRevision);
+  const matches = query.data?.context.cycleId === cycleId;
   const data = matches ? query.data : undefined;
   return (
     <>
@@ -32,7 +29,7 @@ export function HistoricalPositions({
       <DataTable
         caption="Futures positions at this valuation point"
         columns={POSITION_COLUMNS}
-        rows={(data?.items ?? []).map((item) => positionRow(item, data?.context.timezone))}
+        rows={(data?.positions ?? []).map((item) => positionRow(item, data?.context.timezone))}
         empty={
           query.isError && !data
             ? "Historical positions could not be loaded."
@@ -43,7 +40,12 @@ export function HistoricalPositions({
                 : "No positions in this account report."
         }
       />
-      {data ? <IssuesPanel issues={data.issues} timezone={data.context.timezone} /> : null}
+      {data ? (
+        <IssuesPanel
+          issues={data.issues.filter((issue) => !issue.omittedBalance)}
+          timezone={data.context.timezone}
+        />
+      ) : null}
     </>
   );
 }

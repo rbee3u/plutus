@@ -47,7 +47,6 @@ func NewService(db *sql.DB) *Service {
 
 // Point is the valuation point written by a succeeded collection cycle.
 type Point struct {
-	Revision               string
 	CalculationVersion     uint64
 	EvaluatedAt            time.Time
 	TotalUSD               string
@@ -183,7 +182,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, limit int, ra
 				return Page{}, errors.New("invalid calculation version")
 			}
 			point := &Point{
-				Revision: id.String(), CalculationVersion: uint64(r.CalculationVersion.Int64),
+				CalculationVersion:     uint64(r.CalculationVersion.Int64),
 				EvaluatedAt:            r.EvaluatedAt.Time,
 				TotalUSD:               r.TotalUsd.String,
 				AccountCount:           int(r.AccountCount.Int32),

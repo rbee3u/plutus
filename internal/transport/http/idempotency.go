@@ -12,21 +12,21 @@ import (
 
 // createIdempotent authenticates before replay and looks up resources only for a
 // fresh request. Typed request JSON defines the hash, including omitted values.
-func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key string, request any, status int, create func(context.Context, auth.User) (T, string, error)) (T, string, error) {
+func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key string, request any, status int, create func(context.Context, auth.User) (T, error)) (T, error) {
 	var zero T
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return zero, "", errUnauthenticated
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return zero, err
 	}
 	if err := a.requireCSRF(ctx, csrf, &session); err != nil {
-		return zero, "", err
+		return zero, err
 	}
 	raw, err := json.Marshal(request)
 	if err != nil {
-		return zero, "", err
+		return zero, err
 	}
 	run := func(ctx context.Context) (idempotency.Record, error) {
-		body, etag, err := create(ctx, user)
+		body, err := create(ctx, user)
 		if err != nil {
 			return idempotency.Record{}, err
 		}
@@ -34,11 +34,7 @@ func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key stri
 		if err != nil {
 			return idempotency.Record{}, err
 		}
-		headers := map[string]string{}
-		if etag != "" {
-			headers["ETag"] = etag
-		}
-		return idempotency.Record{Status: status, Headers: headers, Body: encoded}, nil
+		return idempotency.Record{Status: status, Body: encoded}, nil
 	}
 	var record idempotency.Record
 	if a.Idempotency == nil {
@@ -47,16 +43,16 @@ func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key stri
 		record, err = a.Idempotency.Run(ctx, user.ID, http.MethodPost, requestPath(ctx), key, raw, run)
 	}
 	if errors.Is(err, idempotency.ErrConflict) {
-		return zero, "", newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
+		return zero, newProblemError(http.StatusConflict, "idempotency_conflict", "Idempotency key conflict", "The idempotency key was reused with a different request.")
 	}
 	if err != nil {
-		return zero, "", err
+		return zero, err
 	}
 	var body T
 	if err := json.Unmarshal(record.Body, &body); err != nil {
-		return zero, "", err
+		return zero, err
 	}
-	return body, record.Headers["ETag"], nil
+	return body, nil
 }
 
 func requestPath(ctx context.Context) string {

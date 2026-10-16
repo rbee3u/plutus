@@ -5,10 +5,10 @@ import (
 	"slices"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/manual"
 	"github.com/rbee3u/plutus/internal/application/ordering"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
@@ -17,38 +17,61 @@ import (
 
 // Current quantities affect presentation only; report amounts and totals stay frozen.
 func (s *Service) currentManualBalances(ctx context.Context, p PortfolioContext) (map[uuid.UUID][]BalanceRow, error) {
+	rows, _, err := s.manualOverlayBalances(ctx, p, nil)
+	return rows, err
+}
+
+func (s *Service) manualOverlayBalances(ctx context.Context, p PortfolioContext, selected map[uuid.UUID]bool) (map[uuid.UUID][]BalanceRow, *ManualOverlay, error) {
 	records, err := mysql.Queries(ctx, s.db).ListPortfolioManualRevisions(ctx, p.ID[:])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	rules, err := mysql.Queries(ctx, s.db).ListCurrentAssetExclusions(ctx, p.ID[:])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	excluded := map[uuid.UUID]bool{}
 	for _, rule := range rules {
 		id, err := uuid.FromBytes(rule.AssetID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		excluded[id] = rule.Excluded
 	}
 	out := map[uuid.UUID][]BalanceRow{}
+	overlay := &ManualOverlay{Versions: []ManualLedgerVersion{}}
+	ids := [][]byte{}
 	for _, record := range records {
 		accountID, err := uuid.FromBytes(record.AccountID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		items, err := manual.Hydrate(ctx, mysql.Queries(ctx, s.db), p.ID[:], record.AccountID, record.RevisionNumber)
+		if selected != nil && !selected[accountID] {
+			continue
+		}
+		ids = append(ids, record.AccountID)
+		overlay.Versions = append(overlay.Versions, ManualLedgerVersion{AccountID: accountID, Version: record.RevisionNumber})
+	}
+	for start := 0; start < len(ids); start += 500 {
+		items, err := mysql.Queries(ctx, s.db).ListCurrentManualBalancesByAccounts(ctx, sqlcgen.ListCurrentManualBalancesByAccountsParams{PortfolioID: p.ID[:], AccountIds: ids[start:min(start+500, len(ids))]})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, item := range items {
+			accountID, err := uuid.FromBytes(item.AccountID)
+			if err != nil {
+				return nil, nil, err
+			}
+			assetID, err := uuid.FromBytes(item.AssetID)
+			if err != nil {
+				return nil, nil, err
+			}
 			quantity := decimal.Compact(item.Quantity)
-			out[accountID] = append(out[accountID], BalanceRow{AccountID: accountID, AssetID: item.AssetID, AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: item.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity, ManualModifiedAt: &item.ModifiedAt, ManualChange: "added", Excluded: excluded[item.AssetID], Freshness: valuation.FreshnessFresh})
+			modified := item.ChangedAt
+			out[accountID] = append(out[accountID], BalanceRow{AccountID: accountID, AssetID: assetID, AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: item.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity, ManualModifiedAt: &modified, ManualChange: "added", Excluded: excluded[assetID]})
 		}
 	}
-	return out, nil
+	return out, overlay, nil
 }
 
 func mergeManualBalances(collected, current []BalanceRow, account *valuation.AccountValuation) []BalanceRow {

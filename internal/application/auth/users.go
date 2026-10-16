@@ -79,7 +79,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, current,
 		return err
 	}
 	ok, _, err := VerifyPassword(current, row.PasswordHash)
-	if err != nil || !ok {
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrInvalidCredentials
 	}
 	if current == next {

@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+const countCapitalFlows = `-- name: CountCapitalFlows :one
+SELECT COUNT(*) FROM capital_flows
+WHERE portfolio_id = ?
+  AND effective_at >= ? AND effective_at < ?
+`
+
+type CountCapitalFlowsParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+func (q *Queries) CountCapitalFlows(ctx context.Context, arg CountCapitalFlowsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCapitalFlows, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteCapitalFlow = `-- name: DeleteCapitalFlow :execrows
 DELETE FROM capital_flows
 WHERE portfolio_id = ? AND id = ? AND version = ?
@@ -117,6 +136,68 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const listCapitalFlowPage = `-- name: ListCapitalFlowPage :many
+SELECT portfolio_id, id, account_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, note, version, created_at, updated_at FROM capital_flows
+WHERE portfolio_id = ?
+  AND effective_at >= ? AND effective_at < ?
+ORDER BY effective_at DESC, id DESC LIMIT ? OFFSET ?
+`
+
+type ListCapitalFlowPageParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+	Limit       int32
+	Offset      int32
+}
+
+func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPageParams) ([]CapitalFlow, error) {
+	rows, err := q.db.QueryContext(ctx, listCapitalFlowPage,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CapitalFlow{}
+	for rows.Next() {
+		var i CapitalFlow
+		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.ID,
+			&i.AccountID,
+			&i.Direction,
+			&i.CanonicalAssetSymbol,
+			&i.Quantity,
+			&i.ValueUsd,
+			&i.PricingMethod,
+			&i.PricingPlatform,
+			&i.PriceObservationID,
+			&i.PricingAttemptedAt,
+			&i.CalculationVersion,
+			&i.EffectiveAt,
+			&i.Note,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCapitalFlows = `-- name: ListCapitalFlows :many

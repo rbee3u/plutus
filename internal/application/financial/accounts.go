@@ -15,7 +15,7 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 )
 
-func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID uuid.UUID) (AccountView, *uuid.UUID, error) {
+func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, *uuid.UUID, error) {
 	account, err := mysql.Queries(ctx, s.db).GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: p.ID[:], ID: accountID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
 		return AccountView{}, nil, valuation.ErrNotFound
@@ -23,18 +23,59 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 	if err != nil {
 		return AccountView{}, nil, err
 	}
-	c, point, accounts, err := s.latestContext(ctx, p)
-	if err != nil {
+	q := mysql.Queries(ctx, s.db)
+	var point sqlcgen.ValuationPoint
+	if cycleID == nil {
+		row, readErr := q.GetLatestValuationPoint(ctx, p.ID[:])
+		point, err = sqlcgen.ValuationPoint(row), readErr
+	} else {
+		point, err = q.GetValuationPoint(ctx, sqlcgen.GetValuationPointParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
+		if errors.Is(err, sql.ErrNoRows) {
+			return AccountView{}, nil, valuation.ErrNotFound
+		}
+		if err == nil {
+			available, readErr := q.IsPointInRetainedHistory(ctx, sqlcgen.IsPointInRetainedHistoryParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
+			if readErr != nil {
+				return AccountView{}, nil, readErr
+			}
+			if !available {
+				latest, readErr := q.GetLatestValuationPoint(ctx, p.ID[:])
+				if readErr != nil {
+					return AccountView{}, nil, readErr
+				}
+				id, readErr := uuid.FromBytes(latest.CycleID)
+				if readErr != nil {
+					return AccountView{}, nil, readErr
+				}
+				if id != *cycleID {
+					return AccountView{}, nil, valuation.ErrNotFound
+				}
+			}
+		}
+	}
+	view := AccountView{Context: Context{PortfolioID: p.ID, Timezone: p.Timezone}, Issues: []valuation.Issue{}}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return AccountView{}, nil, err
 	}
-	view := AccountView{Context: c, Issues: []valuation.Issue{}}
-	if point != nil {
-		for i := range accounts {
-			if accounts[i].AccountID == accountID {
-				view.Account = accounts[i]
-				view.Issues = valuation.AccountIssues(&view.Account)
-				return view, view.Account.SourceReportID, nil
-			}
+	if err == nil {
+		if point.DetailState == "expired" || point.DetailState == "pruning" {
+			return AccountView{}, nil, valuation.ErrDetailExpired
+		}
+		id, readErr := uuid.FromBytes(point.CycleID)
+		if readErr != nil {
+			return AccountView{}, nil, readErr
+		}
+		view.Context.CycleID, view.Context.EvaluatedAt = &id, &point.EvaluatedAt
+		view.Account, err = s.valuation.Account(ctx, p.ID, id, accountID)
+		if err == nil {
+			view.Issues = valuation.AccountIssues(&view.Account)
+			return view, view.Account.SourceReportID, nil
+		}
+		if !errors.Is(err, valuation.ErrNotFound) {
+			return AccountView{}, nil, err
+		}
+		if cycleID != nil && (account.AccountType != string(adapters.TypeManual) || account.IdentityArchivedAt.Valid) {
+			return AccountView{}, nil, valuation.ErrNotFound
 		}
 	}
 	identityID, err := uuid.FromBytes(account.IdentityID)
@@ -52,6 +93,9 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 	}
 	if account.AccountType != string(adapters.TypeManual) || account.IdentityArchivedAt.Valid {
 		view.Issues = append(view.Issues, valuation.Issue{Code: "outside_boundary", AccountID: &accountID, AccountName: adapters.AccountName(adapters.AccountType(account.AccountType)), Detail: "The account is not part of the latest valuation point; the last successful report is shown without a value."})
+	}
+	if cycleID != nil {
+		return view, nil, nil
 	}
 	src, err := mysql.Queries(ctx, s.db).GetLatestSucceededReportForAccount(ctx, sqlcgen.GetLatestSucceededReportForAccountParams{PortfolioID: p.ID[:], AccountID: accountID[:], Before: s.now().UTC().Add(time.Hour)})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -79,37 +123,6 @@ func (s *Service) accountView(ctx context.Context, p PortfolioContext, accountID
 	return view, &sourceID, nil
 }
 
-func (s *Service) positionView(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, *uuid.UUID, error) {
-	if cycleID == nil {
-		return s.accountView(ctx, p, accountID)
-	}
-	detail, err := s.Detail(ctx, p, *cycleID)
-	if errors.Is(err, valuation.ErrNotFound) {
-		// Current holdings survive a dormant portfolio's history window.
-		latest, latestErr := s.valuation.Latest(ctx, p.ID)
-		if latestErr == nil && latest.CycleID == *cycleID {
-			return s.accountView(ctx, p, accountID)
-		}
-		if latestErr != nil && !errors.Is(latestErr, valuation.ErrNoPoint) {
-			return AccountView{}, nil, latestErr
-		}
-	}
-	if err != nil {
-		return AccountView{}, nil, err
-	}
-	if detail.Point.DetailState == "expired" {
-		return AccountView{}, nil, valuation.ErrDetailExpired
-	}
-	for i := range detail.Accounts {
-		account := &detail.Accounts[i]
-		if account.AccountID == accountID {
-			view := AccountView{Context: Context{PortfolioID: p.ID, Timezone: p.Timezone, ValuationRevision: new(detail.Point.Revision()), CycleID: &detail.Point.CycleID, EvaluatedAt: &detail.Point.EvaluatedAt}, Account: *account, Issues: positionAccountIssues(account)}
-			return view, account.SourceReportID, nil
-		}
-	}
-	return AccountView{}, nil, valuation.ErrNotFound
-}
-
 func staleAccountIssue(account *valuation.AccountValuation) valuation.Issue {
 	for _, issue := range valuation.AccountIssues(account) {
 		if issue.Code == "stale" {
@@ -117,4 +130,32 @@ func staleAccountIssue(account *valuation.AccountValuation) valuation.Issue {
 		}
 	}
 	return valuation.Issue{Code: "stale", AccountID: &account.AccountID, AccountName: account.AccountName, Detail: "An earlier successful account report is carried forward."}
+}
+
+// AccountReport resolves one point and source report for every holding kind.
+// Current manual edits are an explicit overlay, never historical observations.
+func (s *Service) AccountReport(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID, includePendingManual bool) (AccountView, error) {
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
+		view, source, err := s.accountView(ctx, p, accountID, cycleID)
+		if err != nil {
+			return AccountView{}, err
+		}
+		view, err = s.readAccountBalances(ctx, p, view, source, includePendingManual)
+		if err != nil {
+			return AccountView{}, err
+		}
+		switch view.Account.AccountType {
+		case "earn":
+			return s.readAccountEarn(ctx, p, view)
+		case "dual_investment":
+			return s.readAccountDual(ctx, p, view, source)
+		case "manual":
+			return view, nil
+		default:
+			if positionAccount(&view.Account) {
+				return s.readAccountPositions(ctx, p, view, source)
+			}
+			return view, nil
+		}
+	})
 }

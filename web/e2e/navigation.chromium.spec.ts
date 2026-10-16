@@ -1,6 +1,5 @@
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
-import { overviewTreeFixture } from "./fixtures/overviewTree";
 import { expect, test, type Page } from "@playwright/test";
 import type { Overview } from "../src/api/generated/types.gen";
 
@@ -15,28 +14,29 @@ const session = sessionFixture({
   },
 });
 const overview = {
-  context: { portfolioId, timezone: "UTC" },
+  context: {
+    cycleId: null,
+    evaluatedAt: null,
+    portfolioId,
+    timezone: "UTC",
+  },
   point: null,
-  completeness: "complete",
-  accountCount: 0,
-  staleAccountCount: 0,
-  incompleteAccountCount: 0,
-  byPlatform: [],
-  byIdentity: [],
+  platforms: [],
   issues: [],
-  sparkline: [],
 } satisfies Overview;
 
 async function mockShell(page: Page, long = false) {
   const data: Overview = long
     ? {
         ...overview,
-        context: { ...overview.context, cycleId: portfolioId },
-        totalUsd: "40",
-        accountCount: 40,
+        context: {
+          ...overview.context,
+          evaluatedAt: "2026-01-01T00:00:00Z",
+          cycleId: portfolioId,
+        },
         point: {
           cycleId: portfolioId,
-          valuationRevision: `${portfolioId}:1`,
+
           calculationVersion: 1,
           detailState: "full" as const,
           evaluatedAt: "2026-01-01T00:00:00Z",
@@ -48,14 +48,23 @@ async function mockShell(page: Page, long = false) {
           boundaryContributionUsd: "0",
           boundaryWithdrawalUsd: "0",
         },
-        byIdentity: Array.from({ length: 40 }, (_, index) => ({
-          key: `identity-${index}`,
-          label: `Identity-${index}-${"x".repeat(60)}`,
-          valueUsd: "1",
-          accountCount: 1,
-          rowCount: 1,
-          completeness: "complete",
-        })),
+        platforms: [
+          {
+            platform: "binance",
+            label: "Binance",
+            valueUsd: "40",
+            completeness: "complete",
+            identities: Array.from({ length: 40 }, (_, index) => ({
+              id: `identity-${index}`,
+              displayName: `Identity-${index}-${"x".repeat(60)}`,
+              status: "enabled",
+              connectionStatus: "enabled",
+              valueUsd: "1",
+              completeness: "complete",
+              accounts: [],
+            })),
+          },
+        ],
       }
     : overview;
   const scenarioSession = {
@@ -79,22 +88,41 @@ async function mockShell(page: Page, long = false) {
     if (request.method() !== "GET") {
       throw new Error(`Unexpected API request: ${request.method()} ${path}`);
     }
+    if (path.endsWith("/identities")) {
+      return route.fulfill({
+        json: {
+          items: data.platforms.flatMap((platform) =>
+            platform.identities.map((identity) => ({
+              id: identity.id,
+              portfolioId,
+              platform: platform.platform,
+              displayName: identity.displayName,
+              accountStructure: "classic",
+              status: identity.status,
+              connection: { status: identity.connectionStatus, credentialsConfigured: true },
+              accounts: [],
+              version: 1,
+              createdAt: "2026-01-01T00:00:00Z",
+              updatedAt: "2026-01-01T00:00:00Z",
+            })),
+          ),
+        },
+      });
+    }
     if (path === `/api/v1/portfolios/${portfolioId}/history-window`) {
       await route.fulfill({
         json: { context: data.context, from: "2026-09-30T00:00:00Z", to: "2026-10-03T00:00:00Z" },
       });
-    } else if (path === `/api/v1/portfolios/${portfolioId}/valuation-points`) {
+    } else if (path === `/api/v1/portfolios/${portfolioId}/valuation-points/series`) {
       await route.fulfill({
         json: {
           context: data.context,
           from: "2026-09-30T00:00:00Z",
           to: "2026-10-03T00:00:00Z",
           granularity: "raw",
-          items: data.sparkline,
+          items: [],
         },
       });
-    } else if (path === `/api/v1/portfolios/${portfolioId}/tree`) {
-      await route.fulfill({ json: overviewTreeFixture(data) });
     } else if (path === `/api/v1/portfolios/${portfolioId}/overview`) {
       await route.fulfill({ json: data });
     } else {

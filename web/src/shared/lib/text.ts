@@ -11,7 +11,7 @@ const ISSUE_LABELS: Record<string, string> = {
 };
 
 export function issueLabel(code: string): string {
-  return ISSUE_LABELS[code] ?? capitalize(reasonText(code));
+  return ISSUE_LABELS[code] ?? capitalize(REASON_TEXT[code] ?? code.replaceAll("_", " "));
 }
 
 const REASON_TEXT: Record<string, string> = {
@@ -31,18 +31,6 @@ const REASON_TEXT: Record<string, string> = {
   unvalued_boundary_event: "unvalued boundary event",
   no_point: "no point",
 };
-
-/** Case known reason phrases for their context without recasing source details. */
-export function reasonText(code: string, context: "phrase" | "label" = "phrase"): string {
-  const [head = "", ...rest] = code.split(": ");
-  const known = REASON_TEXT[head];
-  const text = known
-    ? context === "label"
-      ? capitalize(known)
-      : known
-    : head.replaceAll("_", " ");
-  return rest.length > 0 ? `${text}: ${rest.join(": ")}` : text;
-}
 
 export function boundaryEventCountText(count: number): string {
   return count === 0

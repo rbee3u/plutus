@@ -17,7 +17,7 @@ import {
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
-import { holdingsScopeHasMissingReport, useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -29,13 +29,15 @@ export function PositionsPage() {
   const offset = filters.offset;
   const query = usePortfolioQuery<PositionList>({
     key: (userId, portfolioId) =>
-      keys.positions(userId, portfolioId, platform, identityId, symbol, offset),
+      keys.positions(userId, portfolioId, platform, identityId, symbol, offset, filters.readId),
     ready: filters.ready,
     load: (portfolioId) =>
-      listPositions({
-        path: { portfolioId },
-        query: holdingsListRequest(filters),
-      }),
+      filters.read((cycleId) =>
+        listPositions({
+          path: { portfolioId },
+          query: { ...holdingsListRequest(filters), cycleId },
+        }),
+      ),
   });
   const data = query.data;
 
@@ -52,13 +54,13 @@ export function PositionsPage() {
           label="Total notional"
           value={
             <>
-              {data.totalNotionalUsd ? (
+              {data.boundaryNotionalUsd ? (
                 <span className={styles.holdingsSummaryCurrency}>$</span>
               ) : null}
-              <NumericText>{formatAmount(data.totalNotionalUsd)}</NumericText>
+              <NumericText>{formatAmount(data.boundaryNotionalUsd)}</NumericText>
             </>
           }
-          badge={<CompletenessBadge value={data.completeness} />}
+          badge={<CompletenessBadge value={data.notionalCompleteness} />}
         />
       ) : null}
       <DataTable
@@ -93,11 +95,7 @@ export function PositionsPage() {
             />
           ) : !data?.context.cycleId ? (
             <HoldingsNoPoint filters={filters} />
-          ) : holdingsScopeHasMissingReport(
-              data.issues,
-              filters.values,
-              filters.identities.data?.items ?? [],
-            ) ? (
+          ) : !data.coverage.complete ? (
             <TableEmptyState
               title="Position data is incomplete"
               help="Some accounts have no compatible successful report."

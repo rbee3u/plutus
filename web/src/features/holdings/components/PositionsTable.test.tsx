@@ -5,6 +5,11 @@ import { DataTable } from "@/shared/ui/DataTable";
 import { POSITION_COLUMNS, positionMarginDescription, positionRow } from "./PositionsTable";
 
 const position: PositionRow = {
+  displayLeverage: "3",
+  marginUnavailableCode: null,
+  contractSize: null,
+  entryPrice: null,
+  liquidationPrice: null,
   accountId: "account",
   accountName: "Trading",
   accountType: "trading",
@@ -28,12 +33,12 @@ const position: PositionRow = {
   unrealizedPnl: "0.000123456789",
   marginSetting: "cross",
   portfolioMargin: false,
-  settleMargin: "0.002",
-  margin: "100",
+  settlementMargin: "0.002",
+  reportedMargin: "100",
   marginAssetSymbol: "USD",
   marginBasis: "initial",
   marginSource: "reported",
-  leverage: "3",
+  reportedLeverage: "3",
   notionalUsd: "200",
   freshness: "fresh",
   reportObservedAt: "2026-10-03T00:00:00Z",
@@ -117,7 +122,7 @@ describe("shared position cells", () => {
       "0.002 BTC",
     ],
     ["portfolio", { ...position, portfolioMargin: true }, "0.002 BTC"],
-    ["unknown", { ...position, settleMargin: null, portfolioMargin: true }, "—"],
+    ["unknown", { ...position, settlementMargin: null, portfolioMargin: true }, "—"],
   ])("shows only the margin amount in the closed %s cell", (_, item, expected) => {
     const cell = positionRow(item, "Asia/Shanghai").margin;
     const html = renderToStaticMarkup(<>{cell}</>);
@@ -126,80 +131,29 @@ describe("shared position cells", () => {
 });
 
 describe("Margin mode and leverage", () => {
-  it("shows configured cross leverage and only the portfolio regime", () => {
+  it("uses the supplied display multiplier independently of the source leverage", () => {
     expect(positionMarginDescription(position)).toBe("3x cross");
+    expect(
+      positionMarginDescription({
+        ...position,
+        marginSetting: "isolated",
+        portfolioMargin: true,
+        reportedLeverage: "10",
+        displayLeverage: "1.884999999999999999999999999999999",
+      }),
+    ).toBe("1.88x isolated");
+    expect(
+      positionMarginDescription({ ...position, marginSetting: "isolated", displayLeverage: "0" }),
+    ).toBe("0x isolated");
+  });
+  it("preserves known modes when the multiplier is unavailable", () => {
+    expect(
+      positionMarginDescription({ ...position, marginSetting: "isolated", displayLeverage: null }),
+    ).toBe("isolated");
+    expect(positionMarginDescription({ ...position, displayLeverage: null })).toBe("cross");
     expect(positionMarginDescription({ ...position, portfolioMargin: true })).toBe(
       "portfolio margin",
     );
-    expect(
-      positionMarginDescription({ ...position, portfolioMargin: true, settleMargin: null }),
-    ).toBe("portfolio margin");
-  });
-
-  it("uses actual isolated funds and source precision rather than configured leverage", () => {
-    const isolated: PositionRow = {
-      ...position,
-      marginSetting: "isolated",
-      marginBasis: "allocated",
-      settlementAssetSymbol: "USDT",
-      settleMargin: "1000",
-      notionalUsd: "1880",
-      leverage: "10",
-      portfolioMargin: true,
-    };
-    expect(positionMarginDescription(isolated)).toBe("1.88x isolated");
-    expect(
-      positionMarginDescription({
-        ...isolated,
-        notionalUsd: "1884.999999999999999999999999999999",
-      }),
-    ).toBe("1.88x isolated");
-    expect(positionMarginDescription({ ...isolated, notionalUsd: "0" })).toBe("0x isolated");
-    for (const settlementAssetSymbol of ["USD", "USDT", "USDC"]) {
-      expect(
-        positionMarginDescription({ ...isolated, settlementAssetSymbol, markPrice: null }),
-      ).toBe("1.88x isolated");
-    }
-  });
-
-  it("converts base-settled isolated margin to the same unit as USD notional", () => {
-    const isolated: PositionRow = {
-      ...position,
-      marginSetting: "isolated",
-      marginBasis: "allocated",
-    };
-    // 0.002 BTC at 50,000 USD/BTC is 100 USD of allocated margin.
-    expect(positionMarginDescription(isolated)).toBe("2x isolated");
-    expect(isolated.settleMargin).toBe("0.002");
-    expect(isolated.leverage).toBe("3");
-  });
-
-  it("keeps the known mode when actual leverage cannot be established", () => {
-    const isolated: PositionRow = {
-      ...position,
-      marginSetting: "isolated",
-      marginBasis: "allocated",
-    };
-    for (const change of [
-      { settleMargin: null },
-      { settleMargin: "0" },
-      { settleMargin: "-1" },
-      { settleMargin: "NaN" },
-      { notionalUsd: null },
-      { notionalUsd: "Infinity" },
-      { settlementAssetSymbol: null },
-      { settlementAssetSymbol: "EUR" },
-      { quoteAssetSymbol: "EUR" },
-      { baseAssetSymbol: null },
-      { markPrice: null },
-      { markPrice: "0" },
-      { markPrice: "-1" },
-    ]) {
-      expect(positionMarginDescription({ ...isolated, ...change })).toBe("isolated");
-    }
-    for (const leverage of [null, "0", "-1", "NaN"]) {
-      expect(positionMarginDescription({ ...position, leverage })).toBe("cross");
-    }
     expect(positionMarginDescription({ ...position, marginSetting: null })).toBe(
       "margin mode unavailable",
     );

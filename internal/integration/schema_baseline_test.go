@@ -68,7 +68,7 @@ func TestIdempotencyCommitsBusinessAndResponseTogether(t *testing.T) {
 			return idempotency.Record{}, err
 		}
 		body, err := json.Marshal(map[string]any{"ID": p.ID, "Version": p.Version})
-		return idempotency.Record{Status: 201, Headers: map[string]string{"ETag": p.ETag()}, Body: body}, err
+		return idempotency.Record{Status: 201, Body: body}, err
 	}
 	var wg sync.WaitGroup
 	results := make(chan idempotency.Record, 2)

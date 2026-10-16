@@ -10,20 +10,9 @@ import {
   validateIdentityConnection,
 } from "@/api";
 import type { Identity, ValidationOutcome } from "@/api";
-import { identityEtag } from "@/shared/lib/useIdentities";
 import { useSessionScope } from "@/shared/lib/session";
 
 const CONFLICT = "The identity changed in another session. The list was reloaded; retry.";
-
-function isValidationOutcome(value: unknown): value is ValidationOutcome {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "ok" in value &&
-    "identity" in value &&
-    "validatedAt" in value
-  );
-}
 
 function sentence(text: string): string {
   return /[.!?]$/.test(text) ? text : `${text}.`;
@@ -110,16 +99,16 @@ export function useIdentityActions(portfolioId: string) {
         const result = await write(() =>
           enableIdentityConnection({
             path: { portfolioId, identityId: item.id },
-            headers: { "If-Match": identityEtag(item) },
+            headers: { "If-Edit-Version": String(item.version) },
           }),
         );
-        if (result.response?.status === 422 && isValidationOutcome(result.error)) {
+        if (result.response?.status === 422 && result.error?.validationOutcome) {
           await invalidate();
           return {
             status: 422,
             message: null,
             error: new Error(
-              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} The connection is now ${result.error.identity.connection.status}.`,
+              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error.validationOutcome))} The connection is now ${result.error.validationOutcome.identity.connection.status}.`,
             ),
           };
         }
@@ -142,7 +131,7 @@ export function useIdentityActions(portfolioId: string) {
         const result = await write(() =>
           disableIdentityConnection({
             path: { portfolioId, identityId: item.id },
-            headers: { "If-Match": identityEtag(item) },
+            headers: { "If-Edit-Version": String(item.version) },
           }),
         );
         if (!result.data) {
@@ -168,7 +157,7 @@ export function useIdentityActions(portfolioId: string) {
         const result = await write(() =>
           archiveIdentity({
             path: { portfolioId, identityId: item.id },
-            headers: { "If-Match": identityEtag(item) },
+            headers: { "If-Edit-Version": String(item.version) },
           }),
         );
         if (!result.data) {

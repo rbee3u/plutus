@@ -39,3 +39,14 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = 
 -- name: DeleteCapitalFlow :execrows
 DELETE FROM capital_flows
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
+
+-- name: ListCapitalFlowPage :many
+SELECT * FROM capital_flows
+WHERE portfolio_id = sqlc.arg(portfolio_id)
+  AND effective_at >= sqlc.arg(from_at) AND effective_at < sqlc.arg(to_at)
+ORDER BY effective_at DESC, id DESC LIMIT ? OFFSET ?;
+
+-- name: CountCapitalFlows :one
+SELECT COUNT(*) FROM capital_flows
+WHERE portfolio_id = sqlc.arg(portfolio_id)
+  AND effective_at >= sqlc.arg(from_at) AND effective_at < sqlc.arg(to_at);

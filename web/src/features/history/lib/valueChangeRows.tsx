@@ -2,7 +2,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import type { ValueChange } from "@/api";
 import { formatAmount, formatPercent, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { reasonText } from "@/shared/lib/text";
+import { IssueList } from "@/shared/ui/IssueList";
 import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { type DataRow } from "@/shared/ui/DataTable";
@@ -99,7 +99,7 @@ export function combinedFlowsCell(item: ValueChange) {
 }
 
 export function valueChangeIssuesCell(item: ValueChange) {
-  const isHealthy = item.completeness === "complete" && item.reasons.length === 0;
+  const isHealthy = item.completeness === "complete" && item.issues.length === 0;
   if (isHealthy) {
     return <span className={shared.muted}>—</span>;
   }
@@ -109,7 +109,7 @@ export function valueChangeIssuesCell(item: ValueChange) {
       <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
     ) : (
       <Badge tone="warn">
-        {item.reasons.length === 1 ? "1 note" : `${item.reasons.length} notes`}
+        {item.issues.length === 1 ? "1 note" : `${item.issues.length} notes`}
       </Badge>
     );
 
@@ -122,14 +122,10 @@ export function valueChangeIssuesCell(item: ValueChange) {
             <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
           </div>
         </div>
-        {item.reasons.length > 0 ? (
+        {item.issues.length > 0 ? (
           <div>
             <span className={shared.cellMeta}>Limitations</span>
-            <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
-              {item.reasons.map((reason, i) => (
-                <li key={i}>{reasonText(reason, "label")}</li>
-              ))}
-            </ul>
+            <IssueList issues={item.issues} />
           </div>
         ) : null}
       </div>

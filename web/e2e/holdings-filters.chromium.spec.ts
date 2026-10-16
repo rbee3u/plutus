@@ -33,7 +33,15 @@ const earn: EarnPositionRow = {
     { assetSymbol: "ETH", canonicalAssetSymbol: "AETH", amount: "1" },
     { assetSymbol: "USDT", amount: "10" },
   ],
-  rates: [{ value: "0.04", kind: "apy", qualifier: "estimated", label: "Estimated APY" }],
+  rates: [
+    {
+      upper: null,
+      value: "0.04",
+      kind: "apy",
+      qualifier: "estimated",
+      label: "Estimated APY",
+    },
+  ],
   rewards: [
     { assetSymbol: "USDT", amount: "0.2", kind: "cumulative" },
     { assetSymbol: "COMP", amount: "0.1", kind: "estimated" },
@@ -107,6 +115,8 @@ async function fixture(page: Page) {
     failCandidates: false,
     failRows: false,
     noPoint: false,
+    cycleId: portfolioId,
+    total: 0,
     identityScope: "active" as "active" | "none" | "archived",
     searchResponse: null as Promise<void> | null,
     balances: [] as BalanceRow[],
@@ -169,14 +179,14 @@ async function fixture(page: Page) {
       }
       if (/\/(balances|positions|earn-positions|dual-positions)$/.test(path)) {
         state.requests.push(url);
-        if (url.searchParams.get("symbol")) await state.searchResponse;
+        if (url.searchParams.get("q")) await state.searchResponse;
         if (state.failRows)
           return route.fulfill({ status: 503, json: { detail: "Rows unavailable" } });
         return route.fulfill({
           json: {
             context: {
               portfolioId,
-              cycleId: state.noPoint ? null : portfolioId,
+              cycleId: state.noPoint ? null : (url.searchParams.get("cycleId") ?? state.cycleId),
               evaluatedAt: "2026-10-03T00:00:00Z",
               timezone: "Asia/Shanghai",
             },
@@ -187,11 +197,19 @@ async function fixture(page: Page) {
                 : path.endsWith("/dual-positions")
                   ? state.duals
                   : [],
-            detailsComplete: true,
-            page: { offset: Number(url.searchParams.get("offset") ?? 0), limit: 50, total: 0 },
-            totalUsd: "0",
-            totalNotionalUsd: "741.37",
-            completeness: "complete",
+            page: {
+              offset: Number(url.searchParams.get("offset") ?? 0),
+              limit: 50,
+              total: state.total,
+            },
+            filteredTotalCompleteness: "complete",
+            filteredTotalIssues: [],
+            manualOverlay: null,
+            coverage: { complete: true, missingAccountIds: [] },
+            filteredTotalUsd: "0",
+            boundaryNotionalUsd: "741.37",
+            notionalCompleteness: "complete",
+            valuationCompleteness: "complete",
             issues: path.endsWith("/balances") ? state.balanceIssues : [],
           },
         });
@@ -234,7 +252,7 @@ test("Reload preserves mobile holdings filters and pagination without collection
         (url) =>
           url.searchParams.get("platform") === "binance" &&
           url.searchParams.get("identityId") === bn &&
-          url.searchParams.get("symbol") === "btc" &&
+          url.searchParams.get("q") === "btc" &&
           url.searchParams.get("offset") === "50",
       ),
     )
@@ -248,6 +266,11 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
   const state = await fixture(page);
   state.balances = [
     {
+      availableToWithdraw: null,
+      availableToTrade: null,
+      liability: null,
+      interest: null,
+      unrealizedPnl: null,
       accountId: "funding",
       accountName: "Funding",
       accountType: "funding",
@@ -294,7 +317,7 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
   await page.getByRole("button", { name: "Search asset" }).click();
   await page.getByRole("textbox", { name: "Search asset" }).fill("btc");
   await expect
-    .poll(() => state.requests.some((url) => url.searchParams.get("symbol") === "btc"))
+    .poll(() => state.requests.some((url) => url.searchParams.get("q") === "btc"))
     .toBe(true);
   await page.getByRole("button", { name: "Clear asset filter" }).click();
   await expect(page).not.toHaveURL(/symbol=/);
@@ -349,7 +372,7 @@ test("Search debounces, respects composition, and keeps its input through loadin
   state.searchResponse = new Promise<void>((resolve) => {
     releaseResponse = resolve;
   });
-  const searches = () => state.requests.flatMap((url) => url.searchParams.get("symbol") ?? []);
+  const searches = () => state.requests.flatMap((url) => url.searchParams.get("q") ?? []);
   try {
     await page.goto(`/p/${portfolioId}/holdings/futures?offset=50`);
     await page.getByRole("button", { name: "Search symbol" }).click();
@@ -416,7 +439,7 @@ test("Pending search stays with its own top-level tab and reset cancels it", asy
   await page.getByRole("textbox", { name: "Search pair" }).fill("btc");
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await page.clock.runFor(1000);
-  expect(state.requests.some((url) => url.searchParams.get("symbol") === "btc")).toBe(false);
+  expect(state.requests.some((url) => url.searchParams.get("q") === "btc")).toBe(false);
   await expect(page).not.toHaveURL(/symbol=/);
   await tabs.getByRole("link", { name: "Futures", exact: true }).click();
   await expect(page.getByRole("button", { name: "Filter symbol: eth" })).toBeVisible();
@@ -577,3 +600,20 @@ for (const view of ["balances", "futures", "earn", "dual-investment"]) {
     ).toBeVisible();
   });
 }
+
+test("Pagination pins the first valuation point until a browser reload", async ({ page }) => {
+  const state = await fixture(page);
+  state.total = 100;
+  await page.goto(`/p/${portfolioId}/holdings/balances`);
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+  expect(state.requests).toHaveLength(1);
+  expect(state.requests[0].searchParams.has("cycleId")).toBe(false);
+  state.cycleId = "00000000-0000-7000-8000-000000000099";
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect.poll(() => state.requests.length).toBe(2);
+  expect(state.requests[1].searchParams.get("cycleId")).toBe(portfolioId);
+  expect(state.requests[1].searchParams.get("offset")).toBe("50");
+  await page.reload();
+  await expect.poll(() => state.requests.length).toBe(3);
+  expect(state.requests[2].searchParams.has("cycleId")).toBe(false);
+});

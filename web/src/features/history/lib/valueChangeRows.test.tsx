@@ -35,16 +35,19 @@ describe("valueChangeRows", () => {
 
   it("formats combinedFlowsCell silently when no flows exist", () => {
     const item: ValueChange = {
+      amountUsd: null,
       periodKind: "day",
       label: "2026-10-09",
       from: "2026-10-09T00:00:00Z",
       to: "2026-10-10T00:00:00Z",
+      comparable: true,
+      flowsCompleteness: "complete",
       contributionsUsd: "0",
       withdrawalsUsd: "0",
       boundaryContributionsUsd: "0",
       boundaryWithdrawalsUsd: "0",
       completeness: "complete",
-      reasons: [],
+      issues: [],
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(combinedFlowsCell(item));
@@ -53,16 +56,19 @@ describe("valueChangeRows", () => {
 
   it("formats combinedFlowsCell with flow types when flows exist", () => {
     const item: ValueChange = {
+      amountUsd: null,
       periodKind: "day",
       label: "2026-10-09",
       from: "2026-10-09T00:00:00Z",
       to: "2026-10-10T00:00:00Z",
+      comparable: true,
+      flowsCompleteness: "complete",
       contributionsUsd: "1000",
       withdrawalsUsd: "0",
       boundaryContributionsUsd: "0",
       boundaryWithdrawalsUsd: "250",
       completeness: "complete",
-      reasons: [],
+      issues: [],
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(combinedFlowsCell(item));
@@ -74,16 +80,19 @@ describe("valueChangeRows", () => {
 
   it("renders quiet issues cell when healthy", () => {
     const item: ValueChange = {
+      amountUsd: null,
       periodKind: "day",
       label: "2026-10-09",
       from: "2026-10-09T00:00:00Z",
       to: "2026-10-10T00:00:00Z",
+      comparable: true,
+      flowsCompleteness: "complete",
       contributionsUsd: "0",
       withdrawalsUsd: "0",
       boundaryContributionsUsd: "0",
       boundaryWithdrawalsUsd: "0",
       completeness: "complete",
-      reasons: [],
+      issues: [],
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(valueChangeIssuesCell(item));
@@ -92,16 +101,19 @@ describe("valueChangeRows", () => {
 
   it("renders HoverDetails trigger badge when incomplete or has limitations", () => {
     const item: ValueChange = {
+      amountUsd: null,
       periodKind: "day",
       label: "2026-10-08",
       from: "2026-10-08T00:00:00Z",
       to: "2026-10-09T00:00:00Z",
+      comparable: true,
+      flowsCompleteness: "complete",
       contributionsUsd: "0",
       withdrawalsUsd: "0",
       boundaryContributionsUsd: "0",
       boundaryWithdrawalsUsd: "0",
       completeness: "incomplete",
-      reasons: ["manual balance changed"],
+      issues: [{ code: "manual balance changed", detail: "manual balance changed" }],
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(valueChangeIssuesCell(item));
@@ -116,7 +128,7 @@ describe("valueChangeRows", () => {
       to: "2026-10-10T00:00:00Z",
       startPoint: {
         cycleId: "p1",
-        valuationRevision: "p1:1",
+
         calculationVersion: 1,
         detailState: "full" as const,
         evaluatedAt: "2026-10-09T00:00:00Z",
@@ -130,7 +142,7 @@ describe("valueChangeRows", () => {
       },
       endPoint: {
         cycleId: "p2",
-        valuationRevision: "p2:1",
+
         calculationVersion: 1,
         detailState: "full" as const,
         evaluatedAt: "2026-10-10T00:00:00Z",
@@ -143,12 +155,14 @@ describe("valueChangeRows", () => {
         boundaryWithdrawalUsd: "0",
       },
       amountUsd: "5000",
+      comparable: true,
+      flowsCompleteness: "complete",
       contributionsUsd: "0",
       withdrawalsUsd: "0",
       boundaryContributionsUsd: "0",
       boundaryWithdrawalsUsd: "0",
       completeness: "complete",
-      reasons: [],
+      issues: [],
       boundaryEvents: [],
     };
     const row = valueChangeRow(item, "UTC");

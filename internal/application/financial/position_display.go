@@ -16,6 +16,11 @@ type positionMetadata struct {
 // completePosition derives presentation from retained source facts. It does not
 // change the original quantity, direction, or margin amount.
 func completePosition(row *PositionRow, account *valuation.AccountValuation, metadata positionMetadata) {
+	completePositionFacts(row, account, metadata)
+	completePositionAmounts(row)
+}
+
+func completePositionFacts(row *PositionRow, account *valuation.AccountValuation, metadata positionMetadata) {
 	row.PositionMode, row.MarginSetting = nullStringPtr(metadata.mode), nullStringPtr(metadata.marginSetting)
 	row.MarginAssetSymbol, row.MarginBasis = nullStringPtr(metadata.currency), nullStringPtr(metadata.basis)
 	row.PortfolioMargin = portfolioMargin(account)
@@ -38,10 +43,53 @@ func completePosition(row *PositionRow, account *valuation.AccountValuation, met
 	if row.NotionalUSD == nil {
 		row.Issues = append(row.Issues, rowIssue(row, "position_notional_unknown", "USD notional cannot be determined: a required currency, Contract size, or positive Mark price is unavailable."))
 	}
+}
+
+func completePositionAmounts(row *PositionRow) {
 	if row.Platform == string(adapters.PlatformOKX) && row.MarginSetting != nil && *row.MarginSetting == "cross" && row.PortfolioMargin != nil && !*row.PortfolioMargin {
 		row.MarginAssetSymbol = verifiedOKXMarginAssetSymbol(row)
 	}
 	row.SettleMargin = settlePositionMargin(row)
+	row.DisplayLeverage = displayPositionLeverage(row)
+}
+
+// Display leverage follows the same retained facts as the displayed margin.
+func displayPositionLeverage(row *PositionRow) *string {
+	if row.MarginSetting == nil {
+		return nil
+	}
+	if *row.MarginSetting == "isolated" {
+		margin, ok := positivePositionNumber(row.SettleMargin)
+		var notional *big.Rat
+		notionalOK := false
+		if row.NotionalUSD != nil {
+			notional, notionalOK = decimal.Parse(*row.NotionalUSD)
+			notionalOK = notionalOK && notional.Sign() >= 0
+		}
+		if !ok || !notionalOK || row.SettlementAssetSymbol == nil {
+			return nil
+		}
+		if !valuation.USDQuote(*row.SettlementAssetSymbol) {
+			mark, markOK := positivePositionNumber(row.MarkPrice)
+			if !markOK || row.BaseAssetSymbol == nil || *row.SettlementAssetSymbol != *row.BaseAssetSymbol || row.QuoteAssetSymbol == nil || !valuation.USDQuote(*row.QuoteAssetSymbol) {
+				return nil
+			}
+			margin.Mul(margin, mark)
+		}
+		// Preserve enough division precision for the browser's final display
+		// rounding, including values just below a rounding midpoint.
+		value := decimal.Compact(new(big.Rat).Quo(notional, margin).FloatString(200))
+		return &value
+	}
+	if row.PortfolioMargin != nil && *row.PortfolioMargin {
+		return nil
+	}
+	if *row.MarginSetting == "cross" {
+		if _, ok := positivePositionNumber(row.Leverage); ok {
+			return row.Leverage
+		}
+	}
+	return nil
 }
 
 func normalizedPositionSize(row *PositionRow) (*string, *string) {
@@ -78,26 +126,26 @@ func normalizedPositionSize(row *PositionRow) (*string, *string) {
 }
 
 func settlePositionMargin(row *PositionRow) *string {
-	row.MarginSource, row.MarginUnavailableReason = nil, nil
+	row.MarginSource, row.MarginUnavailableReason, row.MarginUnavailableCode = nil, nil, nil
 	if row.MarginSetting == nil {
-		return unavailablePositionMargin(row, "The position's cross or isolated setting was not recorded.")
+		return unavailablePositionMargin(row, "setting_unknown", "The position's cross or isolated setting was not recorded.")
 	}
 	if *row.MarginSetting == "cross" {
 		if row.PortfolioMargin == nil {
-			return unavailablePositionMargin(row, "The source report's account margin mode is unknown, so an individual initial requirement cannot be verified.")
+			return unavailablePositionMargin(row, "account_mode_unknown", "The source report's account margin mode is unknown, so an individual initial requirement cannot be verified.")
 		}
 		if *row.PortfolioMargin && !binanceCrossMargin(row) {
-			return unavailablePositionMargin(row, "This portfolio margin regime does not provide an independent position initial requirement. Portfolio risk is not allocated to individual positions.")
+			return unavailablePositionMargin(row, "shared_portfolio_margin", "This portfolio margin regime does not provide an independent position initial requirement. Portfolio risk is not allocated to individual positions.")
 		}
 	} else if *row.MarginSetting != "isolated" {
-		return unavailablePositionMargin(row, "The position margin setting is unsupported.")
+		return unavailablePositionMargin(row, "setting_unsupported", "The position margin setting is unsupported.")
 	} else if row.MarginBasis == nil || *row.MarginBasis != "allocated" {
-		return unavailablePositionMargin(row, "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.")
+		return unavailablePositionMargin(row, "allocated_margin_unavailable", "Allocated margin excluding PnL was not provided. An initial requirement cannot be used as the allocated amount.")
 	}
 	if row.Margin != nil && row.MarginAssetSymbol != nil && row.MarginBasis != nil && (*row.MarginSetting != "cross" || *row.MarginBasis == "initial") {
 		amount, ok := decimal.Parse(*row.Margin)
 		if !ok || amount.Sign() < 0 {
-			return unavailablePositionMargin(row, "The reported position margin amount is invalid.")
+			return unavailablePositionMargin(row, "reported_margin_invalid", "The reported position margin amount is invalid.")
 		}
 		if value := convertPositionMargin(row, amount, *row.MarginAssetSymbol); value != nil {
 			row.MarginSource = new("reported")
@@ -108,15 +156,15 @@ func settlePositionMargin(row *PositionRow) *string {
 		return calculatedBinanceMargin(row)
 	}
 	if row.Margin == nil {
-		return unavailablePositionMargin(row, "The platform did not provide this position margin amount.")
+		return unavailablePositionMargin(row, "reported_margin_unavailable", "The platform did not provide this position margin amount.")
 	}
 	if row.MarginBasis == nil || *row.MarginSetting == "cross" && *row.MarginBasis != "initial" {
-		return unavailablePositionMargin(row, "A position initial requirement excluding orders was not recorded.")
+		return unavailablePositionMargin(row, "initial_margin_unavailable", "A position initial requirement excluding orders was not recorded.")
 	}
 	if row.MarginAssetSymbol == nil || row.SettlementAssetSymbol == nil {
-		return unavailablePositionMargin(row, "The source margin currency or settle currency cannot be verified.")
+		return unavailablePositionMargin(row, "currency_unknown", "The source margin currency or settle currency cannot be verified.")
 	}
-	return unavailablePositionMargin(row, "The reported amount cannot be converted to Settle: compatible currencies and any required positive Mark price are unavailable.")
+	return unavailablePositionMargin(row, "conversion_unavailable", "The reported amount cannot be converted to Settle: compatible currencies and any required positive Mark price are unavailable.")
 }
 
 func convertPositionMargin(row *PositionRow, amount *big.Rat, from string) *string {
@@ -154,21 +202,21 @@ func calculatedBinanceMargin(row *PositionRow) *string {
 	switch row.Kind {
 	case adapters.KindLinearPerpetual, adapters.KindLinearDelivery, adapters.KindInversePerpetual, adapters.KindInverseDelivery:
 	default:
-		return unavailablePositionMargin(row, "Initial margin calculation requires a supported contract kind.")
+		return unavailablePositionMargin(row, "contract_kind_unsupported", "Initial margin calculation requires a supported contract kind.")
 	}
 	size, _ := normalizedPositionSize(row)
 	if size == nil || row.QuoteAssetSymbol == nil || !valuation.USDQuote(*row.QuoteAssetSymbol) {
-		return unavailablePositionMargin(row, "Initial margin calculation requires a known Size and USD-equivalent Quote.")
+		return unavailablePositionMargin(row, "size_or_quote_unavailable", "Initial margin calculation requires a known Size and USD-equivalent Quote.")
 	}
 	mark, markOK := positivePositionNumber(row.MarkPrice)
 	leverage, leverageOK := positivePositionNumber(row.Leverage)
 	if !markOK || !leverageOK {
-		return unavailablePositionMargin(row, "Initial margin calculation requires a positive Mark price and the position's positive initial Leverage.")
+		return unavailablePositionMargin(row, "mark_or_leverage_unavailable", "Initial margin calculation requires a positive Mark price and the position's positive initial Leverage.")
 	}
 	notional := decimal.Abs(decimal.ParseOrZero(*size))
 	if inverseKind(row.Kind) {
 		if row.BaseAssetSymbol == nil || row.SettlementAssetSymbol == nil || *row.BaseAssetSymbol != *row.SettlementAssetSymbol {
-			return unavailablePositionMargin(row, "Inverse initial margin calculation requires base to be the settle currency.")
+			return unavailablePositionMargin(row, "settlement_mismatch", "Inverse initial margin calculation requires base to be the settle currency.")
 		}
 	} else {
 		notional.Mul(notional, mark)
@@ -176,7 +224,7 @@ func calculatedBinanceMargin(row *PositionRow) *string {
 	initial := new(big.Rat).Quo(notional, leverage)
 	value := convertPositionMargin(row, initial, *row.QuoteAssetSymbol)
 	if value == nil {
-		return unavailablePositionMargin(row, "Calculated initial margin cannot be converted to settle without compatible contract currencies.")
+		return unavailablePositionMargin(row, "conversion_unavailable", "Calculated initial margin cannot be converted to settle without compatible contract currencies.")
 	}
 	row.MarginSource = new("calculated")
 	return value
@@ -234,8 +282,9 @@ func positivePositionNumber(value *string) (*big.Rat, bool) {
 	return amount, valid && amount.Sign() > 0
 }
 
-func unavailablePositionMargin(row *PositionRow, reason string) *string {
+func unavailablePositionMargin(row *PositionRow, code, reason string) *string {
 	row.MarginUnavailableReason = new(reason)
+	row.MarginUnavailableCode = new(code)
 	return nil
 }
 

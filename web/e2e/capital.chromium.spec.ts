@@ -5,7 +5,10 @@ import { sessionFixture } from "./support/session";
 
 test.use({ timezoneId: "UTC" });
 
-async function fixture(page: Page, options: { timezone?: string; effectiveAt?: string } = {}) {
+async function fixture(
+  page: Page,
+  options: { timezone?: string; effectiveAt?: string; extraFlows?: number } = {},
+) {
   const timezone = options.timezone ?? "UTC";
   const session = sessionFixture({ portfolio: { timezone } });
   const portfolioId = session.portfolios.items[0].id;
@@ -30,17 +33,38 @@ async function fixture(page: Page, options: { timezone?: string; effectiveAt?: s
     updates: [] as Partial<CapitalFlow>[],
     creates: [] as Partial<CapitalFlow>[],
     failRead: false,
+    windowReads: 0,
   };
+  const extraFlows = Array.from({ length: options.extraFlows ?? 0 }, (_, index) => ({
+    ...initial,
+    id: `00000000-0000-7000-8000-${String(index + 10).padStart(12, "0")}`,
+    effectiveAt: "2026-10-13T00:00:00Z",
+    note: `Other flow ${index + 1}`,
+  }));
   await mockApi(page, session, async (route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (
-      path.endsWith("/identities") ||
-      path.endsWith("/boundary-events") ||
-      path.endsWith("/platforms")
-    )
+    const url = new URL(request.url());
+    const path = url.pathname;
+    const listing = (items: unknown[]) => ({
+      context: { portfolioId, timezone },
+      from: url.searchParams.get("from"),
+      to: url.searchParams.get("to"),
+      items: items.slice(
+        Number(url.searchParams.get("offset") ?? 0),
+        Number(url.searchParams.get("offset") ?? 0) + 50,
+      ),
+      page: {
+        kind: "offset",
+        offset: Number(url.searchParams.get("offset") ?? 0),
+        limit: 50,
+        total: items.length,
+      },
+    });
+    if (path.endsWith("/boundary-events")) return route.fulfill({ json: listing([]) });
+    if (path.endsWith("/identities") || path.endsWith("/platforms"))
       return route.fulfill({ json: { items: [] } });
     if (path.endsWith("/history-window")) {
+      state.windowReads += 1;
       const url = new URL(request.url());
       const fromLocal = url.searchParams.get("fromLocal");
       const toLocal = url.searchParams.get("toLocal");
@@ -81,15 +105,18 @@ async function fixture(page: Page, options: { timezone?: string; effectiveAt?: s
         state.flow = { ...initial, ...body };
         return route.fulfill({ status: 201, json: state.flow });
       }
-      return route.fulfill({ json: { items: state.flow ? [state.flow] : [] } });
+      const items = [...extraFlows, ...(state.flow ? [state.flow] : [])].sort(
+        (a, b) => b.effectiveAt.localeCompare(a.effectiveAt) || b.id.localeCompare(a.id),
+      );
+      return route.fulfill({ json: listing(items) });
     }
     if (path.endsWith(`/capital-flows/${initial.id}`)) {
       if (request.method() === "GET" && state.failRead)
         return route.fulfill({ status: 503, json: { detail: "Read unavailable" } });
       if (!state.flow) return route.fulfill({ status: 404, json: { detail: "Removed" } });
       if (request.method() !== "GET") {
-        state.writes.push(request.headers()["if-match"]);
-        if (request.headers()["if-match"] !== `"capital-flow:${state.flow.version}"`)
+        state.writes.push(request.headers()["if-edit-version"]);
+        if (request.headers()["if-edit-version"] !== String(state.flow.version))
           return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
         if (request.method() === "DELETE") {
           state.flow = null;
@@ -107,7 +134,7 @@ async function fixture(page: Page, options: { timezone?: string; effectiveAt?: s
     return route.fallback();
   });
   await page.goto(`/p/${portfolioId}/capital`);
-  await expect(page.getByRole("button", { name: /^Actions for flow/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Actions for flow/i }).first()).toBeVisible();
   return state;
 }
 
@@ -132,6 +159,61 @@ test("Capital views default to 1W and expose presets", async ({ page }) => {
   );
   await expect(page).toHaveURL(/range=3D/);
 });
+
+for (const action of ["create", "edit", "delete"] as const) {
+  test(`Capital flow ${action} restarts pagination in the same window`, async ({ page }) => {
+    const reads: URL[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (request.method() === "GET" && url.pathname.endsWith("/capital-flows")) reads.push(url);
+    });
+    const state = await fixture(page, { extraFlows: 51 });
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page).toHaveURL(/offset=50/);
+    await expect(page.getByText("51–52 of 52", { exact: true })).toBeVisible();
+    const window = reads.at(-1)!.searchParams;
+    if (action === "create") {
+      await page.getByRole("button", { name: "Record flow", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Asset", { exact: true }).fill("USD");
+      await dialog.getByLabel("Quantity", { exact: true }).fill("150");
+      await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13T12:00");
+      await dialog.getByLabel("Note", { exact: true }).fill("New flow");
+      await dialog.getByRole("button", { name: "Record flow", exact: true }).click();
+    } else {
+      await page
+        .getByRole("button", { name: /^Actions for flow/i })
+        .last()
+        .click();
+      await page
+        .getByRole("menuitem", { name: action === "edit" ? "Edit" : "Delete", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      if (action === "edit") {
+        await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13T12:00");
+        await dialog.getByLabel("Note", { exact: true }).fill("Updated flow");
+        await dialog.getByRole("button", { name: "Save flow", exact: true }).click();
+      } else {
+        await dialog.getByRole("button", { name: "Delete flow", exact: true }).click();
+      }
+    }
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect.poll(() => new URL(page.url()).searchParams.get("offset")).toBeNull();
+    await expect(
+      page.getByText(action === "delete" ? "1–50 of 51" : "1–50 of 52", { exact: true }),
+    ).toBeVisible();
+    if (action !== "delete") {
+      await expect(page.getByRole("table").locator("tbody tr").first()).toContainText(
+        action === "create" ? "New flow" : "Updated flow",
+      );
+    }
+    const latest = reads.at(-1)!.searchParams;
+    expect(latest.get("offset")).toBe("0");
+    expect(latest.get("from")).toBe(window.get("from"));
+    expect(latest.get("to")).toBe(window.get("to"));
+    expect(state.windowReads).toBe(1);
+  });
+}
 
 test("Boundary events show newest batches first, keep account order, and respect microsecond bounds", async ({
   page,
@@ -194,7 +276,11 @@ test("Boundary events show newest batches first, keep account order, and respect
       const upper = to.replace(/\.(\d{3})Z$/, (_match, fraction: string) => `.${fraction}000Z`);
       return route.fulfill({
         json: {
-          items: events.filter(
+          context: { portfolioId, timezone: "UTC" },
+          from: url.searchParams.get("from"),
+          to,
+          page: { kind: "offset", offset: 0, limit: 50, total: 4 },
+          items: [events[2], events[3], events[0], events[1], events[4]].filter(
             (item) =>
               item.evaluatedAt <= upper && item.evaluatedAt >= "2026-10-13T00:00:00.000000Z",
           ),
@@ -251,7 +337,7 @@ test("Capital flow edits use the JSON baseline and explicitly reload conflicts",
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog).toBeHidden();
   expect(state.flow?.quantity).toBe("250");
-  expect(state.writes).toEqual(['"capital-flow:1"', '"capital-flow:2"']);
+  expect(state.writes).toEqual(["1", "2"]);
   expect(state.updates[0]).not.toHaveProperty("effectiveAt");
 });
 
@@ -323,5 +409,5 @@ test("Capital flow deletion cannot silently advance the confirmed version", asyn
   await dialog.getByRole("button", { name: "Delete flow", exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(state.flow).toBeNull();
-  expect(state.writes).toEqual(['"capital-flow:1"', '"capital-flow:2"']);
+  expect(state.writes).toEqual(["1", "2"]);
 });

@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import type { PeriodClose, ValuationPointSummary } from "@/api";
 import { formatAmount, formatPercent, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
-import { reasonText } from "@/shared/lib/text";
+import { IssueList } from "@/shared/ui/IssueList";
 import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
 import { type DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
@@ -93,7 +93,7 @@ function pointChangeCell(
 }
 
 export function periodCloseIssuesCell(item: PeriodClose) {
-  const isHealthy = item.completeness === "complete" && item.reasons.length === 0;
+  const isHealthy = item.completeness === "complete" && item.issues.length === 0;
   if (isHealthy) {
     return <span className={shared.muted}>—</span>;
   }
@@ -103,7 +103,7 @@ export function periodCloseIssuesCell(item: PeriodClose) {
       <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
     ) : (
       <Badge tone="warn">
-        {item.reasons.length === 1 ? "1 issue" : `${item.reasons.length} issues`}
+        {item.issues.length === 1 ? "1 issue" : `${item.issues.length} issues`}
       </Badge>
     );
 
@@ -116,14 +116,10 @@ export function periodCloseIssuesCell(item: PeriodClose) {
             <CompletenessBadge value={item.completeness} silentWhenHealthy={false} />
           </div>
         </div>
-        {item.reasons.length > 0 ? (
+        {item.issues.length > 0 ? (
           <div>
             <span className={shared.cellMeta}>Missing data</span>
-            <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
-              {item.reasons.map((reason, i) => (
-                <li key={i}>{reasonText(reason, "label")}</li>
-              ))}
-            </ul>
+            <IssueList issues={item.issues} />
           </div>
         ) : null}
       </div>

@@ -48,9 +48,9 @@ func (a *API) PutAssetMapping(ctx context.Context, request api.PutAssetMappingRe
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := catalog.ParseAssetETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, validationError("If-Match must be an asset ETag.")
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -65,7 +65,7 @@ func (a *API) PutAssetMapping(ctx context.Context, request api.PutAssetMappingRe
 	if err != nil {
 		return nil, err
 	}
-	return api.PutAssetMapping200JSONResponse{Body: toAPIAsset(&item), Headers: api.PutAssetMapping200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PutAssetMapping200JSONResponse(toAPIAsset(&item)), nil
 }
 
 func (a *API) PutAssetExclusion(ctx context.Context, request api.PutAssetExclusionRequestObject) (api.PutAssetExclusionResponseObject, error) {
@@ -76,9 +76,9 @@ func (a *API) PutAssetExclusion(ctx context.Context, request api.PutAssetExclusi
 	if a.Catalog == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := catalog.ParseExclusionETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, true)
 	if !ok {
-		return nil, validationError("If-Match must be an asset exclusion ETag.")
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -90,7 +90,7 @@ func (a *API) PutAssetExclusion(ctx context.Context, request api.PutAssetExclusi
 	if err != nil {
 		return nil, err
 	}
-	return api.PutAssetExclusion200JSONResponse{Body: toAPIAsset(&item), Headers: api.PutAssetExclusion200ResponseHeaders{ETag: new(item.ExclusionETag())}}, nil
+	return api.PutAssetExclusion200JSONResponse(toAPIAsset(&item)), nil
 }
 
 func (a *API) ListFuturesContracts(ctx context.Context, request api.ListFuturesContractsRequestObject) (api.ListFuturesContractsResponseObject, error) {

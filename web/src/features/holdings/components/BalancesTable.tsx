@@ -3,7 +3,7 @@ import { ManualActions, type ManualTarget } from "../dialogs/manual";
 import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
-import type { AccountBalanceList, AccountValuation, BalanceRow, Issue } from "@/api";
+import type { AccountReport, AccountValuation, BalanceRow, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { NO_ACCOUNT_REPORT } from "@/shared/lib/text";
@@ -24,7 +24,7 @@ export function BalancesTable({
   missingReport,
 }: {
   account: AccountValuation;
-  data?: AccountBalanceList;
+  data?: AccountReport;
   isPending: boolean;
   isError: boolean;
   timezone?: string;
@@ -54,7 +54,7 @@ export function BalancesTable({
       <DataTable
         caption={`Balances of ${account.accountName}`}
         columns={BALANCE_COLUMNS}
-        rows={(data?.items ?? []).map((item) => {
+        rows={(data?.balances ?? []).map((item) => {
           const row = balanceRow(item, data?.context.timezone, data?.issues);
           if (isManual && onManual) {
             row.symbol = (
@@ -112,6 +112,7 @@ function balancePnl(value: string | null | undefined) {
 }
 
 export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] = []): DataRow {
+  const quantity = item.manualChange === "added" ? item.manualQuantity : item.equity;
   const stale = issues.find(
     (issue) => issue.accountId === item.accountId && issue.code === "stale",
   );
@@ -129,8 +130,8 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
     equity:
       item.manualChange || item.excluded ? (
         <HoverDetails
-          name={`Manual ${item.assetSymbol} quantity ${formatDecimal(item.equity)}`}
-          label={<NumericText>{formatDecimal(item.equity)}</NumericText>}
+          name={`Manual ${item.assetSymbol} quantity ${formatDecimal(quantity)}`}
+          label={<NumericText>{formatDecimal(quantity)}</NumericText>}
         >
           {item.manualChange ? (
             <p>
@@ -149,7 +150,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
           {item.excluded ? <p>Excluded</p> : null}
         </HoverDetails>
       ) : (
-        formatDecimal(item.equity)
+        formatDecimal(quantity)
       ),
     liability: formatDecimal(item.liability),
     unrealizedPnl: balancePnl(item.unrealizedPnl),

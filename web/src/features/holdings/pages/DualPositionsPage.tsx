@@ -22,13 +22,15 @@ export function DualPositionsPage() {
   const offset = filters.offset;
   const query = usePortfolioQuery<DualPositionList>({
     key: (userId, portfolioId) =>
-      keys.dualPositions(userId, portfolioId, platform, identityId, symbol, offset),
+      keys.dualPositions(userId, portfolioId, platform, identityId, symbol, offset, filters.readId),
     ready: filters.ready,
     load: (portfolioId) =>
-      listDualPositions({
-        path: { portfolioId },
-        query: holdingsListRequest(filters),
-      }),
+      filters.read((cycleId) =>
+        listDualPositions({
+          path: { portfolioId },
+          query: { ...holdingsListRequest(filters), cycleId },
+        }),
+      ),
   });
   const data = query.data;
   return (
@@ -59,6 +61,11 @@ export function DualPositionsPage() {
             />
           ) : !data?.context.cycleId ? (
             <HoldingsNoPoint filters={filters} />
+          ) : !data.coverage.complete ? (
+            <TableEmptyState
+              title="Dual investment data is incomplete"
+              help="Some accounts have no compatible successful report."
+            />
           ) : filters.hasFilters ? (
             <TableEmptyState
               title="No dual investment subscriptions match these filters"

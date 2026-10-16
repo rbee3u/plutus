@@ -82,12 +82,12 @@ test("Security preserves revoke refresh, password rejection and successful sign-
       passwords++;
       return passwords === 1
         ? route.fulfill({
-            status: 401,
+            status: 422,
             json: {
               type: "about:blank",
-              title: "Unauthorized",
-              status: 401,
-              code: "invalid_credentials",
+              title: "Current password is incorrect",
+              status: 422,
+              code: "invalid_current_password",
               detail: "Current password is incorrect.",
             },
           })
@@ -97,8 +97,10 @@ test("Security preserves revoke refresh, password rejection and successful sign-
   });
   await page.goto("/account/security");
   const newPassword = page.getByLabel("New password", { exact: true });
-  await expect(newPassword).toHaveAccessibleDescription("8+ chars A–Z a–z 0–9 / symbol");
-  expect(await page.getByRole("main").ariaSnapshot()).toContain("8+ chars A–Z a–z 0–9 / symbol");
+  await expect(newPassword).toHaveAccessibleDescription("8–128 characters A–Z a–z 0–9 / symbol");
+  expect(await page.getByRole("main").ariaSnapshot()).toContain(
+    "8–128 characters A–Z a–z 0–9 / symbol",
+  );
   await page.getByRole("button", { name: "Revoke", exact: true }).click();
   await expect(page.getByRole("button", { name: "Revoke", exact: true })).toHaveCount(0);
   expect(reads).toBe(2);
@@ -106,7 +108,7 @@ test("Security preserves revoke refresh, password rejection and successful sign-
   await page.getByLabel("New password", { exact: true }).fill("NewPassword=123");
   await page.getByLabel(/^Current password/).fill("NewPassword=123");
   await expect(newPassword).toHaveAccessibleDescription(
-    "8+ chars A–Z a–z 0–9 / symbol New password must differ from current password",
+    "8–128 characters A–Z a–z 0–9 / symbol New password must differ from current password",
   );
   await page.getByLabel(/^Current password/).fill("OldPassword=123");
   await page.getByLabel("Confirm new password", { exact: true }).fill("NewPassword=123");
@@ -119,7 +121,7 @@ test("Security preserves revoke refresh, password rejection and successful sign-
   await expect(page.getByText(/Password changed successfully/)).toBeVisible();
 });
 
-for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
+for (const responseEtag of ["99", 'W/"portfolio:1"', undefined]) {
   test(`Portfolio writes use JSON versions with response ETag ${responseEtag ?? "absent"}`, async ({
     page,
   }) => {
@@ -140,8 +142,8 @@ for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
       if (url === path) {
         const current = session.portfolios.items[0];
         if (request.method() !== "GET") {
-          writes.push(request.headers()["if-match"]);
-          if (request.headers()["if-match"] !== `"portfolio:${current.version}"`)
+          writes.push(request.headers()["if-edit-version"]);
+          if (request.headers()["if-edit-version"] !== String(current.version))
             return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
           if (request.method() === "DELETE") {
             session.portfolios.items.shift();
@@ -158,10 +160,10 @@ for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
           headers: responseEtag ? { ETag: responseEtag } : {},
         });
       }
+      if (url.endsWith("/identities")) return route.fulfill({ json: { items: [] } });
       if (
         url.endsWith("/overview") ||
-        url.endsWith("/tree") ||
-        url.endsWith("/valuation-points") ||
+        url.endsWith("/valuation-points/series") ||
         url.endsWith("/history-window")
       )
         return route.fulfill({ status: 503, json: { detail: "No valuation in this fixture" } });
@@ -174,7 +176,7 @@ for (const responseEtag of ['"portfolio:99"', 'W/"portfolio:1"', undefined]) {
     await page.getByLabel("Confirm name", { exact: true }).fill("Renamed");
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(page).toHaveURL(`/p/${fallback.id}/overview`);
-    expect(writes).toEqual(['"portfolio:1"', '"portfolio:2"']);
+    expect(writes).toEqual(["1", "2"]);
   });
 }
 
@@ -197,8 +199,8 @@ test("Portfolio drafts keep their baseline through background reads and require 
         if (failRead) return route.fulfill({ status: 503, json: { detail: "Read unavailable" } });
       } else {
         const current = session.portfolios.items[0];
-        writes.push(request.headers()["if-match"]);
-        if (request.headers()["if-match"] !== `"portfolio:${current.version}"`)
+        writes.push(request.headers()["if-edit-version"]);
+        if (request.headers()["if-edit-version"] !== String(current.version))
           return route.fulfill({ status: 412, json: { detail: "Version conflict" } });
         session.portfolios.items[0] = {
           ...current,
@@ -248,7 +250,7 @@ test("Portfolio drafts keep their baseline through background reads and require 
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Reviewed draft");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Portfolio settings saved.");
-  expect(writes).toEqual(['"portfolio:1"', '"portfolio:1"', '"portfolio:2"']);
+  expect(writes).toEqual(["1", "1", "2"]);
   expect(session.portfolios.items[0].name).toBe("Reviewed draft");
   await other.close();
 });

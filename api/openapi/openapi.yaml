@@ -51,12 +51,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CsrfResponse"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/auth/login:
     post:
       operationId: postAuthLogin
+      security:
+        - csrfHeader: []
       tags: [auth]
       summary: Authenticate with username and password
-      security: []
       parameters:
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
@@ -78,9 +87,18 @@ paths:
           $ref: "#/components/responses/Problem"
         "429":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/auth/logout:
     post:
       operationId: postAuthLogout
+      security:
+        - sessionCookie: []
+          csrfHeader: []
       tags: [auth]
       summary: Revoke the current session
       parameters:
@@ -90,9 +108,20 @@ paths:
           description: Logged out.
         "401":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/auth/logout-all:
     post:
       operationId: postAuthLogoutAll
+      security:
+        - sessionCookie: []
+          csrfHeader: []
       tags: [auth]
       summary: Revoke all sessions for the current user
       parameters:
@@ -101,6 +130,14 @@ paths:
         "204":
           description: All sessions revoked.
         "401":
+          $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/auth/me:
     get:
@@ -116,9 +153,20 @@ paths:
                 $ref: "#/components/schemas/CurrentUser"
         "401":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/auth/password:
     put:
       operationId: putAuthPassword
+      security:
+        - sessionCookie: []
+          csrfHeader: []
       tags: [auth]
       summary: Replace the current password
       parameters:
@@ -132,9 +180,17 @@ paths:
       responses:
         "204":
           description: Password replaced.
+        "422":
+          $ref: "#/components/responses/Problem"
         "400":
           $ref: "#/components/responses/Problem"
         "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/auth/sessions:
     get:
@@ -150,9 +206,20 @@ paths:
                 $ref: "#/components/schemas/SessionList"
         "401":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/auth/sessions/{sessionId}:
     delete:
       operationId: deleteAuthSession
+      security:
+        - sessionCookie: []
+          csrfHeader: []
       tags: [auth]
       summary: Revoke one owned session
       parameters:
@@ -165,10 +232,19 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios:
     get:
       operationId: listPortfolios
-      tags: [portfolios]
+      tags:
+        - portfolios
       summary: List owned portfolios
       responses:
         "200":
@@ -179,9 +255,21 @@ paths:
                 $ref: "#/components/schemas/PortfolioList"
         "401":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     post:
       operationId: createPortfolio
-      tags: [portfolios]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - portfolios
       summary: Create a portfolio
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -195,10 +283,6 @@ paths:
       responses:
         "201":
           description: Portfolio created.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -209,20 +293,23 @@ paths:
           $ref: "#/components/responses/Problem"
         "409":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}:
     get:
       operationId: getPortfolio
-      tags: [portfolios]
+      tags:
+        - portfolios
       summary: Get a portfolio
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
       responses:
         "200":
           description: The portfolio.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -231,13 +318,25 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     patch:
       operationId: patchPortfolio
-      tags: [portfolios]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - portfolios
       summary: Update portfolio settings
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -248,10 +347,6 @@ paths:
       responses:
         "200":
           description: Updated portfolio.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -264,13 +359,23 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     delete:
       operationId: deletePortfolio
-      tags: [portfolios]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - portfolios
       summary: Delete an additional portfolio
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "202":
@@ -282,6 +387,14 @@ paths:
         "409":
           $ref: "#/components/responses/Problem"
         "412":
+          $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/platforms:
     get:
@@ -297,10 +410,19 @@ paths:
                 $ref: "#/components/schemas/PlatformList"
         "401":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities:
     get:
       operationId: listIdentities
-      tags: [identities]
+      tags:
+        - identities
       summary: List identities with their accounts and connection state
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -315,9 +437,21 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     post:
       operationId: createIdentity
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Create an identity and select its account types
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -332,10 +466,6 @@ paths:
       responses:
         "201":
           description: Identity created.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -348,10 +478,17 @@ paths:
           $ref: "#/components/responses/Problem"
         "409":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities/{identityId}:
     get:
       operationId: getIdentity
-      tags: [identities]
+      tags:
+        - identities
       summary: Get an identity
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -359,10 +496,6 @@ paths:
       responses:
         "200":
           description: The identity.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -371,14 +504,26 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     patch:
       operationId: patchIdentity
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Rename an identity or change account selection
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -389,10 +534,6 @@ paths:
       responses:
         "200":
           description: Updated identity.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -407,23 +548,29 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities/{identityId}/archive:
     post:
       operationId: archiveIdentity
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Archive an identity; refused while its connection is enabled
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200":
           description: Archived identity.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -436,15 +583,27 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials:
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials:
     put:
       operationId: putIdentityCredentials
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Store read-only API credentials (write-only)
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -455,10 +614,6 @@ paths:
       responses:
         "200":
           description: Credentials stored; the connection is disabled until enabled.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -475,22 +630,28 @@ paths:
           $ref: "#/components/responses/Problem"
         "503":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteIdentityCredentials
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Remove stored credentials
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200":
           description: Credentials removed.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -503,10 +664,22 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/identities/{identityId}/validate:
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/validate:
     post:
       operationId: validateIdentityConnection
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Run one read-only validation call and store the outcome
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -515,10 +688,6 @@ paths:
       responses:
         "200":
           description: Validation outcome.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -531,37 +700,37 @@ paths:
           $ref: "#/components/responses/Problem"
         "503":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/identities/{identityId}/enable:
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/enable:
     post:
       operationId: enableIdentityConnection
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Validate and enable the connection for scheduling
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200":
           description: Connection enabled.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidationOutcome"
         "422":
-          description: Validation failed; the connection stays disabled or became invalid.
-          headers:
-            ETag:
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ValidationOutcome"
+          $ref: "#/components/responses/Problem"
         "401":
           $ref: "#/components/responses/Problem"
         "404":
@@ -572,23 +741,31 @@ paths:
           $ref: "#/components/responses/Problem"
         "503":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/identities/{identityId}/disable:
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/disable:
     post:
       operationId: disableIdentityConnection
-      tags: [identities]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - identities
       summary: Stop scheduling the connection
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200":
           description: Connection disabled.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -600,6 +777,14 @@ paths:
         "409":
           $ref: "#/components/responses/Problem"
         "412":
+          $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/collection-cycles:
     get:
@@ -632,8 +817,15 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
     post:
       operationId: createCollectionCycle
+      security:
+        - sessionCookie: []
+          csrfHeader: []
       tags: [collection]
       summary: Enqueue a manual collection cycle or return the active one
       parameters:
@@ -650,6 +842,14 @@ paths:
         "401":
           $ref: "#/components/responses/Problem"
         "404":
+          $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/collection-cycles/{cycleId}:
     get:
@@ -670,11 +870,19 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/overview:
     get:
       operationId: getOverview
       tags: [holdings]
-      summary: Latest valuation point with platform and identity totals
+      summary: Latest valuation point and ownership tree in one consistent read
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
       responses:
@@ -688,110 +896,20 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/tree:
-    get:
-      operationId: getHoldingsTree
-      tags: [holdings]
-      summary: Platform → identity → account tree at the latest point
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-      responses:
-        "200":
-          description: Holdings tree.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HoldingsTree"
-        "401":
+        "400":
           $ref: "#/components/responses/Problem"
-        "404":
+        "403":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances:
-    get:
-      operationId: listAccountBalances
-      tags: [holdings]
-      summary: Balances of an account's current report
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/AccountID"
-      responses:
-        "200":
-          description: Account balances.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AccountBalanceList"
-        "401":
+        "500":
           $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions:
-    get:
-      operationId: listAccountPositions
-      tags: [holdings]
-      summary: Positions of an account at the latest or a specified valuation point
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/AccountID"
-        - name: cycleId
-          in: query
-          description: Historical valuation point; omitted for the latest point.
-          schema:
-            $ref: "#/components/schemas/UUID"
-      responses:
-        "200":
-          description: Account positions.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AccountPositionList"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions:
-    get:
-      operationId: listAccountDualPositions
-      tags: [holdings]
-      summary: Dual positions of an account's current report
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/AccountID"
-      responses:
-        "200":
-          description: Account positions.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AccountDualPositionList"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
-          $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions:
-    get:
-      operationId: listAccountEarnPositions
-      tags: [holdings]
-      summary: Earn positions of an account's current report
-      parameters:
-        - $ref: "#/components/parameters/PortfolioID"
-        - $ref: "#/components/parameters/AccountID"
-      responses:
-        "200":
-          description: Account positions.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AccountEarnPositionList"
-        "401":
-          $ref: "#/components/responses/Problem"
-        "404":
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/balances:
     get:
       operationId: listBalances
-      tags: [holdings]
-      summary: Flat balance list across the boundary at the latest point
+      tags:
+        - holdings
+      summary: Flat balance list across the boundary at a selected valuation point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -803,9 +921,11 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: symbol
+        - name: q
           in: query
-          description: Case-insensitive literal substring of the asset symbol or canonical asset symbol.
+          description:
+            Case-insensitive literal substring of the asset symbol or canonical
+            asset symbol.
           schema:
             type: string
         - name: offset
@@ -821,6 +941,8 @@ paths:
             minimum: 1
             maximum: 500
             default: 50
+        - $ref: "#/components/parameters/ReadCycleID"
+        - $ref: "#/components/parameters/IncludePendingManual"
       responses:
         "200":
           description: Balances.
@@ -834,11 +956,22 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        cycleId fixes collected financial data; omit it to resolve the
+        latest point once. Current manual edits are included only when requested and remain current. Filtering
+        and pagination never change the portfolio boundary.
   /api/v1/portfolios/{portfolioId}/positions:
     get:
       operationId: listPositions
-      tags: [holdings]
-      summary: Flat position list across the boundary at the latest point
+      tags:
+        - holdings
+      summary: Flat position list across the boundary at a selected valuation point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -850,7 +983,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: symbol
+        - name: q
           in: query
           description: Case-insensitive literal substring of the native contract symbol.
           schema:
@@ -868,6 +1001,7 @@ paths:
             minimum: 1
             maximum: 500
             default: 50
+        - $ref: "#/components/parameters/ReadCycleID"
       responses:
         "200":
           description: Positions.
@@ -881,11 +1015,24 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        cycleId fixes collected financial data; omit it to resolve the
+        latest point once. Current manual edits in balances remain current. Filtering
+        and pagination never change the portfolio boundary.
   /api/v1/portfolios/{portfolioId}/dual-positions:
     get:
       operationId: listDualPositions
-      tags: [holdings]
-      summary: Flat dual position list across the boundary at the latest point
+      tags:
+        - holdings
+      summary:
+        Flat dual position list across the boundary at a selected valuation
+        point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -897,9 +1044,11 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: symbol
+        - name: q
           in: query
-          description: Case-insensitive literal substring of the invested, base, or quote asset symbol.
+          description:
+            Case-insensitive literal substring of the invested, base, or
+            quote asset symbol.
           schema:
             type: string
         - name: offset
@@ -915,6 +1064,7 @@ paths:
             minimum: 1
             maximum: 500
             default: 50
+        - $ref: "#/components/parameters/ReadCycleID"
       responses:
         "200":
           description: Positions.
@@ -928,11 +1078,24 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        cycleId fixes collected financial data; omit it to resolve the
+        latest point once. Current manual edits in balances remain current. Filtering
+        and pagination never change the portfolio boundary.
   /api/v1/portfolios/{portfolioId}/earn-positions:
     get:
       operationId: listEarnPositions
-      tags: [holdings]
-      summary: Flat earn position list across the boundary at the latest point
+      tags:
+        - holdings
+      summary:
+        Flat earn position list across the boundary at a selected valuation
+        point
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: platform
@@ -944,9 +1107,11 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: symbol
+        - name: q
           in: query
-          description: Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
+          description:
+            Case-insensitive literal substring of any invested asset symbol
+            or canonical asset symbol.
           schema:
             type: string
         - name: offset
@@ -962,6 +1127,7 @@ paths:
             minimum: 1
             maximum: 500
             default: 50
+        - $ref: "#/components/parameters/ReadCycleID"
       responses:
         "200":
           description: Positions.
@@ -975,6 +1141,16 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        cycleId fixes collected financial data; omit it to resolve the
+        latest point once. Current manual edits in balances remain current. Filtering
+        and pagination never change the portfolio boundary.
   /api/v1/portfolios/{portfolioId}/history-window:
     get:
       operationId: getHistoryWindow
@@ -987,7 +1163,27 @@ paths:
           in: query
           schema:
             type: string
-            enum: [1D, 3D, 1W, 2W, 1M, 3M, 6M, 1d, 3d, 1w, 2w, 1Month, 1Year]
+            enum:
+              [
+                1D,
+                3D,
+                1W,
+                2W,
+                1M,
+                3M,
+                6M,
+                1d,
+                3d,
+                1w,
+                2w,
+                1m,
+                3m,
+                6m,
+                1Month,
+                1Year,
+                1y,
+                1Y,
+              ]
         - name: fromLocal
           in: query
           schema:
@@ -1009,11 +1205,18 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/valuation-points/page:
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/valuation-points:
     get:
       operationId: listValuationPointPage
       tags: [history]
       summary: Raw valuation points, newest first
+      description: Raw point summaries within the inclusive [from, to] window, newest first by time then cycle ID. Defaults to the last seven elapsed days; offset defaults to 0 and limit to 20.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/TimeFrom"
@@ -1043,11 +1246,16 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/valuation-points:
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/valuation-points/series:
     get:
       operationId: listValuationPoints
       tags: [history]
       summary: Valuation point series
+      description: Point summaries within the inclusive [from, to] window, oldest first by time then cycle ID. Defaults to the last seven elapsed days and raw granularity. Hour and day choose the final actual point in each portfolio-timezone bucket.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/TimeFrom"
@@ -1056,7 +1264,18 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/TimeGranularity"
+        - name: maxPoints
+          in: query
+          description: Maximum returned points, checked after the requested granularity. Excess returns 422 series_limit_exceeded without truncation. Use valuation-points pagination for complete raw access.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+            default: 10000
       responses:
+        "422":
+          $ref: "#/components/responses/Problem"
+
         "200":
           description: Valuation points.
           content:
@@ -1068,6 +1287,12 @@ paths:
         "401":
           $ref: "#/components/responses/Problem"
         "404":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/valuation-snapshot:
     get:
@@ -1096,6 +1321,12 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/valuation-points/{cycleId}:
     get:
       operationId: getValuationPoint
@@ -1115,11 +1346,20 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/period-closes:
     get:
       operationId: listPeriodCloses
       tags: [history]
       summary: Period closes per period kind
+      description: "Whole portfolio-local calendar periods intersecting [from, to), oldest first; at most 400 periods. Defaults: day 30 days, week 26 weeks, month 366 days, quarter 3 years, year 5 years. An omitted start is bounded by the first retained point."
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/PeriodKind"
@@ -1138,11 +1378,23 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/value-changes:
     get:
       operationId: listValueChanges
-      tags: [history]
+      tags:
+        - history
       summary: Value changes per period kind
+      description:
+        Whole portfolio-local calendar periods intersecting [from, to),
+        oldest first; at most 400 periods. Defaults match period-closes; changes use
+        actual points strictly before period endpoints, with existing incomplete-period
+        rules.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/PeriodKind"
@@ -1161,11 +1413,18 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
-  /api/v1/portfolios/{portfolioId}/value-changes/custom:
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/value-changes/range:
     get:
       operationId: getCustomValueChange
       tags: [history]
       summary: One value change between the last points at or before two instants
+      description: Compare actual points at or before the required from and to instants. Capital and boundary flows use the resolved point interval; missing or equal endpoints remain explicitly incomparable.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - name: from
@@ -1193,15 +1452,27 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/capital-flows:
     get:
       operationId: listCapitalFlows
-      tags: [capital]
+      tags:
+        - capital
       summary: List manual capital flows
+      description:
+        Capital flows within [from, to), newest first by effective time
+        then ID. Omitted endpoints cover 2000-01-01 through 2100-01-01 UTC. The response echoes the resolved range; reuse it for every page. Concurrent edits can move rows, so restart pagination after a mutation.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/TimeFrom"
         - $ref: "#/components/parameters/TimeTo"
+        - $ref: "#/components/parameters/ListOffset"
+        - $ref: "#/components/parameters/ListLimit"
       responses:
         "200":
           description: Capital flows, newest first.
@@ -1215,9 +1486,19 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     post:
       operationId: createCapitalFlow
-      tags: [capital]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - capital
       summary: Record a manual capital flow
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -1232,10 +1513,6 @@ paths:
       responses:
         "201":
           description: Flow created.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1248,10 +1525,17 @@ paths:
           $ref: "#/components/responses/Problem"
         "409":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/capital-flows/{flowId}:
     get:
       operationId: getCapitalFlow
-      tags: [capital]
+      tags:
+        - capital
       summary: Get a capital flow
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -1259,10 +1543,6 @@ paths:
       responses:
         "200":
           description: The flow.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1271,14 +1551,26 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     patch:
       operationId: patchCapitalFlow
-      tags: [capital]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - capital
       summary: Edit a capital flow
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/FlowID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -1289,10 +1581,6 @@ paths:
       responses:
         "200":
           description: Updated flow.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1305,14 +1593,24 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteCapitalFlow
-      tags: [capital]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - capital
       summary: Delete a capital flow
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/FlowID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "204":
@@ -1323,15 +1621,26 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/boundary-events:
     get:
       operationId: listBoundaryEvents
       tags: [capital]
       summary: Derived boundary events between two instants
+      description: Boundary events within the inclusive [from, to] window, newest cycles first with account hierarchy order within a cycle. Defaults to the last 90 elapsed days. The response echoes the resolved range; reuse it for every page. Ordering is evaluatedAt and cycleId descending, then the shared account hierarchy.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/TimeFrom"
         - $ref: "#/components/parameters/TimeTo"
+        - $ref: "#/components/parameters/ListOffset"
+        - $ref: "#/components/parameters/ListLimit"
       responses:
         "200":
           description: Boundary events.
@@ -1344,6 +1653,12 @@ paths:
         "401":
           $ref: "#/components/responses/Problem"
         "404":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/catalog/assets:
     get:
@@ -1392,15 +1707,23 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping:
     put:
       operationId: putAssetMapping
-      tags: [catalog]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - catalog
       summary: Override the canonical asset mapping for future valuation points
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AssetID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -1411,10 +1734,6 @@ paths:
       responses:
         "200":
           description: Updated asset.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1427,15 +1746,25 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion:
     put:
       operationId: putAssetExclusion
-      tags: [catalog]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - catalog
       summary: Ignore or restore an asset for future collection cycles in one portfolio
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/AssetID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -1446,10 +1775,6 @@ paths:
       responses:
         "200":
           description: Updated portfolio asset rule.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1461,6 +1786,12 @@ paths:
         "404":
           $ref: "#/components/responses/Problem"
         "412":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
           $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/catalog/futures-contracts:
     get:
@@ -1503,6 +1834,10 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/audit-events:
     get:
       operationId: listAuditEvents
@@ -1542,21 +1877,24 @@ paths:
           $ref: "#/components/responses/Problem"
         "404":
           $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances:
     get:
       operationId: getManualBalances
-      tags: [holdings]
+      tags:
+        - holdings
       summary: Read editable manual balances and last applied quantities
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
       responses:
         "200":
-          description: Editable manual ledger; prices and current valuation are unchanged until collection.
-          headers:
-            ETag:
-              schema:
-                type: string
+          description:
+            Editable manual ledger; prices and current valuation are unchanged
+            until collection.
           content:
             application/json:
               schema:
@@ -1573,14 +1911,22 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     post:
       operationId: createManualBalance
-      tags: [holdings]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - holdings
       summary: Add one manual asset without accumulating an existing balance
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/IdentityID"
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -1590,11 +1936,9 @@ paths:
               $ref: "#/components/schemas/CreateManualBalance"
       responses:
         "200":
-          description: Editable manual ledger; prices and current valuation are unchanged until collection.
-          headers:
-            ETag:
-              schema:
-                type: string
+          description:
+            Editable manual ledger; prices and current valuation are unchanged
+            until collection.
           content:
             application/json:
               schema:
@@ -1611,10 +1955,18 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
   /api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}:
     patch:
       operationId: updateManualBalance
-      tags: [holdings]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - holdings
       summary: Set a signed manual quantity; zero clears the balance
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -1624,7 +1976,7 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       requestBody:
         required: true
@@ -1635,10 +1987,6 @@ paths:
       responses:
         "200":
           description: Updated manual ledger.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1655,9 +2003,17 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
     delete:
       operationId: deleteManualBalance
-      tags: [holdings]
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      tags:
+        - holdings
       summary: Remove a current manual balance without rewriting history
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
@@ -1667,15 +2023,11 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/EditVersion"
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200":
           description: Updated manual ledger.
-          headers:
-            ETag:
-              schema:
-                type: string
           content:
             application/json:
               schema:
@@ -1692,14 +2044,77 @@ paths:
           $ref: "#/components/responses/Problem"
         "412":
           $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /api/v1/portfolios/{portfolioId}/accounts/{accountId}/report:
+    get:
+      operationId: getAccountReport
+      tags:
+        - holdings
+      summary: Read one aligned account report and its holdings
+      description:
+        Resolve the requested valuation point once, retaining its compatible
+        successful source report. Empty holdings with a missing account report are
+        unknown, not confirmed empty. Current manual edits are included only when
+        explicitly requested.
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - $ref: "#/components/parameters/AccountID"
+        - $ref: "#/components/parameters/ReadCycleID"
+        - $ref: "#/components/parameters/IncludePendingManual"
+      responses:
+        "200":
+          description: Account balances.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountReport"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
 components:
   securitySchemes:
     sessionCookie:
       type: apiKey
       in: cookie
       name: plutus_session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Required for state changes, including login. Acquire through auth/csrf; validated explicitly before mutation.
   parameters:
+    ListOffset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 2147483647
+        default: 0
+    ListLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
     CSRFToken:
+      description: Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
       name: X-CSRF-Token
       in: header
       required: false
@@ -1709,17 +2124,19 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: An opaque token of at most 255 visible ASCII characters.
+      description: >-
+        Optional opaque token of at most 255 visible ASCII characters; an empty
+        or omitted key disables replay. Successful responses are retained for
+        24 hours, scoped to the authenticated user, HTTP method, and path.
+        Reusing a key with a different typed JSON body returns 409
+        idempotency_conflict. Omitted inputs remain distinct from explicit
+        inputs. Authentication and CSRF are checked before replay, including
+        after resource deletion. Failed operations are not retained. A replay
+        returns the original response; read the resource for its current state.
       schema:
         type: string
         maxLength: 255
-        pattern: '^[!-~]*$'
-    IfMatch:
-      name: If-Match
-      in: header
-      required: true
-      schema:
-        type: string
+        pattern: "^[!-~]*$"
     PortfolioID:
       name: portfolioId
       in: path
@@ -1744,7 +2161,23 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UUID"
-
+    IncludePendingManual:
+      name: includePendingManual
+      in: query
+      schema:
+        type: boolean
+        default: false
+      description: Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+    ReadCycleID:
+      name: cycleId
+      in: query
+      description:
+        Immutable valuation point to read; omitted to resolve the latest
+        point once per request. The current point remains readable after the
+        public history cutoff. Unknown points return 404; expired detail returns
+        410 without substituting another point.
+      schema:
+        $ref: "#/components/schemas/UUID"
     FlowID:
       name: flowId
       in: path
@@ -1766,11 +2199,16 @@ components:
     TimeFrom:
       name: from
       in: query
-      description: Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+      description:
+        Start instant in RFC 3339. Each operation documents its own default
+        and endpoint inclusion rules.
       schema:
         type: string
         format: date-time
     TimeTo:
+      description:
+        End instant in RFC 3339. Each operation documents its endpoint
+        inclusion rules.
       name: to
       in: query
       schema:
@@ -1781,6 +2219,18 @@ components:
       in: query
       schema:
         $ref: "#/components/schemas/PeriodKind"
+    EditVersion:
+      name: If-Edit-Version
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: "^(0|[1-9][0-9]*)$"
+      description:
+        Expected edit version from the resource being edited. Portfolio,
+        identity and capital flow use version; asset mapping uses mappingVersion;
+        exclusion uses exclusionVersion; manual balances use the ledger version. Only
+        exclusion permits zero.
   responses:
     Problem:
       description: Problem details.
@@ -1877,7 +2327,8 @@ components:
     Session:
       type: object
       additionalProperties: false
-      required: [id, createdAt, lastSeenAt, idleExpiresAt, absoluteExpiresAt, current]
+      required:
+        [id, createdAt, lastSeenAt, idleExpiresAt, absoluteExpiresAt, current]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -1909,7 +2360,17 @@ components:
     Portfolio:
       type: object
       additionalProperties: false
-      required: [id, name, timezone, collectionIntervalSeconds, undeletable, version, createdAt, updatedAt]
+      required:
+        [
+          id,
+          name,
+          timezone,
+          collectionIntervalSeconds,
+          undeletable,
+          version,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         deletionRequestedAt:
           type: [string, "null"]
@@ -2085,8 +2546,7 @@ components:
       required: [status, credentialsConfigured]
       properties:
         status:
-          type: string
-          enum: [unconfigured, disabled, enabled, invalid]
+          $ref: "#/components/schemas/ConnectionStatus"
         credentialsConfigured:
           type: boolean
         credentialsSetAt:
@@ -2120,7 +2580,20 @@ components:
     Identity:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, platform, displayName, accountStructure, status, connection, accounts, version, createdAt, updatedAt]
+      required:
+        [
+          id,
+          portfolioId,
+          platform,
+          displayName,
+          accountStructure,
+          status,
+          connection,
+          accounts,
+          version,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -2140,8 +2613,7 @@ components:
         externalRef:
           type: [string, "null"]
         status:
-          type: string
-          enum: [enabled, archived]
+          $ref: "#/components/schemas/IdentityStatus"
         archivedAt:
           type: [string, "null"]
           format: date-time
@@ -2312,42 +2784,62 @@ components:
     ReadContext:
       type: object
       additionalProperties: false
-      required: [portfolioId, timezone]
+      required:
+        - portfolioId
+        - timezone
+        - cycleId
+        - evaluatedAt
       properties:
-        valuationRevision:
-          type: [string, "null"]
-          description: Identity of the immutable valuation result, equal to its collection cycle ID.
         portfolioId:
           $ref: "#/components/schemas/UUID"
         timezone:
           type: string
         cycleId:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
           format: uuid
         evaluatedAt:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
           format: date-time
+      description:
+        The valuation point supplying collected financial data. Both cycleId
+        and evaluatedAt are null before the first point. Current manual edits and
+        configuration are not immutable point facts.
     Issue:
       type: object
       additionalProperties: false
-      required: [code, detail]
+      required:
+        - code
+        - detail
       properties:
         code:
           type: string
         detail:
           type: string
         accountId:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
           format: uuid
         accountName:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
         symbol:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
         omittedBalance:
           $ref: "#/components/schemas/OmittedBalance"
         reportObservedAt:
           type: string
           format: date-time
+        flowId:
+          type: string
+          format: uuid
     OmittedBalance:
       type: object
       additionalProperties: false
@@ -2362,33 +2854,24 @@ components:
           $ref: "#/components/schemas/Decimal"
         reason:
           type: string
-    GroupTotal:
-      type: object
-      additionalProperties: false
-      required: [key, label, valueUsd, accountCount, rowCount, completeness]
-      properties:
-        key:
-          type: string
-        label:
-          type: string
-        platform:
-          type: [string, "null"]
-        valueUsd:
-          $ref: "#/components/schemas/NullableDecimal"
-        accountCount:
-          type: integer
-        rowCount:
-          type: integer
-        completeness:
-          $ref: "#/components/schemas/Completeness"
     ValuationPointSummary:
       type: object
       additionalProperties: false
-      required: [valuationRevision, calculationVersion, cycleId, evaluatedAt, totalUsd, completeness, accountCount, staleAccountCount, incompleteAccountCount, boundaryContributionUsd, boundaryWithdrawalUsd, detailState]
+      required:
+        [
+          calculationVersion,
+          cycleId,
+          evaluatedAt,
+          totalUsd,
+          completeness,
+          accountCount,
+          staleAccountCount,
+          incompleteAccountCount,
+          boundaryContributionUsd,
+          boundaryWithdrawalUsd,
+          detailState,
+        ]
       properties:
-        valuationRevision:
-          type: string
-          description: Identity of the immutable valuation result, equal to its collection cycle ID.
         calculationVersion:
           type: integer
           format: int64
@@ -2417,7 +2900,7 @@ components:
     Overview:
       type: object
       additionalProperties: false
-      required: [context, completeness, accountCount, staleAccountCount, incompleteAccountCount, byPlatform, byIdentity, issues, sparkline]
+      required: [context, point, platforms, issues]
       properties:
         context:
           $ref: "#/components/schemas/ReadContext"
@@ -2425,38 +2908,49 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ValuationPointSummary"
             - type: "null"
-        totalUsd:
-          $ref: "#/components/schemas/NullableDecimal"
-        completeness:
-          $ref: "#/components/schemas/Completeness"
-        accountCount:
-          type: integer
-        staleAccountCount:
-          type: integer
-        incompleteAccountCount:
-          type: integer
-        byPlatform:
+        platforms:
           type: array
           items:
-            $ref: "#/components/schemas/GroupTotal"
-        byIdentity:
-          type: array
-          items:
-            $ref: "#/components/schemas/GroupTotal"
+            $ref: "#/components/schemas/TreePlatform"
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
-        sparkline:
-          type: array
-          items:
-            $ref: "#/components/schemas/ValuationPointSummary"
     AccountValuation:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, selected, identityId, identityName, platform, status, method, freshness, completeness, omitted]
+      required:
+        [
+          accountId,
+          accountName,
+          accountType,
+          selected,
+          identityId,
+          identityName,
+          platform,
+          status,
+          method,
+          freshness,
+          completeness,
+          omitted,
+          valueUsd,
+          reportedEquityUsd,
+          adjustedEquityUsd,
+          availableEquityUsd,
+          initialMarginRatio,
+          maintenanceMarginRatio,
+          marginRatio,
+          reportId,
+          sourceReportId,
+          reportObservedAt,
+        ]
       properties:
+        sourceReportId:
+          type: [string, "null"]
+          format: uuid
+          description: Successful report supplying the displayed holdings and account measures, including stale fallback.
         reportId:
+          description: Account report for the requested collection cycle; may be a failed report.
           type: [string, "null"]
           format: uuid
         accountId:
@@ -2494,13 +2988,14 @@ components:
         valueUsd:
           $ref: "#/components/schemas/NullableDecimal"
         reportObservedAt:
+          description: Effective observation time of sourceReportId, not the failed attempt.
           type: [string, "null"]
           format: date-time
-        equity:
+        reportedEquityUsd:
           $ref: "#/components/schemas/NullableDecimal"
-        adjustedEquity:
+        adjustedEquityUsd:
           $ref: "#/components/schemas/NullableDecimal"
-        availableEquity:
+        availableEquityUsd:
           $ref: "#/components/schemas/NullableDecimal"
         initialMarginRatio:
           $ref: "#/components/schemas/NullableDecimal"
@@ -2521,16 +3016,25 @@ components:
     TreeIdentity:
       type: object
       additionalProperties: false
-      required: [id, displayName, status, connectionStatus, valueUsd, completeness, accounts]
+      required:
+        [
+          id,
+          displayName,
+          status,
+          connectionStatus,
+          valueUsd,
+          completeness,
+          accounts,
+        ]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
         displayName:
           type: string
         status:
-          type: string
+          $ref: "#/components/schemas/IdentityStatus"
         connectionStatus:
-          type: string
+          $ref: "#/components/schemas/ConnectionStatus"
         valueUsd:
           $ref: "#/components/schemas/NullableDecimal"
         completeness:
@@ -2556,29 +3060,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TreeIdentity"
-    HoldingsTree:
-      type: object
-      additionalProperties: false
-      required: [context, totalUsd, completeness, platforms, issues]
-      properties:
-        context:
-          $ref: "#/components/schemas/ReadContext"
-        totalUsd:
-          $ref: "#/components/schemas/NullableDecimal"
-        completeness:
-          $ref: "#/components/schemas/Completeness"
-        platforms:
-          type: array
-          items:
-            $ref: "#/components/schemas/TreePlatform"
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
     ManualBalance:
       type: object
       additionalProperties: false
-      required: [assetSymbol, assetId, canonicalAssetSymbol, quantity, modifiedAt]
+      required:
+        [assetSymbol, assetId, canonicalAssetSymbol, quantity, modifiedAt]
       properties:
         assetSymbol:
           type: string
@@ -2594,7 +3080,16 @@ components:
     ManualBalanceState:
       type: object
       additionalProperties: false
-      required: [accountId, identityId, version, appliedVersion, items, appliedItems, pending]
+      required:
+        [
+          accountId,
+          identityId,
+          version,
+          appliedVersion,
+          items,
+          appliedItems,
+          pending,
+        ]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2629,18 +3124,37 @@ components:
           minLength: 1
           maxLength: 64
         quantity:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/InputDecimal"
     UpdateManualBalance:
       type: object
       additionalProperties: false
       required: [quantity]
       properties:
         quantity:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/InputDecimal"
     BalanceRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, assetId, assetSymbol, canonicalAssetSymbol, equity, noPrice, freshness]
+      required:
+        - accountId
+        - accountName
+        - accountType
+        - identityId
+        - identityName
+        - platform
+        - assetId
+        - assetSymbol
+        - canonicalAssetSymbol
+        - equity
+        - noPrice
+        - freshness
+        - availableToWithdraw
+        - availableToTrade
+        - liability
+        - interest
+        - unrealizedPnl
+        - priceUsd
+        - equityUsd
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2661,7 +3175,10 @@ components:
         canonicalAssetSymbol:
           type: string
         equity:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Collected equity; null for a pending manual addition. Its current
+            quantity is manualQuantity.
         availableToWithdraw:
           $ref: "#/components/schemas/NullableDecimal"
         availableToTrade:
@@ -2679,30 +3196,102 @@ components:
         noPrice:
           type: boolean
         freshness:
-          $ref: "#/components/schemas/Freshness"
+          type:
+            - string
+            - "null"
+          enum:
+            - fresh
+            - stale
+            -
+          description: Source report freshness; null for a pending manual addition.
         reportObservedAt:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
           format: date-time
         manualModifiedAt:
-          type: [string, "null"]
+          type:
+            - string
+            - "null"
           format: date-time
-          description: Last user quantity adjustment, distinct from report observation time.
-
+          description:
+            Last user quantity adjustment, distinct from report observation
+            time.
         manualChange:
           type: string
-          enum: [added, updated, deleted]
-          description: Current manual changes relative to this displayed report; never changes its valuation.
+          enum:
+            - added
+            - updated
+            - deleted
+          description:
+            Current manual changes relative to this displayed report; never
+            changes its valuation.
         manualQuantity:
           $ref: "#/components/schemas/Decimal"
         excluded:
           type: boolean
-          description: Manual balance retained for editing but excluded from the displayed valuation.
-
+          description:
+            Manual balance retained for editing but excluded from the displayed
+            valuation.
     PositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, futuresContractId, futuresSymbol, kind, side, sourceQuantity, sourceQuantityUnit, freshness, issues]
+      required:
+        [
+          accountId,
+          accountName,
+          accountType,
+          identityId,
+          identityName,
+          platform,
+          positionKey,
+          futuresContractId,
+          futuresSymbol,
+          kind,
+          side,
+          sourceQuantity,
+          sourceQuantityUnit,
+          freshness,
+          issues,
+          displayLeverage,
+          marginUnavailableCode,
+          contractSize,
+          size,
+          settlementMargin,
+          entryPrice,
+          markPrice,
+          liquidationPrice,
+          unrealizedPnl,
+          reportedLeverage,
+          reportedMargin,
+          notionalUsd,
+        ]
       properties:
+        displayLeverage:
+          type: [string, "null"]
+          pattern: '^[0-9]+(\.[0-9]{1,200})?$'
+          description: Display-only multiplier retaining up to 200 fractional digits to avoid double rounding at display midpoints. Source financial values remain unchanged. Cross uses positive reported leverage; isolated uses absolute USD notional divided by allocated margin in USD. Portfolio margin has no multiplier except actual isolated positions. Missing inputs return null.
+        marginUnavailableCode:
+          type: [string, "null"]
+          enum:
+            [
+              setting_unknown,
+              account_mode_unknown,
+              shared_portfolio_margin,
+              setting_unsupported,
+              allocated_margin_unavailable,
+              reported_margin_invalid,
+              reported_margin_unavailable,
+              initial_margin_unavailable,
+              currency_unknown,
+              conversion_unavailable,
+              contract_kind_unsupported,
+              size_or_quote_unavailable,
+              mark_or_leverage_unavailable,
+              settlement_mismatch,
+              null,
+            ]
+          description: Stable reason for unavailable settlementMargin; null when known. marginUnavailableReason supplies descriptive context.
         accountId:
           $ref: "#/components/schemas/UUID"
         accountName:
@@ -2755,7 +3344,7 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         sizeSymbol:
           type: [string, "null"]
-        settleMargin:
+        settlementMargin:
           description: Margin in settlement currency, using the position's cross or isolated display basis.
           $ref: "#/components/schemas/NullableDecimal"
         marginSource:
@@ -2783,9 +3372,11 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         unrealizedPnl:
           $ref: "#/components/schemas/NullableDecimal"
-        leverage:
+        reportedLeverage:
+          description: Source position leverage, independent of the displayed isolated leverage.
           $ref: "#/components/schemas/NullableDecimal"
-        margin:
+        reportedMargin:
+          description: Retained source margin amount in marginAssetSymbol, qualified by marginBasis.
           $ref: "#/components/schemas/NullableDecimal"
         notionalUsd:
           $ref: "#/components/schemas/NullableDecimal"
@@ -2797,7 +3388,22 @@ components:
     DualPositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, principalAssetSymbol, principal, status, freshness]
+      required:
+        [
+          accountId,
+          accountName,
+          accountType,
+          identityId,
+          identityName,
+          platform,
+          positionKey,
+          principalAssetSymbol,
+          principal,
+          status,
+          freshness,
+          targetPrice,
+          annualizedRate,
+        ]
       properties:
         issues:
           type: array
@@ -2864,7 +3470,7 @@ components:
     EarnRate:
       type: object
       additionalProperties: false
-      required: [value, kind, qualifier, label]
+      required: [value, kind, qualifier, label, upper]
       properties:
         value:
           $ref: "#/components/schemas/Decimal"
@@ -2904,7 +3510,25 @@ components:
     EarnPositionRow:
       type: object
       additionalProperties: false
-      required: [accountId, accountName, accountType, identityId, identityName, platform, positionKey, type, granularity, amountBasis, assets, rates, rewards, details, freshness, issues]
+      required:
+        [
+          accountId,
+          accountName,
+          accountType,
+          identityId,
+          identityName,
+          platform,
+          positionKey,
+          type,
+          granularity,
+          amountBasis,
+          assets,
+          rates,
+          rewards,
+          details,
+          freshness,
+          issues,
+        ]
       properties:
         accountId:
           $ref: "#/components/schemas/UUID"
@@ -2963,31 +3587,19 @@ components:
         maturityAt:
           type: [string, "null"]
           format: date-time
-    AccountEarnPositionList:
-      type: object
-      additionalProperties: false
-      required: [context, account, items, issues]
-      properties:
-        context:
-          $ref: "#/components/schemas/ReadContext"
-        account:
-          $ref: "#/components/schemas/AccountValuation"
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/EarnPositionRow"
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
-
     EarnPositionList:
       type: object
       additionalProperties: false
-      required: [context, items, page, detailsComplete, completeness, issues]
+      required:
+        - coverage
+        - context
+        - items
+        - page
+        - valuationCompleteness
+        - issues
       properties:
-        detailsComplete:
-          type: boolean
+        coverage:
+          $ref: "#/components/schemas/ReportCoverage"
         context:
           $ref: "#/components/schemas/ReadContext"
         items:
@@ -2996,68 +3608,47 @@ components:
             $ref: "#/components/schemas/EarnPositionRow"
         page:
           $ref: "#/components/schemas/OffsetPage"
-        completeness:
+        valuationCompleteness:
           $ref: "#/components/schemas/Completeness"
+          description:
+            Completeness of the entire valuation point, independent of
+            row filters and pagination.
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
-    AccountBalanceList:
-      type: object
-      additionalProperties: false
-      required: [context, account, items, issues]
-      properties:
-        context:
-          $ref: "#/components/schemas/ReadContext"
-        account:
-          $ref: "#/components/schemas/AccountValuation"
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/BalanceRow"
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
-    AccountPositionList:
-      type: object
-      additionalProperties: false
-      required: [context, account, items, issues]
-      properties:
-        context:
-          $ref: "#/components/schemas/ReadContext"
-        account:
-          $ref: "#/components/schemas/AccountValuation"
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/PositionRow"
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
-    AccountDualPositionList:
-      type: object
-      additionalProperties: false
-      required: [context, account, items, issues]
-      properties:
-        context:
-          $ref: "#/components/schemas/ReadContext"
-        account:
-          $ref: "#/components/schemas/AccountValuation"
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/DualPositionRow"
-        issues:
-          type: array
-          items:
-            $ref: "#/components/schemas/Issue"
+          description:
+            Portfolio valuation issues, plus applicable holding issues
+            for matching rows before pagination.
     BalanceList:
       type: object
       additionalProperties: false
-      required: [context, items, page, totalUsd, completeness, issues]
+      required:
+        - coverage
+        - context
+        - items
+        - page
+        - filteredTotalUsd
+        - filteredTotalCompleteness
+        - filteredTotalIssues
+        - manualOverlay
+        - valuationCompleteness
+        - issues
       properties:
+        manualOverlay:
+          oneOf:
+            - $ref: "#/components/schemas/ManualOverlay"
+            - type: "null"
+        filteredTotalCompleteness:
+          $ref: "#/components/schemas/Completeness"
+          description: Completeness of filtered collected balance value before pagination. Missing reports qualify this total even when symbol search cannot determine their contents. Independent of portfolio valuation completeness.
+        filteredTotalIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+          description: Omissions affecting the filtered balance total, including unpriced descriptive balances in reported-equity accounts. Pending manual additions and exclusions do not count as missing collected value.
+        coverage:
+          $ref: "#/components/schemas/ReportCoverage"
         context:
           $ref: "#/components/schemas/ReadContext"
         items:
@@ -3066,19 +3657,37 @@ components:
             $ref: "#/components/schemas/BalanceRow"
         page:
           $ref: "#/components/schemas/OffsetPage"
-        totalUsd:
+        filteredTotalUsd:
+          description:
+            Sum of known USD values of filtered collected balances before
+            pagination. Pending manual additions have no collected value.
           $ref: "#/components/schemas/NullableDecimal"
-        completeness:
+        valuationCompleteness:
           $ref: "#/components/schemas/Completeness"
+          description:
+            Completeness of the entire valuation point, independent of
+            row filters and pagination.
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
+          description:
+            Portfolio valuation issues, plus applicable holding issues
+            for matching rows before pagination.
     PositionList:
       type: object
       additionalProperties: false
-      required: [context, items, page, totalNotionalUsd, completeness, issues]
+      required:
+        - coverage
+        - context
+        - items
+        - page
+        - boundaryNotionalUsd
+        - notionalCompleteness
+        - issues
       properties:
+        coverage:
+          $ref: "#/components/schemas/ReportCoverage"
         context:
           $ref: "#/components/schemas/ReadContext"
         items:
@@ -3087,20 +3696,36 @@ components:
             $ref: "#/components/schemas/PositionRow"
         page:
           $ref: "#/components/schemas/OffsetPage"
-        totalNotionalUsd:
-          description: Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
+        boundaryNotionalUsd:
+          description:
+            Sum of known absolute USD notionals for all positions in the
+            boundary, before row filtering and pagination.
           $ref: "#/components/schemas/NullableDecimal"
-        completeness:
+        notionalCompleteness:
           $ref: "#/components/schemas/Completeness"
+          description:
+            Completeness of absolute notional for all futures accounts
+            in the boundary, independent of filters and pagination.
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
+          description:
+            Futures account and notional issues across the boundary before
+            row filtering and pagination.
     DualPositionList:
       type: object
       additionalProperties: false
-      required: [context, items, page, completeness, issues]
+      required:
+        - coverage
+        - context
+        - items
+        - page
+        - valuationCompleteness
+        - issues
       properties:
+        coverage:
+          $ref: "#/components/schemas/ReportCoverage"
         context:
           $ref: "#/components/schemas/ReadContext"
         items:
@@ -3109,19 +3734,28 @@ components:
             $ref: "#/components/schemas/DualPositionRow"
         page:
           $ref: "#/components/schemas/OffsetPage"
-        completeness:
+        valuationCompleteness:
           $ref: "#/components/schemas/Completeness"
+          description:
+            Completeness of the entire valuation point, independent of
+            row filters and pagination.
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
+          description:
+            Portfolio valuation issues, plus applicable holding issues
+            for matching rows before pagination.
     HistoryWindow:
       type: object
       additionalProperties: false
-      required: [context, from, to]
+      required:
+        - context
+        - from
+        - to
       properties:
         context:
-          $ref: "#/components/schemas/ReadContext"
+          $ref: "#/components/schemas/PortfolioReadContext"
         from:
           type: string
           format: date-time
@@ -3131,14 +3765,27 @@ components:
     ValuationPointPage:
       type: object
       additionalProperties: false
-      required: [context, items, page, from, to]
+      required:
+        - context
+        - items
+        - page
+        - from
+        - to
+        - precedingPoint
       properties:
         context:
-          $ref: "#/components/schemas/ReadContext"
+          $ref: "#/components/schemas/PortfolioReadContext"
         items:
           type: array
           items:
             $ref: "#/components/schemas/ValuationPointSummary"
+        precedingPoint:
+          description:
+            Point immediately before the oldest item, within the same query
+            window; null for an empty page or no predecessor.
+          oneOf:
+            - $ref: "#/components/schemas/ValuationPointSummary"
+            - type: "null"
         page:
           $ref: "#/components/schemas/OffsetPage"
         from:
@@ -3150,14 +3797,24 @@ components:
     ValuationPointList:
       type: object
       additionalProperties: false
-      required: [context, items, granularity, from, to]
+      required:
+        - context
+        - items
+        - granularity
+        - maxPoints
+        - from
+        - to
       properties:
+        maxPoints:
+          type: integer
+          minimum: 1
+          maximum: 10000
         context:
-          $ref: "#/components/schemas/ReadContext"
+          $ref: "#/components/schemas/PortfolioReadContext"
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ValuationPointSummary"
+            $ref: "#/components/schemas/ValuationSeriesPoint"
         granularity:
           $ref: "#/components/schemas/TimeGranularity"
         from:
@@ -3169,7 +3826,17 @@ components:
     BoundaryEvent:
       type: object
       additionalProperties: false
-      required: [cycleId, evaluatedAt, accountId, accountName, direction, method, completeness]
+      required:
+        [
+          cycleId,
+          evaluatedAt,
+          accountId,
+          accountName,
+          direction,
+          method,
+          completeness,
+          valueUsd,
+        ]
       properties:
         cycleId:
           $ref: "#/components/schemas/UUID"
@@ -3199,8 +3866,18 @@ components:
     BoundaryEventList:
       type: object
       additionalProperties: false
-      required: [items]
+      required: [context, from, to, items, page]
       properties:
+        context:
+          $ref: "#/components/schemas/PortfolioReadContext"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        page:
+          $ref: "#/components/schemas/OffsetPage"
         items:
           type: array
           items:
@@ -3227,7 +3904,13 @@ components:
     PeriodClose:
       type: object
       additionalProperties: false
-      required: [periodKind, label, periodStart, periodEnd, completeness, reasons]
+      required:
+        - periodKind
+        - label
+        - periodStart
+        - periodEnd
+        - completeness
+        - issues
       properties:
         periodKind:
           $ref: "#/components/schemas/PeriodKind"
@@ -3245,17 +3928,20 @@ components:
             - type: "null"
         completeness:
           $ref: "#/components/schemas/Completeness"
-        reasons:
+        issues:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Issue"
     PeriodCloseList:
       type: object
       additionalProperties: false
-      required: [context, periodKind, items]
+      required:
+        - context
+        - periodKind
+        - items
       properties:
         context:
-          $ref: "#/components/schemas/ReadContext"
+          $ref: "#/components/schemas/PortfolioReadContext"
         periodKind:
           $ref: "#/components/schemas/PeriodKind"
         items:
@@ -3265,7 +3951,24 @@ components:
     ValueChange:
       type: object
       additionalProperties: false
-      required: [periodKind, label, from, to, contributionsUsd, withdrawalsUsd, boundaryContributionsUsd, boundaryWithdrawalsUsd, completeness, reasons, boundaryEvents]
+      description:
+        When comparable is false, amountUsd and all four flow amounts are null.
+        Otherwise amounts sum known inputs, including zero, even when incomplete.
+      required:
+        - periodKind
+        - label
+        - from
+        - to
+        - contributionsUsd
+        - withdrawalsUsd
+        - boundaryContributionsUsd
+        - boundaryWithdrawalsUsd
+        - completeness
+        - issues
+        - boundaryEvents
+        - amountUsd
+        - comparable
+        - flowsCompleteness
       properties:
         periodKind:
           type: string
@@ -3286,32 +3989,49 @@ components:
             - $ref: "#/components/schemas/ValuationPointSummary"
             - type: "null"
         contributionsUsd:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/NullableDecimal"
         withdrawalsUsd:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/NullableDecimal"
         boundaryContributionsUsd:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/NullableDecimal"
         boundaryWithdrawalsUsd:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/NullableDecimal"
         amountUsd:
           $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Known adjusted difference when comparable, including incomplete
+            results; null when comparison is unavailable. Zero is a known result.
         completeness:
           $ref: "#/components/schemas/Completeness"
-        reasons:
+        issues:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Issue"
         boundaryEvents:
           type: array
           items:
             $ref: "#/components/schemas/BoundaryEvent"
+        comparable:
+          type: boolean
+          description:
+            Both endpoints exist and resolve to distinct, ordered valuation
+            points.
+        flowsCompleteness:
+          $ref: "#/components/schemas/Completeness"
+          description:
+            Completeness of capital and boundary flow amounts. Incomplete when
+            comparison is unavailable, a flow is unvalued, or a boundary value is
+            only partially known. Independent of endpoint valuation completeness.
     ValueChangeList:
       type: object
       additionalProperties: false
-      required: [context, periodKind, items]
+      required:
+        - context
+        - periodKind
+        - items
       properties:
         context:
-          $ref: "#/components/schemas/ReadContext"
+          $ref: "#/components/schemas/PortfolioReadContext"
         periodKind:
           $ref: "#/components/schemas/PeriodKind"
         items:
@@ -3321,7 +4041,22 @@ components:
     CapitalFlow:
       type: object
       additionalProperties: false
-      required: [id, portfolioId, direction, canonicalAssetSymbol, quantity, effectiveAt, pricingMethod, pricingAttemptedAt, calculationVersion, version, createdAt, updatedAt]
+      required:
+        [
+          id,
+          portfolioId,
+          direction,
+          canonicalAssetSymbol,
+          quantity,
+          effectiveAt,
+          pricingMethod,
+          pricingAttemptedAt,
+          calculationVersion,
+          version,
+          createdAt,
+          updatedAt,
+          valueUsd,
+        ]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3371,8 +4106,18 @@ components:
     CapitalFlowList:
       type: object
       additionalProperties: false
-      required: [items]
+      required: [context, from, to, items, page]
       properties:
+        context:
+          $ref: "#/components/schemas/PortfolioReadContext"
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        page:
+          $ref: "#/components/schemas/OffsetPage"
         items:
           type: array
           items:
@@ -3381,6 +4126,7 @@ components:
       type: object
       additionalProperties: false
       required: [direction, canonicalAssetSymbol, quantity, effectiveAt]
+      description: Positive canonical asset quantity. An explicit nonnegative valueUsd fixes the USD amount. Otherwise pricing uses the account platform or pricingPlatform; unavailable automatic pricing returns a null USD value with its provenance.
       properties:
         direction:
           type: string
@@ -3388,9 +4134,9 @@ components:
         canonicalAssetSymbol:
           type: string
         quantity:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/InputDecimal"
         valueUsd:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/InputDecimal"
         pricingPlatform:
           type: string
         effectiveAt:
@@ -3404,6 +4150,14 @@ components:
     PatchCapitalFlowRequest:
       type: object
       additionalProperties: false
+      description: >-
+        Omitted fields preserve their values. Null clears note or accountId;
+        valueUsd null clears an explicit amount and attempts automatic pricing
+        using the resulting inputs. Explicit valueUsd survives other edits until
+        cleared or replaced. Null pricingPlatform clears the chosen platform;
+        an attached account still determines the platform for automatic pricing.
+        Note-only edits preserve pricing provenance. Quantity must be positive;
+        an explicit USD amount must be nonnegative.
       properties:
         direction:
           type: string
@@ -3411,9 +4165,9 @@ components:
         canonicalAssetSymbol:
           type: string
         quantity:
-          $ref: "#/components/schemas/Decimal"
+          $ref: "#/components/schemas/InputDecimal"
         valueUsd:
-          $ref: "#/components/schemas/NullableDecimal"
+          $ref: "#/components/schemas/NullableInputDecimal"
         pricingPlatform:
           type: [string, "null"]
         effectiveAt:
@@ -3423,11 +4177,24 @@ components:
           type: [string, "null"]
           format: uuid
         note:
+          maxLength: 500
           type: [string, "null"]
     Asset:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, canonicalAssetSymbol, mappingSource, firstObservedAt, lastObservedAt, mappingVersion, excluded, exclusionVersion]
+      required:
+        [
+          id,
+          platform,
+          symbol,
+          canonicalAssetSymbol,
+          mappingSource,
+          firstObservedAt,
+          lastObservedAt,
+          mappingVersion,
+          excluded,
+          exclusionVersion,
+        ]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3481,6 +4248,7 @@ components:
       type: object
       additionalProperties: false
       required: [excluded]
+      description: Excluding requires a nonempty reason after trimming whitespace. Restoring accepts only an omitted or whitespace-only reason. A no-op preserves the current rule and version.
       properties:
         excluded:
           type: boolean
@@ -3490,7 +4258,16 @@ components:
     FuturesContract:
       type: object
       additionalProperties: false
-      required: [id, platform, symbol, kind, firstObservedAt, lastObservedAt]
+      required:
+        [
+          id,
+          platform,
+          symbol,
+          kind,
+          firstObservedAt,
+          lastObservedAt,
+          contractSize,
+        ]
       properties:
         id:
           $ref: "#/components/schemas/UUID"
@@ -3528,9 +4305,56 @@ components:
             $ref: "#/components/schemas/FuturesContract"
         page:
           $ref: "#/components/schemas/OffsetPage"
+    ConnectionStatus:
+      type: string
+      enum: [unconfigured, disabled, enabled, invalid]
+    IdentityStatus:
+      type: string
+      enum: [enabled, archived]
     CollectionCycleStatus:
       type: string
       enum: [queued, running, succeeded, failed]
+    ReportCoverage:
+      type: object
+      additionalProperties: false
+      required: [complete, missingAccountIds]
+      description: Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+      properties:
+        complete:
+          type: boolean
+        missingAccountIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/UUID"
+    ManualOverlay:
+      type: object
+      additionalProperties: false
+      required: [versions]
+      description: Current ledger versions read with this response. Null means the overlay was not requested or the account is not manual. Versions are independent of cycleId and do not act as pagination snapshot tokens.
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualLedgerVersion"
+    ManualLedgerVersion:
+      type: object
+      additionalProperties: false
+      required: [accountId, version]
+      properties:
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+          x-go-type: uint64
+    InputDecimal:
+      type: string
+      pattern: '^-?[0-9]{1,35}(\.[0-9]{1,30})?$'
+      description: Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+    NullableInputDecimal:
+      type: [string, "null"]
+      pattern: '^-?[0-9]{1,35}(\.[0-9]{1,30})?$'
     Decimal:
       type: string
       pattern: '^-?[0-9]+(\.[0-9]+)?$'
@@ -3578,6 +4402,7 @@ components:
           type: integer
           minimum: 1
         total:
+          description: Number of records after filtering and before pagination.
           type: integer
           minimum: 0
     AuditEvent:
@@ -3627,7 +4452,12 @@ components:
     Problem:
       type: object
       additionalProperties: false
-      required: [type, title, status, detail, code]
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - code
       properties:
         type:
           type: string
@@ -3648,6 +4478,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldError"
+        validationOutcome:
+          $ref: "#/components/schemas/ValidationOutcome"
     FieldError:
       type: object
       additionalProperties: false
@@ -3659,5 +4491,75 @@ components:
           type: string
         message:
           type: string
+    AccountReport:
+      type: object
+      additionalProperties: false
+      required:
+        - context
+        - manualOverlay
+        - account
+        - balances
+        - positions
+        - dualPositions
+        - earnPositions
+        - issues
+      properties:
+        manualOverlay:
+          oneOf:
+            - $ref: "#/components/schemas/ManualOverlay"
+            - type: "null"
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        account:
+          $ref: "#/components/schemas/AccountValuation"
+        balances:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceRow"
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PositionRow"
+        dualPositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DualPositionRow"
+        earnPositions:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarnPositionRow"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    PortfolioReadContext:
+      type: object
+      additionalProperties: false
+      required:
+        - portfolioId
+        - timezone
+      properties:
+        portfolioId:
+          $ref: "#/components/schemas/UUID"
+        timezone:
+          type: string
+    ValuationSeriesPoint:
+      type: object
+      additionalProperties: false
+      required:
+        - cycleId
+        - evaluatedAt
+        - totalUsd
+        - completeness
+      properties:
+        cycleId:
+          $ref: "#/components/schemas/UUID"
+        evaluatedAt:
+          type: string
+          format: date-time
+        totalUsd:
+          $ref: "#/components/schemas/Decimal"
+        completeness:
+          $ref: "#/components/schemas/Completeness"
 security:
   - sessionCookie: []

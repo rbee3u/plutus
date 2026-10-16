@@ -95,7 +95,6 @@ export function PointDetail({
             <HistoricalPositions
               accountId={typeof row.id === "string" ? row.id : ""}
               cycleId={point.cycleId}
-              valuationRevision={point.valuationRevision}
             />
           )}
           renderAccountAction={(item) => (

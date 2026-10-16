@@ -20,54 +20,27 @@ const registry = {
     true,
   ),
   identities: family<[]>("identities", true),
-  balances: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
-    "balances",
-    true,
-  ),
-  positions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
-    "positions",
-    true,
-  ),
-  dualPositions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
-    "dual-positions",
-    true,
-  ),
-  earnPositions: family<[platform?: string, identityId?: string, symbol?: string, offset?: number]>(
-    "earn-positions",
-    true,
-  ),
-  accountBalances: family<
+  holdingsEpoch: family<[]>("holdings-epoch", false),
+  balances: family<
+    [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
+  >("balances", true),
+  positions: family<
+    [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
+  >("positions", true),
+  dualPositions: family<
+    [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
+  >("dual-positions", true),
+  earnPositions: family<
+    [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
+  >("earn-positions", true),
+  accountReport: family<
     [
       accountId?: string,
       cycleId?: string | null,
+      includePendingManual?: boolean,
       reportId?: string | null,
-      valuationRevision?: string | null,
     ]
-  >("account-balances", true),
-  accountPositions: family<
-    [
-      accountId?: string,
-      cycleId?: string | null,
-      reportId?: string | null,
-      valuationRevision?: string | null,
-    ]
-  >("account-positions", true),
-  accountDualPositions: family<
-    [
-      accountId?: string,
-      cycleId?: string | null,
-      reportId?: string | null,
-      valuationRevision?: string | null,
-    ]
-  >("account-dual-positions", true),
-  accountEarnPositions: family<
-    [
-      accountId?: string,
-      cycleId?: string | null,
-      reportId?: string | null,
-      valuationRevision?: string | null,
-    ]
-  >("account-earn-positions", true),
+  >("account-report", true),
   manualEditor: family<[identityId?: string, editorId?: string]>("manual-editor", false),
   historyWindow: family<
     [timezone?: string, fromOrPreset?: string, to?: string, mountId?: string, anchor?: number]
@@ -80,14 +53,11 @@ const registry = {
     "valuation-point-page",
     true,
   ),
-  valuationPoint: family<[cycleId?: string, valuationRevision?: string | null]>(
-    "valuation-point",
-    true,
-  ),
+  valuationPoint: family<[cycleId?: string]>("valuation-point", true),
   periodCloses: family<[kind?: string, from?: string, to?: string]>("period-closes", true),
   valueChanges: family<[kind?: string, from?: string, to?: string]>("value-changes", true),
   customValueChange: family<[from?: string, to?: string]>("custom-value-change", true),
-  boundaryEvents: family<[from?: string, to?: string]>("boundary-events", true),
+  boundaryEvents: family<[from?: string, to?: string, offset?: number]>("boundary-events", true),
   collectionCycles: family<[cursor?: string]>("collection-cycles", true),
   collectionCycle: family<[cycleId?: string | null]>("collection-cycle", true),
   auditEvents: family<[action?: string, resourceType?: string, cursor?: string]>(
@@ -102,7 +72,7 @@ const registry = {
     "catalog-futures-contracts",
     true,
   ),
-  capitalFlows: family<[from?: string, to?: string]>("capital-flows", true),
+  capitalFlows: family<[from?: string, to?: string, offset?: number]>("capital-flows", true),
   capitalFlow: family<[flowId?: string]>("capital-flow", false),
 } as const;
 
@@ -123,11 +93,19 @@ export async function invalidatePortfolioReads(
   queryClient: QueryClient,
   userId: string | undefined,
   portfolioId: string,
+  options: { preserveHistoryWindow?: boolean } = {},
 ): Promise<void> {
+  queryClient.setQueryData<number>(
+    keys.holdingsEpoch(userId, portfolioId),
+    (epoch) => (epoch ?? 0) + 1,
+  );
   await Promise.all(
-    Object.values(registry)
-      .filter((entry) => entry.refreshOnCollection)
-      .map((entry) =>
+    Object.entries(registry)
+      .filter(
+        ([name, entry]) =>
+          entry.refreshOnCollection && !(options.preserveHistoryWindow && name === "historyWindow"),
+      )
+      .map(([, entry]) =>
         queryClient.invalidateQueries({ queryKey: entry.prefix(userId, portfolioId) }),
       ),
   );

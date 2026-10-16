@@ -1,7 +1,10 @@
 import { useLocation } from "react-router";
 import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Identity, Issue } from "@/api";
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { keys, type ApiResult, type ReadContext } from "@/api";
+import { useSessionScope } from "@/shared/lib/session";
+import type { Identity } from "@/api";
 import { useIdentities } from "@/shared/lib/useIdentities";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { accountIssueScope } from "@/shared/lib/valuationRows";
@@ -43,29 +46,37 @@ export function holdingsCandidates(values: HoldingsFilterValues, identities: Fil
   };
 }
 
-/** List issues describe the portfolio, while empty states describe the filtered scope. */
-export function holdingsScopeHasMissingReport(
-  issues: Pick<Issue, "code" | "accountId">[],
-  values: HoldingsFilterValues,
-  identities: (Pick<Identity, "id" | "platform"> & { accounts: { id: string }[] })[],
-) {
-  const missing = issues.filter((issue) => issue.code === "missing");
-  if (!values.platform && !values.identityId) return missing.length > 0;
-  const accountIds = new Set(
-    identities
-      .filter(
-        (identity) =>
-          (!values.platform || identity.platform === values.platform) &&
-          (!values.identityId || identity.id === values.identityId),
-      )
-      .flatMap((identity) => identity.accounts.map((account) => account.id)),
-  );
-  return missing.some((issue) => issue.accountId && accountIds.has(issue.accountId));
-}
-
 /** URL-backed filters with a search draft saved before internal navigation. */
 export function useHoldingsFilters(portfolioId: string) {
   const { params, update } = useSearchState();
+  const { userId } = useSessionScope();
+  const mountId = useId();
+  const epoch = useQuery({
+    queryKey: keys.holdingsEpoch(userId, portfolioId),
+    initialData: 0,
+    queryFn: () => 0,
+    staleTime: Infinity,
+  });
+  const readId = `${mountId}:${epoch.data}`;
+  const scope = `${userId}:${portfolioId}:${readId}`;
+  const point = useRef<{ scope: string; cycleId?: string }>({ scope: "" });
+  async function read<T extends { context: ReadContext }>(
+    load: (cycleId?: string) => Promise<ApiResult<T>>,
+  ): Promise<ApiResult<T>> {
+    if (point.current.scope !== scope) point.current = { scope };
+    const selected = point.current;
+    const result = await load(selected.cycleId);
+    const cycleId = result.data?.context.cycleId;
+    if (cycleId) {
+      if (selected.cycleId && selected.cycleId !== cycleId)
+        throw new Error(
+          "The response does not match the displayed valuation point. Retry the request.",
+        );
+      selected.cycleId = cycleId;
+    }
+    return result;
+  }
+
   const location = useLocation();
   const navigation = useSessionNavigation();
   const identities = useIdentities(portfolioId);
@@ -178,6 +189,8 @@ export function useHoldingsFilters(portfolioId: string) {
   const candidates = holdingsCandidates(values, identities.data?.items ?? []);
   const symbolDraft = draft.source === values.symbol ? draft.value : values.symbol;
   return {
+    read,
+    readId,
     values,
     symbolDraft,
     open,

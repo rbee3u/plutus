@@ -36,32 +36,14 @@ describe("Authenticated write boundary", () => {
     expect(expire).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts only the explicit password rejection, retaining normal expiry", async () => {
-    const options = {
-      acceptUnauthorized: (error: unknown) =>
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "invalid_credentials",
-    };
-    const expire = vi.fn().mockResolvedValue(undefined);
+  it("preserves a password business rejection without ending the session", async () => {
+    const expire = vi.fn();
     const result = {
-      error: { code: "invalid_credentials" },
-      response: new Response(null, { status: 401 }),
+      error: { code: "invalid_current_password" },
+      response: new Response(null, { status: 422 }),
     };
-    expect(await authenticatedWrite(() => Promise.resolve(result), expire, options)).toBe(result);
+    expect(await authenticatedWrite(() => Promise.resolve(result), expire)).toBe(result);
     expect(expire).not.toHaveBeenCalled();
-    await expect(
-      authenticatedWrite(
-        () =>
-          Promise.resolve({
-            error: { code: "Unauthenticated." },
-            response: new Response(null, { status: 401 }),
-          }),
-        expire,
-        options,
-      ),
-    ).rejects.toBeInstanceOf(SessionExpiredError);
   });
 
   it("does not run the SDK write when CSRF acquisition fails", async () => {

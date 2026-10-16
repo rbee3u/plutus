@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
@@ -8,8 +10,8 @@ import (
 
 func toAPIPoint(p *valuation.Point) api.ValuationPointSummary {
 	return api.ValuationPointSummary{
-		CycleId:           p.CycleID,
-		ValuationRevision: p.Revision(), CalculationVersion: int64(p.CalculationVersion), // #nosec G115 -- Application algorithm versions are positive, code-owned constants far below MaxInt64.
+		CycleId:                 p.CycleID,
+		CalculationVersion:      int64(p.CalculationVersion), // #nosec G115 -- Application algorithm versions are positive, code-owned constants far below MaxInt64.
 		EvaluatedAt:             p.EvaluatedAt,
 		TotalUsd:                p.TotalUSD,
 		Completeness:            api.Completeness(p.Completeness()),
@@ -39,11 +41,10 @@ func toAPIPoints(points []valuation.Point) []api.ValuationPointSummary {
 
 func toAPIContext(c *financial.Context) api.ReadContext {
 	return api.ReadContext{
-		PortfolioId:       c.PortfolioID,
-		Timezone:          c.Timezone,
-		ValuationRevision: c.ValuationRevision,
-		CycleId:           c.CycleID,
-		EvaluatedAt:       c.EvaluatedAt,
+		PortfolioId: c.PortfolioID,
+		Timezone:    c.Timezone,
+		CycleId:     c.CycleID,
+		EvaluatedAt: c.EvaluatedAt,
 	}
 }
 
@@ -57,6 +58,7 @@ func toAPIIssues(issues []valuation.Issue) []api.Issue {
 		}
 		out = append(out, api.Issue{
 			Code:             item.Code,
+			FlowId:           item.FlowID,
 			Detail:           item.Detail,
 			AccountId:        item.AccountID,
 			AccountName:      nonEmptyStringPtr(item.AccountName),
@@ -79,6 +81,7 @@ func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 	}
 	return api.AccountValuation{
 		ReportId:               nonNilUUIDPtr(v.ReportID),
+		SourceReportId:         v.SourceReportID,
 		AccountId:              v.AccountID,
 		AccountName:            v.AccountName,
 		AccountType:            v.AccountType,
@@ -97,9 +100,9 @@ func toAPIAccountValuation(v *valuation.AccountValuation) api.AccountValuation {
 		ValueUsd:               v.ValueUSD,
 		ReportObservedAt:       v.ReportObservedAt,
 		ManualModifiedAt:       v.ManualModifiedAt,
-		Equity:                 v.Equity,
-		AdjustedEquity:         v.AdjustedEquity,
-		AvailableEquity:        v.AvailableEquity,
+		ReportedEquityUsd:      v.Equity,
+		AdjustedEquityUsd:      v.AdjustedEquity,
+		AvailableEquityUsd:     v.AvailableEquity,
 		InitialMarginRatio:     v.InitialMarginRatio,
 		MaintenanceMarginRatio: v.MaintenanceMarginRatio,
 		MarginRatio:            v.MarginRatio,
@@ -111,23 +114,6 @@ func toAPIAccountValuations(items []valuation.AccountValuation) []api.AccountVal
 	out := make([]api.AccountValuation, 0, len(items))
 	for i := range items {
 		out = append(out, toAPIAccountValuation(&items[i]))
-	}
-	return out
-}
-
-func toAPIGroupTotals(groups []financial.GroupTotal) []api.GroupTotal {
-	out := make([]api.GroupTotal, 0, len(groups))
-	for i := range groups {
-		g := &groups[i]
-		out = append(out, api.GroupTotal{
-			Key:          g.Key,
-			Label:        g.Label,
-			Platform:     nonEmptyStringPtr(g.Platform),
-			ValueUsd:     g.ValueUSD,
-			AccountCount: g.AccountCount,
-			RowCount:     g.RowCount,
-			Completeness: api.Completeness(g.Completeness),
-		})
 	}
 	return out
 }
@@ -152,7 +138,7 @@ func toAPIBalanceRows(rows []financial.BalanceRow) []api.BalanceRow {
 			AssetId:              r.AssetID,
 			AssetSymbol:          r.AssetSymbol,
 			CanonicalAssetSymbol: r.CanonicalAssetSymbol,
-			Equity:               r.Equity,
+			Equity:               collectedEquity(r),
 			AvailableToWithdraw:  r.AvailableToWithdraw,
 			AvailableToTrade:     r.AvailableToTrade,
 			Liability:            r.Liability,
@@ -161,7 +147,7 @@ func toAPIBalanceRows(rows []financial.BalanceRow) []api.BalanceRow {
 			PriceUsd:             r.PriceUSD,
 			EquityUsd:            r.EquityUSD,
 			NoPrice:              r.NoPrice,
-			Freshness:            api.Freshness(r.Freshness),
+			Freshness:            enumPtr[api.BalanceRowFreshness](nonEmptyStringPtr(r.Freshness)),
 			ReportObservedAt:     r.ReportObservedAt,
 			ManualModifiedAt:     r.ManualModifiedAt,
 		})
@@ -196,7 +182,9 @@ func toAPIPositionRows(rows []financial.PositionRow) []api.PositionRow {
 			PortfolioMargin:         r.PortfolioMargin,
 			Size:                    r.Size,
 			SizeSymbol:              r.SizeSymbol,
-			SettleMargin:            r.SettleMargin,
+			SettlementMargin:        r.SettleMargin,
+			DisplayLeverage:         r.DisplayLeverage,
+			MarginUnavailableCode:   enumPtr[api.PositionRowMarginUnavailableCode](r.MarginUnavailableCode),
 			Issues:                  toAPIIssues(r.Issues),
 			MarginSource:            enumPtr[api.PositionRowMarginSource](r.MarginSource),
 			MarginUnavailableReason: r.MarginUnavailableReason,
@@ -207,8 +195,8 @@ func toAPIPositionRows(rows []financial.PositionRow) []api.PositionRow {
 			MarkPrice:               r.MarkPrice,
 			LiquidationPrice:        r.LiquidationPrice,
 			UnrealizedPnl:           r.UnrealizedPnl,
-			Leverage:                r.Leverage,
-			Margin:                  r.Margin,
+			ReportedLeverage:        r.Leverage,
+			ReportedMargin:          r.Margin,
 			NotionalUsd:             r.NotionalUSD,
 			Freshness:               api.Freshness(r.Freshness),
 			ReportObservedAt:        r.ReportObservedAt,
@@ -250,7 +238,7 @@ func toAPIPeriodClose(c *financial.PeriodClose) api.PeriodClose {
 		PeriodEnd:    c.PeriodEnd,
 		Point:        toAPIPointPtr(c.Point),
 		Completeness: api.Completeness(c.Completeness),
-		Reasons:      nonNilStrings(c.Reasons),
+		Issues:       toAPIIssues(c.Issues),
 	}
 }
 
@@ -268,7 +256,9 @@ func toAPIValueChange(v *financial.ValueChange) api.ValueChange {
 		BoundaryWithdrawalsUsd:   v.BoundaryWithdrawalsUSD,
 		AmountUsd:                v.AmountUSD,
 		Completeness:             api.Completeness(v.Completeness),
-		Reasons:                  nonNilStrings(v.Reasons),
+		Issues:                   toAPIIssues(v.Issues),
+		Comparable:               v.Comparable,
+		FlowsCompleteness:        api.Completeness(v.FlowsCompleteness),
 		BoundaryEvents:           toAPIBoundaryEvents(v.BoundaryEvents),
 	}
 }
@@ -304,4 +294,42 @@ func toAPIDualPositionRows(rows []financial.DualPositionRow) []api.DualPositionR
 		})
 	}
 	return out
+}
+
+func collectedEquity(row *financial.BalanceRow) *string {
+	if row.ManualChange == "added" {
+		return nil
+	}
+	return &row.Equity
+}
+
+func toAPIPortfolioContext(c *financial.Context) api.PortfolioReadContext {
+	return api.PortfolioReadContext{PortfolioId: c.PortfolioID, Timezone: c.Timezone}
+}
+
+func toAPISeries(points []valuation.Point) []api.ValuationSeriesPoint {
+	out := make([]api.ValuationSeriesPoint, 0, len(points))
+	for _, point := range points {
+		out = append(out, api.ValuationSeriesPoint{CycleId: point.CycleID, EvaluatedAt: point.EvaluatedAt, TotalUsd: point.TotalUSD, Completeness: api.Completeness(point.Completeness())})
+	}
+	return out
+}
+
+func toAPIReportCoverage(c financial.ReportCoverage) api.ReportCoverage {
+	ids := c.MissingAccountIDs
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return api.ReportCoverage{Complete: c.Complete, MissingAccountIds: ids}
+}
+
+func toAPIManualOverlay(overlay *financial.ManualOverlay) *api.ManualOverlay {
+	if overlay == nil {
+		return nil
+	}
+	versions := make([]api.ManualLedgerVersion, 0, len(overlay.Versions))
+	for _, v := range overlay.Versions {
+		versions = append(versions, api.ManualLedgerVersion{AccountId: v.AccountID, Version: v.Version})
+	}
+	return &api.ManualOverlay{Versions: versions}
 }

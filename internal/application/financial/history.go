@@ -16,8 +16,12 @@ import (
 
 // Points returns the series between from and to, sampled by granularity (raw, hour, day).
 func (s *Service) Points(ctx context.Context, p PortfolioContext, from, to time.Time, granularity string) ([]valuation.Point, error) {
+	return s.PointsWithLimit(ctx, p, from, to, granularity, 10000)
+}
+
+func (s *Service) PointsWithLimit(ctx context.Context, p PortfolioContext, from, to time.Time, granularity string, maxPoints int) ([]valuation.Point, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]valuation.Point, error) {
-		if !to.After(from) {
+		if !to.After(from) || maxPoints < 1 || maxPoints > 10000 {
 			return nil, ErrInvalid
 		}
 		switch granularity {
@@ -25,7 +29,7 @@ func (s *Service) Points(ctx context.Context, p PortfolioContext, from, to time.
 		default:
 			return nil, ErrInvalid
 		}
-		return s.pointSeries(ctx, p, from, to, granularity)
+		return s.pointSeries(ctx, p, from, to, granularity, maxPoints)
 	})
 }
 

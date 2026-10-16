@@ -37,7 +37,15 @@ func (s *Service) PointByCycle(ctx context.Context, portfolioID, cycleID uuid.UU
 
 // Latest returns the newest point of a portfolio.
 func (s *Service) Latest(ctx context.Context, portfolioID uuid.UUID) (Point, error) {
-	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
+	point, _, err := s.LatestWithAccounts(ctx, portfolioID)
+	return point, err
+}
+
+// LatestWithAccounts shares adopted accounts with the caller rather than reading
+// their evidence again after using it to derive point issues.
+func (s *Service) LatestWithAccounts(ctx context.Context, portfolioID uuid.UUID) (Point, []AccountValuation, error) {
+	var accounts []AccountValuation
+	point, err := mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
 		row, err := mysql.Queries(ctx, s.db).GetLatestValuationPoint(ctx, portfolioID[:])
 		if errors.Is(err, sql.ErrNoRows) {
 			return Point{}, ErrNoPoint
@@ -45,8 +53,25 @@ func (s *Service) Latest(ctx context.Context, portfolioID uuid.UUID) (Point, err
 		if err != nil {
 			return Point{}, err
 		}
-		return s.PointWithEvents(ctx, (*sqlcgen.ValuationPoint)(&row))
+		if row.DetailState == "expired" || row.DetailState == "pruning" {
+			return Point{}, ErrDetailExpired
+		}
+		byCycle, err := s.accountsByCycles(ctx, portfolioID, [][]byte{row.CycleID})
+		if err != nil {
+			return Point{}, err
+		}
+		points, err := s.pointsWithEvents(ctx, []sqlcgen.ValuationPoint{sqlcgen.ValuationPoint(row)}, false)
+		if err != nil {
+			return Point{}, err
+		}
+		accounts = byCycle[points[0].CycleID]
+		appendAccountIssues(&points[0], accounts)
+		for _, event := range points[0].BoundaryEvents {
+			appendBoundaryIssue(&points[0], &event)
+		}
+		return points[0], nil
 	})
+	return point, accounts, err
 }
 
 // First returns the earliest point of the portfolio.
@@ -96,6 +121,33 @@ func (s *Service) Accounts(ctx context.Context, portfolioID, cycleID uuid.UUID) 
 		}
 		return accounts[cycleID], nil
 	})
+}
+
+// Account reads only one account's adopted report and balance evidence.
+func (s *Service) Account(ctx context.Context, portfolioID, cycleID, accountID uuid.UUID) (AccountValuation, error) {
+	row, err := mysql.Queries(ctx, s.db).GetAccountReportAtCycle(ctx, sqlcgen.GetAccountReportAtCycleParams{PortfolioID: portfolioID[:], CycleID: cycleID[:], AccountID: accountID[:]})
+	if errors.Is(err, sql.ErrNoRows) {
+		return AccountValuation{}, ErrNotFound
+	}
+	if err != nil {
+		return AccountValuation{}, err
+	}
+	report := sqlcgen.ListReportsByCycleRow(row)
+	account, err := reportFromRow(&report)
+	if err != nil {
+		return AccountValuation{}, err
+	}
+	balances, err := mysql.Queries(ctx, s.db).ListAccountBalanceValuations(ctx, sqlcgen.ListAccountBalanceValuationsParams{PortfolioID: portfolioID[:], CycleID: cycleID[:], AccountID: accountID[:]})
+	if err != nil {
+		return AccountValuation{}, err
+	}
+	for _, row := range balances {
+		line := sqlcgen.ListBalanceValuationsByCyclesRow(row)
+		if err := appendStoredBalance(&account, &line); err != nil {
+			return AccountValuation{}, err
+		}
+	}
+	return account, nil
 }
 
 // accountsByCycles reads adopted evidence, never selecting replacement prices
@@ -230,6 +282,25 @@ func (s *Service) pointsWithEvents(ctx context.Context, rows []sqlcgen.Valuation
 	})
 }
 
+func appendAccountIssues(point *Point, accounts []AccountValuation) {
+	issues := make([]Issue, 0, len(point.Issues))
+	for i := range accounts {
+		issues = append(issues, AccountIssues(&accounts[i])...)
+	}
+	point.Issues = append(issues, point.Issues...)
+}
+
+func appendBoundaryIssue(point *Point, event *BoundaryEvent) {
+	if event.ValuationComplete {
+		return
+	}
+	detail := "The account entered the boundary with an incomplete value."
+	if event.Direction == DirectionWithdrawal {
+		detail = "The account left the boundary with an incomplete value."
+	}
+	point.Issues = append(point.Issues, Issue{Code: "boundary_incomplete", AccountID: &event.AccountID, AccountName: event.AccountName, Detail: detail})
+}
+
 // hydratePointDetails derives every comparison marker except manual
 // adjustments from retained facts. Named account omissions follow detail
 // retention; an expired point keeps only its counts.
@@ -256,9 +327,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 			return err
 		}
 		for cycle, list := range accounts {
-			for i := range list {
-				byCycle[cycle].Issues = append(byCycle[cycle].Issues, AccountIssues(&list[i])...)
-			}
+			appendAccountIssues(byCycle[cycle], list)
 		}
 	}
 	adjustments, err := q.ListManualBalanceChangesByCycles(ctx, sqlcgen.ListManualBalanceChangesByCyclesParams{PortfolioID: portfolio[:], CycleIds: cycles})
@@ -334,12 +403,8 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		}
 		totals.add(cycle, event.Direction, event.valueRat)
 		point.BoundaryEvents = append(point.BoundaryEvents, event)
-		if includeAccountIssues && !event.ValuationComplete {
-			detail := "The account entered the boundary with an incomplete value."
-			if event.Direction == DirectionWithdrawal {
-				detail = "The account left the boundary with an incomplete value."
-			}
-			point.Issues = append(point.Issues, Issue{Code: "boundary_incomplete", AccountID: &event.AccountID, AccountName: event.AccountName, Detail: detail})
+		if includeAccountIssues {
+			appendBoundaryIssue(point, &event)
 		}
 	}
 	for i := range points {

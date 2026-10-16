@@ -151,7 +151,7 @@ export type PlatformList = {
 };
 
 export type Connection = {
-    status: 'unconfigured' | 'disabled' | 'enabled' | 'invalid';
+    status: ConnectionStatus;
     credentialsConfigured: boolean;
     credentialsSetAt?: string | null;
     lastValidationSucceededAt?: string | null;
@@ -179,7 +179,7 @@ export type Identity = {
      */
     marginMode?: string | null;
     externalRef?: string | null;
-    status: 'enabled' | 'archived';
+    status: IdentityStatus;
     archivedAt?: string | null;
     connection: Connection;
     accounts: Array<Account>;
@@ -269,15 +269,14 @@ export type CollectionCycleDetail = {
     issues: Array<Issue>;
 };
 
+/**
+ * The valuation point supplying collected financial data. Both cycleId and evaluatedAt are null before the first point. Current manual edits and configuration are not immutable point facts.
+ */
 export type ReadContext = {
-    /**
-     * Identity of the immutable valuation result, equal to its collection cycle ID.
-     */
-    valuationRevision?: string | null;
     portfolioId: Uuid;
     timezone: string;
-    cycleId?: string | null;
-    evaluatedAt?: string | null;
+    cycleId: string | null;
+    evaluatedAt: string | null;
 };
 
 export type Issue = {
@@ -288,6 +287,7 @@ export type Issue = {
     symbol?: string | null;
     omittedBalance?: OmittedBalance;
     reportObservedAt?: string;
+    flowId?: string;
 };
 
 export type OmittedBalance = {
@@ -300,21 +300,7 @@ export type OmittedBalance = {
     reason: string;
 };
 
-export type GroupTotal = {
-    key: string;
-    label: string;
-    platform?: string | null;
-    valueUsd: NullableDecimal;
-    accountCount: number;
-    rowCount: number;
-    completeness: Completeness;
-};
-
 export type ValuationPointSummary = {
-    /**
-     * Identity of the immutable valuation result, equal to its collection cycle ID.
-     */
-    valuationRevision: string;
     calculationVersion: number;
     cycleId: Uuid;
     evaluatedAt: string;
@@ -330,20 +316,20 @@ export type ValuationPointSummary = {
 
 export type Overview = {
     context: ReadContext;
-    point?: ValuationPointSummary | null;
-    totalUsd?: NullableDecimal;
-    completeness: Completeness;
-    accountCount: number;
-    staleAccountCount: number;
-    incompleteAccountCount: number;
-    byPlatform: Array<GroupTotal>;
-    byIdentity: Array<GroupTotal>;
+    point: ValuationPointSummary | null;
+    platforms: Array<TreePlatform>;
     issues: Array<Issue>;
-    sparkline: Array<ValuationPointSummary>;
 };
 
 export type AccountValuation = {
-    reportId?: string | null;
+    /**
+     * Successful report supplying the displayed holdings and account measures, including stale fallback.
+     */
+    sourceReportId: string | null;
+    /**
+     * Account report for the requested collection cycle; may be a failed report.
+     */
+    reportId: string | null;
     accountId: Uuid;
     accountName: string;
     accountType: string;
@@ -359,17 +345,20 @@ export type AccountValuation = {
     method: 'reported' | 'calculated' | 'missing';
     freshness: Freshness;
     completeness: Completeness;
-    valueUsd?: NullableDecimal;
-    reportObservedAt?: string | null;
-    equity?: NullableDecimal;
-    adjustedEquity?: NullableDecimal;
-    availableEquity?: NullableDecimal;
-    initialMarginRatio?: NullableDecimal;
-    maintenanceMarginRatio?: NullableDecimal;
+    valueUsd: NullableDecimal;
+    /**
+     * Effective observation time of sourceReportId, not the failed attempt.
+     */
+    reportObservedAt: string | null;
+    reportedEquityUsd: NullableDecimal;
+    adjustedEquityUsd: NullableDecimal;
+    availableEquityUsd: NullableDecimal;
+    initialMarginRatio: NullableDecimal;
+    maintenanceMarginRatio: NullableDecimal;
     /**
      * Platform-reported, unscaled account margin ratio. Its label and denominator depend on the immutable platform and account scope.
      */
-    marginRatio?: NullableDecimal;
+    marginRatio: NullableDecimal;
     omitted: Array<OmittedBalance>;
     /**
      * Last user quantity adjustment, distinct from report observation time.
@@ -380,8 +369,8 @@ export type AccountValuation = {
 export type TreeIdentity = {
     id: Uuid;
     displayName: string;
-    status: string;
-    connectionStatus: string;
+    status: IdentityStatus;
+    connectionStatus: ConnectionStatus;
     valueUsd: NullableDecimal;
     completeness: Completeness;
     accounts: Array<AccountValuation>;
@@ -393,14 +382,6 @@ export type TreePlatform = {
     valueUsd: NullableDecimal;
     completeness: Completeness;
     identities: Array<TreeIdentity>;
-};
-
-export type HoldingsTree = {
-    context: ReadContext;
-    totalUsd: NullableDecimal;
-    completeness: Completeness;
-    platforms: Array<TreePlatform>;
-    issues: Array<Issue>;
 };
 
 export type ManualBalance = {
@@ -423,11 +404,11 @@ export type ManualBalanceState = {
 
 export type CreateManualBalance = {
     assetSymbol: string;
-    quantity: Decimal;
+    quantity: InputDecimal;
 };
 
 export type UpdateManualBalance = {
-    quantity: Decimal;
+    quantity: InputDecimal;
 };
 
 export type BalanceRow = {
@@ -440,16 +421,22 @@ export type BalanceRow = {
     assetId: Uuid;
     assetSymbol: string;
     canonicalAssetSymbol: string;
-    equity: Decimal;
-    availableToWithdraw?: NullableDecimal;
-    availableToTrade?: NullableDecimal;
-    liability?: NullableDecimal;
-    interest?: NullableDecimal;
-    unrealizedPnl?: NullableDecimal;
-    priceUsd?: NullableDecimal;
-    equityUsd?: NullableDecimal;
+    /**
+     * Collected equity; null for a pending manual addition. Its current quantity is manualQuantity.
+     */
+    equity: NullableDecimal;
+    availableToWithdraw: NullableDecimal;
+    availableToTrade: NullableDecimal;
+    liability: NullableDecimal;
+    interest: NullableDecimal;
+    unrealizedPnl: NullableDecimal;
+    priceUsd: NullableDecimal;
+    equityUsd: NullableDecimal;
     noPrice: boolean;
-    freshness: Freshness;
+    /**
+     * Source report freshness; null for a pending manual addition.
+     */
+    freshness: 'fresh' | 'stale' | null;
     reportObservedAt?: string | null;
     /**
      * Last user quantity adjustment, distinct from report observation time.
@@ -467,6 +454,14 @@ export type BalanceRow = {
 };
 
 export type PositionRow = {
+    /**
+     * Display-only multiplier retaining up to 200 fractional digits to avoid double rounding at display midpoints. Source financial values remain unchanged. Cross uses positive reported leverage; isolated uses absolute USD notional divided by allocated margin in USD. Portfolio margin has no multiplier except actual isolated positions. Missing inputs return null.
+     */
+    displayLeverage: string | null;
+    /**
+     * Stable reason for unavailable settlementMargin; null when known. marginUnavailableReason supplies descriptive context.
+     */
+    marginUnavailableCode: 'setting_unknown' | 'account_mode_unknown' | 'shared_portfolio_margin' | 'setting_unsupported' | 'allocated_margin_unavailable' | 'reported_margin_invalid' | 'reported_margin_unavailable' | 'initial_margin_unavailable' | 'currency_unknown' | 'conversion_unavailable' | 'contract_kind_unsupported' | 'size_or_quote_unavailable' | 'mark_or_leverage_unavailable' | 'settlement_mismatch' | null;
     accountId: Uuid;
     accountName: string;
     accountType: string;
@@ -481,7 +476,7 @@ export type PositionRow = {
     quoteAssetSymbol?: string | null;
     settlementAssetSymbol?: string | null;
     expiryAt?: string | null;
-    contractSize?: NullableDecimal;
+    contractSize: NullableDecimal;
     side: 'long' | 'short';
     positionMode?: 'one_way' | 'hedged' | null;
     marginSetting?: 'cross' | 'isolated' | null;
@@ -491,12 +486,12 @@ export type PositionRow = {
     /**
      * Base quantity for linear contracts or quote face amount for inverse contracts; signed for known one-way positions.
      */
-    size?: NullableDecimal;
+    size: NullableDecimal;
     sizeSymbol?: string | null;
     /**
      * Margin in settlement currency, using the position's cross or isolated display basis.
      */
-    settleMargin?: NullableDecimal;
+    settlementMargin: NullableDecimal;
     /**
      * Provenance of the displayed settlement margin; source amounts remain unchanged.
      */
@@ -511,13 +506,19 @@ export type PositionRow = {
      */
     sourceQuantity: Decimal;
     sourceQuantityUnit: 'contracts' | 'base' | 'quote';
-    entryPrice?: NullableDecimal;
-    markPrice?: NullableDecimal;
-    liquidationPrice?: NullableDecimal;
-    unrealizedPnl?: NullableDecimal;
-    leverage?: NullableDecimal;
-    margin?: NullableDecimal;
-    notionalUsd?: NullableDecimal;
+    entryPrice: NullableDecimal;
+    markPrice: NullableDecimal;
+    liquidationPrice: NullableDecimal;
+    unrealizedPnl: NullableDecimal;
+    /**
+     * Source position leverage, independent of the displayed isolated leverage.
+     */
+    reportedLeverage: NullableDecimal;
+    /**
+     * Retained source margin amount in marginAssetSymbol, qualified by marginBasis.
+     */
+    reportedMargin: NullableDecimal;
+    notionalUsd: NullableDecimal;
     freshness: Freshness;
     reportObservedAt?: string | null;
 };
@@ -538,9 +539,9 @@ export type DualPositionRow = {
     principalAssetSymbol: string;
     principal: Decimal;
     direction?: string | null;
-    targetPrice?: NullableDecimal;
+    targetPrice: NullableDecimal;
     expiryAt?: string | null;
-    annualizedRate?: NullableDecimal;
+    annualizedRate: NullableDecimal;
     rateKind?: string | null;
     status: string;
     freshness: Freshness;
@@ -556,7 +557,7 @@ export type EarnAmount = {
 
 export type EarnRate = {
     value: Decimal;
-    upper?: NullableDecimal;
+    upper: NullableDecimal;
     kind: string;
     qualifier: string;
     label: string;
@@ -600,89 +601,105 @@ export type EarnPositionRow = {
     maturityAt?: string | null;
 };
 
-export type AccountEarnPositionList = {
-    context: ReadContext;
-    account: AccountValuation;
-    items: Array<EarnPositionRow>;
-    issues: Array<Issue>;
-};
-
 export type EarnPositionList = {
-    detailsComplete: boolean;
+    coverage: ReportCoverage;
     context: ReadContext;
     items: Array<EarnPositionRow>;
     page: OffsetPage;
-    completeness: Completeness;
-    issues: Array<Issue>;
-};
-
-export type AccountBalanceList = {
-    context: ReadContext;
-    account: AccountValuation;
-    items: Array<BalanceRow>;
-    issues: Array<Issue>;
-};
-
-export type AccountPositionList = {
-    context: ReadContext;
-    account: AccountValuation;
-    items: Array<PositionRow>;
-    issues: Array<Issue>;
-};
-
-export type AccountDualPositionList = {
-    context: ReadContext;
-    account: AccountValuation;
-    items: Array<DualPositionRow>;
+    /**
+     * Completeness of the entire valuation point, independent of row filters and pagination.
+     */
+    valuationCompleteness: Completeness;
+    /**
+     * Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+     */
     issues: Array<Issue>;
 };
 
 export type BalanceList = {
+    manualOverlay: ManualOverlay | null;
+    /**
+     * Completeness of filtered collected balance value before pagination. Missing reports qualify this total even when symbol search cannot determine their contents. Independent of portfolio valuation completeness.
+     */
+    filteredTotalCompleteness: Completeness;
+    /**
+     * Omissions affecting the filtered balance total, including unpriced descriptive balances in reported-equity accounts. Pending manual additions and exclusions do not count as missing collected value.
+     */
+    filteredTotalIssues: Array<Issue>;
+    coverage: ReportCoverage;
     context: ReadContext;
     items: Array<BalanceRow>;
     page: OffsetPage;
-    totalUsd: NullableDecimal;
-    completeness: Completeness;
+    /**
+     * Sum of known USD values of filtered collected balances before pagination. Pending manual additions have no collected value.
+     */
+    filteredTotalUsd: NullableDecimal;
+    /**
+     * Completeness of the entire valuation point, independent of row filters and pagination.
+     */
+    valuationCompleteness: Completeness;
+    /**
+     * Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+     */
     issues: Array<Issue>;
 };
 
 export type PositionList = {
+    coverage: ReportCoverage;
     context: ReadContext;
     items: Array<PositionRow>;
     page: OffsetPage;
     /**
      * Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
      */
-    totalNotionalUsd: NullableDecimal;
-    completeness: Completeness;
+    boundaryNotionalUsd: NullableDecimal;
+    /**
+     * Completeness of absolute notional for all futures accounts in the boundary, independent of filters and pagination.
+     */
+    notionalCompleteness: Completeness;
+    /**
+     * Futures account and notional issues across the boundary before row filtering and pagination.
+     */
     issues: Array<Issue>;
 };
 
 export type DualPositionList = {
+    coverage: ReportCoverage;
     context: ReadContext;
     items: Array<DualPositionRow>;
     page: OffsetPage;
-    completeness: Completeness;
+    /**
+     * Completeness of the entire valuation point, independent of row filters and pagination.
+     */
+    valuationCompleteness: Completeness;
+    /**
+     * Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
+     */
     issues: Array<Issue>;
 };
 
 export type HistoryWindow = {
-    context: ReadContext;
+    context: PortfolioReadContext;
     from: string;
     to: string;
 };
 
 export type ValuationPointPage = {
-    context: ReadContext;
+    context: PortfolioReadContext;
     items: Array<ValuationPointSummary>;
+    /**
+     * Point immediately before the oldest item, within the same query window; null for an empty page or no predecessor.
+     */
+    precedingPoint: ValuationPointSummary | null;
     page: OffsetPage;
     from: string;
     to: string;
 };
 
 export type ValuationPointList = {
-    context: ReadContext;
-    items: Array<ValuationPointSummary>;
+    maxPoints: number;
+    context: PortfolioReadContext;
+    items: Array<ValuationSeriesPoint>;
     granularity: TimeGranularity;
     from: string;
     to: string;
@@ -697,12 +714,16 @@ export type BoundaryEvent = {
     identityName?: string | null;
     platform?: string | null;
     direction: 'contribution' | 'withdrawal';
-    valueUsd?: NullableDecimal;
+    valueUsd: NullableDecimal;
     completeness: Completeness;
     method: string;
 };
 
 export type BoundaryEventList = {
+    context: PortfolioReadContext;
+    from: string;
+    to: string;
+    page: OffsetPage;
     items: Array<BoundaryEvent>;
 };
 
@@ -720,15 +741,18 @@ export type PeriodClose = {
     periodEnd: string;
     point?: ValuationPointSummary | null;
     completeness: Completeness;
-    reasons: Array<string>;
+    issues: Array<Issue>;
 };
 
 export type PeriodCloseList = {
-    context: ReadContext;
+    context: PortfolioReadContext;
     periodKind: PeriodKind;
     items: Array<PeriodClose>;
 };
 
+/**
+ * When comparable is false, amountUsd and all four flow amounts are null. Otherwise amounts sum known inputs, including zero, even when incomplete.
+ */
 export type ValueChange = {
     periodKind: string;
     label: string;
@@ -736,18 +760,29 @@ export type ValueChange = {
     to: string;
     startPoint?: ValuationPointSummary | null;
     endPoint?: ValuationPointSummary | null;
-    contributionsUsd: Decimal;
-    withdrawalsUsd: Decimal;
-    boundaryContributionsUsd: Decimal;
-    boundaryWithdrawalsUsd: Decimal;
-    amountUsd?: NullableDecimal;
+    contributionsUsd: NullableDecimal;
+    withdrawalsUsd: NullableDecimal;
+    boundaryContributionsUsd: NullableDecimal;
+    boundaryWithdrawalsUsd: NullableDecimal;
+    /**
+     * Known adjusted difference when comparable, including incomplete results; null when comparison is unavailable. Zero is a known result.
+     */
+    amountUsd: NullableDecimal;
     completeness: Completeness;
-    reasons: Array<string>;
+    issues: Array<Issue>;
     boundaryEvents: Array<BoundaryEvent>;
+    /**
+     * Both endpoints exist and resolve to distinct, ordered valuation points.
+     */
+    comparable: boolean;
+    /**
+     * Completeness of capital and boundary flow amounts. Incomplete when comparison is unavailable, a flow is unvalued, or a boundary value is only partially known. Independent of endpoint valuation completeness.
+     */
+    flowsCompleteness: Completeness;
 };
 
 export type ValueChangeList = {
-    context: ReadContext;
+    context: PortfolioReadContext;
     periodKind: PeriodKind;
     items: Array<ValueChange>;
 };
@@ -758,7 +793,7 @@ export type CapitalFlow = {
     direction: 'contribution' | 'withdrawal';
     canonicalAssetSymbol: string;
     quantity: Decimal;
-    valueUsd?: NullableDecimal;
+    valueUsd: NullableDecimal;
     pricingMethod: 'explicit' | 'usd_parity' | 'market_price' | 'unavailable';
     pricingPlatform?: string | null;
     priceObservationId?: string | null;
@@ -777,25 +812,35 @@ export type CapitalFlow = {
 };
 
 export type CapitalFlowList = {
+    context: PortfolioReadContext;
+    from: string;
+    to: string;
+    page: OffsetPage;
     items: Array<CapitalFlow>;
 };
 
+/**
+ * Positive canonical asset quantity. An explicit nonnegative valueUsd fixes the USD amount. Otherwise pricing uses the account platform or pricingPlatform; unavailable automatic pricing returns a null USD value with its provenance.
+ */
 export type CreateCapitalFlowRequest = {
     direction: 'contribution' | 'withdrawal';
     canonicalAssetSymbol: string;
-    quantity: Decimal;
-    valueUsd?: Decimal;
+    quantity: InputDecimal;
+    valueUsd?: InputDecimal;
     pricingPlatform?: string;
     effectiveAt: string;
     accountId?: Uuid;
     note?: string;
 };
 
+/**
+ * Omitted fields preserve their values. Null clears note or accountId; valueUsd null clears an explicit amount and attempts automatic pricing using the resulting inputs. Explicit valueUsd survives other edits until cleared or replaced. Null pricingPlatform clears the chosen platform; an attached account still determines the platform for automatic pricing. Note-only edits preserve pricing provenance. Quantity must be positive; an explicit USD amount must be nonnegative.
+ */
 export type PatchCapitalFlowRequest = {
     direction?: 'contribution' | 'withdrawal';
     canonicalAssetSymbol?: string;
-    quantity?: Decimal;
-    valueUsd?: NullableDecimal;
+    quantity?: InputDecimal;
+    valueUsd?: NullableInputDecimal;
     pricingPlatform?: string | null;
     effectiveAt?: string;
     accountId?: string | null;
@@ -826,6 +871,9 @@ export type PutAssetMappingRequest = {
     canonicalAssetSymbol: string;
 };
 
+/**
+ * Excluding requires a nonempty reason after trimming whitespace. Restoring accepts only an omitted or whitespace-only reason. A no-op preserves the current rule and version.
+ */
 export type PutAssetExclusionRequest = {
     excluded: boolean;
     reason?: string;
@@ -840,7 +888,7 @@ export type FuturesContract = {
     quoteAssetSymbol?: string | null;
     settlementAssetSymbol?: string | null;
     expiryAt?: string | null;
-    contractSize?: NullableDecimal;
+    contractSize: NullableDecimal;
     firstObservedAt: string;
     lastObservedAt: string;
 };
@@ -850,7 +898,38 @@ export type FuturesContractList = {
     page: OffsetPage;
 };
 
+export type ConnectionStatus = 'unconfigured' | 'disabled' | 'enabled' | 'invalid';
+
+export type IdentityStatus = 'enabled' | 'archived';
+
 export type CollectionCycleStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+/**
+ * Account report coverage for this holding kind after platform and identity filters, before symbol search and pagination. Compatible stale reports are readable; optional metadata and prices do not affect coverage. Before the first point complete is false. An empty account scope at an existing point is complete.
+ */
+export type ReportCoverage = {
+    complete: boolean;
+    missingAccountIds: Array<Uuid>;
+};
+
+/**
+ * Current ledger versions read with this response. Null means the overlay was not requested or the account is not manual. Versions are independent of cycleId and do not act as pagination snapshot tokens.
+ */
+export type ManualOverlay = {
+    versions: Array<ManualLedgerVersion>;
+};
+
+export type ManualLedgerVersion = {
+    accountId: Uuid;
+    version: number;
+};
+
+/**
+ * Plain decimal fitting DECIMAL(65,30). Operation-specific sign rules still apply.
+ */
+export type InputDecimal = string;
+
+export type NullableInputDecimal = string | null;
 
 export type Decimal = string;
 
@@ -875,6 +954,9 @@ export type OffsetPage = {
     kind: 'offset';
     offset: number;
     limit: number;
+    /**
+     * Number of records after filtering and before pagination.
+     */
     total: number;
 };
 
@@ -912,6 +994,7 @@ export type Problem = {
     code: string;
     traceId?: string;
     fieldErrors?: Array<FieldError>;
+    validationOutcome?: ValidationOutcome;
 };
 
 export type FieldError = {
@@ -920,14 +1003,42 @@ export type FieldError = {
     message: string;
 };
 
+export type AccountReport = {
+    manualOverlay: ManualOverlay | null;
+    context: ReadContext;
+    account: AccountValuation;
+    balances: Array<BalanceRow>;
+    positions: Array<PositionRow>;
+    dualPositions: Array<DualPositionRow>;
+    earnPositions: Array<EarnPositionRow>;
+    issues: Array<Issue>;
+};
+
+export type PortfolioReadContext = {
+    portfolioId: Uuid;
+    timezone: string;
+};
+
+export type ValuationSeriesPoint = {
+    cycleId: Uuid;
+    evaluatedAt: string;
+    totalUsd: Decimal;
+    completeness: Completeness;
+};
+
+export type ListOffset = number;
+
+export type ListLimit = number;
+
+/**
+ * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+ */
 export type CsrfToken = string;
 
 /**
- * An opaque token of at most 255 visible ASCII characters.
+ * Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
  */
 export type IdempotencyKey = string;
-
-export type IfMatch = string;
 
 export type PortfolioId = Uuid;
 
@@ -937,6 +1048,16 @@ export type AccountId = Uuid;
 
 export type CycleId = Uuid;
 
+/**
+ * Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+ */
+export type IncludePendingManual = boolean;
+
+/**
+ * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+ */
+export type ReadCycleId = Uuid;
+
 export type FlowId = Uuid;
 
 export type SessionId = Uuid;
@@ -944,13 +1065,21 @@ export type SessionId = Uuid;
 export type AssetId = Uuid;
 
 /**
- * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+ * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
  */
 export type TimeFrom = string;
 
+/**
+ * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+ */
 export type TimeTo = string;
 
 export type PeriodKind2 = PeriodKind;
+
+/**
+ * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+ */
+export type EditVersion = string;
 
 export type GetHealthLiveData = {
     body?: never;
@@ -1000,6 +1129,27 @@ export type GetAuthCsrfData = {
     url: '/api/v1/auth/csrf';
 };
 
+export type GetAuthCsrfErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
+};
+
+export type GetAuthCsrfError = GetAuthCsrfErrors[keyof GetAuthCsrfErrors];
+
 export type GetAuthCsrfResponses = {
     /**
      * CSRF token for the current pre-auth or session cookie.
@@ -1012,6 +1162,9 @@ export type GetAuthCsrfResponse = GetAuthCsrfResponses[keyof GetAuthCsrfResponse
 export type PostAuthLoginData = {
     body: LoginRequest;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path?: never;
@@ -1031,7 +1184,19 @@ export type PostAuthLoginErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     429: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PostAuthLoginError = PostAuthLoginErrors[keyof PostAuthLoginErrors];
@@ -1048,6 +1213,9 @@ export type PostAuthLoginResponse = PostAuthLoginResponses[keyof PostAuthLoginRe
 export type PostAuthLogoutData = {
     body?: never;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path?: never;
@@ -1059,7 +1227,23 @@ export type PostAuthLogoutErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PostAuthLogoutError = PostAuthLogoutErrors[keyof PostAuthLogoutErrors];
@@ -1076,6 +1260,9 @@ export type PostAuthLogoutResponse = PostAuthLogoutResponses[keyof PostAuthLogou
 export type PostAuthLogoutAllData = {
     body?: never;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path?: never;
@@ -1087,7 +1274,23 @@ export type PostAuthLogoutAllErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PostAuthLogoutAllError = PostAuthLogoutAllErrors[keyof PostAuthLogoutAllErrors];
@@ -1112,7 +1315,23 @@ export type GetAuthMeErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetAuthMeError = GetAuthMeErrors[keyof GetAuthMeErrors];
@@ -1129,6 +1348,9 @@ export type GetAuthMeResponse = GetAuthMeResponses[keyof GetAuthMeResponses];
 export type PutAuthPasswordData = {
     body: ChangePasswordRequest;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path?: never;
@@ -1145,6 +1367,22 @@ export type PutAuthPasswordErrors = {
      * Problem details.
      */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    422: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PutAuthPasswordError = PutAuthPasswordErrors[keyof PutAuthPasswordErrors];
@@ -1169,7 +1407,23 @@ export type GetAuthSessionsErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetAuthSessionsError = GetAuthSessionsErrors[keyof GetAuthSessionsErrors];
@@ -1186,6 +1440,9 @@ export type GetAuthSessionsResponse = GetAuthSessionsResponses[keyof GetAuthSess
 export type DeleteAuthSessionData = {
     body?: never;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1199,11 +1456,27 @@ export type DeleteAuthSessionErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DeleteAuthSessionError = DeleteAuthSessionErrors[keyof DeleteAuthSessionErrors];
@@ -1228,7 +1501,23 @@ export type ListPortfoliosErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListPortfoliosError = ListPortfoliosErrors[keyof ListPortfoliosErrors];
@@ -1246,9 +1535,12 @@ export type CreatePortfolioData = {
     body: CreatePortfolioRequest;
     headers?: {
         /**
-         * An opaque token of at most 255 visible ASCII characters.
+         * Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
          */
         'Idempotency-Key'?: string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path?: never;
@@ -1268,7 +1560,19 @@ export type CreatePortfolioErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     409: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type CreatePortfolioError = CreatePortfolioErrors[keyof CreatePortfolioErrors];
@@ -1285,7 +1589,13 @@ export type CreatePortfolioResponse = CreatePortfolioResponses[keyof CreatePortf
 export type DeletePortfolioData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1299,7 +1609,15 @@ export type DeletePortfolioErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1312,6 +1630,14 @@ export type DeletePortfolioErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DeletePortfolioError = DeletePortfolioErrors[keyof DeletePortfolioErrors];
@@ -1336,11 +1662,27 @@ export type GetPortfolioErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetPortfolioError = GetPortfolioErrors[keyof GetPortfolioErrors];
@@ -1357,7 +1699,13 @@ export type GetPortfolioResponse = GetPortfolioResponses[keyof GetPortfolioRespo
 export type PatchPortfolioData = {
     body: PatchPortfolioRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1379,11 +1727,23 @@ export type PatchPortfolioErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PatchPortfolioError = PatchPortfolioErrors[keyof PatchPortfolioErrors];
@@ -1408,7 +1768,23 @@ export type ListPlatformsErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListPlatformsError = ListPlatformsErrors[keyof ListPlatformsErrors];
@@ -1435,11 +1811,27 @@ export type ListIdentitiesErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListIdentitiesError = ListIdentitiesErrors[keyof ListIdentitiesErrors];
@@ -1457,9 +1849,12 @@ export type CreateIdentityData = {
     body: CreateIdentityRequest;
     headers?: {
         /**
-         * An opaque token of at most 255 visible ASCII characters.
+         * Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
          */
         'Idempotency-Key'?: string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1481,11 +1876,23 @@ export type CreateIdentityErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     409: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type CreateIdentityError = CreateIdentityErrors[keyof CreateIdentityErrors];
@@ -1513,11 +1920,27 @@ export type GetIdentityErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetIdentityError = GetIdentityErrors[keyof GetIdentityErrors];
@@ -1534,7 +1957,13 @@ export type GetIdentityResponse = GetIdentityResponses[keyof GetIdentityResponse
 export type PatchIdentityData = {
     body: PatchIdentityRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1557,6 +1986,10 @@ export type PatchIdentityErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
@@ -1566,6 +1999,14 @@ export type PatchIdentityErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PatchIdentityError = PatchIdentityErrors[keyof PatchIdentityErrors];
@@ -1582,7 +2023,13 @@ export type PatchIdentityResponse = PatchIdentityResponses[keyof PatchIdentityRe
 export type ArchiveIdentityData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1597,7 +2044,15 @@ export type ArchiveIdentityErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1610,6 +2065,14 @@ export type ArchiveIdentityErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ArchiveIdentityError = ArchiveIdentityErrors[keyof ArchiveIdentityErrors];
@@ -1626,7 +2089,13 @@ export type ArchiveIdentityResponse = ArchiveIdentityResponses[keyof ArchiveIden
 export type DeleteIdentityCredentialsData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1634,14 +2103,22 @@ export type DeleteIdentityCredentialsData = {
         identityId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials';
 };
 
 export type DeleteIdentityCredentialsErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1654,6 +2131,14 @@ export type DeleteIdentityCredentialsErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DeleteIdentityCredentialsError = DeleteIdentityCredentialsErrors[keyof DeleteIdentityCredentialsErrors];
@@ -1670,7 +2155,13 @@ export type DeleteIdentityCredentialsResponse = DeleteIdentityCredentialsRespons
 export type PutIdentityCredentialsData = {
     body: PutCredentialsRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1678,7 +2169,7 @@ export type PutIdentityCredentialsData = {
         identityId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials';
 };
 
 export type PutIdentityCredentialsErrors = {
@@ -1690,6 +2181,10 @@ export type PutIdentityCredentialsErrors = {
      * Problem details.
      */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1705,7 +2200,15 @@ export type PutIdentityCredentialsErrors = {
     /**
      * Problem details.
      */
+    500: Problem;
+    /**
+     * Problem details.
+     */
     503: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PutIdentityCredentialsError = PutIdentityCredentialsErrors[keyof PutIdentityCredentialsErrors];
@@ -1722,6 +2225,9 @@ export type PutIdentityCredentialsResponse = PutIdentityCredentialsResponses[key
 export type ValidateIdentityConnectionData = {
     body?: never;
     headers?: {
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1729,14 +2235,22 @@ export type ValidateIdentityConnectionData = {
         identityId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/validate';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/validate';
 };
 
 export type ValidateIdentityConnectionErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1748,7 +2262,15 @@ export type ValidateIdentityConnectionErrors = {
     /**
      * Problem details.
      */
+    500: Problem;
+    /**
+     * Problem details.
+     */
     503: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ValidateIdentityConnectionError = ValidateIdentityConnectionErrors[keyof ValidateIdentityConnectionErrors];
@@ -1765,7 +2287,13 @@ export type ValidateIdentityConnectionResponse = ValidateIdentityConnectionRespo
 export type EnableIdentityConnectionData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1773,14 +2301,22 @@ export type EnableIdentityConnectionData = {
         identityId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/enable';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/enable';
 };
 
 export type EnableIdentityConnectionErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1794,13 +2330,21 @@ export type EnableIdentityConnectionErrors = {
      */
     412: Problem;
     /**
-     * Validation failed; the connection stays disabled or became invalid.
+     * Problem details.
      */
-    422: ValidationOutcome;
+    422: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
     /**
      * Problem details.
      */
     503: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type EnableIdentityConnectionError = EnableIdentityConnectionErrors[keyof EnableIdentityConnectionErrors];
@@ -1817,7 +2361,13 @@ export type EnableIdentityConnectionResponse = EnableIdentityConnectionResponses
 export type DisableIdentityConnectionData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1825,14 +2375,22 @@ export type DisableIdentityConnectionData = {
         identityId: Uuid;
     };
     query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/disable';
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/disable';
 };
 
 export type DisableIdentityConnectionErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -1845,6 +2403,14 @@ export type DisableIdentityConnectionErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DisableIdentityConnectionError = DisableIdentityConnectionErrors[keyof DisableIdentityConnectionErrors];
@@ -1882,7 +2448,15 @@ export type ListCollectionCyclesErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListCollectionCyclesError = ListCollectionCyclesErrors[keyof ListCollectionCyclesErrors];
@@ -1900,9 +2474,12 @@ export type CreateCollectionCycleData = {
     body?: never;
     headers?: {
         /**
-         * An opaque token of at most 255 visible ASCII characters.
+         * Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
          */
         'Idempotency-Key'?: string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -1916,11 +2493,27 @@ export type CreateCollectionCycleErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type CreateCollectionCycleError = CreateCollectionCycleErrors[keyof CreateCollectionCycleErrors];
@@ -1948,11 +2541,27 @@ export type GetCollectionCycleErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetCollectionCycleError = GetCollectionCycleErrors[keyof GetCollectionCycleErrors];
@@ -1979,11 +2588,27 @@ export type GetOverviewErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetOverviewError = GetOverviewErrors[keyof GetOverviewErrors];
@@ -1997,170 +2622,6 @@ export type GetOverviewResponses = {
 
 export type GetOverviewResponse = GetOverviewResponses[keyof GetOverviewResponses];
 
-export type GetHoldingsTreeData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/tree';
-};
-
-export type GetHoldingsTreeErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type GetHoldingsTreeError = GetHoldingsTreeErrors[keyof GetHoldingsTreeErrors];
-
-export type GetHoldingsTreeResponses = {
-    /**
-     * Holdings tree.
-     */
-    200: HoldingsTree;
-};
-
-export type GetHoldingsTreeResponse = GetHoldingsTreeResponses[keyof GetHoldingsTreeResponses];
-
-export type ListAccountBalancesData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        accountId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances';
-};
-
-export type ListAccountBalancesErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListAccountBalancesError = ListAccountBalancesErrors[keyof ListAccountBalancesErrors];
-
-export type ListAccountBalancesResponses = {
-    /**
-     * Account balances.
-     */
-    200: AccountBalanceList;
-};
-
-export type ListAccountBalancesResponse = ListAccountBalancesResponses[keyof ListAccountBalancesResponses];
-
-export type ListAccountPositionsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        accountId: Uuid;
-    };
-    query?: {
-        /**
-         * Historical valuation point; omitted for the latest point.
-         */
-        cycleId?: Uuid;
-    };
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions';
-};
-
-export type ListAccountPositionsErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListAccountPositionsError = ListAccountPositionsErrors[keyof ListAccountPositionsErrors];
-
-export type ListAccountPositionsResponses = {
-    /**
-     * Account positions.
-     */
-    200: AccountPositionList;
-};
-
-export type ListAccountPositionsResponse = ListAccountPositionsResponses[keyof ListAccountPositionsResponses];
-
-export type ListAccountDualPositionsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        accountId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions';
-};
-
-export type ListAccountDualPositionsErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListAccountDualPositionsError = ListAccountDualPositionsErrors[keyof ListAccountDualPositionsErrors];
-
-export type ListAccountDualPositionsResponses = {
-    /**
-     * Account positions.
-     */
-    200: AccountDualPositionList;
-};
-
-export type ListAccountDualPositionsResponse = ListAccountDualPositionsResponses[keyof ListAccountDualPositionsResponses];
-
-export type ListAccountEarnPositionsData = {
-    body?: never;
-    path: {
-        portfolioId: Uuid;
-        accountId: Uuid;
-    };
-    query?: never;
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions';
-};
-
-export type ListAccountEarnPositionsErrors = {
-    /**
-     * Problem details.
-     */
-    401: Problem;
-    /**
-     * Problem details.
-     */
-    404: Problem;
-};
-
-export type ListAccountEarnPositionsError = ListAccountEarnPositionsErrors[keyof ListAccountEarnPositionsErrors];
-
-export type ListAccountEarnPositionsResponses = {
-    /**
-     * Account positions.
-     */
-    200: AccountEarnPositionList;
-};
-
-export type ListAccountEarnPositionsResponse = ListAccountEarnPositionsResponses[keyof ListAccountEarnPositionsResponses];
-
 export type ListBalancesData = {
     body?: never;
     path: {
@@ -2172,9 +2633,17 @@ export type ListBalancesData = {
         /**
          * Case-insensitive literal substring of the asset symbol or canonical asset symbol.
          */
-        symbol?: string;
+        q?: string;
         offset?: number;
         limit?: number;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
+        /**
+         * Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+         */
+        includePendingManual?: boolean;
     };
     url: '/api/v1/portfolios/{portfolioId}/balances';
 };
@@ -2191,7 +2660,19 @@ export type ListBalancesErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListBalancesError = ListBalancesErrors[keyof ListBalancesErrors];
@@ -2216,9 +2697,13 @@ export type ListPositionsData = {
         /**
          * Case-insensitive literal substring of the native contract symbol.
          */
-        symbol?: string;
+        q?: string;
         offset?: number;
         limit?: number;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
     };
     url: '/api/v1/portfolios/{portfolioId}/positions';
 };
@@ -2235,7 +2720,19 @@ export type ListPositionsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListPositionsError = ListPositionsErrors[keyof ListPositionsErrors];
@@ -2260,9 +2757,13 @@ export type ListDualPositionsData = {
         /**
          * Case-insensitive literal substring of the invested, base, or quote asset symbol.
          */
-        symbol?: string;
+        q?: string;
         offset?: number;
         limit?: number;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
     };
     url: '/api/v1/portfolios/{portfolioId}/dual-positions';
 };
@@ -2279,7 +2780,19 @@ export type ListDualPositionsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListDualPositionsError = ListDualPositionsErrors[keyof ListDualPositionsErrors];
@@ -2304,9 +2817,13 @@ export type ListEarnPositionsData = {
         /**
          * Case-insensitive literal substring of any invested asset symbol or canonical asset symbol.
          */
-        symbol?: string;
+        q?: string;
         offset?: number;
         limit?: number;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
     };
     url: '/api/v1/portfolios/{portfolioId}/earn-positions';
 };
@@ -2323,7 +2840,19 @@ export type ListEarnPositionsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListEarnPositionsError = ListEarnPositionsErrors[keyof ListEarnPositionsErrors];
@@ -2343,7 +2872,7 @@ export type GetHistoryWindowData = {
         portfolioId: Uuid;
     };
     query?: {
-        preset?: '1D' | '3D' | '1W' | '2W' | '1M' | '3M' | '6M' | '1d' | '3d' | '1w' | '2w' | '1Month' | '1Year';
+        preset?: '1D' | '3D' | '1W' | '2W' | '1M' | '3M' | '6M' | '1d' | '3d' | '1w' | '2w' | '1m' | '3m' | '6m' | '1Month' | '1Year' | '1y' | '1Y';
         fromLocal?: string;
         toLocal?: string;
     };
@@ -2362,7 +2891,19 @@ export type GetHistoryWindowErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetHistoryWindowError = GetHistoryWindowErrors[keyof GetHistoryWindowErrors];
@@ -2383,14 +2924,17 @@ export type ListValuationPointPageData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
         offset?: number;
         limit?: 10 | 20 | 50;
     };
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points/page';
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points';
 };
 
 export type ListValuationPointPageErrors = {
@@ -2405,7 +2949,15 @@ export type ListValuationPointPageErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListValuationPointPageError = ListValuationPointPageErrors[keyof ListValuationPointPageErrors];
@@ -2426,13 +2978,20 @@ export type ListValuationPointsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
         granularity?: TimeGranularity;
+        /**
+         * Maximum returned points, checked after the requested granularity. Excess returns 422 series_limit_exceeded without truncation. Use valuation-points pagination for complete raw access.
+         */
+        maxPoints?: number;
     };
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points';
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/series';
 };
 
 export type ListValuationPointsErrors = {
@@ -2447,7 +3006,23 @@ export type ListValuationPointsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    422: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListValuationPointsError = ListValuationPointsErrors[keyof ListValuationPointsErrors];
@@ -2487,7 +3062,19 @@ export type GetValuationSnapshotErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetValuationSnapshotError = GetValuationSnapshotErrors[keyof GetValuationSnapshotErrors];
@@ -2515,11 +3102,27 @@ export type GetValuationPointErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetValuationPointError = GetValuationPointErrors[keyof GetValuationPointErrors];
@@ -2541,9 +3144,12 @@ export type ListPeriodClosesData = {
     query?: {
         periodKind?: PeriodKind;
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
     };
     url: '/api/v1/portfolios/{portfolioId}/period-closes';
@@ -2561,7 +3167,19 @@ export type ListPeriodClosesErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListPeriodClosesError = ListPeriodClosesErrors[keyof ListPeriodClosesErrors];
@@ -2583,9 +3201,12 @@ export type ListValueChangesData = {
     query?: {
         periodKind?: PeriodKind;
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
     };
     url: '/api/v1/portfolios/{portfolioId}/value-changes';
@@ -2603,7 +3224,19 @@ export type ListValueChangesErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListValueChangesError = ListValueChangesErrors[keyof ListValueChangesErrors];
@@ -2626,7 +3259,7 @@ export type GetCustomValueChangeData = {
         from: string;
         to: string;
     };
-    url: '/api/v1/portfolios/{portfolioId}/value-changes/custom';
+    url: '/api/v1/portfolios/{portfolioId}/value-changes/range';
 };
 
 export type GetCustomValueChangeErrors = {
@@ -2641,7 +3274,19 @@ export type GetCustomValueChangeErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetCustomValueChangeError = GetCustomValueChangeErrors[keyof GetCustomValueChangeErrors];
@@ -2662,10 +3307,15 @@ export type ListCapitalFlowsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
+        offset?: number;
+        limit?: number;
     };
     url: '/api/v1/portfolios/{portfolioId}/capital-flows';
 };
@@ -2682,7 +3332,19 @@ export type ListCapitalFlowsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListCapitalFlowsError = ListCapitalFlowsErrors[keyof ListCapitalFlowsErrors];
@@ -2700,9 +3362,12 @@ export type CreateCapitalFlowData = {
     body: CreateCapitalFlowRequest;
     headers?: {
         /**
-         * An opaque token of at most 255 visible ASCII characters.
+         * Optional opaque token of at most 255 visible ASCII characters; an empty or omitted key disables replay. Successful responses are retained for 24 hours, scoped to the authenticated user, HTTP method, and path. Reusing a key with a different typed JSON body returns 409 idempotency_conflict. Omitted inputs remain distinct from explicit inputs. Authentication and CSRF are checked before replay, including after resource deletion. Failed operations are not retained. A replay returns the original response; read the resource for its current state.
          */
         'Idempotency-Key'?: string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -2724,11 +3389,23 @@ export type CreateCapitalFlowErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     409: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type CreateCapitalFlowError = CreateCapitalFlowErrors[keyof CreateCapitalFlowErrors];
@@ -2745,7 +3422,13 @@ export type CreateCapitalFlowResponse = CreateCapitalFlowResponses[keyof CreateC
 export type DeleteCapitalFlowData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -2760,7 +3443,15 @@ export type DeleteCapitalFlowErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
     /**
      * Problem details.
      */
@@ -2769,6 +3460,14 @@ export type DeleteCapitalFlowErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DeleteCapitalFlowError = DeleteCapitalFlowErrors[keyof DeleteCapitalFlowErrors];
@@ -2796,11 +3495,27 @@ export type GetCapitalFlowErrors = {
     /**
      * Problem details.
      */
+    400: Problem;
+    /**
+     * Problem details.
+     */
     401: Problem;
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetCapitalFlowError = GetCapitalFlowErrors[keyof GetCapitalFlowErrors];
@@ -2817,7 +3532,13 @@ export type GetCapitalFlowResponse = GetCapitalFlowResponses[keyof GetCapitalFlo
 export type PatchCapitalFlowData = {
     body: PatchCapitalFlowRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -2840,11 +3561,23 @@ export type PatchCapitalFlowErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PatchCapitalFlowError = PatchCapitalFlowErrors[keyof PatchCapitalFlowErrors];
@@ -2865,10 +3598,15 @@ export type ListBoundaryEventsData = {
     };
     query?: {
         /**
-         * Start of the window. Omitted, a period list starts at the later of its default span and the first valuation point.
+         * Start instant in RFC 3339. Each operation documents its own default and endpoint inclusion rules.
          */
         from?: string;
+        /**
+         * End instant in RFC 3339. Each operation documents its endpoint inclusion rules.
+         */
         to?: string;
+        offset?: number;
+        limit?: number;
     };
     url: '/api/v1/portfolios/{portfolioId}/boundary-events';
 };
@@ -2885,7 +3623,19 @@ export type ListBoundaryEventsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type ListBoundaryEventsError = ListBoundaryEventsErrors[keyof ListBoundaryEventsErrors];
@@ -2926,7 +3676,15 @@ export type ListAssetsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListAssetsError = ListAssetsErrors[keyof ListAssetsErrors];
@@ -2943,7 +3701,13 @@ export type ListAssetsResponse = ListAssetsResponses[keyof ListAssetsResponses];
 export type PutAssetMappingData = {
     body: PutAssetMappingRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -2966,11 +3730,23 @@ export type PutAssetMappingErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PutAssetMappingError = PutAssetMappingErrors[keyof PutAssetMappingErrors];
@@ -2987,7 +3763,13 @@ export type PutAssetMappingResponse = PutAssetMappingResponses[keyof PutAssetMap
 export type PutAssetExclusionData = {
     body: PutAssetExclusionRequest;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -3010,11 +3792,23 @@ export type PutAssetExclusionErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
     /**
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type PutAssetExclusionError = PutAssetExclusionErrors[keyof PutAssetExclusionErrors];
@@ -3054,7 +3848,15 @@ export type ListFuturesContractsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListFuturesContractsError = ListFuturesContractsErrors[keyof ListFuturesContractsErrors];
@@ -3094,7 +3896,15 @@ export type ListAuditEventsErrors = {
     /**
      * Problem details.
      */
+    403: Problem;
+    /**
+     * Problem details.
+     */
     404: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
 };
 
 export type ListAuditEventsError = ListAuditEventsErrors[keyof ListAuditEventsErrors];
@@ -3143,6 +3953,14 @@ export type GetManualBalancesErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type GetManualBalancesError = GetManualBalancesErrors[keyof GetManualBalancesErrors];
@@ -3159,7 +3977,13 @@ export type GetManualBalancesResponse = GetManualBalancesResponses[keyof GetManu
 export type CreateManualBalanceData = {
     body: CreateManualBalance;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -3195,6 +4019,14 @@ export type CreateManualBalanceErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type CreateManualBalanceError = CreateManualBalanceErrors[keyof CreateManualBalanceErrors];
@@ -3211,7 +4043,13 @@ export type CreateManualBalanceResponse = CreateManualBalanceResponses[keyof Cre
 export type DeleteManualBalanceData = {
     body?: never;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -3248,6 +4086,14 @@ export type DeleteManualBalanceErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type DeleteManualBalanceError = DeleteManualBalanceErrors[keyof DeleteManualBalanceErrors];
@@ -3264,7 +4110,13 @@ export type DeleteManualBalanceResponse = DeleteManualBalanceResponses[keyof Del
 export type UpdateManualBalanceData = {
     body: UpdateManualBalance;
     headers: {
-        'If-Match': string;
+        /**
+         * Expected edit version from the resource being edited. Portfolio, identity and capital flow use version; asset mapping uses mappingVersion; exclusion uses exclusionVersion; manual balances use the ledger version. Only exclusion permits zero.
+         */
+        'If-Edit-Version': string;
+        /**
+         * Required by the operation security requirement. Missing or invalid tokens return 403 csrf_invalid; the shared browser transport attaches the token.
+         */
         'X-CSRF-Token'?: string;
     };
     path: {
@@ -3301,6 +4153,14 @@ export type UpdateManualBalanceErrors = {
      * Problem details.
      */
     412: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
 };
 
 export type UpdateManualBalanceError = UpdateManualBalanceErrors[keyof UpdateManualBalanceErrors];
@@ -3313,3 +4173,64 @@ export type UpdateManualBalanceResponses = {
 };
 
 export type UpdateManualBalanceResponse = UpdateManualBalanceResponses[keyof UpdateManualBalanceResponses];
+
+export type GetAccountReportData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        accountId: Uuid;
+    };
+    query?: {
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
+        /**
+         * Overlay current manual quantities without changing collected amounts or valuations. The response identifies the ledger versions; cycleId does not freeze these edits.
+         */
+        includePendingManual?: boolean;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/report';
+};
+
+export type GetAccountReportErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+    /**
+     * Problem details.
+     */
+    default: Problem;
+};
+
+export type GetAccountReportError = GetAccountReportErrors[keyof GetAccountReportErrors];
+
+export type GetAccountReportResponses = {
+    /**
+     * Account balances.
+     */
+    200: AccountReport;
+};
+
+export type GetAccountReportResponse = GetAccountReportResponses[keyof GetAccountReportResponses];

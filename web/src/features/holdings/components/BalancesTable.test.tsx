@@ -5,6 +5,7 @@ import { DataTable } from "@/shared/ui/DataTable";
 import { BALANCE_COLUMNS, balanceRow } from "./BalancesTable";
 
 const balance: BalanceRow = {
+  interest: null,
   accountId: "account",
   accountName: "Funding",
   accountType: "funding",

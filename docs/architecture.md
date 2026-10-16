@@ -116,12 +116,12 @@ password success cancel queries, clear cached data and CSRF state, and return to
 login. Generation-bound expiry callbacks prevent a late 401 from ending a
 replacement session, including a new login by the same user.
 
-Shared writes acquire CSRF and handle expiry, except a password
-`invalid_credentials` rejection. Features retain raw SDK results and their
-validation, conflict, ETag, and idempotency policies. Cache keys and collection
-invalidation flags are shared; editors retain independent lifetimes. Session
-lists use a user-scoped cache discarded when unused or logged out, with reads on
-entry and revocation but no background retry, focus, or reconnect refresh.
+Shared writes acquire CSRF and handle session expiry. Features retain raw SDK
+results and their validation, conflict, edit-version, and idempotency policies.
+Cache keys and collection invalidation flags are shared; editors retain
+independent lifetimes. Session lists use a user-scoped cache discarded when
+unused or logged out, with reads on entry and revocation but no background
+retry, focus, or reconnect refresh.
 
 Holdings shares request conversion, recovery, pagination, and account report
 reads; pages own product semantics. Shared navigation prepares outgoing drafts,
@@ -138,12 +138,12 @@ queued or running, and its unique key allows one active cycle per portfolio;
 `Enqueue` locks the portfolio and returns that cycle instead of adding another.
 The worker polls each second, claims one available queued cycle or expired
 running lease with `SKIP LOCKED`, and renews two-minute leases. Interrupted
-attempts requeue with backoff; a fourth claim fails the cycle. Recovery keeps
-committed reports, including failures, and collects missing accounts. Financial
-completion commits the point, account valuations, and cycle success in one
-transaction after checking the running lease; success clears the error fields.
-Lease loss cancels unfinished work. This remains a single-process design;
-platform calls are not exactly once.
+attempts requeue with backoff; the third failed attempt exhausts the cycle.
+Recovery keeps committed reports, including failures, and collects missing
+accounts. Financial completion commits the point, account valuations, and cycle
+success in one transaction after checking the running lease; success clears the
+error fields. Lease loss cancels unfinished work. This remains a single-process
+design; platform calls are not exactly once.
 
 A cycle establishes its selected accounts, then collects each usable connection
 with a fixed three-second delay between identities. Adapters perform the
@@ -301,10 +301,9 @@ retained source point and account rather than an expiring valuation row. Points
 store no boundary totals; reads sum their boundary events.
 
 `valuation_points.cycle_id` is its primary key and only public identifier.
-`valuationRevision` is an opaque consistency token equal to that cycle ID.
-Summary, cycle point, and `ReadContext` expose it. Browser parent/child reads
-refresh their read family when cycle tokens disagree. `calculation_version`
-identifies the algorithm adopted at first commit.
+Summary, cycle point, and `ReadContext` use that same cycle ID without a
+separate result revision. `calculation_version` identifies the algorithm adopted
+at first commit.
 
 `detail_state` distinguishes full, daily, pruning, and expired detail. API
 readers expose pruning as expired before any holdings are removed. A reader's
@@ -425,12 +424,32 @@ automatically. Follow
 
 ## API, numbers, and time
 
+Comparison availability is explicit. Unavailable comparisons return null amounts
+and flows; comparable incomplete results retain their known values and name
+omissions. Calendar and comparison issues are typed codes with descriptive
+context, never a text format for the browser to parse. Flow completeness is
+separate from overall comparison completeness. Holdings contracts name the
+filtered balance total and boundary-wide notional total separately. Filtered
+balance completeness and omissions qualify that subtotal, including descriptive
+balances in reported-equity accounts; portfolio valuation completeness remains
+independent. Holding lists expose report coverage after account filters and
+before symbol search or pagination. Compatible stale reports remain readable;
+unknown product metadata and prices do not change report coverage.
+
 [OpenAPI](../api/openapi/openapi.yaml) owns routes and wire schemas; generated
 Go/TypeScript types stop at transport boundaries. Generated files are committed
 and must reproduce unchanged from unchanged sources. The API uses Problem
-Details, version ETags, idempotency keys, and pagination as specified there.
-`shared/etag` strictly parses validators; `shared/cursor` signs opaque cursors.
-Reads and mutations remain scoped to the authenticated user and portfolio.
+Details, explicit edit versions, idempotency keys, and pagination as specified
+there. Request validation applies the embedded schema before typed binding,
+without injecting defaults into PATCH or idempotency inputs. Unknown properties
+and invalid values produce field-located problems without echoing input values.
+CSRF is a required operation security scheme; its header remains optional in
+binding so handlers preserve the explicit authentication and `403 csrf_invalid`
+semantics. Authentication and CSRF checks remain explicit in handlers. Session
+failures use 401; password business rejections use 422; infrastructure errors
+use 500. HTTP strictly parses decimal edit versions; `shared/cursor` signs
+opaque cursors. Reads and mutations remain scoped to the authenticated user and
+portfolio.
 
 The four idempotent creation routes authenticate and check CSRF before replay. A
 user row lock serializes request lookup, business writes, audit, and successful
@@ -438,13 +457,24 @@ response insertion in one transaction. Different bodies conflict; failures roll
 back the business mutation and key. Resource lookup happens only for a fresh
 request, allowing an authorized replay after resource deletion.
 
-Browser writes construct the canonical resource ETag from the JSON version
-paired with the edited data or deletion confirmation. Response ETag headers are
-not a source of write preconditions: intermediaries can weaken them when
-compressing representations. Each resource owns its formatter, including the
-separate exclusion version and manual revision number. Backend parsing remains
-strict, and conditional SQL updates compare the expected version and increment
-it atomically. See [editing behavior](./presentation.md#editing-and-conflicts).
+Browser writes send `If-Edit-Version` from the JSON baseline paired with the
+edited data or deletion confirmation. Versions protect editable state, not the
+complete response representation: collection diagnostics can change
+independently. Each operation names its version scope in OpenAPI, including
+separate mapping and exclusion versions and the whole manual ledger revision.
+Conditional SQL updates compare the expected version and increment it
+atomically. A stale version returns 412; an absent or malformed version
+returns 400. Exclusion alone permits initial version zero. These versions are
+not HTTP cache validators. See
+[editing behavior](./presentation.md#editing-and-conflicts).
+
+CSRF acquisition is shared and cached within a browser session. Ending or
+replacing the session clears both the token and the acquisition lifetime; late
+responses cannot seed a replacement session. An explicit `403 csrf_invalid`
+permits one refresh and retry because handlers reject it before mutation.
+Transport failures do not automatically replay a write. Connection enablement's
+422 response uses Problem Details with a typed validation outcome, while an
+executed validation operation returns its outcome with 200.
 
 `application/ordering` supplies catalog-based ordering before pagination; the
 SPA preserves it. Holdings filters remain mounted independently of results. The
@@ -454,21 +484,41 @@ keyboard input while dismissing on external scroll.
 [Presentation](./presentation.md#filters) owns matching, filter recovery, and
 view-memory rules.
 
-Overview publishes summary and tree together only when cycle ID, valuation
-revision, total, and completeness agree. Without a point, both cycle references
-must be absent. Account queries include the cycle, report, and revision in their
-keys; mismatches refresh the related reads before publishing details. Explicit
+Overview returns its point summary and ownership tree in one repeatable-read
+snapshot, sharing the latest point and adopted account evidence. The point owns
+its total, completeness, and counts; charts use the separate series read. Series
+points carry only their identity, time, total, and completeness, avoiding unused
+boundary aggregation. One account report read resolves its point and compatible
+source report once, then loads balances and the applicable product holdings
+within the same read transaction. Account query keys include the cycle, report,
+and manual-overlay choice; mismatched responses are withheld. Pending manual
+additions have no collected equity, freshness, or report observation time.
+
+Flat holdings resolve the latest point on entry, retaining it across filter,
+page, and retry reads. A view lifetime and collection epoch separate query
+caches; the first response supplies the pin without another request. A new
+collection invalidates the epoch. Both flat balances and account reports opt
+into current manual edits with the same explicit parameter. The browser requests
+the overlay for current views; historical reads omit it. Overlay responses
+identify the ledger versions from the same read snapshot; those versions
+describe the overlay and do not freeze it across pages. Current edits never
+revise collected valuations. Manual saves invalidate balance reads and reset
+balance pagination without changing the pin. History windows use only portfolio
+context; collected financial reads also identify their valuation point. Explicit
 mutations invalidate dependent queries; running collection details poll until
 completion and then refresh Overview and open details.
 [Browser refresh](./presentation.md#browser-refresh-and-scrolling) owns other
 display-read behavior.
 
 Financial arithmetic uses exact rationals in `shared/decimal`; storage uses
-`DECIMAL(65,30)`, and JSON financial values are strings with at most 30
-fractional digits. Null means unknown or inapplicable. The browser uses
-`decimal.js`, converting only plot coordinates to JavaScript numbers. Shared
-formatting retains source strings for chart tooltips and returns ordinary
-rounded decimals for screen readers.
+`DECIMAL(65,30)`, and JSON source and valuation amounts are strings with at most
+30 fractional digits. The display-only leverage quotient retains up to 200
+fractional digits so the browser's final display rounding cannot round an
+already rounded midpoint. Source leverage and margin remain separate facts; this
+presentation quotient is neither stored nor used in valuation. Null means
+unknown or inapplicable. The browser uses `decimal.js`, converting only plot
+coordinates to JavaScript numbers. Shared formatting retains source strings for
+chart tooltips and returns ordinary rounded decimals for screen readers.
 [Numeric presentation](./presentation.md#numeric-presentation) owns rounding and
 notation.
 
@@ -478,18 +528,25 @@ Portfolio timezones affect queries, not storage.
 
 ### Contract position presentation
 
-The financial read model derives size, settlement-currency margin, and issues
-from retained position facts and the source report's observed mode. It exposes
-reported/calculated margin provenance and unavailable reasons without changing
-source amounts. [Domain rules](./domain-rules.md#contract-quantities-and-margin)
+The financial read model derives size, settlement-currency margin, display
+leverage, and issues from retained position facts and the source report's
+observed mode. The wire contract explicitly names reported margin and leverage,
+settlement margin, and display leverage. It exposes reported/calculated margin
+provenance and stable unavailable-reason codes with explanatory text without
+changing source amounts. Flat futures reads derive boundary notional and core
+issues before filtering, then compute optional margin and leverage only for the
+displayed page. [Domain rules](./domain-rules.md#contract-quantities-and-margin)
 own common semantics; platform mappings own source interpretation and formulas.
 
-Historical position reads resolve an optional `cycleId` within the same
-portfolio and account, then load its source report. Shared React cells keep
-global, account, and historical views consistent. Disclosures render outside
-table scroll containers. [Presentation](./presentation.md#futures) owns columns
-and interactions. Each position references its immutable observed contract
-version.
+All four account holdings reads resolve an optional `cycleId` within the same
+portfolio and account, then load only its adopted report and balance evidence.
+Unknown points return 404 and expired detail returns 410 without substitution.
+The protected current point remains readable outside public history. Pending
+manual quantities remain current edits, separate from collected values. Shared
+React cells keep global, account, and historical views consistent. Disclosures
+render outside table scroll containers.
+[Presentation](./presentation.md#futures) owns columns and interactions. Each
+position references its immutable observed contract version.
 
 ## Mobile browser scrolling
 
@@ -537,11 +594,34 @@ The `history-window` read endpoint resolves one UTC window from presets or
 portfolio-local inputs. All series, calendar, pagination, and recovery reads
 reuse it; ambiguous or nonexistent manual wall times fail explicitly.
 
+Flat balances push account and literal symbol filters into SQL. Account/asset
+indexes replace repeated valuation-line scans; totals use exact source-decimal
+arithmetic. Only the returned page loads balance availability, liabilities,
+interest, and PnL. Earn descriptions and current manual quantities load in
+bounded report/account batches rather than queries per account. Holding totals
+and whole-scope diagnostics can still require reading the matching set before
+pagination; the page limit is not a bound on all aggregation work.
+
 Raw point pages read scalar summaries and an indexed count in one transaction.
-Aggregated series scan IDs/times, select final actual points by timezone bucket,
-then fetch summaries in batches. The scan still grows with the selected range;
-sampling does not reduce stored history. Calendar results feed full charts and
-paginate independently in the browser.
+One extra summary supplies the oldest displayed row's predecessor within the
+same window, so comparison values do not depend on page boundaries. Aggregated
+series scan IDs/times in bounded keyset batches, retaining the final actual
+point per timezone bucket across batch boundaries, then fetch selected summaries
+in batches. A declared point budget bounds raw reads and returned samples;
+exceeding it is explicit and never silently truncates a curve. Aggregation still
+scans headers across the selected range; sampling does not reduce stored
+history. Calendar results feed full charts and paginate independently in the
+browser.
+
+Capital flows and boundary events use counted SQL offset pages with
+deterministic time and ID ordering; boundary pages retain the shared account
+hierarchy within a cycle. Both echo the resolved window for reuse on later
+pages. The browser keeps that window fixed and restarts after edits; offset
+pages do not promise a cross-request snapshot during concurrent backdated flow
+edits, label changes, or retention cleanup. This preserves exact row counts and
+the existing page controls without introducing another read-snapshot lifecycle.
+Financial comparisons continue reading the full required interval independently
+of the presentation pages.
 [Presentation](./presentation.md#history-windows-and-tables) owns windows,
 periods, row limits, and URL state.
 

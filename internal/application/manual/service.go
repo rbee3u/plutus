@@ -21,7 +21,6 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 // Balance stores only revision facts; labels and pricing mappings are projections.
@@ -42,9 +41,6 @@ type State struct {
 	AppliedItems   []Balance `json:"appliedItems"`
 	Pending        bool      `json:"pending"`
 }
-
-func (s State) ETag() string                { return etag.Format("manual", s.Version) }
-func ParseETag(value string) (uint64, bool) { return etag.Parse("manual", value) }
 
 type Input struct {
 	AssetSymbol string

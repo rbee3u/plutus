@@ -3,6 +3,7 @@ package httpserver
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -280,8 +281,8 @@ func TestPutAuthPassword(t *testing.T) {
 	wrongReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
 	wrongReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
 	engine.ServeHTTP(wrongRec, wrongReq)
-	if wrongRec.Code != http.StatusUnauthorized {
-		t.Fatalf("wrong password expected 401, got %d %s", wrongRec.Code, wrongRec.Body.String())
+	if wrongRec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("wrong password expected 422, got %d %s", wrongRec.Code, wrongRec.Body.String())
 	}
 
 	// Successful password change
@@ -324,4 +325,69 @@ func otherUserSession(t *testing.T, svc *auth.Service) auth.Session {
 		t.Fatal(err)
 	}
 	return session
+}
+
+func TestAuthenticationStorageFailureIsNotSessionExpiry(t *testing.T) {
+	// Use an independent closed pool; the shared test database stays usable.
+	db, err := sql.Open("mysql", mysqltest.TestDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{Auth: auth.NewService(db, time.Hour, 24*time.Hour)}})
+	for _, path := range []string{"/api/v1/auth/me", "/api/v1/auth/csrf", "/api/v1/auth/sessions"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "existing-session"})
+		response := httptest.NewRecorder()
+		engine.ServeHTTP(response, req)
+		if response.Code != http.StatusInternalServerError {
+			t.Fatalf("storage failure: %d %s", response.Code, response.Body.String())
+		}
+		if len(response.Header().Values("Set-Cookie")) != 0 {
+			t.Fatal("storage failure replaced session cookies")
+		}
+	}
+}
+
+func TestPasswordHashFailureIsNotInvalidCredentials(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	svc := auth.NewService(db, time.Hour, 24*time.Hour)
+	username := "hash-failure-" + uuid.NewString()[:8]
+	user, err := svc.CreateUser(t.Context(), username, "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, session, err := svc.Login(t.Context(), username, "Correct=123456", "127.0.0.1", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE users SET password_hash=? WHERE id=?", "invalid-hash", user.ID[:]); err != nil {
+		t.Fatal(err)
+	}
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{Auth: svc}})
+	for _, tc := range []struct{ method, path, body string }{
+		{http.MethodPost, "/api/v1/auth/login", `{"username":"` + username + `","password":"Correct=123456"}`},
+		{http.MethodPut, "/api/v1/auth/password", `{"currentPassword":"Correct=123456","newPassword":"Replacement=123456"}`},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), tc.method, tc.path, strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-CSRF-Token", session.CSRF)
+			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token})
+			req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: session.CSRF})
+			response := httptest.NewRecorder()
+			engine.ServeHTTP(response, req)
+			if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), `"code":"internal_error"`) {
+				t.Fatalf("hash failure: %d %s", response.Code, response.Body.String())
+			}
+			if len(response.Header().Values("Set-Cookie")) != 0 {
+				t.Fatal("hash failure replaced session cookies")
+			}
+		})
+	}
+	if _, _, err := svc.Authenticate(t.Context(), session.Token); err != nil {
+		t.Fatalf("hash failure invalidated the existing session: %v", err)
+	}
 }

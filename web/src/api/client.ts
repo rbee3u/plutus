@@ -2,10 +2,14 @@ import { client } from "@/api/generated/client.gen";
 import { getAuthCsrf } from "@/api/generated/sdk.gen";
 
 let csrfToken = "";
+let csrfGeneration = 0;
+let csrfRequest: Promise<string> | undefined;
 
 /** End the in-memory token lifetime with the authenticated session. */
 export function resetCsrf(): void {
   csrfToken = "";
+  csrfGeneration += 1;
+  csrfRequest = undefined;
 }
 
 /** Point the generated client at the same origin and attach CSRF headers. */
@@ -22,14 +26,24 @@ export function configureApiClient(): void {
   });
 }
 
-/** Read and remember the double-submit CSRF token before a state change. */
-export async function refreshCsrf(): Promise<string> {
-  const result = await getAuthCsrf();
-  if (result.error || !result.data) {
-    throw new Error("Could not obtain a CSRF token.");
-  }
-  csrfToken = result.data.token;
-  return csrfToken;
+/** Share acquisition within one browser session; stale responses cannot seed a new one. */
+export function refreshCsrf(): Promise<string> {
+  if (csrfRequest) return csrfRequest;
+  const generation = csrfGeneration;
+  const pending = (async () => {
+    const result = await getAuthCsrf();
+    if (generation !== csrfGeneration) throw new SessionExpiredError();
+    if (result.error || !result.data) throw new Error("Could not obtain a CSRF token.");
+    csrfToken = result.data.token;
+    return csrfToken;
+  })();
+  csrfRequest = pending;
+  void pending
+    .finally(() => {
+      if (csrfRequest === pending) csrfRequest = undefined;
+    })
+    .catch(() => {});
+  return pending;
 }
 
 /** An RFC 9457 problem document surfaced as an Error. */
@@ -72,16 +86,33 @@ export function problemMessage(error: unknown, fallback: string): string {
 }
 
 /** The shape every generated SDK call returns. */
-export interface ApiResult<T> {
+export interface ApiResult<T, E = unknown> {
   data?: T;
-  error?: unknown;
+  error?: E;
   response?: Response;
 }
 
 /** Common write transport; business response interpretation stays with callers. */
-export async function executeWrite<T>(request: () => Promise<ApiResult<T>>): Promise<ApiResult<T>> {
-  await refreshCsrf();
-  return request();
+export async function executeWrite<T, E = unknown>(
+  request: () => Promise<ApiResult<T, E>>,
+): Promise<ApiResult<T, E>> {
+  const generation = csrfGeneration;
+  if (!csrfToken) await refreshCsrf();
+  if (generation !== csrfGeneration) throw new SessionExpiredError();
+  const token = csrfToken;
+  const result = await request();
+  const error = result.error as { code?: string } | undefined;
+  if (result.response?.status === 403 && error?.code === "csrf_invalid") {
+    if (generation !== csrfGeneration) throw new SessionExpiredError();
+    // Another rejected write may already have replaced this token.
+    if (csrfToken === token) {
+      csrfToken = "";
+      await refreshCsrf();
+    } else if (!csrfToken) await refreshCsrf();
+    if (generation !== csrfGeneration) throw new SessionExpiredError();
+    return request();
+  }
+  return result;
 }
 
 export class SessionExpiredError extends Error {

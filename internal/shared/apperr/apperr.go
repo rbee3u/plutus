@@ -49,7 +49,7 @@ func Invalid(message string) *Error { return New(KindInvalid, message) }
 // Conflict reports a uniqueness or general conflict.
 func Conflict(message string) *Error { return New(KindConflict, message) }
 
-// Precondition reports a failed If-Match version check.
+// Precondition reports a failed If-Edit-Version version check.
 func Precondition(message string) *Error { return New(KindPrecondition, message) }
 
 // StateConflict reports a state that disallows the action.

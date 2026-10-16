@@ -11,9 +11,9 @@ import (
 )
 
 func (a *API) ListPortfolios(ctx context.Context, _ api.ListPortfoliosRequestObject) (api.ListPortfoliosResponseObject, error) {
-	user, _, ok := a.currentSession(ctx)
-	if !ok {
-		return nil, errUnauthenticated
+	user, _, err := a.currentSession(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if a.Portfolios == nil {
 		return nil, ErrNotImplemented
@@ -33,17 +33,17 @@ func (a *API) CreatePortfolio(ctx context.Context, request api.CreatePortfolioRe
 	if a.Portfolios == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Portfolio, string, error) {
+	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Portfolio, error) {
 		item, err := a.Portfolios.Create(ctx, user.ID, portfolio.CreateInput{Name: request.Body.Name, Timezone: stringValue(request.Body.Timezone), CollectionIntervalSeconds: request.Body.CollectionIntervalSeconds})
 		if err != nil {
-			return api.Portfolio{}, "", err
+			return api.Portfolio{}, err
 		}
-		return toAPIPortfolio(&item), item.ETag(), nil
+		return toAPIPortfolio(&item), nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.CreatePortfolio201JSONResponse{Body: body, Headers: api.CreatePortfolio201ResponseHeaders{ETag: &etag}}, nil
+	return api.CreatePortfolio201JSONResponse(body), nil
 }
 
 func (a *API) GetPortfolio(ctx context.Context, request api.GetPortfolioRequestObject) (api.GetPortfolioResponseObject, error) {
@@ -51,7 +51,7 @@ func (a *API) GetPortfolio(ctx context.Context, request api.GetPortfolioRequestO
 	if err != nil {
 		return nil, err
 	}
-	return api.GetPortfolio200JSONResponse{Body: toAPIPortfolio(&sc.portfolio), Headers: api.GetPortfolio200ResponseHeaders{ETag: new(sc.portfolio.ETag())}}, nil
+	return api.GetPortfolio200JSONResponse(toAPIPortfolio(&sc.portfolio)), nil
 }
 
 func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequestObject) (api.PatchPortfolioResponseObject, error) {
@@ -59,9 +59,9 @@ func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequ
 	if err != nil {
 		return nil, err
 	}
-	version, ok := portfolio.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, validationError("If-Match must be a portfolio ETag.")
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -71,7 +71,7 @@ func (a *API) PatchPortfolio(ctx context.Context, request api.PatchPortfolioRequ
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchPortfolio200JSONResponse{Body: toAPIPortfolio(&item), Headers: api.PatchPortfolio200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PatchPortfolio200JSONResponse(toAPIPortfolio(&item)), nil
 }
 
 func (a *API) DeletePortfolio(ctx context.Context, request api.DeletePortfolioRequestObject) (api.DeletePortfolioResponseObject, error) {
@@ -79,9 +79,9 @@ func (a *API) DeletePortfolio(ctx context.Context, request api.DeletePortfolioRe
 	if err != nil {
 		return nil, err
 	}
-	version, ok := portfolio.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if err := a.Portfolios.Delete(ctx, sc.user.ID, request.PortfolioId, version); err != nil {
 		return nil, err

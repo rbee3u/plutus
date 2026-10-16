@@ -11,37 +11,18 @@ import (
 
 // Context describes which point a read was answered from.
 type Context struct {
-	ValuationRevision *string
-	PortfolioID       uuid.UUID
-	Timezone          string
-	CycleID           *uuid.UUID
-	EvaluatedAt       *time.Time
+	PortfolioID uuid.UUID
+	Timezone    string
+	CycleID     *uuid.UUID
+	EvaluatedAt *time.Time
 }
 
-// GroupTotal is a backend-computed subtotal.
-type GroupTotal struct {
-	Key          string
-	Label        string
-	Platform     string
-	ValueUSD     *string
-	AccountCount int
-	RowCount     int
-	Completeness string
-}
-
-// Overview is the landing read model.
+// Overview is the latest point and its ownership tree in one read snapshot.
 type Overview struct {
-	Context                Context
-	Point                  *valuation.Point
-	TotalUSD               *string
-	Completeness           string
-	AccountCount           int
-	StaleAccountCount      int
-	IncompleteAccountCount int
-	ByPlatform             []GroupTotal
-	ByIdentity             []GroupTotal
-	Issues                 []valuation.Issue
-	Sparkline              []valuation.Point
+	Context   Context
+	Point     *valuation.Point
+	Platforms []TreePlatform
+	Issues    []valuation.Issue
 }
 
 // TreeIdentity groups accounts of one identity.
@@ -62,15 +43,6 @@ type TreePlatform struct {
 	ValueUSD     *string
 	Completeness string
 	Identities   []TreeIdentity
-}
-
-// Tree is the platform → identity → account read model.
-type Tree struct {
-	Context      Context
-	TotalUSD     *string
-	Completeness string
-	Platforms    []TreePlatform
-	Issues       []valuation.Issue
 }
 
 // BalanceRow is one balance with its USD value.
@@ -130,6 +102,8 @@ type PositionRow struct {
 	SettleMargin            *string
 	MarginSource            *string
 	MarginUnavailableReason *string
+	MarginUnavailableCode   *string
+	DisplayLeverage         *string
 	Issues                  []valuation.Issue
 	SourceQuantity          string
 	SourceQuantityUnit      string
@@ -144,7 +118,7 @@ type PositionRow struct {
 	ReportObservedAt        *time.Time
 }
 
-// AccountView is one account's current report with its balances or positions.
+// AccountView is one account's aligned report with its applicable holdings.
 type AccountView struct {
 	Context       Context
 	Account       valuation.AccountValuation
@@ -153,27 +127,51 @@ type AccountView struct {
 	DualPositions []DualPositionRow
 	EarnPositions []EarnPositionRow
 	Issues        []valuation.Issue
+	ManualOverlay *ManualOverlay
+}
+
+// ReportCoverage qualifies the account set before symbol search and pagination.
+// Compatible stale reports count as readable; optional metadata does not.
+type ReportCoverage struct {
+	Complete          bool
+	MissingAccountIDs []uuid.UUID
+}
+
+// ManualOverlay identifies current edits independently of the collected point.
+type ManualOverlay struct {
+	Versions []ManualLedgerVersion
+}
+
+type ManualLedgerVersion struct {
+	AccountID uuid.UUID
+	Version   uint64
 }
 
 // ListFilter selects flat balance or position rows.
 type ListFilter struct {
-	Platform   string
-	IdentityID *uuid.UUID
-	Symbol     string
-	Offset     int
-	Limit      int
+	IncludePendingManual bool
+	CycleID              *uuid.UUID
+	Platform             string
+	IdentityID           *uuid.UUID
+	Symbol               string
+	Offset               int
+	Limit                int
 }
 
 // FlatList is an offset page of holdings with totals and completeness.
 type FlatList[T any] struct {
-	Context      Context
-	Items        []T
-	Offset       int
-	Limit        int
-	Total        int
-	TotalUSD     *string
-	Completeness string
-	Issues       []valuation.Issue
+	Context           Context
+	Items             []T
+	Offset            int
+	Limit             int
+	Total             int
+	TotalUSD          *string
+	Completeness      string
+	Issues            []valuation.Issue
+	Coverage          ReportCoverage
+	TotalCompleteness string
+	TotalIssues       []valuation.Issue
+	ManualOverlay     *ManualOverlay
 }
 
 // PointDetail is one point with its account valuations.
@@ -190,23 +188,25 @@ type PeriodClose struct {
 	PeriodEnd    time.Time
 	Point        *valuation.Point
 	Completeness string
-	Reasons      []string
+	Issues       []valuation.Issue
 }
 
 // ValueChange is end − start − contributions + withdrawals over a period.
 type ValueChange struct {
+	Comparable               bool
+	FlowsCompleteness        string
 	PeriodKind               string
 	Label                    string
 	From                     time.Time
 	To                       time.Time
 	StartPoint               *valuation.Point
 	EndPoint                 *valuation.Point
-	ContributionsUSD         string
-	WithdrawalsUSD           string
-	BoundaryContributionsUSD string
-	BoundaryWithdrawalsUSD   string
+	ContributionsUSD         *string
+	WithdrawalsUSD           *string
+	BoundaryContributionsUSD *string
+	BoundaryWithdrawalsUSD   *string
 	AmountUSD                *string
 	Completeness             string
-	Reasons                  []string
+	Issues                   []valuation.Issue
 	BoundaryEvents           []valuation.BoundaryEvent
 }

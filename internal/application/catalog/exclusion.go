@@ -12,7 +12,6 @@ import (
 
 	"github.com/rbee3u/plutus/internal/application/audit"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 type exclusionState struct {
@@ -62,16 +61,6 @@ func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, asse
 	}
 	applyExclusion(asset, states[asset.ID])
 	return nil
-}
-
-// ExclusionETag is the policy validator, separate from the asset mapping's ETag.
-func (asset *Asset) ExclusionETag() string {
-	return etag.Format("asset-exclusion", asset.ExclusionVersion)
-}
-
-// ParseExclusionETag extracts the portfolio-specific version.
-func ParseExclusionETag(value string) (uint64, bool) {
-	return etag.ParseAllowZero("asset-exclusion", value)
 }
 
 // ExclusionInput changes one portfolio's treatment of an asset.

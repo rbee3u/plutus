@@ -2,10 +2,6 @@ import { keys, listIdentities } from "@/api";
 import type { Identity, IdentityList } from "@/api";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
-export function identityEtag(item: Identity): string {
-  return `"identity:${String(item.version)}"`;
-}
-
 /** Identities of the portfolio with their embedded connection and accounts. */
 export function useIdentities(portfolioId: string) {
   return usePortfolioQuery<IdentityList>({

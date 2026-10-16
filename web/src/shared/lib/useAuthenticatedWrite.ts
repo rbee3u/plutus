@@ -2,18 +2,12 @@ import { executeWrite, SessionExpiredError, type ApiResult } from "@/api";
 import { useSessionActions } from "@/shared/lib/session";
 import { useCallback } from "react";
 
-/** Only a documented business rejection may use 401 without ending the session. */
-export interface WriteOptions {
-  acceptUnauthorized?: (error: unknown) => boolean;
-}
-
-export async function authenticatedWrite<T>(
-  request: () => Promise<ApiResult<T>>,
+export async function authenticatedWrite<T, E = unknown>(
+  request: () => Promise<ApiResult<T, E>>,
   expire: () => Promise<void>,
-  options?: WriteOptions,
-): Promise<ApiResult<T>> {
+): Promise<ApiResult<T, E>> {
   const result = await executeWrite(request);
-  if (result.response?.status === 401 && !options?.acceptUnauthorized?.(result.error)) {
+  if (result.response?.status === 401) {
     await expire();
     throw new SessionExpiredError();
   }
@@ -24,8 +18,8 @@ export async function authenticatedWrite<T>(
 export function useAuthenticatedWrite() {
   const { expireSession } = useSessionActions();
   return useCallback(
-    <T>(request: () => Promise<ApiResult<T>>, options?: WriteOptions) =>
-      authenticatedWrite(request, expireSession, options),
+    <T, E = unknown>(request: () => Promise<ApiResult<T, E>>) =>
+      authenticatedWrite(request, expireSession),
     [expireSession],
   );
 }

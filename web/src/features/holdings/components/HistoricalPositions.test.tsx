@@ -1,27 +1,38 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AccountPositionList } from "@/api";
+import type { AccountReport } from "@/api";
 import { HistoricalPositions } from "./HistoricalPositions";
 
 const state = vi.hoisted(() => ({
-  data: undefined as AccountPositionList | undefined,
+  data: undefined as AccountReport | undefined,
   isError: false,
-  matches: true,
 }));
 
 vi.mock("@/shared/lib/usePortfolioQuery", () => ({
   usePortfolioQuery: () => ({ data: state.data, isError: state.isError }),
 }));
-vi.mock("@/shared/lib/useValuationRevision", () => ({
-  useValuationRevision: () => state.matches,
-}));
 
 beforeEach(() => {
   state.isError = false;
-  state.matches = true;
   state.data = {
-    context: { portfolioId: "portfolio", valuationRevision: "cycle:1", timezone: "UTC" },
+    manualOverlay: null,
+    context: {
+      evaluatedAt: null,
+      portfolioId: "portfolio",
+      cycleId: "cycle",
+      timezone: "UTC",
+    },
     account: {
+      sourceReportId: null,
+      reportId: null,
+      valueUsd: null,
+      reportObservedAt: null,
+      reportedEquityUsd: null,
+      adjustedEquityUsd: null,
+      availableEquityUsd: null,
+      initialMarginRatio: null,
+      maintenanceMarginRatio: null,
+      marginRatio: null,
       accountId: "account",
       accountName: "Unified",
       accountType: "unified",
@@ -35,18 +46,36 @@ beforeEach(() => {
       completeness: "complete",
       omitted: [],
     },
-    items: [],
+    positions: [],
+    balances: [],
+    earnPositions: [],
+    dualPositions: [],
     issues: [],
   };
 });
 
 function text() {
-  return renderToStaticMarkup(
-    <HistoricalPositions accountId="account" cycleId="cycle" valuationRevision="cycle:1" />,
-  ).replace(/<[^>]*>/g, "");
+  return renderToStaticMarkup(<HistoricalPositions accountId="account" cycleId="cycle" />).replace(
+    /<[^>]*>/g,
+    "",
+  );
 }
 
 describe("Historical position availability", () => {
+  it("retains position issues without attributing balance omissions to futures", () => {
+    state.data!.issues = [
+      { code: "stale", detail: "Earlier report retained." },
+      { code: "position_notional_unknown", detail: "Position notional unavailable." },
+      {
+        code: "no_price",
+        detail: "Balance price unavailable.",
+        omittedBalance: { assetSymbol: "DEMO", equity: "2", reason: "no_price" },
+      },
+    ];
+    expect(text()).toContain("Earlier report retained.");
+    expect(text()).toContain("Position notional unavailable.");
+    expect(text()).not.toContain("Balance price unavailable.");
+  });
   it("keeps a missing successful source unknown even when a failed report has an ID", () => {
     Object.assign(state.data!.account, {
       reportId: "failed-report",
@@ -71,10 +100,10 @@ describe("Historical position availability", () => {
     },
   );
 
-  it.each(["pending", "failed", "revision mismatch"])(
+  it.each(["pending", "failed", "cycle mismatch"])(
     "does not describe %s reads as confirmed empty reports",
     (condition) => {
-      if (condition === "revision mismatch") state.matches = false;
+      if (condition === "cycle mismatch") state.data!.context.cycleId = "other-cycle";
       else state.data = undefined;
       state.isError = condition === "failed";
       expect(text()).toContain(

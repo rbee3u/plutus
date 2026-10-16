@@ -243,3 +243,60 @@ func stringValue(value *string) string {
 	}
 	return *value
 }
+
+func TestDisplayLeverageUsesRetainedAmountsWithoutDoubleRounding(t *testing.T) {
+	base := PositionRow{MarginSetting: new("isolated"), SettleMargin: new("1000"), SettlementAssetSymbol: new("USDT"), BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USD"), MarkPrice: new("50000"), NotionalUSD: new("1884.999999999999999999999999999999"), Leverage: new("10"), PortfolioMargin: new(true)}
+	for _, tc := range []struct {
+		name   string
+		change func(*PositionRow)
+		want   string
+	}{
+		{"source precision", func(*PositionRow) {}, "1.884999999999999999999999999999999"},
+		{"zero notional", func(r *PositionRow) { r.NotionalUSD = new("0") }, "0"},
+		{"base settlement", func(r *PositionRow) {
+			r.SettleMargin = new("0.002")
+			r.SettlementAssetSymbol = new("BTC")
+			r.NotionalUSD = new("200")
+		}, "2"},
+		{"USD settlement", func(r *PositionRow) {
+			r.SettlementAssetSymbol = new("USD")
+			r.MarkPrice = nil
+			r.NotionalUSD = new("1880")
+		}, "1.88"},
+		{"USDC settlement", func(r *PositionRow) {
+			r.SettlementAssetSymbol = new("USDC")
+			r.MarkPrice = nil
+			r.NotionalUSD = new("1880")
+		}, "1.88"},
+		{"missing allocation", func(r *PositionRow) { r.SettleMargin = nil }, ""},
+		{"zero allocation", func(r *PositionRow) { r.SettleMargin = new("0") }, ""},
+		{"negative allocation", func(r *PositionRow) { r.SettleMargin = new("-1") }, ""},
+		{"invalid allocation", func(r *PositionRow) { r.SettleMargin = new("NaN") }, ""},
+		{"missing notional", func(r *PositionRow) { r.NotionalUSD = nil }, ""},
+		{"invalid notional", func(r *PositionRow) { r.NotionalUSD = new("Infinity") }, ""},
+		{"unknown settlement", func(r *PositionRow) { r.SettlementAssetSymbol = nil }, ""},
+		{"unsupported settlement", func(r *PositionRow) { r.SettlementAssetSymbol = new("EUR") }, ""},
+		{"missing base mark", func(r *PositionRow) { r.SettlementAssetSymbol = new("BTC"); r.MarkPrice = nil }, ""},
+		{"nonpositive base mark", func(r *PositionRow) { r.SettlementAssetSymbol = new("BTC"); r.MarkPrice = new("0") }, ""},
+		{"incompatible base quote", func(r *PositionRow) { r.SettlementAssetSymbol = new("BTC"); r.QuoteAssetSymbol = new("EUR") }, ""},
+		{"cross source", func(r *PositionRow) { r.MarginSetting = new("cross"); r.PortfolioMargin = new(false) }, "10"},
+		{"portfolio cross", func(r *PositionRow) { r.MarginSetting = new("cross") }, ""},
+		{"invalid cross source", func(r *PositionRow) {
+			r.MarginSetting = new("cross")
+			r.PortfolioMargin = new(false)
+			r.Leverage = new("-1")
+		}, ""},
+		{"unknown setting", func(r *PositionRow) { r.MarginSetting = nil }, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			row := base
+			tc.change(&row)
+			if got := stringValue(displayPositionLeverage(&row)); got != tc.want {
+				t.Fatalf("display leverage %q, want %q", got, tc.want)
+			}
+			if stringValue(row.Leverage) != stringValue(base.Leverage) && tc.name != "invalid cross source" {
+				t.Fatal("display calculation changed the source leverage")
+			}
+		})
+	}
+}

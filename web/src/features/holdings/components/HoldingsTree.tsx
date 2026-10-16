@@ -1,6 +1,6 @@
 import { ChevronRight, Plus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
-import type { HoldingsTree as Tree } from "@/api";
+import type { Overview as Tree } from "@/api";
 import { type ManualTarget } from "../dialogs/manual";
 import { ManualDialog } from "../dialogs/ManualBalances";
 import { IconButton } from "@/shared/ui/IconButton";
@@ -15,7 +15,7 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
   const titleId = useId();
-  const totalUsdDecimal = parseDecimal(tree.totalUsd);
+  const totalUsdDecimal = parseDecimal(tree.point?.totalUsd);
 
   function toggle(key: string) {
     setExpanded((current) => {
@@ -98,7 +98,7 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
                                   account={account}
                                   onManual={setManualTarget}
                                   cycleId={tree.context.cycleId ?? ""}
-                                  valuationRevision={tree.context.valuationRevision ?? null}
+
                                   timezone={tree.context.timezone}
                                 />
                               </div>

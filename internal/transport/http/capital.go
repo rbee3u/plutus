@@ -8,6 +8,7 @@ import (
 	"github.com/rbee3u/plutus/internal/application/auth"
 
 	"github.com/rbee3u/plutus/internal/application/capital"
+	"github.com/rbee3u/plutus/internal/application/financial"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
@@ -26,39 +27,39 @@ func (a *API) ListCapitalFlows(ctx context.Context, request api.ListCapitalFlows
 	if request.Params.To != nil {
 		to = request.Params.To.UTC()
 	}
-	flows, err := a.Capital.List(ctx, sc.portfolio.ID, from, to)
+	flows, err := a.Capital.ListPage(ctx, sc.portfolio.ID, from, to, intValue(request.Params.Offset), intValue(request.Params.Limit))
 	if err != nil {
 		return nil, err
 	}
-	items := make([]api.CapitalFlow, 0, len(flows))
-	for i := range flows {
-		items = append(items, toAPIFlow(&flows[i]))
+	items := make([]api.CapitalFlow, 0, len(flows.Items))
+	for i := range flows.Items {
+		items = append(items, toAPIFlow(&flows.Items[i]))
 	}
-	return api.ListCapitalFlows200JSONResponse{Items: items}, nil
+	return api.ListCapitalFlows200JSONResponse{Context: toAPIPortfolioContext(&financial.Context{PortfolioID: sc.portfolio.ID, Timezone: sc.portfolio.Timezone}), From: flows.From, To: flows.To, Items: items, Page: toOffsetPage(flows.Offset, flows.Limit, flows.Total)}, nil
 }
 
 func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFlowRequestObject) (api.CreateCapitalFlowResponseObject, error) {
 	if a.Capital == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.CapitalFlow, string, error) {
+	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.CapitalFlow, error) {
 		sc, err := a.scoped(ctx, request.PortfolioId)
 		if err != nil {
-			return api.CapitalFlow{}, "", err
+			return api.CapitalFlow{}, err
 		}
 		direction := string(request.Body.Direction)
 		at := request.Body.EffectiveAt.UTC()
 		input := capital.Input{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Direction: &direction, CanonicalAssetSymbol: &request.Body.CanonicalAssetSymbol, Quantity: &request.Body.Quantity, ValueUSD: request.Body.ValueUsd, EffectiveAt: &at, AccountID: request.Body.AccountId, Note: request.Body.Note, PricingPlatform: request.Body.PricingPlatform}
 		item, err := a.Capital.Create(ctx, sc.portfolio.ID, &input)
 		if err != nil {
-			return api.CapitalFlow{}, "", err
+			return api.CapitalFlow{}, err
 		}
-		return toAPIFlow(&item), item.ETag(), nil
+		return toAPIFlow(&item), nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateCapitalFlow201JSONResponse{Body: body, Headers: api.CreateCapitalFlow201ResponseHeaders{ETag: &etag}}, nil
+	return api.CreateCapitalFlow201JSONResponse(body), nil
 }
 
 func (a *API) GetCapitalFlow(ctx context.Context, request api.GetCapitalFlowRequestObject) (api.GetCapitalFlowResponseObject, error) {
@@ -73,7 +74,7 @@ func (a *API) GetCapitalFlow(ctx context.Context, request api.GetCapitalFlowRequ
 	if err != nil {
 		return nil, err
 	}
-	return api.GetCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.GetCapitalFlow200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.GetCapitalFlow200JSONResponse(toAPIFlow(&item)), nil
 }
 
 func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlowRequestObject) (api.PatchCapitalFlowResponseObject, error) {
@@ -84,9 +85,9 @@ func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlow
 	if a.Capital == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := capital.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, validationError("If-Match must be a capital flow ETag.")
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -118,7 +119,7 @@ func (a *API) PatchCapitalFlow(ctx context.Context, request api.PatchCapitalFlow
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchCapitalFlow200JSONResponse{Body: toAPIFlow(&item), Headers: api.PatchCapitalFlow200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PatchCapitalFlow200JSONResponse(toAPIFlow(&item)), nil
 }
 
 func (a *API) DeleteCapitalFlow(ctx context.Context, request api.DeleteCapitalFlowRequestObject) (api.DeleteCapitalFlowResponseObject, error) {
@@ -129,9 +130,9 @@ func (a *API) DeleteCapitalFlow(ctx context.Context, request api.DeleteCapitalFl
 	if a.Capital == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := capital.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if err := a.Capital.Delete(ctx, sc.portfolio.ID, request.FlowId, version, sc.user.ID, requestTraceID(ctx)); err != nil {
 		return nil, err

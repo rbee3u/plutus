@@ -7,6 +7,6 @@ var (
 	ErrNotFound = apperr.NotFound("Capital flow not found.")
 	// ErrInvalid is returned when direction, symbol, quantity, time, or note is malformed.
 	ErrInvalid = apperr.Invalid("Capital flow is invalid.")
-	// ErrPrecondition is returned when If-Match does not match the current version.
+	// ErrPrecondition is returned when If-Edit-Version does not match the current version.
 	ErrPrecondition = apperr.Precondition("Capital flow version mismatch.")
 )

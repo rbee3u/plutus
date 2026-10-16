@@ -11,7 +11,7 @@ const session = sessionFixture({
 });
 const point: ValuationPointSummary = {
   cycleId: "00000000-0000-7000-8000-000000000003",
-  valuationRevision: "00000000-0000-7000-8000-000000000003:1",
+
   calculationVersion: 1,
   detailState: "full" as const,
   evaluatedAt: "2026-10-03T00:00:00Z",
@@ -24,34 +24,21 @@ const point: ValuationPointSummary = {
   boundaryWithdrawalUsd: "0",
 };
 const overview: Overview = {
-  context: { portfolioId, timezone: "UTC", cycleId: point.cycleId },
+  context: {
+    evaluatedAt: null,
+    portfolioId,
+    timezone: "UTC",
+    cycleId: point.cycleId,
+  },
   point,
-  totalUsd: point.totalUsd,
-  completeness: "complete",
-  accountCount: 1234,
-  staleAccountCount: 0,
-  incompleteAccountCount: 0,
-  byPlatform: [
-    {
-      key: "okx",
-      label: "OKX",
-      valueUsd: point.totalUsd,
-      accountCount: 1234,
-      rowCount: 1234,
-      completeness: "complete",
-    },
-  ],
-  byIdentity: [],
+  platforms: overviewTreeFixture(point, [], "okx"),
   issues: [],
-  sparkline: [
-    {
-      ...point,
-      totalUsd: "1.234999999999999999999999999999",
-      evaluatedAt: "2026-10-02T00:00:00Z",
-    },
-    point,
-  ],
 };
+const series = [
+  { ...point, totalUsd: "1.234999999999999999999999999999", evaluatedAt: "2026-10-02T00:00:00Z" },
+  point,
+];
+
 const flow: CapitalFlow = {
   id: "00000000-0000-7000-8000-000000000005",
   portfolioId,
@@ -81,29 +68,62 @@ async function fixture(page: Page) {
           to: "2026-10-03T00:00:00Z",
         },
       });
-    if (path.endsWith("/valuation-points"))
+    if (path.endsWith("/valuation-points/series"))
       return route.fulfill({
         json: {
           context: overview.context,
           from: "2026-09-30T00:00:00Z",
           to: "2026-10-03T00:00:00Z",
           granularity: "raw",
-          items: overview.sparkline,
+          items: series,
         },
       });
-    if (path.endsWith("/tree")) return route.fulfill({ json: overviewTreeFixture(overview) });
     if (path.endsWith("/overview")) return route.fulfill({ json: overview });
-    if (
-      path === "/api/v1/platforms" ||
-      path.endsWith("/identities") ||
-      path.endsWith("/boundary-events")
-    )
-      return route.fulfill({ json: { items: [] } });
+    if (path.endsWith("/identities"))
+      return route.fulfill({
+        json: {
+          items: [
+            {
+              id: "owner",
+              portfolioId,
+              platform: "okx",
+              displayName: "Owner",
+              accountStructure: "unified",
+              status: "enabled",
+              connection: { status: "enabled", credentialsConfigured: true },
+              accounts: [],
+              version: 1,
+              createdAt: point.evaluatedAt,
+              updatedAt: point.evaluatedAt,
+            },
+          ],
+        },
+      });
+    if (path === "/api/v1/platforms") return route.fulfill({ json: { items: [] } });
+    if (path.endsWith("/boundary-events"))
+      return route.fulfill({
+        json: {
+          context: overview.context,
+          from: "2026-09-30T00:00:00Z",
+          to: "2026-10-03T00:00:00Z",
+          items: [],
+          page: { kind: "offset", offset: 0, limit: 50, total: 0 },
+        },
+      });
     if (path.endsWith(`/capital-flows/${flow.id}`)) {
       if (request.method() === "PATCH") submitted = request.postDataJSON();
-      return route.fulfill({ json: flow, headers: { ETag: '"capital-flow:1"' } });
+      return route.fulfill({ json: flow, headers: { ETag: "1" } });
     }
-    if (path.endsWith("/capital-flows")) return route.fulfill({ json: { items: [flow] } });
+    if (path.endsWith("/capital-flows"))
+      return route.fulfill({
+        json: {
+          context: overview.context,
+          from: "2026-09-30T00:00:00Z",
+          to: "2026-10-03T00:00:00Z",
+          items: [flow],
+          page: { kind: "offset", offset: 0, limit: 50, total: 1 },
+        },
+      });
     return route.fallback();
   });
   return () => submitted;

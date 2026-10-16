@@ -35,10 +35,10 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 	if a.Identities == nil || request.Body == nil {
 		return nil, ErrNotImplemented
 	}
-	body, etag, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Identity, string, error) {
+	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Identity, error) {
 		sc, err := a.scoped(ctx, request.PortfolioId)
 		if err != nil {
-			return api.Identity{}, "", err
+			return api.Identity{}, err
 		}
 		types := make([]adapters.AccountType, 0, len(request.Body.SelectedAccountTypes))
 		for _, kind := range request.Body.SelectedAccountTypes {
@@ -46,14 +46,14 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 		}
 		item, err := a.Identities.Create(ctx, sc.portfolio.ID, &identity.CreateInput{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Platform: adapters.Platform(request.Body.Platform), DisplayName: request.Body.DisplayName, AccountStructure: adapters.AccountStructure(request.Body.AccountStructure), SelectedAccountTypes: types})
 		if err != nil {
-			return api.Identity{}, "", err
+			return api.Identity{}, err
 		}
-		return toAPIIdentity(&item), item.ETag(), nil
+		return toAPIIdentity(&item), nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateIdentity201JSONResponse{Body: body, Headers: api.CreateIdentity201ResponseHeaders{ETag: &etag}}, nil
+	return api.CreateIdentity201JSONResponse(body), nil
 }
 
 func (a *API) GetIdentity(ctx context.Context, request api.GetIdentityRequestObject) (api.GetIdentityResponseObject, error) {
@@ -68,7 +68,7 @@ func (a *API) GetIdentity(ctx context.Context, request api.GetIdentityRequestObj
 	if err != nil {
 		return nil, err
 	}
-	return api.GetIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.GetIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.GetIdentity200JSONResponse(toAPIIdentity(&item)), nil
 }
 
 func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityRequestObject) (api.PatchIdentityResponseObject, error) {
@@ -79,9 +79,9 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, validationError("If-Match must be an identity ETag.")
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -96,7 +96,7 @@ func (a *API) PatchIdentity(ctx context.Context, request api.PatchIdentityReques
 	if err != nil {
 		return nil, err
 	}
-	return api.PatchIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PatchIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PatchIdentity200JSONResponse(toAPIIdentity(&item)), nil
 }
 
 func (a *API) ArchiveIdentity(ctx context.Context, request api.ArchiveIdentityRequestObject) (api.ArchiveIdentityResponseObject, error) {
@@ -107,15 +107,15 @@ func (a *API) ArchiveIdentity(ctx context.Context, request api.ArchiveIdentityRe
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	item, err := a.Identities.Archive(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if err != nil {
 		return nil, err
 	}
-	return api.ArchiveIdentity200JSONResponse{Body: toAPIIdentity(&item), Headers: api.ArchiveIdentity200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.ArchiveIdentity200JSONResponse(toAPIIdentity(&item)), nil
 }
 
 func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentityCredentialsRequestObject) (api.PutIdentityCredentialsResponseObject, error) {
@@ -126,9 +126,9 @@ func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentit
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
@@ -138,7 +138,7 @@ func (a *API) PutIdentityCredentials(ctx context.Context, request api.PutIdentit
 	if err != nil {
 		return nil, err
 	}
-	return api.PutIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.PutIdentityCredentials200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.PutIdentityCredentials200JSONResponse(toAPIIdentity(&item)), nil
 }
 
 func (a *API) DeleteIdentityCredentials(ctx context.Context, request api.DeleteIdentityCredentialsRequestObject) (api.DeleteIdentityCredentialsResponseObject, error) {
@@ -149,15 +149,15 @@ func (a *API) DeleteIdentityCredentials(ctx context.Context, request api.DeleteI
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	item, err := a.Identities.ClearCredentials(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if err != nil {
 		return nil, err
 	}
-	return api.DeleteIdentityCredentials200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DeleteIdentityCredentials200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.DeleteIdentityCredentials200JSONResponse(toAPIIdentity(&item)), nil
 }
 
 func (a *API) ValidateIdentityConnection(ctx context.Context, request api.ValidateIdentityConnectionRequestObject) (api.ValidateIdentityConnectionResponseObject, error) {
@@ -172,7 +172,7 @@ func (a *API) ValidateIdentityConnection(ctx context.Context, request api.Valida
 	if err != nil {
 		return nil, err
 	}
-	return api.ValidateIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.ValidateIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.ValidateIdentityConnection200JSONResponse(toAPIOutcome(&item, &outcome)), nil
 }
 
 func (a *API) EnableIdentityConnection(ctx context.Context, request api.EnableIdentityConnectionRequestObject) (api.EnableIdentityConnectionResponseObject, error) {
@@ -183,18 +183,20 @@ func (a *API) EnableIdentityConnection(ctx context.Context, request api.EnableId
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	item, outcome, err := a.Identities.Enable(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if errors.Is(err, identity.ErrValidationFailed) {
-		return api.EnableIdentityConnection422JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection422ResponseHeaders{ETag: new(item.ETag())}}, nil
+		problem := a.problem(ctx, http.StatusUnprocessableEntity, "connection_validation_failed", "Connection validation failed", "The connection could not be enabled.")
+		problem.ValidationOutcome = new(toAPIOutcome(&item, &outcome))
+		return api.EnableIdentityConnection422ApplicationProblemPlusJSONResponse(problem), nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return api.EnableIdentityConnection200JSONResponse{Body: toAPIOutcome(&item, &outcome), Headers: api.EnableIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.EnableIdentityConnection200JSONResponse(toAPIOutcome(&item, &outcome)), nil
 }
 
 func (a *API) DisableIdentityConnection(ctx context.Context, request api.DisableIdentityConnectionRequestObject) (api.DisableIdentityConnectionResponseObject, error) {
@@ -205,13 +207,13 @@ func (a *API) DisableIdentityConnection(ctx context.Context, request api.Disable
 	if a.Identities == nil {
 		return nil, ErrNotImplemented
 	}
-	version, ok := identity.ParseETag(request.Params.IfMatch)
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
 	if !ok {
-		return nil, errPrecondition
+		return nil, validationError("If-Edit-Version must be a valid edit version.")
 	}
 	item, err := a.Identities.Disable(ctx, sc.portfolio.ID, request.IdentityId, version, identity.ActionInput{ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if err != nil {
 		return nil, err
 	}
-	return api.DisableIdentityConnection200JSONResponse{Body: toAPIIdentity(&item), Headers: api.DisableIdentityConnection200ResponseHeaders{ETag: new(item.ETag())}}, nil
+	return api.DisableIdentityConnection200JSONResponse(toAPIIdentity(&item)), nil
 }

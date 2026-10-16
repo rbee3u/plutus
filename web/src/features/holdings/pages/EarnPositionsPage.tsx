@@ -24,13 +24,15 @@ export function EarnPositionsPage() {
   const offset = filters.offset;
   const query = usePortfolioQuery<EarnPositionList>({
     key: (userId, portfolioId) =>
-      keys.earnPositions(userId, portfolioId, platform, identityId, symbol, offset),
+      keys.earnPositions(userId, portfolioId, platform, identityId, symbol, offset, filters.readId),
     ready: filters.ready,
     load: (portfolioId) =>
-      listEarnPositions({
-        path: { portfolioId },
-        query: holdingsListRequest(filters),
-      }),
+      filters.read((cycleId) =>
+        listEarnPositions({
+          path: { portfolioId },
+          query: { ...holdingsListRequest(filters), cycleId },
+        }),
+      ),
   });
   const data = query.data;
   let empty: ReactNode | undefined;
@@ -43,7 +45,7 @@ export function EarnPositionsPage() {
     );
   } else if (!data?.context.cycleId) {
     empty = <HoldingsNoPoint filters={filters} />;
-  } else if (!data.detailsComplete) {
+  } else if (!data.coverage.complete) {
     empty = (
       <TableEmptyState
         title="Some earn accounts have no compatible report"
@@ -69,7 +71,7 @@ export function EarnPositionsPage() {
         <HoldingsSummary
           context={data.context}
           label="Positions"
-          value={!data.detailsComplete ? "Details incomplete" : formatCount(data.page.total)}
+          value={!data.coverage.complete ? "Details incomplete" : formatCount(data.page.total)}
         ></HoldingsSummary>
       ) : null}
       <EarnPositionsTable
@@ -82,7 +84,7 @@ export function EarnPositionsPage() {
       />
       <HoldingsFilterFooter
         filters={filters}
-        page={data && (data.detailsComplete || data.page.total > 0) ? data.page : undefined}
+        page={data && (data.coverage.complete || data.page.total > 0) ? data.page : undefined}
       />
       {data?.context.cycleId ? (
         <IssuesPanel

@@ -8,8 +8,8 @@ import (
 )
 
 func (a *API) ListPlatforms(ctx context.Context, _ api.ListPlatformsRequestObject) (api.ListPlatformsResponseObject, error) {
-	if _, _, ok := a.currentSession(ctx); !ok {
-		return nil, errUnauthenticated
+	if _, _, err := a.currentSession(ctx); err != nil {
+		return nil, err
 	}
 	infos := a.Adapters.Platforms()
 	items := make([]api.Platform, 0, len(infos))

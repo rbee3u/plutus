@@ -15,10 +15,6 @@ import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import styles from "@/features/capital/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-export function flowEtag(item: CapitalFlow): string {
-  return `"capital-flow:${String(item.version)}"`;
-}
-
 export type FlowDialogRequest =
   { nonce: number; mode: "create" } | { nonce: number; mode: "edit"; item: CapitalFlow };
 
@@ -187,7 +183,7 @@ function FlowForm({
         const result = await write(() =>
           patchCapitalFlow({
             path: { portfolioId, flowId: baseline.id },
-            headers: { "If-Match": flowEtag(baseline) },
+            headers: { "If-Edit-Version": String(baseline.version) },
             body: {
               ...(form.direction !== baseline.direction ? { direction: form.direction } : {}),
               ...(canonicalAssetSymbol !== baseline.canonicalAssetSymbol

@@ -29,9 +29,9 @@ func (sc *scope) portfolioContext() financial.PortfolioContext {
 
 // scoped authenticates the caller and loads one owned portfolio.
 func (a *API) scoped(ctx context.Context, portfolioID uuid.UUID) (scope, error) {
-	user, session, ok := a.currentSession(ctx)
-	if !ok {
-		return scope{}, errUnauthenticated
+	user, session, err := a.currentSession(ctx)
+	if err != nil {
+		return scope{}, err
 	}
 	if a.Portfolios == nil {
 		return scope{}, ErrNotImplemented

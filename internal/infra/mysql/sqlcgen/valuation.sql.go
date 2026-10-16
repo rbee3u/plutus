@@ -12,6 +12,31 @@ import (
 	"time"
 )
 
+const countBoundaryEvents = `-- name: CountBoundaryEvents :one
+SELECT COUNT(*) FROM valuation_points p
+JOIN boundary_events e ON e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id
+WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = ?), CAST('1000-01-01' AS DATETIME(6)))
+  AND p.portfolio_id = ? AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+`
+
+type CountBoundaryEventsParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+func (q *Queries) CountBoundaryEvents(ctx context.Context, arg CountBoundaryEventsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countBoundaryEvents,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countValuationPointsBetween = `-- name: CountValuationPointsBetween :one
 SELECT COUNT(*) FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 `
@@ -418,6 +443,70 @@ func (q *Queries) IsPointInRetainedHistory(ctx context.Context, arg IsPointInRet
 	return available, err
 }
 
+const listAccountBalanceValuations = `-- name: ListAccountBalanceValuations :many
+SELECT v.portfolio_id, v.cycle_id, v.account_id, v.source_report_id, v.asset_id, v.canonical_asset_symbol, v.pricing_method, v.price_observation_id, v.value_usd, b.equity, a.symbol AS asset_symbol
+FROM balance_valuations v
+JOIN balances b ON b.portfolio_id = v.portfolio_id AND b.report_id = v.source_report_id AND b.asset_id = v.asset_id
+JOIN assets a ON a.portfolio_id = v.portfolio_id AND a.id = v.asset_id
+WHERE v.portfolio_id = ? AND v.cycle_id = ? AND v.account_id = ?
+ORDER BY v.cycle_id, v.account_id, a.symbol, v.asset_id
+`
+
+type ListAccountBalanceValuationsParams struct {
+	PortfolioID []byte
+	CycleID     []byte
+	AccountID   []byte
+}
+
+type ListAccountBalanceValuationsRow struct {
+	PortfolioID          []byte
+	CycleID              []byte
+	AccountID            []byte
+	SourceReportID       []byte
+	AssetID              []byte
+	CanonicalAssetSymbol string
+	PricingMethod        string
+	PriceObservationID   []byte
+	ValueUsd             sql.NullString
+	Equity               string
+	AssetSymbol          string
+}
+
+func (q *Queries) ListAccountBalanceValuations(ctx context.Context, arg ListAccountBalanceValuationsParams) ([]ListAccountBalanceValuationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountBalanceValuations, arg.PortfolioID, arg.CycleID, arg.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAccountBalanceValuationsRow{}
+	for rows.Next() {
+		var i ListAccountBalanceValuationsRow
+		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.CycleID,
+			&i.AccountID,
+			&i.SourceReportID,
+			&i.AssetID,
+			&i.CanonicalAssetSymbol,
+			&i.PricingMethod,
+			&i.PriceObservationID,
+			&i.ValueUsd,
+			&i.Equity,
+			&i.AssetSymbol,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAssetMappingChangesByCycles = `-- name: ListAssetMappingChangesByCycles :many
 SELECT c.cycle_id, c.asset_id, a.symbol
 FROM assets a
@@ -543,6 +632,97 @@ func (q *Queries) ListBalanceValuationsByCycles(ctx context.Context, arg ListBal
 			&i.ValueUsd,
 			&i.Equity,
 			&i.AssetSymbol,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBoundaryEventPage = `-- name: ListBoundaryEventPage :many
+SELECT e.portfolio_id, e.cycle_id, e.account_id, e.direction, e.valuation_method, e.value_usd, e.valuation_complete, p.evaluated_at, a.identity_id, a.account_type, i.account_structure, i.display_name AS identity_name, i.platform
+FROM valuation_points p
+JOIN boundary_events e ON e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id
+JOIN accounts a ON a.portfolio_id = e.portfolio_id AND a.id = e.account_id
+JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = ?), CAST('1000-01-01' AS DATETIME(6)))
+  AND p.portfolio_id = ? AND p.evaluated_at >= ? AND p.evaluated_at <= ?
+ORDER BY p.evaluated_at DESC, p.cycle_id DESC,
+         FIND_IN_SET(i.platform, ?) = 0,
+         FIND_IN_SET(i.platform, ?), i.platform,
+         CAST(LOWER(i.display_name) AS BINARY), i.id,
+         FIND_IN_SET(CONCAT(i.account_structure, ':', a.account_type), ?) = 0,
+         FIND_IN_SET(CONCAT(i.account_structure, ':', a.account_type), ?), a.account_type, a.id
+LIMIT ? OFFSET ?
+`
+
+type ListBoundaryEventPageParams struct {
+	PortfolioID   []byte
+	FromAt        time.Time
+	ToAt          time.Time
+	PlatformOrder string
+	AccountOrder  string
+	Limit         int32
+	Offset        int32
+}
+
+type ListBoundaryEventPageRow struct {
+	PortfolioID       []byte
+	CycleID           []byte
+	AccountID         []byte
+	Direction         string
+	ValuationMethod   string
+	ValueUsd          sql.NullString
+	ValuationComplete bool
+	EvaluatedAt       time.Time
+	IdentityID        []byte
+	AccountType       string
+	AccountStructure  string
+	IdentityName      string
+	Platform          string
+}
+
+func (q *Queries) ListBoundaryEventPage(ctx context.Context, arg ListBoundaryEventPageParams) ([]ListBoundaryEventPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBoundaryEventPage,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
+		arg.AccountOrder,
+		arg.AccountOrder,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBoundaryEventPageRow{}
+	for rows.Next() {
+		var i ListBoundaryEventPageRow
+		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.CycleID,
+			&i.AccountID,
+			&i.Direction,
+			&i.ValuationMethod,
+			&i.ValueUsd,
+			&i.ValuationComplete,
+			&i.EvaluatedAt,
+			&i.IdentityID,
+			&i.AccountType,
+			&i.AccountStructure,
+			&i.IdentityName,
+			&i.Platform,
 		); err != nil {
 			return nil, err
 		}
@@ -1084,6 +1264,60 @@ func (q *Queries) ListPointComparisonTimeline(ctx context.Context, arg ListPoint
 	return items, nil
 }
 
+const listValuationPointHeaderPage = `-- name: ListValuationPointHeaderPage :many
+SELECT cycle_id, evaluated_at FROM valuation_points
+WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = ?), CAST('1000-01-01' AS DATETIME(6)))
+  AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
+  AND (? = 0 OR evaluated_at > ? OR (evaluated_at = ? AND cycle_id > ?))
+ORDER BY evaluated_at, cycle_id LIMIT 1000
+`
+
+type ListValuationPointHeaderPageParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+	HasCursor   interface{}
+	CursorAt    time.Time
+	CursorID    []byte
+}
+
+type ListValuationPointHeaderPageRow struct {
+	CycleID     []byte
+	EvaluatedAt time.Time
+}
+
+func (q *Queries) ListValuationPointHeaderPage(ctx context.Context, arg ListValuationPointHeaderPageParams) ([]ListValuationPointHeaderPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listValuationPointHeaderPage,
+		arg.PortfolioID,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.HasCursor,
+		arg.CursorAt,
+		arg.CursorAt,
+		arg.CursorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListValuationPointHeaderPageRow{}
+	for rows.Next() {
+		var i ListValuationPointHeaderPageRow
+		if err := rows.Scan(&i.CycleID, &i.EvaluatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listValuationPointHeadersBetween = `-- name: ListValuationPointHeadersBetween :many
 SELECT cycle_id, evaluated_at FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
 ORDER BY evaluated_at ASC, cycle_id ASC
@@ -1187,13 +1421,14 @@ const listValuationPointSummariesBetween = `-- name: ListValuationPointSummaries
 SELECT portfolio_id, cycle_id, evaluated_at, total_usd, account_count, stale_account_count, incomplete_account_count,
        calculation_version, detail_state
 FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = ?), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = ? AND evaluated_at >= ? AND evaluated_at <= ?
-ORDER BY evaluated_at ASC, cycle_id ASC
+ORDER BY evaluated_at ASC, cycle_id ASC LIMIT ?
 `
 
 type ListValuationPointSummariesBetweenParams struct {
 	PortfolioID []byte
 	FromAt      time.Time
 	ToAt        time.Time
+	Limit       int32
 }
 
 func (q *Queries) ListValuationPointSummariesBetween(ctx context.Context, arg ListValuationPointSummariesBetweenParams) ([]ValuationPoint, error) {
@@ -1202,6 +1437,7 @@ func (q *Queries) ListValuationPointSummariesBetween(ctx context.Context, arg Li
 		arg.PortfolioID,
 		arg.FromAt,
 		arg.ToAt,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

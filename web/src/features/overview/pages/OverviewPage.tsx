@@ -46,15 +46,15 @@ export function OverviewPage() {
   const resolveIssueScope = useMemo(
     () =>
       accountIssueScope(
-        overview?.tree.platforms.flatMap((platform) =>
+        overview?.platforms.flatMap((platform) =>
           platform.identities.flatMap((identity) => identity.accounts),
         ),
-        overview?.tree.platforms.map((platform) => ({
+        overview?.platforms.map((platform) => ({
           id: platform.platform,
           name: platform.label,
         })),
       ),
-    [overview?.tree],
+    [overview],
   );
 
   const [selectedRange, setSelectedRange] = useState<HistoryPreset>("1W");
@@ -82,15 +82,12 @@ export function OverviewPage() {
     },
   });
 
-  const activePoints = useMemo(
-    () => rangePoints.data?.items ?? overview?.sparkline ?? [],
-    [rangePoints.data?.items, overview?.sparkline],
-  );
+  const activePoints = useMemo(() => rangePoints.data?.items ?? [], [rangePoints.data?.items]);
 
   const changeInsight = useMemo(() => {
     const points = activePoints;
-    if (points.length < 2 || !overview?.totalUsd) return null;
-    const current = parseDecimal(overview.totalUsd);
+    if (points.length < 2 || !overview?.point?.totalUsd) return null;
+    const current = parseDecimal(overview.point?.totalUsd);
     if (!current) return null;
 
     const baselinePoint = points[0];
@@ -170,7 +167,7 @@ export function OverviewPage() {
                   <div className={styles.heroAmountRow}>
                     <div className={styles.heroAmount}>
                       <span className={styles.heroCurrencySymbol}>$</span>
-                      <NumericText>{formatAmount(overview.totalUsd)}</NumericText>
+                      <NumericText>{formatAmount(overview.point?.totalUsd)}</NumericText>
                     </div>
                     <div className={styles.heroBadges}>
                       {changeInsight ? (
@@ -197,7 +194,7 @@ export function OverviewPage() {
                           <span className={styles.changeLabel}>{changeInsight.label}</span>
                         </span>
                       ) : null}
-                      <CompletenessBadge value={overview.completeness} />
+                      <CompletenessBadge value={point.completeness} />
                     </div>
                   </div>
 
@@ -207,17 +204,17 @@ export function OverviewPage() {
                     </span>
                     <span className={styles.heroMetaDot}>·</span>
                     <span className={styles.heroAccountsCount}>
-                      {formatCount(overview.accountCount)}{" "}
-                      {overview.accountCount === 1 ? "account" : "accounts"}
+                      {formatCount(point.accountCount)}{" "}
+                      {point.accountCount === 1 ? "account" : "accounts"}
                     </span>
-                    {overview.staleAccountCount > 0 ? (
+                    {point.staleAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.staleAccountCount)} stale
+                        {formatCount(point.staleAccountCount)} stale
                       </span>
                     ) : null}
-                    {overview.incompleteAccountCount > 0 ? (
+                    {point.incompleteAccountCount > 0 ? (
                       <span className={styles.heroAccountsBadgeAlert}>
-                        {formatCount(overview.incompleteAccountCount)} incomplete
+                        {formatCount(point.incompleteAccountCount)} incomplete
                       </span>
                     ) : null}
                   </div>
@@ -230,14 +227,22 @@ export function OverviewPage() {
                 </div>
               </article>
 
-              {overview.sparkline.length >= 2 || (rangePoints.data?.items?.length ?? 0) >= 2 ? (
+              <div>
+                <QueryRecovery
+                  query={rangeWindow}
+                  fallback="The chart window could not be loaded."
+                />
+                <QueryRecovery
+                  query={rangePoints}
+                  fallback="The valuation trend could not be loaded."
+                />
                 <HeroChart
                   points={activePoints}
                   timezone={timezone}
                   preset={selectedRange}
                   onPreset={setSelectedRange}
                 />
-              ) : null}
+              </div>
             </div>
           ) : (
             <div className={styles.emptyHero}>
@@ -280,10 +285,10 @@ export function OverviewPage() {
               </div>
             </div>
           )}
-          <HoldingsTree portfolioId={portfolioId} tree={overview.tree} />
+          <HoldingsTree portfolioId={portfolioId} tree={overview} />
           {point ? (
             <IssuesPanel
-              issues={overview.tree.issues}
+              issues={overview.issues}
               timezone={timezone}
               resolveScope={resolveIssueScope}
             />

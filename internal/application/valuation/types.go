@@ -29,6 +29,7 @@ const (
 
 // Issue names one reason a value is stale or incomplete.
 type Issue struct {
+	FlowID      *uuid.UUID `json:"flowId,omitempty"`
 	Code        string     `json:"code"`
 	Detail      string     `json:"detail"`
 	AccountID   *uuid.UUID `json:"accountId,omitempty"`
@@ -152,11 +153,6 @@ type BalanceValuation struct {
 	PriceObservationID   *uuid.UUID `json:"priceObservationId,omitempty"`
 	ValueUSD             *string    `json:"valueUsd,omitempty"`
 	MissingReason        string     `json:"missingReason,omitempty"`
-}
-
-// Revision identifies a committed result, independently of its algorithm version.
-func (p *Point) Revision() string {
-	return p.CycleID.String()
 }
 
 // ManualBalanceChange identifies an effective quantity change within an existing

@@ -11,7 +11,7 @@ var (
 	ErrConflict = apperr.Conflict("Identity display name already exists.")
 	// ErrLoginConflict prevents duplicate active bindings within one portfolio and platform.
 	ErrLoginConflict = apperr.Conflict("This login is already bound to an active identity in this portfolio.")
-	// ErrPrecondition is returned when If-Match does not match the current version.
+	// ErrPrecondition is returned when If-Edit-Version does not match the current version.
 	ErrPrecondition = apperr.Precondition("Identity version mismatch.")
 	// ErrArchived is returned when mutating an archived identity.
 	ErrArchived = apperr.StateConflict("Identity is archived.")

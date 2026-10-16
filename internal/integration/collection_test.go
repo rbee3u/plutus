@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -358,7 +359,7 @@ func TestAssetExclusionAppliesToFutureCalculatedAccountsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, err := h.financial.CustomValueChange(h.ctx, pctx, secondPoint.EvaluatedAt, thirdPoint.EvaluatedAt.Add(time.Microsecond))
-	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(strings.Join(change.Reasons, " "), "asset_exclusion_changed") {
+	if err != nil || change.Completeness != valuation.CompletenessIncomplete || !strings.Contains(fmt.Sprint(change.Issues), "asset_exclusion_changed") {
 		t.Fatalf("treatment change must limit value change: %+v %v", change, err)
 	}
 	_, err = h.catalog.PutExclusion(h.ctx, priced.Items[0].ID, &catalog.ExclusionInput{PortfolioID: h.portfolioID, ActorUserID: h.userID, Excluded: false, Version: 1})

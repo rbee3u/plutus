@@ -23,13 +23,7 @@ import { StatusBadge } from "@/shared/ui/Badge";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { TableFilterFooter } from "@/shared/ui/TableFilterFooter";
 import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
-import {
-  PAGE_SIZE,
-  exclusionEtag,
-  assetEtag,
-  type MappingRequest,
-  type TabProps,
-} from "../lib/catalog";
+import { PAGE_SIZE, type MappingRequest, type TabProps } from "../lib/catalog";
 import { AssetActions } from "./AssetActions";
 import shared from "@/shared/styles/page.module.css";
 import manageStyles from "../styles.module.css";
@@ -309,7 +303,7 @@ function ExclusionForm({
       const result = await write(() =>
         putAssetExclusion({
           path: { portfolioId, assetId: item.id },
-          headers: { "If-Match": exclusionEtag(item) },
+          headers: { "If-Edit-Version": String(item.exclusionVersion) },
           body: { excluded: excluding, ...(excluding ? { reason: reason.trim() } : {}) },
         }),
       );
@@ -437,7 +431,7 @@ function MappingForm({
       const result = await write(() =>
         putAssetMapping({
           path: { portfolioId, assetId: item.id },
-          headers: { "If-Match": assetEtag(item) },
+          headers: { "If-Edit-Version": String(item.mappingVersion) },
           body: { canonicalAssetSymbol: trimmedSymbol },
         }),
       );

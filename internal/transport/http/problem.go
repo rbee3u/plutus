@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -32,7 +34,6 @@ func newProblemError(status int, code, title, detail string) error {
 var (
 	errUnauthenticated = newProblemError(http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
 	errNotFound        = newProblemError(http.StatusNotFound, "not_found", "Not found", "The requested resource was not found.")
-	errPrecondition    = newProblemError(http.StatusPreconditionFailed, "precondition_failed", "Precondition failed", "The If-Match ETag does not match the current version.")
 )
 
 func validationError(detail string) error {
@@ -68,8 +69,12 @@ func newProblem(c *gin.Context, status int, code, title, detail string) api.Prob
 	return body
 }
 
-func requestError(c *gin.Context, err error) {
-	writeProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", err.Error())
+func requestError(c *gin.Context, _ error) {
+	body := newProblem(c, http.StatusBadRequest, "validation_failed", "Request validation failed", "The request does not match the API contract.")
+	fields := []api.FieldError{{Field: "request", Code: "invalid", Message: "Supply a value matching the declared schema."}}
+	body.FieldErrors = &fields
+	c.Header("Content-Type", "application/problem+json")
+	c.JSON(http.StatusBadRequest, body)
 }
 
 // handlerError maps handler and service errors onto problem responses.
@@ -77,6 +82,14 @@ func handlerError(c *gin.Context, err error) {
 	var pe *problemError
 	if errors.As(err, &pe) {
 		writeProblem(c, pe.status, pe.code, pe.title, pe.detail)
+		return
+	}
+	if errors.Is(err, financial.ErrSeriesLimit) {
+		writeProblem(c, http.StatusUnprocessableEntity, "series_limit_exceeded", "Series point budget exceeded", err.Error())
+		return
+	}
+	if errors.Is(err, valuation.ErrDetailExpired) {
+		writeProblem(c, http.StatusGone, "detail_expired", "Holdings detail has expired", err.Error())
 		return
 	}
 	if status, code, title := classify(err); status != 0 {
@@ -126,8 +139,4 @@ func classify(err error) (int, string, string) {
 
 func (a *API) problem(ctx context.Context, status int, code, title, detail string) api.Problem {
 	return newProblem(ginFrom(ctx), status, code, title, detail)
-}
-
-func (a *API) unauthenticated(ctx context.Context) api.Problem {
-	return a.problem(ctx, http.StatusUnauthorized, "unauthenticated", "Unauthenticated", "A valid session is required.")
 }

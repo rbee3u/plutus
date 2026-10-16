@@ -19,15 +19,7 @@ func (a *API) GetManualBalances(ctx context.Context, request api.GetManualBalanc
 	if err != nil {
 		return nil, err
 	}
-	return api.GetManualBalances200JSONResponse{Body: toAPIManual(state), Headers: api.GetManualBalances200ResponseHeaders{ETag: new(state.ETag())}}, nil
-}
-
-func manualVersion(etag string) (uint64, error) {
-	version, ok := manual.ParseETag(etag)
-	if !ok {
-		return 0, validationError("If-Match must be a manual ledger ETag.")
-	}
-	return version, nil
+	return api.GetManualBalances200JSONResponse(toAPIManual(state)), nil
 }
 
 func (a *API) CreateManualBalance(ctx context.Context, request api.CreateManualBalanceRequestObject) (api.CreateManualBalanceResponseObject, error) {
@@ -41,9 +33,9 @@ func (a *API) CreateManualBalance(ctx context.Context, request api.CreateManualB
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	version, err := manualVersion(request.Params.IfMatch)
-	if err != nil {
-		return nil, err
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
+	if !ok {
+		return nil, validationError("If-Edit-Version must be a valid manual ledger version.")
 	}
 	state, err := a.Manual.Create(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{
 		AssetSymbol: request.Body.AssetSymbol,
@@ -55,7 +47,7 @@ func (a *API) CreateManualBalance(ctx context.Context, request api.CreateManualB
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateManualBalance200JSONResponse{Body: toAPIManual(state), Headers: api.CreateManualBalance200ResponseHeaders{ETag: new(state.ETag())}}, nil
+	return api.CreateManualBalance200JSONResponse(toAPIManual(state)), nil
 }
 
 func (a *API) UpdateManualBalance(ctx context.Context, request api.UpdateManualBalanceRequestObject) (api.UpdateManualBalanceResponseObject, error) {
@@ -69,9 +61,9 @@ func (a *API) UpdateManualBalance(ctx context.Context, request api.UpdateManualB
 	if request.Body == nil {
 		return nil, validationError("A request body is required.")
 	}
-	version, err := manualVersion(request.Params.IfMatch)
-	if err != nil {
-		return nil, err
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
+	if !ok {
+		return nil, validationError("If-Edit-Version must be a valid manual ledger version.")
 	}
 	state, err := a.Manual.Update(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{
 		AssetSymbol: request.AssetSymbol,
@@ -83,7 +75,7 @@ func (a *API) UpdateManualBalance(ctx context.Context, request api.UpdateManualB
 	if err != nil {
 		return nil, err
 	}
-	return api.UpdateManualBalance200JSONResponse{Body: toAPIManual(state), Headers: api.UpdateManualBalance200ResponseHeaders{ETag: new(state.ETag())}}, nil
+	return api.UpdateManualBalance200JSONResponse(toAPIManual(state)), nil
 }
 
 func (a *API) DeleteManualBalance(ctx context.Context, request api.DeleteManualBalanceRequestObject) (api.DeleteManualBalanceResponseObject, error) {
@@ -94,13 +86,13 @@ func (a *API) DeleteManualBalance(ctx context.Context, request api.DeleteManualB
 	if a.Manual == nil {
 		return nil, ErrNotImplemented
 	}
-	version, err := manualVersion(request.Params.IfMatch)
-	if err != nil {
-		return nil, err
+	version, ok := parseEditVersion(request.Params.IfEditVersion, false)
+	if !ok {
+		return nil, validationError("If-Edit-Version must be a valid manual ledger version.")
 	}
 	state, err := a.Manual.Delete(ctx, sc.portfolio.ID, request.IdentityId, manual.Input{AssetSymbol: request.AssetSymbol, Version: version, ActorUserID: sc.user.ID, RequestID: requestTraceID(ctx)})
 	if err != nil {
 		return nil, err
 	}
-	return api.DeleteManualBalance200JSONResponse{Body: toAPIManual(state), Headers: api.DeleteManualBalance200ResponseHeaders{ETag: new(state.ETag())}}, nil
+	return api.DeleteManualBalance200JSONResponse(toAPIManual(state)), nil
 }

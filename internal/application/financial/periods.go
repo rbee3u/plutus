@@ -171,19 +171,19 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 		seen := observedDays(headers, loc)
 		out := make([]PeriodClose, 0, len(periods))
 		for i, per := range periods {
-			item := PeriodClose{PeriodKind: kind, Label: per.label, PeriodStart: per.start, PeriodEnd: per.end, Completeness: valuation.CompletenessComplete, Reasons: []string{}}
+			item := PeriodClose{PeriodKind: kind, Label: per.label, PeriodStart: per.start, PeriodEnd: per.end, Completeness: valuation.CompletenessComplete, Issues: []valuation.Issue{}}
 			var point *valuation.Point
 			if selected[i] >= 0 {
 				point = &points[selected[i]]
 			}
 			if point == nil {
 				item.Completeness = valuation.CompletenessIncomplete
-				item.Reasons = append(item.Reasons, "no_point_in_period")
+				item.Issues = append(item.Issues, valuation.Issue{Code: "no_point_in_period", Detail: "No valuation point exists in this period."})
 			} else {
 				item.Point = point
 				if point.Completeness() == valuation.CompletenessIncomplete {
 					item.Completeness = valuation.CompletenessIncomplete
-					item.Reasons = append(item.Reasons, "point_incomplete")
+					item.Issues = append(item.Issues, valuation.Issue{Code: "point_incomplete", Detail: "The closing valuation point is incomplete."})
 				}
 				if kind != PeriodDay {
 					coverageStart := per.start
@@ -192,7 +192,7 @@ func (s *Service) PeriodCloses(ctx context.Context, p PortfolioContext, kind str
 					}
 					if missing := daysWithoutPoints(seen, coverageStart, per.end, loc); len(missing) > 0 {
 						item.Completeness = valuation.CompletenessIncomplete
-						item.Reasons = append(item.Reasons, "days_without_points: "+joinDays(missing))
+						item.Issues = append(item.Issues, valuation.Issue{Code: "days_without_points", Detail: joinDays(missing)})
 					}
 				}
 			}
@@ -237,8 +237,8 @@ func (s *Service) CustomValueChange(ctx context.Context, p PortfolioContext, fro
 // Calendar endpoints use strictly earlier points; custom endpoints also accept
 // a point at the requested instant. Flows follow the selected points' interval.
 func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, label string, periodStart, periodEnd time.Time) (ValueChange, error) {
-	change := ValueChange{PeriodKind: kind, Label: label, From: periodStart, To: periodEnd, Completeness: valuation.CompletenessComplete, Reasons: []string{}, BoundaryEvents: []valuation.BoundaryEvent{}}
-	change.ContributionsUSD, change.WithdrawalsUSD, change.BoundaryContributionsUSD, change.BoundaryWithdrawalsUSD = "0", "0", "0", "0"
+	change := ValueChange{PeriodKind: kind, Label: label, From: periodStart, To: periodEnd, Completeness: valuation.CompletenessComplete, Issues: []valuation.Issue{}, BoundaryEvents: []valuation.BoundaryEvent{}}
+	change.FlowsCompleteness = valuation.CompletenessIncomplete
 	startPoint, err := s.pointAtOrBefore(ctx, p.ID, periodStart, kind == PeriodCustom)
 	if err != nil {
 		return ValueChange{}, err
@@ -250,45 +250,45 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	change.StartPoint, change.EndPoint = startPoint, endPoint
 	if startPoint == nil {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, "no_start_point")
+		change.Issues = append(change.Issues, valuation.Issue{Code: "no_start_point", Detail: "No valuation point exists at the start endpoint."})
 	}
 	if endPoint == nil {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, "no_end_point")
+		change.Issues = append(change.Issues, valuation.Issue{Code: "no_end_point", Detail: "No valuation point exists at the end endpoint."})
 	}
 	if startPoint == nil || endPoint == nil {
 		return change, nil
 	}
 	if !endPoint.EvaluatedAt.After(startPoint.EvaluatedAt) {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, "no_point_in_period")
-		amount := "0"
-		change.AmountUSD = &amount
+		change.Issues = append(change.Issues, valuation.Issue{Code: "no_point_in_period", Detail: "Two distinct valuation points are required for comparison."})
 		return change, nil
 	}
+	change.Comparable = true
+	change.FlowsCompleteness = valuation.CompletenessComplete
 	if startPoint.Completeness() == valuation.CompletenessIncomplete {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, "start_point_incomplete")
+		change.Issues = append(change.Issues, valuation.Issue{Code: "start_point_incomplete", Detail: "The start valuation point is incomplete."})
 	}
 	if endPoint.Completeness() == valuation.CompletenessIncomplete {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, "end_point_incomplete")
+		change.Issues = append(change.Issues, valuation.Issue{Code: "end_point_incomplete", Detail: "The end valuation point is incomplete."})
 	}
 	if kind != PeriodCustom && kind != PeriodDay {
 		if headers, err := mysql.Queries(ctx, s.db).ListValuationPointHeadersBetween(ctx, sqlcgen.ListValuationPointHeadersBetweenParams{PortfolioID: p.ID[:], FromAt: periodStart.UTC(), ToAt: periodEnd.UTC()}); err != nil {
 			return ValueChange{}, err
 		} else if missing := daysWithoutPoints(observedDays(headers, p.location()), periodStart, periodEnd, p.location()); len(missing) > 0 {
 			change.Completeness = valuation.CompletenessIncomplete
-			change.Reasons = append(change.Reasons, "days_without_points: "+joinDays(missing))
+			change.Issues = append(change.Issues, valuation.Issue{Code: "days_without_points", Detail: joinDays(missing)})
 		}
 	}
-	policyReasons, err := s.exclusionChangeReasons(ctx, p.ID, startPoint.CycleID, endPoint.CycleID)
+	policyIssues, err := s.exclusionChangeIssues(ctx, p.ID, startPoint.CycleID, endPoint.CycleID)
 	if err != nil {
 		return ValueChange{}, err
 	}
-	if len(policyReasons) > 0 {
+	if len(policyIssues) > 0 {
 		change.Completeness = valuation.CompletenessIncomplete
-		change.Reasons = append(change.Reasons, policyReasons...)
+		change.Issues = append(change.Issues, policyIssues...)
 	}
 	contributions, withdrawals := decimal.Zero(), decimal.Zero()
 	flows, err := mysql.Queries(ctx, s.db).ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: p.ID[:], FromAt: startPoint.EvaluatedAt.Add(time.Microsecond), ToAt: endPoint.EvaluatedAt.Add(time.Microsecond)})
@@ -298,7 +298,12 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	for i := range flows {
 		if !flows[i].ValueUsd.Valid {
 			change.Completeness = valuation.CompletenessIncomplete
-			change.Reasons = append(change.Reasons, "unvalued_flow: "+flows[i].CanonicalAssetSymbol+" "+decimal.Compact(flows[i].Quantity)+" at "+flows[i].EffectiveAt.UTC().Format(time.RFC3339))
+			change.FlowsCompleteness = valuation.CompletenessIncomplete
+			flowID, err := uuid.FromBytes(flows[i].ID)
+			if err != nil {
+				return ValueChange{}, err
+			}
+			change.Issues = append(change.Issues, valuation.Issue{Code: "unvalued_flow", FlowID: &flowID, Symbol: flows[i].CanonicalAssetSymbol, Detail: decimal.Compact(flows[i].Quantity) + " at " + flows[i].EffectiveAt.UTC().Format(time.RFC3339)})
 			continue
 		}
 		value, ok := decimal.Parse(flows[i].ValueUsd.String)
@@ -320,24 +325,26 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 		for _, issue := range points[i].Issues {
 			if issue.Code == "asset_mapping_changed" || issue.Code == "calculation_version_changed" {
 				change.Completeness = valuation.CompletenessIncomplete
-				change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
+				change.Issues = append(change.Issues, issue)
 			}
 		}
 		for _, adjustment := range points[i].ManualBalanceChanges {
 			change.Completeness = valuation.CompletenessIncomplete
 			issue := adjustment.Issue()
-			change.Reasons = append(change.Reasons, issue.Code+": "+issue.Detail)
+			change.Issues = append(change.Issues, issue)
 		}
 		for j := range points[i].BoundaryEvents {
 			event := &points[i].BoundaryEvents[j]
 			change.BoundaryEvents = append(change.BoundaryEvents, *event)
 			if !event.ValuationComplete {
 				change.Completeness = valuation.CompletenessIncomplete
-				change.Reasons = append(change.Reasons, "boundary_incomplete: "+event.AccountName)
+				change.FlowsCompleteness = valuation.CompletenessIncomplete
+				change.Issues = append(change.Issues, valuation.Issue{Code: "boundary_incomplete", AccountID: &event.AccountID, AccountName: event.AccountName, Detail: "The boundary event valuation is incomplete."})
 			}
 			if event.ValueUSD == nil {
 				change.Completeness = valuation.CompletenessIncomplete
-				change.Reasons = append(change.Reasons, "unvalued_boundary_event: "+event.AccountName)
+				change.FlowsCompleteness = valuation.CompletenessIncomplete
+				change.Issues = append(change.Issues, valuation.Issue{Code: "unvalued_boundary_event", AccountID: &event.AccountID, AccountName: event.AccountName, Detail: "The boundary event value is unknown."})
 				continue
 			}
 			if event.Direction == valuation.DirectionContribution {
@@ -347,10 +354,10 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 			}
 		}
 	}
-	change.ContributionsUSD = decimal.Format(contributions)
-	change.WithdrawalsUSD = decimal.Format(withdrawals)
-	change.BoundaryContributionsUSD = decimal.Format(boundaryContributions)
-	change.BoundaryWithdrawalsUSD = decimal.Format(boundaryWithdrawals)
+	change.ContributionsUSD = decimal.FormatPtr(contributions)
+	change.WithdrawalsUSD = decimal.FormatPtr(withdrawals)
+	change.BoundaryContributionsUSD = decimal.FormatPtr(boundaryContributions)
+	change.BoundaryWithdrawalsUSD = decimal.FormatPtr(boundaryWithdrawals)
 	amount := decimal.Sub(decimal.ParseOrZero(endPoint.TotalUSD), decimal.ParseOrZero(startPoint.TotalUSD))
 	amount = decimal.Sub(amount, decimal.Add(contributions, boundaryContributions))
 	amount = decimal.Add(amount, decimal.Add(withdrawals, boundaryWithdrawals))
@@ -358,7 +365,7 @@ func (s *Service) valueChange(ctx context.Context, p PortfolioContext, kind, lab
 	return change, nil
 }
 
-func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, startCycleID, endCycleID uuid.UUID) ([]string, error) {
+func (s *Service) exclusionChangeIssues(ctx context.Context, portfolioID, startCycleID, endCycleID uuid.UUID) ([]valuation.Issue, error) {
 	startIgnored, err := assetexclusion.ActiveForCycle(ctx, s.db, portfolioID, startCycleID)
 	if err != nil {
 		return nil, err
@@ -371,17 +378,17 @@ func (s *Service) exclusionChangeReasons(ctx context.Context, portfolioID, start
 	if err != nil {
 		return nil, err
 	}
-	reasons := []string{}
+	issues := []valuation.Issue{}
 	for _, row := range rows {
 		assetID, err := uuid.FromBytes(row.ID)
 		if err != nil {
 			return nil, err
 		}
 		if startIgnored[assetID] != endIgnored[assetID] {
-			reasons = append(reasons, "asset_exclusion_changed: "+row.Platform+" "+row.Symbol)
+			issues = append(issues, valuation.Issue{Code: "asset_exclusion_changed", Symbol: row.Symbol, Detail: row.Platform + " " + row.Symbol})
 		}
 	}
-	return reasons, nil
+	return issues, nil
 }
 
 func (s *Service) pointAtOrBefore(ctx context.Context, portfolioID uuid.UUID, at time.Time, inclusive bool) (*valuation.Point, error) {

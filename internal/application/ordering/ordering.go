@@ -36,6 +36,20 @@ func PlatformsCSV() string {
 	return strings.Join(codes, ",")
 }
 
+// AccountsCSV preserves catalog account order within each immutable structure.
+func AccountsCSV() string {
+	codes := []string{}
+	for _, platform := range adapters.NewRegistry().Platforms() {
+		for _, structure := range platform.Structures {
+			for _, account := range structure.AccountTypes {
+				codes = append(codes, string(structure.ID)+":"+string(account.ID))
+			}
+			codes = append(codes, string(structure.ID)+":"+string(adapters.TypeManual))
+		}
+	}
+	return strings.Join(codes, ",")
+}
+
 // ComparePlatforms orders offered platforms first, followed by unknown codes.
 func ComparePlatforms(a, b string) int {
 	platforms := adapters.OfferedPlatforms()

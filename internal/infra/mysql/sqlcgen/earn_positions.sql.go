@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/rbee3u/plutus/internal/infra/sqljson"
 )
@@ -62,6 +63,63 @@ type ListEarnPositionsByReportParams struct {
 
 func (q *Queries) ListEarnPositionsByReport(ctx context.Context, arg ListEarnPositionsByReportParams) ([]EarnPosition, error) {
 	rows, err := q.db.QueryContext(ctx, listEarnPositionsByReport, arg.PortfolioID, arg.ReportID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []EarnPosition{}
+	for rows.Next() {
+		var i EarnPosition
+		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.ReportID,
+			&i.PositionKey,
+			&i.ProductRef,
+			&i.ProductName,
+			&i.ProductType,
+			&i.Granularity,
+			&i.AmountBasis,
+			&i.Status,
+			&i.SubscribedAt,
+			&i.MaturityAt,
+			&i.DetailsJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEarnPositionsByReports = `-- name: ListEarnPositionsByReports :many
+SELECT portfolio_id, report_id, position_key, product_ref, product_name, product_type, granularity, amount_basis, status, subscribed_at, maturity_at, details_json FROM earn_positions WHERE portfolio_id = ? AND report_id IN (/*SLICE:report_ids*/?)
+ORDER BY report_id, position_key
+`
+
+type ListEarnPositionsByReportsParams struct {
+	PortfolioID []byte
+	ReportIds   [][]byte
+}
+
+func (q *Queries) ListEarnPositionsByReports(ctx context.Context, arg ListEarnPositionsByReportsParams) ([]EarnPosition, error) {
+	query := listEarnPositionsByReports
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.ReportIds) > 0 {
+		for _, v := range arg.ReportIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", strings.Repeat(",?", len(arg.ReportIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

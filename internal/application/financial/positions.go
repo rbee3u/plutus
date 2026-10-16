@@ -24,32 +24,35 @@ func (s *Service) AccountPositions(ctx context.Context, p PortfolioContext, acco
 // AccountPositionsAt reads the selected point, retaining its compatible source report.
 func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, accountID uuid.UUID, cycleID *uuid.UUID) (AccountView, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (AccountView, error) {
-		view, source, err := s.positionView(ctx, p, accountID, cycleID)
+		view, source, err := s.accountView(ctx, p, accountID, cycleID)
 		if err != nil {
 			return AccountView{}, err
 		}
-		view.Positions = []PositionRow{}
-		view.Issues = positionAccountIssues(&view.Account)
-		if source == nil {
-			return view, nil
-		}
-		rows, err := mysql.Queries(ctx, s.db).ListPositionsByReport(ctx, sqlcgen.ListPositionsByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
-		if err != nil {
-			return AccountView{}, err
-		}
-		for i := range rows {
-			r := &rows[i]
-			row, err := positionRow(&view.Account, r)
-			if err != nil {
-				return AccountView{}, err
-			}
-			completePosition(&row, &view.Account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
-			view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
-			view.Positions = append(view.Positions, row)
-		}
-		sortPositions(view.Positions, nil)
-		return view, nil
+		return s.readAccountPositions(ctx, p, view, source)
 	})
+}
+
+func (s *Service) readAccountPositions(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID) (AccountView, error) {
+	view.Positions = []PositionRow{}
+	if source == nil {
+		return view, nil
+	}
+	rows, err := mysql.Queries(ctx, s.db).ListPositionsByReport(ctx, sqlcgen.ListPositionsByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
+	if err != nil {
+		return AccountView{}, err
+	}
+	for i := range rows {
+		r := &rows[i]
+		row, err := positionRow(&view.Account, r)
+		if err != nil {
+			return AccountView{}, err
+		}
+		completePosition(&row, &view.Account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
+		view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
+		view.Positions = append(view.Positions, row)
+	}
+	sortPositions(view.Positions, nil)
+	return view, nil
 }
 
 func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositionsByReportRow) (PositionRow, error) {
@@ -114,11 +117,12 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		if err != nil {
 			return FlatList[PositionRow]{}, err
 		}
-		c, point, accounts, err := s.latestContext(ctx, p)
+		c, point, accounts, err := s.contextAt(ctx, p, f.CycleID)
 		if err != nil {
 			return FlatList[PositionRow]{}, err
 		}
 		out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
+		out.Coverage = reportCoverage(accounts, f, "positions", point != nil)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
@@ -174,7 +178,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 			if err != nil {
 				return FlatList[PositionRow]{}, err
 			}
-			completePosition(&row, account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
+			completePositionFacts(&row, account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
 			out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
 			if row.NotionalUSD == nil {
 				out.Completeness = valuation.CompletenessIncomplete
@@ -190,6 +194,9 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		out.TotalUSD = decimal.FormatPtr(total)
 		sortPositions(all, accountRanks(accounts))
 		out.paginate(all)
+		for i := range out.Items {
+			completePositionAmounts(&out.Items[i])
+		}
 		return out, nil
 	})
 }

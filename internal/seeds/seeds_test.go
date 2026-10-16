@@ -195,14 +195,14 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if err != nil {
 		t.Fatal(err)
 	}
-	if overview.Point == nil || overview.Completeness != valuation.CompletenessComplete || overview.StaleAccountCount != 0 {
+	if overview.Point == nil || overview.Point.Completeness() != valuation.CompletenessComplete || overview.Point.StaleAccountCount != 0 {
 		t.Fatalf("daily combination must be healthy: %+v", overview)
 	}
 	incomplete, err := v.Overview(ctx, edge)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if incomplete.Completeness != valuation.CompletenessIncomplete || incomplete.StaleAccountCount == 0 {
+	if incomplete.Point.Completeness() != valuation.CompletenessIncomplete || incomplete.Point.StaleAccountCount == 0 {
 		t.Fatalf("edge combination lost missing/stale states: %+v", incomplete)
 	}
 	earn, err := v.FlatEarnPositions(ctx, main, &financial.ListFilter{Limit: 200})
@@ -260,10 +260,16 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if change.Completeness != valuation.CompletenessIncomplete {
 		t.Fatal("unvalued flow comparison must be incomplete")
 	}
-	reasons := strings.Join(change.Reasons, "\n")
-	for _, reason := range []string{"unvalued_flow: DEMO-NOPRICE", "asset_exclusion_changed:"} {
-		if !strings.Contains(reasons, reason) {
-			t.Fatalf("missing comparison reason %s: %v", reason, change.Reasons)
+	codes := map[string]bool{}
+	for _, issue := range change.Issues {
+		codes[issue.Code] = true
+		if issue.Code == "unvalued_flow" && (issue.Symbol != "DEMO-NOPRICE" || issue.FlowID == nil) {
+			t.Fatalf("unvalued flow lost its identity: %+v", issue)
+		}
+	}
+	for _, code := range []string{"unvalued_flow", "asset_exclusion_changed"} {
+		if !codes[code] {
+			t.Fatalf("missing comparison issue %s: %v", code, change.Issues)
 		}
 	}
 	for _, tc := range []struct {

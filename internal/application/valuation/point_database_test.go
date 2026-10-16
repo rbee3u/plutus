@@ -233,7 +233,7 @@ func TestCommittedPointIgnoresLaterMappingAndRetryTime(t *testing.T) {
 	first := f.point(cycle, f.at)
 	f.exec("UPDATE assets SET canonical_asset_symbol='UNPRICED', mapping_version=mapping_version+1 WHERE id=?", asset[:])
 	retried, err := f.service.WritePoint(f.ctx, f.portfolio, cycle, f.at.Add(time.Hour))
-	if err != nil || retried.TotalUSD != "12" || retried.Revision() != first.Revision() || !retried.EvaluatedAt.Equal(first.EvaluatedAt) {
+	if err != nil || retried.TotalUSD != "12" || retried.CycleID != first.CycleID || !retried.EvaluatedAt.Equal(first.EvaluatedAt) {
 		t.Fatalf("retry changed immutable point: %+v %v", retried, err)
 	}
 	accounts, err := f.service.Accounts(f.ctx, f.portfolio, cycle)

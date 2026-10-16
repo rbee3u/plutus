@@ -52,7 +52,7 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	base := "/api/v1/portfolios/" + owned[0].ID.String()
 	res := request(base+"/earn-positions", session.Token)
 	var list api.EarnPositionList
-	if res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &list) != nil || list.DetailsComplete || len(list.Items) != 0 || len(list.Issues) == 0 || list.Page.Limit != 50 {
+	if res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &list) != nil || list.Coverage.Complete || len(list.Items) != 0 || len(list.Issues) == 0 || list.Page.Limit != 50 {
 		t.Fatalf("no point: %d %s", res.Code, res.Body.String())
 	}
 	for _, suffix := range []string{"/earn-positions?offset=-1", "/earn-positions?limit=501", "/earn-positions?identityId=invalid"} {
@@ -60,7 +60,7 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 			t.Fatalf("invalid filter: %d %s", res.Code, res.Body.String())
 		}
 	}
-	for _, suffix := range []string{"/earn-positions", "/accounts/" + uuid.NewString() + "/earn-positions"} {
+	for _, suffix := range []string{"/earn-positions", "/accounts/" + uuid.NewString() + "/report"} {
 		if res := request(base+suffix, ""); res.Code != 401 {
 			t.Fatal("unauthenticated holdings read")
 		}
@@ -69,7 +69,7 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 	if res := request(base+"/earn-positions", foreign.Token); res.Code != 404 {
 		t.Fatalf("another user read an existing portfolio: %d %s", res.Code, res.Body.String())
 	}
-	if res := request(base+"/accounts/"+uuid.NewString()+"/earn-positions", session.Token); res.Code != 404 {
+	if res := request(base+"/accounts/"+uuid.NewString()+"/report", session.Token); res.Code != 404 {
 		t.Fatal("unknown account read")
 	}
 }

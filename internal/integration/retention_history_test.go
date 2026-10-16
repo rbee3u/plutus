@@ -134,7 +134,7 @@ func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.AmountUSD == nil || after.AmountUSD == nil || *before.AmountUSD != *after.AmountUSD || !reflect.DeepEqual(before.Reasons, after.Reasons) || !reflect.DeepEqual(before.BoundaryEvents, after.BoundaryEvents) {
+	if before.AmountUSD == nil || after.AmountUSD == nil || *before.AmountUSD != *after.AmountUSD || !reflect.DeepEqual(before.Issues, after.Issues) || !reflect.DeepEqual(before.BoundaryEvents, after.BoundaryEvents) {
 		t.Fatalf("window comparison changed: %+v -> %+v", before, after)
 	}
 	count("SELECT COUNT(*) FROM valuation_points WHERE portfolio_id=? AND evaluated_at<?", 2, h.portfolioID[:], cutoff)
@@ -155,7 +155,7 @@ func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 		}
 	}
 	expiredRange, err := h.financial.CustomValueChange(h.ctx, pc, cutoff.Add(-time.Hour), cutoff.Add(time.Hour))
-	if err != nil || expiredRange.StartPoint != nil || !strings.Contains(strings.Join(expiredRange.Reasons, ";"), "no_start_point") {
+	if err != nil || expiredRange.StartPoint != nil || !strings.Contains(fmt.Sprint(expiredRange.Issues), "no_start_point") {
 		t.Fatalf("internal predecessor exposed as history: %+v %v", expiredRange, err)
 	}
 	if _, err := h.financial.Detail(h.ctx, pc, old[1]); !errors.Is(err, valuation.ErrNotFound) {
@@ -220,6 +220,15 @@ func TestDormantCurrentPositionsSurviveHistoryExpiry(t *testing.T) {
 	if err != nil || len(before.Positions) == 0 {
 		t.Fatalf("positions before: %+v %v", before, err)
 	}
+	readers := []struct {
+		name string
+		read func(*financial.ListFilter) (any, error)
+	}{
+		{"balances", func(f *financial.ListFilter) (any, error) { return h.financial.FlatBalances(h.ctx, pc, f) }},
+		{"positions", func(f *financial.ListFilter) (any, error) { return h.financial.FlatPositions(h.ctx, pc, f) }},
+		{"earn", func(f *financial.ListFilter) (any, error) { return h.financial.FlatEarnPositions(h.ctx, pc, f) }},
+		{"dual", func(f *financial.ListFilter) (any, error) { return h.financial.FlatDualPositions(h.ctx, pc, f) }},
+	}
 	service := retention.NewService(h.db)
 	for range 1000 {
 		idle, err := service.Step(h.ctx, summary.Point.EvaluatedAt.AddDate(11, 0, 0))
@@ -236,6 +245,22 @@ func TestDormantCurrentPositionsSurviveHistoryExpiry(t *testing.T) {
 	}
 	if _, err := h.financial.Detail(h.ctx, pc, cycleID); !errors.Is(err, valuation.ErrNotFound) {
 		t.Fatalf("expired public history: %v", err)
+	}
+	for _, reader := range readers {
+		t.Run(reader.name, func(t *testing.T) {
+			latest, err := reader.read(&financial.ListFilter{Limit: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			pinned, err := reader.read(&financial.ListFilter{CycleID: &cycleID, Limit: 1})
+			if err != nil || !reflect.DeepEqual(latest, pinned) {
+				t.Fatalf("pinning dormant current holdings changed the read: %v", err)
+			}
+			missing := uuid.New()
+			if _, err := reader.read(&financial.ListFilter{CycleID: &missing}); !errors.Is(err, valuation.ErrNotFound) {
+				t.Fatalf("unknown point: %v", err)
+			}
+		})
 	}
 }
 
@@ -369,7 +394,7 @@ func TestRollingHistoryReleasesReferencesAcrossThirtyYears(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(before.AmountUSD, after.AmountUSD) || !reflect.DeepEqual(before.Reasons, after.Reasons) || !reflect.DeepEqual(before.BoundaryEvents, after.BoundaryEvents) {
+		if !reflect.DeepEqual(before.AmountUSD, after.AmountUSD) || !reflect.DeepEqual(before.Issues, after.Issues) || !reflect.DeepEqual(before.BoundaryEvents, after.BoundaryEvents) {
 			t.Fatalf("year %d comparison changed: %+v -> %+v", year, before, after)
 		}
 		positions, err := h.financial.AccountPositionsAt(h.ctx, pc, account, &latest.CycleID)
@@ -389,7 +414,7 @@ func TestRollingHistoryReleasesReferencesAcrossThirtyYears(t *testing.T) {
 			if err != nil || len(historical.Positions) != 1 {
 				t.Fatalf("year %d historical source lost: %+v %v", year, historical, err)
 			}
-			if after.AmountUSD == nil || after.ContributionsUSD != "30" {
+			if after.AmountUSD == nil || (after.ContributionsUSD == nil || *after.ContributionsUSD != "30") {
 				t.Fatalf("year %d comparison not exercised: %+v", year, after)
 			}
 		}

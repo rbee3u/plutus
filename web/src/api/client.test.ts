@@ -62,7 +62,7 @@ describe("Write transport", () => {
   ])(
     "does not issue a write after CSRF acquisition returns $name",
     async ({ acquire, message }) => {
-      vi.mocked(getAuthCsrf).mockImplementationOnce(acquire);
+      vi.mocked(getAuthCsrf).mockImplementationOnce(acquire as typeof getAuthCsrf);
       const request = vi.fn();
       await expect(executeWrite(request)).rejects.toThrow(message);
       expect(request).not.toHaveBeenCalled();
@@ -89,5 +89,89 @@ describe("Write transport", () => {
     await client.post({ url: "/write" });
     const after = fetch.mock.calls[1]?.[0] as Request;
     expect(after.headers.has("X-CSRF-Token")).toBe(false);
+  });
+});
+
+// These scenarios assert network boundaries and session ownership, not token encoding.
+describe("CSRF session cache", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCsrf();
+  });
+  function acquired(token: string) {
+    return {
+      data: { token },
+      error: undefined,
+      request: new Request("http://127.0.0.1/api/v1/auth/csrf"),
+      response: new Response(),
+    };
+  }
+  it("shares concurrent acquisition and reuses the token for subsequent writes", async () => {
+    let resolve!: (value: ReturnType<typeof acquired>) => void;
+    vi.mocked(getAuthCsrf).mockImplementationOnce(
+      () =>
+        new Promise<ReturnType<typeof acquired>>((done) => {
+          resolve = done;
+        }),
+    );
+    const request = vi.fn().mockResolvedValue({ response: new Response(null, { status: 204 }) });
+    const first = executeWrite(request);
+    const second = executeWrite(request);
+    expect(getAuthCsrf).toHaveBeenCalledTimes(1);
+    resolve(acquired("one"));
+    await Promise.all([first, second]);
+    await executeWrite(request);
+    expect(getAuthCsrf).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+  it("refreshes and retries exactly once only for an explicit CSRF rejection", async () => {
+    vi.mocked(getAuthCsrf)
+      .mockResolvedValueOnce(acquired("old"))
+      .mockResolvedValueOnce(acquired("new"));
+    const rejected = {
+      error: { code: "csrf_invalid" },
+      response: new Response(null, { status: 403 }),
+    };
+    const request = vi.fn().mockResolvedValue(rejected);
+    expect(await executeWrite(request)).toBe(rejected);
+    expect(getAuthCsrf).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it.each(["network", "business"])("does not retry a %s failure", async (failure) => {
+    vi.mocked(getAuthCsrf).mockResolvedValue(acquired("one"));
+    const request = vi.fn().mockImplementation(() =>
+      failure === "network"
+        ? Promise.reject(new Error("offline"))
+        : Promise.resolve({
+            error: { code: "forbidden" },
+            response: new Response(null, { status: 403 }),
+          }),
+    );
+    if (failure === "network") await expect(executeWrite(request)).rejects.toThrow("offline");
+    else await executeWrite(request);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(getAuthCsrf).toHaveBeenCalledTimes(1);
+  });
+  it("does not publish a token or issue a write after its session has been replaced", async () => {
+    let resolve!: (value: ReturnType<typeof acquired>) => void;
+    vi.mocked(getAuthCsrf).mockImplementationOnce(
+      () =>
+        new Promise<ReturnType<typeof acquired>>((done) => {
+          resolve = done;
+        }),
+    );
+    const oldWrite = vi.fn();
+    const pending = executeWrite(oldWrite);
+    resetCsrf();
+    vi.mocked(getAuthCsrf).mockResolvedValueOnce(acquired("new-session"));
+    const currentWrite = vi
+      .fn()
+      .mockResolvedValue({ response: new Response(null, { status: 204 }) });
+    await executeWrite(currentWrite);
+    resolve(acquired("obsolete"));
+    await expect(pending).rejects.toThrow("session is no longer valid");
+    expect(oldWrite).not.toHaveBeenCalled();
+    await executeWrite(currentWrite);
+    expect(getAuthCsrf).toHaveBeenCalledTimes(2);
   });
 });

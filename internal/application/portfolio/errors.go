@@ -7,7 +7,7 @@ var (
 	ErrNotFound = apperr.NotFound("Portfolio not found.")
 	// ErrConflict is returned when the portfolio name is already used.
 	ErrConflict = apperr.Conflict("Portfolio name already exists.")
-	// ErrPrecondition is returned when If-Match does not match the current version.
+	// ErrPrecondition is returned when If-Edit-Version does not match the current version.
 	ErrPrecondition = apperr.Precondition("Portfolio version mismatch.")
 	// ErrUndeletable is returned when deleting the portfolio created with the user.
 	ErrUndeletable = apperr.Undeletable("Portfolio is undeletable.")

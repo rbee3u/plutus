@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreateManualBalanceData, CreateManualBalanceErrors, CreateManualBalanceResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeleteManualBalanceData, DeleteManualBalanceErrors, DeleteManualBalanceResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAuthCsrfData, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetHoldingsTreeData, GetHoldingsTreeErrors, GetHoldingsTreeResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetManualBalancesData, GetManualBalancesErrors, GetManualBalancesResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, GetValuationSnapshotData, GetValuationSnapshotErrors, GetValuationSnapshotResponses, ListAccountBalancesData, ListAccountBalancesErrors, ListAccountBalancesResponses, ListAccountDualPositionsData, ListAccountDualPositionsErrors, ListAccountDualPositionsResponses, ListAccountEarnPositionsData, ListAccountEarnPositionsErrors, ListAccountEarnPositionsResponses, ListAccountPositionsData, ListAccountPositionsErrors, ListAccountPositionsResponses, ListAssetsData, ListAssetsErrors, ListAssetsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListFuturesContractsData, ListFuturesContractsErrors, ListFuturesContractsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetExclusionData, PutAssetExclusionErrors, PutAssetExclusionResponses, PutAssetMappingData, PutAssetMappingErrors, PutAssetMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, UpdateManualBalanceData, UpdateManualBalanceErrors, UpdateManualBalanceResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
+import type { ArchiveIdentityData, ArchiveIdentityErrors, ArchiveIdentityResponses, CreateCapitalFlowData, CreateCapitalFlowErrors, CreateCapitalFlowResponses, CreateCollectionCycleData, CreateCollectionCycleErrors, CreateCollectionCycleResponses, CreateIdentityData, CreateIdentityErrors, CreateIdentityResponses, CreateManualBalanceData, CreateManualBalanceErrors, CreateManualBalanceResponses, CreatePortfolioData, CreatePortfolioErrors, CreatePortfolioResponses, DeleteAuthSessionData, DeleteAuthSessionErrors, DeleteAuthSessionResponses, DeleteCapitalFlowData, DeleteCapitalFlowErrors, DeleteCapitalFlowResponses, DeleteIdentityCredentialsData, DeleteIdentityCredentialsErrors, DeleteIdentityCredentialsResponses, DeleteManualBalanceData, DeleteManualBalanceErrors, DeleteManualBalanceResponses, DeletePortfolioData, DeletePortfolioErrors, DeletePortfolioResponses, DisableIdentityConnectionData, DisableIdentityConnectionErrors, DisableIdentityConnectionResponses, EnableIdentityConnectionData, EnableIdentityConnectionErrors, EnableIdentityConnectionResponses, GetAccountReportData, GetAccountReportErrors, GetAccountReportResponses, GetAuthCsrfData, GetAuthCsrfErrors, GetAuthCsrfResponses, GetAuthMeData, GetAuthMeErrors, GetAuthMeResponses, GetAuthSessionsData, GetAuthSessionsErrors, GetAuthSessionsResponses, GetCapitalFlowData, GetCapitalFlowErrors, GetCapitalFlowResponses, GetCollectionCycleData, GetCollectionCycleErrors, GetCollectionCycleResponses, GetCustomValueChangeData, GetCustomValueChangeErrors, GetCustomValueChangeResponses, GetHealthLiveData, GetHealthLiveResponses, GetHealthReadyData, GetHealthReadyErrors, GetHealthReadyResponses, GetHistoryWindowData, GetHistoryWindowErrors, GetHistoryWindowResponses, GetIdentityData, GetIdentityErrors, GetIdentityResponses, GetManualBalancesData, GetManualBalancesErrors, GetManualBalancesResponses, GetOverviewData, GetOverviewErrors, GetOverviewResponses, GetPortfolioData, GetPortfolioErrors, GetPortfolioResponses, GetValuationPointData, GetValuationPointErrors, GetValuationPointResponses, GetValuationSnapshotData, GetValuationSnapshotErrors, GetValuationSnapshotResponses, ListAssetsData, ListAssetsErrors, ListAssetsResponses, ListAuditEventsData, ListAuditEventsErrors, ListAuditEventsResponses, ListBalancesData, ListBalancesErrors, ListBalancesResponses, ListBoundaryEventsData, ListBoundaryEventsErrors, ListBoundaryEventsResponses, ListCapitalFlowsData, ListCapitalFlowsErrors, ListCapitalFlowsResponses, ListCollectionCyclesData, ListCollectionCyclesErrors, ListCollectionCyclesResponses, ListDualPositionsData, ListDualPositionsErrors, ListDualPositionsResponses, ListEarnPositionsData, ListEarnPositionsErrors, ListEarnPositionsResponses, ListFuturesContractsData, ListFuturesContractsErrors, ListFuturesContractsResponses, ListIdentitiesData, ListIdentitiesErrors, ListIdentitiesResponses, ListPeriodClosesData, ListPeriodClosesErrors, ListPeriodClosesResponses, ListPlatformsData, ListPlatformsErrors, ListPlatformsResponses, ListPortfoliosData, ListPortfoliosErrors, ListPortfoliosResponses, ListPositionsData, ListPositionsErrors, ListPositionsResponses, ListValuationPointPageData, ListValuationPointPageErrors, ListValuationPointPageResponses, ListValuationPointsData, ListValuationPointsErrors, ListValuationPointsResponses, ListValueChangesData, ListValueChangesErrors, ListValueChangesResponses, PatchCapitalFlowData, PatchCapitalFlowErrors, PatchCapitalFlowResponses, PatchIdentityData, PatchIdentityErrors, PatchIdentityResponses, PatchPortfolioData, PatchPortfolioErrors, PatchPortfolioResponses, PostAuthLoginData, PostAuthLoginErrors, PostAuthLoginResponses, PostAuthLogoutAllData, PostAuthLogoutAllErrors, PostAuthLogoutAllResponses, PostAuthLogoutData, PostAuthLogoutErrors, PostAuthLogoutResponses, PutAssetExclusionData, PutAssetExclusionErrors, PutAssetExclusionResponses, PutAssetMappingData, PutAssetMappingErrors, PutAssetMappingResponses, PutAuthPasswordData, PutAuthPasswordErrors, PutAuthPasswordResponses, PutIdentityCredentialsData, PutIdentityCredentialsErrors, PutIdentityCredentialsResponses, UpdateManualBalanceData, UpdateManualBalanceErrors, UpdateManualBalanceResponses, ValidateIdentityConnectionData, ValidateIdentityConnectionErrors, ValidateIdentityConnectionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -31,12 +31,13 @@ export const getHealthReady = <ThrowOnError extends boolean = false>(options?: O
 /**
  * Issue or rotate a CSRF token
  */
-export const getAuthCsrf = <ThrowOnError extends boolean = false>(options?: Options<GetAuthCsrfData, ThrowOnError>): RequestResult<GetAuthCsrfResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetAuthCsrfResponses, unknown, ThrowOnError>({ url: '/api/v1/auth/csrf', ...options });
+export const getAuthCsrf = <ThrowOnError extends boolean = false>(options?: Options<GetAuthCsrfData, ThrowOnError>): RequestResult<GetAuthCsrfResponses, GetAuthCsrfErrors, ThrowOnError> => (options?.client ?? client).get<GetAuthCsrfResponses, GetAuthCsrfErrors, ThrowOnError>({ url: '/api/v1/auth/csrf', ...options });
 
 /**
  * Authenticate with username and password
  */
 export const postAuthLogin = <ThrowOnError extends boolean = false>(options: Options<PostAuthLoginData, ThrowOnError>): RequestResult<PostAuthLoginResponses, PostAuthLoginErrors, ThrowOnError> => (options.client ?? client).post<PostAuthLoginResponses, PostAuthLoginErrors, ThrowOnError>({
+    security: [{ name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/auth/login',
     ...options,
     headers: {
@@ -53,7 +54,7 @@ export const postAuthLogout = <ThrowOnError extends boolean = false>(options?: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/auth/logout',
     ...options
 });
@@ -66,7 +67,7 @@ export const postAuthLogoutAll = <ThrowOnError extends boolean = false>(options?
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/auth/logout-all',
     ...options
 });
@@ -92,7 +93,7 @@ export const putAuthPassword = <ThrowOnError extends boolean = false>(options: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/auth/password',
     ...options,
     headers: {
@@ -122,7 +123,7 @@ export const deleteAuthSession = <ThrowOnError extends boolean = false>(options:
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/auth/sessions/{sessionId}',
     ...options
 });
@@ -148,7 +149,7 @@ export const createPortfolio = <ThrowOnError extends boolean = false>(options: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios',
     ...options,
     headers: {
@@ -165,7 +166,7 @@ export const deletePortfolio = <ThrowOnError extends boolean = false>(options: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}',
     ...options
 });
@@ -191,7 +192,7 @@ export const patchPortfolio = <ThrowOnError extends boolean = false>(options: Op
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}',
     ...options,
     headers: {
@@ -234,7 +235,7 @@ export const createIdentity = <ThrowOnError extends boolean = false>(options: Op
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities',
     ...options,
     headers: {
@@ -264,7 +265,7 @@ export const patchIdentity = <ThrowOnError extends boolean = false>(options: Opt
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}',
     ...options,
     headers: {
@@ -281,7 +282,7 @@ export const archiveIdentity = <ThrowOnError extends boolean = false>(options: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/archive',
     ...options
 });
@@ -294,8 +295,8 @@ export const deleteIdentityCredentials = <ThrowOnError extends boolean = false>(
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials',
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials',
     ...options
 });
 
@@ -307,8 +308,8 @@ export const putIdentityCredentials = <ThrowOnError extends boolean = false>(opt
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/credentials',
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/credentials',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -324,8 +325,8 @@ export const validateIdentityConnection = <ThrowOnError extends boolean = false>
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/validate',
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/validate',
     ...options
 });
 
@@ -337,8 +338,8 @@ export const enableIdentityConnection = <ThrowOnError extends boolean = false>(o
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/enable',
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/enable',
     ...options
 });
 
@@ -350,8 +351,8 @@ export const disableIdentityConnection = <ThrowOnError extends boolean = false>(
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/disable',
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
+    url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/connection/disable',
     ...options
 });
 
@@ -376,7 +377,7 @@ export const createCollectionCycle = <ThrowOnError extends boolean = false>(opti
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/collection-cycles',
     ...options
 });
@@ -395,7 +396,7 @@ export const getCollectionCycle = <ThrowOnError extends boolean = false>(options
 });
 
 /**
- * Latest valuation point with platform and identity totals
+ * Latest valuation point and ownership tree in one consistent read
  */
 export const getOverview = <ThrowOnError extends boolean = false>(options: Options<GetOverviewData, ThrowOnError>): RequestResult<GetOverviewResponses, GetOverviewErrors, ThrowOnError> => (options.client ?? client).get<GetOverviewResponses, GetOverviewErrors, ThrowOnError>({
     security: [{
@@ -408,72 +409,9 @@ export const getOverview = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Platform → identity → account tree at the latest point
- */
-export const getHoldingsTree = <ThrowOnError extends boolean = false>(options: Options<GetHoldingsTreeData, ThrowOnError>): RequestResult<GetHoldingsTreeResponses, GetHoldingsTreeErrors, ThrowOnError> => (options.client ?? client).get<GetHoldingsTreeResponses, GetHoldingsTreeErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/tree',
-    ...options
-});
-
-/**
- * Balances of an account's current report
- */
-export const listAccountBalances = <ThrowOnError extends boolean = false>(options: Options<ListAccountBalancesData, ThrowOnError>): RequestResult<ListAccountBalancesResponses, ListAccountBalancesErrors, ThrowOnError> => (options.client ?? client).get<ListAccountBalancesResponses, ListAccountBalancesErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/balances',
-    ...options
-});
-
-/**
- * Positions of an account at the latest or a specified valuation point
- */
-export const listAccountPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountPositionsData, ThrowOnError>): RequestResult<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountPositionsResponses, ListAccountPositionsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/positions',
-    ...options
-});
-
-/**
- * Dual positions of an account's current report
- */
-export const listAccountDualPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountDualPositionsData, ThrowOnError>): RequestResult<ListAccountDualPositionsResponses, ListAccountDualPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountDualPositionsResponses, ListAccountDualPositionsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/dual-positions',
-    ...options
-});
-
-/**
- * Earn positions of an account's current report
- */
-export const listAccountEarnPositions = <ThrowOnError extends boolean = false>(options: Options<ListAccountEarnPositionsData, ThrowOnError>): RequestResult<ListAccountEarnPositionsResponses, ListAccountEarnPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListAccountEarnPositionsResponses, ListAccountEarnPositionsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'plutus_session',
-            type: 'apiKey'
-        }],
-    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/earn-positions',
-    ...options
-});
-
-/**
- * Flat balance list across the boundary at the latest point
+ * Flat balance list across the boundary at a selected valuation point
+ *
+ * cycleId fixes collected financial data; omit it to resolve the latest point once. Current manual edits are included only when requested and remain current. Filtering and pagination never change the portfolio boundary.
  */
 export const listBalances = <ThrowOnError extends boolean = false>(options: Options<ListBalancesData, ThrowOnError>): RequestResult<ListBalancesResponses, ListBalancesErrors, ThrowOnError> => (options.client ?? client).get<ListBalancesResponses, ListBalancesErrors, ThrowOnError>({
     security: [{
@@ -486,7 +424,9 @@ export const listBalances = <ThrowOnError extends boolean = false>(options: Opti
 });
 
 /**
- * Flat position list across the boundary at the latest point
+ * Flat position list across the boundary at a selected valuation point
+ *
+ * cycleId fixes collected financial data; omit it to resolve the latest point once. Current manual edits in balances remain current. Filtering and pagination never change the portfolio boundary.
  */
 export const listPositions = <ThrowOnError extends boolean = false>(options: Options<ListPositionsData, ThrowOnError>): RequestResult<ListPositionsResponses, ListPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListPositionsResponses, ListPositionsErrors, ThrowOnError>({
     security: [{
@@ -499,7 +439,9 @@ export const listPositions = <ThrowOnError extends boolean = false>(options: Opt
 });
 
 /**
- * Flat dual position list across the boundary at the latest point
+ * Flat dual position list across the boundary at a selected valuation point
+ *
+ * cycleId fixes collected financial data; omit it to resolve the latest point once. Current manual edits in balances remain current. Filtering and pagination never change the portfolio boundary.
  */
 export const listDualPositions = <ThrowOnError extends boolean = false>(options: Options<ListDualPositionsData, ThrowOnError>): RequestResult<ListDualPositionsResponses, ListDualPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListDualPositionsResponses, ListDualPositionsErrors, ThrowOnError>({
     security: [{
@@ -512,7 +454,9 @@ export const listDualPositions = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * Flat earn position list across the boundary at the latest point
+ * Flat earn position list across the boundary at a selected valuation point
+ *
+ * cycleId fixes collected financial data; omit it to resolve the latest point once. Current manual edits in balances remain current. Filtering and pagination never change the portfolio boundary.
  */
 export const listEarnPositions = <ThrowOnError extends boolean = false>(options: Options<ListEarnPositionsData, ThrowOnError>): RequestResult<ListEarnPositionsResponses, ListEarnPositionsErrors, ThrowOnError> => (options.client ?? client).get<ListEarnPositionsResponses, ListEarnPositionsErrors, ThrowOnError>({
     security: [{
@@ -541,6 +485,8 @@ export const getHistoryWindow = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * Raw valuation points, newest first
+ *
+ * Raw point summaries within the inclusive [from, to] window, newest first by time then cycle ID. Defaults to the last seven elapsed days; offset defaults to 0 and limit to 20.
  */
 export const listValuationPointPage = <ThrowOnError extends boolean = false>(options: Options<ListValuationPointPageData, ThrowOnError>): RequestResult<ListValuationPointPageResponses, ListValuationPointPageErrors, ThrowOnError> => (options.client ?? client).get<ListValuationPointPageResponses, ListValuationPointPageErrors, ThrowOnError>({
     security: [{
@@ -548,12 +494,14 @@ export const listValuationPointPage = <ThrowOnError extends boolean = false>(opt
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points/page',
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points',
     ...options
 });
 
 /**
  * Valuation point series
+ *
+ * Point summaries within the inclusive [from, to] window, oldest first by time then cycle ID. Defaults to the last seven elapsed days and raw granularity. Hour and day choose the final actual point in each portfolio-timezone bucket.
  */
 export const listValuationPoints = <ThrowOnError extends boolean = false>(options: Options<ListValuationPointsData, ThrowOnError>): RequestResult<ListValuationPointsResponses, ListValuationPointsErrors, ThrowOnError> => (options.client ?? client).get<ListValuationPointsResponses, ListValuationPointsErrors, ThrowOnError>({
     security: [{
@@ -561,7 +509,7 @@ export const listValuationPoints = <ThrowOnError extends boolean = false>(option
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/valuation-points',
+    url: '/api/v1/portfolios/{portfolioId}/valuation-points/series',
     ...options
 });
 
@@ -593,6 +541,8 @@ export const getValuationPoint = <ThrowOnError extends boolean = false>(options:
 
 /**
  * Period closes per period kind
+ *
+ * Whole portfolio-local calendar periods intersecting [from, to), oldest first; at most 400 periods. Defaults: day 30 days, week 26 weeks, month 366 days, quarter 3 years, year 5 years. An omitted start is bounded by the first retained point.
  */
 export const listPeriodCloses = <ThrowOnError extends boolean = false>(options: Options<ListPeriodClosesData, ThrowOnError>): RequestResult<ListPeriodClosesResponses, ListPeriodClosesErrors, ThrowOnError> => (options.client ?? client).get<ListPeriodClosesResponses, ListPeriodClosesErrors, ThrowOnError>({
     security: [{
@@ -606,6 +556,8 @@ export const listPeriodCloses = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * Value changes per period kind
+ *
+ * Whole portfolio-local calendar periods intersecting [from, to), oldest first; at most 400 periods. Defaults match period-closes; changes use actual points strictly before period endpoints, with existing incomplete-period rules.
  */
 export const listValueChanges = <ThrowOnError extends boolean = false>(options: Options<ListValueChangesData, ThrowOnError>): RequestResult<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError> => (options.client ?? client).get<ListValueChangesResponses, ListValueChangesErrors, ThrowOnError>({
     security: [{
@@ -619,6 +571,8 @@ export const listValueChanges = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * One value change between the last points at or before two instants
+ *
+ * Compare actual points at or before the required from and to instants. Capital and boundary flows use the resolved point interval; missing or equal endpoints remain explicitly incomparable.
  */
 export const getCustomValueChange = <ThrowOnError extends boolean = false>(options: Options<GetCustomValueChangeData, ThrowOnError>): RequestResult<GetCustomValueChangeResponses, GetCustomValueChangeErrors, ThrowOnError> => (options.client ?? client).get<GetCustomValueChangeResponses, GetCustomValueChangeErrors, ThrowOnError>({
     security: [{
@@ -626,12 +580,14 @@ export const getCustomValueChange = <ThrowOnError extends boolean = false>(optio
             name: 'plutus_session',
             type: 'apiKey'
         }],
-    url: '/api/v1/portfolios/{portfolioId}/value-changes/custom',
+    url: '/api/v1/portfolios/{portfolioId}/value-changes/range',
     ...options
 });
 
 /**
  * List manual capital flows
+ *
+ * Capital flows within [from, to), newest first by effective time then ID. Omitted endpoints cover 2000-01-01 through 2100-01-01 UTC. The response echoes the resolved range; reuse it for every page. Concurrent edits can move rows, so restart pagination after a mutation.
  */
 export const listCapitalFlows = <ThrowOnError extends boolean = false>(options: Options<ListCapitalFlowsData, ThrowOnError>): RequestResult<ListCapitalFlowsResponses, ListCapitalFlowsErrors, ThrowOnError> => (options.client ?? client).get<ListCapitalFlowsResponses, ListCapitalFlowsErrors, ThrowOnError>({
     security: [{
@@ -651,7 +607,7 @@ export const createCapitalFlow = <ThrowOnError extends boolean = false>(options:
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/capital-flows',
     ...options,
     headers: {
@@ -668,7 +624,7 @@ export const deleteCapitalFlow = <ThrowOnError extends boolean = false>(options:
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}',
     ...options
 });
@@ -694,7 +650,7 @@ export const patchCapitalFlow = <ThrowOnError extends boolean = false>(options: 
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/capital-flows/{flowId}',
     ...options,
     headers: {
@@ -705,6 +661,8 @@ export const patchCapitalFlow = <ThrowOnError extends boolean = false>(options: 
 
 /**
  * Derived boundary events between two instants
+ *
+ * Boundary events within the inclusive [from, to] window, newest cycles first with account hierarchy order within a cycle. Defaults to the last 90 elapsed days. The response echoes the resolved range; reuse it for every page. Ordering is evaluatedAt and cycleId descending, then the shared account hierarchy.
  */
 export const listBoundaryEvents = <ThrowOnError extends boolean = false>(options: Options<ListBoundaryEventsData, ThrowOnError>): RequestResult<ListBoundaryEventsResponses, ListBoundaryEventsErrors, ThrowOnError> => (options.client ?? client).get<ListBoundaryEventsResponses, ListBoundaryEventsErrors, ThrowOnError>({
     security: [{
@@ -737,7 +695,7 @@ export const putAssetMapping = <ThrowOnError extends boolean = false>(options: O
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/mapping',
     ...options,
     headers: {
@@ -754,7 +712,7 @@ export const putAssetExclusion = <ThrowOnError extends boolean = false>(options:
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/catalog/assets/{assetId}/exclusion',
     ...options,
     headers: {
@@ -810,7 +768,7 @@ export const createManualBalance = <ThrowOnError extends boolean = false>(option
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances',
     ...options,
     headers: {
@@ -827,7 +785,7 @@ export const deleteManualBalance = <ThrowOnError extends boolean = false>(option
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}',
     ...options
 });
@@ -840,11 +798,26 @@ export const updateManualBalance = <ThrowOnError extends boolean = false>(option
             in: 'cookie',
             name: 'plutus_session',
             type: 'apiKey'
-        }],
+        }, { name: 'X-CSRF-Token', type: 'apiKey' }],
     url: '/api/v1/portfolios/{portfolioId}/identities/{identityId}/manual-balances/{assetSymbol}',
     ...options,
     headers: {
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Read one aligned account report and its holdings
+ *
+ * Resolve the requested valuation point once, retaining its compatible successful source report. Empty holdings with a missing account report are unknown, not confirmed empty. Current manual edits are included only when explicitly requested.
+ */
+export const getAccountReport = <ThrowOnError extends boolean = false>(options: Options<GetAccountReportData, ThrowOnError>): RequestResult<GetAccountReportResponses, GetAccountReportErrors, ThrowOnError> => (options.client ?? client).get<GetAccountReportResponses, GetAccountReportErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'plutus_session',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/portfolios/{portfolioId}/accounts/{accountId}/report',
+    ...options
 });

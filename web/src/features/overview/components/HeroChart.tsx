@@ -1,7 +1,7 @@
 import { useChart } from "@/shared/lib/useChart";
 import type { EChartsCoreOption } from "echarts/core";
 import { useMemo } from "react";
-import type { ValuationPointSummary } from "@/api";
+import type { ValuationSeriesPoint } from "@/api";
 import { chartNumber, formatAmount } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { HISTORY_PRESETS, type HistoryPreset } from "@/features/history/timeWindow";
@@ -14,7 +14,7 @@ export function HeroChart({
   preset,
   onPreset,
 }: {
-  points: ValuationPointSummary[];
+  points: ValuationSeriesPoint[];
   timezone?: string;
   preset: HistoryPreset;
   onPreset: (preset: HistoryPreset) => void;
@@ -97,13 +97,14 @@ export function HeroChart({
       </div>
       {sparklineOption ? (
         <div
+          key="chart"
           ref={chartHostRef}
           className={styles.heroChart}
           role="img"
           aria-label="Recent valuation points"
         />
       ) : (
-        <div className={styles.heroChartEmpty}>
+        <div key="empty" className={styles.heroChartEmpty}>
           At least two valuation points are needed to show a trend.
         </div>
       )}

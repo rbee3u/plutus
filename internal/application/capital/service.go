@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -19,7 +20,6 @@ import (
 	"github.com/rbee3u/plutus/internal/platform/adapters"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 const (
@@ -65,16 +65,6 @@ type Flow struct {
 	UpdatedAt          time.Time
 }
 
-// ETag returns the flow validator.
-func (f *Flow) ETag() string {
-	return etag.Format("capital-flow", f.Version)
-}
-
-// ParseETag extracts the version from a flow ETag.
-func ParseETag(value string) (uint64, bool) {
-	return etag.Parse("capital-flow", value)
-}
-
 // Input is the accepted create or patch payload.
 type Input struct {
 	ActorUserID          uuid.UUID
@@ -115,6 +105,48 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, from, to time
 		out = append(out, item)
 	}
 	return out, nil
+}
+
+type Page struct {
+	Items                []Flow
+	Offset, Limit, Total int
+	From, To             time.Time
+}
+
+// ListPage reads one deterministic page and its count from the same snapshot.
+func (s *Service) ListPage(ctx context.Context, portfolioID uuid.UUID, from, to time.Time, offset, limit int) (Page, error) {
+	if from.IsZero() {
+		from = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if to.IsZero() {
+		to = time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if limit == 0 {
+		limit = 50
+	}
+	if !to.After(from) || offset < 0 || offset > math.MaxInt32 || limit < 1 || limit > 200 {
+		return Page{}, ErrInvalid
+	}
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Page, error) {
+		q := mysql.Queries(ctx, s.db)
+		total, err := q.CountCapitalFlows(ctx, sqlcgen.CountCapitalFlowsParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+		if err != nil {
+			return Page{}, err
+		}
+		rows, err := q.ListCapitalFlowPage(ctx, sqlcgen.ListCapitalFlowPageParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC(), Offset: int32(offset), Limit: int32(limit)}) // #nosec G115 -- Pagination is bounded above.
+		if err != nil {
+			return Page{}, err
+		}
+		out := Page{Items: make([]Flow, 0, len(rows)), From: from.UTC(), To: to.UTC(), Offset: offset, Limit: limit, Total: int(total)}
+		for i := range rows {
+			item, err := s.fromRow(ctx, &rows[i])
+			if err != nil {
+				return Page{}, err
+			}
+			out.Items = append(out.Items, item)
+		}
+		return out, nil
+	})
 }
 
 // Get returns one flow.

@@ -12,6 +12,130 @@ import (
 	"time"
 )
 
+const getAccountReportAtCycle = `-- name: GetAccountReportAtCycle :one
+SELECT r.id, r.portfolio_id, r.cycle_id, r.account_id, r.margin_mode, r.status, r.collected_at, r.source_observed_at, r.error_class, r.error_detail,
+       r.reported_equity_usd, r.adjusted_equity_usd, r.available_equity_usd, r.initial_margin_requirement_usd, r.maintenance_margin_requirement_usd, r.spot_margin_unrealized_pnl_usd, r.reported_initial_margin_ratio, r.reported_maintenance_margin_ratio, r.reported_margin_ratio,
+       v.value_usd, v.valuation_method, v.source_report_id, r.recorded_at, r.manual_revision_number, mr.changed_at AS manual_changed_at,
+       a.identity_id, a.account_type, a.selected, i.platform, i.display_name AS identity_name,
+       i.archived_at AS identity_archived_at, i.connection_status, i.account_structure,
+       src.margin_mode AS source_margin_mode, COALESCE(src.source_observed_at, src.collected_at) AS effective_source_observed_at, src.reported_equity_usd AS source_equity, src.adjusted_equity_usd AS source_adjusted_equity,
+       src.available_equity_usd AS source_available_equity, src.initial_margin_requirement_usd AS source_initial_margin_requirement_usd, src.maintenance_margin_requirement_usd AS source_maintenance_margin_requirement_usd, src.spot_margin_unrealized_pnl_usd AS source_spot_margin_unrealized_pnl_usd, src.reported_initial_margin_ratio AS source_initial_margin_ratio,
+       src.reported_maintenance_margin_ratio AS source_maintenance_margin_ratio, src.reported_margin_ratio AS source_margin_ratio
+FROM account_reports r
+INNER JOIN accounts a ON a.portfolio_id = r.portfolio_id AND a.id = r.account_id
+INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+LEFT JOIN manual_revisions mr ON mr.portfolio_id = r.portfolio_id AND mr.account_id = r.account_id AND mr.revision_number = r.manual_revision_number
+LEFT JOIN account_valuations v ON v.portfolio_id = r.portfolio_id AND v.cycle_id = r.cycle_id AND v.account_id = r.account_id
+LEFT JOIN account_reports src ON src.portfolio_id = r.portfolio_id AND src.id = v.source_report_id
+WHERE r.portfolio_id = ? AND r.cycle_id = ?
+AND r.account_id = ?
+`
+
+type GetAccountReportAtCycleParams struct {
+	PortfolioID []byte
+	CycleID     []byte
+	AccountID   []byte
+}
+
+type GetAccountReportAtCycleRow struct {
+	ID                                    []byte
+	PortfolioID                           []byte
+	CycleID                               []byte
+	AccountID                             []byte
+	MarginMode                            sql.NullString
+	Status                                string
+	CollectedAt                           sql.NullTime
+	SourceObservedAt                      sql.NullTime
+	ErrorClass                            sql.NullString
+	ErrorDetail                           sql.NullString
+	ReportedEquityUsd                     sql.NullString
+	AdjustedEquityUsd                     sql.NullString
+	AvailableEquityUsd                    sql.NullString
+	InitialMarginRequirementUsd           sql.NullString
+	MaintenanceMarginRequirementUsd       sql.NullString
+	SpotMarginUnrealizedPnlUsd            sql.NullString
+	ReportedInitialMarginRatio            sql.NullString
+	ReportedMaintenanceMarginRatio        sql.NullString
+	ReportedMarginRatio                   sql.NullString
+	ValueUsd                              sql.NullString
+	ValuationMethod                       sql.NullString
+	SourceReportID                        []byte
+	RecordedAt                            time.Time
+	ManualRevisionNumber                  sql.NullInt64
+	ManualChangedAt                       sql.NullTime
+	IdentityID                            []byte
+	AccountType                           string
+	Selected                              bool
+	Platform                              string
+	IdentityName                          string
+	IdentityArchivedAt                    sql.NullTime
+	ConnectionStatus                      string
+	AccountStructure                      string
+	SourceMarginMode                      sql.NullString
+	EffectiveSourceObservedAt             sql.NullTime
+	SourceEquity                          sql.NullString
+	SourceAdjustedEquity                  sql.NullString
+	SourceAvailableEquity                 sql.NullString
+	SourceInitialMarginRequirementUsd     sql.NullString
+	SourceMaintenanceMarginRequirementUsd sql.NullString
+	SourceSpotMarginUnrealizedPnlUsd      sql.NullString
+	SourceInitialMarginRatio              sql.NullString
+	SourceMaintenanceMarginRatio          sql.NullString
+	SourceMarginRatio                     sql.NullString
+}
+
+func (q *Queries) GetAccountReportAtCycle(ctx context.Context, arg GetAccountReportAtCycleParams) (GetAccountReportAtCycleRow, error) {
+	row := q.db.QueryRowContext(ctx, getAccountReportAtCycle, arg.PortfolioID, arg.CycleID, arg.AccountID)
+	var i GetAccountReportAtCycleRow
+	err := row.Scan(
+		&i.ID,
+		&i.PortfolioID,
+		&i.CycleID,
+		&i.AccountID,
+		&i.MarginMode,
+		&i.Status,
+		&i.CollectedAt,
+		&i.SourceObservedAt,
+		&i.ErrorClass,
+		&i.ErrorDetail,
+		&i.ReportedEquityUsd,
+		&i.AdjustedEquityUsd,
+		&i.AvailableEquityUsd,
+		&i.InitialMarginRequirementUsd,
+		&i.MaintenanceMarginRequirementUsd,
+		&i.SpotMarginUnrealizedPnlUsd,
+		&i.ReportedInitialMarginRatio,
+		&i.ReportedMaintenanceMarginRatio,
+		&i.ReportedMarginRatio,
+		&i.ValueUsd,
+		&i.ValuationMethod,
+		&i.SourceReportID,
+		&i.RecordedAt,
+		&i.ManualRevisionNumber,
+		&i.ManualChangedAt,
+		&i.IdentityID,
+		&i.AccountType,
+		&i.Selected,
+		&i.Platform,
+		&i.IdentityName,
+		&i.IdentityArchivedAt,
+		&i.ConnectionStatus,
+		&i.AccountStructure,
+		&i.SourceMarginMode,
+		&i.EffectiveSourceObservedAt,
+		&i.SourceEquity,
+		&i.SourceAdjustedEquity,
+		&i.SourceAvailableEquity,
+		&i.SourceInitialMarginRequirementUsd,
+		&i.SourceMaintenanceMarginRequirementUsd,
+		&i.SourceSpotMarginUnrealizedPnlUsd,
+		&i.SourceInitialMarginRatio,
+		&i.SourceMaintenanceMarginRatio,
+		&i.SourceMarginRatio,
+	)
+	return i, err
+}
+
 const getLatestSucceededReportForAccount = `-- name: GetLatestSucceededReportForAccount :one
 SELECT portfolio_id, id, cycle_id, account_id, status, collected_at, source_observed_at, recorded_at, margin_mode, error_class, error_detail, reported_equity_usd, adjusted_equity_usd, available_equity_usd, initial_margin_requirement_usd, maintenance_margin_requirement_usd, reported_initial_margin_ratio, reported_maintenance_margin_ratio, reported_margin_ratio, spot_margin_unrealized_pnl_usd, manual_revision_number FROM account_reports
 WHERE portfolio_id = ? AND account_id = ? AND status = 'succeeded'
@@ -327,25 +451,97 @@ func (q *Queries) InsertPosition(ctx context.Context, arg InsertPositionParams) 
 	return err
 }
 
+const listBalanceDetailsByReportsAndAssets = `-- name: ListBalanceDetailsByReportsAndAssets :many
+SELECT portfolio_id, report_id, asset_id, equity, available_to_withdraw, available_to_trade, liability, interest, unrealized_pnl FROM balances
+WHERE portfolio_id = ?
+  AND report_id IN (/*SLICE:report_ids*/?) AND asset_id IN (/*SLICE:asset_ids*/?)
+`
+
+type ListBalanceDetailsByReportsAndAssetsParams struct {
+	PortfolioID []byte
+	ReportIds   [][]byte
+	AssetIds    [][]byte
+}
+
+// Only the displayed page needs availability, liability, interest, and PnL.
+func (q *Queries) ListBalanceDetailsByReportsAndAssets(ctx context.Context, arg ListBalanceDetailsByReportsAndAssetsParams) ([]Balance, error) {
+	query := listBalanceDetailsByReportsAndAssets
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.ReportIds) > 0 {
+		for _, v := range arg.ReportIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", strings.Repeat(",?", len(arg.ReportIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:report_ids*/?", "NULL", 1)
+	}
+	if len(arg.AssetIds) > 0 {
+		for _, v := range arg.AssetIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", strings.Repeat(",?", len(arg.AssetIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Balance{}
+	for rows.Next() {
+		var i Balance
+		if err := rows.Scan(
+			&i.PortfolioID,
+			&i.ReportID,
+			&i.AssetID,
+			&i.Equity,
+			&i.AvailableToWithdraw,
+			&i.AvailableToTrade,
+			&i.Liability,
+			&i.Interest,
+			&i.UnrealizedPnl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBalancesByCycle = `-- name: ListBalancesByCycle :many
 SELECT cur.account_id, v.source_report_id AS report_id, COALESCE(cur.source_observed_at, cur.collected_at) AS current_observed_at, COALESCE(src.source_observed_at, src.collected_at) AS observed_at,
-       b.asset_id, b.equity, b.available_to_withdraw, b.available_to_trade, b.liability, b.interest, b.unrealized_pnl,
+       b.asset_id, b.equity,
        asset.platform, asset.symbol AS asset_symbol, asset.canonical_asset_symbol AS canonical_asset_symbol,
        a.identity_id, a.account_type, i.display_name AS identity_name
 FROM account_reports cur
 JOIN account_valuations v ON v.portfolio_id = cur.portfolio_id AND v.cycle_id = cur.cycle_id AND v.account_id = cur.account_id
 INNER JOIN account_reports src ON src.portfolio_id = cur.portfolio_id AND src.id = v.source_report_id
 INNER JOIN balances b ON b.portfolio_id = src.portfolio_id AND b.report_id = src.id
+JOIN balance_valuations bv ON bv.portfolio_id = v.portfolio_id AND bv.cycle_id = v.cycle_id AND bv.account_id = v.account_id AND bv.asset_id = b.asset_id
 INNER JOIN assets asset ON asset.portfolio_id = b.portfolio_id AND asset.id = b.asset_id
 INNER JOIN accounts a ON a.portfolio_id = cur.portfolio_id AND a.id = cur.account_id
 INNER JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
 WHERE cur.portfolio_id = ? AND cur.cycle_id = ?
+AND (? = '' OR i.platform = ?)
+AND (? IS NULL OR i.id = ?)
+AND (a.account_type = 'manual' OR ? = '' OR LOCATE(?, LOWER(asset.symbol)) > 0 OR LOCATE(?, LOWER(bv.canonical_asset_symbol)) > 0)
 ORDER BY cur.account_id, b.asset_id
 `
 
 type ListBalancesByCycleParams struct {
 	PortfolioID []byte
 	CycleID     []byte
+	Platform    string
+	IdentityID  []byte
+	Symbol      string
 }
 
 type ListBalancesByCycleRow struct {
@@ -355,11 +551,6 @@ type ListBalancesByCycleRow struct {
 	ObservedAt           sql.NullTime
 	AssetID              []byte
 	Equity               string
-	AvailableToWithdraw  sql.NullString
-	AvailableToTrade     sql.NullString
-	Liability            sql.NullString
-	Interest             sql.NullString
-	UnrealizedPnl        sql.NullString
 	Platform             string
 	AssetSymbol          string
 	CanonicalAssetSymbol string
@@ -369,7 +560,17 @@ type ListBalancesByCycleRow struct {
 }
 
 func (q *Queries) ListBalancesByCycle(ctx context.Context, arg ListBalancesByCycleParams) ([]ListBalancesByCycleRow, error) {
-	rows, err := q.db.QueryContext(ctx, listBalancesByCycle, arg.PortfolioID, arg.CycleID)
+	rows, err := q.db.QueryContext(ctx, listBalancesByCycle,
+		arg.PortfolioID,
+		arg.CycleID,
+		arg.Platform,
+		arg.Platform,
+		arg.IdentityID,
+		arg.IdentityID,
+		arg.Symbol,
+		arg.Symbol,
+		arg.Symbol,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -384,11 +585,6 @@ func (q *Queries) ListBalancesByCycle(ctx context.Context, arg ListBalancesByCyc
 			&i.ObservedAt,
 			&i.AssetID,
 			&i.Equity,
-			&i.AvailableToWithdraw,
-			&i.AvailableToTrade,
-			&i.Liability,
-			&i.Interest,
-			&i.UnrealizedPnl,
 			&i.Platform,
 			&i.AssetSymbol,
 			&i.CanonicalAssetSymbol,

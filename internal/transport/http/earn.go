@@ -7,26 +7,6 @@ import (
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func (a *API) ListAccountEarnPositions(ctx context.Context, request api.ListAccountEarnPositionsRequestObject) (api.ListAccountEarnPositionsResponseObject, error) {
-	sc, err := a.scoped(ctx, request.PortfolioId)
-	if err != nil {
-		return nil, err
-	}
-	if a.Financial == nil {
-		return nil, ErrNotImplemented
-	}
-	view, err := a.Financial.AccountEarnPositions(ctx, sc.portfolioContext(), request.AccountId)
-	if err != nil {
-		return nil, err
-	}
-	return api.ListAccountEarnPositions200JSONResponse{
-		Context: toAPIContext(&view.Context),
-		Account: toAPIAccountValuation(&view.Account),
-		Items:   toAPIEarnPositions(view.EarnPositions),
-		Issues:  toAPIIssues(view.Issues),
-	}, nil
-}
-
 func (a *API) ListEarnPositions(ctx context.Context, request api.ListEarnPositionsRequestObject) (api.ListEarnPositionsResponseObject, error) {
 	sc, err := a.scoped(ctx, request.PortfolioId)
 	if err != nil {
@@ -36,9 +16,10 @@ func (a *API) ListEarnPositions(ctx context.Context, request api.ListEarnPositio
 		return nil, ErrNotImplemented
 	}
 	filter := financial.ListFilter{
+		CycleID:    request.Params.CycleId,
 		Platform:   stringValue(request.Params.Platform),
 		IdentityID: request.Params.IdentityId,
-		Symbol:     stringValue(request.Params.Symbol),
+		Symbol:     stringValue(request.Params.Q),
 		Offset:     intValue(request.Params.Offset),
 		Limit:      intValue(request.Params.Limit),
 	}
@@ -47,11 +28,11 @@ func (a *API) ListEarnPositions(ctx context.Context, request api.ListEarnPositio
 		return nil, err
 	}
 	return api.ListEarnPositions200JSONResponse{
-		Context:         toAPIContext(&list.Context),
-		Items:           toAPIEarnPositions(list.Items),
-		DetailsComplete: list.DetailsComplete,
-		Page:            toOffsetPage(list.Offset, list.Limit, list.Total),
-		Completeness:    api.Completeness(list.Completeness),
-		Issues:          toAPIIssues(list.Issues),
+		Context:               toAPIContext(&list.Context),
+		Items:                 toAPIEarnPositions(list.Items),
+		Coverage:              toAPIReportCoverage(list.Coverage),
+		Page:                  toOffsetPage(list.Offset, list.Limit, list.Total),
+		ValuationCompleteness: api.Completeness(list.Completeness),
+		Issues:                toAPIIssues(list.Issues),
 	}, nil
 }

@@ -89,7 +89,7 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 		}
 	}
 	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "Asia/Shanghai"}
-	tree, err := h.financial.Tree(h.ctx, pctx)
+	tree, err := h.financial.Overview(h.ctx, pctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i, platform := range []string{"binance", "okx", "bybit", "kraken"} {
-		if overview.ByPlatform[i].Platform != platform {
+		if overview.Platforms[i].Platform != platform {
 			t.Fatal("Overview changed the platform order")
 		}
 	}

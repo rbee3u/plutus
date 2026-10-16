@@ -198,9 +198,10 @@ action stays available when all accounts hide.
 Summary and tree must describe one consistent valuation point; expanded details
 must match the visible account report, apart from explicitly pending manual
 additions described below. Failed or conflicting reads offer recovery, retain
-compatible prior data, and expose its age through point/report times.
-Latest-only endpoints can race with collection and require a retry or reload;
-the display must not combine inconsistent reports.
+compatible prior data, and expose its age through point/report times. Expanded
+account reads request the displayed valuation point even after a newer
+collection finishes. Unavailable or expired details offer recovery without
+substituting another point's holdings.
 
 Holdings has independent balances, futures, earn, and dual investment views,
 with balances as default and no options placeholder. Ownership totals belong in
@@ -241,8 +242,15 @@ failures; URL correction can deliberately widen results.
 
 The futures notional total and completeness cover the portfolio boundary before
 filtering or pagination. Balance totals follow filtered collected balances;
-pending manual additions have no valuation and do not enter those totals.
-Filtering never changes the portfolio boundary.
+pending manual additions have no valuation and do not enter those totals. The
+balance total's badge qualifies that filtered sum, independently of the
+portfolio valuation. Its omissions name unpriced balances and missing reports.
+Empty holdings use report coverage for their filtered account scope; stale
+reports with readable holdings do not turn into unknown sets. Filtering never
+changes the portfolio boundary. A holdings view keeps its collected valuation
+point across filter changes, pagination, and retries; re-entry, browser reload,
+or collection completion resolves it again. Manual saves reset balance
+pagination while keeping the collected point.
 
 ### Manual editing
 
@@ -427,7 +435,13 @@ the selected snapshot with its actual timestamp and total, including cross-day
 fallback. Never present another point's holdings under the original total.
 
 Boundary events use newest collection cycles first, preserving the account order
-within each cycle. Their time order is fixed, without a sorting control.
+within each cycle. Their time order is fixed, without a sorting control. Capital
+flow and boundary event tables use server pages of 50 rows with Previous / Next
+and the full filtered count. Range changes reset their offset; reload retains
+URL pagination. Flow writes restart from the first page in the same window;
+reads recover an offset that no longer contains rows. A series exceeding its
+declared point budget shows an explicit recovery message; all original points
+remain available in the raw table.
 
 The `Valuation points` view shows filters, the full-window chart,
 `Period closes`, then raw points. Period closes shares the window. Both calendar

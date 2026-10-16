@@ -9,8 +9,8 @@ import type {
   EarnPositionRow,
   Overview,
   PositionRow,
-  HoldingsTree,
   IdentityList,
+  ValuationPointSummary,
 } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
@@ -19,9 +19,8 @@ async function fixture(page: Page) {
   const state = {
     point: "point-1" as string | null,
     value: "100",
-    treePoint: undefined as string | undefined,
     detailReport: undefined as string | undefined,
-    failTree: false,
+    failOverview: false,
     failPositions: false,
     positionsReady: Promise.resolve(),
     emptyTree: false,
@@ -35,6 +34,9 @@ async function fixture(page: Page) {
     dual: [] as DualPositionRow[],
     earns: [] as EarnPositionRow[],
     includeEarn: false,
+    chartPoints: [] as ValuationPointSummary[],
+    failChartWindow: false,
+    failChartPoints: false,
   };
   const context = () => ({
     portfolioId,
@@ -43,6 +45,12 @@ async function fixture(page: Page) {
     evaluatedAt: observed,
   });
   const account = (dual = false): AccountValuation => ({
+    sourceReportId: null,
+    adjustedEquityUsd: null,
+    availableEquityUsd: null,
+    initialMarginRatio: null,
+    maintenanceMarginRatio: null,
+    marginRatio: null,
     accountId: dual ? "dual" : "spot",
     accountName: dual ? "Dual account" : "Spot",
     accountType: dual ? "dual_investment" : "spot",
@@ -57,7 +65,7 @@ async function fixture(page: Page) {
     completeness: state.unknown && !dual ? "incomplete" : "complete",
     reportObservedAt: state.unknown && !dual ? null : observed,
     valueUsd: dual ? "0" : state.unknown ? null : state.value,
-    equity: dual ? "0" : state.unknown ? null : state.value,
+    reportedEquityUsd: dual ? "0" : state.unknown ? null : state.value,
     omitted: [],
   });
   const overview = (): Overview => ({
@@ -65,7 +73,7 @@ async function fixture(page: Page) {
     point: state.point
       ? {
           cycleId: state.point,
-          valuationRevision: `${state.point}:1`,
+
           calculationVersion: 1,
           detailState: "full" as const,
           evaluatedAt: observed,
@@ -78,20 +86,10 @@ async function fixture(page: Page) {
           boundaryWithdrawalUsd: "0",
         }
       : null,
-    totalUsd: state.point ? state.value : null,
-    completeness: "complete",
-    accountCount: 2,
-    staleAccountCount: 0,
-    incompleteAccountCount: 0,
-    byPlatform: [],
-    byIdentity: [],
+    platforms: [],
     issues: [],
-    sparkline: [],
   });
-  const tree = (): HoldingsTree => ({
-    context: { ...context(), cycleId: state.treePoint ?? state.point },
-    totalUsd: state.point ? state.value : null,
-    completeness: state.point ? "complete" : "incomplete",
+  const tree = (): Pick<Overview, "platforms" | "issues"> => ({
     issues: [
       {
         code: "test_omission",
@@ -150,10 +148,11 @@ async function fixture(page: Page) {
       const request = route.request();
       const path = new URL(request.url()).pathname;
       state.requests.push(`${request.method()} ${path}`);
-      if (path.endsWith("/overview")) return route.fulfill({ json: overview() });
-      if (path.endsWith("/tree"))
+      if (path.endsWith("/overview"))
         return route.fulfill(
-          state.failTree ? { status: 503, json: { detail: "Tree unavailable" } } : { json: tree() },
+          state.failOverview
+            ? { status: 503, json: { detail: "Overview unavailable" } }
+            : { json: { ...overview(), ...tree() } },
         );
       if (path.includes("/accounts/")) {
         const dual = path.includes("/accounts/dual/");
@@ -167,29 +166,15 @@ async function fixture(page: Page) {
             }
           : account(dual);
         if (state.detailReport) a.reportId = state.detailReport;
-        if (path.endsWith("/earn-positions"))
-          return route.fulfill({
-            json: {
-              context: context(),
-              account: a,
-              items: state.earns,
-              issues: [],
-            },
-          });
-        if (path.endsWith("/positions") || path.endsWith("/dual-positions")) {
-          await state.positionsReady;
-          if (state.failPositions)
-            return route.fulfill({ status: 503, json: { detail: "Positions unavailable" } });
-          return route.fulfill({
-            json: {
-              context: context(),
-              account: a,
-              items: dual ? state.dual : state.positions,
-              issues: [],
-            },
-          });
-        }
+        await state.positionsReady;
+        if (state.failPositions)
+          return route.fulfill({ status: 503, json: { detail: "Positions unavailable" } });
         const balance: BalanceRow = {
+          availableToWithdraw: null,
+          availableToTrade: null,
+          liability: null,
+          interest: null,
+          unrealizedPnl: null,
           accountId: a.accountId,
           accountName: a.accountName,
           accountType: a.accountType,
@@ -199,15 +184,23 @@ async function fixture(page: Page) {
           assetId: "usd",
           assetSymbol: "USD",
           canonicalAssetSymbol: "USD",
-          equity: a.equity!,
-          equityUsd: a.equity,
+          equity: a.reportedEquityUsd!,
+          equityUsd: a.reportedEquityUsd,
           priceUsd: "1",
           noPrice: false,
           freshness: a.freshness,
           reportObservedAt: observed,
         };
         return route.fulfill({
-          json: { context: context(), account: a, items: [balance], issues: [] },
+          json: {
+            context: context(),
+            account: a,
+            balances: [balance],
+            positions: dual || a.accountType === "earn" ? [] : state.positions,
+            dualPositions: dual ? state.dual : [],
+            earnPositions: a.accountType === "earn" ? state.earns : [],
+            issues: [],
+          },
         });
       }
       const cycle = {
@@ -232,12 +225,30 @@ async function fixture(page: Page) {
         });
       }
       if (path.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
-      if (path.endsWith("/history-window"))
-        return route.fulfill({ json: { context: context(), from: observed, to: observed } });
-      if (path.endsWith("/valuation-points"))
-        return route.fulfill({
-          json: { context: context(), from: observed, to: observed, granularity: "raw", items: [] },
-        });
+      if (path.endsWith("/history-window")) {
+        const preset = new URL(request.url()).searchParams.get("preset");
+        const days = preset === "1D" ? 1 : preset === "1M" ? 30 : 7;
+        const from = new Date(Date.parse(observed) - days * 86400000).toISOString();
+        return route.fulfill(
+          state.failChartWindow
+            ? { status: 503, json: { detail: "Chart window unavailable" } }
+            : { json: { context: context(), from, to: observed } },
+        );
+      }
+      if (path.endsWith("/valuation-points/series"))
+        return route.fulfill(
+          state.failChartPoints
+            ? { status: 503, json: { detail: "Chart points unavailable" } }
+            : {
+                json: {
+                  context: context(),
+                  from: observed,
+                  to: observed,
+                  granularity: "raw",
+                  items: state.chartPoints,
+                },
+              },
+        );
       if (path.endsWith("/manual-balances")) {
         const identityId = path.split("/").at(-2)!;
         return route.fulfill({
@@ -287,8 +298,12 @@ async function fixture(page: Page) {
             context: context(),
             items: [],
             page: { kind: "offset", offset: 0, limit: 50, total: 0 },
-            totalUsd: "0",
-            completeness: "complete",
+            filteredTotalCompleteness: "complete",
+            filteredTotalIssues: [],
+            manualOverlay: null,
+            coverage: { complete: true, missingAccountIds: [] },
+            filteredTotalUsd: "0",
+            valuationCompleteness: "complete",
             issues: [],
           },
         });
@@ -304,6 +319,72 @@ async function openSpot(page: Page) {
     .getByRole("button", { name: "Expand balances and positions for Spot", exact: true })
     .click();
 }
+
+test("Overview keeps chart ranges available after a sparse result", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto(`/p/${portfolioId}/overview`);
+  await expect(page.getByRole("tab", { name: "1W", exact: true })).toBeVisible();
+  await expect(
+    page.getByText("At least two valuation points are needed to show a trend."),
+  ).toBeVisible();
+  state.chartPoints = [
+    {
+      cycleId: "earlier-point",
+      calculationVersion: 1,
+      detailState: "full",
+      evaluatedAt: "2026-09-10T00:00:00Z",
+      totalUsd: "90",
+      completeness: "complete",
+      accountCount: 2,
+      staleAccountCount: 0,
+      incompleteAccountCount: 0,
+      boundaryContributionUsd: "0",
+      boundaryWithdrawalUsd: "0",
+    },
+    {
+      cycleId: "latest-point",
+      calculationVersion: 1,
+      detailState: "full",
+      evaluatedAt: observed,
+      totalUsd: "100",
+      completeness: "complete",
+      accountCount: 2,
+      staleAccountCount: 0,
+      incompleteAccountCount: 0,
+      boundaryContributionUsd: "0",
+      boundaryWithdrawalUsd: "0",
+    },
+  ];
+  await page.getByRole("tab", { name: "1M", exact: true }).click();
+  await expect(
+    page.getByRole("img", { name: "Recent valuation points", exact: true }),
+  ).toBeVisible();
+  state.chartPoints = [];
+  await page.getByRole("tab", { name: "1D", exact: true }).click();
+  await expect(
+    page.getByText("At least two valuation points are needed to show a trend."),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "1M", exact: true })).toBeVisible();
+});
+
+test("Overview chart failures recover independently of the summary", async ({ page }) => {
+  const state = await fixture(page);
+  state.failChartWindow = true;
+  state.failChartPoints = true;
+  await page.goto(`/p/${portfolioId}/overview`);
+  await expect(page.getByRole("heading", { name: "Total net worth", exact: true })).toBeVisible();
+  const windowError = page.getByRole("alert").filter({ hasText: "Chart window unavailable" });
+  await expect(windowError).toBeVisible();
+  state.failChartWindow = false;
+  await windowError.getByRole("button", { name: "Retry", exact: true }).click();
+  const pointsError = page.getByRole("alert").filter({ hasText: "Chart points unavailable" });
+  await expect(pointsError).toBeVisible();
+  state.failChartPoints = false;
+  await pointsError.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(pointsError).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "1W", exact: true })).toBeVisible();
+  expect(state.requests.filter((path) => path.endsWith("/overview"))).toHaveLength(1);
+});
 
 test("Overview replaces groups with an identity-depth tree and accessible drilldown", async ({
   page,
@@ -332,6 +413,7 @@ test("Overview replaces groups with an identity-depth tree and accessible drilld
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("USD");
+  expect(state.requests.filter((path) => path.includes("/accounts/spot/"))).toHaveLength(1);
   await expect(page.getByRole("heading", { name: "Futures", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Balances", exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "Collapse Binance" }).click();
@@ -342,7 +424,7 @@ test("Overview replaces groups with an identity-depth tree and accessible drilld
     .getByRole("button", { name: "Expand balances and positions for Dual account" })
     .click();
   await expect
-    .poll(() => state.requests.some((path) => path.includes("/accounts/dual/dual-positions")))
+    .poll(() => state.requests.some((path) => path.includes("/accounts/dual/report")))
     .toBe(true);
   await expect(page.getByRole("heading", { name: "Dual investment", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Holdings", exact: true }).click();
@@ -373,23 +455,24 @@ test("Manual collection updates both totals and open details without display pol
   expect(state.requests.filter((path) => path.startsWith("POST"))).toHaveLength(1);
 });
 
-test("A mismatched tree is rejected and retry restores one consistent point", async ({ page }) => {
+test("Overview retries the summary and ownership tree as one response", async ({ page }) => {
   const state = await fixture(page);
-  state.treePoint = "other";
+  state.failOverview = true;
   await page.goto(`/p/${portfolioId}/overview`);
-  await expect(page.getByRole("alert")).toContainText("changed while loading");
+  await expect(page.getByRole("alert")).toContainText("Overview unavailable");
   await expect(page.getByRole("article")).toHaveCount(0);
-  state.treePoint = undefined;
+  state.failOverview = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Holdings tree", exact: true })).toBeVisible();
-  state.failTree = true;
+  state.failOverview = true;
   await page.getByRole("button", { name: "Collect now", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Showing the last successful result");
   await expect(page.getByRole("article").first()).toContainText("100");
   await expect(page.getByRole("button", { name: "Collapse Binance" })).toContainText("100");
-  state.failTree = false;
+  state.failOverview = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(page.getByRole("article").first()).toContainText("200");
+  expect(state.requests.some((path) => path.endsWith("/tree"))).toBe(false);
 });
 
 test("Empty, loading, failed and newer account reports are not treated as empty positions", async ({
@@ -417,7 +500,9 @@ test("Empty, loading, failed and newer account reports are not treated as empty 
   await page.getByRole("button", { name: "Collapse balances and positions for Spot" }).click();
   state.detailReport = "newer-report";
   await page.getByRole("button", { name: "Expand balances and positions for Spot" }).click();
-  await expect(page.getByRole("alert").first()).toContainText("Refreshing the portfolio");
+  await expect(page.getByRole("alert").first()).toContainText(
+    "does not match the selected valuation point",
+  );
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText("100");
   await expect(page.getByRole("alert").first()).toContainText("Showing the last successful result");
 });
@@ -492,6 +577,17 @@ test("Stale futures and dual investment remain visible and a failed initial bala
   state.stale = true;
   state.positions = [
     {
+      contractSize: null,
+      settlementMargin: null,
+      entryPrice: null,
+      markPrice: null,
+      liquidationPrice: null,
+      unrealizedPnl: null,
+      displayLeverage: null,
+      marginUnavailableCode: null,
+      reportedLeverage: null,
+      reportedMargin: null,
+      notionalUsd: null,
       accountId: "spot",
       accountName: "Spot",
       accountType: "spot",
@@ -516,6 +612,8 @@ test("Stale futures and dual investment remain visible and a failed initial bala
   ];
   state.dual = [
     {
+      targetPrice: null,
+      annualizedRate: null,
       accountId: "dual",
       accountName: "Dual account",
       accountType: "dual_investment",
@@ -548,7 +646,9 @@ test("Stale futures and dual investment remain visible and a failed initial bala
   await page.reload();
   state.detailReport = "newer-report";
   await openSpot(page);
-  await expect(page.getByRole("alert").first()).toContainText("Refreshing the portfolio");
+  await expect(page.getByRole("alert").first()).toContainText(
+    "does not match the selected valuation point",
+  );
   await expect(page.getByRole("table", { name: "Balances of Spot" })).toContainText(
     "Balances could not be loaded. Retry above.",
   );
@@ -730,9 +830,7 @@ test("Overview shares earn columns without ownership and rejects mismatched repo
     .click();
   await expect(
     page
-      .getByText(
-        "This account changed since the displayed valuation point. Refreshing the portfolio to read a consistent account report.",
-      )
+      .getByText("The account response does not match the selected valuation point and report.")
       .first(),
   ).toBeVisible();
   await expect(table).not.toContainText("1 ETH");

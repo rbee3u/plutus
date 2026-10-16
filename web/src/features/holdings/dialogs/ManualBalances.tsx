@@ -6,10 +6,12 @@ export function ManualDialog({
   portfolioId,
   target,
   onClose,
+  onSaved,
 }: {
   portfolioId: string;
   target: ManualTarget | null;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
   return (
     <Dialog open={target !== null} title="Manual balances" onClose={onClose}>
@@ -19,6 +21,7 @@ export function ManualDialog({
           portfolioId={portfolioId}
           target={target}
           onClose={onClose}
+          onSaved={onSaved}
         />
       ) : null}
     </Dialog>

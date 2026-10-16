@@ -10,10 +10,11 @@ import {
 import { formatUsd } from "@/shared/lib/amount";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { formatInstant } from "@/shared/lib/datetime";
-import { boundaryEventCountText, reasonText } from "@/shared/lib/text";
+import { boundaryEventCountText } from "@/shared/lib/text";
 import { Badge, CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
+import { IssueList } from "@/shared/ui/IssueList";
 import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
@@ -37,7 +38,7 @@ export function ValueChangeSummary({ window }: { window?: HistoryWindow }) {
         <h2 className={styles.summaryTitle}>Range summary</h2>
         {comparison.data?.completeness === "incomplete" ? (
           <CompletenessBadge value="incomplete" />
-        ) : comparison.data?.reasons.length ? (
+        ) : comparison.data?.issues.length ? (
           <Badge tone="warn">Notes</Badge>
         ) : null}
       </div>
@@ -61,15 +62,11 @@ function RangeResult({ change, timezone }: { change: ValueChange; timezone?: str
     !change.endPoint && "No end valuation point at or before the selected end.",
     change.startPoint &&
       change.endPoint &&
-      (change.startPoint.cycleId === change.endPoint.cycleId ||
-        change.reasons.includes("no_point_in_period")) &&
+      (change.startPoint.cycleId === change.endPoint.cycleId || !change.comparable) &&
       "Two distinct valuation points are required for comparison.",
   ].filter(Boolean);
   const unavailable = unavailableReasons.length > 0;
-  const unknownFlows = change.reasons.some(
-    (reason) =>
-      reason.startsWith("unvalued_flow:") || reason.startsWith("unvalued_boundary_event:"),
-  );
+  const unknownFlows = change.flowsCompleteness === "incomplete";
   return (
     <>
       <div className={styles.pointStatsGrid}>
@@ -132,14 +129,10 @@ function RangeResult({ change, timezone }: { change: ValueChange; timezone?: str
       </div>
 
       {unavailable ? <p className={shared.notice}>{unavailableReasons.join(" ")}</p> : null}
-      {change.reasons.length > 0 ? (
+      {change.issues.length > 0 ? (
         <details className={shared.reportDetails}>
-          <summary>Limitations ({change.reasons.length})</summary>
-          <ul className={shared.metaList}>
-            {change.reasons.map((reason, index) => (
-              <li key={index}>{reasonText(reason, "label")}</li>
-            ))}
-          </ul>
+          <summary>Limitations ({change.issues.length})</summary>
+          <IssueList issues={change.issues} timezone={timezone} />
         </details>
       ) : null}
 

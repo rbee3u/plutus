@@ -15,7 +15,6 @@ import (
 	"github.com/rbee3u/plutus/internal/application/ordering"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 const (
@@ -60,16 +59,6 @@ type Asset struct {
 	ExclusionReason      *string
 	ExcludedAt           *time.Time
 	ExclusionVersion     uint64
-}
-
-// ETag returns the asset validator.
-func (asset *Asset) ETag() string {
-	return etag.Format("asset", asset.MappingVersion)
-}
-
-// ParseAssetETag extracts the version from an asset ETag.
-func ParseAssetETag(value string) (uint64, bool) {
-	return etag.Parse("asset", value)
 }
 
 // FuturesContract is one platform symbol with one immutable set of observed terms.

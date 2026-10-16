@@ -62,7 +62,14 @@ export function useTimeWindow(options: UseTimeWindowOptions = {}) {
         ) {
           throw new Error("The end must be after a valid start.");
         }
-        return { context: { portfolioId, timezone: timezone! }, from, to };
+        return {
+          context: {
+            portfolioId,
+            timezone: timezone!,
+          },
+          from,
+          to,
+        };
       }
       return unwrapOrRedirect(
         await getHistoryWindow({

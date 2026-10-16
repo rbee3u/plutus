@@ -17,6 +17,8 @@ type Querier interface {
 	ArchiveIdentity(ctx context.Context, arg ArchiveIdentityParams) (int64, error)
 	ClearIdentityCredentials(ctx context.Context, arg ClearIdentityCredentialsParams) (int64, error)
 	CountAssets(ctx context.Context, arg CountAssetsParams) (int64, error)
+	CountBoundaryEvents(ctx context.Context, arg CountBoundaryEventsParams) (int64, error)
+	CountCapitalFlows(ctx context.Context, arg CountCapitalFlowsParams) (int64, error)
 	CountFuturesContracts(ctx context.Context, arg CountFuturesContractsParams) (int64, error)
 	CountIdentitiesWithCiphertext(ctx context.Context) (int64, error)
 	CountValuationPointsBetween(ctx context.Context, arg CountValuationPointsBetweenParams) (int64, error)
@@ -73,6 +75,7 @@ type Querier interface {
 	// worker, and portfolio deletion requests.
 	FailActiveCollectionCycle(ctx context.Context, arg FailActiveCollectionCycleParams) (int64, error)
 	GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error)
+	GetAccountReportAtCycle(ctx context.Context, arg GetAccountReportAtCycleParams) (GetAccountReportAtCycleRow, error)
 	// The applied revision is the latest one whose own cycle has committed, even after its point expires.
 	// Serialized cycles make report time follow point order. The account's
 	// fallback range stops at its latest committed report; the optimizer can
@@ -146,6 +149,7 @@ type Querier interface {
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertValuationPoint(ctx context.Context, arg InsertValuationPointParams) error
 	IsPointInRetainedHistory(ctx context.Context, arg IsPointInRetainedHistoryParams) (bool, error)
+	ListAccountBalanceValuations(ctx context.Context, arg ListAccountBalanceValuationsParams) ([]ListAccountBalanceValuationsRow, error)
 	ListAccountsByIdentity(ctx context.Context, arg ListAccountsByIdentityParams) ([]Account, error)
 	ListAccountsByPortfolio(ctx context.Context, portfolioID []byte) ([]ListAccountsByPortfolioRow, error)
 	ListAssetExclusionsBefore(ctx context.Context, arg ListAssetExclusionsBeforeParams) ([]ListAssetExclusionsBeforeRow, error)
@@ -160,6 +164,8 @@ type Querier interface {
 	// Audit pages resolve only their referenced immutable rules, never today's rule.
 	// Version zero denotes the implicit initial, non-excluded state.
 	ListAuditExclusionVersions(ctx context.Context, arg ListAuditExclusionVersionsParams) ([]ListAuditExclusionVersionsRow, error)
+	// Only the displayed page needs availability, liability, interest, and PnL.
+	ListBalanceDetailsByReportsAndAssets(ctx context.Context, arg ListBalanceDetailsByReportsAndAssetsParams) ([]Balance, error)
 	ListBalanceValuationsByCycles(ctx context.Context, arg ListBalanceValuationsByCyclesParams) ([]ListBalanceValuationsByCyclesRow, error)
 	ListBalancesByCycle(ctx context.Context, arg ListBalancesByCycleParams) ([]ListBalancesByCycleRow, error)
 	ListBalancesByReport(ctx context.Context, arg ListBalancesByReportParams) ([]ListBalancesByReportRow, error)
@@ -167,6 +173,7 @@ type Querier interface {
 	// row, before statistics describe them; the join order stays fixed.
 	ListBalancesByReports(ctx context.Context, arg ListBalancesByReportsParams) ([]ListBalancesByReportsRow, error)
 	ListBoundaryAccounts(ctx context.Context, portfolioID []byte) ([]ListBoundaryAccountsRow, error)
+	ListBoundaryEventPage(ctx context.Context, arg ListBoundaryEventPageParams) ([]ListBoundaryEventPageRow, error)
 	ListBoundaryEventsByCycles(ctx context.Context, arg ListBoundaryEventsByCyclesParams) ([]ListBoundaryEventsByCyclesRow, error)
 	ListBoundaryPointHeadersBetween(ctx context.Context, arg ListBoundaryPointHeadersBetweenParams) ([]ListBoundaryPointHeadersBetweenRow, error)
 	ListBoundaryValuesBetween(ctx context.Context, arg ListBoundaryValuesBetweenParams) ([]ListBoundaryValuesBetweenRow, error)
@@ -174,18 +181,21 @@ type Querier interface {
 	// changes after that endpoint; see ListLatestCalculatedAssetChanges for the
 	// ORDER BY constraint.
 	ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalculatedAssetsAtCyclesParams) ([]ListCalculatedAssetsAtCyclesRow, error)
+	ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPageParams) ([]CapitalFlow, error)
 	ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsParams) ([]CapitalFlow, error)
 	ListCollectableIdentities(ctx context.Context, portfolioID []byte) ([]ListCollectableIdentitiesRow, error)
 	// Read only points that can contribute comparison evidence. The version window
 	// includes one predecessor, so A -> B -> A and equal-time cycle ordering survive.
 	ListComparisonPointHeadersBetween(ctx context.Context, arg ListComparisonPointHeadersBetweenParams) ([]ListComparisonPointHeadersBetweenRow, error)
 	ListCurrentAssetExclusions(ctx context.Context, portfolioID []byte) ([]ListCurrentAssetExclusionsRow, error)
+	ListCurrentManualBalancesByAccounts(ctx context.Context, arg ListCurrentManualBalancesByAccountsParams) ([]ListCurrentManualBalancesByAccountsRow, error)
 	ListCyclesWithPoints(ctx context.Context, arg ListCyclesWithPointsParams) ([]ListCyclesWithPointsRow, error)
 	ListDualPositionsByCycle(ctx context.Context, arg ListDualPositionsByCycleParams) ([]ListDualPositionsByCycleRow, error)
 	ListDualPositionsByReport(ctx context.Context, arg ListDualPositionsByReportParams) ([]DualPosition, error)
 	// A retained cycle can start before the window and finish inside it.
 	ListEarlierRetainedPolicyBoundaries(ctx context.Context, arg ListEarlierRetainedPolicyBoundariesParams) ([]time.Time, error)
 	ListEarnPositionsByReport(ctx context.Context, arg ListEarnPositionsByReportParams) ([]EarnPosition, error)
+	ListEarnPositionsByReports(ctx context.Context, arg ListEarnPositionsByReportsParams) ([]EarnPosition, error)
 	// Cycles also remain while a stale report still needs its owning cycle.
 	ListExpiredCycleCandidates(ctx context.Context, arg ListExpiredCycleCandidatesParams) ([]ListExpiredCycleCandidatesRow, error)
 	// Version history keeps the opening state and every version used by a retained
@@ -246,6 +256,7 @@ type Querier interface {
 	// Default catalog entries may expire; explicit mappings and policy versions
 	// are current configuration, even when the asset is not currently held.
 	ListUnusedHistoricalAssets(ctx context.Context, arg ListUnusedHistoricalAssetsParams) ([][]byte, error)
+	ListValuationPointHeaderPage(ctx context.Context, arg ListValuationPointHeaderPageParams) ([]ListValuationPointHeaderPageRow, error)
 	ListValuationPointHeadersBetween(ctx context.Context, arg ListValuationPointHeadersBetweenParams) ([]ListValuationPointHeadersBetweenRow, error)
 	ListValuationPointPage(ctx context.Context, arg ListValuationPointPageParams) ([]ValuationPoint, error)
 	ListValuationPointSummariesBetween(ctx context.Context, arg ListValuationPointSummariesBetweenParams) ([]ValuationPoint, error)

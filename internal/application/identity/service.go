@@ -17,7 +17,6 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/infra/secret"
 	"github.com/rbee3u/plutus/internal/platform/adapters"
-	"github.com/rbee3u/plutus/internal/shared/etag"
 )
 
 const (
@@ -86,16 +85,6 @@ type Identity struct {
 	Version     uint64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-}
-
-// ETag returns the identity validator.
-func (i *Identity) ETag() string {
-	return etag.Format("identity", i.Version)
-}
-
-// ParseETag extracts the version from an identity ETag.
-func ParseETag(value string) (uint64, bool) {
-	return etag.Parse("identity", value)
 }
 
 // Connection is the credential and scheduling state embedded in an identity.
