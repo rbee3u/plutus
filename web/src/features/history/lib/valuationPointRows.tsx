@@ -121,7 +121,7 @@ export function periodCloseIssuesCell(item: PeriodClose) {
             <span className={shared.cellMeta}>Missing data</span>
             <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
               {item.reasons.map((reason, i) => (
-                <li key={i}>{reasonText(reason)}</li>
+                <li key={i}>{reasonText(reason, "label")}</li>
               ))}
             </ul>
           </div>

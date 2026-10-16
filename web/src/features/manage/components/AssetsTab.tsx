@@ -110,7 +110,7 @@ export function AssetsTab({ portfolioId, filters, timezone }: TabProps) {
                 type="search"
                 searchDraft={filters.qDraft}
                 searchPlaceholder="Contains, e.g. BTC"
-                searchHelp="Matches part of an asset, ignoring case."
+                searchHelp="Search supports partial matches and ignores case."
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}

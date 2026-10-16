@@ -63,23 +63,35 @@ export function combinedFlowsCell(item: ValueChange) {
   return (
     <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
       {inCap && !inCap.isZero() ? (
-        <span className={shared.pnlPositive}>
-          <NumericText>{`+$${formatAmount(inCap.toFixed())} Cap`}</NumericText>
+        <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+          <span className={shared.pnlPositive}>
+            <NumericText>{`+$${formatAmount(inCap.toFixed())}`}</NumericText>
+          </span>
+          <span className={shared.cellMeta}>Capital flow</span>
         </span>
       ) : null}
       {outCap && !outCap.isZero() ? (
-        <span className={shared.pnlNegative}>
-          <NumericText>{`-$${formatAmount(outCap.toFixed())} Cap`}</NumericText>
+        <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+          <span className={shared.pnlNegative}>
+            <NumericText>{`-$${formatAmount(outCap.toFixed())}`}</NumericText>
+          </span>
+          <span className={shared.cellMeta}>Capital flow</span>
         </span>
       ) : null}
       {inBnd && !inBnd.isZero() ? (
-        <span className={shared.pnlPositive}>
-          <NumericText>{`+$${formatAmount(inBnd.toFixed())} Bnd`}</NumericText>
+        <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+          <span className={shared.pnlPositive}>
+            <NumericText>{`+$${formatAmount(inBnd.toFixed())}`}</NumericText>
+          </span>
+          <span className={shared.cellMeta}>Boundary event</span>
         </span>
       ) : null}
       {outBnd && !outBnd.isZero() ? (
-        <span className={shared.pnlNegative}>
-          <NumericText>{`-$${formatAmount(outBnd.toFixed())} Bnd`}</NumericText>
+        <span className={shared.cellStack} style={{ alignItems: "flex-end" }}>
+          <span className={shared.pnlNegative}>
+            <NumericText>{`-$${formatAmount(outBnd.toFixed())}`}</NumericText>
+          </span>
+          <span className={shared.cellMeta}>Boundary event</span>
         </span>
       ) : null}
     </span>
@@ -115,7 +127,7 @@ export function valueChangeIssuesCell(item: ValueChange) {
             <span className={shared.cellMeta}>Limitations</span>
             <ul style={{ margin: "4px 0 0", paddingLeft: "16px" }}>
               {item.reasons.map((reason, i) => (
-                <li key={i}>{reasonText(reason)}</li>
+                <li key={i}>{reasonText(reason, "label")}</li>
               ))}
             </ul>
           </div>

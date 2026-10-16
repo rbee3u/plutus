@@ -2,11 +2,11 @@ import type { AccountValuation, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatRatio } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
-import { capitalize, NO_ACCOUNT_REPORT } from "@/shared/lib/text";
+import { capitalize, issueLabel, NO_ACCOUNT_REPORT } from "@/shared/lib/text";
 import { isAccountReportMissing } from "@/shared/lib/valuationRows";
-import { AccountHealthBadges } from "@/shared/ui/Badge";
+import { AccountHealthBadges, Badge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
-import { Codes, IssueList } from "@/shared/ui/IssueList";
+import { IssueList } from "@/shared/ui/IssueList";
 import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import type { ManualTarget } from "../dialogs/manual";
@@ -130,7 +130,7 @@ export function AccountDetail({
                   ? "Futures could not be loaded. Retry above."
                   : missingReport
                     ? NO_ACCOUNT_REPORT
-                    : "No open positions in the current account report for this account."
+                    : "No open positions in this account report."
             }
           />
           <HoldingIssues issues={positions.data?.issues} timezone={timezone} />
@@ -178,12 +178,12 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
   const figures = [
     { label: "Equity", value: account.equity, format: formatAmount },
     {
-      label: "AdjEq",
+      label: "Adjusted equity",
       value: account.adjustedEquity,
       format: formatAmount,
     },
     {
-      label: "AvailEq",
+      label: "Available equity",
       value: account.availableEquity,
       format: formatAmount,
     },
@@ -244,6 +244,10 @@ function AccountFeedback({
     account.status === "failed" ||
     account.freshness === "stale" ||
     account.completeness === "incomplete";
+  const showConnectionNotice =
+    account.accountType !== "manual" &&
+    account.connectionStatus &&
+    account.connectionStatus !== "enabled";
   return (
     <>
       {exceptional ? (
@@ -268,20 +272,16 @@ function AccountFeedback({
           ) : null}
         </div>
       ) : null}
-      {!account.selected ||
-      account.identityStatus === "archived" ||
-      (account.connectionStatus && account.connectionStatus !== "enabled") ? (
+      {!account.selected || account.identityStatus === "archived" || showConnectionNotice ? (
         <p className={shared.notice}>
           {!account.selected ? "Account is not selected. " : ""}
           {account.identityStatus === "archived" ? "Identity is archived. " : ""}
-          {account.connectionStatus && account.connectionStatus !== "enabled"
-            ? `Connection is ${account.connectionStatus}.`
-            : ""}
+          {showConnectionNotice ? `Connection is ${account.connectionStatus}.` : ""}
         </p>
       ) : null}
       {account.errorClass ? (
         <p className={shared.alert} role="status">
-          <Codes values={[account.errorClass]} />
+          <Badge tone="bad">{issueLabel(account.errorClass)}</Badge>
           {account.errorDetail ? ` ${account.errorDetail}` : ""}
         </p>
       ) : null}
@@ -294,7 +294,7 @@ function AccountFeedback({
               {item.assetSymbol}
               {item.canonicalAssetSymbol ? ` (mapped to ${item.canonicalAssetSymbol})` : ""}{" "}
               <NumericText>{formatDecimal(item.equity)}</NumericText>{" "}
-              <Codes values={[item.reason]} />
+              <Badge tone="warn">{issueLabel(item.reason)}</Badge>
             </span>
           ))}
         </p>

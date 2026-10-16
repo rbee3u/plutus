@@ -10,6 +10,7 @@ import {
 } from "@/api";
 import type {
   PeriodCloseList,
+  TimeGranularity,
   ValuationPointDetail,
   ValuationPointList,
   ValuationPointPage,
@@ -36,8 +37,12 @@ import styles from "@/features/history/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
-const NO_POINT =
-  "No valuation point in this window. Enable a connection and run a collection cycle.";
+const NO_POINT = "No valuation points in this range. Adjust the range or run a collection cycle.";
+const GRANULARITY_LABELS: Record<TimeGranularity, string> = {
+  raw: "All points",
+  hour: "Hourly",
+  day: "Daily",
+};
 
 export function ValuationPointsPage() {
   const history = useHistoryWindow();
@@ -130,7 +135,7 @@ export function ValuationPointsPage() {
       {series ? (
         <ChartBlock
           title="Portfolio value"
-          summary={`${formatInstant(series.from, timezone)} – ${formatInstant(series.to, timezone)} · ${series.granularity} granularity`}
+          summary={`${formatInstant(series.from, timezone)} – ${formatInstant(series.to, timezone)} · ${GRANULARITY_LABELS[series.granularity]}`}
           option={chartOption}
           empty={
             series.items.length === 0

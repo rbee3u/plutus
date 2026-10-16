@@ -151,7 +151,7 @@ func AccountIssues(a *AccountValuation) []Issue {
 	case a.Freshness == FreshnessStale:
 		detail := "The account report failed this cycle; the previous successful report is carried forward."
 		if a.ErrorDetail != nil {
-			detail = "The account report failed this cycle (" + *a.ErrorDetail + "); the previous successful report is carried forward."
+			detail += " Last error: " + *a.ErrorDetail
 		}
 		out = append(out, Issue{Code: "stale", AccountID: &id, AccountName: a.AccountName, Detail: detail, ReportObservedAt: a.ReportObservedAt})
 	}

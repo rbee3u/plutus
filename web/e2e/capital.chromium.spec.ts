@@ -5,8 +5,9 @@ import { sessionFixture } from "./support/session";
 
 test.use({ timezoneId: "UTC" });
 
-async function fixture(page: Page) {
-  const session = sessionFixture();
+async function fixture(page: Page, options: { timezone?: string; effectiveAt?: string } = {}) {
+  const timezone = options.timezone ?? "UTC";
+  const session = sessionFixture({ portfolio: { timezone } });
   const portfolioId = session.portfolios.items[0].id;
   const initial: CapitalFlow = {
     id: "00000000-0000-7000-8000-000000000003",
@@ -18,12 +19,18 @@ async function fixture(page: Page) {
     canonicalAssetSymbol: "USD",
     quantity: "100",
     valueUsd: "100",
-    effectiveAt: "2026-10-10T00:00:00Z",
+    effectiveAt: options.effectiveAt ?? "2026-10-10T00:00:00Z",
     version: 1,
     createdAt: "2026-10-10T00:00:00Z",
     updatedAt: "2026-10-10T00:00:00Z",
   };
-  const state = { flow: initial as CapitalFlow | null, writes: [] as string[], failRead: false };
+  const state = {
+    flow: initial as CapitalFlow | null,
+    writes: [] as string[],
+    updates: [] as Partial<CapitalFlow>[],
+    creates: [] as Partial<CapitalFlow>[],
+    failRead: false,
+  };
   await mockApi(page, session, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -40,7 +47,7 @@ async function fixture(page: Page) {
       if (fromLocal && toLocal) {
         return route.fulfill({
           json: {
-            context: { portfolioId, timezone: "UTC" },
+            context: { portfolioId, timezone },
             from: `${fromLocal}Z`,
             to: `${toLocal}Z`,
           },
@@ -61,14 +68,21 @@ async function fixture(page: Page) {
       const from = new Date(to.getTime() - days * 86_400_000);
       return route.fulfill({
         json: {
-          context: { portfolioId, timezone: "UTC" },
+          context: { portfolioId, timezone },
           from: from.toISOString(),
           to: to.toISOString(),
         },
       });
     }
-    if (path.endsWith("/capital-flows"))
+    if (path.endsWith("/capital-flows")) {
+      if (request.method() === "POST") {
+        const body = request.postDataJSON() as Partial<CapitalFlow>;
+        state.creates.push(body);
+        state.flow = { ...initial, ...body };
+        return route.fulfill({ status: 201, json: state.flow });
+      }
       return route.fulfill({ json: { items: state.flow ? [state.flow] : [] } });
+    }
     if (path.endsWith(`/capital-flows/${initial.id}`)) {
       if (request.method() === "GET" && state.failRead)
         return route.fulfill({ status: 503, json: { detail: "Read unavailable" } });
@@ -82,6 +96,7 @@ async function fixture(page: Page) {
           return route.fulfill({ status: 204 });
         }
         const body = request.postDataJSON() as Partial<CapitalFlow>;
+        state.updates.push(body);
         state.flow = { ...state.flow, ...body, version: state.flow.version + 1 };
       }
       return route.fulfill({
@@ -118,7 +133,7 @@ test("Capital views default to 1W and expose presets", async ({ page }) => {
   await expect(page).toHaveURL(/range=3D/);
 });
 
-test("Boundary events includes the selected day's final microsecond and excludes the next day", async ({
+test("Boundary events show newest batches first, keep account order, and respect microsecond bounds", async ({
   page,
 }) => {
   const session = sessionFixture();
@@ -139,6 +154,28 @@ test("Boundary events includes the selected day's final microsecond and excludes
     accountName: "Next day",
     evaluatedAt: "2026-10-14T00:00:00.000000Z",
   };
+  const events = [
+    {
+      ...event,
+      cycleId: "00000000-0000-7000-8000-000000000007",
+      evaluatedAt: "2026-10-13T23:59:59.999998Z",
+      accountName: "Earlier batch first",
+    },
+    {
+      ...event,
+      cycleId: "00000000-0000-7000-8000-000000000007",
+      evaluatedAt: "2026-10-13T23:59:59.999998Z",
+      accountId: "00000000-0000-7000-8000-000000000008",
+      accountName: "Earlier batch second",
+    },
+    event,
+    {
+      ...event,
+      accountId: "00000000-0000-7000-8000-000000000008",
+      accountName: "Final batch second",
+    },
+    nextDay,
+  ];
   await mockApi(page, session, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/platforms")) return route.fulfill({ json: { items: [] } });
@@ -157,7 +194,7 @@ test("Boundary events includes the selected day's final microsecond and excludes
       const upper = to.replace(/\.(\d{3})Z$/, (_match, fraction: string) => `.${fraction}000Z`);
       return route.fulfill({
         json: {
-          items: [event, nextDay].filter(
+          items: events.filter(
             (item) =>
               item.evaluatedAt <= upper && item.evaluatedAt >= "2026-10-13T00:00:00.000000Z",
           ),
@@ -172,16 +209,31 @@ test("Boundary events includes the selected day's final microsecond and excludes
   const table = page.getByRole("table", { name: "Boundary events in the window", exact: true });
   await expect(table).toContainText("Final microsecond");
   await expect(table).not.toContainText("Next day");
+  await expect(table.locator("tbody tr")).toHaveCount(4);
+  const accountNames = await table.locator("tbody tr td:nth-child(3)").allTextContents();
+  expect(accountNames).toEqual([
+    "Final microsecond",
+    "Final batch second",
+    "Earlier batch first",
+    "Earlier batch second",
+  ]);
+  await page.reload();
+  await expect(table.locator("tbody tr").first()).toContainText("Final microsecond");
 });
 
 test("Capital flow edits use the JSON baseline and explicitly reload conflicts", async ({
   page,
 }) => {
-  const state = await fixture(page);
+  const state = await fixture(page, { timezone: "Europe/Berlin" });
   await openFlowAction(page, "Edit");
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Quantity", { exact: true }).fill("150");
-  state.flow = { ...state.flow!, quantity: "200", version: 2 };
+  state.flow = {
+    ...state.flow!,
+    quantity: "200",
+    version: 2,
+    effectiveAt: "2026-10-11T01:30:00Z",
+  };
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog.getByRole("alert")).toContainText("changed in another session");
   await expect(dialog.getByLabel("Quantity", { exact: true })).toHaveValue("150");
@@ -194,11 +246,66 @@ test("Capital flow edits use the JSON baseline and explicitly reload conflicts",
   state.failRead = false;
   await dialog.getByRole("button", { name: "Reload latest flow" }).click();
   await expect(dialog.getByLabel("Quantity", { exact: true })).toHaveValue("200");
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11T03:30");
   await dialog.getByLabel("Quantity", { exact: true }).fill("250");
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog).toBeHidden();
   expect(state.flow?.quantity).toBe("250");
   expect(state.writes).toEqual(['"capital-flow:1"', '"capital-flow:2"']);
+  expect(state.updates[0]).not.toHaveProperty("effectiveAt");
+});
+
+test("Capital flow create and edit use the portfolio timezone instead of browser UTC", async ({
+  page,
+}) => {
+  const state = await fixture(page, {
+    timezone: "Europe/Berlin",
+    effectiveAt: "2026-10-11T01:30:12.123456Z",
+  });
+  await openFlowAction(page, "Edit");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Asset", { exact: true })).toHaveValue("USD");
+  await expect(dialog.getByText("Timezone: Europe/Berlin", { exact: true })).toBeVisible();
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue(
+    "2026-10-11T03:30:12",
+  );
+  await dialog.getByLabel("Note", { exact: true }).fill("Reviewed");
+  await dialog.getByRole("button", { name: "Save flow" }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.updates[0]).not.toHaveProperty("effectiveAt");
+  expect(state.flow?.effectiveAt).toBe("2026-10-11T01:30:12.123456Z");
+  await openFlowAction(page, "Edit");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11T04:30:12");
+  await dialog.getByRole("button", { name: "Save flow" }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.flow?.effectiveAt).toBe("2026-10-11T02:30:12.000Z");
+  await page.getByRole("button", { name: "Record flow", exact: true }).click();
+  await dialog.getByLabel("Asset", { exact: true }).fill("USDT");
+  await dialog.getByLabel("Quantity", { exact: true }).fill("10");
+  await dialog.getByLabel("Value (USD, optional)", { exact: true }).fill("10");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11T07:30:12");
+  await dialog.getByRole("button", { name: "Record flow", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.creates[0]?.effectiveAt).toBe("2026-10-11T05:30:12.000Z");
+});
+
+test("Capital flow note edits preserve fold instants and reject ambiguous replacement times", async ({
+  page,
+}) => {
+  const instant = "2026-10-25T01:30:45.123456Z";
+  const state = await fixture(page, { timezone: "Europe/Berlin", effectiveAt: instant });
+  await openFlowAction(page, "Edit");
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Note", { exact: true }).fill("Keep the recorded instant");
+  await dialog.getByRole("button", { name: "Save flow" }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.updates[0]).not.toHaveProperty("effectiveAt");
+  expect(state.flow?.effectiveAt).toBe(instant);
+  await openFlowAction(page, "Edit");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-25T02:45");
+  await dialog.getByRole("button", { name: "Save flow" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("ambiguous in Europe/Berlin");
+  expect(state.updates).toHaveLength(1);
 });
 
 test("Capital flow deletion cannot silently advance the confirmed version", async ({ page }) => {

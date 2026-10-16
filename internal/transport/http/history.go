@@ -212,6 +212,9 @@ func (a *API) GetHistoryWindow(ctx context.Context, request api.GetHistoryWindow
 		toLocal = *request.Params.ToLocal
 	}
 	if (request.Params.FromLocal != nil || request.Params.ToLocal != nil) && (request.Params.Preset != nil || fromLocal == "" || toLocal == "") {
+		if request.Params.Preset == nil {
+			return nil, validationError("Enter both a start and an end date and time.")
+		}
 		return nil, validationError("Supply both local endpoints without a preset.")
 	}
 	from, to, err := financial.ResolveHistoryWindow(sc.portfolio.Timezone, preset, fromLocal, toLocal, time.Now())

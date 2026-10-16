@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { holdingsCandidates, normalizeHoldingsSelection } from "./useHoldingsFilters";
+import {
+  holdingsCandidates,
+  holdingsScopeHasMissingReport,
+  normalizeHoldingsSelection,
+} from "./useHoldingsFilters";
 
 const identities = [
   { id: "bn", platform: "binance", displayName: "Main", status: "enabled" as const },
@@ -41,5 +45,43 @@ describe("Holdings selection", () => {
     expect(
       normalizeHoldingsSelection({ ...all, platform: "kraken", identityId: "missing" }, identities),
     ).toEqual(all);
+  });
+});
+
+describe("Missing reports in the Holdings scope", () => {
+  const accounts = identities.map((identity) => ({
+    ...identity,
+    accounts: [{ id: `${identity.id}-account` }],
+  }));
+  const issues = [{ code: "missing", accountId: "ok-account" }];
+
+  it("retains uncertainty across symbol searches without waiting for identity metadata", () => {
+    expect(holdingsScopeHasMissingReport(issues, all, [])).toBe(true);
+  });
+
+  it("limits missing reports to the selected platform and identity", () => {
+    expect(holdingsScopeHasMissingReport(issues, { ...all, platform: "binance" }, accounts)).toBe(
+      false,
+    );
+    expect(holdingsScopeHasMissingReport(issues, { ...all, identityId: "bn" }, accounts)).toBe(
+      false,
+    );
+    expect(holdingsScopeHasMissingReport(issues, { ...all, identityId: "ok" }, accounts)).toBe(
+      true,
+    );
+    expect(holdingsScopeHasMissingReport(issues, { ...all, platform: "okx" }, accounts)).toBe(true);
+  });
+
+  it("does not confuse stale reports or missing prices with unknown position sets", () => {
+    expect(
+      holdingsScopeHasMissingReport(
+        [
+          { code: "stale", accountId: "ok-account" },
+          { code: "no_price", accountId: "ok-account" },
+        ],
+        all,
+        accounts,
+      ),
+    ).toBe(false);
   });
 });

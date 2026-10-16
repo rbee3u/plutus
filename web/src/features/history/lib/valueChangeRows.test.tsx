@@ -51,7 +51,7 @@ describe("valueChangeRows", () => {
     expect(html).toContain("—");
   });
 
-  it("formats combinedFlowsCell with compact labels when flows exist", () => {
+  it("formats combinedFlowsCell with flow types when flows exist", () => {
     const item: ValueChange = {
       periodKind: "day",
       label: "2026-10-09",
@@ -66,8 +66,10 @@ describe("valueChangeRows", () => {
       boundaryEvents: [],
     };
     const html = renderToStaticMarkup(combinedFlowsCell(item));
-    expect(html).toContain("+$1,000 Cap");
-    expect(html).toContain("-$250 Bnd");
+    expect(html).toContain("+$1,000");
+    expect(html).toContain("Capital flow");
+    expect(html).toContain("-$250");
+    expect(html).toContain("Boundary event");
   });
 
   it("renders quiet issues cell when healthy", () => {

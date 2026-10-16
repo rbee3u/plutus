@@ -99,7 +99,7 @@ export function FuturesTab({ filters, timezone }: TabProps) {
                 type="search"
                 searchDraft={filters.qDraft}
                 searchPlaceholder="Contains, e.g. BTC"
-                searchHelp="Matches part of a symbol, ignoring case."
+                searchHelp="Search supports partial matches and ignores case."
                 onToggle={() => filters.toggle("q")}
                 onClose={filters.close}
                 onClear={() => filters.change({ q: "" })}

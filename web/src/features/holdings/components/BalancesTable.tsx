@@ -47,8 +47,8 @@ export function BalancesTable({
       </div>
       {isManual && account.manualModifiedAt ? (
         <p className={shared.muted}>
-          Quantities last edited {formatInstant(account.manualModifiedAt, timezone)}. Collection
-          time is shown below.
+          Collected quantities last edited {formatInstant(account.manualModifiedAt, timezone)}.
+          Collection time is shown below.
         </p>
       ) : null}
       <DataTable

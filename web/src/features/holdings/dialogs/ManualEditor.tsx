@@ -1,6 +1,7 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router";
 import {
   createManualBalance,
   deleteManualBalance,
@@ -16,6 +17,7 @@ import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { Select, TextInput } from "@/shared/ui/FormControls";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
+import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import shared from "@/shared/styles/page.module.css";
 import styles from "./ManualEditor.module.css";
 
@@ -34,6 +36,7 @@ export function ManualEditor({
   const [identityId, setIdentityId] = useState(target.identityId);
   const query = useManual(portfolioId, identityId);
   const identity = identities.data?.items.find((item) => item.id === identityId);
+  const availableIdentities = identities.data?.items.filter((item) => item.status !== "archived");
   const { userId, redirect } = useSessionScope();
   const write = useAuthenticatedWrite();
   const queryClient = useQueryClient();
@@ -45,18 +48,28 @@ export function ManualEditor({
           <span className={styles.identityLabel}>Identity</span>
           <span className={styles.identityBadge}>{identity?.displayName ?? target.identityId}</span>
         </div>
+      ) : identities.isSuccess && availableIdentities?.length === 0 ? (
+        <TableEmptyState
+          title={
+            identities.data.items.length === 0 ? "No identities yet" : "No identities available"
+          }
+          help="Add an identity before adding a manual balance."
+          action={
+            <Link to={`/p/${portfolioId}/data/identities`} onClick={onClose}>
+              Manage identities
+            </Link>
+          }
+        />
       ) : (
         <label className={styles.field}>
           <span>Identity</span>
           <Select value={identityId} onChange={(event) => setIdentityId(event.target.value)}>
             <option value="">Choose an identity</option>
-            {identities.data?.items
-              .filter((item) => item.status !== "archived")
-              .map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.displayName}
-                </option>
-              ))}
+            {availableIdentities?.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.displayName}
+              </option>
+            ))}
           </Select>
         </label>
       )}

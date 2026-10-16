@@ -1,5 +1,5 @@
 import { keys, listBoundaryEvents } from "@/api";
-import type { BoundaryEventList } from "@/api";
+import type { BoundaryEvent, BoundaryEventList } from "@/api";
 import { formatCount } from "@/shared/lib/amount";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
@@ -31,7 +31,14 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
       }),
   });
 
-  const items = events.data?.items ?? [];
+  // API cycles are chronological; keep each cycle's account order intact.
+  const batches = new Map<string, BoundaryEvent[]>();
+  for (const item of events.data?.items ?? []) {
+    const batch = batches.get(item.cycleId) ?? [];
+    batch.push(item);
+    batches.set(item.cycleId, batch);
+  }
+  const items = [...batches.values()].reverse().flat();
 
   return (
     <>
@@ -56,13 +63,15 @@ export function BoundaryEventsPanel({ timezone }: { timezone?: string }) {
               title={`No boundary events in ${timeWindow.preset ? `the last ${timeWindow.preset}` : "this window"}`}
               help="Try expanding your time window."
               action={
-                <ActionButton
-                  type="button"
-                  tone="secondary"
-                  onClick={() => timeWindow.selectPreset("6M")}
-                >
-                  View last 6 months (6M)
-                </ActionButton>
+                timeWindow.preset !== "6M" ? (
+                  <ActionButton
+                    type="button"
+                    tone="secondary"
+                    onClick={() => timeWindow.selectPreset("6M")}
+                  >
+                    View last 6 months (6M)
+                  </ActionButton>
+                ) : null
               }
             />
           )

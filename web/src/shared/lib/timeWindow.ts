@@ -1,4 +1,5 @@
 import type { PeriodKind } from "@/api";
+import { toDatetimeLocalValue } from "./datetime";
 
 export const TIME_WINDOW_PRESETS = ["1D", "3D", "1W", "2W", "1M", "3M", "6M"] as const;
 export type TimeWindowPreset = (typeof TIME_WINDOW_PRESETS)[number];
@@ -46,19 +47,8 @@ export function normalizeTimeWindowPreset(val: string | null): TimeWindowPreset 
 }
 export const normalizePreset = normalizeTimeWindowPreset;
 
-/** Wall-clock text only; interpretation happens on the server in the portfolio timezone. */
+/** Wall-clock text only; range interpretation happens on the server. */
 export function timeWindowLocalValue(iso: string, timezone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(iso));
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${value("year")}-${value("month")}-${value("day")}T${value("hour")}:${value("minute")}:${value("second")}`;
+  return toDatetimeLocalValue(iso, timezone);
 }
 export const historyLocalValue = timeWindowLocalValue;

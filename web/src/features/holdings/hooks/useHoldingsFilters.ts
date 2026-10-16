@@ -1,7 +1,7 @@
 import { useLocation } from "react-router";
 import { useSessionNavigation } from "@/shared/navigation/SessionNavigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Identity } from "@/api";
+import type { Identity, Issue } from "@/api";
 import { useIdentities } from "@/shared/lib/useIdentities";
 import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { readOffset, useSearchState } from "@/shared/lib/searchParams";
@@ -40,6 +40,26 @@ export function holdingsCandidates(values: HoldingsFilterValues, identities: Fil
     ),
     identities: active.filter((item) => !values.platform || item.platform === values.platform),
   };
+}
+
+/** List issues describe the portfolio, while empty states describe the filtered scope. */
+export function holdingsScopeHasMissingReport(
+  issues: Pick<Issue, "code" | "accountId">[],
+  values: HoldingsFilterValues,
+  identities: (Pick<Identity, "id" | "platform"> & { accounts: { id: string }[] })[],
+) {
+  const missing = issues.filter((issue) => issue.code === "missing");
+  if (!values.platform && !values.identityId) return missing.length > 0;
+  const accountIds = new Set(
+    identities
+      .filter(
+        (identity) =>
+          (!values.platform || identity.platform === values.platform) &&
+          (!values.identityId || identity.id === values.identityId),
+      )
+      .flatMap((identity) => identity.accounts.map((account) => account.id)),
+  );
+  return missing.some((issue) => issue.accountId && accountIds.has(issue.accountId));
 }
 
 /** URL-backed filters with a search draft saved before internal navigation. */

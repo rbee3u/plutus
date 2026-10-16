@@ -34,7 +34,13 @@ export function HistoricalPositions({
         columns={POSITION_COLUMNS}
         rows={(data?.items ?? []).map((item) => positionRow(item, data?.context.timezone))}
         empty={
-          query.isPending ? "Loading historical positions." : "No positions in this account report."
+          query.isError && !data
+            ? "Historical positions could not be loaded."
+            : !data
+              ? "Loading historical positions."
+              : data.account.method === "missing"
+                ? "No compatible successful account report is available; positions are unknown."
+                : "No positions in this account report."
         }
       />
       {data ? <IssuesPanel issues={data.issues} timezone={data.context.timezone} /> : null}

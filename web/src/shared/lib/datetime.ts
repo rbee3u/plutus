@@ -9,13 +9,18 @@ const DATE_TIME: Intl.DateTimeFormatOptions = {
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
-function formatter(timeZone: string | undefined): Intl.DateTimeFormat {
-  const key = timeZone ?? "";
+function formatter(timeZone: string | undefined, seconds = false): Intl.DateTimeFormat {
+  const key = `${timeZone ?? ""}|${seconds}`;
   let cached = formatters.get(key);
   if (!cached) {
     try {
-      cached = new Intl.DateTimeFormat("en-CA", { ...DATE_TIME, timeZone });
-    } catch {
+      cached = new Intl.DateTimeFormat("en-CA", {
+        ...DATE_TIME,
+        ...(seconds ? { second: "2-digit" } : {}),
+        timeZone,
+      });
+    } catch (cause) {
+      if (seconds) throw cause;
       cached = new Intl.DateTimeFormat("en-CA", DATE_TIME);
     }
     formatters.set(key, cached);
@@ -95,7 +100,13 @@ export function formatRelativeTime(
   return dateFormatter(timeZone).format(date);
 }
 
-export function toDatetimeLocalValue(iso: string | null | undefined): string {
+function wallTimeValue(date: Date, format: Intl.DateTimeFormat): string {
+  const parts = format.formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year").padStart(4, "0")}-${value("month")}-${value("day")}T${value("hour")}:${value("minute")}:${value("second")}`;
+}
+
+export function toDatetimeLocalValue(iso: string | null | undefined, timeZone?: string): string {
   if (!iso) {
     return "";
   }
@@ -103,11 +114,44 @@ export function toDatetimeLocalValue(iso: string | null | undefined): string {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
+  if (timeZone) return wallTimeValue(date, formatter(timeZone, true));
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function fromDatetimeLocalValue(value: string): string {
+export function fromDatetimeLocalValue(value: string, timeZone?: string): string {
+  if (timeZone) {
+    const wall = value.length === 16 ? `${value}:00` : value;
+    const date = new Date(`${wall}Z`);
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(wall) ||
+      wall.startsWith("0000-") ||
+      Number.isNaN(date.getTime()) ||
+      date.toISOString().slice(0, 19) !== wall
+    ) {
+      throw new Error("Enter a valid date and time.");
+    }
+    const format = formatter(timeZone, true);
+    const offsets = new Set<number>();
+    // Match the history resolver's surrounding-offset search so gaps and folds
+    // cannot silently choose an instant, including half-hour clock transitions.
+    for (let hour = -48; hour <= 48; hour++) {
+      const instant = date.getTime() + hour * 3_600_000;
+      offsets.add(Date.parse(`${wallTimeValue(new Date(instant), format)}Z`) - instant);
+    }
+    const matches = [...offsets]
+      .map((offset) => new Date(date.getTime() - offset))
+      .filter((candidate) => wallTimeValue(candidate, format) === wall);
+    if (matches.length === 0) {
+      throw new Error(`This local time does not exist in ${timeZone}; choose another time.`);
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        `This local time is ambiguous in ${timeZone}; choose a time outside the clock transition.`,
+      );
+    }
+    return matches[0].toISOString();
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Enter a valid date and time.");

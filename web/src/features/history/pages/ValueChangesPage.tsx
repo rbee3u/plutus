@@ -8,7 +8,7 @@ import { capitalize } from "@/shared/lib/text";
 import { ChartBlock } from "@/shared/ui/ChartBlock";
 import { Select } from "@/shared/ui/FormControls";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
-import { CustomPeriodPanel } from "../components/CustomPeriodPanel";
+import { ValueChangeSummary } from "../components/ValueChangeSummary";
 import { HistoryFilters, HistoryPager } from "../components/HistoryFilters";
 import { useHistoryPager, useHistoryWindow } from "../hooks/useHistoryWindow";
 import { PERIOD_KINDS } from "@/features/history/lib/timeWindow";
@@ -19,7 +19,7 @@ import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 
 export function ValueChangesPage() {
   const history = useHistoryWindow();
-  const { portfolioId, redirect, params, update, window } = history;
+  const { params, update, window } = history;
   const periodKind = readChoice(params.get("periodKind"), PERIOD_KINDS, history.defaultPeriod);
   const from = window?.from;
   const to = window?.to;
@@ -90,6 +90,11 @@ export function ValueChangesPage() {
   return (
     <section className={shared.wide}>
       <HistoryFilters state={history} />
+      <ValueChangeSummary window={window} />
+      <p className={shared.muted}>
+        The summary compares valuation points at or before the selected endpoints. The chart and
+        table show whole calendar periods, so their changes may not add up to the summary.
+      </p>
       <QueryRecovery query={changes} fallback="Value changes could not be loaded." />
       {changes.isPending && !data ? <p className={shared.muted}>Loading value changes.</p> : null}
       {data ? (
@@ -115,7 +120,7 @@ export function ValueChangesPage() {
               </label>
             }
             option={chartOption}
-            empty="No comparable period yet. A bar appears once a period has a valuation point at both ends."
+            empty="No comparable periods in this range. Adjust the range or run a collection cycle."
             emptyRows="No periods yet. Periods appear once the portfolio has valuation points."
             columns={VALUE_CHANGE_COLUMNS}
             rows={changeItems
@@ -130,7 +135,6 @@ export function ValueChangesPage() {
           />
         </>
       ) : null}
-      <CustomPeriodPanel portfolioId={portfolioId} redirect={redirect} timezone={timezone} />
     </section>
   );
 }

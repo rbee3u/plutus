@@ -48,8 +48,8 @@ Catalog, balances, and earn display asset symbol first. When its canonical asset
 symbol differs, show a secondary `Canonical asset: ...` hint; omit redundant
 hints. Earn amount units use asset symbol. Catalog and mapping dialogs omit full
 names. Mapping dialogs label the source `Asset` and the target
-`Canonical asset`. Capital flow inputs and columns use `Canonical asset` because
-flows identify cross-platform value.
+`Canonical asset`. Capital flow inputs and columns also use `Asset`; the stored
+symbol still identifies the cross-platform canonical asset.
 
 Catalog futures contract size uses native base units for linear contracts and
 quote face amounts for inverse contracts. Binance linear quantities already use
@@ -356,6 +356,13 @@ save. Identity and Catalog conflicts close the editor and require reopening the
 updated item. Capital flow deletion conflicts close the confirmation and require
 reviewing the updated list before a new confirmation.
 
+Capital flow time inputs show and interpret wall times in the portfolio's
+timezone, with the timezone stated beside the input. Reject nonexistent or
+ambiguous replacement times, as for
+[history windows](#history-windows-and-tables). Unchanged times preserve the
+stored instant and its precision, including during a clock transition; editing
+another field does not reinterpret that instant.
+
 ## Browser refresh and scrolling
 
 Ordinary iPhone Safari and Android Chrome tabs use native pull-to-refresh on all
@@ -408,12 +415,29 @@ show an explicit expiry message and a separate retained-snapshot action. Label
 the selected snapshot with its actual timestamp and total, including cross-day
 fallback. Never present another point's holdings under the original total.
 
+Boundary events use newest collection cycles first, preserving the account order
+within each cycle. Their time order is fixed, without a sorting control.
+
 The `Valuation points` view shows filters, the full-window chart,
 `Period closes`, then raw points. Period closes shares the window. Both calendar
 views initially use Day for day/week shortcuts, Week for 1M, and Month for 3M or
 6M. Users can override the period; applying a custom window retains it. Calendar
-reads calculate whole intersecting periods, not clipped intervals. Value changes
-also offers an independent `Custom range` comparison.
+reads calculate whole intersecting periods, not clipped intervals.
+
+Value changes places a range summary below the shared time filters, before its
+chart and table. It updates automatically for the applied window, independently
+of the calendar period and pagination. Show adjusted USD value change and its
+percentage, start and end values with their actual point times, and capital and
+boundary flows. There is no separate comparison form or Compute action.
+
+Missing endpoints or two endpoints resolving to the same point show unknown
+change and flows (`—`), with the reason visible. Keep the selected window; never
+silently shorten it to available history. Known results with incomplete inputs
+remain visible with an Incomplete badge. Keep limitations and boundary event
+details collapsed until requested. Explain that calendar rows cover whole
+periods and their changes may not sum to the range summary. Endpoint selection
+and calculation rules belong to
+[domain rules](./domain-rules.md#calendar-periods).
 
 Period closes columns are `Period`, `Close (USD)`, `Change`, and `Issues`. Raw
 valuation points columns are `Evaluated at`, `Total (USD)`, `Change`, and

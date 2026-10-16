@@ -191,3 +191,54 @@ describe("Account margin measures", () => {
     expect(render({ ...account, marginRatio: "0" })).toContain("Margin ratio0");
   });
 });
+
+describe("Account feedback scope", () => {
+  it.each(["unconfigured", "disabled", "invalid"])(
+    "keeps %s connection notices on platform accounts only",
+    (connectionStatus) => {
+      expect(render({ ...account, connectionStatus })).toContain(
+        `Connection is ${connectionStatus}.`,
+      );
+      report.kind = "manual";
+      expect(
+        render({ ...account, accountType: "manual", reportId: "report", connectionStatus }),
+      ).not.toContain("Connection is");
+    },
+  );
+
+  it.each([
+    { selected: false, message: "Account is not selected." },
+    { identityStatus: "archived", message: "Identity is archived." },
+  ])("retains manual account boundary feedback: $message", ({ message, ...overrides }) => {
+    report.kind = "manual";
+    const text = render({
+      ...account,
+      accountType: "manual",
+      reportId: "report",
+      connectionStatus: "disabled",
+      ...overrides,
+    });
+    expect(text).toContain(message);
+    expect(text).not.toContain("Connection is");
+  });
+
+  it("retains manual report health and valuation omissions", () => {
+    report.kind = "manual";
+    const text = render({
+      ...account,
+      accountType: "manual",
+      reportId: "report",
+      connectionStatus: "invalid",
+      freshness: "stale",
+      completeness: "incomplete",
+      errorClass: "no_price",
+      errorDetail: "No eligible price is available.",
+      omitted: [{ assetSymbol: "BTC", equity: "1", reason: "no_price" }],
+    });
+    expect(text).toContain("Earlier successful account report retained");
+    expect(text).toContain("No eligible price is available.");
+    expect(text).toContain("Omitted from the total:");
+    expect(text).toContain("BTC");
+    expect(text).not.toContain("Connection is");
+  });
+});

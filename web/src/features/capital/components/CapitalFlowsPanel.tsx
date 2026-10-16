@@ -161,7 +161,7 @@ export function CapitalFlowsPanel({
             type="button"
             tone="primary"
             className={styles.primaryAction}
-            disabled={busy}
+            disabled={busy || !timezone}
             onClick={openCreate}
           >
             <Plus size={iconSize.sm} aria-hidden="true" />
@@ -174,7 +174,7 @@ export function CapitalFlowsPanel({
         columns={[
           { key: "effectiveAt", header: "Effective at", nowrap: true, width: "170px" },
           { key: "direction", header: "Direction", width: "110px" },
-          { key: "canonicalAssetSymbol", header: "Canonical asset", width: "120px" },
+          { key: "canonicalAssetSymbol", header: "Asset", width: "120px" },
           { key: "quantity", header: "Quantity", numeric: true, width: "130px" },
           { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
           { key: "account", header: "Account", width: "150px" },
@@ -205,7 +205,7 @@ export function CapitalFlowsPanel({
             actions: (
               <FlowActions
                 item={item}
-                disabled={busy}
+                disabled={busy || !timezone}
                 onEdit={(target) => void openEdit(target)}
                 onDelete={setDeleteTarget}
               />
@@ -221,14 +221,16 @@ export function CapitalFlowsPanel({
               help="Expand the time window or record a capital flow."
               action={
                 <div className={styles.emptyActions}>
-                  <ActionButton
-                    type="button"
-                    tone="secondary"
-                    onClick={() => timeWindow.selectPreset("6M")}
-                  >
-                    View last 6 months (6M)
-                  </ActionButton>
-                  <ActionButton tone="primary" onClick={openCreate}>
+                  {timeWindow.preset !== "6M" ? (
+                    <ActionButton
+                      type="button"
+                      tone="secondary"
+                      onClick={() => timeWindow.selectPreset("6M")}
+                    >
+                      View last 6 months (6M)
+                    </ActionButton>
+                  ) : null}
+                  <ActionButton tone="primary" disabled={!timezone} onClick={openCreate}>
                     <Plus size={iconSize.sm} aria-hidden="true" />
                     <span>Record flow</span>
                   </ActionButton>
@@ -240,6 +242,7 @@ export function CapitalFlowsPanel({
       />
       <CapitalFlowDialog
         portfolioId={portfolioId}
+        timezone={timezone}
         request={dialog}
         accounts={accounts}
         onClose={() => setDialog(null)}

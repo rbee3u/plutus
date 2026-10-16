@@ -33,6 +33,8 @@ async function fixture(page: Page) {
     failSeries: false,
     revision: 1,
     mismatchOnDetail: false,
+    summary: {} as Partial<ValueChange>,
+    failSummary: false,
   };
   const context = { portfolioId, timezone: "Asia/Shanghai" };
   const session = sessionFixture({
@@ -161,6 +163,35 @@ async function fixture(page: Page) {
         endPoint: point(index + 1),
       }));
       await route.fulfill({ json: { context, periodKind: params.get("periodKind"), items } });
+    } else if (path === `${base}/value-changes/custom`) {
+      if (state.failSummary) {
+        await route.fulfill({ status: 500, json: { detail: "Summary temporarily unavailable." } });
+        return;
+      }
+      const summary: ValueChange = {
+        periodKind: "custom",
+        label: "custom",
+        from,
+        to,
+        startPoint: {
+          ...point(0),
+          evaluatedAt: new Date(Date.parse(from) - 60_000).toISOString(),
+        },
+        endPoint: {
+          ...point(560),
+          evaluatedAt: new Date(Date.parse(to) - 60_000).toISOString(),
+        },
+        amountUsd: "500",
+        contributionsUsd: "100",
+        withdrawalsUsd: "40",
+        boundaryContributionsUsd: "0",
+        boundaryWithdrawalsUsd: "0",
+        completeness: "complete",
+        reasons: [],
+        boundaryEvents: [],
+        ...state.summary,
+      };
+      await route.fulfill({ json: summary });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
       if (state.mismatchOnDetail) {
         state.revision = 2;
@@ -239,7 +270,7 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await expect(pager(page, "Raw valuation points")).toContainText("1–10 of 561");
   await page.getByRole("button", { name: "3M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("month");
-  await expect(page.getByText(/day granularity/)).toBeVisible();
+  await expect(page.getByText(/ · Daily$/)).toBeVisible();
 });
 
 test("Date drafts apply once; custom endpoints survive reload, presets reanchor", async ({
@@ -265,7 +296,7 @@ test("Date drafts apply once; custom endpoints survive reload, presets reanchor"
   await expect(page.getByRole("alert")).toContainText("The end must be after the start.");
   await expect(page).toHaveURL(/from=2026-09-01T04/);
   await page.getByRole("button", { name: "1W", exact: true }).click();
-  await expect(page.getByText(/hour granularity/)).toBeVisible();
+  await expect(page.getByText(/ · Hourly$/)).toBeVisible();
   state.now = "2026-10-05T04:16:44Z";
   await page.reload();
   await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-05T12:16:44");
@@ -275,25 +306,173 @@ test("Date drafts apply once; custom endpoints survive reload, presets reanchor"
   );
 });
 
-test("Value changes pages its table, keeps its chart, and leaves custom comparison independent", async ({
+test("Value changes shares the applied range with its summary, independently of period and pagination", async ({
   page,
 }) => {
   const state = await fixture(page);
   await page.goto(`${historyPath}/value-changes`);
   const table = page.getByRole("table", { name: "Value change per day values" });
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await expect(summary).toContainText("+$500");
+  await expect(summary).toContainText("at 2026-09-27 12:15");
+  await expect(page.getByLabel("From", { exact: true })).toHaveCount(1);
+  await expect(page.getByLabel("To", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Compute", exact: true })).toHaveCount(0);
+  expect(await page.getByRole("heading", { level: 2 }).allTextContents()).toEqual([
+    "Range summary",
+    "Value change per day",
+  ]);
   await expect(table.locator("tbody > tr")).toHaveCount(20);
   await expect(table.locator("tbody > tr").first()).toContainText("change-41");
   const reads = state.requests.filter((url) => url.pathname === `${base}/value-changes`).length;
+  const summaryReads = state.requests.filter((url) => url.pathname.endsWith("/custom")).length;
+  const resolved = state.requests.find((url) => url.pathname === `${base}/value-changes`)!;
+  const comparison = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+  expect(comparison.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
+  expect(comparison.searchParams.get("to")).toBe(resolved.searchParams.get("to"));
   await pager(page, "Value changes").getByRole("button", { name: "Next", exact: true }).click();
   await expect(pager(page, "Value changes")).toContainText("21–40 of 42");
   expect(state.requests.filter((url) => url.pathname === `${base}/value-changes`)).toHaveLength(
     reads,
   );
-  await page.getByLabel("From", { exact: true }).last().fill("2026-08-01T12:00");
+  await page.getByRole("combobox", { name: "Period", exact: true }).selectOption("month");
+  await expect(page.getByRole("table", { name: "Value change per month values" })).toBeVisible();
+  expect(state.requests.filter((url) => url.pathname.endsWith("/custom"))).toHaveLength(
+    summaryReads,
+  );
   await page.getByRole("button", { name: "1M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("week");
-  await expect(page.getByLabel("From", { exact: true }).last()).toHaveValue("2026-08-01T12:00");
+  await expect(summary).toContainText("at 2026-09-04 12:15");
   await expect(pager(page, "Value changes")).toContainText("1–20 of 42");
+  const appliedReads = state.requests.filter((url) => url.pathname.endsWith("/custom")).length;
+  await page.getByLabel("From", { exact: true }).fill("2026-09-01T13:00");
+  await page.getByLabel("To", { exact: true }).fill("2026-10-01T15:00");
+  expect(state.requests.filter((url) => url.pathname.endsWith("/custom"))).toHaveLength(
+    appliedReads,
+  );
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(summary).toContainText("at 2026-09-01 12:59");
+  await expect(summary).toContainText("at 2026-10-01 14:59");
+  await page.reload();
+  await expect(summary).toContainText("at 2026-09-01 12:59");
+  await expect(summary).toContainText("at 2026-10-01 14:59");
+});
+
+for (const scenario of ["Missing start", "Missing both endpoints", "Same point"] as const) {
+  test(`Range summary shows unknown change and flows for ${scenario.toLowerCase()}`, async ({
+    page,
+  }) => {
+    const state = await fixture(page);
+    state.summary = {
+      completeness: "incomplete",
+      startPoint: scenario === "Same point" ? point(0) : null,
+      ...(scenario === "Missing both endpoints" ? { endPoint: null } : {}),
+      ...(scenario === "Same point" ? { endPoint: point(0) } : {}),
+      amountUsd: scenario === "Same point" ? "0" : null,
+      contributionsUsd: "0",
+      withdrawalsUsd: "0",
+      reasons:
+        scenario === "Same point"
+          ? ["no_point_in_period"]
+          : scenario === "Missing both endpoints"
+            ? ["no_start_point", "no_end_point"]
+            : ["no_start_point"],
+    };
+    await page.goto(`${historyPath}/value-changes`);
+    const summary = page.getByRole("region", { name: "Selected range summary" });
+    await expect(summary).toContainText("Incomplete");
+    const amount = summary.getByText("Value change", { exact: true }).locator("..");
+    await expect(amount).toContainText("—");
+    await expect(amount).not.toContainText("$0");
+    await expect(summary.getByText("Flows", { exact: true }).locator("..")).toContainText(
+      "Flows unavailable",
+    );
+    await expect(summary).toContainText(
+      scenario === "Same point"
+        ? "Two distinct valuation points are required"
+        : "No start valuation point at or before the selected start",
+    );
+    if (scenario === "Missing both endpoints") {
+      await expect(summary).toContainText("No end valuation point at or before the selected end");
+    }
+    const request = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+    expect(request.searchParams.get("from")).toBe("2026-09-27T04:16:44.000Z");
+    await expect(page.getByRole("table", { name: "Value change per day values" })).toBeVisible();
+  });
+}
+
+test("Range summary retains known incomplete results and expands limitations and boundary details on demand", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.summary = {
+    amountUsd: "490",
+    completeness: "incomplete",
+    reasons: ["start_point_incomplete", "unvalued_flow: DEMO 2"],
+    boundaryContributionsUsd: "10",
+    boundaryEvents: [
+      {
+        cycleId: "entry",
+        evaluatedAt: initialEnd,
+        accountId: "account",
+        accountName: "Entered account",
+        direction: "contribution",
+        valueUsd: "10",
+        completeness: "complete",
+        method: "reported",
+      },
+    ],
+  };
+  await page.goto(`${historyPath}/value-changes`);
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await expect(summary).toContainText("+$490");
+  await expect(summary).toContainText("Incomplete");
+  await expect(summary).toContainText("Known flows shown; unvalued amounts: —");
+  await expect(summary).toContainText("Capital flow");
+  await expect(summary).toContainText("Boundary event");
+  await expect(summary.getByText("Unvalued flow: DEMO 2", { exact: true })).toBeHidden();
+  await summary.getByText("Limitations (2)", { exact: true }).click();
+  await expect(summary.getByText("Unvalued flow: DEMO 2", { exact: true })).toBeVisible();
+  const events = summary.getByRole("table", { name: "Boundary events in the range" });
+  await expect(events).toBeHidden();
+  await summary.getByText("Boundary events (1)", { exact: true }).click();
+  await expect(events).toContainText("Entered account");
+});
+
+test("A failed range summary retries its applied window while calendar details remain available", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.failSummary = true;
+  await page.goto(`${historyPath}/value-changes`);
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await expect(summary.getByRole("alert")).toContainText("Summary temporarily unavailable.", {
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("table", { name: "Value change per day values" })).toBeVisible();
+  const first = state.requests.find((url) => url.pathname.endsWith("/custom"))!;
+  state.failSummary = false;
+  state.now = "2026-10-05T04:16:44Z";
+  await summary.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(summary).toContainText("+$500");
+  const last = state.requests.filter((url) => url.pathname.endsWith("/custom")).at(-1)!;
+  expect(last.search).toBe(first.search);
+});
+
+test("A known zero change between distinct valuation points remains zero", async ({ page }) => {
+  const state = await fixture(page);
+  state.summary = {
+    amountUsd: "0",
+    contributionsUsd: "0",
+    withdrawalsUsd: "0",
+    endPoint: { ...point(560), totalUsd: point(0).totalUsd },
+  };
+  await page.goto(`${historyPath}/value-changes`);
+  const summary = page.getByRole("region", { name: "Selected range summary" });
+  await expect(summary.getByText("Value change", { exact: true }).locator("..")).toContainText(
+    "$0 (0%)",
+  );
+  await expect(summary).not.toContainText("Incomplete");
 });
 
 test("Empty, single-point and last-page URL states stay usable", async ({ page }) => {
@@ -302,10 +481,9 @@ test("Empty, single-point and last-page URL states stay usable", async ({ page }
   await page.goto(historyPath);
   await expect(
     page
-      .getByText(
-        "No valuation point in this window. Enable a connection and run a collection cycle.",
-        { exact: true },
-      )
+      .getByText("No valuation points in this range. Adjust the range or run a collection cycle.", {
+        exact: true,
+      })
       .first(),
   ).toBeVisible();
   await expect(pager(page, "Raw valuation points")).toContainText("0 rows");
@@ -357,13 +535,24 @@ for (const theme of ["light", "dark"]) {
     await page.goto(historyPath);
     await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
     await page.getByRole("button", { name: "6M", exact: true }).click();
-    await expect(page.getByText(/day granularity/)).toBeVisible();
+    await expect(page.getByText(/ · Daily$/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       375,
     );
     await expect(
       pager(page, "Raw valuation points").getByRole("button", { name: "Next", exact: true }),
     ).toBeEnabled();
+    await page.goto(`${historyPath}/value-changes`);
+    await expect(page.getByRole("region", { name: "Selected range summary" })).toContainText(
+      "+$500",
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      375,
+    );
+    await page.setViewportSize({ width: 812, height: 375 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      812,
+    );
   });
 }
 

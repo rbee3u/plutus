@@ -96,7 +96,7 @@ export function useIdentityActions(portfolioId: string) {
         }
         return {
           status: result.response?.status,
-          message: `Validation of ${item.displayName}: ${sentence(outcomeText(result.data))} connection is ${result.data.identity.connection.status}.`,
+          message: `Validation of ${item.displayName}: ${sentence(outcomeText(result.data))} The connection is ${result.data.identity.connection.status}.`,
         };
       },
       "Validation could not run.",
@@ -119,7 +119,7 @@ export function useIdentityActions(portfolioId: string) {
             status: 422,
             message: null,
             error: new Error(
-              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} connection is now ${result.error.identity.connection.status}.`,
+              `Enable failed for ${item.displayName}: ${sentence(outcomeText(result.error))} The connection is now ${result.error.identity.connection.status}.`,
             ),
           };
         }

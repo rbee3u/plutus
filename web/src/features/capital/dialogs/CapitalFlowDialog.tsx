@@ -33,26 +33,26 @@ interface FlowFields {
   note: string;
 }
 
-function newEmptyForm(): FlowFields {
+function newEmptyForm(timezone: string): FlowFields {
   return {
     direction: "contribution",
     canonicalAssetSymbol: "",
     quantity: "",
     valueUsd: "",
-    effectiveAt: toDatetimeLocalValue(new Date().toISOString()),
+    effectiveAt: toDatetimeLocalValue(new Date().toISOString(), timezone),
     accountId: "",
     pricingPlatform: "",
     note: "",
   };
 }
 
-function formFromFlow(item: CapitalFlow): FlowFields {
+function formFromFlow(item: CapitalFlow, timezone: string): FlowFields {
   return {
     direction: item.direction,
     canonicalAssetSymbol: item.canonicalAssetSymbol,
     quantity: item.quantity,
     valueUsd: item.pricingMethod === "explicit" ? (item.valueUsd ?? "") : "",
-    effectiveAt: toDatetimeLocalValue(item.effectiveAt),
+    effectiveAt: toDatetimeLocalValue(item.effectiveAt, timezone),
     accountId: item.accountId ?? "",
     pricingPlatform: item.pricingPlatform ?? "",
     note: item.note ?? "",
@@ -61,12 +61,14 @@ function formFromFlow(item: CapitalFlow): FlowFields {
 
 export function CapitalFlowDialog({
   portfolioId,
+  timezone,
   request,
   accounts,
   onClose,
   onSaved,
 }: {
   portfolioId: string;
+  timezone?: string;
   request: FlowDialogRequest | null;
   accounts: AccountOption[];
   onClose: () => void;
@@ -78,10 +80,11 @@ export function CapitalFlowDialog({
       title={request?.mode === "edit" ? "Edit capital flow" : "Record capital flow"}
       onClose={onClose}
     >
-      {request ? (
+      {request && timezone ? (
         <FlowForm
           key={request.nonce}
           portfolioId={portfolioId}
+          timezone={timezone}
           request={request}
           accounts={accounts}
           onClose={onClose}
@@ -94,24 +97,29 @@ export function CapitalFlowDialog({
 
 function FlowForm({
   portfolioId,
+  timezone: initialTimezone,
   request,
   accounts,
   onClose,
   onSaved,
 }: {
   portfolioId: string;
+  timezone: string;
   request: FlowDialogRequest;
   accounts: AccountOption[];
   onClose: () => void;
   onSaved: (message: string) => Promise<void>;
 }) {
+  // Keep the wall-time interpretation with the draft if portfolio reads refresh.
+  const [timezone] = useState(initialTimezone);
   const { redirect } = useSessionScope();
   const platforms = usePlatforms();
   const write = useAuthenticatedWrite();
   const valueId = useId();
+  const effectiveAtId = useId();
   const createKey = useRef(newIdempotencyKey());
   const [form, setForm] = useState<FlowFields>(() =>
-    request.mode === "edit" ? formFromFlow(request.item) : newEmptyForm(),
+    request.mode === "edit" ? formFromFlow(request.item, timezone) : newEmptyForm(timezone),
   );
   const [baseline, setBaseline] = useState(request.mode === "edit" ? request.item : null);
   const [needsReload, setNeedsReload] = useState(false);
@@ -138,7 +146,7 @@ function FlowForm({
           problemMessage(result.error, "The latest capital flow could not be loaded."),
         );
       }
-      setForm(formFromFlow(result.data));
+      setForm(formFromFlow(result.data, timezone));
       setBaseline(result.data);
       setNeedsReload(false);
       setError(null);
@@ -155,7 +163,11 @@ function FlowForm({
     setBusy(true);
     setError(null);
     try {
-      const effectiveAt = fromDatetimeLocalValue(form.effectiveAt);
+      const timeChanged =
+        !baseline || form.effectiveAt !== toDatetimeLocalValue(baseline.effectiveAt, timezone);
+      const effectiveAt = timeChanged
+        ? fromDatetimeLocalValue(form.effectiveAt, timezone)
+        : baseline.effectiveAt;
       const canonicalAssetSymbol = form.canonicalAssetSymbol.trim();
       const quantity = form.quantity.trim();
       const valueUsd = form.valueUsd.trim();
@@ -182,12 +194,10 @@ function FlowForm({
                 ? { canonicalAssetSymbol }
                 : {}),
               ...(quantity !== baseline.quantity ? { quantity } : {}),
-              ...(valueUsd !== formFromFlow(baseline).valueUsd
+              ...(valueUsd !== formFromFlow(baseline, timezone).valueUsd
                 ? { valueUsd: valueUsd || null }
                 : {}),
-              ...(form.effectiveAt !== toDatetimeLocalValue(baseline.effectiveAt)
-                ? { effectiveAt }
-                : {}),
+              ...(timeChanged ? { effectiveAt } : {}),
               ...(form.accountId !== (baseline.accountId ?? "")
                 ? { accountId: form.accountId || null }
                 : {}),
@@ -271,7 +281,7 @@ function FlowForm({
       </div>
       <div className={styles.formRow2}>
         <label className={shared.field}>
-          <span>Canonical asset</span>
+          <span>Asset</span>
           <TextInput
             disabled={busy}
             value={form.canonicalAssetSymbol}
@@ -303,16 +313,22 @@ function FlowForm({
         </label>
       </div>
       <div className={styles.formRow2}>
-        <label className={shared.field}>
-          <span>Effective at</span>
+        <div className={shared.field}>
+          <label htmlFor={effectiveAtId}>Effective at</label>
           <TextInput
+            id={effectiveAtId}
             disabled={busy}
             type="datetime-local"
+            step="1"
+            aria-describedby={`${valueId}-timezone`}
             value={form.effectiveAt}
             onChange={(event) => set({ effectiveAt: event.target.value })}
             required
           />
-        </label>
+          <span id={`${valueId}-timezone`} className={shared.muted}>
+            Timezone: {timezone}
+          </span>
+        </div>
         <div className={shared.field}>
           <label htmlFor={valueId}>Value (USD, optional)</label>
           <TextInput
@@ -353,7 +369,7 @@ function FlowForm({
             value={form.pricingPlatform}
             onChange={(event) => set({ pricingPlatform: event.target.value })}
           >
-            <option value="">No platform price</option>
+            <option value="">None</option>
             {platforms.data?.items.map((platform) => (
               <option key={platform.id} value={platform.id}>
                 {platform.name}

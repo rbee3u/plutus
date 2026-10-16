@@ -41,7 +41,7 @@ export function EarnPositionsPage() {
     empty = (
       <TableEmptyState
         title="No valuation point yet"
-        help="No collection cycle has produced a valuation point yet."
+        help="Run a collection cycle to create the first point."
       />
     );
   } else if (!data.detailsComplete) {

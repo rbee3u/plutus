@@ -264,8 +264,8 @@ export function IdentitiesPage() {
             />
           ) : (
             <TableEmptyState
-              title="No identities configured yet"
-              help="Connect an exchange API key to begin collecting balances and positions."
+              title="No identities yet"
+              help="Create an identity to start tracking accounts."
               action={
                 <ActionButton tone="primary" onClick={() => open({ kind: "create" })}>
                   <Plus size={iconSize.sm} aria-hidden="true" /> New identity

@@ -34,7 +34,7 @@ export function HoldingsTree({ portfolioId, tree }: { portfolioId: string; tree:
         </h2>
       </div>
       {tree.platforms.length === 0 ? (
-        <p className={shared.muted}>No accounts in the portfolio boundary. Add an identity.</p>
+        <p className={shared.muted}>No accounts to display.</p>
       ) : (
         <ul
           className={styles.holdingsTree}

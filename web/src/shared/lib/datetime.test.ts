@@ -4,7 +4,39 @@ import {
   formatRelativeTime,
   isoFromDateInput,
   normalizeDateInput,
+  toDatetimeLocalValue,
+  fromDatetimeLocalValue,
 } from "./datetime";
+
+describe("Portfolio-local date and time inputs", () => {
+  it.each([
+    ["Europe/Berlin", "2026-10-11T01:30:12Z", "2026-10-11T03:30:12"],
+    ["Europe/Berlin", "2026-12-11T01:30:12Z", "2026-12-11T02:30:12"],
+    ["Asia/Kathmandu", "2026-10-11T01:30:12Z", "2026-10-11T07:15:12"],
+    ["America/New_York", "2026-03-08T07:30:12Z", "2026-03-08T03:30:12"],
+  ])("round-trips a unique wall time in %s", (zone, instant, wall) => {
+    expect(toDatetimeLocalValue(instant, zone)).toBe(wall);
+    expect(fromDatetimeLocalValue(wall, zone)).toBe(new Date(instant).toISOString());
+  });
+
+  it.each([
+    ["Europe/Berlin", "2026-03-29T02:30", "does not exist"],
+    ["Europe/Berlin", "2026-10-25T02:30", "ambiguous"],
+    ["America/New_York", "2026-03-08T02:30", "does not exist"],
+    ["America/New_York", "2026-11-01T01:30", "ambiguous"],
+    ["Australia/Lord_Howe", "2026-04-05T01:45", "ambiguous"],
+    ["Australia/Lord_Howe", "2026-10-04T02:15", "does not exist"],
+  ])("rejects %s wall time %s as %s", (zone, wall, reason) => {
+    expect(() => fromDatetimeLocalValue(wall, zone)).toThrow(reason);
+  });
+
+  it.each(["2026-02-30T12:00", "2026-13-01T12:00", "0000-01-01T12:00", "garbage"])(
+    "rejects invalid calendar input %s instead of normalizing it",
+    (wall) => {
+      expect(() => fromDatetimeLocalValue(wall, "UTC")).toThrow("Enter a valid date and time.");
+    },
+  );
+});
 
 describe("formatRelativeTime", () => {
   const baseTime = new Date("2026-10-13T12:00:00Z").getTime();

@@ -13,7 +13,7 @@ import { HoldingsFilterFooter, HoldingsListRecovery } from "../components/Holdin
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
 import { HoldingsSummary } from "../components/HoldingsSummary";
 import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
-import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
+import { holdingsScopeHasMissingReport, useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
@@ -91,6 +91,15 @@ export function PositionsPage() {
             <TableEmptyState
               title="No valuation point yet"
               help="Run a collection cycle to create the first point."
+            />
+          ) : holdingsScopeHasMissingReport(
+              data.issues,
+              filters.values,
+              filters.identities.data?.items ?? [],
+            ) ? (
+            <TableEmptyState
+              title="Position data is incomplete"
+              help="Some accounts have no compatible successful report."
             />
           ) : filters.hasFilters ? (
             <TableEmptyState

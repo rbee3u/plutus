@@ -1,16 +1,10 @@
 import type { Issue } from "@/api";
-import { capitalize, reasonText } from "@/shared/lib/text";
+import { issueLabel } from "@/shared/lib/text";
 import { formatDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { Badge } from "@/shared/ui/Badge";
 import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/shared/styles/page.module.css";
-
-const ISSUE_LABELS: Record<string, string> = {
-  stale: "Stale",
-  no_price: "Missing price",
-  missing: "Missing report",
-};
 
 /** Machine codes (issue codes, reason codes, error classes) in one mono style. */
 export function Codes({ values }: { values: string[] }) {
@@ -61,9 +55,7 @@ export function IssueList({
         return (
           <li key={`${issue.code}-${issue.accountId ?? ""}-${issue.symbol ?? ""}-${String(index)}`}>
             <span>
-              <Badge tone="warn">
-                {ISSUE_LABELS[issue.code] ?? capitalize(reasonText(issue.code))}
-              </Badge>{" "}
+              <Badge tone="warn">{issueLabel(issue.code)}</Badge>{" "}
               {issue.omittedBalance ? (
                 <>
                   <NumericText>{formatDecimal(issue.omittedBalance.equity)}</NumericText>{" "}
